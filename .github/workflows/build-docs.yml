@@ -41,4 +41,4 @@ jobs:
           uv pip install -e ".[docs]"
 
       - name: Build Docs
-        run: mkdocs gh-deploy --force
+        run: python -m mkdocs gh-deploy --force
