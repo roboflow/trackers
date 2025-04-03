@@ -41,10 +41,4 @@ jobs:
           uv pip install -e ".[docs]"
 
       - name: Build Docs
-        run: uv run mkdocs build
-      
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
+        run: uv run mkdocs gh-deploy --force
