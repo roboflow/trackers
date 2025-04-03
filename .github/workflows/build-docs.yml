@@ -1,0 +1,43 @@
+name: Build Docs
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-docs.yml
+      - gtr/**
+      - mkdocs.yml
+      - docs/**
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build-docs:
+    name: Build Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          key: ${{ github.ref }}
+          path: .cache
+
+      - name: Install the project
+        run: |
+          uv pip install -e ".[docs]"
+
+      - name: Build Docs
+        run: mkdocs gh-deploy --force
