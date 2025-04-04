@@ -8,6 +8,7 @@ class KalmanBoxTracker:
     Represents the internals of a single tracked object (bounding box),
     with a Kalman filter to predict and update its position.
     """
+
     count = 0
 
     def __init__(self, bbox: np.ndarray) -> None:
@@ -96,8 +97,8 @@ class KalmanBoxTracker:
         self.state = self.state + K @ y
 
         # Update covariance
-        I = np.eye(8, dtype=np.float32)
-        self.P = (I - K @ self.H) @ self.P
+        identity_matrix = np.eye(8, dtype=np.float32)
+        self.P = (identity_matrix - K @ self.H) @ self.P
 
     def get_state_bbox(self) -> np.ndarray:
         """
@@ -106,12 +107,15 @@ class KalmanBoxTracker:
         Returns:
             np.ndarray: The bounding box [x1, y1, x2, y2].
         """
-        return np.array([
-            self.state[0],  # x1
-            self.state[1],  # y1
-            self.state[2],  # x2
-            self.state[3],  # y2
-        ], dtype=float).reshape(-1)
+        return np.array(
+            [
+                self.state[0],  # x1
+                self.state[1],  # y1
+                self.state[2],  # x2
+                self.state[3],  # y2
+            ],
+            dtype=float,
+        ).reshape(-1)
 
 
 def iou_batch(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
@@ -128,25 +132,29 @@ def iou_batch(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
     # Check for empty arrays or incorrect shapes
     if len(bboxes1) == 0 or len(bboxes2) == 0:
         return np.zeros((len(bboxes1), len(bboxes2)), dtype=np.float32)
-    
+
     # Ensure arrays are 2D with shape (N, 4) and (M, 4)
     if bboxes1.ndim == 1:
         bboxes1 = bboxes1.reshape(1, -1)
     if bboxes2.ndim == 1:
         bboxes2 = bboxes2.reshape(1, -1)
-        
+
     # Expand dims to broadcast
     x1 = np.maximum(bboxes1[:, None, 0], bboxes2[None, :, 0])
     y1 = np.maximum(bboxes1[:, None, 1], bboxes2[None, :, 1])
     x2 = np.minimum(bboxes1[:, None, 2], bboxes2[None, :, 2])
     y2 = np.minimum(bboxes1[:, None, 3], bboxes2[None, :, 3])
 
-    inter_area = np.clip(x2 - x1, a_min=0, a_max=None) * np.clip(y2 - y1, a_min=0, a_max=None)
+    inter_area = np.clip(x2 - x1, a_min=0, a_max=None) * np.clip(
+        y2 - y1, a_min=0, a_max=None
+    )
 
     bboxes1_area = (bboxes1[:, 2] - bboxes1[:, 0]) * (bboxes1[:, 3] - bboxes1[:, 1])
     bboxes2_area = (bboxes2[:, 2] - bboxes2[:, 0]) * (bboxes2[:, 3] - bboxes2[:, 1])
 
-    iou = inter_area / (bboxes1_area[:, None] + bboxes2_area[None, :] - inter_area + 1e-6)
+    iou = inter_area / (
+        bboxes1_area[:, None] + bboxes2_area[None, :] - inter_area + 1e-6
+    )
     return iou
 
 
@@ -158,10 +166,7 @@ class SORTTracker:
     """
 
     def __init__(
-        self,
-        max_age: int = 30,
-        min_hits: int = 3,
-        iou_threshold: float = 0.3
+        self, max_age: int = 30, min_hits: int = 3, iou_threshold: float = 0.3
     ) -> None:
         """
         Args:
@@ -192,7 +197,9 @@ class SORTTracker:
             return detections
 
         # 1. Convert detections to a (N x 4) array (x1, y1, x2, y2)
-        detection_boxes = detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
+        detection_boxes = (
+            detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
+        )
 
         # 2. Predict new locations for existing trackers
         for tracker in self.trackers:
@@ -203,11 +210,13 @@ class SORTTracker:
         if len(predicted_boxes) == 0 and len(self.trackers) > 0:
             # Handle case where get_state_bbox might return empty array
             predicted_boxes = np.zeros((len(self.trackers), 4), dtype=np.float32)
-            
+
         if len(self.trackers) > 0 and len(detection_boxes) > 0:
             iou_matrix = iou_batch(predicted_boxes, detection_boxes)
         else:
-            iou_matrix = np.zeros((len(self.trackers), len(detection_boxes)), dtype=np.float32)
+            iou_matrix = np.zeros(
+                (len(self.trackers), len(detection_boxes)), dtype=np.float32
+            )
 
         # 4. Associate detections to trackers based on IOU
         matched_indices = []
@@ -221,7 +230,11 @@ class SORTTracker:
             # For the example, a simple greedy approach:
             #   - sort matches by IOU descending
             #   - keep each unique row/col pair at most once
-            sorted_pairs = sorted(zip(row_indices, col_indices), key=lambda x: iou_matrix[x[0], x[1]], reverse=True)
+            sorted_pairs = sorted(
+                zip(row_indices, col_indices),
+                key=lambda x: iou_matrix[x[0], x[1]],
+                reverse=True,
+            )
             used_rows = set()
             used_cols = set()
             for row, col in sorted_pairs:
@@ -256,21 +269,27 @@ class SORTTracker:
 
         # For simplicity, re-run association in the same way (could also store direct mapping).
         final_tracker_ids = [-1] * len(detection_boxes)
-        
+
         # Important: Recalculate predicted_boxes based on current trackers
         # after some may have been removed
         predicted_boxes = np.array([t.get_state_bbox() for t in self.trackers])
-        iou_matrix_final = np.zeros((len(self.trackers), len(detection_boxes)), dtype=np.float32)
-        
+        iou_matrix_final = np.zeros(
+            (len(self.trackers), len(detection_boxes)), dtype=np.float32
+        )
+
         # Ensure predicted_boxes is properly shaped before the second iou calculation
         if len(predicted_boxes) == 0 and len(self.trackers) > 0:
             predicted_boxes = np.zeros((len(self.trackers), 4), dtype=np.float32)
-            
+
         if len(self.trackers) > 0 and len(detection_boxes) > 0:
             iou_matrix_final = iou_batch(predicted_boxes, detection_boxes)
-        
+
         row_indices, col_indices = np.where(iou_matrix_final > self.iou_threshold)
-        sorted_pairs = sorted(zip(row_indices, col_indices), key=lambda x: iou_matrix_final[x[0], x[1]], reverse=True)
+        sorted_pairs = sorted(
+            zip(row_indices, col_indices),
+            key=lambda x: iou_matrix_final[x[0], x[1]],
+            reverse=True,
+        )
         used_rows = set()
         used_cols = set()
         for row, col in sorted_pairs:
