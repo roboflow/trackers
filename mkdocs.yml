@@ -52,5 +52,8 @@ markdown_extensions:
 
 nav:
   - Home: 'index.md'
+  - Trackers:
+    - SORT Tracker: 'trackers/sort_tracker.md'
+    - Utils: 'trackers/utils.md'
 
 repo_url: https://github.com/roboflow/trackers

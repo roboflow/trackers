@@ -1,7 +1,7 @@
 .PHONY: style check_code_quality
 
 export PYTHONPATH = .
-check_dirs := gtr
+check_dirs := trackers
 
 style:
 	uv run ruff format  $(check_dirs)

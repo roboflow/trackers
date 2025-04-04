@@ -5,7 +5,7 @@ on:
       - main
     paths:
       - .github/workflows/build-docs.yml
-      - gtr/**
+      - trackers/**
       - mkdocs.yml
       - docs/**
 

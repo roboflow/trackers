@@ -3,9 +3,10 @@ name = "trackers"
 version = "0.0.1"
 description = "A unified library for object tracking"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "supervision>=0.25.1",
+    "numpy>=1.24.0",
 ]
 
 [project.optional-dependencies]
@@ -35,4 +36,17 @@ build-backend = "hatchling.build"
 packages = ["trackers"]
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+# Enable import sorting and other rules
+select = ["I"]  # Import sorting
+extend-select = ["F", "E", "W", "I001"]  # Other rules including import sorting
+
+[tool.ruff.lint.isort]
+known-first-party = ["trackers"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

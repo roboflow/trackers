@@ -17,3 +17,14 @@ venv.bak/
 
 # uv stuff
 uv.lock
+
+# IDE settings
+.vscode/
+.idea/
+prompts/
+
+# Development-specific files
+data/
+test.py
+**.pt
+**.pth
