@@ -6,11 +6,11 @@ from trackers.base import BaseTracker
 
 class KalmanBoxTracker:
     """
-    Represents the internals of a single tracked object (bounding box),
+    The `KalmanBoxTracker` class represents the internals of a single tracked object (bounding box),
     with a Kalman filter to predict and update its position.
 
     References:
-        - https://github.com/abewley/sort/blob/master/sort.py
+        [https://github.com/abewley/sort/blob/master/sort.py](https://github.com/abewley/sort/blob/master/sort.py)
 
     Attributes:
         id (int): Unique identifier for the tracker.
@@ -133,11 +133,16 @@ class KalmanBoxTracker:
 
 class SORTTracker(BaseTracker):
     """
-    SORTTracker is an implementation of the SORT (Simple Online and Realtime Tracking)
+    `SORTTracker` is an implementation of the
+    [SORT (Simple Online and Realtime Tracking)](https://arxiv.org/pdf/1602.00763)
     algorithm for object tracking in videos. It uses a Kalman filter and IOU-based
     data association to track multiple objects.
 
-    !!! example
+    References:
+        - [SIMPLE ONLINE AND REALTIME TRACKING](https://arxiv.org/pdf/1602.00763)
+        - [https://github.com/abewley/sort/blob/master/sort.py](https://github.com/abewley/sort/blob/master/sort.py)
+
+    ??? example
         ```python
         import numpy as np
         import supervision as sv
@@ -176,9 +181,6 @@ class SORTTracker(BaseTracker):
             callback=callback,
         )
         ```
-
-    References:
-        - https://github.com/abewley/sort/blob/master/sort.py
     
     Attributes:
         trackers (list[KalmanBoxTracker]): List of KalmanBoxTracker objects.
