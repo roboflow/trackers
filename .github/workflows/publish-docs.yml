@@ -3,7 +3,7 @@ name: Build and Publish Docs
 on:
   push:
     branches:
-      - develop
+      - main
   workflow_dispatch:
   release:
     types: [published]
