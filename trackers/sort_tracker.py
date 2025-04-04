@@ -1,7 +1,7 @@
 import numpy as np
+import supervision as sv
 from filterpy.kalman import KalmanFilter
 from scipy.optimize import linear_sum_assignment
-import supervision as sv
 
 
 def iou_batch(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
