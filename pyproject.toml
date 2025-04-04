@@ -37,3 +37,16 @@ packages = ["trackers"]
 
 [tool.ruff]
 target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+# Enable import sorting and other rules
+select = ["I"]  # Import sorting
+extend-select = ["F", "E", "W", "I001"]  # Other rules including import sorting
+
+[tool.ruff.lint.isort]
+known-first-party = ["trackers"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
