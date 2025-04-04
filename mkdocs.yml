@@ -1,4 +1,4 @@
-site_name: GTR
+site_name: trackers
 
 theme:
   name: material
@@ -53,4 +53,4 @@ markdown_extensions:
 nav:
   - Home: 'index.md'
 
-repo_url: https://github.com/roboflow/GTR
+repo_url: https://github.com/roboflow/trackers
