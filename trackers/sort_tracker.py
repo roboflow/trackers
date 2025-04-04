@@ -314,8 +314,8 @@ class SORT:
 
             # Check if the track should be returned
             # Condition: (updated in current frame OR just initialized) AND (met min_hits OR within initial frames)
-            is_updated = trk.time_since_update == 0
-            meets_min_hits = trk.hit_streak >= self.min_hits
+            # is_updated = trk.time_since_update == 0
+            # meets_min_hits = trk.hit_streak >= self.min_hits
             is_in_init_phase = self.frame_count <= self.min_hits
 
             # Use hits instead of hit_streak for returning tracks, as hit_streak resets
