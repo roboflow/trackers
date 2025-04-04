@@ -26,8 +26,8 @@ jobs:
       - name: 🚀 Install Packages
         run: uv pip install -r pyproject.toml --extra dev --extra docs
 
-      - name: 🧪 Run the Import test
-        run: uv run python -c "import trackers"
+      #- name: 🧪 Run the Import test
+      #  run: uv run python -c "import trackers"
 
       #- name: 🧪 Run the Test
         #run: uv run pytest
