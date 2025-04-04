@@ -18,8 +18,10 @@ venv.bak/
 # uv stuff
 uv.lock
 
-# vscode settings
+# IDE settings
 .vscode/
+.idea/
+prompts/
 
 # Development-specific files
 data/
