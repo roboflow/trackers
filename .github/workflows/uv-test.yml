@@ -22,6 +22,8 @@ jobs:
         uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182 # v5.4.1
         with:
           python-version: ${{ matrix.python-version }}
+          # TODO(https://github.com/astral-sh/setup-uv/issues/226): Remove this.
+          prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
         run: uv pip install -r pyproject.toml --extra dev --extra docs
