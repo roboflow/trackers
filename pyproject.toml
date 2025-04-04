@@ -3,7 +3,7 @@ name = "trackers"
 version = "0.0.1"
 description = "A unified library for object tracking"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "supervision>=0.25.1",
 ]
@@ -35,4 +35,4 @@ build-backend = "hatchling.build"
 packages = ["trackers"]
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py311"
