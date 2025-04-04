@@ -1,23 +1,36 @@
 import numpy as np
 import supervision as sv
 from copy import deepcopy
-
+from trackers.utils import iou_batch
+from trackers.base import BaseTracker
 
 class KalmanBoxTracker:
     """
     Represents the internals of a single tracked object (bounding box),
     with a Kalman filter to predict and update its position.
+
+    References:
+        - https://github.com/abewley/sort/blob/master/sort.py
+
+    Attributes:
+        id (int): Unique identifier for the tracker.
+        hits (int): Number of times the object has been updated successfully.
+        time_since_update (int): Number of frames since the last update.
+        state (np.ndarray): State vector of the bounding box.
+        F (np.ndarray): State transition matrix.
+        H (np.ndarray): Measurement matrix.
+        Q (np.ndarray): Process noise covariance matrix.
+        R (np.ndarray): Measurement noise covariance matrix.
+        P (np.ndarray): Error covariance matrix.
+        count (int): Class variable to assign unique IDs to each tracker.
+    
+    Args:
+        bbox (np.ndarray): Initial bounding box in the form [x1, y1, x2, y2].
     """
 
     count = 0
 
     def __init__(self, bbox: np.ndarray) -> None:
-        """
-        Initializes the tracker using the initial bounding box.
-
-        Args:
-            bbox (np.ndarray): Initial bounding box in the form [x1, y1, x2, y2].
-        """
         # Each track gets a unique ID
         self.id = KalmanBoxTracker.count
         KalmanBoxTracker.count += 1
@@ -118,68 +131,73 @@ class KalmanBoxTracker:
         ).reshape(-1)
 
 
-def iou_batch(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
-    """
-    Computes IOU (Intersection Over Union) between two arrays of bounding boxes.
-
-    Args:
-        bboxes1 (np.ndarray): Nx4 matrix of [x1, y1, x2, y2].
-        bboxes2 (np.ndarray): Mx4 matrix of [x1, y1, x2, y2].
-
-    Returns:
-        np.ndarray: NxM IOU matrix.
-    """
-    # Check for empty arrays or incorrect shapes
-    if len(bboxes1) == 0 or len(bboxes2) == 0:
-        return np.zeros((len(bboxes1), len(bboxes2)), dtype=np.float32)
-
-    # Ensure arrays are 2D with shape (N, 4) and (M, 4)
-    if bboxes1.ndim == 1:
-        bboxes1 = bboxes1.reshape(1, -1)
-    if bboxes2.ndim == 1:
-        bboxes2 = bboxes2.reshape(1, -1)
-
-    # Expand dims to broadcast
-    x1 = np.maximum(bboxes1[:, None, 0], bboxes2[None, :, 0])
-    y1 = np.maximum(bboxes1[:, None, 1], bboxes2[None, :, 1])
-    x2 = np.minimum(bboxes1[:, None, 2], bboxes2[None, :, 2])
-    y2 = np.minimum(bboxes1[:, None, 3], bboxes2[None, :, 3])
-
-    inter_area = np.clip(x2 - x1, a_min=0, a_max=None) * np.clip(
-        y2 - y1, a_min=0, a_max=None
-    )
-
-    bboxes1_area = (bboxes1[:, 2] - bboxes1[:, 0]) * (bboxes1[:, 3] - bboxes1[:, 1])
-    bboxes2_area = (bboxes2[:, 2] - bboxes2[:, 0]) * (bboxes2[:, 3] - bboxes2[:, 1])
-
-    iou = inter_area / (
-        bboxes1_area[:, None] + bboxes2_area[None, :] - inter_area + 1e-6
-    )
-    return iou
-
-
-class SORTTracker:
+class SORTTracker(BaseTracker):
     """
     SORTTracker is an implementation of the SORT (Simple Online and Realtime Tracking)
     algorithm for object tracking in videos. It uses a Kalman filter and IOU-based
     data association to track multiple objects.
+
+    !!! example
+        ```python
+        import numpy as np
+        import supervision as sv
+        from rfdetr import RFDETRBase
+        from rfdetr.util.coco_classes import COCO_CLASSES
+        from trackers.sort_tracker import SORTTracker
+
+
+        model = RFDETRBase(device="mps")
+        tracker = SORTTracker()
+        box_annotator = sv.BoxAnnotator()
+        label_annotator = sv.LabelAnnotator()
+
+
+        def callback(frame: np.ndarray, _: int):
+            detections = model.predict(frame, threshold=0.5)
+            detections = tracker.update_with_detections(detections)
+
+            labels = [
+                f"#{tracker_id} {COCO_CLASSES[class_id]} {confidence:.2f}"
+                for tracker_id, class_id, confidence in zip(
+                    detections.tracker_id, detections.class_id, detections.confidence
+                )
+            ]
+
+            annotated_image = frame.copy()
+            annotated_image = box_annotator.annotate(annotated_image, detections)
+            annotated_image = label_annotator.annotate(annotated_image, detections, labels)
+
+            return annotated_image
+
+
+        sv.process_video(
+            source_path="data/traffic_video.mp4",
+            target_path="data/out.mp4",
+            callback=callback,
+        )
+        ```
+
+    References:
+        - https://github.com/abewley/sort/blob/master/sort.py
+    
+    Attributes:
+        trackers (list[KalmanBoxTracker]): List of KalmanBoxTracker objects.
+    
+    Args:
+        max_age (int): Maximum number of frames to keep a track alive without updates.
+        min_hits (int): Minimum number of associated detections before the track is made 'official'.
+        iou_threshold (float): IOU threshold for associating detections to existing tracks.
     """
 
     def __init__(
         self, max_age: int = 30, min_hits: int = 3, iou_threshold: float = 0.3
     ) -> None:
-        """
-        Args:
-            max_age (int): Maximum number of frames to keep a track alive without updates.
-            min_hits (int): Minimum number of associated detections before the track is made 'official'.
-            iou_threshold (float): IOU threshold for associating detections to existing tracks.
-        """
         self.max_age = max_age
         self.min_hits = min_hits
         self.iou_threshold = iou_threshold
 
         # Active trackers
-        self.trackers = []
+        self.trackers: list[KalmanBoxTracker] = []
 
     def update_with_detections(self, detections: sv.Detections) -> sv.Detections:
         """
