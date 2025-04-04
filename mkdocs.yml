@@ -2,7 +2,7 @@ site_name: trackers
 
 theme:
   name: material
-  palette: 
+  palette:
     # Palette toggle for light mode
     - scheme: default
       toggle:
