@@ -4,7 +4,7 @@ on:
     branches: main
     paths:
       - .github/workflows/test.yml
-      - gtr/**
+      - trackers/**
       - pyproject.toml
       - Makefile
       - .python-version
