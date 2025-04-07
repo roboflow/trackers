@@ -193,19 +193,34 @@ class SORTTracker(BaseTracker):
         trackers (list[KalmanBoxTracker]): List of KalmanBoxTracker objects.
 
     Args:
-        max_age (int): Maximum number of frames to keep a track alive without updates.
-        min_hits (int): Minimum number of associated detections before the track is
-            made 'official'.
-        iou_threshold (float): IOU threshold for associating detections to
+        frame_rate (float): Frame rate of the video (frames per second).
+            Used to calculate the maximum time a track can be lost.
+        minimum_consecutive_frames (int): Number of consecutive frames that an object
+            must be tracked before it is considered a 'valid' track. Increasing
+            `minimum_consecutive_frames` prevents the creation of accidental tracks
+            from false detection or double detection, but risks missing shorter
+            tracks.
+        lost_track_buffer (int): Number of frames to buffer when a track is lost.
+            Increasing lost_track_buffer enhances occlusion handling, significantly
+            improving tracking through occlusions, but may increase the possibility
+            of ID switching for objects with similar appearance.
+        minimum_iou_threshold (float): IOU threshold for associating detections to
             existing tracks.
     """
 
     def __init__(
-        self, max_age: int = 30, min_hits: int = 3, iou_threshold: float = 0.3
+        self,
+        lost_track_buffer: int = 30,
+        frame_rate: float = 30.0,
+        minimum_consecutive_frames: int = 3,
+        minimum_iou_threshold: float = 0.3,
     ) -> None:
-        self.max_age = max_age
-        self.min_hits = min_hits
-        self.iou_threshold = iou_threshold
+        # Calculate maximum frames without update based on lost_track_buffer and frame_rate
+        # This scales the buffer based on the frame rate to ensure consistent
+        # time-based tracking across different frame rates
+        self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
+        self.minimum_consecutive_frames = minimum_consecutive_frames
+        self.minimum_iou_threshold = minimum_iou_threshold
 
         # Active trackers
         self.trackers: list[KalmanBoxTracker] = []
@@ -256,7 +271,7 @@ class SORTTracker(BaseTracker):
 
         if iou_matrix.size > 0:
             # Sort in descending order of IOU. Higher = better match.
-            row_indices, col_indices = np.where(iou_matrix > self.iou_threshold)
+            row_indices, col_indices = np.where(iou_matrix > self.minimum_iou_threshold)
 
             # For the example, a simple greedy approach:
             #   - sort matches by IOU descending
@@ -284,7 +299,7 @@ class SORTTracker(BaseTracker):
     ) -> sv.Detections:
         """
         The function prepares the updated Detections with track IDs.
-        If a tracker is "mature" (>= min_hits) or recently updated,
+        If a tracker is "mature" (>= minimum_consecutive_frames) or recently updated,
         it is assigned an ID to the detection that just updated it.
 
         Args:
@@ -314,7 +329,7 @@ class SORTTracker(BaseTracker):
         if len(self.trackers) > 0 and len(detection_boxes) > 0:
             iou_matrix_final = intersection_over_union(predicted_boxes, detection_boxes)
 
-        row_indices, col_indices = np.where(iou_matrix_final > self.iou_threshold)
+        row_indices, col_indices = np.where(iou_matrix_final > self.minimum_iou_threshold)
         sorted_pairs = sorted(
             zip(row_indices, col_indices),
             key=lambda x: iou_matrix_final[x[0], x[1]],
@@ -328,7 +343,7 @@ class SORTTracker(BaseTracker):
                 tracker_obj = self.trackers[row]
                 # Only assign if the track is "mature" or is new but has enough hits
                 if (row not in used_rows) and (col not in used_cols):
-                    if tracker_obj.hits >= self.min_hits:
+                    if tracker_obj.hits >= self.minimum_consecutive_frames:
                         final_tracker_ids[col] = tracker_obj.id
                     used_rows.add(row)
                     used_cols.add(col)
@@ -383,7 +398,7 @@ class SORTTracker(BaseTracker):
         # 7. Mark old trackers for removal if they have not been updated in a while
         alive_trackers = []
         for t in self.trackers:
-            if t.time_since_update < self.max_age:
+            if t.time_since_update < self.maximum_frames_without_update:
                 alive_trackers.append(t)
         self.trackers = alive_trackers
 
