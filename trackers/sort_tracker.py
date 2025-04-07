@@ -199,6 +199,10 @@ class SORTTracker(BaseTracker):
             of ID switching for objects with similar appearance.
         frame_rate (float): Frame rate of the video (frames per second).
             Used to calculate the maximum time a track can be lost.
+        track_activation_threshold (float): Detection confidence threshold
+            for track activation. Only detections with confidence above this
+            threshold will create new tracks. Increasing this threshold
+            reduces false positives but may miss real objects with low confidence.
         minimum_consecutive_frames (int): Number of consecutive frames that an object
             must be tracked before it is considered a 'valid' track. Increasing
             `minimum_consecutive_frames` prevents the creation of accidental tracks
@@ -212,6 +216,7 @@ class SORTTracker(BaseTracker):
         self,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
+        track_activation_threshold: float = 0.25,
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
     ) -> None:
@@ -221,6 +226,7 @@ class SORTTracker(BaseTracker):
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
+        self.track_activation_threshold = track_activation_threshold
 
         # Active trackers
         self.trackers: list[KalmanBoxTracker] = []
@@ -382,7 +388,7 @@ class SORTTracker(BaseTracker):
         iou_matrix = self.get_iou_matrix(detection_boxes)
 
         # 4. Associate detections to trackers based on IOU
-        matched_indices, _, unmatched_detections = self.get_associated_indices(
+        matched_indices, unmatched_trackers, unmatched_detections = self.get_associated_indices(
             iou_matrix, detection_boxes
         )
 
@@ -390,10 +396,14 @@ class SORTTracker(BaseTracker):
         for row, col in matched_indices:
             self.trackers[row].update(detection_boxes[col])
 
-        # 6. Create new trackers for unmatched detections
+        # 6. Create new trackers only for unmatched detections with confidence above threshold
         for detection_idx in unmatched_detections:
-            new_tracker = KalmanBoxTracker(detection_boxes[detection_idx])
-            self.trackers.append(new_tracker)
+            # Check confidence threshold before creating a new tracker
+            if (detections.confidence is None or 
+                detection_idx >= len(detections.confidence) or
+                detections.confidence[detection_idx] >= self.track_activation_threshold):
+                new_tracker = KalmanBoxTracker(detection_boxes[detection_idx])
+                self.trackers.append(new_tracker)
 
         # 7. Mark old trackers for removal if they have not been updated in a while
         alive_trackers = []
