@@ -193,6 +193,10 @@ class SORTTracker(BaseTracker):
         trackers (list[KalmanBoxTracker]): List of KalmanBoxTracker objects.
 
     Args:
+        lost_track_buffer (int): Number of frames to buffer when a track is lost.
+            Increasing lost_track_buffer enhances occlusion handling, significantly
+            improving tracking through occlusions, but may increase the possibility
+            of ID switching for objects with similar appearance.
         frame_rate (float): Frame rate of the video (frames per second).
             Used to calculate the maximum time a track can be lost.
         minimum_consecutive_frames (int): Number of consecutive frames that an object
@@ -200,10 +204,6 @@ class SORTTracker(BaseTracker):
             `minimum_consecutive_frames` prevents the creation of accidental tracks
             from false detection or double detection, but risks missing shorter
             tracks.
-        lost_track_buffer (int): Number of frames to buffer when a track is lost.
-            Increasing lost_track_buffer enhances occlusion handling, significantly
-            improving tracking through occlusions, but may increase the possibility
-            of ID switching for objects with similar appearance.
         minimum_iou_threshold (float): IOU threshold for associating detections to
             existing tracks.
     """
