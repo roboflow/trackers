@@ -220,9 +220,9 @@ class SORTTracker(BaseTracker):
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
     ) -> None:
-        # Calculate maximum frames without update based on lost_track_buffer and frame_rate
-        # This scales the buffer based on the frame rate to ensure consistent
-        # time-based tracking across different frame rates
+        # Calculate maximum frames without update based on lost_track_buffer and
+        # frame_rate. This scales the buffer based on the frame rate to ensure
+        # consistent time-based tracking across different frame rates.
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
@@ -300,6 +300,50 @@ class SORTTracker(BaseTracker):
 
         return matched_indices, unmatched_trackers, unmatched_detections
 
+    def spawn_new_trackers(
+        self,
+        detections: sv.Detections,
+        detection_boxes: np.ndarray,
+        unmatched_detections: set[int],
+    ) -> None:
+        """
+        Create new trackers only for unmatched detections with confidence
+        above threshold.
+
+        Args:
+            detections (sv.Detections): The latest set of object detections.
+            detection_boxes (np.ndarray): Detected bounding boxes in the
+                form [x1, y1, x2, y2].
+        """
+        for detection_idx in unmatched_detections:
+            # Check confidence threshold before creating a new tracker
+            if (
+                detections.confidence is None
+                or detection_idx >= len(detections.confidence)
+                or detections.confidence[detection_idx]
+                >= self.track_activation_threshold
+            ):
+                new_tracker = KalmanBoxTracker(detection_boxes[detection_idx])
+                self.trackers.append(new_tracker)
+
+    def get_alive_trackers(self) -> list[KalmanBoxTracker]:
+        """
+        Remove dead or immature lost tracklets and get alive trackers
+        that are within maximum_frames_without_update AND (it's mature OR
+        it was just updated).
+        """
+        alive_trackers = []
+        for tracker in self.trackers:
+            # Keep tracker if it's within maximum_frames_without_update
+            # AND (it's mature OR it was just updated)
+            is_mature = tracker.hits >= self.minimum_consecutive_frames
+            is_active = tracker.time_since_update == 0
+            if tracker.time_since_update < self.maximum_frames_without_update and (
+                is_mature or is_active
+            ):
+                alive_trackers.append(tracker)
+        return alive_trackers
+
     def update_detections_with_track_ids(
         self, detections: sv.Detections, detection_boxes: np.ndarray
     ) -> sv.Detections:
@@ -319,7 +363,7 @@ class SORTTracker(BaseTracker):
         """
         # For simplicity, re-run association in the same way
         # (could also store direct mapping).
-        final_tracker_ids = [-1] * len(detection_boxes)
+        final_tracker_ids = [None] * len(detection_boxes)
 
         # Important: Recalculate predicted_boxes based on current trackers
         # after some may have been removed
@@ -335,7 +379,9 @@ class SORTTracker(BaseTracker):
         if len(self.trackers) > 0 and len(detection_boxes) > 0:
             iou_matrix_final = intersection_over_union(predicted_boxes, detection_boxes)
 
-        row_indices, col_indices = np.where(iou_matrix_final > self.minimum_iou_threshold)
+        row_indices, col_indices = np.where(
+            iou_matrix_final > self.minimum_iou_threshold
+        )
         sorted_pairs = sorted(
             zip(row_indices, col_indices),
             key=lambda x: iou_matrix_final[x[0], x[1]],
@@ -388,31 +434,25 @@ class SORTTracker(BaseTracker):
         iou_matrix = self.get_iou_matrix(detection_boxes)
 
         # 4. Associate detections to trackers based on IOU
-        matched_indices, unmatched_trackers, unmatched_detections = self.get_associated_indices(
-            iou_matrix, detection_boxes
+        matched_indices, unmatched_trackers, unmatched_detections = (
+            self.get_associated_indices(iou_matrix, detection_boxes)
         )
 
         # 5. Update matched trackers with assigned detections
         for row, col in matched_indices:
             self.trackers[row].update(detection_boxes[col])
 
-        # 6. Create new trackers only for unmatched detections with confidence above threshold
-        for detection_idx in unmatched_detections:
-            # Check confidence threshold before creating a new tracker
-            if (detections.confidence is None or 
-                detection_idx >= len(detections.confidence) or
-                detections.confidence[detection_idx] >= self.track_activation_threshold):
-                new_tracker = KalmanBoxTracker(detection_boxes[detection_idx])
-                self.trackers.append(new_tracker)
+        # 6. Create new trackers only for unmatched detections with confidence
+        #   above threshold
+        self.spawn_new_trackers(detections, detection_boxes, unmatched_detections)
 
-        # 7. Mark old trackers for removal if they have not been updated in a while
-        alive_trackers = []
-        for t in self.trackers:
-            if t.time_since_update < self.maximum_frames_without_update:
-                alive_trackers.append(t)
+        # 7. Remove dead or immature lost tracklets
+        alive_trackers = self.get_alive_trackers()
         self.trackers = alive_trackers
 
         # 8. Prepare the updated Detections with track IDs
+        # Note: update_detections_with_track_ids already filters by
+        # minimum_consecutive_frames
         updated_detections = self.update_detections_with_track_ids(
             detections, detection_boxes
         )
