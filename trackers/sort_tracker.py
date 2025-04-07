@@ -57,9 +57,9 @@ class KalmanBoxTracker:
         self.state[3] = bbox[3]
 
         # Basic constant velocity model
-        self._init_kalman_filter()
+        self.initialize_kalman_filter()
 
-    def _init_kalman_filter(self) -> None:
+    def initialize_kalman_filter(self) -> None:
         """
         Sets up the matrices for the Kalman filter.
         """
@@ -141,8 +141,7 @@ class SORTTracker(BaseTracker):
     """
     `SORTTracker` is an implementation of the
     [SORT (Simple Online and Realtime Tracking)](https://arxiv.org/pdf/1602.00763)
-    algorithm for object tracking in videos. It uses a Kalman filter and IOU-based
-    data association to track multiple objects.
+    algorithm for object tracking in videos.
 
     References:
         - [SIMPLE ONLINE AND REALTIME TRACKING](https://arxiv.org/pdf/1602.00763)
@@ -211,31 +210,17 @@ class SORTTracker(BaseTracker):
         # Active trackers
         self.trackers: list[KalmanBoxTracker] = []
 
-    def update_with_detections(self, detections: sv.Detections) -> sv.Detections:
+    def get_iou_matrix(self, detection_boxes: np.ndarray) -> np.ndarray:
         """
-        Updates the state of tracked objects with the newly received detections
-        and returns the updated `sv.Detections` (including tracking IDs).
+        Build IOU cost matrix between detections and predicted bounding boxes
 
         Args:
-            detections (sv.Detections): The latest set of object detections.
+            detection_boxes (np.ndarray): Detected bounding boxes in the
+                form [x1, y1, x2, y2].
 
         Returns:
-            sv.Detections: A copy of the detections with `tracker_id` set
-                for each detection that is tracked.
+            np.ndarray: IOU cost matrix.
         """
-        if len(self.trackers) == 0 and len(detections) == 0:
-            return detections
-
-        # 1. Convert detections to a (N x 4) array (x1, y1, x2, y2)
-        detection_boxes = (
-            detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
-        )
-
-        # 2. Predict new locations for existing trackers
-        for tracker in self.trackers:
-            tracker.predict()
-
-        # 3. Build IOU cost matrix between detections and predicted bounding boxes
         predicted_boxes = np.array([t.get_state_bbox() for t in self.trackers])
         if len(predicted_boxes) == 0 and len(self.trackers) > 0:
             # Handle case where get_state_bbox might return empty array
@@ -248,7 +233,23 @@ class SORTTracker(BaseTracker):
                 (len(self.trackers), len(detection_boxes)), dtype=np.float32
             )
 
-        # 4. Associate detections to trackers based on IOU
+        return iou_matrix
+
+    def get_associated_indices(
+        self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
+    ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
+        """
+        Associate detections to trackers based on IOU
+
+        Args:
+            iou_matrix (np.ndarray): IOU cost matrix.
+            detection_boxes (np.ndarray): Detected bounding boxes in the
+                form [x1, y1, x2, y2].
+
+        Returns:
+            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices,
+                unmatched trackers, unmatched detections.
+        """
         matched_indices = []
         unmatched_trackers = set(range(len(self.trackers)))
         unmatched_detections = set(range(len(detection_boxes)))
@@ -276,28 +277,25 @@ class SORTTracker(BaseTracker):
             unmatched_trackers = unmatched_trackers - used_rows
             unmatched_detections = unmatched_detections - used_cols
 
-        # 5. Update matched trackers with assigned detections
-        for row, col in matched_indices:
-            self.trackers[row].update(detection_boxes[col])
+        return matched_indices, unmatched_trackers, unmatched_detections
 
-        # 6. Create new trackers for unmatched detections
-        for detection_idx in unmatched_detections:
-            new_tracker = KalmanBoxTracker(detection_boxes[detection_idx])
-            self.trackers.append(new_tracker)
+    def update_detections_with_track_ids(
+        self, detections: sv.Detections, detection_boxes: np.ndarray
+    ) -> sv.Detections:
+        """
+        The function prepares the updated Detections with track IDs.
+        If a tracker is "mature" (>= min_hits) or recently updated,
+        it is assigned an ID to the detection that just updated it.
 
-        # 7. Mark old trackers for removal if they have not been updated in a while
-        alive_trackers = []
-        for t in self.trackers:
-            if t.time_since_update < self.max_age:
-                alive_trackers.append(t)
-        self.trackers = alive_trackers
+        Args:
+            detections (sv.Detections): The latest set of object detections.
+            detection_boxes (np.ndarray): Detected bounding boxes in the
+                form [x1, y1, x2, y2].
 
-        # 8. Prepare the updated Detections with track IDs
-        #    If a tracker is "mature" (>= min_hits) or recently updated,
-        #    we assign its ID to the detection that just updated it.
-        #    In practice, we can also store the last known detection index
-        #    for each track.
-
+        Returns:
+            sv.Detections: A copy of the detections with `tracker_id` set
+                for each detection that is tracked.
+        """
         # For simplicity, re-run association in the same way
         # (could also store direct mapping).
         final_tracker_ids = [-1] * len(detection_boxes)
@@ -338,5 +336,60 @@ class SORTTracker(BaseTracker):
         # 9. Assign tracker IDs to the returned Detections
         updated_detections = deepcopy(detections)
         updated_detections.tracker_id = np.array(final_tracker_ids)
+
+        return updated_detections
+
+    def update_with_detections(self, detections: sv.Detections) -> sv.Detections:
+        """
+        Updates the state of tracked objects with the newly received detections
+        and returns the updated `sv.Detections` (including tracking IDs).
+
+        Args:
+            detections (sv.Detections): The latest set of object detections.
+
+        Returns:
+            sv.Detections: A copy of the detections with `tracker_id` set
+                for each detection that is tracked.
+        """
+        if len(self.trackers) == 0 and len(detections) == 0:
+            return detections
+
+        # 1. Convert detections to a (N x 4) array (x1, y1, x2, y2)
+        detection_boxes = (
+            detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
+        )
+
+        # 2. Predict new locations for existing trackers
+        for tracker in self.trackers:
+            tracker.predict()
+
+        # 3. Build IOU cost matrix between detections and predicted bounding boxes
+        iou_matrix = self.get_iou_matrix(detection_boxes)
+
+        # 4. Associate detections to trackers based on IOU
+        matched_indices, _, unmatched_detections = self.get_associated_indices(
+            iou_matrix, detection_boxes
+        )
+
+        # 5. Update matched trackers with assigned detections
+        for row, col in matched_indices:
+            self.trackers[row].update(detection_boxes[col])
+
+        # 6. Create new trackers for unmatched detections
+        for detection_idx in unmatched_detections:
+            new_tracker = KalmanBoxTracker(detection_boxes[detection_idx])
+            self.trackers.append(new_tracker)
+
+        # 7. Mark old trackers for removal if they have not been updated in a while
+        alive_trackers = []
+        for t in self.trackers:
+            if t.time_since_update < self.max_age:
+                alive_trackers.append(t)
+        self.trackers = alive_trackers
+
+        # 8. Prepare the updated Detections with track IDs
+        updated_detections = self.update_detections_with_track_ids(
+            detections, detection_boxes
+        )
 
         return updated_detections
