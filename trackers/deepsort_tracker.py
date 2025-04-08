@@ -212,12 +212,6 @@ class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
         self.max_features = max_features
 
     def update_feature(self, feature):
-        """
-        Update the feature list for this tracker.
-
-        Args:
-            feature (np.ndarray): New feature to add.
-        """
         self.features.append(feature)
         if len(self.features) > self.max_features:
             self.features.pop(0)
@@ -414,9 +408,6 @@ class DeepSORTTracker(SORTTracker):
 
     def update(self, frame: np.ndarray, detections: sv.Detections) -> sv.Detections:
         """
-        Updates the state of tracked objects with the newly received detections
-        and returns the updated `sv.Detections` (including tracking IDs).
-
         Args:
             frame (np.ndarray): The current video frame.
             detections (sv.Detections): The latest set of object detections.
