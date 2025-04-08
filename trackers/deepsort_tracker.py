@@ -4,6 +4,7 @@ import torch
 import torchvision.transforms as transforms
 from scipy.spatial.distance import cdist
 from torch.serialization import add_safe_globals
+import cv2
 
 try:
     from siamese_net import SiameseNetwork
