@@ -430,8 +430,8 @@ class DeepSORTTracker(SORTTracker):
             tracker.predict()
 
         iou_matrix = self._get_iou_matrix(detection_boxes)
-        matched_indices, _, unmatched_detections = (
-            self._get_associated_indices(iou_matrix, detection_features)
+        matched_indices, _, unmatched_detections = self._get_associated_indices(
+            iou_matrix, detection_features
         )
 
         for row, col in matched_indices:
