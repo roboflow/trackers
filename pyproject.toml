@@ -8,15 +8,6 @@ dependencies = [
     "supervision>=0.25.1",
 ]
 
-# [dependency-groups]
-# dev = [
-#     "uv>=0.4.20",
-#     "pytest>=8.3.3",
-#     "ruff>=0.6.9",
-#     "bandit>=1.8.3",
-#     "mypy>=1.15.0",
-# ]
-
 [project.optional-dependencies]
 dev = [
     "uv>=0.4.20",
@@ -24,6 +15,7 @@ dev = [
     "ruff>=0.6.9",
     "bandit>=1.8.3",
     "mypy>=1.15.0",
+    "pre-commit>=4.2.0",
 ]
 
 docs = [
