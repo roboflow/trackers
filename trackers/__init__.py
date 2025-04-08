@@ -1,4 +1,4 @@
-from .sort_tracker import SORTTracker
 from .deepsort_tracker import DeepSORTTracker
+from .sort_tracker import SORTTracker
 
-__all__ = ["SORTTracker", "DeepSORTTracker"]
+__all__ = ["DeepSORTTracker", "SORTTracker"]
