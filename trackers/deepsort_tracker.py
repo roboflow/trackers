@@ -218,10 +218,9 @@ class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
         Args:
             feature (np.ndarray): New feature to add.
         """
-        if feature is not None:
-            self.features.append(feature)
-            if len(self.features) > self.max_features:
-                self.features.pop(0)
+        self.features.append(feature)
+        if len(self.features) > self.max_features:
+            self.features.pop(0)
 
     def get_feature(self):
         """
