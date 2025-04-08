@@ -131,7 +131,6 @@ class FeatureExtractor:
                 x2 = min(frame.shape[1], x2)
                 y2 = min(frame.shape[0], y2)
 
-                # Extract crop
                 crop = frame[y1:y2, x1:x2]
                 if crop.size == 0:
                     # Assuming that the feature dimension is 512,
@@ -248,19 +247,14 @@ class DeepSORTTracker(SORTTracker):
         if len(self.trackers) == 0 or len(detection_features) == 0:
             return np.zeros((len(self.trackers), len(detection_features)))
 
-        # Get track features (mean feature for each track)
         track_features = np.array([t.get_feature() for t in self.trackers])
 
-        # For any tracker without features, use a fallback (high distance)
         for i, feature in enumerate(track_features):
             if feature is None:
                 # Create a dummy feature with high distance to all detections
                 track_features[i] = np.zeros_like(detection_features[0])
 
-        # Calculate cosine distance
         distance_matrix = cdist(track_features, detection_features, metric="cosine")
-
-        # Clip distances to [0, 1]
         distance_matrix = np.clip(distance_matrix, 0, 1)
 
         return distance_matrix
