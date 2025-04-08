@@ -5,5 +5,5 @@ import supervision as sv
 
 class BaseTracker(ABC):
     @abstractmethod
-    def update_with_detections(self, detections: sv.Detections) -> sv.Detections:
+    def update(self, detections: sv.Detections) -> sv.Detections:
         pass

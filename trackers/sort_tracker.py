@@ -164,7 +164,7 @@ class SORTTracker(BaseTracker):
 
         def callback(frame: np.ndarray, _: int):
             detections = model.predict(frame, threshold=0.5)
-            detections = tracker.update_with_detections(detections)
+            detections = tracker.update(detections)
 
             labels = [
                 f"#{tracker_id} {COCO_CLASSES[class_id]} {confidence:.2f}"
@@ -401,7 +401,7 @@ class SORTTracker(BaseTracker):
 
         return updated_detections
 
-    def update_with_detections(self, detections: sv.Detections) -> sv.Detections:
+    def update(self, detections: sv.Detections) -> sv.Detections:
         """
         Updates the state of tracked objects with the newly received detections
         and returns the updated `sv.Detections` (including tracking IDs).
