@@ -129,7 +129,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             self.frame_rate / 30.0 * self.lost_track_buffer
         )
 
-        self.trackers = []
+        self.trackers: list[DeepSORTKalmanBoxTracker] = []
 
     def _get_appearance_distance_matrix(self, detection_features):
         """
