@@ -39,9 +39,14 @@ class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
 class DeepSORTTracker(BaseTrackerWithFeatures):
     """
     DeepSORT implementation that extends SORTTracker with appearance features.
+    The DeepSORT algorithm incorporates both motion (IOU + Kalman filter) and
+    appearance features extracted by a pre-trained feature extraction model for
+    object tracking.
 
-    This implementation follows the DeepSORT algorithm by incorporating both
-    motion (IOU + Kalman filter) and appearance features for object tracking.
+    References:
+        - [SIMPLE ONLINE AND REALTIME TRACKING WITH A DEEP ASSOCIATION METRIC](https://arxiv.org/pdf/1703.07402)
+        - [nwojke/deep_sort](https://github.com/nwojke/deep_sort)
+        - [abhyantrika/nanonets_object_tracking][https://github.com/abhyantrika/nanonets_object_tracking]
 
     ??? example
         ```python

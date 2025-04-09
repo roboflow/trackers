@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import numpy as np
+import supervision as sv
 import torch
 import torchvision.transforms as transforms
 
@@ -12,18 +13,20 @@ class DeepSORTFeatureExtractor:
     """
     Feature extractor for DeepSORT that loads a PyTorch model and
     extracts appearance features from detection crops.
+
+    Args:
+        model_path (str): Path to the PyTorch model checkpoint.
+        device (str): Device to run the model on.
+        input_size (Tuple[int, int]): Size to which the input
+            images are resized.
     """
 
     def __init__(
-        self, model_path, device="mps", input_size: Tuple[int, int] = (128, 128)
+        self,
+        model_path: str,
+        device: str = "mps",
+        input_size: Tuple[int, int] = (128, 128),
     ):
-        """
-        Initialize the feature extractor with a PyTorch model.
-
-        Args:
-            model_path (str): Path to the PyTorch model checkpoint.
-            device (str): Device to run the model on.
-        """
         self.device = torch.device(device)
         self.input_size = input_size
 
@@ -41,9 +44,6 @@ class DeepSORTFeatureExtractor:
         """
         Load the PyTorch model from the given path.
 
-        Note: this function was written by Claude, it works but I don't understand it.
-        Need to find a better way to load the model.
-
         Args:
             model_path (str): Path to the model checkpoint.
 
@@ -56,11 +56,11 @@ class DeepSORTFeatureExtractor:
         self.model.to(self.device)
         self.model.eval()
 
-    def extract_features(self, frame, detections):
+    def extract_features(
+        self, frame: np.ndarray, detections: sv.Detections
+    ) -> np.ndarray:
         """
         Extract features from detection crops in the frame.
-
-        Note: this function was written by Claude, need to improve it.
 
         Args:
             frame (np.ndarray): The input frame.
@@ -82,9 +82,7 @@ class DeepSORTFeatureExtractor:
                 y2 = min(frame.shape[0], y2)
                 crop = frame[y1:y2, x1:x2]
                 tensor = self.transform(crop).unsqueeze(0).to(self.device)
-                feature = (
-                    self.model.forward_on_single_input(tensor).cpu().numpy().flatten()
-                )
+                feature = self.model(tensor).cpu().numpy().flatten()
                 features.append(feature)
 
         return np.array(features)
