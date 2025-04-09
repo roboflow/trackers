@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Sequence
+from typing import List, Sequence, TypeVar
 
 import numpy as np
 import supervision as sv
@@ -138,11 +138,14 @@ class KalmanBoxTracker:
         ).reshape(-1)
 
 
+T = TypeVar("T", bound=KalmanBoxTracker)
+
+
 def get_alive_trackers(
-    trackers: Sequence[KalmanBoxTracker],
+    trackers: Sequence[T],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
-) -> list[KalmanBoxTracker]:
+) -> List[T]:
     """
     Remove dead or immature lost tracklets and get alive trackers
     that are within maximum_frames_without_update AND (it's mature OR
