@@ -57,8 +57,8 @@ pip install -r requirements.txt
 This module is built on top of the original deep sort module https://github.com/nwojke/deep_sort
 Since, the primary objective is to track objects, We assume that the detections are already available to us, for the given video. The   ``` det/``` folder contains detections from Yolo, SSD and Mask-RCNN for the given video.
 
-```deepsort.py``` is our bridge class that utilizes the original deep sort implementation, with our custom configs. We simply need to specify the encoder (feature extractor) we want to use and pass on the detection outputs to get the tracked bounding boxes. 
-```test_on_video.py``` is our example code, that runs deepsort on a video whose detection bounding boxes are already given to us. 
+```deepsort.py``` is our bridge class that utilizes the original deep sort implementation, with our custom configs. We simply need to specify the encoder (feature extractor) we want to use and pass on the detection outputs to get the tracked bounding boxes.
+```test_on_video.py``` is our example code, that runs deepsort on a video whose detection bounding boxes are already given to us.
 
 # A simplified overview:
 ```sh
@@ -77,7 +77,7 @@ for track in tracker.tracks:
     id_num = str(track.track_id) #Get the ID for the particular track.
     features = track.features #Get the feature vector corresponding to the detection.
 ```
-The ```tracker``` object returned by deepsort contains all necessary info like the track_id, the predicted bounding boxes and the corresponding feature vector of the object. 
+The ```tracker``` object returned by deepsort contains all necessary info like the track_id, the predicted bounding boxes and the corresponding feature vector of the object.
 
 Download the test video from [here](https://drive.google.com/open?id=1h2Wnb98tDVB6JlCDNQXCeZpG20x6AiZ2).
 
@@ -88,17 +88,17 @@ With the video downloaded and all packages installed correctly, you should be ab
 python test_on_video.py
 ```
 If you want to train your own feature extractor, proceed to the next section.
-# Training a custom feature extractor 
+# Training a custom feature extractor
 Since, the original deepsort focused on MARS dataset, which is based on people, the feature extractor is trained on humans. We need an equivalent feature extractor for vehicles. We shall be training a Siamese network for the same. More info on siamese nets can be found  [here](https://www.cs.cmu.edu/~rsalakhu/papers/oneshot1.pdf) and [here](https://towardsdatascience.com/lossless-triplet-loss-7e932f990b24)
 
 We have a training and testing set, extracted from the NVIDIA AI city Challenge dataset. You can download it from [here](https://nanonets.s3-us-west-2.amazonaws.com/blogs/object-tracking-crops-data.tar.gz).
- 
-Extract the ```crops``` and ```crops_test``` folders in the same working directory. Both folders have 184 different sub-folders, each of which contains crops of a certain vehicle, shot in various views. 
+
+Extract the ```crops``` and ```crops_test``` folders in the same working directory. Both folders have 184 different sub-folders, each of which contains crops of a certain vehicle, shot in various views.
 Once, the folders have been extracted, we can go through the network configurations and the various options in ```siamese_net.py``` and ```siamese_dataloader.py```. If satisfied, we can start the training process by:
-```sh 
+```sh
 python siamese_train.py
 ```
-The trained weights will be stored in ```ckpts/``` folder. We can use ```python siamese_test.py``` to test the accuracy of the trained model. 
+The trained weights will be stored in ```ckpts/``` folder. We can use ```python siamese_test.py``` to test the accuracy of the trained model.
 Once trained, this model can be plugged in to our deepsort class instance.
 
 
@@ -107,7 +107,7 @@ Once trained, this model can be plugged in to our deepsort class instance.
 FILE: deepsort.py
 ================================================
 from deep_sort.deep_sort import nn_matching
-from deep_sort.deep_sort.tracker import Tracker 
+from deep_sort.deep_sort.tracker import Tracker
 from deep_sort.application_util import preprocessing as prep
 from deep_sort.application_util import visualization
 from deep_sort.deep_sort.detection import Detection
@@ -126,9 +126,9 @@ def get_gaussian_mask():
 	xy = np.column_stack([x.flat, y.flat])
 	mu = np.array([0.5,0.5])
 	sigma = np.array([0.22,0.22])
-	covariance = np.diag(sigma**2) 
-	z = multivariate_normal.pdf(xy, mean=mu, cov=covariance) 
-	z = z.reshape(x.shape) 
+	covariance = np.diag(sigma**2)
+	z = multivariate_normal.pdf(xy, mean=mu, cov=covariance)
+	z = z.reshape(x.shape)
 
 	z = z / z.max()
 	z  = z.astype(np.float32)
@@ -143,9 +143,9 @@ def get_gaussian_mask():
 class deepsort_rbc():
 	def __init__(self,wt_path=None):
 		#loading this encoder is slow, should be done only once.
-		#self.encoder = generate_detections.create_box_encoder("deep_sort/resources/networks/mars-small128.ckpt-68577")		
-		self.encoder = torch.load(wt_path)			
-			
+		#self.encoder = generate_detections.create_box_encoder("deep_sort/resources/networks/mars-small128.ckpt-68577")
+		self.encoder = torch.load(wt_path)
+
 		self.encoder = self.encoder.cuda()
 		self.encoder = self.encoder.eval()
 		print("Deep sort model loaded from path: ", wt_path)
@@ -167,14 +167,14 @@ class deepsort_rbc():
 		self.tracker= Tracker(self.metric)
 
 	#Deep sort needs the format `top_left_x, top_left_y, width,height
-	
+
 	def format_yolo_output( self,out_boxes):
 		for b in range(len(out_boxes)):
 			out_boxes[b][0] = out_boxes[b][0] - out_boxes[b][2]/2
 			out_boxes[b][1] = out_boxes[b][1] - out_boxes[b][3]/2
-		return out_boxes				
+		return out_boxes
 
-	def pre_process(self,frame,detections):	
+	def pre_process(self,frame,detections):
 
 		transforms = torchvision.transforms.Compose([ \
 			torchvision.transforms.ToPILImage(),\
@@ -186,7 +186,7 @@ class deepsort_rbc():
 
 			for i in range(len(d)):
 				if d[i] <0:
-					d[i] = 0	
+					d[i] = 0
 
 			img_h,img_w,img_ch = frame.shape
 
@@ -221,11 +221,11 @@ class deepsort_rbc():
 
 		for i in range(len(coords)):
 			if coords[i] <0:
-				coords[i] = 0	
+				coords[i] = 0
 
 
 		img_h,img_w,img_ch = frame.shape
-				
+
 		xmin,ymin,w,h = coords
 
 		if xmin > img_w:
@@ -241,7 +241,7 @@ class deepsort_rbc():
 		ymax = abs(int(ymax))
 		xmin = abs(int(xmin))
 		xmax = abs(int(xmax))
-		
+
 		crop = frame[ymin:ymax,xmin:xmax,:]
 		#crop = crop.astype(np.uint8)
 
@@ -265,7 +265,7 @@ class deepsort_rbc():
 
 	def run_deep_sort(self, frame, out_scores, out_boxes):
 
-		if out_boxes==[]:			
+		if out_boxes==[]:
 			self.tracker.predict()
 			print('No detections')
 			trackers = self.tracker.tracks
@@ -292,11 +292,11 @@ class deepsort_rbc():
 
 		outscores = np.array([d.confidence for d in dets])
 		indices = prep.non_max_suppression(outboxes, 0.8,outscores)
-		
+
 		dets = [dets[i] for i in indices]
 
 		self.tracker.predict()
-		self.tracker.update(dets)	
+		self.tracker.update(dets)
 
 		return self.tracker,dets
 
@@ -311,7 +311,7 @@ FILE: get_images.py
 import glob
 import os,sys
 import cv2
-import numpy as np 
+import numpy as np
 
 
 def draw_gt(image,frame_id,gt_dict):
@@ -336,7 +336,7 @@ def draw_gt(image,frame_id,gt_dict):
 		xmin = min(x1,x2)
 		xmax = max(x1,x2)
 		ymin = min(y1,y2)
-		ymax = max(y1,y2)	
+		ymax = max(y1,y2)
 
 		crop = image[ymin:ymax,xmin:xmax,:]
 		crops.append(crop)
@@ -360,7 +360,7 @@ def get_dict(folder):
 
 	for i in range(len(d)):
 		a = list(d[i].split(','))
-		a = list(map(int,a))	
+		a = list(map(int,a))
 
 		id = a[1]
 		coords = a[2:6]
@@ -380,8 +380,8 @@ for i in f:
 		g = glob.glob(i+'/*')
 		a = [x for x in g if '0' in x.split('/')[-1]]
 		if a!=[]:
-			folders = folders + a		
-			
+			folders = folders + a
+
 
 folders = [x for x in folders if '.py' not in x]
 
@@ -398,13 +398,13 @@ for f in folders:
 
 	while True:
 		print(frame_id)
-		
+
 		ret,frame = cap.read()
 		if ret is False:
 			break
 
 		crops,vehicle_ids = draw_gt(frame,frame_id,d)
-		
+
 
 		if vehicle_ids is None:
 			frame_id+=1
@@ -413,7 +413,7 @@ for f in folders:
 		for i in range(len(crops)):
 
 			target_dir = 'crops/'+str(vehicle_ids[i])
-			
+
 			if not os.path.exists(target_dir):
 				os.mkdir(target_dir)
 
@@ -423,9 +423,9 @@ for f in folders:
 				cv2.imwrite(filename,crops[i])
 
 
-		#Finally.	
+		#Finally.
 		frame_id+=1
-		
+
 
 
 
@@ -461,7 +461,7 @@ import random
 from PIL import Image
 import torch
 from torch.autograd import Variable
-import PIL.ImageOps    
+import PIL.ImageOps
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
@@ -469,7 +469,7 @@ import torch.nn.functional as F
 from imgaug import augmenters as iaa
 import imgaug as ia
 
-import glob 
+import glob
 
 def imshow(img,text=None,should_save=False):
 	npimg = img.numpy()
@@ -477,7 +477,7 @@ def imshow(img,text=None,should_save=False):
 	if text:
 		plt.text(75, 8, text, style='italic',fontweight='bold',
 			bbox={'facecolor':'white', 'alpha':0.8, 'pad':10})
-	plt.imshow(np.transpose(npimg, (1, 2, 0))) 
+	plt.imshow(np.transpose(npimg, (1, 2, 0)))
 	plt.savefig("figure.png")
 
 def show_plot(iteration,loss,path='loss.png'):
@@ -488,20 +488,20 @@ def show_plot(iteration,loss,path='loss.png'):
 
 
 class SiameseTriplet(Dataset):
-	
+
 	def __init__(self,imageFolderDataset,transform=None,should_invert=True):
-		self.imageFolderDataset = imageFolderDataset    
+		self.imageFolderDataset = imageFolderDataset
 		self.transform = transform
 		self.should_invert = should_invert
-		
+
 	def __getitem__(self,index):
 		# Get a random image which will be used as an anchor
 		img0_tuple = random.choice(self.imageFolderDataset.imgs)
 		# img0_tuple = (img_path, class_id)
-		
+
 		while True:
-			# keep looping till a different class image is found. Negative image.	
-			img1_tuple = random.choice(self.imageFolderDataset.imgs) 
+			# keep looping till a different class image is found. Negative image.
+			img1_tuple = random.choice(self.imageFolderDataset.imgs)
 			if img0_tuple[1] != img1_tuple[1]:
 				# If class id is different than anchor image, this will be used as a negative image
 				# Exit the loop if a negative image is found
@@ -513,12 +513,12 @@ class SiameseTriplet(Dataset):
 
 		# Getting all the images which belong to the same class as anchor image.
 		all_files_in_class = glob.glob(self.imageFolderDataset.root+anchor_class_name+'/*')
-		# Only those images which belong to the same class as anchor image but isn't anchor image will 
+		# Only those images which belong to the same class as anchor image but isn't anchor image will
 		# be selected as a candidate for positive sample
 		all_files_in_class = [x for x in all_files_in_class if x!=img0_tuple[0]]
-			
+
 		if len(all_files_in_class)==0:
-			# If there is no image (other than anchor image) belonging to the anchor image class, anchor 
+			# If there is no image (other than anchor image) belonging to the anchor image class, anchor
 			# image will be taken as positive sample
 			positive_image = img0_tuple[0]
 		else:
@@ -536,7 +536,7 @@ class SiameseTriplet(Dataset):
 		anchor = anchor.convert("RGB")
 		negative = negative.convert("RGB")
 		positive = positive.convert("RGB")
-		
+
 		if self.should_invert:
 			anchor = PIL.ImageOps.invert(anchor)
 			positive = PIL.ImageOps.invert(positive)
@@ -551,41 +551,41 @@ class SiameseTriplet(Dataset):
 
 	def __len__(self):
 		return len(self.imageFolderDataset.imgs)
-		
-		
+
+
 
 
 class SiameseNetworkDataset(Dataset):
-	
+
 	def __init__(self,imageFolderDataset,transform=None,should_invert=True):
-		self.imageFolderDataset = imageFolderDataset    
+		self.imageFolderDataset = imageFolderDataset
 		self.transform = transform
 		self.should_invert = should_invert
-		
+
 	def __getitem__(self,index):
 		img0_tuple = random.choice(self.imageFolderDataset.imgs)
 		#we need to make sure approx 50% of images are in the same class
-		should_get_same_class = random.randint(0,1) 
+		should_get_same_class = random.randint(0,1)
 		if should_get_same_class:
 			while True:
 				#keep looping till the same class image is found
-				img1_tuple = random.choice(self.imageFolderDataset.imgs) 
+				img1_tuple = random.choice(self.imageFolderDataset.imgs)
 				if img0_tuple[1]==img1_tuple[1]:
 					break
 		else:
 			while True:
 				#keep looping till a different class image is found
-				
-				img1_tuple = random.choice(self.imageFolderDataset.imgs) 
+
+				img1_tuple = random.choice(self.imageFolderDataset.imgs)
 				if img0_tuple[1] !=img1_tuple[1]:
 					break
 
 		img0 = Image.open(img0_tuple[0])
 		img1 = Image.open(img1_tuple[0])
-		
+
 		img0 = img0.convert("RGB")
 		img1 = img1.convert("RGB")
-		
+
 		if self.should_invert:
 			img0 = PIL.ImageOps.invert(img0)
 			img1 = PIL.ImageOps.invert(img1)
@@ -593,9 +593,9 @@ class SiameseNetworkDataset(Dataset):
 		if self.transform is not None:
 			img0 = self.transform(img0)
 			img1 = self.transform(img1)
-		
+
 		return img0, img1 , torch.from_numpy(np.array([int(img1_tuple[1]!=img0_tuple[1])],dtype=np.float32))
-	
+
 	def __len__(self):
 		return len(self.imageFolderDataset.imgs)
 
@@ -611,7 +611,7 @@ class ImgAugTransform: # Image augmentation related transformations
 									 iaa.CoarseDropout(0.1, size_percent=0.5)])),
 			iaa.AddToHueAndSaturation(value=(-10, 10), per_channel=True)
 		])
-	  
+
 	def __call__(self, img):
 		img = np.array(img)
 		return self.aug.augment_image(img)
@@ -624,8 +624,8 @@ if __name__ == '__main__':
 		training_dir = "/media/ADAS1/MARS/bbox_train/bbox_train/"
 		testing_dir = "/media/ADAS1/MARS/bbox_test/bbox_test/"
 		train_batch_size = 64
-		train_number_epochs = 100	
-	
+		train_number_epochs = 100
+
 	folder_dataset = dset.ImageFolder(root=Config.training_dir)
 
 	transforms = torchvision.transforms.Compose([
@@ -660,7 +660,7 @@ import random
 from PIL import Image
 import torch
 from torch.autograd import Variable
-import PIL.ImageOps    
+import PIL.ImageOps
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
@@ -671,7 +671,7 @@ class SiameseNetwork(nn.Module):
     def __init__(self):
         super(SiameseNetwork, self).__init__()
 
-        #Outputs batch X 512 X 1 X 1 
+        #Outputs batch X 512 X 1 X 1
         self.net = nn.Sequential(
             nn.Conv2d(3,32,kernel_size=3,stride=2),
             nn.ReLU(inplace=True),
@@ -686,7 +686,7 @@ class SiameseNetwork(nn.Module):
             nn.Conv2d(64,128,kernel_size=3,stride=2),
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(128),
-            #nn.Dropout2d(p=0.4),            
+            #nn.Dropout2d(p=0.4),
 
 
             nn.Conv2d(128,256,kernel_size=1,stride=2),
@@ -697,16 +697,16 @@ class SiameseNetwork(nn.Module):
             nn.Conv2d(256,256,kernel_size=1,stride=2),
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(256),
-            #nn.Dropout2d(p=0.4),    
+            #nn.Dropout2d(p=0.4),
 
             nn.Conv2d(256,512,kernel_size=3,stride=2),
             nn.ReLU(inplace=True),
-            nn.BatchNorm2d(512),    
+            nn.BatchNorm2d(512),
 
             #1X1 filters to increase dimensions
             nn.Conv2d(512,1024,kernel_size=1,stride=1),
             nn.ReLU(inplace=True),
-            nn.BatchNorm2d(1024),    
+            nn.BatchNorm2d(1024),
 
             )
 
@@ -715,7 +715,7 @@ class SiameseNetwork(nn.Module):
         output = self.net(x)
         #output = output.view(output.size()[0], -1)
         #output = self.fc(output)
-        
+
         output = torch.squeeze(output)
         return output
 
@@ -761,9 +761,9 @@ class TripletLoss(nn.Module):
         self.margin = margin
 
     def forward(self, anchor, positive, negative, size_average=True):
-        distance_positive = F.cosine_similarity(anchor,positive) #Each is batch X 512 
+        distance_positive = F.cosine_similarity(anchor,positive) #Each is batch X 512
         distance_negative = F.cosine_similarity(anchor,negative)  # .pow(.5)
-        losses = (1- distance_positive)**2 + (0 - distance_negative)**2      #Margin not used in cosine case. 
+        losses = (1- distance_positive)**2 + (0 - distance_negative)**2      #Margin not used in cosine case.
         return losses.mean() if size_average else losses.sum()
 
 
@@ -782,7 +782,7 @@ import random
 from PIL import Image
 import torch
 from torch.autograd import Variable
-import PIL.ImageOps    
+import PIL.ImageOps
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
@@ -809,9 +809,9 @@ def get_gaussian_mask():
 	xy = np.column_stack([x.flat, y.flat])
 	mu = np.array([0.5,0.5])
 	sigma = np.array([0.22,0.22])
-	covariance = np.diag(sigma**2) 
-	z = multivariate_normal.pdf(xy, mean=mu, cov=covariance) 
-	z = z.reshape(x.shape) 
+	covariance = np.diag(sigma**2)
+	z = multivariate_normal.pdf(xy, mean=mu, cov=covariance)
+	z = z.reshape(x.shape)
 
 	z = z / z.max()
 	z  = z.astype(np.float32)
@@ -822,12 +822,12 @@ def get_gaussian_mask():
 
 
 class Siamese_Triplet_Test(Dataset):
-	
+
 	def __init__(self,imageFolderDataset,transform=None,should_invert=True):
-		self.imageFolderDataset = imageFolderDataset    
+		self.imageFolderDataset = imageFolderDataset
 		self.transform = transform
 		self.should_invert = should_invert
-		
+
 	def __getitem__(self,index):
 		# Get a random image which will be used as an anchor
 		img0_tuple = random.choice(self.imageFolderDataset.imgs)
@@ -853,12 +853,12 @@ class Siamese_Triplet_Test(Dataset):
 
 		# Getting all the images which belong to the same class as anchor image.
 		all_files_in_class = glob.glob(self.imageFolderDataset.root+anchor_class_name+'/*')
-		# Only those images which belong to the same class as anchor image but isn't anchor image will 
+		# Only those images which belong to the same class as anchor image but isn't anchor image will
 		# be selected as a candidate for positive sample
 		all_files_in_class = [x for x in all_files_in_class if x!=img0_tuple[0]]
-			
+
 		if len(all_files_in_class)==0:
-			# If there is no image (other than anchor image) belonging to the anchor image class, anchor 
+			# If there is no image (other than anchor image) belonging to the anchor image class, anchor
 			# image will be taken as positive sample
 			positive_image = img0_tuple[0]
 		else:
@@ -876,7 +876,7 @@ class Siamese_Triplet_Test(Dataset):
 		anchor = anchor.convert("RGB")
 		#negative = negative.convert("RGB")
 		positive = positive.convert("RGB")
-		
+
 		if self.should_invert:
 			anchor = PIL.ImageOps.invert(anchor)
 			positive = PIL.ImageOps.invert(positive)
@@ -891,11 +891,11 @@ class Siamese_Triplet_Test(Dataset):
 		negs = []
 		for i in range(len(negative_images)):
 			neg_image = Image.open(negative_images[i])
-			if self.should_invert:				
+			if self.should_invert:
 				neg_image = PIL.ImageOps.invert(neg_image)
 
 			if self.transform is not None:
-				neg_image = self.transform(neg_image)	
+				neg_image = self.transform(neg_image)
 			negs.append(neg_image)
 
 		negatives = torch.squeeze(torch.stack(negs))
@@ -961,7 +961,7 @@ for i in tqdm(range(total-1)):
 			total_correct+=1
 
 	if batch_correct == len(negatives):
-		correct+=1		
+		correct+=1
 
 
 print('correct: ',correct)
@@ -986,7 +986,7 @@ import random
 from PIL import Image
 import torch
 from torch.autograd import Variable
-import PIL.ImageOps    
+import PIL.ImageOps
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
@@ -1007,7 +1007,7 @@ class Config():
 	training_dir = "/media/ADAS1/MARS/bbox_train/bbox_train/"
 	testing_dir = "/media/ADAS1/MARS/bbox_test/bbox_test/"
 	train_batch_size = 128
-	train_number_epochs = 100	
+	train_number_epochs = 100
 
 folder_dataset = dset.ImageFolder(root=Config.training_dir)
 
@@ -1027,9 +1027,9 @@ def get_gaussian_mask():
 	xy = np.column_stack([x.flat, y.flat])
 	mu = np.array([0.5,0.5])
 	sigma = np.array([0.22,0.22])
-	covariance = np.diag(sigma**2) 
-	z = multivariate_normal.pdf(xy, mean=mu, cov=covariance) 
-	z = z.reshape(x.shape) 
+	covariance = np.diag(sigma**2)
+	z = multivariate_normal.pdf(xy, mean=mu, cov=covariance)
+	z = z.reshape(x.shape)
 
 	z = z / z.max()
 	z  = z.astype(np.float32)
@@ -1049,7 +1049,7 @@ optimizer = optim.Adam(net.parameters(),lr = 0.0005 ) #changed from 0.0005
 print("GPU compute available: ", torch.cuda.is_available())
 
 counter = []
-loss_history = [] 
+loss_history = []
 iteration_number= 0
 
 train_dataloader = DataLoader(siamese_dataset,shuffle=True,num_workers=14,batch_size=Config.train_batch_size) # PyTorch data parser obeject
@@ -1063,7 +1063,7 @@ for epoch in range(0,Config.train_number_epochs):
 		# Get anchor, positive and negative samples
 		anchor, positive, negative = data
 		anchor, positive, negative = anchor.cuda(), positive.cuda() , negative.cuda()
- 
+
  		# Multiple image patches with gaussian mask. It will act as an attention mechanism which will focus on the center of the patch
 		anchor, positive, negative = anchor*gaussian_mask, positive*gaussian_mask, negative*gaussian_mask
 
@@ -1086,7 +1086,7 @@ for epoch in range(0,Config.train_number_epochs):
 			os.mkdir('ckpts')
 		torch.save(net,'ckpts/model'+str(epoch)+'.pt')
 
-# Loss curve plot to be dumped after full model training. 
+# Loss curve plot to be dumped after full model training.
 show_plot(counter,loss_history,path='ckpts/loss.png')
 
 
@@ -1105,7 +1105,7 @@ import random
 from PIL import Image
 import torch
 from torch.autograd import Variable
-import PIL.ImageOps    
+import PIL.ImageOps
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
@@ -1135,7 +1135,7 @@ def get_gt(image,frame_id,gt_dict):
 		xmin = min(x1,x2)
 		xmax = max(x1,x2)
 		ymin = min(y1,y2)
-		ymax = max(y1,y2)	
+		ymax = max(y1,y2)
 
 		detections.append([x1,y1,w,h])
 		out_scores.append(frame_info[i]['conf'])
@@ -1144,7 +1144,7 @@ def get_gt(image,frame_id,gt_dict):
 
 
 def get_dict(filename):
-	with open(filename) as f:	
+	with open(filename) as f:
 		d = f.readlines()
 
 	d = list(map(lambda x:x.strip(),d))
@@ -1155,7 +1155,7 @@ def get_dict(filename):
 
 	for i in range(len(d)):
 		a = list(d[i].split(','))
-		a = list(map(float,a))	
+		a = list(map(float,a))
 
 		coords = a[2:6]
 		confidence = a[6]
@@ -1170,14 +1170,14 @@ def get_mask(filename):
 
 
 if __name__ == '__main__':
-	
+
 	#Load detections for the video. Options available: yolo,ssd and mask-rcnn
 	filename = 'det/det_ssd512.txt'
 	gt_dict = get_dict(filename)
 
 	cap = cv2.VideoCapture('vdo.avi')
 
-	#an optional mask for the given video, to focus on the road. 
+	#an optional mask for the given video, to focus on the road.
 	mask = get_mask('roi.jpg')
 
 	#Initialize deep sort.
@@ -1193,12 +1193,12 @@ if __name__ == '__main__':
 
 
 	while True:
-		print(frame_id)		
+		print(frame_id)
 
 		ret,frame = cap.read()
 		if ret is False:
 			frame_id+=1
-			break	
+			break
 
 		frame = frame * mask
 		frame = frame.astype(np.uint8)
@@ -1211,14 +1211,14 @@ if __name__ == '__main__':
 			continue
 
 		detections = np.array(detections)
-		out_scores = np.array(out_scores) 
+		out_scores = np.array(out_scores)
 
 		tracker,detections_class = deepsort.run_deep_sort(frame,out_scores,detections)
 
 		for track in tracker.tracks:
 			if not track.is_confirmed() or track.time_since_update > 1:
 				continue
-			
+
 			bbox = track.to_tlbr() #Get the corrected/predicted bounding box
 			id_num = str(track.track_id) #Get the ID for the particular track.
 			features = track.features #Get the feature vector corresponding to the detection.
@@ -1231,7 +1231,7 @@ if __name__ == '__main__':
 			for det in detections_class:
 				bbox = det.to_tlbr()
 				cv2.rectangle(frame,(int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,255,0), 2)
-		
+
 		cv2.imshow('frame',frame)
 		out.write(frame)
 		if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -4205,7 +4205,7 @@ class Tracker:
         #for t in self.tracks:
         #    if t.is_confirmed():
         #        print(len(t.features),'here_1',t.track_id,np.array(t.features).shape)
-        
+
         #print(np.array(features).shape)
 
         self.metric.partial_fit(
@@ -56928,4 +56928,3 @@ FILE: det/det_yolo3.txt
 FILE: det/.~lock.det_yolo3.npy#
 ================================================
 ,thtang,thtang,16.10.2018 01:00,file:///home/thtang/.config/libreoffice/4;
-

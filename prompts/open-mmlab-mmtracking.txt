@@ -9390,7 +9390,7 @@ Let's start!
 
 #   warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-#   
+#
 
 
 # install MMCV
@@ -9415,7 +9415,7 @@ Let's start!
 
 #     Downloading https://download.openmmlab.com/mmcv/dist/cu111/torch1.10.0/mmcv_full-1.4.8-cp37-cp37m-manylinux1_x86_64.whl (45.7 MB)
 
-#   [K     |████████████████████████████████| 45.7 MB 19 kB/s 
+#   [K     |████████████████████████████████| 45.7 MB 19 kB/s
 
 #   [?25hCollecting addict
 
@@ -9435,7 +9435,7 @@ Let's start!
 
 #     Downloading yapf-0.32.0-py2.py3-none-any.whl (190 kB)
 
-#   [K     |████████████████████████████████| 190 kB 7.2 MB/s 
+#   [K     |████████████████████████████████| 190 kB 7.2 MB/s
 
 #   [?25hRequirement already satisfied: pyparsing!=3.0.5,>=2.0.2 in /usr/local/lib/python3.7/dist-packages (from packaging->mmcv-full) (3.0.8)
 
@@ -9447,7 +9447,7 @@ Let's start!
 
 #     Downloading mmdet-2.23.0-py3-none-any.whl (1.4 MB)
 
-#   [K     |████████████████████████████████| 1.4 MB 9.7 MB/s 
+#   [K     |████████████████████████████████| 1.4 MB 9.7 MB/s
 
 #   [?25hRequirement already satisfied: pycocotools in /usr/local/lib/python3.7/dist-packages (from mmdet) (2.0.4)
 
@@ -9509,7 +9509,7 @@ Let's start!
 
 #     Downloading lap-0.4.0.tar.gz (1.5 MB)
 
-#   [K     |████████████████████████████████| 1.5 MB 12.7 MB/s 
+#   [K     |████████████████████████████████| 1.5 MB 12.7 MB/s
 
 #   [?25hRequirement already satisfied: matplotlib in /usr/local/lib/python3.7/dist-packages (from mmtrack==0.12.0) (3.2.2)
 
@@ -9517,13 +9517,13 @@ Let's start!
 
 #     Downloading mmcls-0.22.1-py2.py3-none-any.whl (548 kB)
 
-#   [K     |████████████████████████████████| 548 kB 56.2 MB/s 
+#   [K     |████████████████████████████████| 548 kB 56.2 MB/s
 
 #   [?25hCollecting motmetrics
 
 #     Downloading motmetrics-1.2.5-py3-none-any.whl (161 kB)
 
-#   [K     |████████████████████████████████| 161 kB 73.7 MB/s 
+#   [K     |████████████████████████████████| 161 kB 73.7 MB/s
 
 #   [?25hRequirement already satisfied: opencv-python in /usr/local/lib/python3.7/dist-packages (from mmtrack==0.12.0) (4.1.2.30)
 
@@ -9731,15 +9731,15 @@ print(mmtrack.__version__)
 
 #   Saving to: ‘./checkpoints/selsa_faster_rcnn_r50_dc5_1x_imagenetvid_20201227_204835-2f5a4952.pth’
 
-#   
+#
 
-#   selsa_faster_rcnn_r 100%[===================>] 269.70M  8.66MB/s    in 30s     
+#   selsa_faster_rcnn_r 100%[===================>] 269.70M  8.66MB/s    in 30s
 
-#   
+#
 
 #   2022-04-20 04:30:51 (9.01 MB/s) - ‘./checkpoints/selsa_faster_rcnn_r50_dc5_1x_imagenetvid_20201227_204835-2f5a4952.pth’ saved [282801031/282801031]
 
-#   
+#
 
 #   --2022-04-20 04:30:51--  https://download.openmmlab.com/mmtracking/sot/siamese_rpn/siamese_rpn_r50_1x_lasot/siamese_rpn_r50_1x_lasot_20211203_151612-da4b3c66.pth
 
@@ -9753,15 +9753,15 @@ print(mmtrack.__version__)
 
 #   Saving to: ‘./checkpoints/siamese_rpn_r50_1x_lasot_20211203_151612-da4b3c66.pth’
 
-#   
+#
 
-#   siamese_rpn_r50_1x_ 100%[===================>] 206.12M  11.0MB/s    in 21s     
+#   siamese_rpn_r50_1x_ 100%[===================>] 206.12M  11.0MB/s    in 21s
 
-#   
+#
 
 #   2022-04-20 04:31:12 (9.96 MB/s) - ‘./checkpoints/siamese_rpn_r50_1x_lasot_20211203_151612-da4b3c66.pth’ saved [216134418/216134418]
 
-#   
+#
 
 #   --2022-04-20 04:31:12--  https://download.openmmlab.com/mmtracking/vis/masktrack_rcnn/masktrack_rcnn_r50_fpn_12e_youtubevis2019/masktrack_rcnn_r50_fpn_12e_youtubevis2019_20211022_194830-6ca6b91e.pth
 
@@ -9775,15 +9775,15 @@ print(mmtrack.__version__)
 
 #   Saving to: ‘./checkpoints/masktrack_rcnn_r50_fpn_12e_youtubevis2019_20211022_194830-6ca6b91e.pth’
 
-#   
+#
 
-#   masktrack_rcnn_r50_ 100%[===================>] 221.82M  8.28MB/s    in 27s     
+#   masktrack_rcnn_r50_ 100%[===================>] 221.82M  8.28MB/s    in 27s
 
-#   
+#
 
 #   2022-04-20 04:31:40 (8.13 MB/s) - ‘./checkpoints/masktrack_rcnn_r50_fpn_12e_youtubevis2019_20211022_194830-6ca6b91e.pth’ saved [232596799/232596799]
 
-#   
+#
 
 
 # run mot demo
@@ -9834,11 +9834,11 @@ out_dir.cleanup()
 #     0%|          | 0.00/98.4M [00:00<?, ?B/s]
 #   2022-04-20 04:50:04,545 - mmcv - WARNING - The model and loaded state dict do not match exactly
 
-#   
+#
 
 #   missing keys in source state_dict: head.bn.weight, head.bn.bias, head.bn.running_mean, head.bn.running_var, head.classifier.weight, head.classifier.bias
 
-#   
+#
 
 #   Warning: The model doesn't have classes
 
@@ -9883,7 +9883,7 @@ out_dir.cleanup()
 #     0%|          | 0.00/170M [00:00<?, ?B/s]
 #   2022-04-20 04:50:53,187 - mmcv - WARNING - The model and loaded state dict do not match exactly
 
-#   
+#
 
 #   size mismatch for roi_head.bbox_head.fc_cls.weight: copying a param with shape torch.Size([81, 1024]) from checkpoint, the shape in current model is torch.Size([41, 1024]).
 
@@ -9940,11 +9940,11 @@ out_dir.cleanup()
 #     0%|          | 0.00/97.8M [00:00<?, ?B/s]
 #   2022-04-20 04:50:57,780 - mmcv - WARNING - The model and loaded state dict do not match exactly
 
-#   
+#
 
 #   unexpected key in source state_dict: fc.weight, fc.bias
 
-#   
+#
 
 #   2022-04-20 04:50:57,811 - mmtrack - INFO - initialize ChannelMapper with init_cfg {'type': 'Xavier', 'layer': 'Conv2d', 'distribution': 'uniform'}
 
@@ -10034,15 +10034,15 @@ out_dir.cleanup()
 
 #   Saving to: ‘./data/MOT17_tiny.zip’
 
-#   
+#
 
-#   MOT17_tiny.zip      100%[===================>] 328.60M  7.03MB/s    in 31s     
+#   MOT17_tiny.zip      100%[===================>] 328.60M  7.03MB/s    in 31s
 
-#   
+#
 
 #   2022-04-20 04:51:58 (10.6 MB/s) - ‘./data/MOT17_tiny.zip’ saved [344566302/344566302]
 
-#   
+#
 
 
 # convert the dataset to coco format
@@ -10638,7 +10638,7 @@ print(f'Config:\n{cfg.pretty_text}')
 
 #   gpu_ids = range(0, 1)
 
-#   
+#
 
 
 import os.path as osp
@@ -10665,7 +10665,7 @@ train_model(model, datasets, cfg)
 #     0%|          | 0.00/160M [00:00<?, ?B/s]
 #   2022-04-20 05:01:06,227 - mmcv - WARNING - The model and loaded state dict do not match exactly
 
-#   
+#
 
 #   size mismatch for roi_head.bbox_head.fc_cls.weight: copying a param with shape torch.Size([81, 1024]) from checkpoint, the shape in current model is torch.Size([2, 1024]).
 
@@ -10687,83 +10687,83 @@ train_model(model, datasets, cfg)
 
 #   before_run:
 
-#   (VERY_HIGH   ) StepLrUpdaterHook                  
+#   (VERY_HIGH   ) StepLrUpdaterHook
 
-#   (NORMAL      ) CheckpointHook                     
+#   (NORMAL      ) CheckpointHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   before_train_epoch:
 
-#   (VERY_HIGH   ) StepLrUpdaterHook                  
+#   (VERY_HIGH   ) StepLrUpdaterHook
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   before_train_iter:
 
-#   (VERY_HIGH   ) StepLrUpdaterHook                  
+#   (VERY_HIGH   ) StepLrUpdaterHook
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_train_iter:
 
-#   (ABOVE_NORMAL) OptimizerHook                      
+#   (ABOVE_NORMAL) OptimizerHook
 
-#   (NORMAL      ) CheckpointHook                     
+#   (NORMAL      ) CheckpointHook
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_train_epoch:
 
-#   (NORMAL      ) CheckpointHook                     
+#   (NORMAL      ) CheckpointHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   before_val_epoch:
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   before_val_iter:
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_val_iter:
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_val_epoch:
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_run:
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   2022-04-20 05:01:06,598 - mmdet - INFO - workflow: [('train', 1)], max: 4 epochs
 
@@ -11179,7 +11179,7 @@ print(f'Config:\n{cfg.pretty_text}')
 
 #   gpu_ids = range(0, 1)
 
-#   
+#
 
 
 from mmtrack.datasets import build_dataset
@@ -11205,15 +11205,15 @@ train_model(model, datasets, cfg)
 #     0%|          | 0.00/97.7M [00:00<?, ?B/s]
 #   2022-04-20 05:13:57,491 - mmcv - WARNING - The model and loaded state dict do not match exactly
 
-#   
+#
 
 #   unexpected key in source state_dict: head.fc.weight, head.fc.bias
 
-#   
+#
 
 #   missing keys in source state_dict: head.fcs.0.fc.weight, head.fcs.0.fc.bias, head.fcs.0.bn.weight, head.fcs.0.bn.bias, head.fcs.0.bn.running_mean, head.fcs.0.bn.running_var, head.fc_out.weight, head.fc_out.bias, head.bn.weight, head.bn.bias, head.bn.running_mean, head.bn.running_var, head.classifier.weight, head.classifier.bias
 
-#   
+#
 
 #   /usr/local/lib/python3.7/dist-packages/mmdet/apis/train.py:135: UserWarning: config is now expected to have a `runner` section, please set `runner` in your config.
 
@@ -11225,83 +11225,83 @@ train_model(model, datasets, cfg)
 
 #   before_run:
 
-#   (VERY_HIGH   ) StepLrUpdaterHook                  
+#   (VERY_HIGH   ) StepLrUpdaterHook
 
-#   (NORMAL      ) CheckpointHook                     
+#   (NORMAL      ) CheckpointHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   before_train_epoch:
 
-#   (VERY_HIGH   ) StepLrUpdaterHook                  
+#   (VERY_HIGH   ) StepLrUpdaterHook
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   before_train_iter:
 
-#   (VERY_HIGH   ) StepLrUpdaterHook                  
+#   (VERY_HIGH   ) StepLrUpdaterHook
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_train_iter:
 
-#   (ABOVE_NORMAL) OptimizerHook                      
+#   (ABOVE_NORMAL) OptimizerHook
 
-#   (NORMAL      ) CheckpointHook                     
+#   (NORMAL      ) CheckpointHook
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_train_epoch:
 
-#   (NORMAL      ) CheckpointHook                     
+#   (NORMAL      ) CheckpointHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   before_val_epoch:
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   before_val_iter:
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_val_iter:
 
-#   (LOW         ) IterTimerHook                      
+#   (LOW         ) IterTimerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_val_epoch:
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   after_run:
 
-#   (VERY_LOW    ) TextLoggerHook                     
+#   (VERY_LOW    ) TextLoggerHook
 
-#    -------------------- 
+#    --------------------
 
 #   2022-04-20 05:13:57,557 - mmdet - INFO - workflow: [('train', 1)], max: 2 epochs
 
@@ -12112,7 +12112,7 @@ print(f'Config:\n{cfg.pretty_text}')
 
 #   gpu_ids = range(0, 1)
 
-#   
+#
 
 
 from mmtrack.datasets import build_dataloader
@@ -12171,117 +12171,117 @@ print(metric)
 
 #   [>>>>>>>>>>>>>>>>>>>>>>>>>>>>>] 823/823, 5.1 task/s, elapsed: 162s, ETA:     0sEvaluate CLEAR MOT results.
 
-#   
+#
 
 #   Eval Config:
 
-#   USE_PARALLEL         : False                         
+#   USE_PARALLEL         : False
 
-#   NUM_PARALLEL_CORES   : 8                             
+#   NUM_PARALLEL_CORES   : 8
 
-#   BREAK_ON_ERROR       : True                          
+#   BREAK_ON_ERROR       : True
 
-#   RETURN_ON_ERROR      : False                         
+#   RETURN_ON_ERROR      : False
 
 #   LOG_ON_ERROR         : /usr/local/lib/python3.7/dist-packages/error_log.txt
 
-#   PRINT_RESULTS        : True                          
+#   PRINT_RESULTS        : True
 
-#   PRINT_ONLY_COMBINED  : False                         
+#   PRINT_ONLY_COMBINED  : False
 
-#   PRINT_CONFIG         : True                          
+#   PRINT_CONFIG         : True
 
-#   TIME_PROGRESS        : True                          
+#   TIME_PROGRESS        : True
 
-#   DISPLAY_LESS_PROGRESS : True                          
+#   DISPLAY_LESS_PROGRESS : True
 
-#   OUTPUT_SUMMARY       : True                          
+#   OUTPUT_SUMMARY       : True
 
-#   OUTPUT_EMPTY_CLASSES : True                          
+#   OUTPUT_EMPTY_CLASSES : True
 
-#   OUTPUT_DETAILED      : True                          
+#   OUTPUT_DETAILED      : True
 
-#   PLOT_CURVES          : True                          
+#   PLOT_CURVES          : True
 
-#   
+#
 
 #   MotChallenge2DBox Config:
 
-#   GT_FOLDER            : data/MOT17_tiny/train         
+#   GT_FOLDER            : data/MOT17_tiny/train
 
-#   TRACKERS_FOLDER      : /tmp/tmpbbh8obye              
+#   TRACKERS_FOLDER      : /tmp/tmpbbh8obye
 
-#   OUTPUT_FOLDER        : None                          
+#   OUTPUT_FOLDER        : None
 
-#   TRACKERS_TO_EVAL     : ['track']                     
+#   TRACKERS_TO_EVAL     : ['track']
 
-#   CLASSES_TO_EVAL      : ['pedestrian']                
+#   CLASSES_TO_EVAL      : ['pedestrian']
 
-#   BENCHMARK            : MOT17                         
+#   BENCHMARK            : MOT17
 
-#   SPLIT_TO_EVAL        : train                         
+#   SPLIT_TO_EVAL        : train
 
-#   INPUT_AS_ZIP         : False                         
+#   INPUT_AS_ZIP         : False
 
-#   PRINT_CONFIG         : True                          
+#   PRINT_CONFIG         : True
 
-#   DO_PREPROC           : True                          
+#   DO_PREPROC           : True
 
-#   TRACKER_SUB_FOLDER   :                               
+#   TRACKER_SUB_FOLDER   :
 
-#   OUTPUT_SUB_FOLDER    :                               
+#   OUTPUT_SUB_FOLDER    :
 
-#   TRACKER_DISPLAY_NAMES : None                          
+#   TRACKER_DISPLAY_NAMES : None
 
-#   SEQMAP_FOLDER        : None                          
+#   SEQMAP_FOLDER        : None
 
-#   SEQMAP_FILE          : /tmp/tmpbbh8obye/videoseq.txt 
+#   SEQMAP_FILE          : /tmp/tmpbbh8obye/videoseq.txt
 
-#   SEQ_INFO             : None                          
+#   SEQ_INFO             : None
 
 #   GT_LOC_FORMAT        : {gt_folder}/{seq}/gt/gt_half-val.txt
 
-#   SKIP_SPLIT_FOL       : True                          
+#   SKIP_SPLIT_FOL       : True
 
-#   
+#
 
 #   Evaluating 1 tracker(s) on 2 sequence(s) for 1 class(es) on MotChallenge2DBox dataset using the following metrics: HOTA, Count
 
-#   
+#
 
-#   
+#
 
 #   Evaluating track
 
-#   
+#
 
 #   1 eval_sequence(MOT17-02-FRCNN, track)                                   0.4733 sec
 
 #   2 eval_sequence(MOT17-04-FRCNN, track)                                   1.1452 sec
 
-#   
+#
 
 #   All sequences for track finished in 1.62 seconds
 
-#   
+#
 
 #   HOTA: track-pedestrian             HOTA      DetA      AssA      DetRe     DetPr     AssRe     AssPr     LocA      RHOTA     HOTA(0)   LocA(0)   HOTALocA(0)
 
-#   MOT17-02-FRCNN                     26.163    39.63     18.033    46.541    63.74     20.987    55.171    79.643    28.582    33.942    69.284    23.516    
+#   MOT17-02-FRCNN                     26.163    39.63     18.033    46.541    63.74     20.987    55.171    79.643    28.582    33.942    69.284    23.516
 
-#   MOT17-04-FRCNN                     50.13     66.595    38.789    71.095    82.128    44.817    58.181    84.906    52.104    59.437    81.81     48.625    
+#   MOT17-04-FRCNN                     50.13     66.595    38.789    71.095    82.128    44.817    58.181    84.906    52.104    59.437    81.81     48.625
 
-#   COMBINED                           44.066    58.107    34.579    63.972    77.414    40.031    57.716    83.727    46.545    53.072    78.788    41.815    
+#   COMBINED                           44.066    58.107    34.579    63.972    77.414    40.031    57.716    83.727    46.545    53.072    78.788    41.815
 
-#   
+#
 
-#   Count: track-pedestrian            Dets      GT_Dets   IDs       GT_IDs    
+#   Count: track-pedestrian            Dets      GT_Dets   IDs       GT_IDs
 
-#   MOT17-02-FRCNN                     7214      9880      353       53        
+#   MOT17-02-FRCNN                     7214      9880      353       53
 
-#   MOT17-04-FRCNN                     20930     24178     164       69        
+#   MOT17-04-FRCNN                     20930     24178     164       69
 
-#   COMBINED                           28144     34058     517       122       
+#   COMBINED                           28144     34058     517       122
 
 #                   IDF1   IDP   IDR  Rcll  Prcn  GT MT PT ML   FP   FN  IDs   FM  MOTA  MOTP IDt IDa IDm      HOTA
 
@@ -60893,5 +60893,3 @@ jobs:
         run: rm -rf .eggs && mim install -e .
       - name: test commands of mim
         run: mim search mmtrack
-
-
