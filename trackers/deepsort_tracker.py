@@ -119,6 +119,12 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             existing tracks.
         appearance_threshold (float): Cosine distance threshold for appearance matching.
         appearance_weight (float): Weight for appearance distance (0-1).
+        distance_metric (str): Distance metric to use for matching. Can be one of
+            'braycurtis', 'canberra', 'chebyshev', 'cityblock', 'correlation',
+            'cosine', 'dice', 'euclidean', 'hamming', 'jaccard', 'jensenshannon',
+            'kulczynski1', 'mahalanobis', 'matching', 'minkowski',
+            'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener',
+            'sokalsneath', 'sqeuclidean', 'yule'.
     """
 
     def __init__(
@@ -131,6 +137,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         minimum_iou_threshold: float = 0.3,
         appearance_threshold: float = 0.7,
         appearance_weight: float = 0.5,
+        distance_metric: str = "cosine",
     ):
         self.feature_extractor = feature_extractor
         self.lost_track_buffer = lost_track_buffer
@@ -140,7 +147,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         self.track_activation_threshold = track_activation_threshold
         self.appearance_threshold = appearance_threshold
         self.appearance_weight = appearance_weight
-
+        self.distance_metric = distance_metric
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
@@ -167,7 +174,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             return np.zeros((len(self.trackers), len(detection_features)))
 
         track_features = np.array([t.get_feature() for t in self.trackers])
-        distance_matrix = cdist(track_features, detection_features, metric="cosine")
+        distance_matrix = cdist(
+            track_features, detection_features, metric=self.distance_metric
+        )
         distance_matrix = np.clip(distance_matrix, 0, 1)
 
         return distance_matrix
