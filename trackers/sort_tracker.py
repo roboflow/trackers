@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import Sequence
 
 import numpy as np
 import supervision as sv
@@ -138,7 +139,7 @@ class KalmanBoxTracker:
 
 
 def get_alive_trackers(
-    trackers: list[KalmanBoxTracker],
+    trackers: Sequence[KalmanBoxTracker],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
 ) -> list[KalmanBoxTracker]:
@@ -159,7 +160,7 @@ def get_alive_trackers(
 
 
 def get_iou_matrix(
-    trackers: list[KalmanBoxTracker], detection_boxes: np.ndarray
+    trackers: Sequence[KalmanBoxTracker], detection_boxes: np.ndarray
 ) -> np.ndarray:
     """
     Build IOU cost matrix between detections and predicted bounding boxes
@@ -185,7 +186,7 @@ def get_iou_matrix(
 
 
 def update_detections_with_track_ids(
-    trackers: list[KalmanBoxTracker],
+    trackers: Sequence[KalmanBoxTracker],
     detections: sv.Detections,
     detection_boxes: np.ndarray,
     minimum_iou_threshold: float,
