@@ -54,5 +54,10 @@ nav:
   - Home: 'index.md'
   - Trackers:
     - SORTTracker: 'trackers/sort_tracker.md'
+    - DeepSORTTracker: 'trackers/deepsort_tracker.md'
+  - Models:
+    - DeepSORTBackbone: 'models/deepsort_backbone.md'
+    - SiameseNetworkModel: 'models/siamese_network.md'
+    - DeepSORTFeatureExtractor: 'models/deepsort_feature_extractor.md'
 
 repo_url: https://github.com/roboflow/trackers

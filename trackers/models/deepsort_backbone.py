@@ -3,6 +3,15 @@ import torch.nn as nn
 
 
 class DeepSORTBackbone(nn.Module):
+    """
+    Backbone model for DeepSORT's feature extractor.
+
+    References:
+        - [Siamese Neural Networks for One-shot Image Recognition](https://www.cs.cmu.edu/~rsalakhu/papers/oneshot1.pdf)
+        - [https://github.com/nwojke/deep_sort/blob/master/tools/freeze_model.py](https://github.com/nwojke/deep_sort/blob/master/tools/freeze_model.py)
+        - [https://github.com/abhyantrika/nanonets_object_tracking/blob/master/siamese_net.py](https://github.com/abhyantrika/nanonets_object_tracking/blob/master/siamese_net.py)
+    """
+
     def __init__(self):
         super(DeepSORTBackbone, self).__init__()
         self.network = nn.Sequential(
@@ -30,4 +39,10 @@ class DeepSORTBackbone(nn.Module):
         )
 
     def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass on a single input tensor.
+
+        Args:
+            input_tensor (torch.Tensor): The input tensor.
+        """
         return self.network(input_tensor)

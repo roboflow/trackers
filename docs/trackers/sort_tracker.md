@@ -1,4 +1,4 @@
-# Simple Online and Realtime Tracking
+# SORT: Simple Online and Realtime Tracking
 
 ::: trackers.sort_tracker.SORTTracker
 
