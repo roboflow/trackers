@@ -32,6 +32,11 @@ class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
             np.ndarray: Mean feature vector.
         """
         if len(self.features) > 0:
+            # Return the mean of all features, thus (in theory) capturing the
+            # "average appearance" of the object, which should be more robust
+            # to minor appearance changes. Otherwise, the last feature can
+            # also be returned like the following:
+            # return self.features[-1]
             return np.mean(self.features, axis=0)
         return None
 
