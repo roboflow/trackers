@@ -1122,7 +1122,7 @@ print(HOME)
 !wget -q https://media.roboflow.com/notebooks/examples/dog-7.jpeg
 !wget -q https://media.roboflow.com/notebooks/examples/dog-8.jpeg
 # Output:
-#   Thu Jul 11 20:48:14 2024       
+#   Thu Jul 11 20:48:14 2024
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -1146,7 +1146,7 @@ print(HOME)
 
 #   +-----------------------------------------+----------------------+----------------------+
 
-#                                                                                            
+#
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -1218,7 +1218,7 @@ detections = sv.Detections.from_yolo_nas(result)
 
 #    The model you have requested was pre-trained on the coco dataset, published under the following terms: https://cocodataset.org/#termsofuse
 
-#   [2024-07-11 20:48:37] INFO - checkpoint_utils.py - License Notification: YOLO-NAS pre-trained weights are subjected to the specific license terms and conditions detailed in 
+#   [2024-07-11 20:48:37] INFO - checkpoint_utils.py - License Notification: YOLO-NAS pre-trained weights are subjected to the specific license terms and conditions detailed in
 
 #   https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.YOLONAS.md
 
@@ -1247,7 +1247,7 @@ detections = sv.Detections.from_ultralytics(result)
 # Output:
 #   Downloading https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8m.pt to 'yolov8m.pt'...
 
-#   
+#
   0%|          | 0.00/49.7M [00:00<?, ?B/s]
  59%|█████▊    | 29.1M/49.7M [00:00<00:00, 305MB/s]
 100%|██████████| 49.7M/49.7M [00:00<00:00, 363MB/s]
@@ -1454,9 +1454,9 @@ VIDEO_PATH = VideoAssets.VEHICLES.value
 # Output:
 #   /content/datasets/images/videos
 
-#   Downloading vehicles.mp4 assets 
+#   Downloading vehicles.mp4 assets
 
-#   
+#
 
 #     0%|          | 0/35345757 [00:00<?, ?it/s]
 
@@ -1528,7 +1528,7 @@ dataset = project.version(5).download("yolov8")
 # Output:
 #   /content/datasets/images/datasets
 
-#   
+#
 visit https://app.roboflow.com/auth-cli to get your authentication token.
 
 #   Paste the authentication token here: ··········
@@ -1542,9 +1542,9 @@ visit https://app.roboflow.com/auth-cli to get your authentication token.
 #   Downloading Dataset Version Zip in fashion-assistant-segmentation-5 to yolov8:: 100%|██████████| 122509/122509 [00:03<00:00, 37319.95it/s]
 
 #   Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8::  15%|█▍        | 187/1254 [00:00<00:00, 1860.52it/s]
-#   
+#
 
-#   
+#
 Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8::  30%|██▉       | 374/1254 [00:00<00:00, 1609.45it/s]
 Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8::  43%|████▎     | 538/1254 [00:00<00:00, 1529.93it/s]
 
@@ -1560,7 +1560,7 @@ ds = sv.DetectionDataset.from_yolo(
     data_yaml_path=f"{dataset.location}/data.yaml",
 )
 # Output:
-#   
+#
 Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8::  79%|███████▉  | 989/1254 [00:00<00:00, 2606.19it/s]
 Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8:: 100%|██████████| 1254/1254 [00:00<00:00, 2505.30it/s]
 
@@ -13685,7 +13685,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 !nvidia-smi
 # Output:
-#   Fri Feb 23 03:15:00 2024       
+#   Fri Feb 23 03:15:00 2024
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -13709,7 +13709,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 #   +-----------------------------------------+----------------------+----------------------+
 
-#                                                                                            
+#
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -13972,7 +13972,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 !nvidia-smi
 # Output:
-#   Mon Feb 12 13:03:38 2024       
+#   Mon Feb 12 13:03:38 2024
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -13996,7 +13996,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 #   +-----------------------------------------+----------------------+----------------------+
 
-#                                                                                            
+#
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -14276,7 +14276,7 @@ When experimenting with interesting and useful features of the Supervision packa
 """
 ## Download a Video
 
-From here we can download and utilize a video asset directly from a python script! Note below that we're utilizing the method `download_assets` to download the `VideoAssets.SUBWAY` video to our local directory. This method returns the file path, so we can then utilize this path for additional experimentation. From here, you will see a video asset to experiment with in your local directory. 
+From here we can download and utilize a video asset directly from a python script! Note below that we're utilizing the method `download_assets` to download the `VideoAssets.SUBWAY` video to our local directory. This method returns the file path, so we can then utilize this path for additional experimentation. From here, you will see a video asset to experiment with in your local directory.
 """
 
 from supervision.assets import download_assets, VideoAssets
@@ -14335,7 +14335,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 !nvidia-smi
 # Output:
-#   Thu Feb 29 18:16:26 2024       
+#   Thu Feb 29 18:16:26 2024
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -14359,7 +14359,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 #   +-----------------------------------------+----------------------+----------------------+
 
-#                                                                                            
+#
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -14569,7 +14569,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 !nvidia-smi
 # Output:
-#   Fri Feb 23 03:18:02 2024       
+#   Fri Feb 23 03:18:02 2024
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -14593,7 +14593,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 #   +-----------------------------------------+----------------------+----------------------+
 
-#                                                                                            
+#
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -15483,7 +15483,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 !nvidia-smi
 # Output:
-#   Wed Jul 17 14:51:30 2024       
+#   Wed Jul 17 14:51:30 2024
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -15507,7 +15507,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 #   +-----------------------------------------+----------------------+----------------------+
 
-#                                                                                            
+#
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -15911,7 +15911,7 @@ dataset = project.version(5).download("yolov8")
 # Output:
 #   /content/datasets/images/datasets
 
-#   
+#
 visit https://app.roboflow.com/auth-cli to get your authentication token.
 
 #   Paste the authentication token here: ··········
@@ -15925,9 +15925,9 @@ visit https://app.roboflow.com/auth-cli to get your authentication token.
 #   Downloading Dataset Version Zip in fashion-assistant-segmentation-5 to yolov8:: 100%|██████████| 122509/122509 [00:03<00:00, 37319.95it/s]
 
 #   Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8::  15%|█▍        | 187/1254 [00:00<00:00, 1860.52it/s]
-#   
+#
 
-#   
+#
 Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8::  30%|██▉       | 374/1254 [00:00<00:00, 1609.45it/s]
 Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8::  43%|████▎     | 538/1254 [00:00<00:00, 1529.93it/s]
 
@@ -15943,7 +15943,7 @@ ds = sv.DetectionDataset.from_yolo(
     data_yaml_path=f"{dataset.location}/data.yaml",
 )
 # Output:
-#   
+#
 Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8::  79%|███████▉  | 989/1254 [00:00<00:00, 2606.19it/s]
 Extracting Dataset Version Zip to fashion-assistant-segmentation-5 in yolov8:: 100%|██████████| 1254/1254 [00:00<00:00, 2505.30it/s]
 
@@ -16079,9 +16079,9 @@ IOU_THRESHOLD = 0.7
 FILE_NAME = "detections.csv"
 INFERENCE_MODEL = "yolov8n-640"
 # Output:
-#   people-walking.mp4 asset download complete. 
+#   people-walking.mp4 asset download complete.
 
-#   
+#
 
 
 """
@@ -16176,55 +16176,55 @@ df
 # Output:
 #          x_min  y_min   x_max   y_max  class_id  confidence  tracker_id  \
 
-#   0     1142.0  950.0  1245.0  1080.0         0    0.767850         185   
+#   0     1142.0  950.0  1245.0  1080.0         0    0.767850         185
 
-#   1      750.0  450.0   823.0   620.0         0    0.748268         168   
+#   1      750.0  450.0   823.0   620.0         0    0.748268         168
 
-#   2     1419.0  702.0  1526.0   887.0         0    0.550286         179   
+#   2     1419.0  702.0  1526.0   887.0         0    0.550286         179
 
-#   3     1674.0   12.0  1727.0   141.0         0    0.546864         174   
+#   3     1674.0   12.0  1727.0   141.0         0    0.546864         174
 
-#   4     1616.0   18.0  1655.0   127.0         0    0.520566         181   
+#   4     1616.0   18.0  1655.0   127.0         0    0.520566         181
 
-#   ...      ...    ...     ...     ...       ...         ...         ...   
+#   ...      ...    ...     ...     ...       ...         ...         ...
 
-#   8757   394.0  471.0   460.0   633.0         0    0.466400         244   
+#   8757   394.0  471.0   460.0   633.0         0    0.466400         244
 
-#   8758   115.0  256.0   199.0   399.0         0    0.431374         223   
+#   8758   115.0  256.0   199.0   399.0         0    0.431374         223
 
-#   8759    77.0  700.0   169.0   892.0         0    0.416318         240   
+#   8759    77.0  700.0   169.0   892.0         0    0.416318         240
 
-#   8760  1010.0   59.0  1055.0   174.0         0    0.403422         246   
+#   8760  1010.0   59.0  1055.0   174.0         0    0.403422         246
 
-#   8761  1758.0    0.0  1809.0    96.0         0    0.313793         236   
+#   8761  1758.0    0.0  1809.0    96.0         0    0.313793         236
 
-#   
+#
 
-#        class_name  frame_number  
+#        class_name  frame_number
 
-#   0        person             1  
+#   0        person             1
 
-#   1        person             1  
+#   1        person             1
 
-#   2        person             1  
+#   2        person             1
 
-#   3        person             1  
+#   3        person             1
 
-#   4        person             1  
+#   4        person             1
 
-#   ...         ...           ...  
+#   ...         ...           ...
 
-#   8757     person           341  
+#   8757     person           341
 
-#   8758     person           341  
+#   8758     person           341
 
-#   8759     person           341  
+#   8759     person           341
 
-#   8760     person           341  
+#   8760     person           341
 
-#   8761     person           341  
+#   8761     person           341
 
-#   
+#
 
 #   [8762 rows x 9 columns]
 
@@ -16275,7 +16275,7 @@ def csv_to_detections(csv_file: str) -> List[sv.Detections]:
                 data=dict(custom_data)
             )
         )
-    
+
     return detections_list
 
 detections_list = csv_to_detections(FILE_NAME)
@@ -16402,9 +16402,9 @@ IOU_THRESHOLD = 0.7
 FILE_NAME = "detections.json"
 INFERENCE_MODEL = "yolov8n-640"
 # Output:
-#   people-walking.mp4 asset download complete. 
+#   people-walking.mp4 asset download complete.
 
-#   
+#
 
 
 """
@@ -16468,7 +16468,7 @@ All the operations we plan to perform for each frame of our video - detection, t
 
 def callback(predictions: dict, frame: VideoFrame) -> np.ndarray:
     detections = sv.Detections.from_inference(predictions)
-    
+
     # Only keep person detections
     detections = detections[detections.class_id == 0]
     detections.data["class_name"] = np.array(["person" for _ in range(len(detections))])
@@ -16502,55 +16502,55 @@ df
 # Output:
 #         x_min  y_min  x_max  y_max  class_id  confidence  tracker_id class_name  \
 
-#   0      1142    950   1245   1080         0    0.767850         365     person   
+#   0      1142    950   1245   1080         0    0.767850         365     person
 
-#   1       750    450    823    620         0    0.748268         348     person   
+#   1       750    450    823    620         0    0.748268         348     person
 
-#   2      1419    702   1526    887         0    0.550286         359     person   
+#   2      1419    702   1526    887         0    0.550286         359     person
 
-#   3      1674     12   1727    141         0    0.546864         354     person   
+#   3      1674     12   1727    141         0    0.546864         354     person
 
-#   4      1616     18   1655    127         0    0.520566         361     person   
+#   4      1616     18   1655    127         0    0.520566         361     person
 
-#   ...     ...    ...    ...    ...       ...         ...         ...        ...   
+#   ...     ...    ...    ...    ...       ...         ...         ...        ...
 
-#   8757    394    471    460    633         0    0.466400         424     person   
+#   8757    394    471    460    633         0    0.466400         424     person
 
-#   8758    115    256    199    399         0    0.431374         403     person   
+#   8758    115    256    199    399         0    0.431374         403     person
 
-#   8759     77    700    169    892         0    0.416318         420     person   
+#   8759     77    700    169    892         0    0.416318         420     person
 
-#   8760   1010     59   1055    174         0    0.403422         426     person   
+#   8760   1010     59   1055    174         0    0.403422         426     person
 
-#   8761   1758      0   1809     96         0    0.313793         416     person   
+#   8761   1758      0   1809     96         0    0.313793         416     person
 
-#   
+#
 
-#         frame_number  
+#         frame_number
 
-#   0                1  
+#   0                1
 
-#   1                1  
+#   1                1
 
-#   2                1  
+#   2                1
 
-#   3                1  
+#   3                1
 
-#   4                1  
+#   4                1
 
-#   ...            ...  
+#   ...            ...
 
-#   8757           341  
+#   8757           341
 
-#   8758           341  
+#   8758           341
 
-#   8759           341  
+#   8759           341
 
-#   8760           341  
+#   8760           341
 
-#   8761           341  
+#   8761           341
 
-#   
+#
 
 #   [8762 rows x 9 columns]
 
@@ -16602,7 +16602,7 @@ def json_to_detections(json_file: str) -> List[sv.Detections]:
                 data=dict(custom_data)
             )
         )
-    
+
     return detections_list
 
 detections_list = json_to_detections(FILE_NAME)
@@ -16858,7 +16858,7 @@ The `InferenceSlicer` is a utility for performing slicing-based inference on lar
 - **Detection Merging**: Merges detections from all slices using [Non-Maximum Suppression (NMS)](https://blog.roboflow.com/how-to-code-non-maximum-suppression-nms-in-plain-numpy) or [Non-Maximum Merging (NMM)](https://blog.roboflow.com/non-max-merging) to handle overlapping detections.
 - **Parallel Processing**: Utilizes multi-threading to perform inference on slices concurrently, enhancing speed.
 - **Custom Inference Callback**: Allows you to define their own inference function for flexibility in integrating various detection models.
-    
+
 ![SAHI](https://raw.githubusercontent.com/obss/sahi/main/resources/sliced_inference.gif "something")
 
 SAHI can be viewed as a framework designed to tackle the challenge of small object detection. The `InferenceSlicer` class from the `supervision` library provides an implementation of SAHI, allowing you to easily use it as follows:
@@ -17370,7 +17370,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 !nvidia-smi
 # Output:
-#   Fri Feb 16 12:46:14 2024       
+#   Fri Feb 16 12:46:14 2024
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -17394,7 +17394,7 @@ Let's make sure that we have access to GPU. We can use `nvidia-smi` command to d
 
 #   +-----------------------------------------+----------------------+----------------------+
 
-#                                                                                            
+#
 
 #   +---------------------------------------------------------------------------------------+
 
@@ -54630,7 +54630,7 @@ Line 2
 Line 3
 """
 
-FILE_2_CONTENT = """   
+FILE_2_CONTENT = """
 Line 2
 
 Line 4
@@ -55779,5 +55779,3 @@ jobs:
 
       - name: 🧪 Run the Test
         run: uv run pytest
-
-
