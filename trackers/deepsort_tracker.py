@@ -1,206 +1,9 @@
 import numpy as np
 import supervision as sv
-import torch
-import torchvision.transforms as transforms
 from scipy.spatial.distance import cdist
-from torch.serialization import add_safe_globals
 
-try:
-    from siamese_net import SiameseNetwork
-
-    add_safe_globals([SiameseNetwork])
-except ImportError:
-    pass
-
+from trackers.models.deepsort_feature_extractor import DeepSORTFeatureExtractor
 from trackers.sort_tracker import KalmanBoxTracker, SORTTracker
-
-
-class FeatureExtractor:
-    """
-    Feature extractor for DeepSORT that loads a PyTorch model and
-    extracts appearance features from detection crops.
-    """
-
-    def __init__(self, model_path, device="mps"):
-        """
-        Initialize the feature extractor with a PyTorch model.
-
-        Args:
-            model_path (str): Path to the PyTorch model checkpoint.
-            device (str, optional): Device to run the model on.
-        """
-        if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        else:
-            self.device = torch.device(device)
-
-        self.model = self._load_model(model_path)
-        self.model.to(self.device)
-        self.model.eval()
-
-        # Using a fixed size that's larger to avoid kernel size issues
-        # 128x128 should be large enough for most models' kernel sizes
-        self.input_size = (128, 128)
-
-        self.transform = transforms.Compose(
-            [
-                transforms.ToPILImage(),
-                transforms.Resize(self.input_size),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )
-
-        # Default feature dimension - used for fallback
-        self.feature_dim = 512
-
-    def _load_model(self, model_path):
-        """
-        Load the PyTorch model from the given path.
-
-        Note: this function was written by Claude, it works but I don't understand it.
-        Need to find a better way to load the model.
-
-        Args:
-            model_path (str): Path to the model checkpoint.
-
-        Returns:
-            torch.nn.Module: Loaded PyTorch model.
-        """
-        try:
-            # First try with weights_only=False to allow custom classes
-            model = torch.load(model_path, map_location=self.device, weights_only=False)
-            return model
-        except Exception as e:
-            print(f"Error loading model with weights_only=False: {e}")
-
-            try:
-                # If that fails, try to dynamically import the SiameseNetwork class
-                import importlib.util
-
-                # Assume the module might be in the same directory as the checkpoint
-                import os
-                import sys
-
-                potential_module_dir = os.path.dirname(os.path.abspath(model_path))
-
-                # Look for siamese_net.py in the directory
-                potential_module_path = os.path.join(
-                    potential_module_dir, "siamese_net.py"
-                )
-
-                if os.path.exists(potential_module_path):
-                    # If we found the module, load it
-                    spec = importlib.util.spec_from_file_location(
-                        "siamese_net", potential_module_path
-                    )
-                    module = importlib.util.module_from_spec(spec)
-                    sys.modules["siamese_net"] = module
-                    spec.loader.exec_module(module)
-
-                    # Add the SiameseNetwork class to safe globals
-                    if hasattr(module, "SiameseNetwork"):
-                        add_safe_globals([module.SiameseNetwork])
-                        # Try loading again
-                        model = torch.load(
-                            model_path, map_location=self.device, weights_only=False
-                        )
-                        return model
-            except Exception as nested_e:
-                print(f"Error in dynamic import attempt: {nested_e}")
-
-            # If all else fails, raise the original error
-            raise RuntimeError(f"Failed to load model: {e}")
-
-    def _ensure_valid_crop(self, crop):
-        """
-        Ensures the crop is valid and meets minimum size requirements.
-
-        Args:
-            crop (np.ndarray): Image crop to validate and fix if needed.
-
-        Returns:
-            np.ndarray: Valid crop with minimum dimensions.
-        """
-        # Check if crop is empty
-        if crop.size == 0:
-            # Return a blank image of the minimum size
-            return np.zeros((self.input_size[0], self.input_size[1], 3), dtype=np.uint8)
-
-        # This needs to be configurable
-        min_height, min_width = 32, 32
-        h, w = crop.shape[:2]
-
-        # If smaller than minimum, resize with padding
-        if h < min_height or w < min_width:
-            # Create a canvas with the minimum size
-            canvas = np.zeros(
-                (max(min_height, h), max(min_width, w), 3), dtype=np.uint8
-            )
-            # Place the crop in the center
-            y_offset = (canvas.shape[0] - h) // 2
-            x_offset = (canvas.shape[1] - w) // 2
-            if h > 0 and w > 0:  # Only try to copy if crop has non-zero dimensions
-                canvas[y_offset : y_offset + h, x_offset : x_offset + w] = crop
-            return canvas
-
-        return crop
-
-    def extract_features(self, frame, detections):
-        """
-        Extract features from detection crops in the frame.
-
-        Note: this function was written by Claude, need to improve it.
-
-        Args:
-            frame (np.ndarray): The input frame.
-            detections (sv.Detections): Detections from which to extract features.
-
-        Returns:
-            np.ndarray: Extracted features for each detection.
-        """
-        if len(detections) == 0:
-            return np.array([])
-
-        # Try to determine feature dimension from the model if possible
-        if hasattr(self.model, "forward_once"):
-            try:
-                # Create a dummy input to determine output size
-                dummy_input = torch.zeros(
-                    (1, 3, self.input_size[0], self.input_size[1])
-                ).to(self.device)
-                with torch.no_grad():
-                    dummy_output = self.model.forward_once(dummy_input)
-                self.feature_dim = dummy_output.numel()
-            except Exception as e:
-                print(f"Error determining feature dimension: {e}")
-
-        features = []
-        with torch.no_grad():
-            for box in detections.xyxy:
-                # Get crop coordinates (ensure they are within frame boundaries)
-                x1, y1, x2, y2 = box.astype(int)
-                x1 = max(0, x1)
-                y1 = max(0, y1)
-                x2 = min(frame.shape[1], x2)
-                y2 = min(frame.shape[0], y2)
-
-                # Extract crop and ensure it meets minimum size requirements
-                crop = frame[y1:y2, x1:x2]
-                crop = self._ensure_valid_crop(crop)
-
-                try:
-                    tensor = self.transform(crop).unsqueeze(0).to(self.device)
-                    feature = self.model.forward_once(tensor).cpu().numpy().flatten()
-                    features.append(feature)
-                except Exception as e:
-                    print(f"Error extracting features: {e}")
-                    # Fallback to zero features
-                    features.append(np.zeros(self.feature_dim))
-
-        return np.array(features)
 
 
 class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
@@ -256,7 +59,7 @@ class DeepSORTTracker(SORTTracker):
 
     def __init__(
         self,
-        wt_path,
+        feature_extractor: DeepSORTFeatureExtractor,
         lost_track_buffer=30,
         frame_rate=30.0,
         track_activation_threshold=0.25,
@@ -264,7 +67,7 @@ class DeepSORTTracker(SORTTracker):
         minimum_iou_threshold=0.3,
         appearance_threshold=0.7,
         appearance_weight=0.5,
-        device=None,
+        device="mps",
     ):
         super().__init__(
             lost_track_buffer=lost_track_buffer,
@@ -274,7 +77,7 @@ class DeepSORTTracker(SORTTracker):
             minimum_iou_threshold=minimum_iou_threshold,
         )
 
-        self.feature_extractor = FeatureExtractor(wt_path, device)
+        self.feature_extractor = feature_extractor
         self.appearance_threshold = appearance_threshold
         self.appearance_weight = appearance_weight
 
