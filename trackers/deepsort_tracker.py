@@ -1,3 +1,5 @@
+from typing import Optional, Union
+
 import numpy as np
 import supervision as sv
 from scipy.spatial.distance import cdist
@@ -13,16 +15,16 @@ from trackers.sort_tracker import (
 
 
 class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
-    def __init__(self, bbox, feature=None):
+    def __init__(self, bbox: np.ndarray, feature: Optional[np.ndarray] = None):
         super().__init__(bbox)
-        self.features = []
+        self.features: list[np.ndarray] = []
         if feature is not None:
             self.features.append(feature)
 
-    def update_feature(self, feature):
+    def update_feature(self, feature: np.ndarray):
         self.features.append(feature)
 
-    def get_feature(self):
+    def get_feature(self) -> Union[np.ndarray, None]:
         """
         Get the mean feature vector for this tracker.
 
@@ -93,11 +95,23 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         feature_extractor (DeepSORTFeatureExtractor): An instance of
             `DeepSORTFeatureExtractor` to extract appearance features.
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
-        frame_rate (float): Frame rate of the video.
-        track_activation_threshold (float): Detection confidence threshold for
-            track activation.
-        minimum_consecutive_frames (int): Frames needed for a valid track.
-        minimum_iou_threshold (float): IOU threshold for association.
+            Increasing lost_track_buffer enhances occlusion handling, significantly
+            improving tracking through occlusions, but may increase the possibility
+            of ID switching for objects with similar appearance.
+        frame_rate (float): Frame rate of the video (frames per second).
+            Used to calculate the maximum time a track can be lost.
+        track_activation_threshold (float): Detection confidence threshold
+            for track activation. Only detections with confidence above this
+            threshold will create new tracks. Increasing this threshold
+            reduces false positives but may miss real objects with low confidence.
+        minimum_consecutive_frames (int): Number of consecutive frames that an object
+            must be tracked before it is considered a 'valid' track. Increasing
+            `minimum_consecutive_frames` prevents the creation of accidental tracks
+            from false detection or double detection, but risks missing shorter
+            tracks. Before the tracker is considered valid, it will be assigned
+            `-1` as its `tracker_id`.
+        minimum_iou_threshold (float): IOU threshold for associating detections to
+            existing tracks.
         appearance_threshold (float): Cosine distance threshold for appearance matching.
         appearance_weight (float): Weight for appearance distance (0-1).
     """
@@ -105,13 +119,13 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
     def __init__(
         self,
         feature_extractor: DeepSORTFeatureExtractor,
-        lost_track_buffer=30,
-        frame_rate=30.0,
-        track_activation_threshold=0.25,
-        minimum_consecutive_frames=3,
-        minimum_iou_threshold=0.3,
-        appearance_threshold=0.7,
-        appearance_weight=0.5,
+        lost_track_buffer: int = 30,
+        frame_rate: float = 30.0,
+        track_activation_threshold: float = 0.25,
+        minimum_consecutive_frames: int = 3,
+        minimum_iou_threshold: float = 0.3,
+        appearance_threshold: float = 0.7,
+        appearance_weight: float = 0.5,
     ):
         self.feature_extractor = feature_extractor
         self.lost_track_buffer = lost_track_buffer
@@ -131,7 +145,10 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         self.trackers: list[DeepSORTKalmanBoxTracker] = []
 
-    def _get_appearance_distance_matrix(self, detection_features):
+    def _get_appearance_distance_matrix(
+        self,
+        detection_features: np.ndarray,
+    ) -> np.ndarray:
         """
         Calculate appearance distance matrix between tracks and detections.
 
@@ -150,7 +167,11 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         return distance_matrix
 
-    def _get_combined_distance_matrix(self, iou_matrix, appearance_dist_matrix):
+    def _get_combined_distance_matrix(
+        self,
+        iou_matrix: np.ndarray,
+        appearance_dist_matrix: np.ndarray,
+    ) -> np.ndarray:
         """
         Combine IOU and appearance distances into a single distance matrix.
 
@@ -177,7 +198,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         return combined_dist
 
     def _get_associated_indices(
-        self, iou_matrix, detection_features
+        self,
+        iou_matrix: np.ndarray,
+        detection_features: np.ndarray,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
         Associate detections to trackers based on both IOU and appearance.
@@ -220,7 +243,11 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         return matched_indices, unmatched_trackers, unmatched_detections
 
     def _spawn_new_trackers(
-        self, detections, detection_boxes, detection_features, unmatched_detections
+        self,
+        detections: sv.Detections,
+        detection_boxes: np.ndarray,
+        detection_features: np.ndarray,
+        unmatched_detections: set[int],
     ):
         """
         Create new trackers for unmatched detections with confidence above threshold.
