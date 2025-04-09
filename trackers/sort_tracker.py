@@ -137,6 +137,32 @@ class KalmanBoxTracker:
         ).reshape(-1)
 
 
+def get_iou_matrix(trackers: list[KalmanBoxTracker], detection_boxes: np.ndarray) -> np.ndarray:
+        """
+        Build IOU cost matrix between detections and predicted bounding boxes
+
+        Args:
+            detection_boxes (np.ndarray): Detected bounding boxes in the
+                form [x1, y1, x2, y2].
+
+        Returns:
+            np.ndarray: IOU cost matrix.
+        """
+        predicted_boxes = np.array([t.get_state_bbox() for t in trackers])
+        if len(predicted_boxes) == 0 and len(trackers) > 0:
+            # Handle case where get_state_bbox might return empty array
+            predicted_boxes = np.zeros((len(trackers), 4), dtype=np.float32)
+
+        if len(trackers) > 0 and len(detection_boxes) > 0:
+            iou_matrix = box_iou_batch(predicted_boxes, detection_boxes)
+        else:
+            iou_matrix = np.zeros(
+                (len(trackers), len(detection_boxes)), dtype=np.float32
+            )
+
+        return iou_matrix
+
+
 class SORTTracker(BaseTracker):
     """
     `SORTTracker` is an implementation of the
@@ -231,31 +257,6 @@ class SORTTracker(BaseTracker):
 
         # Active trackers
         self.trackers: list[KalmanBoxTracker] = []
-
-    def _get_iou_matrix(self, detection_boxes: np.ndarray) -> np.ndarray:
-        """
-        Build IOU cost matrix between detections and predicted bounding boxes
-
-        Args:
-            detection_boxes (np.ndarray): Detected bounding boxes in the
-                form [x1, y1, x2, y2].
-
-        Returns:
-            np.ndarray: IOU cost matrix.
-        """
-        predicted_boxes = np.array([t.get_state_bbox() for t in self.trackers])
-        if len(predicted_boxes) == 0 and len(self.trackers) > 0:
-            # Handle case where get_state_bbox might return empty array
-            predicted_boxes = np.zeros((len(self.trackers), 4), dtype=np.float32)
-
-        if len(self.trackers) > 0 and len(detection_boxes) > 0:
-            iou_matrix = box_iou_batch(predicted_boxes, detection_boxes)
-        else:
-            iou_matrix = np.zeros(
-                (len(self.trackers), len(detection_boxes)), dtype=np.float32
-            )
-
-        return iou_matrix
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
@@ -426,7 +427,7 @@ class SORTTracker(BaseTracker):
             tracker.predict()
 
         # Build IOU cost matrix between detections and predicted bounding boxes
-        iou_matrix = self._get_iou_matrix(detection_boxes)
+        iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
 
         # Associate detections to trackers based on IOU
         matched_indices, _, unmatched_detections = self._get_associated_indices(

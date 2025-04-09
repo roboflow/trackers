@@ -3,7 +3,7 @@ import supervision as sv
 from scipy.spatial.distance import cdist
 
 from trackers.models.deepsort_feature_extractor import DeepSORTFeatureExtractor
-from trackers.sort_tracker import KalmanBoxTracker, SORTTracker
+from trackers.sort_tracker import KalmanBoxTracker, SORTTracker, get_iou_matrix
 
 
 class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
@@ -87,7 +87,8 @@ class DeepSORTTracker(SORTTracker):
             combined distance.
 
     Args:
-        wt_path (str): Path to the feature extractor model checkpoint.
+        feature_extractor (DeepSORTFeatureExtractor): An instance of
+            `DeepSORTFeatureExtractor` to extract appearance features.
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
         frame_rate (float): Frame rate of the video.
         track_activation_threshold (float): Detection confidence threshold for
@@ -270,7 +271,7 @@ class DeepSORTTracker(SORTTracker):
             tracker.predict()
 
         # Build IOU cost matrix between detections and predicted bounding boxes
-        iou_matrix = self._get_iou_matrix(detection_boxes)
+        iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
 
         # Associate detections to trackers based on IOU
         matched_indices, _, unmatched_detections = self._get_associated_indices(
