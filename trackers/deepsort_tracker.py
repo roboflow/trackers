@@ -38,6 +38,48 @@ class DeepSORTTracker(SORTTracker):
     This implementation follows the DeepSORT algorithm by incorporating both
     motion (IOU + Kalman filter) and appearance features for object tracking.
 
+    ??? example
+        ```python
+        import numpy as np
+        import supervision as sv
+        from rfdetr import RFDETRBase
+        from rfdetr.util.coco_classes import COCO_CLASSES
+
+        from trackers import DeepSORTFeatureExtractor, DeepSORTTracker
+
+        model = RFDETRBase(device="mps")
+        feature_extractor = DeepSORTFeatureExtractor(model_path="model_state_dict.pth")
+        tracker = DeepSORTTracker(feature_extractor=feature_extractor)
+        box_annotator = sv.BoxAnnotator()
+        label_annotator = sv.LabelAnnotator()
+
+
+        def callback(frame: np.ndarray, _: int):
+            detections = model.predict(frame, threshold=0.5)
+            detections = tracker.update(frame, detections)
+            labels = [
+                f"#{tracker_id} {COCO_CLASSES[class_id]} {confidence:.2f}"
+                for tracker_id, class_id, confidence in zip(
+                    detections.tracker_id, detections.class_id, detections.confidence
+                )
+            ]
+            annotated_image = frame.copy()
+            annotated_image = box_annotator.annotate(annotated_image, detections)
+            annotated_image = label_annotator.annotate(
+                annotated_image, detections, labels
+            )
+
+            return annotated_image
+
+
+        sv.process_video(
+            source_path="data/people.mp4",
+            target_path="data/out.mp4",
+            callback=callback,
+            max_frames=100,
+        )
+        ```
+
     Attributes:
         feature_extractor (FeatureExtractor): Model to extract appearance features.
         appearance_threshold (float): Cosine distance threshold for appearance matching.
