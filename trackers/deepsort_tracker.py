@@ -13,17 +13,14 @@ from trackers.sort_tracker import (
 
 
 class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
-    def __init__(self, bbox, feature=None, max_features=100):
+    def __init__(self, bbox, feature=None):
         super().__init__(bbox)
         self.features = []
         if feature is not None:
             self.features.append(feature)
-        self.max_features = max_features
 
     def update_feature(self, feature):
         self.features.append(feature)
-        if len(self.features) > self.max_features:
-            self.features.pop(0)
 
     def get_feature(self):
         """
@@ -249,14 +246,14 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
                     feature = detection_features[detection_idx]
 
                 new_tracker = DeepSORTKalmanBoxTracker(
-                    detection_boxes[detection_idx], feature
+                    bbox=detection_boxes[detection_idx], feature=feature
                 )
                 self.trackers.append(new_tracker)
 
         self.trackers = get_alive_trackers(
-            self.maximum_frames_without_update,
-            self.minimum_consecutive_frames,
-            self.trackers,
+            trackers=self.trackers,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
         )
 
     def update(self, frame: np.ndarray, detections: sv.Detections) -> sv.Detections:
@@ -285,7 +282,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             tracker.predict()
 
         # Build IOU cost matrix between detections and predicted bounding boxes
-        iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
+        iou_matrix = get_iou_matrix(
+            trackers=self.trackers, detection_boxes=detection_boxes
+        )
 
         # Associate detections to trackers based on IOU
         matched_indices, _, unmatched_detections = self._get_associated_indices(
@@ -305,11 +304,11 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         # Update detections with tracker IDs
         updated_detections = update_detections_with_track_ids(
-            self.trackers,
-            detections,
-            detection_boxes,
-            self.minimum_consecutive_frames,
-            self.minimum_iou_threshold,
+            trackers=self.trackers,
+            detections=detections,
+            detection_boxes=detection_boxes,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
+            minimum_iou_threshold=self.minimum_iou_threshold,
         )
 
         return updated_detections
