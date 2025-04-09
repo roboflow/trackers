@@ -2,8 +2,14 @@ import numpy as np
 import supervision as sv
 from scipy.spatial.distance import cdist
 
+from trackers.base import BaseTrackerWithFeatures
 from trackers.models.deepsort_feature_extractor import DeepSORTFeatureExtractor
-from trackers.sort_tracker import KalmanBoxTracker, SORTTracker, get_iou_matrix
+from trackers.sort_tracker import (
+    KalmanBoxTracker,
+    get_alive_trackers,
+    get_iou_matrix,
+    update_detections_with_track_ids,
+)
 
 
 class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
@@ -31,7 +37,7 @@ class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
         return None
 
 
-class DeepSORTTracker(SORTTracker):
+class DeepSORTTracker(BaseTrackerWithFeatures):
     """
     DeepSORT implementation that extends SORTTracker with appearance features.
 
@@ -110,17 +116,21 @@ class DeepSORTTracker(SORTTracker):
         appearance_threshold=0.7,
         appearance_weight=0.5,
     ):
-        super().__init__(
-            lost_track_buffer=lost_track_buffer,
-            frame_rate=frame_rate,
-            track_activation_threshold=track_activation_threshold,
-            minimum_consecutive_frames=minimum_consecutive_frames,
-            minimum_iou_threshold=minimum_iou_threshold,
-        )
-
         self.feature_extractor = feature_extractor
+        self.lost_track_buffer = lost_track_buffer
+        self.frame_rate = frame_rate
+        self.minimum_consecutive_frames = minimum_consecutive_frames
+        self.minimum_iou_threshold = minimum_iou_threshold
+        self.track_activation_threshold = track_activation_threshold
         self.appearance_threshold = appearance_threshold
         self.appearance_weight = appearance_weight
+
+        # Calculate maximum frames without update based on lost_track_buffer and
+        # frame_rate. This scales the buffer based on the frame rate to ensure
+        # consistent time-based tracking across different frame rates.
+        self.maximum_frames_without_update = int(
+            self.frame_rate / 30.0 * self.lost_track_buffer
+        )
 
         self.trackers = []
 
@@ -243,7 +253,11 @@ class DeepSORTTracker(SORTTracker):
                 )
                 self.trackers.append(new_tracker)
 
-        self.trackers = self._get_alive_trackers()
+        self.trackers = get_alive_trackers(
+            self.maximum_frames_without_update,
+            self.minimum_consecutive_frames,
+            self.trackers,
+        )
 
     def update(self, frame: np.ndarray, detections: sv.Detections) -> sv.Detections:
         """
@@ -290,8 +304,12 @@ class DeepSORTTracker(SORTTracker):
         )
 
         # Update detections with tracker IDs
-        updated_detections = self._update_detections_with_track_ids(
-            detections, detection_boxes
+        updated_detections = update_detections_with_track_ids(
+            self.trackers,
+            detections,
+            detection_boxes,
+            self.minimum_consecutive_frames,
+            self.minimum_iou_threshold,
         )
 
         return updated_detections
