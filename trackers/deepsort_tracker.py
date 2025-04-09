@@ -96,7 +96,6 @@ class DeepSORTTracker(SORTTracker):
         minimum_iou_threshold (float): IOU threshold for association.
         appearance_threshold (float): Cosine distance threshold for appearance matching.
         appearance_weight (float): Weight for appearance distance (0-1).
-        device (str, optional): Device to run the feature extractor on.
     """
 
     def __init__(
@@ -109,7 +108,6 @@ class DeepSORTTracker(SORTTracker):
         minimum_iou_threshold=0.3,
         appearance_threshold=0.7,
         appearance_weight=0.5,
-        device="mps",
     ):
         super().__init__(
             lost_track_buffer=lost_track_buffer,
@@ -139,12 +137,6 @@ class DeepSORTTracker(SORTTracker):
             return np.zeros((len(self.trackers), len(detection_features)))
 
         track_features = np.array([t.get_feature() for t in self.trackers])
-
-        for i, feature in enumerate(track_features):
-            if feature is None:
-                # Create a dummy feature with high distance to all detections
-                track_features[i] = np.zeros_like(detection_features[0])
-
         distance_matrix = cdist(track_features, detection_features, metric="cosine")
         distance_matrix = np.clip(distance_matrix, 0, 1)
 
@@ -165,6 +157,7 @@ class DeepSORTTracker(SORTTracker):
         combined_dist = (
             1 - self.appearance_weight
         ) * iou_distance + self.appearance_weight * appearance_dist_matrix
+
         # Set high distance for IOU below threshold
         mask = iou_matrix < self.minimum_iou_threshold
         combined_dist[mask] = 1.0
@@ -264,30 +257,38 @@ class DeepSORTTracker(SORTTracker):
         if len(self.trackers) == 0 and len(detections) == 0:
             return detections
 
+        # Convert detections to a (N x 4) array (x1, y1, x2, y2)
         detection_boxes = (
             detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
         )
 
-        detection_features = np.array([])
+        # Extract appearance features from the frame and detections
         detection_features = self.feature_extractor.extract_features(frame, detections)
 
+        # Predict new locations for existing trackers
         for tracker in self.trackers:
             tracker.predict()
 
+        # Build IOU cost matrix between detections and predicted bounding boxes
         iou_matrix = self._get_iou_matrix(detection_boxes)
+
+        # Associate detections to trackers based on IOU
         matched_indices, _, unmatched_detections = self._get_associated_indices(
             iou_matrix, detection_features
         )
 
+        # Update matched trackers with assigned detections
         for row, col in matched_indices:
             self.trackers[row].update(detection_boxes[col])
             if detection_features is not None and len(detection_features) > col:
                 self.trackers[row].update_feature(detection_features[col])
 
+        # Create new trackers for unmatched detections with confidence above threshold
         self._spawn_new_trackers(
             detections, detection_boxes, detection_features, unmatched_detections
         )
 
+        # Update detections with tracker IDs
         updated_detections = self._update_detections_with_track_ids(
             detections, detection_boxes
         )
