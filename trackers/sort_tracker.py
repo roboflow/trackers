@@ -137,30 +137,30 @@ class KalmanBoxTracker:
         ).reshape(-1)
 
 
-def get_iou_matrix(trackers: list[KalmanBoxTracker], detection_boxes: np.ndarray) -> np.ndarray:
-        """
-        Build IOU cost matrix between detections and predicted bounding boxes
+def get_iou_matrix(
+    trackers: list[KalmanBoxTracker], detection_boxes: np.ndarray
+) -> np.ndarray:
+    """
+    Build IOU cost matrix between detections and predicted bounding boxes
 
-        Args:
-            detection_boxes (np.ndarray): Detected bounding boxes in the
-                form [x1, y1, x2, y2].
+    Args:
+        detection_boxes (np.ndarray): Detected bounding boxes in the
+            form [x1, y1, x2, y2].
 
-        Returns:
-            np.ndarray: IOU cost matrix.
-        """
-        predicted_boxes = np.array([t.get_state_bbox() for t in trackers])
-        if len(predicted_boxes) == 0 and len(trackers) > 0:
-            # Handle case where get_state_bbox might return empty array
-            predicted_boxes = np.zeros((len(trackers), 4), dtype=np.float32)
+    Returns:
+        np.ndarray: IOU cost matrix.
+    """
+    predicted_boxes = np.array([t.get_state_bbox() for t in trackers])
+    if len(predicted_boxes) == 0 and len(trackers) > 0:
+        # Handle case where get_state_bbox might return empty array
+        predicted_boxes = np.zeros((len(trackers), 4), dtype=np.float32)
 
-        if len(trackers) > 0 and len(detection_boxes) > 0:
-            iou_matrix = box_iou_batch(predicted_boxes, detection_boxes)
-        else:
-            iou_matrix = np.zeros(
-                (len(trackers), len(detection_boxes)), dtype=np.float32
-            )
+    if len(trackers) > 0 and len(detection_boxes) > 0:
+        iou_matrix = box_iou_batch(predicted_boxes, detection_boxes)
+    else:
+        iou_matrix = np.zeros((len(trackers), len(detection_boxes)), dtype=np.float32)
 
-        return iou_matrix
+    return iou_matrix
 
 
 class SORTTracker(BaseTracker):
