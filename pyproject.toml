@@ -8,6 +8,8 @@ dependencies = [
     "numpy>=2.0.2",
     "scipy>=1.13.1",
     "supervision>=0.25.1",
+    "torch>=2.6.0",
+    "torchvision>=0.21.0",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +33,43 @@ docs = [
     "mkdocstrings-python>=1.16.10",
     "mike>=2.1.3",
 ]
+
+cpu = [
+    "torch>=2.6.0",
+    "torchvision>=0.21.0",
+]
+cu124 = [
+    "torch>=2.6.0",
+    "torchvision>=0.21.0",
+]
+
+[tool.uv]
+conflicts = [
+    [
+        { extra = "cpu" },
+        { extra = "cu124" },
+    ],
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu124", extra = "cu124" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu124", extra = "cu124" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]
