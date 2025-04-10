@@ -19,6 +19,16 @@ def get_alive_trackers(
     Remove dead or immature lost tracklets and get alive trackers
     that are within maximum_frames_without_update AND (it's mature OR
     it was just updated).
+
+    Args:
+        trackers (Sequence[KalmanBoxTrackerType]): List of KalmanBoxTracker objects.
+        minimum_consecutive_frames (int): Number of consecutive frames that an object
+            must be tracked before it is considered a 'valid' track.
+        maximum_frames_without_update (int): Maximum number of frames without update
+            before a track is considered dead.
+
+    Returns:
+        List[KalmanBoxTrackerType]: List of alive trackers.
     """
     alive_trackers = []
     for tracker in trackers:
@@ -70,18 +80,14 @@ def update_detections_with_track_ids(
     it is assigned an ID to the detection that just updated it.
 
     Args:
-        trackers (Sequence[KalmanBoxTracker]): List of KalmanBoxTracker objects.
+        trackers (Sequence[SORTKalmanBoxTracker]): List of SORTKalmanBoxTracker objects.
         detections (sv.Detections): The latest set of object detections.
         detection_boxes (np.ndarray): Detected bounding boxes in the
             form [x1, y1, x2, y2].
         minimum_iou_threshold (float): IOU threshold for associating detections to
             existing tracks.
         minimum_consecutive_frames (int): Number of consecutive frames that an object
-            must be tracked before it is considered a 'valid' track. Increasing
-            `minimum_consecutive_frames` prevents the creation of accidental tracks
-            from false detection or double detection, but risks missing shorter
-            tracks. Before the tracker is considered valid, it will be assigned
-            `-1` as its `tracker_id`.
+            must be tracked before it is considered a 'valid' track.
 
     Returns:
         sv.Detections: A copy of the detections with `tracker_id` set

@@ -52,12 +52,11 @@ markdown_extensions:
 
 nav:
   - Home: 'index.md'
-  - Trackers:
-    - SORTTracker: 'trackers/sort_tracker.md'
-    - DeepSORTTracker: 'trackers/deepsort_tracker.md'
-  - Models:
-    - DeepSORTBackbone: 'models/deepsort_backbone.md'
-    - SiameseNetworkModel: 'models/siamese_network.md'
-    - DeepSORTFeatureExtractor: 'models/deepsort_feature_extractor.md'
+  - Core:
+    - SORTTracker: 'trackers/core/sort_tracker.md'
+    - DeepSORTTracker: 'trackers/core/deepsort_tracker.md'
+  - Utils:
+    - SORT Utils: 'trackers/utils/sort_utils.md'
+    - PyTorch Utils: 'trackers/utils/torch_utils.md'
 
 repo_url: https://github.com/roboflow/trackers
