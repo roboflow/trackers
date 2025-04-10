@@ -171,12 +171,7 @@ class DeepSORTFeatureExtractor:
         features = []
         with torch.no_grad():
             for box in detections.xyxy:
-                x1, y1, x2, y2 = box.astype(int)
-                x1 = max(0, x1)
-                y1 = max(0, y1)
-                x2 = min(frame.shape[1], x2)
-                y2 = min(frame.shape[0], y2)
-                crop = frame[y1:y2, x1:x2]
+                crop = sv.crop_image(image=frame, xyxy=[*box.astype(int)])
                 tensor = self.transform(crop).unsqueeze(0).to(self.device)
                 feature = self.model(tensor).cpu().numpy().flatten()
                 features.append(feature)
