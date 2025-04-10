@@ -7,11 +7,7 @@ requires-python = ">=3.9"
 dependencies = [
     "firerequests>=0.1.2",
     "numpy>=2.0.2",
-    "scipy>=1.13.1",
     "supervision>=0.25.1",
-    "torch>=2.6.0",
-    "torchvision>=0.21.0",
-    "validators>=0.34.0",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +39,11 @@ cpu = [
 cu124 = [
     "torch>=2.6.0",
     "torchvision>=0.21.0",
+]
+
+deepsort = [
+    "scipy>=1.13.1",
+    "validators>=0.34.0",
 ]
 
 [tool.uv]
