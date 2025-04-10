@@ -5,9 +5,9 @@ import numpy as np
 import supervision as sv
 from supervision.detection.utils import box_iou_batch
 
-from trackers.core.sort.kalman_box_tracker import KalmanBoxTracker
+from trackers.core.sort.kalman_box_tracker import SORTKalmanBoxTracker
 
-KalmanBoxTrackerType = TypeVar("KalmanBoxTrackerType", bound=KalmanBoxTracker)
+KalmanBoxTrackerType = TypeVar("KalmanBoxTrackerType", bound=SORTKalmanBoxTracker)
 
 
 def get_alive_trackers(
@@ -32,7 +32,7 @@ def get_alive_trackers(
 
 
 def get_iou_matrix(
-    trackers: Sequence[KalmanBoxTracker], detection_boxes: np.ndarray
+    trackers: Sequence[SORTKalmanBoxTracker], detection_boxes: np.ndarray
 ) -> np.ndarray:
     """
     Build IOU cost matrix between detections and predicted bounding boxes
@@ -58,7 +58,7 @@ def get_iou_matrix(
 
 
 def update_detections_with_track_ids(
-    trackers: Sequence[KalmanBoxTracker],
+    trackers: Sequence[SORTKalmanBoxTracker],
     detections: sv.Detections,
     detection_boxes: np.ndarray,
     minimum_iou_threshold: float,
