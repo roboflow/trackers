@@ -8,16 +8,6 @@
 
 ::: trackers.core.deepsort.kalman_box_tracker.DeepSORTKalmanBoxTracker
 
-## DeepSORT Feature Extractor
-
-### `DeepSORTFeatureExtractor`
+## `DeepSORTFeatureExtractor`
 
 ::: trackers.core.deepsort.feature_extractor.DeepSORTFeatureExtractor
-
-### `SiameseNetworkModel`
-
-::: trackers.core.deepsort.feature_extractor.SiameseNetworkModel
-
-### `DeepSORTBackbone`
-
-::: trackers.core.deepsort.feature_extractor.DeepSORTBackbone
