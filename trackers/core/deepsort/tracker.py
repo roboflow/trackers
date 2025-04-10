@@ -3,8 +3,8 @@ import supervision as sv
 from scipy.spatial.distance import cdist
 
 from trackers.base import BaseTracker
+from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
 from trackers.core.deepsort.kalman_box_tracker import DeepSORTKalmanBoxTracker
-from trackers.models.deepsort_feature_extractor import DeepSORTFeatureExtractor
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
@@ -32,7 +32,7 @@ class DeepSORTTracker(BaseTracker):
         from rfdetr.util.coco_classes import COCO_CLASSES
 
         from trackers.core.deepsort.tracker import DeepSORTTracker
-        from trackers.models.deepsort_feature_extractor import DeepSORTFeatureExtractor
+        from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
 
         model = RFDETRBase(device="mps")
         feature_extractor = DeepSORTFeatureExtractor(model_path="model_state_dict.pth")
