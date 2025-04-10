@@ -1,47 +1,17 @@
-from typing import Optional, Union
-
 import numpy as np
 import supervision as sv
 from scipy.spatial.distance import cdist
 
-from trackers.base import BaseTrackerWithFeatures
+from trackers.base import BaseTracker
 from trackers.models.deepsort_feature_extractor import DeepSORTFeatureExtractor
 from trackers.sort_tracker import (
-    KalmanBoxTracker,
     get_alive_trackers,
     get_iou_matrix,
     update_detections_with_track_ids,
 )
 
 
-class DeepSORTKalmanBoxTracker(KalmanBoxTracker):
-    def __init__(self, bbox: np.ndarray, feature: Optional[np.ndarray] = None):
-        super().__init__(bbox)
-        self.features: list[np.ndarray] = []
-        if feature is not None:
-            self.features.append(feature)
-
-    def update_feature(self, feature: np.ndarray):
-        self.features.append(feature)
-
-    def get_feature(self) -> Union[np.ndarray, None]:
-        """
-        Get the mean feature vector for this tracker.
-
-        Returns:
-            np.ndarray: Mean feature vector.
-        """
-        if len(self.features) > 0:
-            # Return the mean of all features, thus (in theory) capturing the
-            # "average appearance" of the object, which should be more robust
-            # to minor appearance changes. Otherwise, the last feature can
-            # also be returned like the following:
-            # return self.features[-1]
-            return np.mean(self.features, axis=0)
-        return None
-
-
-class DeepSORTTracker(BaseTrackerWithFeatures):
+class DeepSORTTracker(BaseTracker):
     """
     DeepSORT implementation that extends SORTTracker with appearance features.
     The DeepSORT algorithm incorporates both motion (IOU + Kalman filter) and
@@ -71,7 +41,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         def callback(frame: np.ndarray, _: int):
             detections = model.predict(frame, threshold=0.5)
-            detections = tracker.update(frame, detections)
+            detections = tracker.update(detections, frame)
             labels = [
                 f"#{tracker_id} {COCO_CLASSES[class_id]} {confidence:.2f}"
                 for tracker_id, class_id, confidence in zip(
@@ -302,11 +272,11 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             minimum_consecutive_frames=self.minimum_consecutive_frames,
         )
 
-    def update(self, frame: np.ndarray, detections: sv.Detections) -> sv.Detections:
+    def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
         """
         Args:
-            frame (np.ndarray): The current video frame.
             detections (sv.Detections): The latest set of object detections.
+            frame (np.ndarray): The current video frame.
 
         Returns:
             sv.Detections: A copy of the detections with `tracker_id` set

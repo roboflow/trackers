@@ -5,6 +5,8 @@ description = "A unified library for object tracking"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "numpy>=2.0.2",
+    "scipy>=1.13.1",
     "supervision>=0.25.1",
 ]
 

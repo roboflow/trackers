@@ -3286,6 +3286,10 @@ name = "trackers"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "numpy", version = "2.2.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "scipy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "scipy", version = "1.15.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "supervision" },
 ]
 
@@ -3323,9 +3327,11 @@ requires-dist = [
     { name = "mkdocstrings", marker = "extra == 'docs'", specifier = ">=0.29.1" },
     { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=1.16.10" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15.0" },
+    { name = "numpy", specifier = ">=2.0.2" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.3" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.9" },
+    { name = "scipy", specifier = ">=1.13.1" },
     { name = "supervision", specifier = ">=0.25.1" },
     { name = "uv", marker = "extra == 'dev'", specifier = ">=0.4.20" },
 ]
