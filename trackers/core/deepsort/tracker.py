@@ -5,7 +5,7 @@ import supervision as sv
 import torch
 from scipy.spatial.distance import cdist
 
-from trackers.base import BaseTracker
+from trackers.base import BaseTrackerWithFeatures
 from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
 from trackers.core.deepsort.kalman_box_tracker import DeepSORTKalmanBoxTracker
 from trackers.utils.sort_utils import (
@@ -15,7 +15,7 @@ from trackers.utils.sort_utils import (
 )
 
 
-class DeepSORTTracker(BaseTracker):
+class DeepSORTTracker(BaseTrackerWithFeatures):
     """
     DeepSORT implementation that extends SORTTracker with appearance features.
     The DeepSORT algorithm incorporates both motion (IOU + Kalman filter) and
@@ -64,6 +64,51 @@ class DeepSORTTracker(BaseTracker):
 
         sv.process_video(
             source_path="data/people.mp4",
+            target_path="data/out.mp4",
+            callback=callback,
+            max_frames=100,
+        )
+        ```
+    
+    !!! example "Using custom weights for the Feature Extractor"
+        ```python
+        import numpy as np
+        import supervision as sv
+        from rfdetr import RFDETRBase
+        from rfdetr.util.coco_classes import COCO_CLASSES
+
+        from trackers import DeepSORTTracker, DeepSORTFeatureExtractor
+
+        model = RFDETRBase(device="mps")
+        tracker = DeepSORTTracker(
+            feature_extractor=DeepSORTFeatureExtractor(
+                model_or_checkpoint_path="deepsort_feature_extractor_weights.pth"
+            )
+        )
+        box_annotator = sv.BoxAnnotator()
+        label_annotator = sv.LabelAnnotator()
+
+
+        def callback(frame: np.ndarray, _: int):
+            detections = model.predict(frame, threshold=0.5)
+            detections = tracker.update(detections, frame)
+            labels = [
+                f"#{tracker_id} {COCO_CLASSES[class_id]} {confidence:.2f}"
+                for tracker_id, class_id, confidence in zip(
+                    detections.tracker_id, detections.class_id, detections.confidence
+                )
+            ]
+            annotated_image = frame.copy()
+            annotated_image = box_annotator.annotate(annotated_image, detections)
+            annotated_image = label_annotator.annotate(
+                annotated_image, detections, labels
+            )
+
+            return annotated_image
+
+
+        sv.process_video(
+            source_path="data/traffic_video.mp4",
             target_path="data/out.mp4",
             callback=callback,
             max_frames=100,

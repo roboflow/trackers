@@ -12,5 +12,5 @@ class BaseTracker(ABC):
 
 class BaseTrackerWithFeatures(ABC):
     @abstractmethod
-    def update(self, frame: np.ndarray, detections: sv.Detections) -> sv.Detections:
+    def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
         pass
