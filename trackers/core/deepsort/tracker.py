@@ -69,7 +69,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             max_frames=100,
         )
         ```
-    
+
     !!! example "Using custom weights for the Feature Extractor"
         ```python
         import numpy as np
