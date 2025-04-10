@@ -14,8 +14,6 @@ from trackers.utils.sort_utils import (
     update_detections_with_track_ids,
 )
 
-FeatureExtractorType = Optional[Union[DeepSORTFeatureExtractor, torch.nn.Module, str]]
-
 
 class DeepSORTTracker(BaseTracker):
     """
@@ -28,6 +26,8 @@ class DeepSORTTracker(BaseTracker):
         - [SIMPLE ONLINE AND REALTIME TRACKING WITH A DEEP ASSOCIATION METRIC](https://arxiv.org/pdf/1703.07402)
         - [nwojke/deep_sort](https://github.com/nwojke/deep_sort)
         - [abhyantrika/nanonets_object_tracking][https://github.com/abhyantrika/nanonets_object_tracking]
+        - Default feature extractor model is a modfied version of the `model640.pt` checkpoint from
+            [abhyantrika/nanonets_object_tracking][https://github.com/abhyantrika/nanonets_object_tracking].
 
     ??? example
         ```python
@@ -37,11 +37,9 @@ class DeepSORTTracker(BaseTracker):
         from rfdetr.util.coco_classes import COCO_CLASSES
 
         from trackers.core.deepsort.tracker import DeepSORTTracker
-        from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
 
         model = RFDETRBase(device="mps")
-        feature_extractor = DeepSORTFeatureExtractor(model_path="model_state_dict.pth")
-        tracker = DeepSORTTracker(feature_extractor=feature_extractor)
+        tracker = DeepSORTTracker()
         box_annotator = sv.BoxAnnotator()
         label_annotator = sv.LabelAnnotator()
 
@@ -73,14 +71,19 @@ class DeepSORTTracker(BaseTracker):
         ```
 
     Attributes:
-        feature_extractor (FeatureExtractor): Model to extract appearance features.
-        appearance_threshold (float): Cosine distance threshold for appearance matching.
+        feature_extractor (DeepSORTFeatureExtractor): Model to extract appearance
+            features.
+        appearance_threshold (float): Cosine distance threshold for appearance
+            matching.
         appearance_weight (float): Weight for appearance distance in the
             combined distance.
 
     Args:
-        feature_extractor (DeepSORTFeatureExtractor): An instance of
-            `DeepSORTFeatureExtractor` to extract appearance features.
+        feature_extractor (Optional[Union[DeepSORTFeatureExtractor, torch.nn.Module, str]]):
+            A feature extractor model checkpoint URL, model checkpoint path, or model
+            instance or an instance of `DeepSORTFeatureExtractor` to extract
+            appearance features. By default, the a default model checkpoint is downloaded
+            and loaded.
         device (Optional[str]): Device to run the model on.
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
@@ -108,11 +111,13 @@ class DeepSORTTracker(BaseTracker):
             'kulczynski1', 'mahalanobis', 'matching', 'minkowski',
             'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener',
             'sokalsneath', 'sqeuclidean', 'yule'.
-    """
+    """  # noqa: E501
 
     def __init__(
         self,
-        feature_extractor: FeatureExtractorType = None,
+        feature_extractor: Optional[
+            Union[DeepSORTFeatureExtractor, torch.nn.Module, str]
+        ] = None,
         device: Optional[str] = None,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
@@ -124,19 +129,16 @@ class DeepSORTTracker(BaseTracker):
         distance_metric: str = "cosine",
     ):
         if feature_extractor is None:
-            self.feature_extractor = DeepSORTFeatureExtractor(
-                model_or_checkpoint_path="deepsort_feature_extractor_weights.pth",
-                device=device or "auto",
-            )
+            self.feature_extractor = DeepSORTFeatureExtractor(device=device)
         elif isinstance(feature_extractor, str):
             self.feature_extractor = DeepSORTFeatureExtractor(
                 model_or_checkpoint_path=feature_extractor,
-                device=device or "auto",
+                device=device,
             )
         elif isinstance(feature_extractor, torch.nn.Module):
             self.feature_extractor = DeepSORTFeatureExtractor(
                 model_or_checkpoint_path=feature_extractor,
-                device=device or "auto",
+                device=device,
             )
         else:
             self.feature_extractor = feature_extractor

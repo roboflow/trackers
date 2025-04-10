@@ -5,8 +5,12 @@ import supervision as sv
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
+import validators
+from firerequests import FireRequests
 
 from trackers.utils.torch_utils import parse_device_spec
+
+DEFAULT_FEATURE_EXTRACTOR_CHECKPOINT_URL = "https://storage.googleapis.com/com-roboflow-marketing/trackers/models/deepsort_feature_extractor_weights.pth"
 
 
 class DeepSORTBackbone(nn.Module):
@@ -98,15 +102,24 @@ class DeepSORTFeatureExtractor:
 
     def __init__(
         self,
-        model_or_checkpoint_path: Union[str, torch.nn.Module],
+        model_or_checkpoint_path: Optional[Union[str, torch.nn.Module]] = None,
         device: Optional[str] = "auto",
         input_size: Tuple[int, int] = (128, 128),
     ):
         self.device = parse_device_spec(device or "auto")
         self.input_size = input_size
 
-        if isinstance(model_or_checkpoint_path, str):
-            self._load_model_from_path(model_or_checkpoint_path)
+        if model_or_checkpoint_path is None:
+            checkpoint_path = FireRequests().download(
+                urls=DEFAULT_FEATURE_EXTRACTOR_CHECKPOINT_URL
+            )[0]
+            self._load_model_from_path(checkpoint_path)
+        elif isinstance(model_or_checkpoint_path, str):
+            if validators.url(model_or_checkpoint_path):
+                checkpoint_path = FireRequests().download(model_or_checkpoint_path)[0]
+                self._load_model_from_path(checkpoint_path)
+            else:
+                self._load_model_from_path(model_or_checkpoint_path)
         else:
             self.model = model_or_checkpoint_path
 
