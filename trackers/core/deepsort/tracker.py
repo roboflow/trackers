@@ -81,6 +81,7 @@ class DeepSORTTracker(BaseTracker):
     Args:
         feature_extractor (DeepSORTFeatureExtractor): An instance of
             `DeepSORTFeatureExtractor` to extract appearance features.
+        device (Optional[str]): Device to run the model on.
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
             improving tracking through occlusions, but may increase the possibility
@@ -112,6 +113,7 @@ class DeepSORTTracker(BaseTracker):
     def __init__(
         self,
         feature_extractor: FeatureExtractorType = None,
+        device: Optional[str] = None,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.25,
@@ -121,12 +123,23 @@ class DeepSORTTracker(BaseTracker):
         appearance_weight: float = 0.5,
         distance_metric: str = "cosine",
     ):
-        self.feature_extractor = feature_extractor
-        if self.feature_extractor is None:
+        if feature_extractor is None:
             self.feature_extractor = DeepSORTFeatureExtractor(
                 model_or_checkpoint_path="deepsort_feature_extractor_weights.pth",
-                input_size=(128, 128),
+                device=device or "auto",
             )
+        elif isinstance(feature_extractor, str):
+            self.feature_extractor = DeepSORTFeatureExtractor(
+                model_or_checkpoint_path=feature_extractor,
+                device=device or "auto",
+            )
+        elif isinstance(feature_extractor, torch.nn.Module):
+            self.feature_extractor = DeepSORTFeatureExtractor(
+                model_or_checkpoint_path=feature_extractor,
+                device=device or "auto",
+            )
+        else:
+            self.feature_extractor = feature_extractor
 
         self.lost_track_buffer = lost_track_buffer
         self.frame_rate = frame_rate
