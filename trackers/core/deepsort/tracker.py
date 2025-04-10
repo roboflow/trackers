@@ -1,5 +1,8 @@
+from typing import Optional, Union
+
 import numpy as np
 import supervision as sv
+import torch
 from scipy.spatial.distance import cdist
 
 from trackers.base import BaseTracker
@@ -10,6 +13,8 @@ from trackers.utils.sort_utils import (
     get_iou_matrix,
     update_detections_with_track_ids,
 )
+
+FeatureExtractorType = Optional[Union[DeepSORTFeatureExtractor, torch.nn.Module, str]]
 
 
 class DeepSORTTracker(BaseTracker):
@@ -106,7 +111,7 @@ class DeepSORTTracker(BaseTracker):
 
     def __init__(
         self,
-        feature_extractor: DeepSORTFeatureExtractor,
+        feature_extractor: FeatureExtractorType = None,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.25,
@@ -117,6 +122,12 @@ class DeepSORTTracker(BaseTracker):
         distance_metric: str = "cosine",
     ):
         self.feature_extractor = feature_extractor
+        if self.feature_extractor is None:
+            self.feature_extractor = DeepSORTFeatureExtractor(
+                model_or_checkpoint_path="deepsort_feature_extractor_weights.pth",
+                input_size=(128, 128),
+            )
+
         self.lost_track_buffer = lost_track_buffer
         self.frame_rate = frame_rate
         self.minimum_consecutive_frames = minimum_consecutive_frames

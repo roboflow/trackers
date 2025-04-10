@@ -1,10 +1,12 @@
-from typing import Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import supervision as sv
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
+
+from trackers.utils.torch_utils import parse_device_spec
 
 
 class DeepSORTBackbone(nn.Module):
@@ -88,22 +90,25 @@ class DeepSORTFeatureExtractor:
     extracts appearance features from detection crops.
 
     Args:
-        model_path (str): Path to the PyTorch model checkpoint.
+        model_or_checkpoint_path (Union[str, torch.nn.Module]): Path to the PyTorch
+            model checkpoint or the model itself.
         device (str): Device to run the model on.
-        input_size (Tuple[int, int]): Size to which the input
-            images are resized.
+        input_size (Tuple[int, int]): Size to which the input images are resized.
     """
 
     def __init__(
         self,
-        model_path: str,
-        device: str = "mps",
+        model_or_checkpoint_path: Union[str, torch.nn.Module],
+        device: Optional[str] = "auto",
         input_size: Tuple[int, int] = (128, 128),
     ):
-        self.device = torch.device(device)
+        self.device = parse_device_spec(device or "auto")
         self.input_size = input_size
 
-        self._load_model(model_path)
+        if isinstance(model_or_checkpoint_path, str):
+            self._load_model_from_path(model_or_checkpoint_path)
+        else:
+            self.model = model_or_checkpoint_path
 
         self.transform = transforms.Compose(
             [
@@ -113,7 +118,7 @@ class DeepSORTFeatureExtractor:
             ]
         )
 
-    def _load_model(self, model_path):
+    def _load_model_from_path(self, model_path):
         """
         Load the PyTorch model from the given path.
 
