@@ -94,7 +94,7 @@ class DeepSORTFeatureExtractor:
     extracts appearance features from detection crops.
 
     Args:
-        model_or_checkpoint_path (Union[str, torch.nn.Module]): Path to the PyTorch
+        model_or_checkpoint_path (Union[str, torch.nn.Module]): Path/URL to the PyTorch
             model checkpoint or the model itself.
         device (str): Device to run the model on.
         input_size (Tuple[int, int]): Size to which the input images are resized.
@@ -109,6 +109,19 @@ class DeepSORTFeatureExtractor:
         self.device = parse_device_spec(device or "auto")
         self.input_size = input_size
 
+        self._initialize_model(model_or_checkpoint_path)
+
+        self.transform = transforms.Compose(
+            [
+                transforms.ToPILImage(),
+                transforms.Resize(self.input_size),
+                transforms.ToTensor(),
+            ]
+        )
+
+    def _initialize_model(
+        self, model_or_checkpoint_path: Union[str, torch.nn.Module, None]
+    ):
         if model_or_checkpoint_path is None:
             checkpoint_path = FireRequests().download(
                 urls=DEFAULT_FEATURE_EXTRACTOR_CHECKPOINT_URL
@@ -122,14 +135,6 @@ class DeepSORTFeatureExtractor:
                 self._load_model_from_path(model_or_checkpoint_path)
         else:
             self.model = model_or_checkpoint_path
-
-        self.transform = transforms.Compose(
-            [
-                transforms.ToPILImage(),
-                transforms.Resize(self.input_size),
-                transforms.ToTensor(),
-            ]
-        )
 
     def _load_model_from_path(self, model_path):
         """
