@@ -28,10 +28,16 @@ class SORTKalmanBoxTracker:
 
     count = 0
 
+    @classmethod
+    def get_next_id(cls) -> int:
+        next_id = cls.count
+        cls.count += 1
+        return next_id
+
     def __init__(self, bbox: np.ndarray) -> None:
-        # Each track gets a unique ID
-        self.id = SORTKalmanBoxTracker.count
-        SORTKalmanBoxTracker.count += 1
+        # Initialize with a temporary ID of -1
+        # Will be assigned a real ID when the track is considered mature
+        self.id = -1
 
         # Number of hits indicates how many times the object has been
         # updated successfully
