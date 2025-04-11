@@ -27,7 +27,7 @@ class SORTKalmanBoxTracker:
     """
 
     count = 0
-    
+
     @classmethod
     def get_next_id(cls) -> int:
         next_id = cls.count
