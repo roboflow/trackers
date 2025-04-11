@@ -52,7 +52,11 @@ markdown_extensions:
 
 nav:
   - Home: 'index.md'
-  - Trackers:
-    - SORTTracker: 'trackers/sort_tracker.md'
+  - Core:
+    - SORTTracker: 'trackers/core/sort_tracker.md'
+    - DeepSORTTracker: 'trackers/core/deepsort_tracker.md'
+  - Utils:
+    - SORT Utils: 'trackers/utils/sort_utils.md'
+    - PyTorch Utils: 'trackers/utils/torch_utils.md'
 
 repo_url: https://github.com/roboflow/trackers
