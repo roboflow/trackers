@@ -2,6 +2,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 import supervision as sv
+import timm
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -118,6 +119,32 @@ class DeepSORTFeatureExtractor:
                 transforms.ToTensor(),
             ]
         )
+
+    @classmethod
+    def from_timm(
+        cls,
+        model_name: str,
+        device: Optional[str] = "auto",
+        input_size: Tuple[int, int] = (128, 128),
+        *args,
+        **kwargs,
+    ):
+        """
+        Create a feature extractor from a timm model.
+
+        Args:
+            model_name (str): Name of the timm model to use.
+            device (str): Device to run the model on.
+            input_size (Tuple[int, int]): Size to which the input images are resized.
+            *args: Additional arguments to pass to `timm.create_model`.
+            **kwargs: Additional keyword arguments to pass to `timm.create_model`.
+
+        Returns:
+            DeepSORTFeatureExtractor: A new instance of DeepSORTFeatureExtractor.
+        """
+        model = timm.create_model(model_name, *args, **kwargs)
+        siamese_network_model = SiameseNetworkModel(backbone_model=model)
+        return cls(siamese_network_model, device, input_size)
 
     def _initialize_model(
         self, model_or_checkpoint_path: Union[str, torch.nn.Module, None]
