@@ -135,6 +135,8 @@ class DeepSORTFeatureExtractor:
                 self._load_model_from_path(model_or_checkpoint_path)
         else:
             self.model = model_or_checkpoint_path
+            self.model.to(self.device)
+            self.model.eval()
 
     def _load_model_from_path(self, model_path):
         """
