@@ -119,7 +119,7 @@ class DeepSORTFeatureExtractor:
                 transforms.ToTensor(),
             ]
         )
-    
+
     @classmethod
     def from_timm(
         cls,
