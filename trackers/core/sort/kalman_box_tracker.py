@@ -32,8 +32,7 @@ class SORTKalmanBoxTracker:
         # Initialize with a temporary ID of -1
         # Will be assigned a real ID when the track is considered mature
         self.id = -1
-        self.real_id = SORTKalmanBoxTracker.count
-        SORTKalmanBoxTracker.count += 1
+        self.real_id = None
 
         # Number of hits indicates how many times the object has been
         # updated successfully

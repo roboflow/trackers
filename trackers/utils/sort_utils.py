@@ -125,6 +125,10 @@ def update_detections_with_track_ids(
                 if tracker_obj.hits >= minimum_consecutive_frames:
                     # If tracker is mature but still has ID -1, assign its real ID
                     if tracker_obj.id == -1:
+                        # Assign a new ID only when the track matures
+                        if tracker_obj.real_id is None:
+                            tracker_obj.real_id = SORTKalmanBoxTracker.count
+                            SORTKalmanBoxTracker.count += 1
                         tracker_obj.id = tracker_obj.real_id
                     # Assign the tracker ID to the detection
                     final_tracker_ids[col] = tracker_obj.id
