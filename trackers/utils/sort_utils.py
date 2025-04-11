@@ -123,6 +123,10 @@ def update_detections_with_track_ids(
             # Only assign if the track is "mature" or is new but has enough hits
             if (row not in used_rows) and (col not in used_cols):
                 if tracker_obj.hits >= minimum_consecutive_frames:
+                    # If tracker is mature but still has ID -1, assign its real ID
+                    if tracker_obj.id == -1:
+                        tracker_obj.id = tracker_obj.real_id
+                    # Assign the tracker ID to the detection
                     final_tracker_ids[col] = tracker_obj.id
                 used_rows.add(row)
                 used_cols.add(col)
