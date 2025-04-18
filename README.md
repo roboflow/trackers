@@ -85,7 +85,7 @@ sv.process_video(
 )
 ```
 
-    
+
 </details>
 
 https://github.com/user-attachments/assets/910490b3-32a0-4b7f-8b84-5b50aa83e004
