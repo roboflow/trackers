@@ -104,11 +104,6 @@ class DeepSORTKalmanBoxTracker:
         Section 2.1 of the DeepSORT paper, this function computes:
             (y_i, S_i) = (H·μ_i, H·Σ_i·H^T + R)
 
-        These values are used for:
-        1. Mahalanobis gating: filtering unlikely associations
-        2. Computing the association cost matrix
-        3. Kalman gain calculation during the update step
-
         Returns:
             Tuple[np.ndarray, np.ndarray]: Projected mean (y_i) and innovation
                 covariance (S_i) for gating and association.
