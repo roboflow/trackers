@@ -58,6 +58,36 @@ sv.process_video(
 )
 ```
 
+<details>
+<summary>Ultralytics YOLO model </summary>
+
+<br>
+
+```python
+import supervision as sv
+from ultralytics import YOLO
+from trackers.sort_tracker import SORTTracker
+
+model = YOLO("yolo11n.pt")
+tracker = SORTTracker()
+annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+
+def callback(frame, _):
+    detections = model.predict(frame)[0]
+    formatted_detections = sv.Detections.from_ultralytics(detections)
+    detections = tracker.update(formatted_detections)
+    return annotator.annotate(frame, detections, detections.tracker_id)
+
+sv.process_video(
+    source_path=<SOURCE_VIDEO_PATH>,
+    target_path=<TARGET_VIDEO_PATH>,
+    callback=callback,
+)
+```
+
+    
+</details>
+
 https://github.com/user-attachments/assets/910490b3-32a0-4b7f-8b84-5b50aa83e004
 
 ## License
