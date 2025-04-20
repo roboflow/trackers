@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import supervision as sv
@@ -7,10 +7,14 @@ from scipy.spatial.distance import cdist
 
 from trackers.core.base import BaseTrackerWithFeatures
 from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
-from trackers.core.deepsort.kalman_box_tracker import DeepSORTKalmanBoxTracker
+from trackers.core.deepsort.kalman_box_tracker import (
+    MAHALANOBIS_THRESHOLD,
+    DeepSORTKalmanBoxTracker,
+)
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
+    to_xyah,
     update_detections_with_track_ids,
 )
 
@@ -152,6 +156,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             'kulczynski1', 'mahalanobis', 'matching', 'minkowski',
             'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener',
             'sokalsneath', 'sqeuclidean', 'yule'.
+        apply_kalman_gating (bool): Whether to apply Kalman gating to filter unlikely
+            track-detection associations based on Mahalanobis distance, as described
+            in Section 2.2 of the DeepSORT paper.
     """  # noqa: E501
 
     def __init__(
@@ -166,6 +173,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         appearance_threshold: float = 0.7,
         appearance_weight: float = 0.5,
         distance_metric: str = "cosine",
+        apply_kalman_gating: bool = True,
     ):
         self.feature_extractor = self._initialize_feature_extractor(
             feature_extractor, device
@@ -179,6 +187,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         self.appearance_threshold = appearance_threshold
         self.appearance_weight = appearance_weight
         self.distance_metric = distance_metric
+        self.apply_kalman_gating = apply_kalman_gating
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
@@ -198,7 +207,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         Args:
             feature_extractor: The feature extractor input, which can be a model path,
-                               a torch module, or a DeepSORTFeatureExtractor instance.
+                a torch module, or a DeepSORTFeatureExtractor instance.
             device: The device to run the model on.
 
         Returns:
@@ -266,13 +275,86 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         return combined_dist
 
+    def _match_tracks_stage(
+        self,
+        cost_matrix: np.ndarray,
+        track_indices: list,
+        detection_indices: list,
+    ) -> Tuple[List[Tuple[int, int]], List[int], List[int]]:
+        """
+        Match tracks with detections for a specific stage of the matching cascade.
+        This implements the linear assignment for a specific group of tracks based
+        on their age as described in Section 2.3 of the DeepSORT paper.
+
+        Args:
+            cost_matrix (np.ndarray): Cost matrix between tracks and detections.
+            track_indices (list): Indices of tracks to match.
+            detection_indices (list): Indices of detections to match.
+
+        Returns:
+            tuple[list[tuple[int, int]], list[int], list[int]]: Matched indices,
+                unmatched track indices, unmatched detection indices.
+        """
+        # Return empty matches if either tracks or detections are empty
+        if len(track_indices) == 0 or len(detection_indices) == 0:
+            return [], track_indices, detection_indices
+
+        # Extract the relevant submatrix from the cost matrix
+        sub_cost_matrix = cost_matrix[np.ix_(track_indices, detection_indices)]
+
+        # Apply threshold of 1.0 to mark infeasible associations
+        # Only consider associations where cost < 1.0
+        valid_mask = sub_cost_matrix < 1.0
+
+        # If no valid associations, return all as unmatched
+        if not np.any(valid_mask):
+            return [], track_indices, detection_indices
+
+        # Find all possible matches based on the threshold
+        row_indices, col_indices = np.where(valid_mask)
+
+        # Sort matches by cost (ascending)
+        indices = np.stack([row_indices, col_indices], axis=1)
+        indices = indices[np.argsort(sub_cost_matrix[row_indices, col_indices])]
+
+        matches = []
+        unmatched_tracks = list(track_indices)
+        unmatched_detections = list(detection_indices)
+
+        # Apply greedy matching (by cost) using the sorted indices
+        matched_track_indices = set()
+        matched_detection_indices = set()
+
+        for row, col in indices:
+            track_idx = track_indices[row]
+            detection_idx = detection_indices[col]
+
+            # Skip if either track or detection is already matched
+            if row in matched_track_indices or col in matched_detection_indices:
+                continue
+
+            # Add the match and mark both as matched
+            matches.append((track_idx, detection_idx))
+            matched_track_indices.add(row)
+            matched_detection_indices.add(col)
+
+            # Remove from unmatched lists
+            if track_idx in unmatched_tracks:
+                unmatched_tracks.remove(track_idx)
+            if detection_idx in unmatched_detections:
+                unmatched_detections.remove(detection_idx)
+
+        return matches, unmatched_tracks, unmatched_detections
+
     def _get_associated_indices(
         self,
         iou_matrix: np.ndarray,
         detection_features: np.ndarray,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to trackers based on both IOU and appearance.
+        Associate detections to trackers using a two-stage matching approach.
+        If `apply_kalman_gating` is enabled, an additional Mahalanobis distance filter
+        is applied to confirmed tracks to exclude unlikely associations.
 
         Args:
             iou_matrix (np.ndarray): IOU matrix between tracks and detections.
@@ -282,37 +364,91 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices,
                 unmatched trackers, unmatched detections.
         """
+        confirmed_tracks = []
+        unconfirmed_tracks = []
+        for tracker_idx, tracker in enumerate(self.trackers):
+            if tracker.number_of_successful_updates >= self.minimum_consecutive_frames:
+                confirmed_tracks.append(tracker_idx)
+            else:
+                unconfirmed_tracks.append(tracker_idx)
+
         appearance_dist_matrix = self._get_appearance_distance_matrix(
             detection_features
         )
-        combined_dist = self._get_combined_distance_matrix(
+        combined_dist_matrix = self._get_combined_distance_matrix(
             iou_matrix, appearance_dist_matrix
         )
-        matched_indices = []
-        unmatched_trackers = set(range(len(self.trackers)))
-        unmatched_detections = set(range(len(detection_features)))
 
-        if combined_dist.size > 0:
-            row_indices, col_indices = np.where(combined_dist < 1.0)
-            sorted_pairs = sorted(
-                zip(map(int, row_indices), map(int, col_indices)),
-                key=lambda x: combined_dist[x[0], x[1]],
+        if self.apply_kalman_gating:
+            for tracker_idx in confirmed_tracks:
+                feasible_detections = np.where(combined_dist_matrix[tracker_idx] < 1.0)[
+                    0
+                ]
+                if len(feasible_detections) > 0:
+                    measurements = np.array(
+                        [
+                            to_xyah(self.trackers[tracker_idx].get_state_bbox())
+                            for _ in feasible_detections
+                        ]
+                    )
+
+                    gating_distances = self.trackers[
+                        tracker_idx
+                    ].compute_gating_distance(measurements=measurements)
+
+                    for j, det_idx in enumerate(feasible_detections):
+                        if gating_distances[j] > MAHALANOBIS_THRESHOLD:
+                            combined_dist_matrix[tracker_idx, det_idx] = (
+                                1.0  # Mark as infeasible
+                            )
+
+        # Match confirmed tracks first (using appearance + motion)
+        confirmed_matches, unmatched_confirmed, unmatched_detections = (
+            self._match_tracks_stage(
+                combined_dist_matrix,
+                confirmed_tracks,
+                list(range(len(detection_features))),
             )
+        )
 
-            used_rows = set()
-            used_cols = set()
-            for row, col in sorted_pairs:
-                if (row not in used_rows) and (col not in used_cols):
-                    used_rows.add(row)
-                    used_cols.add(col)
-                    matched_indices.append((row, col))
+        # Find recently lost confirmed tracks (time_since_update == 1)
+        recently_lost = [
+            tracker_idx
+            for tracker_idx in unmatched_confirmed
+            if self.trackers[tracker_idx].time_since_update == 1
+        ]
 
-            unmatched_trackers = unmatched_trackers - {int(row) for row in used_rows}
-            unmatched_detections = unmatched_detections - {
-                int(col) for col in used_cols
-            }
+        # Remove recently lost from unmatched_confirmed
+        unmatched_confirmed = [
+            tracker_idx
+            for tracker_idx in unmatched_confirmed
+            if tracker_idx not in recently_lost
+        ]
 
-        return matched_indices, unmatched_trackers, unmatched_detections
+        iou_track_candidates = unconfirmed_tracks + recently_lost
+
+        # Match remaining tracks using IoU only
+        iou_matches: list[tuple[int, int]] = []
+        if iou_track_candidates and unmatched_detections:
+            iou_dist_matrix = 1 - iou_matrix
+            iou_dist_matrix_filtered = iou_dist_matrix.copy()
+            mask = iou_matrix < self.minimum_iou_threshold
+            iou_dist_matrix_filtered[mask] = 1.0
+
+            iou_matches, unmatched_candidates, unmatched_detections = (
+                self._match_tracks_stage(
+                    iou_dist_matrix_filtered,
+                    iou_track_candidates,
+                    list(unmatched_detections),
+                )
+            )
+        else:
+            unmatched_candidates = iou_track_candidates
+
+        matches = confirmed_matches + iou_matches
+        unmatched_tracks = set(unmatched_confirmed).union(set(unmatched_candidates))
+
+        return matches, unmatched_tracks, set(unmatched_detections)
 
     def _spawn_new_trackers(
         self,
@@ -385,9 +521,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             trackers=self.trackers, detection_boxes=detection_boxes
         )
 
-        # Associate detections to trackers based on IOU
-        matched_indices, _, unmatched_detections = self._get_associated_indices(
-            iou_matrix, detection_features
+        # Associate detections to trackers using the two-stage matching approach
+        matched_indices, unmatched_tracks, unmatched_detections = (
+            self._get_associated_indices(iou_matrix, detection_features)
         )
 
         # Update matched trackers with assigned detections

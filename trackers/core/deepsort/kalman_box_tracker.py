@@ -1,6 +1,10 @@
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
+from scipy.linalg import solve_triangular
+
+# Chi-square 0.95 quantile for 4 degrees of freedom (Mahalanobis threshold)
+MAHALANOBIS_THRESHOLD = 9.4877
 
 
 class DeepSORTKalmanBoxTracker:
@@ -95,6 +99,58 @@ class DeepSORTKalmanBoxTracker:
 
         # Error covariance matrix (P)
         self.P = np.eye(8, dtype=np.float32)
+
+    def project(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Projects the current state distribution to measurement space.
+
+        As per the Kalman Filter formulation mentioned implicitly in
+        Section 2.1 of the DeepSORT paper, this function computes:
+            (y_i, S_i) = (H·μ_i, H·Σ_i·H^T + R)
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: Projected mean (y_i) and innovation
+                covariance (S_i) for gating and association.
+        """
+        # Project state mean to measurement space: y_i = H·μ_i
+        projected_mean = self.H @ self.state
+
+        # Project state covariance to measurement space: H·Σ_i·H^T
+        projected_covariance = self.H @ self.P @ self.H.T
+
+        # Add measurement noise: S_i = H·Σ_i·H^T + R
+        innovation_covariance = projected_covariance + self.R
+
+        return projected_mean, innovation_covariance
+
+    def compute_gating_distance(self, measurements: np.ndarray) -> np.ndarray:
+        """
+        Computes the squared Mahalanobis distance between the track and
+        measurements.
+
+        This function is used for gating (ruling out) unlikely associations
+        as described in Eq. (1)-(2) of the DeepSORT paper:
+        d^(1)(i,j) = (d_j - y_i)^T · S_i^(-1) · (d_j - y_i)
+
+        Args:
+            measurements (np.ndarray): An Nx4 matrix of N measurements, each in
+                format [x1, y1, x2, y2] representing detected bounding boxes.
+
+        Returns:
+            np.ndarray: An array of length N, where the i-th element contains the
+                squared Mahalanobis distance between the track and measurements[i].
+        """
+        # Project current state to measurement space
+        mean, covariance = self.project()
+        mean = mean.reshape(1, 4)
+        cholesky_factor = np.linalg.cholesky(covariance)
+        d = measurements - mean
+        # Solve the system L·z = d^T efficiently using triangular solver
+        # This gives us z where z = L^(-1)·d^T
+        z = solve_triangular(cholesky_factor, d.T, lower=True, check_finite=False)
+        # Compute squared Mahalanobis distance as the squared norm of z
+        # d_m^2 = z^T·z = d^T·S^(-1)·d
+        return np.sum(z * z, axis=0)
 
     def predict(self) -> None:
         """

@@ -143,3 +143,26 @@ def update_detections_with_track_ids(
     updated_detections.tracker_id = np.array(final_tracker_ids)
 
     return updated_detections
+
+
+def to_xyah(state_bbox: np.ndarray) -> np.ndarray:
+    """
+    Convert bounding box into measurement space to format
+    `(center x, center y, aspect ratio, height)`,
+    where the aspect ratio is `width / height`.
+
+    Args:
+        state_bbox (np.ndarray): Bounding box in format
+            `(x1, y1, x2, y2)`.
+
+    Returns:
+        np.ndarray: Bounding box in format
+            `(center x, center y, aspect ratio, height)`.
+    """
+    x1, y1, x2, y2 = state_bbox
+    width = x2 - x1
+    height = y2 - y1
+    center_x = x1 + width / 2
+    center_y = y1 + height / 2
+    aspect_ratio = width / height if height > 0 else 1.0
+    return np.array([center_x, center_y, aspect_ratio, height])
