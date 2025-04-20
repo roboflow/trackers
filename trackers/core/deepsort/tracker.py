@@ -284,7 +284,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         """
         Match tracks with detections for a specific stage of the matching cascade.
         This implements the linear assignment for a specific group of tracks based
-        on their age as described in Section 2.3 of the DeepSORT paper.
+        on their maturity.
 
         Args:
             cost_matrix (np.ndarray): Cost matrix between tracks and detections.
@@ -295,25 +295,20 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             tuple[list[tuple[int, int]], list[int], list[int]]: Matched indices,
                 unmatched track indices, unmatched detection indices.
         """
-        # Return empty matches if either tracks or detections are empty
         if len(track_indices) == 0 or len(detection_indices) == 0:
             return [], track_indices, detection_indices
 
-        # Extract the relevant submatrix from the cost matrix
         sub_cost_matrix = cost_matrix[np.ix_(track_indices, detection_indices)]
 
         # Apply threshold of 1.0 to mark infeasible associations
         # Only consider associations where cost < 1.0
         valid_mask = sub_cost_matrix < 1.0
 
-        # If no valid associations, return all as unmatched
         if not np.any(valid_mask):
             return [], track_indices, detection_indices
 
-        # Find all possible matches based on the threshold
         row_indices, col_indices = np.where(valid_mask)
 
-        # Sort matches by cost (ascending)
         indices = np.stack([row_indices, col_indices], axis=1)
         indices = indices[np.argsort(sub_cost_matrix[row_indices, col_indices])]
 
@@ -321,7 +316,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         unmatched_tracks = list(track_indices)
         unmatched_detections = list(detection_indices)
 
-        # Apply greedy matching (by cost) using the sorted indices
         matched_track_indices = set()
         matched_detection_indices = set()
 
@@ -333,12 +327,10 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             if row in matched_track_indices or col in matched_detection_indices:
                 continue
 
-            # Add the match and mark both as matched
             matches.append((track_idx, detection_idx))
             matched_track_indices.add(row)
             matched_detection_indices.add(col)
 
-            # Remove from unmatched lists
             if track_idx in unmatched_tracks:
                 unmatched_tracks.remove(track_idx)
             if detection_idx in unmatched_detections:
@@ -402,7 +394,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
                                 1.0  # Mark as infeasible
                             )
 
-        # Match confirmed tracks first (using appearance + motion)
         confirmed_matches, unmatched_confirmed, unmatched_detections = (
             self._match_tracks_stage(
                 combined_dist_matrix,
