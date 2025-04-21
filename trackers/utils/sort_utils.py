@@ -145,7 +145,7 @@ def update_detections_with_track_ids(
     return updated_detections
 
 
-def to_xyah(state_bbox: np.ndarray) -> np.ndarray:
+def convert_bbox_to_xyah(state_bbox: np.ndarray) -> np.ndarray:
     """
     Convert bounding box into measurement space to format
     `(center x, center y, aspect ratio, height)`,

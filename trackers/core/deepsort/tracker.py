@@ -14,7 +14,7 @@ from trackers.core.deepsort.kalman_box_tracker import (
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
-    to_xyah,
+    convert_bbox_to_xyah,
     update_detections_with_track_ids,
 )
 
@@ -379,7 +379,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
                 if len(feasible_detections) > 0:
                     measurements = np.array(
                         [
-                            to_xyah(self.trackers[tracker_idx].get_state_bbox())
+                            convert_bbox_to_xyah(
+                                self.trackers[tracker_idx].get_state_bbox()
+                            )
                             for _ in feasible_detections
                         ]
                     )
