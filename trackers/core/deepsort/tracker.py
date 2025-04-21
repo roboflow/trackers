@@ -156,9 +156,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             'kulczynski1', 'mahalanobis', 'matching', 'minkowski',
             'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener',
             'sokalsneath', 'sqeuclidean', 'yule'.
-        apply_kalman_gating (bool): Whether to apply Kalman gating to filter unlikely
-            track-detection associations based on Mahalanobis distance, as described
-            in Section 2.2 of the DeepSORT paper.
     """  # noqa: E501
 
     def __init__(
@@ -173,7 +170,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         appearance_threshold: float = 0.7,
         appearance_weight: float = 0.5,
         distance_metric: str = "cosine",
-        apply_kalman_gating: bool = True,
     ):
         self.feature_extractor = self._initialize_feature_extractor(
             feature_extractor, device
@@ -187,7 +183,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         self.appearance_threshold = appearance_threshold
         self.appearance_weight = appearance_weight
         self.distance_metric = distance_metric
-        self.apply_kalman_gating = apply_kalman_gating
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
@@ -245,33 +240,64 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         return distance_matrix
 
+    def _get_mahalanobis_distance_matrix(
+        self,
+        detection_boxes: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Calculate Mahalanobis distance matrix between tracks and detections,
+        as per Equation 1 in section 2.2 of the [DeepSORT paper](https://arxiv.org/pdf/1703.07402).
+
+        Args:
+            detection_boxes (np.ndarray): Detected bounding boxes in the
+                form [x1, y1, x2, y2].
+
+        Returns:
+            np.ndarray: Mahalanobis distance matrix.
+        """
+        if len(self.trackers) == 0 or len(detection_boxes) == 0:
+            return np.zeros((len(self.trackers), len(detection_boxes)))
+
+        distance_matrix = np.zeros((len(self.trackers), len(detection_boxes)))
+
+        for i, tracker in enumerate(self.trackers):
+            measurements = np.array(
+                [convert_bbox_to_xyah(box) for box in detection_boxes]
+            )
+
+            distance_matrix[i, :] = tracker.compute_gating_distance(measurements)
+
+        return distance_matrix
+
     def _get_combined_distance_matrix(
         self,
-        iou_matrix: np.ndarray,
+        mahalanobis_matrix: np.ndarray,
         appearance_dist_matrix: np.ndarray,
     ) -> np.ndarray:
         """
-        Combine IOU and appearance distances into a single distance matrix.
+        Combine Mahalanobis and appearance distances into a single distance matrix,
+        as per Equation 5 in section 2.2 of the [DeepSORT paper](https://arxiv.org/pdf/1703.07402).
 
         Args:
-            iou_matrix (np.ndarray): IOU matrix between tracks and detections.
+            mahalanobis_matrix (np.ndarray): Mahalanobis distance matrix between
+                tracks and detections.
             appearance_dist_matrix (np.ndarray): Appearance distance matrix.
 
         Returns:
             np.ndarray: Combined distance matrix.
         """
-        iou_distance = 1 - iou_matrix
+        # Using weighted sum to combine Mahalanobis and appearance distances
         combined_dist = (
-            1 - self.appearance_weight
-        ) * iou_distance + self.appearance_weight * appearance_dist_matrix
+            self.appearance_weight * appearance_dist_matrix
+            + (1 - self.appearance_weight) * mahalanobis_matrix
+        )
 
-        # Set high distance for IOU below threshold
-        mask = iou_matrix < self.minimum_iou_threshold
-        combined_dist[mask] = 1.0
+        mahalanobis_gate = mahalanobis_matrix > MAHALANOBIS_THRESHOLD
+        appearance_gate = appearance_dist_matrix > self.appearance_threshold
 
-        # Set high distance for appearance above threshold
-        mask = appearance_dist_matrix > self.appearance_threshold
-        combined_dist[mask] = 1.0
+        # An association is inadmissible if either metric is above threshold
+        invalid_mask = np.logical_or(mahalanobis_gate, appearance_gate)
+        combined_dist[invalid_mask] = 1.0  # Mark as infeasible
 
         return combined_dist
 
@@ -340,16 +366,19 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
     def _get_associated_indices(
         self,
-        iou_matrix: np.ndarray,
+        detection_boxes: np.ndarray,
         detection_features: np.ndarray,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to trackers using a two-stage matching approach.
-        If `apply_kalman_gating` is enabled, an additional Mahalanobis distance filter
-        is applied to confirmed tracks to exclude unlikely associations.
+        Associate detections to trackers using a cascade matching approach.
+        The cascade gives priority to tracks that have been recently seen.
+
+        As per the paper, we use a weighted combination of Mahalanobis distance
+        (for motion information) and appearance distance (for visual similarity).
 
         Args:
-            iou_matrix (np.ndarray): IOU matrix between tracks and detections.
+            detection_boxes (np.ndarray): Detected bounding boxes in the
+                form [x1, y1, x2, y2].
             detection_features (np.ndarray): Features extracted from current detections.
 
         Returns:
@@ -364,37 +393,18 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             else:
                 unconfirmed_tracks.append(tracker_idx)
 
+        # Get Mahalanobis distance matrix
+        mahalanobis_matrix = self._get_mahalanobis_distance_matrix(detection_boxes)
+
+        # Get appearance distance matrix
         appearance_dist_matrix = self._get_appearance_distance_matrix(
             detection_features
         )
+
+        # Combine distances using weighted sum
         combined_dist_matrix = self._get_combined_distance_matrix(
-            iou_matrix, appearance_dist_matrix
+            mahalanobis_matrix, appearance_dist_matrix
         )
-
-        if self.apply_kalman_gating:
-            for tracker_idx in confirmed_tracks:
-                feasible_detections = np.where(combined_dist_matrix[tracker_idx] < 1.0)[
-                    0
-                ]
-                if len(feasible_detections) > 0:
-                    measurements = np.array(
-                        [
-                            convert_bbox_to_xyah(
-                                self.trackers[tracker_idx].get_state_bbox()
-                            )
-                            for _ in feasible_detections
-                        ]
-                    )
-
-                    gating_distances = self.trackers[
-                        tracker_idx
-                    ].compute_gating_distance(measurements=measurements)
-
-                    for j, det_idx in enumerate(feasible_detections):
-                        if gating_distances[j] > MAHALANOBIS_THRESHOLD:
-                            combined_dist_matrix[tracker_idx, det_idx] = (
-                                1.0  # Mark as infeasible
-                            )
 
         confirmed_matches, unmatched_confirmed, unmatched_detections = (
             self._match_tracks_stage(
@@ -421,6 +431,10 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         iou_track_candidates = unconfirmed_tracks + recently_lost
 
         # Match remaining tracks using IoU only
+        iou_matrix = get_iou_matrix(
+            trackers=self.trackers, detection_boxes=detection_boxes
+        )
+
         iou_matches: list[tuple[int, int]] = []
         if iou_track_candidates and unmatched_detections:
             iou_dist_matrix = 1 - iou_matrix
@@ -509,14 +523,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         for tracker in self.trackers:
             tracker.predict()
 
-        # Build IOU cost matrix between detections and predicted bounding boxes
-        iou_matrix = get_iou_matrix(
-            trackers=self.trackers, detection_boxes=detection_boxes
-        )
-
-        # Associate detections to trackers using the two-stage matching approach
+        # Associate detections to trackers using the cascade matching approach
         matched_indices, unmatched_tracks, unmatched_detections = (
-            self._get_associated_indices(iou_matrix, detection_features)
+            self._get_associated_indices(detection_boxes, detection_features)
         )
 
         # Update matched trackers with assigned detections
