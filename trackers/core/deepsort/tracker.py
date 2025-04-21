@@ -12,9 +12,9 @@ from trackers.core.deepsort.kalman_box_tracker import (
     DeepSORTKalmanBoxTracker,
 )
 from trackers.utils.sort_utils import (
+    convert_bbox_to_xyah,
     get_alive_trackers,
     get_iou_matrix,
-    convert_bbox_to_xyah,
     update_detections_with_track_ids,
 )
 
