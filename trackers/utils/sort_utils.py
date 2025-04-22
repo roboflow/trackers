@@ -158,7 +158,7 @@ def xyxy_to_xcycarh(xyxy: np.ndarray) -> np.ndarray:
         np.ndarray: Bounding box in format
             `(center x, center y, aspect ratio, height)`.
     """
-    x1, y1, x2, y2 = xyxy
+    x1, y1, x2, y2 = xyxy.T
     width = x2 - x1
     height = y2 - y1
     center_x = x1 + width / 2
