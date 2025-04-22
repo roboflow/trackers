@@ -12,10 +12,10 @@ from trackers.core.deepsort.kalman_box_tracker import (
     DeepSORTKalmanBoxTracker,
 )
 from trackers.utils.sort_utils import (
-    convert_bbox_to_xyah,
     get_alive_trackers,
     get_iou_matrix,
     update_detections_with_track_ids,
+    xyxy_to_xcycarh,
 )
 
 
@@ -261,9 +261,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         distance_matrix = np.zeros((len(self.trackers), len(detection_boxes)))
 
         for i, tracker in enumerate(self.trackers):
-            measurements = np.array(
-                [convert_bbox_to_xyah(box) for box in detection_boxes]
-            )
+            measurements = np.array([xyxy_to_xcycarh(box) for box in detection_boxes])
 
             distance_matrix[i, :] = tracker.compute_gating_distance(measurements)
 

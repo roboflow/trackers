@@ -145,21 +145,20 @@ def update_detections_with_track_ids(
     return updated_detections
 
 
-def convert_bbox_to_xyah(state_bbox: np.ndarray) -> np.ndarray:
+def xyxy_to_xcycarh(xyxy: np.ndarray) -> np.ndarray:
     """
     Convert bounding box into measurement space to format
     `(center x, center y, aspect ratio, height)`,
     where the aspect ratio is `width / height`.
 
     Args:
-        state_bbox (np.ndarray): Bounding box in format
-            `(x1, y1, x2, y2)`.
+        xyxy (np.ndarray): Bounding box in format `(x1, y1, x2, y2)`.
 
     Returns:
         np.ndarray: Bounding box in format
             `(center x, center y, aspect ratio, height)`.
     """
-    x1, y1, x2, y2 = state_bbox
+    x1, y1, x2, y2 = xyxy
     width = x2 - x1
     height = y2 - y1
     center_x = x1 + width / 2
