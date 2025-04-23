@@ -218,6 +218,13 @@ class SORTTracker(BaseTracker):
             self.minimum_consecutive_frames,
         )
 
+        # If there are no detected objects, set all tracker_id to "None"
+        if (
+            updated_detections.tracker_id is None
+            or len(updated_detections.tracker_id) == 0
+        ):
+            updated_detections.tracker_id = ["None"] * len(updated_detections)
+
         return updated_detections
 
     def reset(self) -> None:

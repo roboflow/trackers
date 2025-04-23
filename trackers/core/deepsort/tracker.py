@@ -410,6 +410,13 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             minimum_iou_threshold=self.minimum_iou_threshold,
         )
 
+        # If there are no detected objects, set all tracker_id to "None"
+        if (
+            updated_detections.tracker_id is None
+            or len(updated_detections.tracker_id) == 0
+        ):
+            updated_detections.tracker_id = ["None"] * len(updated_detections)
+
         return updated_detections
 
     def reset(self) -> None:
