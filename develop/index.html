@@ -398,72 +398,77 @@
 
 
 <div align="center">
-  <img src="assets/logo-trackers-violet.svg" alt="Trackers Logo" width="200" height="200">
-</div>
 
-<div align="center">
+<img src="assets/logo-trackers-violet.svg" alt="Trackers Logo" width="200" height="200">
+
+<br>
 
 <a href="https://badge.fury.io/py/trackers"><img src="https://badge.fury.io/py/trackers.svg" alt="version"></a> <a href="https://github.com/roboflow/trackers/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="license"></a> <a href="https://badge.fury.io/py/trackers"><img src="https://img.shields.io/pypi/pyversions/trackers" alt="python-version"></a>
+
 <br>
+
 <a href="https://colab.research.google.com/drive/1VT_FYIe3kborhWrfKKBqqfR0EjQeQNiO?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a> <a href="https://discord.gg/GbfgXGJ8Bk"><img src="https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk" alt="discord"></a>
 
 </div>
 
-<p><code>trackers</code> is a unified library offering clean room re-implementations of leading multi-object tracking algorithms. Its modular design allows you to easily swap trackers and integrate them with object detectors from various libraries like <code>ultralytics</code>, <code>inference</code>, <code>mmdetection</code>, or <code>transformers</code>.</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Tracker</th>
-<th style="text-align: left;">Paper</th>
-<th style="text-align: left;">MOTA</th>
-<th style="text-align: left;">Year</th>
-<th style="text-align: left;">Status</th>
-<th style="text-align: left;">Colab</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;">SORT</td>
-<td style="text-align: left;"><a href="https://arxiv.org/abs/1602.00763"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-1602.00763-b31b1b.svg" /></a></td>
-<td style="text-align: left;">74.6</td>
-<td style="text-align: left;">2016</td>
-<td style="text-align: left;">✅</td>
-<td style="text-align: left;"><a href="https://colab.research.google.com/drive/1VT_FYIe3kborhWrfKKBqqfR0EjQeQNiO?usp=sharing"><img alt="colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></td>
-</tr>
-<tr>
-<td style="text-align: left;">DeepSORT</td>
-<td style="text-align: left;"><a href="https://arxiv.org/abs/1703.07402"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-1703.07402-b31b1b.svg" /></a></td>
-<td style="text-align: left;">75.4</td>
-<td style="text-align: left;">2017</td>
-<td style="text-align: left;">✅</td>
-<td style="text-align: left;"><a href="https://colab.research.google.com/drive/1VT_FYIe3kborhWrfKKBqqfR0EjQeQNiO?usp=sharing"><img alt="colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></td>
-</tr>
-<tr>
-<td style="text-align: left;">ByteTrack</td>
-<td style="text-align: left;"><a href="https://arxiv.org/abs/2110.06864"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" /></a></td>
-<td style="text-align: left;">77.8</td>
-<td style="text-align: left;">2021</td>
-<td style="text-align: left;">🚧</td>
-<td style="text-align: left;">🚧</td>
-</tr>
-<tr>
-<td style="text-align: left;">OC-SORT</td>
-<td style="text-align: left;"><a href="https://arxiv.org/abs/2203.14360"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2203.14360-b31b1b.svg" /></a></td>
-<td style="text-align: left;">75.9</td>
-<td style="text-align: left;">2022</td>
-<td style="text-align: left;">🚧</td>
-<td style="text-align: left;">🚧</td>
-</tr>
-<tr>
-<td style="text-align: left;">BoT-SORT</td>
-<td style="text-align: left;"><a href="https://arxiv.org/abs/2206.14651"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2206.14651-b31b1b.svg" /></a></td>
-<td style="text-align: left;">77.8</td>
-<td style="text-align: left;">2022</td>
-<td style="text-align: left;">🚧</td>
-<td style="text-align: left;">🚧</td>
-</tr>
-</tbody>
-</table>
+<p><code>trackers</code> is a unified library offering clean room re-implementations of leading multi-object tracking algorithms. Its modular design allows you to easily swap trackers and integrate them with object detectors from various libraries like <code>inference</code>, <code>ultralytics</code>, or <code>transformers</code>.</p>
+<div align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Tracker</th>
+        <th>Paper</th>
+        <th>MOTA</th>
+        <th>Year</th>
+        <th>Status</th>
+        <th>Colab</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SORT</td>
+        <td><a href="https://arxiv.org/abs/1602.00763"><img src="https://img.shields.io/badge/arXiv-1602.00763-b31b1b.svg" alt="arXiv"></a></td>
+        <td>74.6</td>
+        <td>2016</td>
+        <td>✅</td>
+        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
+      </tr>
+      <tr>
+        <td>DeepSORT</td>
+        <td><a href="https://arxiv.org/abs/1703.07402"><img src="https://img.shields.io/badge/arXiv-1703.07402-b31b1b.svg" alt="arXiv"></a></td>
+        <td>75.4</td>
+        <td>2017</td>
+        <td>✅</td>
+        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-deepsort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
+      </tr>
+      <tr>
+        <td>ByteTrack</td>
+        <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
+        <td>77.8</td>
+        <td>2021</td>
+        <td>🚧</td>
+        <td>🚧</td>
+      </tr>
+      <tr>
+        <td>OC-SORT</td>
+        <td><a href="https://arxiv.org/abs/2203.14360"><img src="https://img.shields.io/badge/arXiv-2203.14360-b31b1b.svg" alt="arXiv"></a></td>
+        <td>75.9</td>
+        <td>2022</td>
+        <td>🚧</td>
+        <td>🚧</td>
+      </tr>
+      <tr>
+        <td>BoT-SORT</td>
+        <td><a href="https://arxiv.org/abs/2206.14651"><img src="https://img.shields.io/badge/arXiv-2206.14651-b31b1b.svg" alt="arXiv"></a></td>
+        <td>77.8</td>
+        <td>2022</td>
+        <td>🚧</td>
+        <td>🚧</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
 <h1 id="installation">Installation</h1>
 <p>You can install <code>trackers</code> in a <a href="https://www.python.org/"><strong>Python&gt;=3.9</strong></a> environment.</p>
 <div class="admonition example">
@@ -517,8 +522,8 @@
 </div>
 </div>
 <h1 id="quickstart">Quickstart</h1>
-<p>With a modular design, <code>trackers</code> lets you combine object detectors from different libraries (such as <code>ultralytics</code>, <code>inference</code>, <code>mmdetection</code>, or <code>transformers</code>) with the tracker of your choice. Here's how you can use <code>SORTTracker</code> with various detectors:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:4"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><input id="__tabbed_3_4" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">inference</label><label for="__tabbed_3_2">RF-DETR</label><label for="__tabbed_3_3">ultralytics</label><label for="__tabbed_3_4">transformers</label></div>
+<p>With a modular design, <code>trackers</code> lets you combine object detectors from different libraries with the tracker of your choice. Here's how you can use <code>SORTTracker</code> with various detectors:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:4"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><input id="__tabbed_3_3" name="__tabbed_3" type="radio" /><input id="__tabbed_3_4" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">inference</label><label for="__tabbed_3_2">rf-detr</label><label for="__tabbed_3_3">ultralytics</label><label for="__tabbed_3_4">transformers</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
@@ -592,17 +597,17 @@
 </span></span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">RTDetrV2ForObjectDetection</span><span class="p">,</span> <span class="n">RTDetrImageProcessor</span>
 </span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
 </span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="hll"><span class="n">tracker</span> <span class="o">=</span> <span class="n">SORTTracker</span><span class="p">()</span>
-</span></span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="n">image_processor</span> <span class="o">=</span> <span class="n">RTDetrImageProcessor</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&quot;PekingU/rtdetr_v2_r18vd&quot;</span><span class="p">)</span>
+</span></span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="n">processor</span> <span class="o">=</span> <span class="n">RTDetrImageProcessor</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&quot;PekingU/rtdetr_v2_r18vd&quot;</span><span class="p">)</span>
 </span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RTDetrV2ForObjectDetection</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&quot;PekingU/rtdetr_v2_r18vd&quot;</span><span class="p">)</span>
 </span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="n">annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">LabelAnnotator</span><span class="p">(</span><span class="n">text_position</span><span class="o">=</span><span class="n">sv</span><span class="o">.</span><span class="n">Position</span><span class="o">.</span><span class="n">CENTER</span><span class="p">)</span>
 </span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
 </span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">callback</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
-</span><span id="__span-12-12"><a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    <span class="n">inputs</span> <span class="o">=</span> <span class="n">image_processor</span><span class="p">(</span><span class="n">images</span><span class="o">=</span><span class="n">frame</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s2">&quot;pt&quot;</span><span class="p">)</span>
+</span><span id="__span-12-12"><a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    <span class="n">inputs</span> <span class="o">=</span> <span class="n">processor</span><span class="p">(</span><span class="n">images</span><span class="o">=</span><span class="n">frame</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s2">&quot;pt&quot;</span><span class="p">)</span>
 </span><span id="__span-12-13"><a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
 </span><span id="__span-12-14"><a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>        <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="o">**</span><span class="n">inputs</span><span class="p">)</span>
 </span><span id="__span-12-15"><a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
 </span><span id="__span-12-16"><a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">shape</span>
-</span><span id="__span-12-17"><a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    <span class="n">results</span> <span class="o">=</span> <span class="n">image_processor</span><span class="o">.</span><span class="n">post_process_object_detection</span><span class="p">(</span>
+</span><span id="__span-12-17"><a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>    <span class="n">results</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">post_process_object_detection</span><span class="p">(</span>
 </span><span id="__span-12-18"><a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>        <span class="n">outputs</span><span class="p">,</span>
 </span><span id="__span-12-19"><a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>        <span class="n">target_sizes</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([(</span><span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)]),</span>
 </span><span id="__span-12-20"><a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>        <span class="n">threshold</span><span class="o">=</span><span class="mf">0.5</span>
