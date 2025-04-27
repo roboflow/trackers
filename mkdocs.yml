@@ -1,18 +1,36 @@
-site_name: trackers
+site_name: Trackers
+site_url: https://roboflow.github.io/trackers/develop/
+site_author: Roboflow
+site_description: A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.
+repo_name: roboflow/trackers
+repo_url: https://github.com/roboflow/trackers
+edit_uri: https://github.com/roboflow/trackers/tree/main/docs
+copyright: Roboflow 2025. All rights reserved.
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/roboflow
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/trackers
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/u/roboflow
+    - icon: fontawesome/brands/youtube
+      link: https://www.youtube.com/roboflow
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/roboflow-ai/
+    - icon: fontawesome/brands/x-twitter
+      link: https://twitter.com/roboflow
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/GbfgXGJ8Bk
 
 theme:
   name: material
-  palette:
-    # Palette toggle for light mode
-    - scheme: default
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    # Palette toggle for dark mode
-    - scheme: slate
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+  custom_dir: docs/overrides/
+  icon:
+    edit: material/pencil
+  logo: assets/logo-trackers-white.svg
+  favicon: assets/logo-trackers-black.svg
   features:
     - content.code.annotate
     - content.code.copy
@@ -20,41 +38,75 @@ theme:
     - content.tabs.link
     - content.tooltips
     - navigation.tracking
+    - navigation.expand
 
-plugins:
-  - mkdocstrings
-  - search
-  - minify
-  - glightbox
-  - mkdocs-jupyter:
-      include_source: True
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/style.css
 
 markdown_extensions:
-  - attr_list
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
-  - pymdownx.arithmatex:
-      generic: true
+  # Code syntax highlighting with line numbers and anchors
   - pymdownx.highlight:
+      # Adds anchors to line numbers
       anchor_linenums: true
+      # Wraps lines in span elements
       line_spans: __span
+      # Adds language class to code blocks
       pygments_lang_class: true
-  - pymdownx.tabbed:
-      alternate_style: true
-  - pymdownx.details
+  # Enables inline code highlighting
   - pymdownx.inlinehilite
+  # Allows including content from other files
   - pymdownx.snippets
+  # Enables nested code blocks and custom fences
   - pymdownx.superfences
+  # Adds support for callouts/notes/warnings
   - admonition
-  - attr_list
-  - md_in_html
+  # Enables collapsible blocks (expandable content)
+  - pymdownx.details
+  # Creates tabbed content (like installation examples)
+  - pymdownx.tabbed:
+      # Uses an alternative styling for tabs
+      alternate_style: true
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            # Controls whether to show symbol types in the table of contents
+            show_symbol_type_toc: true
+            # Controls whether to show symbol type in the heading
+            show_symbol_type_heading: true
+            # Controls whether to show the root heading (module/class name)
+            show_root_heading: true
+            # Controls whether to show the source code
+            show_source: false
+            # Specifies the docstring style to parse (Google style in this case)
+            docstring_style: google
+            # Controls the order of members (by source order in this case)
+            members_order: source
+            # Controls whether to sort members alphabetically
+            sort_members: false
 
 nav:
-  - Home: 'index.md'
+  - Home: index.md
   - Trackers:
-    - SORTTracker: 'trackers/core/sort_tracker.md'
-  - Utils:
-    - sort_utils: 'trackers/utils/sort_utils.md'
-
-repo_url: https://github.com/roboflow/trackers
+    - SORT: trackers/core/sort/tracker.md
+    - DeepSORT: trackers/core/deepsort/tracker.md

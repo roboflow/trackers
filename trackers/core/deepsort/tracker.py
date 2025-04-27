@@ -20,142 +20,37 @@ from trackers.utils.sort_utils import (
 
 
 class DeepSORTTracker(BaseTrackerWithFeatures):
-    """
-    DeepSORT implementation that extends SORTTracker with appearance features.
-    The DeepSORT algorithm incorporates both motion (IOU + Kalman filter) and
-    appearance features extracted by a pre-trained feature extraction model for
-    object tracking.
+    """Implements DeepSORT (Deep Simple Online and Realtime Tracking).
 
-    ??? example
-        ```python
-        import numpy as np
-        import supervision as sv
-        from rfdetr import RFDETRBase
-        from rfdetr.util.coco_classes import COCO_CLASSES
-
-        from trackers import DeepSORTFeatureExtractor, DeepSORTTracker
-
-        model = RFDETRBase(device="mps")
-        feature_extractor = DeepSORTFeatureExtractor.from_timm(
-            model_name="mobilenetv4_conv_small.e1200_r224_in1k"
-        )
-        tracker = DeepSORTTracker(feature_extractor=feature_extractor)
-        box_annotator = sv.BoxAnnotator()
-        label_annotator = sv.LabelAnnotator()
-
-
-        def callback(frame: np.ndarray, _: int):
-            detections = model.predict(frame, threshold=0.5)
-            detections = tracker.update(detections, frame)
-            labels = [
-                f"#{tracker_id} {COCO_CLASSES[class_id]} {confidence:.2f}"
-                for tracker_id, class_id, confidence in zip(
-                    detections.tracker_id, detections.class_id, detections.confidence
-                )
-            ]
-            annotated_image = frame.copy()
-            annotated_image = box_annotator.annotate(annotated_image, detections)
-            annotated_image = label_annotator.annotate(
-                annotated_image, detections, labels
-            )
-
-            return annotated_image
-
-
-        sv.process_video(
-            source_path="data/people.mp4",
-            target_path="data/out.mp4",
-            callback=callback,
-            max_frames=100,
-        )
-        ```
-
-    !!! example "Using custom weights for the Feature Extractor"
-        ```python
-        import numpy as np
-        import supervision as sv
-        from rfdetr import RFDETRBase
-        from rfdetr.util.coco_classes import COCO_CLASSES
-
-        from trackers import DeepSORTTracker, DeepSORTFeatureExtractor
-
-        model = RFDETRBase(device="mps")
-        tracker = DeepSORTTracker(
-            feature_extractor=DeepSORTFeatureExtractor(
-                model_or_checkpoint_path="deepsort_feature_extractor_weights.pth"
-            )
-        )
-        box_annotator = sv.BoxAnnotator()
-        label_annotator = sv.LabelAnnotator()
-
-
-        def callback(frame: np.ndarray, _: int):
-            detections = model.predict(frame, threshold=0.5)
-            detections = tracker.update(detections, frame)
-            labels = [
-                f"#{tracker_id} {COCO_CLASSES[class_id]} {confidence:.2f}"
-                for tracker_id, class_id, confidence in zip(
-                    detections.tracker_id, detections.class_id, detections.confidence
-                )
-            ]
-            annotated_image = frame.copy()
-            annotated_image = box_annotator.annotate(annotated_image, detections)
-            annotated_image = label_annotator.annotate(
-                annotated_image, detections, labels
-            )
-
-            return annotated_image
-
-
-        sv.process_video(
-            source_path="data/traffic_video.mp4",
-            target_path="data/out.mp4",
-            callback=callback,
-            max_frames=100,
-        )
-        ```
-
-    Attributes:
-        feature_extractor (DeepSORTFeatureExtractor): Model to extract appearance
-            features.
-        appearance_threshold (float): Cosine distance threshold for appearance
-            matching.
-        appearance_weight (float): Weight for appearance distance in the
-            combined distance.
+    DeepSORT extends SORT by integrating appearance information using a deep
+    learning model, improving tracking through occlusions and reducing ID switches.
+    It combines motion (Kalman filter) and appearance cues for data association.
 
     Args:
         feature_extractor (Union[DeepSORTFeatureExtractor, torch.nn.Module, str]):
-            A feature extractor model checkpoint URL, model checkpoint path, or model
-            instance or an instance of `DeepSORTFeatureExtractor` to extract
-            appearance features. By default, the a default model checkpoint is downloaded
+            A feature extractor model checkpoint URL, model checkpoint path, a model
+            instance, or an instance of `DeepSORTFeatureExtractor` to extract
+            appearance features. By default, a default model checkpoint is downloaded
             and loaded.
-        device (Optional[str]): Device to run the model on.
+        device (Optional[str]): Device to run the feature extraction
+            model on (e.g., 'cpu', 'cuda').
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
-            Increasing lost_track_buffer enhances occlusion handling, significantly
-            improving tracking through occlusions, but may increase the possibility
-            of ID switching for objects with similar appearance.
+            Enhances occlusion handling but may increase ID switches for similar objects.
         frame_rate (float): Frame rate of the video (frames per second).
             Used to calculate the maximum time a track can be lost.
         track_activation_threshold (float): Detection confidence threshold
-            for track activation. Only detections with confidence above this
-            threshold will create new tracks. Increasing this threshold
-            reduces false positives but may miss real objects with low confidence.
-        minimum_consecutive_frames (int): Number of consecutive frames that an object
-            must be tracked before it is considered a 'valid' track. Increasing
-            `minimum_consecutive_frames` prevents the creation of accidental tracks
-            from false detection or double detection, but risks missing shorter
-            tracks. Before the tracker is considered valid, it will be assigned
-            `-1` as its `tracker_id`.
-        minimum_iou_threshold (float): IOU threshold for associating detections to
-            existing tracks.
+            for track activation. Higher values reduce false positives
+            but might miss objects.
+        minimum_consecutive_frames (int): Number of consecutive frames an object
+            must be tracked to be considered 'valid'. Prevents spurious tracks but
+            may miss short tracks.
+        minimum_iou_threshold (float): IOU threshold for gating in the matching cascade.
         appearance_threshold (float): Cosine distance threshold for appearance matching.
-        appearance_weight (float): Weight for appearance distance (0-1).
-        distance_metric (str): Distance metric to use for matching. Can be one of
-            'braycurtis', 'canberra', 'chebyshev', 'cityblock', 'correlation',
-            'cosine', 'dice', 'euclidean', 'hamming', 'jaccard', 'jensenshannon',
-            'kulczynski1', 'mahalanobis', 'matching', 'minkowski',
-            'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener',
-            'sokalsneath', 'sqeuclidean', 'yule'.
+            Only matches below this threshold are considered valid.
+        appearance_weight (float): Weight (0-1) balancing motion (IOU) and appearance
+            distance in the combined matching cost.
+        distance_metric (str): Distance metric for appearance features (e.g., 'cosine',
+            'euclidean'). See `scipy.spatial.distance.cdist`.
     """  # noqa: E501
 
     def __init__(
@@ -229,6 +124,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         Returns:
             np.ndarray: Appearance distance matrix.
         """
+
         if len(self.trackers) == 0 or len(detection_features) == 0:
             return np.zeros((len(self.trackers), len(detection_features)))
 
@@ -497,16 +393,25 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         )
 
     def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
-        """
+        """Updates the tracker state with new detections and appearance features.
+
+        Extracts appearance features, performs Kalman filter prediction, calculates
+        IOU and appearance distance matrices, associates detections with tracks using
+        a combined metric, updates matched tracks (position and appearance), and
+        initializes new tracks for unmatched high-confidence detections.
+
         Args:
             detections (sv.Detections): The latest set of object detections.
-            frame (np.ndarray): The current video frame.
+            frame (np.ndarray): The current video frame, used for extracting
+                appearance features from detections.
 
         Returns:
-            sv.Detections: A copy of the detections with `tracker_id` set
-                for each detection that is tracked.
+            sv.Detections: A copy of the input detections, augmented with assigned
+                `tracker_id` for each successfully tracked object. Detections not
+                associated with a track will not have a `tracker_id`.
         """
         if len(self.trackers) == 0 and len(detections) == 0:
+            detections.tracker_id = np.array([], dtype=int)
             return detections
 
         # Convert detections to a (N x 4) array (x1, y1, x2, y2)
@@ -549,5 +454,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         return updated_detections
 
     def reset(self) -> None:
+        """Resets the tracker's internal state.
+
+        Clears all active tracks and resets the track ID counter.
+        """
         self.trackers = []
         DeepSORTKalmanBoxTracker.count_id = 0

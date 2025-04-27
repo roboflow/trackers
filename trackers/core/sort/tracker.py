@@ -11,55 +11,11 @@ from trackers.utils.sort_utils import (
 
 
 class SORTTracker(BaseTracker):
-    """
-    `SORTTracker` is an implementation of the
-    [SORT (Simple Online and Realtime Tracking)](https://arxiv.org/pdf/1602.00763)
-    algorithm for object tracking in videos.
+    """Implements SORT (Simple Online and Realtime Tracking).
 
-    ??? example
-        ```python
-        import numpy as np
-        import supervision as sv
-        from rfdetr import RFDETRBase
-        from rfdetr.util.coco_classes import COCO_CLASSES
-        from trackers import SORTTracker
-
-
-        model = RFDETRBase(device="mps")
-        tracker = SORTTracker()
-        box_annotator = sv.BoxAnnotator()
-        label_annotator = sv.LabelAnnotator()
-
-
-        def callback(frame: np.ndarray, _: int):
-            detections = model.predict(frame, threshold=0.5)
-            detections = tracker.update(detections)
-
-            labels = [
-                f"#{tracker_id} {COCO_CLASSES[class_id]} {confidence:.2f}"
-                for tracker_id, class_id, confidence in zip(
-                    detections.tracker_id, detections.class_id, detections.confidence
-                )
-            ]
-
-            annotated_image = frame.copy()
-            annotated_image = box_annotator.annotate(annotated_image, detections)
-            annotated_image = label_annotator.annotate(
-                annotated_image, detections, labels
-            )
-
-            return annotated_image
-
-
-        sv.process_video(
-            source_path="data/traffic_video.mp4",
-            target_path="data/out.mp4",
-            callback=callback,
-        )
-        ```
-
-    Attributes:
-        trackers (list[SORTKalmanBoxTracker]): List of SORTKalmanBoxTracker objects.
+    SORT is a pragmatic approach to multiple object tracking with a focus on
+    simplicity and speed. It uses a Kalman filter for motion prediction and the
+    Hungarian algorithm or simple IOU matching for data association.
 
     Args:
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
@@ -173,18 +129,23 @@ class SORTTracker(BaseTracker):
         )
 
     def update(self, detections: sv.Detections) -> sv.Detections:
-        """
-        Updates the state of tracked objects with the newly received detections
-        and returns the updated `sv.Detections` (including tracking IDs).
+        """Updates the tracker state with new detections.
+
+        Performs Kalman filter prediction, associates detections with existing
+        trackers based on IOU, updates matched trackers, and initializes new
+        trackers for unmatched high-confidence detections.
 
         Args:
-            detections (sv.Detections): The latest set of object detections.
+            detections (sv.Detections): The latest set of object detections from a frame.
 
         Returns:
-            sv.Detections: A copy of the detections with `tracker_id` set
-                for each detection that is tracked.
-        """
+            sv.Detections: A copy of the input detections, augmented with assigned
+                `tracker_id` for each successfully tracked object. Detections not
+                associated with a track will not have a `tracker_id`.
+        """  # noqa: E501
+
         if len(self.trackers) == 0 and len(detections) == 0:
+            detections.tracker_id = np.array([], dtype=int)
             return detections
 
         # Convert detections to a (N x 4) array (x1, y1, x2, y2)
@@ -221,5 +182,9 @@ class SORTTracker(BaseTracker):
         return updated_detections
 
     def reset(self) -> None:
+        """Resets the tracker's internal state.
+
+        Clears all active tracks and resets the track ID counter.
+        """
         self.trackers = []
         SORTKalmanBoxTracker.count_id = 0

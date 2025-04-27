@@ -97,7 +97,7 @@ class DeepSORTFeatureExtractor:
                 f"Model {model_name} not found in timm. "
                 + "Please check the model name and try again."
             )
-        model = timm.create_model(model_name, pretrained=pretrained, *args, **kwargs)
+        model = timm.create_model(model_name, *args, **kwargs)
         backbone_model = FeatureExtractionBackbone(model)
         return cls(backbone_model, device, input_size)
 

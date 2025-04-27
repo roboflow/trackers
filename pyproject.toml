@@ -1,6 +1,6 @@
 [project]
 name = "trackers"
-version = "2.0.0rc0"
+version = "2.0.1"
 description = "A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms"
 readme = "README.md"
 authors = [
@@ -36,7 +36,7 @@ keywords = ["tracking","mot","sort","deepsort", "machine-learning", "deep-learni
 dependencies = [
     "firerequests>=0.1.2",
     "numpy>=2.0.2",
-    "supervision>=0.25.1",
+    "supervision>=0.26.0rc7",
     "validators>=0.34.0",
 ]
 
