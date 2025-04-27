@@ -331,9 +331,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         iou_matches: list[tuple[int, int]] = []
         if iou_track_candidates and unmatched_detections:
-            iou_dist_matrix = 1 - iou_matrix
-            iou_dist_matrix_filtered = iou_dist_matrix.copy()
-            mask = iou_matrix < self.minimum_iou_threshold
+            iou_dist_matrix: np.ndarray = 1 - iou_matrix
+            iou_dist_matrix_filtered: np.ndarray = iou_dist_matrix.copy()
+            mask: np.ndarray = iou_matrix < self.minimum_iou_threshold
             iou_dist_matrix_filtered[mask] = 1.0
 
             iou_matches, unmatched_candidates, unmatched_detections = (
