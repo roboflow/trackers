@@ -12,9 +12,11 @@ from trackers.utils.sort_utils import (
 class ByteTrackTracker(BaseTracker):
     """Implements ByteTrack.
 
-    SORT is a pragmatic approach to multiple object tracking with a focus on
-    simplicity and speed. It uses a Kalman filter for motion prediction and the
-    Hungarian algorithm or simple IOU matching for data association.
+    ByteTrack is a simple, effective, and generic multi-object tracking method
+    that improves upon tracking-by-detection by associating *every* detection box
+    instead of discarding low-score ones. It uses a two-stage association process
+    and builds on established techniques like the Kalman filter for motion prediction
+    and the Hungarian algorithm for data association.
 
     Args:
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
@@ -41,6 +43,9 @@ class ByteTrackTracker(BaseTracker):
             high probability detected boxes.
         distance_metric (str): Distance metric for appearance features (e.g., 'cosine',
             'euclidean'). See `scipy.spatial.distance.cdist`.
+        max_appearance_distance (float): Maximum allowed distance for appearance-based
+            matching when using 'RE-ID' as the `high_prob_association_metric`.
+            Lower values result in stricter appearance matching.
     """
 
     def __init__(
@@ -49,10 +54,11 @@ class ByteTrackTracker(BaseTracker):
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.25,
         minimum_consecutive_frames: int = 3,
-        minimum_iou_threshold: float = 0.3,
+        minimum_iou_threshold: float = 0.2,
         high_prob_boxes_threshold: float = 0.5,
         feature_extractor = None, #The type should be the new feature extractor class
         distance_metric: str = "cosine", # None, 'cosine' or 'euclidean'
+        max_appearance_distance: float = 0.6 # Default maximum distance for RE-ID matching with cosine distance.
 
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
@@ -68,10 +74,10 @@ class ByteTrackTracker(BaseTracker):
         self.distance_metric = distance_metric
         # Active trackers
         self.trackers: list[ByteTrackKalmanBoxTracker] = []
+        self.max_appearance_distance = max_appearance_distance 
 
     def _update_detections(self,trackers: list[ByteTrackKalmanBoxTracker],
                                 detections: sv.Detections, updated_detections: list[sv.Detections], matched_indices: set[int]):
-    
         # Update matched trackers with assigned detections. 
         det_bboxes = detections.xyxy
         for row, col in matched_indices:
@@ -106,10 +112,6 @@ class ByteTrackTracker(BaseTracker):
             detections.tracker_id = np.array([], dtype=int)
             return detections
         updated_detections = [] # List for returning the updated detections with its new assigned track id
-        # Convert detections to a (N x 4) array (x1, y1, x2, y2)
-        detection_boxes = (
-            detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
-        )
 
         # Predict new locations for existing trackers
         for tracker in self.trackers:
@@ -158,6 +160,19 @@ class ByteTrackTracker(BaseTracker):
         return updated_detections 
 
     def _get_high_and_low_probability_detections(self, detections: sv.Detections):
+        """
+        Splits the input detections into high-confidence and low-confidence sets
+        based on the `self.high_prob_boxes_threshold`.
+
+        Args:
+            detections (sv.Detections): The input detections with confidence scores.
+
+        Returns:
+            tuple[sv.Detections, sv.Detections]: A tuple containing two
+                sv.Detections objects: the first for high-confidence detections
+                (confidence >= threshold) and the second for low-confidence detections
+                (confidence < threshold).
+        """
         condition =  detections.confidence >= self.high_prob_boxes_threshold
         high_confidence = detections[condition]
         low_confidence = detections[np.logical_not( condition)]
@@ -168,16 +183,17 @@ class ByteTrackTracker(BaseTracker):
         min_similarity_thresh: float
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to trackers based on Similarity (generalization of IoU)
+        Associate detections to trackers based on Similarity (IoU or -(minus) Distance between appeareance features) using a greedy approach.
 
         Args:
-            similarity_matrix (np.ndarray): Similarity cost matrix.
-            detection_boxes (np.ndarray): Detected bounding boxes in the
-                form [x1, y1, x2, y2].
+            similarity_matrix (np.ndarray): Similarity matrix betw  een trackers (rows) and detections (columns).
+            detections (sv.Detections): The set of object detections.
+            trackers (list[ByteTrackKalmanBoxTracker]): The list of trackers.
+            min_similarity_thresh (float): Minimum similarity threshold for a valid match.
 
         Returns:
-            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices,
-                unmatched trackers, unmatched detections.
+            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices (list of (tracker_idx, detection_idx)),
+                indices of unmatched trackers, indices of unmatched detections.
         """
         matched_indices = []
         unmatched_trackers = set(range(len(trackers)))
@@ -185,12 +201,9 @@ class ByteTrackTracker(BaseTracker):
 
         if similarity_matrix.size > 0:
 
-            if min_similarity_thresh <0:
-                row_indices, col_indices = np.indices(similarity_matrix.shape)
-                row_indices = row_indices.flatten()
-                col_indices = col_indices.flatten()
-            else:
-                row_indices, col_indices = np.where(similarity_matrix > min_similarity_thresh)
+            # Filter matches based on minimum similarity threshold
+            # This condition works for both IoU (similarity > threshold) and negated distance (neg_dist > -max_dist)
+            row_indices, col_indices = np.where(similarity_matrix > min_similarity_thresh)
 
             # Sort in descending order of IOU. Higher = better match.
             sorted_pairs = sorted(
@@ -279,7 +292,7 @@ class ByteTrackTracker(BaseTracker):
         elif association_metric == "RE-ID":
             # Build feature distance matrix between detections and predicted bounding boxes
             similarity_matrix = - self._get_appearance_distance_matrix(detections["features"],trackers) #THe minus because _get_associated_indices considers the higher the best
-            thresh = -1
+            thresh = -self.max_appearance_distance
         else:
             raise Exception("Your association metric is not supported") 
         # Associate detections to trackers based on the higher value of the 
@@ -304,11 +317,11 @@ class ByteTrackTracker(BaseTracker):
             detection_features (np.ndarray): Features extracted from current detections.
             trackers (list[ByteTrackKalmanBoxTracker]): trackers to be compared.
         Returns:
-            np.ndarray: Appearance distance matrix.
+            np.ndarray: Appearance distance matrix (rows: trackers, columns: detections).
         """
 
-        if len (detection_features)==0:
-            return np.array([]) 
+        if len(trackers) == 0 or len(detection_features) == 0: # Handle empty cases
+             return np.zeros((len(trackers), len(detection_features)), dtype=np.float32)
         if len(trackers) > 0 and len(detection_features) > 0:
             track_features = np.array([t.get_feature() for t in trackers])
             distance_matrix = cdist(
