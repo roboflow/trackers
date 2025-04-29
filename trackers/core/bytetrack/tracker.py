@@ -126,7 +126,7 @@ class ByteTrackTracker(BaseTracker):
         if not self.feature_extractor is None:
             detection_features = self.feature_extractor.extract_features(frame, high_prob_detections)
             high_prob_detections["features"] = detection_features
-        low_prob_detections["features"] = [None] * len(low_prob_detections)
+        low_prob_detections["features"] = [[None]] * len(low_prob_detections)
         # Step 1: first association, with high confidence boxes
         matched_indices, unmatched_trackers, unmatched_high_prob_detections =  self._similarity_step(
             high_prob_detections, self.trackers, self.high_prob_association_metric) 
