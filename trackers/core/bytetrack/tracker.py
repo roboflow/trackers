@@ -144,8 +144,8 @@ class ByteTrackTracker(BaseTracker):
         self._update_detections(remaining_trackers, low_prob_detections, updated_detections, matched_indices)
 
         # Add unmatched low prob predictions to updated predictions
-        for row, col in unmatched_detections:
-            new_det = deepcopy(low_prob_detections[col:col+1])
+        for det_index in unmatched_detections:
+            new_det = deepcopy(low_prob_detections[det_index:det_index+1])
 
             new_det.tracker_id = np.array([-1])
             updated_detections.append(new_det)
