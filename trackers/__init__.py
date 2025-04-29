@@ -10,7 +10,7 @@ try:
     from trackers.core.deepsort.tracker import DeepSORTTracker
     from trackers.core.bytetrack.tracker import ByteTrackTracker
 
-    __all__.extend(["DeepSORTFeatureExtractor", "DeepSORTTracker"])
+    __all__.extend(["DeepSORTFeatureExtractor", "DeepSORTTracker","ByteTrackTracker"])
 except ImportError:
     logger.warning(
         "DeepSORT dependencies not installed. DeepSORT features will not be available. "
