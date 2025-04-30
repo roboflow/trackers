@@ -2,6 +2,7 @@ import numpy as np
 import supervision as sv
 from scipy.spatial.distance import cdist
 from copy import deepcopy
+from typing import Optional, Union
 
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
@@ -77,7 +78,7 @@ class ByteTrackTracker(BaseTracker):
         self.max_appearance_distance = max_appearance_distance 
 
     def _update_detections(self,trackers: list[ByteTrackKalmanBoxTracker],
-                                detections: sv.Detections, updated_detections: list[sv.Detections], matched_indices: set[int]):
+                                detections: sv.Detections, updated_detections: list[sv.Detections], matched_indices: list[tuple[int, int]]):
         # Update matched trackers with assigned detections. 
         det_bboxes = detections.xyxy
         for row, col in matched_indices:
@@ -274,16 +275,21 @@ class ByteTrackTracker(BaseTracker):
         )
     
     def _similarity_step(self, detections: sv.Detections, trackers: list[ByteTrackKalmanBoxTracker], association_metric: str,
-                        detection_features = np.ndarray
+                        detection_features : Optional[np.ndarray] = None
                          )-> tuple[list[tuple[int, int]], set[int], set[int]] :
         """Measures similarity as indicated by the user between tracks and detections and returns the matches and unmatched trackers/detections.
             Is useful for step 1 and 2 of the BYTE algorithm.
 
         Args:
-            detections (sv.Detections): The set of object detections. 
-            trackers (list[ByteTrackKalmanBoxTracker]): The list of trackers that will we matched to the detections
+            detections (sv.Detections): The set of object detections.
+            trackers (list[ByteTrackKalmanBoxTracker]): The list of trackers that will we matched to the detections.
             association_metric (str): The metric that will compare the detections with the trackers. Can be either object features (RE-ID) or
-                based on location (IoU)"""
+                based on location (IoU).
+            detection_features (Optional[np.ndarray]): Features extracted from detections, used for 'RE-ID' association. Defaults to None.
+
+        Returns:
+            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices, unmatched trackers indices, unmatched detections indices.
+        """
         similarity_matrix = None
         if association_metric == "IoU":
             # Build IOU cost matrix between detections and predicted bounding boxes

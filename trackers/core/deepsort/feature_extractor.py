@@ -73,7 +73,7 @@ class DeepSORTFeatureExtractor:
         device: Optional[str] = "auto",
         input_size: Tuple[int, int] = (128, 128),
         pretrained: bool = True,
-        *args,
+        get_pooled_features: bool = True,
         **kwargs,
     ):
         """
@@ -84,8 +84,8 @@ class DeepSORTFeatureExtractor:
             device (str): Device to run the model on.
             input_size (Tuple[int, int]): Size to which the input images are resized.
             pretrained (bool): Whether to use pretrained weights from timm or not.
-            *args: Additional arguments to pass to
-                [`timm.create_model`](https://huggingface.co/docs/timm/en/reference/models#timm.create_model).
+            get_pooled_features (bool): Whether to get the pooled features from the
+                model or not.
             **kwargs: Additional keyword arguments to pass to
                 [`timm.create_model`](https://huggingface.co/docs/timm/en/reference/models#timm.create_model).
 
@@ -97,7 +97,9 @@ class DeepSORTFeatureExtractor:
                 f"Model {model_name} not found in timm. "
                 + "Please check the model name and try again."
             )
-        model = timm.create_model(model_name, pretrained=pretrained, *args, **kwargs)
+        if not get_pooled_features:
+            kwargs["global_pool"] = ""
+        model = timm.create_model(model_name, num_classes=0, **kwargs)
         backbone_model = FeatureExtractionBackbone(model)
         return cls(backbone_model, device, input_size)
 
