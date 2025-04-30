@@ -196,7 +196,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         return combined_dist
 
-    def _match_tracks_stage_using_linear_sum_assignment(
+    def _match_tracks_using_linear_sum_assignment(
         self,
         cost_matrix: np.ndarray,
         track_indices: list,
@@ -304,7 +304,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         )
 
         confirmed_matches, unmatched_confirmed, unmatched_detections = (
-            self._match_tracks_stage_using_linear_sum_assignment(
+            self._match_tracks_using_linear_sum_assignment(
                 combined_dist_matrix,
                 confirmed_tracks,
                 list(range(len(detection_features))),
@@ -340,7 +340,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             iou_dist_matrix_filtered[mask] = 1.0
 
             iou_matches, unmatched_candidates, unmatched_detections = (
-                self._match_tracks_stage_using_linear_sum_assignment(
+                self._match_tracks_using_linear_sum_assignment(
                     iou_dist_matrix_filtered,
                     iou_track_candidates,
                     list(unmatched_detections),
