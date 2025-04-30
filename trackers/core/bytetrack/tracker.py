@@ -10,7 +10,7 @@ from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
 )
-from trackers.utils.general_utils import (clip_coordinates)
+#from trackers.utils.general_utils import (clip_coordinates)
 class ByteTrackTracker(BaseTracker):
     """Implements ByteTrack.
 
