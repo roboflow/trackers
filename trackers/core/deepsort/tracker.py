@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import supervision as sv
 import torch
+from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
 from trackers.core.base import BaseTrackerWithFeatures
@@ -195,7 +196,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
         return combined_dist
 
-    def _match_tracks_stage(
+    def _match_tracks_using_linear_sum_assignment(
         self,
         cost_matrix: np.ndarray,
         track_indices: list,
@@ -221,40 +222,42 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         sub_cost_matrix = cost_matrix[np.ix_(track_indices, detection_indices)]
 
         # Apply threshold of 1.0 to mark infeasible associations
-        # Only consider associations where cost < 1.0
         valid_mask = sub_cost_matrix < 1.0
 
         if not np.any(valid_mask):
             return [], track_indices, detection_indices
 
-        row_indices, col_indices = np.where(valid_mask)
+        # Create a masked cost matrix where invalid associations have a very high cost
+        masked_cost_matrix = np.where(valid_mask, sub_cost_matrix, 1e10)
 
-        indices = np.stack([row_indices, col_indices], axis=1)
-        indices = indices[np.argsort(sub_cost_matrix[row_indices, col_indices])]
+        # Find optimal assignment minimizing the total cost using
+        # scipy.optimize.linear_sum_assignment. Note that it uses a a modified
+        # Jonker-Volgenant algorithm with no initialization instead of the
+        # Hungarian algorithm as mentioned in the SORT paper.
+        row_indices, col_indices = linear_sum_assignment(masked_cost_matrix)
 
+        # Filter out assignments with invalid cost (those we marked with 1e10)
+        valid_assignments = sub_cost_matrix[row_indices, col_indices] < 1.0
+        row_indices = row_indices[valid_assignments]
+        col_indices = col_indices[valid_assignments]
+
+        # Convert to original indices
         matches = []
-        unmatched_tracks = list(track_indices)
-        unmatched_detections = list(detection_indices)
-
-        matched_track_indices = set()
-        matched_detection_indices = set()
-
-        for row, col in indices:
+        for row, col in zip(row_indices, col_indices):
             track_idx = track_indices[row]
             detection_idx = detection_indices[col]
-
-            # Skip if either track or detection is already matched
-            if row in matched_track_indices or col in matched_detection_indices:
-                continue
-
             matches.append((track_idx, detection_idx))
-            matched_track_indices.add(row)
-            matched_detection_indices.add(col)
 
-            if track_idx in unmatched_tracks:
-                unmatched_tracks.remove(track_idx)
-            if detection_idx in unmatched_detections:
-                unmatched_detections.remove(detection_idx)
+        # Determine unmatched tracks and detections
+        matched_track_indices = {track_indices[row] for row in row_indices}
+        matched_detection_indices = {detection_indices[col] for col in col_indices}
+
+        unmatched_tracks = [
+            idx for idx in track_indices if idx not in matched_track_indices
+        ]
+        unmatched_detections = [
+            idx for idx in detection_indices if idx not in matched_detection_indices
+        ]
 
         return matches, unmatched_tracks, unmatched_detections
 
@@ -301,7 +304,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         )
 
         confirmed_matches, unmatched_confirmed, unmatched_detections = (
-            self._match_tracks_stage(
+            self._match_tracks_using_linear_sum_assignment(
                 combined_dist_matrix,
                 confirmed_tracks,
                 list(range(len(detection_features))),
@@ -337,7 +340,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             iou_dist_matrix_filtered[mask] = 1.0
 
             iou_matches, unmatched_candidates, unmatched_detections = (
-                self._match_tracks_stage(
+                self._match_tracks_using_linear_sum_assignment(
                     iou_dist_matrix_filtered,
                     iou_track_candidates,
                     list(unmatched_detections),
