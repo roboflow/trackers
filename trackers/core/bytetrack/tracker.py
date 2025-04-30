@@ -3,13 +3,14 @@ import supervision as sv
 from scipy.spatial.distance import cdist
 from copy import deepcopy
 from typing import Optional, Union
-
+from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
 )
+from trackers.utils.general_utils import (clip_coordinates)
 class ByteTrackTracker(BaseTracker):
     """Implements ByteTrack.
 
@@ -59,7 +60,7 @@ class ByteTrackTracker(BaseTracker):
         high_prob_boxes_threshold: float = 0.5,
         feature_extractor = None, #The type should be the new feature extractor class
         distance_metric: str = "cosine", # None, 'cosine' or 'euclidean'
-        max_appearance_distance: float = 0.6 # Default maximum distance for RE-ID matching with cosine distance.
+        max_appearance_distance: float = 0.75 # Default maximum distance for RE-ID matching with cosine distance.
 
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
@@ -178,12 +179,15 @@ class ByteTrackTracker(BaseTracker):
         low_confidence = detections[np.logical_not( condition)]
         return high_confidence, low_confidence
     
+ 
     def _get_associated_indices(
-        self, similarity_matrix: np.ndarray, detection_boxes: np.ndarray, trackers: list[ByteTrackKalmanBoxTracker],
+        self, similarity_matrix: np.ndarray, detection_boxes: np.ndarray,  trackers: list[ByteTrackKalmanBoxTracker],
         min_similarity_thresh: float
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to trackers based on Similarity (IoU or -(minus) Distance between appeareance features) using a greedy approach.
+        Associate detections to trackers based on Similarity (IoU or -(minus) Distance between appeareance features) using the 
+        Jonker-Volgenant algorithm approach with no initialization instead of the Hungarian algorithm as mentioned in the SORT paper, but 
+        it solves the assignment problem in an optimal way.
 
         Args:
             similarity_matrix (np.ndarray): Similarity matrix betw  een trackers (rows) and detections (columns).
@@ -199,29 +203,13 @@ class ByteTrackTracker(BaseTracker):
         unmatched_trackers = set(range(len(trackers)))
         unmatched_detections = set(range(len(detection_boxes)))
 
-        if similarity_matrix.size > 0:
-
-            # Filter matches based on minimum similarity threshold
-            # This condition works for both IoU (similarity > threshold) and negated distance (neg_dist > -max_dist)
-            row_indices, col_indices = np.where(similarity_matrix > min_similarity_thresh)
-
-            # Sort in descending order of IOU. Higher = better match.
-            sorted_pairs = sorted(
-                zip(row_indices, col_indices),
-                key=lambda x: similarity_matrix[x[0], x[1]],
-                reverse=True,
-            )
-            # keep each unique row/col pair at most once
-            used_rows = set()
-            used_cols = set()
-            for row, col in sorted_pairs:
-                if (row not in used_rows) and (col not in used_cols):
-                    used_rows.add(row)
-                    used_cols.add(col)
+        if len(trackers) > 0 and len(detection_boxes) > 0:
+            row_indices, col_indices = linear_sum_assignment(similarity_matrix, maximize=True)
+            for row, col in zip(row_indices, col_indices):
+                if similarity_matrix[row, col] >= min_similarity_thresh:
                     matched_indices.append((row, col))
-
-            unmatched_trackers = unmatched_trackers - used_rows
-            unmatched_detections = unmatched_detections - used_cols
+                    unmatched_trackers.remove(row)
+                    unmatched_detections.remove(col)
 
         return matched_indices, unmatched_trackers, unmatched_detections
 
@@ -299,6 +287,7 @@ class ByteTrackTracker(BaseTracker):
             # Build feature distance matrix between detections and predicted bounding boxes
             similarity_matrix = - self._get_appearance_distance_matrix(detection_features,trackers) #THe minus because _get_associated_indices considers the higher the best
             thresh = -self.max_appearance_distance
+
         else:
             raise Exception("Your association metric is not supported") 
         # Associate detections to trackers based on the higher value of the 
@@ -336,6 +325,4 @@ class ByteTrackTracker(BaseTracker):
             distance_matrix = np.clip(distance_matrix, 0, 1)
         else:
             distance_matrix = np.zeros((len(trackers), len(detection_features)), dtype=np.float32)
-
-
         return distance_matrix

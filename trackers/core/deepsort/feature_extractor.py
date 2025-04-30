@@ -99,7 +99,7 @@ class DeepSORTFeatureExtractor:
             )
         if not get_pooled_features:
             kwargs["global_pool"] = ""
-        model = timm.create_model(model_name, num_classes=0, **kwargs)
+        model = timm.create_model(model_name,  pretrained=pretrained, num_classes=0,**kwargs)
         backbone_model = FeatureExtractionBackbone(model)
         return cls(backbone_model, device, input_size)
 
