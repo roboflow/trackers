@@ -170,3 +170,4 @@ test.py
 **.pt
 **.pth
 .DS_Store
+test_data/
