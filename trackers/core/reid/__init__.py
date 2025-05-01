@@ -1,3 +1,3 @@
-from trackers.core.reid.data.market_1501 import Market1501SiameseDataset
+from trackers.core.reid.data.market_1501 import Market1501Dataset
 
-__all__ = ["Market1501SiameseDataset"]
+__all__ = ["Market1501Dataset"]

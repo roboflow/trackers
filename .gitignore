@@ -165,7 +165,7 @@ cython_debug/
 # Repository-specific stuff
 .ipynb_checkpoints/
 .idea/
-data/
+datasets/
 test.py
 **.pt
 **.pth
