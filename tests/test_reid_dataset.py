@@ -1,6 +1,7 @@
 import os
 import shutil
 
+import pytest
 from firerequests import FireRequests
 
 from trackers.core.reid import Market1501SiameseDataset
@@ -16,5 +17,6 @@ def test_reid_dataset():
     unzip_file("test_data/market_1501.zip", "test_data")
     os.remove("test_data/market_1501.zip")
     dataset = Market1501SiameseDataset("./test_data/Market-1501-v15.09.15")
-    assert len(dataset) == 751
+    if not len(dataset) == 751:  # nosec B101
+        pytest.fail(f"Dataset length mismatch. Expected 751, got {len(dataset)}")
     shutil.rmtree("test_data")
