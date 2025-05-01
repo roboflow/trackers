@@ -15,6 +15,7 @@ class TripletsDataset(Dataset, ABC):
         data_dir (str): The directory containing the dataset.
         transforms (Optional[Compose]): The transforms to apply to the images.
     """
+
     def __init__(self, data_dir: str, transforms: Optional[Compose] = None):
         self.data_dir = data_dir
         self.transforms = transforms or ToTensor()
@@ -41,7 +42,9 @@ class TripletsDataset(Dataset, ABC):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         triplet_class = self.triplet_classes[index]
         anchor_image_file = self.get_anchor_image_file(triplet_class)
-        positive_image_file = self.get_positive_image_file(triplet_class, anchor_image_file)
+        positive_image_file = self.get_positive_image_file(
+            triplet_class, anchor_image_file
+        )
         negative_image_file = self.get_negative_image_file(triplet_class)
 
         anchor_image = Image.open(anchor_image_file).convert("RGB")

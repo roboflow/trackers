@@ -33,13 +33,13 @@ class Market1501Dataset(TripletsDataset):
 
     def __len__(self):
         return len(self.triplet_classes)
-    
+
     def get_anchor_image_file(self, triplet_class: str) -> str:
         class_image_files = glob(
             os.path.join(self.train_data_dir, f"{triplet_class}*.jpg")
         )
         return self.secure_random.choice(class_image_files)
-    
+
     def get_positive_image_file(self, triplet_class: str, anchor_image_file) -> str:
         class_image_files = glob(
             os.path.join(self.train_data_dir, f"{triplet_class}*.jpg")
@@ -52,7 +52,7 @@ class Market1501Dataset(TripletsDataset):
                 for file in class_image_files
             ]
         )
-    
+
     def get_negative_image_file(self, triplet_class: str) -> str:
         negative_classes = [cls for cls in self.triplet_classes if cls != triplet_class]
         negative_class_image_files = glob(
