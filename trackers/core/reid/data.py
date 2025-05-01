@@ -1,6 +1,6 @@
 import os
-import random
 from glob import glob
+from secrets import SystemRandom
 from typing import Optional, Tuple
 
 import torch
@@ -24,6 +24,7 @@ class Market1501SiameseDataset(Dataset):
         self.train_data_dir = os.path.join(data_dir, "bounding_box_train")
         self.triplet_classes = self.get_triplet_classes()
         self.transforms = transforms or ToTensor()
+        self.secure_random = SystemRandom()
 
     def get_triplet_classes(self):
         image_files = glob(os.path.join(self.train_data_dir, "*.jpg"))
@@ -44,12 +45,14 @@ class Market1501SiameseDataset(Dataset):
         class_image_files = glob(
             os.path.join(self.train_data_dir, f"{triplet_class}*.jpg")
         )
-        anchor_image_file = random.choice(class_image_files)
+        anchor_image_file = self.secure_random.choice(class_image_files)
 
         # get positive image file
-        positive_image_file = random.choice(
+        positive_image_file = self.secure_random.choice(
             [
-                file if file != anchor_image_file else random.choice(class_image_files)
+                file
+                if file != anchor_image_file
+                else self.secure_random.choice(class_image_files)
                 for file in class_image_files
             ]
         )
@@ -57,9 +60,12 @@ class Market1501SiameseDataset(Dataset):
         # get negative image file
         negative_classes = [cls for cls in self.triplet_classes if cls != triplet_class]
         negative_class_image_files = glob(
-            os.path.join(self.train_data_dir, f"{random.choice(negative_classes)}*.jpg")
+            os.path.join(
+                self.train_data_dir,
+                f"{self.secure_random.choice(negative_classes)}*.jpg",
+            )
         )
-        negative_image_file = random.choice(negative_class_image_files)
+        negative_image_file = self.secure_random.choice(negative_class_image_files)
 
         anchor_image = Image.open(anchor_image_file).convert("RGB")
         positive_image = Image.open(positive_image_file).convert("RGB")
