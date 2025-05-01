@@ -1,11 +1,13 @@
 import os
 import shutil
+
 from firerequests import FireRequests
 
 from trackers.core.reid import Market1501SiameseDataset
 from trackers.utils.data_utils import unzip_file
 
 DATASET_URL = "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/market_1501.zip"
+
 
 def test_reid_dataset():
     FireRequests().download(DATASET_URL)
