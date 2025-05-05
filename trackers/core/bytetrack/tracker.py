@@ -216,7 +216,7 @@ class ByteTrackTracker(BaseTracker):
     def _spawn_new_trackers(
         self,
         detections: sv.Detections,
-        detection_boxes: np.ndarray,
+        detection_boxes: np.ndarray,    
         detection_features: np.ndarray,
         unmatched_detections: set[int],
         updated_detections : list[sv.Detections]

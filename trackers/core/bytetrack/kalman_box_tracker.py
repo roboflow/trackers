@@ -70,7 +70,7 @@ class ByteTrackKalmanBoxTracker:
 
         # Initialize features list
         self.features: list[np.ndarray] = []
-        if feature is not None:
+        if not feature is None:
             self.features.append(feature)
 
     def _initialize_kalman_filter(self) -> None:
