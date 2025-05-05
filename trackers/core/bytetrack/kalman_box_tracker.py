@@ -1,7 +1,7 @@
+from typing import Optional, Union
+
 import numpy as np
 
-
-from typing import Optional, Union
 
 class ByteTrackKalmanBoxTracker:
     """
@@ -70,7 +70,7 @@ class ByteTrackKalmanBoxTracker:
 
         # Initialize features list
         self.features: list[np.ndarray] = []
-        if not feature is None:
+        if feature is not None:
             self.features.append(feature)
 
     def _initialize_kalman_filter(self) -> None:
@@ -108,7 +108,7 @@ class ByteTrackKalmanBoxTracker:
         # Increase time since update
         self.time_since_update += 1
 
-    def update(self, bbox: np.ndarray, feature: Optional[np.ndarray] = None ) -> None:
+    def update(self, bbox: np.ndarray, feature: Optional[np.ndarray] = None) -> None:
         """
         Updates the state with a new detected bounding box.
 
@@ -132,9 +132,9 @@ class ByteTrackKalmanBoxTracker:
         # Update covariance
         identity_matrix = np.eye(8, dtype=np.float32)
         self.P = (identity_matrix - K @ self.H) @ self.P
-        if not feature is None:
+        if feature is not None:
             self.update_feature(feature)
-            
+
     def get_state_bbox(self) -> np.ndarray:
         """
         Returns the current bounding box estimate from the state vector.
@@ -162,7 +162,7 @@ class ByteTrackKalmanBoxTracker:
         Returns:
             np.ndarray: Mean feature vector.
         """
-        
+
         if len(self.features) > 0:
             # Return the mean of all features, thus (in theory) capturing the
             # "average appearance" of the object, which should be more robust
