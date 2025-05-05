@@ -2,7 +2,7 @@ import numpy as np
 import supervision as sv
 from scipy.spatial.distance import cdist
 from copy import deepcopy
-from typing import Optional, Union
+from typing import Optional
 from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
@@ -282,6 +282,7 @@ class ByteTrackTracker(BaseTracker):
         if association_metric == "IoU":
             # Build IOU cost matrix between detections and predicted bounding boxes
             similarity_matrix = get_iou_matrix(trackers, detections.xyxy)
+            print(similarity_matrix)
             thresh = self.minimum_iou_threshold
         elif association_metric == "RE-ID":
             # Build feature distance matrix between detections and predicted bounding boxes

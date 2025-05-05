@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 import supervision as sv
 from trackers import  ByteTrackTracker
-from unittest.mock import MagicMock
 from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
 import numpy as np
 #Run with Pytest : pytest tests_bytetrack.py -v
@@ -125,7 +124,7 @@ class MockExtractor():
         self.features=  features
     def extract_features (self,frame, high_prob_detections): return self.features
 
-def test_update_full_workflow():
+def test_update_full_workflow_with_extractor():
     # Mock image (used by feature extractor)
     frame = np.ones((480, 640, 3), dtype=np.uint8) * 255
 
@@ -175,11 +174,11 @@ def test_update_full_workflow():
     # --- Some Assertions on expected types ---
     assert isinstance(output_detections, sv.Detections)
     assert hasattr(output_detections, "tracker_id")
-    high_conf_mask = output_detections.confidence >= 0.5
     # Check that high-confidence detections have been assigned to its tracker_ids
 
     assert np.all(output_detections[output_detections.tracker_id == 0].xyxy[0] == detections.xyxy[0])
     assert np.all(output_detections[output_detections.tracker_id == 1].xyxy[0] == detections.xyxy[1])
+    assert np.all(output_detections[output_detections.tracker_id == 2].xyxy[0] == detections.xyxy[2])
 
     # Check that low-confidence detection has tracker_id -1 if unmatched
     low_conf_mask = output_detections.confidence < 0.5
@@ -207,5 +206,112 @@ def test_update_full_workflow():
     assert np.all(output_detections[output_detections.tracker_id == 1].xyxy[0] == detections.xyxy[0])# Associates correctly feature changing order of appearance
     assert np.all(output_detections[output_detections.tracker_id == 0].xyxy[0] == detections.xyxy[1]) # Associates correctly feature changing order of appearance
     assert np.all(output_detections[output_detections.tracker_id == 2].xyxy[0] == detections.xyxy[-1]) #Associates correctly low confidence object that was high confidence
+
+    print("Test passed: Full ByteTrack-style update works.")
+
+
+def test_update_full_workflow_without_extractor():
+    # Mock image 
+    frame = np.ones((480, 640, 3), dtype=np.uint8) * 255
+
+    # High-confidence detections: should be matched or spawn trackers
+    high_conf_bboxes = [
+        [100, 100, 150, 150],  # Detection 1
+        [200, 200, 250, 250],  # Detection 2
+    ]
+    high_confidences = [0.9, 0.95,]
+
+    # Low-confidence detection: may or may not be matched
+    low_conf_bboxes = [
+        [300, 300, 350, 350],  # Detection 3
+    ]
+    low_confidences = [0.4]
+
+    all_bboxes = high_conf_bboxes + low_conf_bboxes
+    all_confidences = high_confidences + low_confidences
+
+    detections = make_detections(all_bboxes, all_confidences)
+
+    # Set up the tracker with a dummy feature extractor
+    tracker = ByteTrackTracker(
+        high_prob_boxes_threshold=0.5,
+        distance_metric='cosine',
+        minimum_iou_threshold=0.3,
+        feature_extractor=None,
+        minimum_consecutive_frames = 1,
+
+    )
+
+    # Run first update and all trackers should be set to -1
+    output_detections = tracker.update(detections, frame)
+    assert (output_detections.tracker_id == -1).all()
+
+
+    # Run 2nd update in order to start to detect.
+
+    output_detections = tracker.update(detections, frame)
+
+    # --- Some Assertions on expected types ---
+    assert isinstance(output_detections, sv.Detections)
+    assert hasattr(output_detections, "tracker_id")
+    # Check that high-confidence detections have been assigned to its tracker_ids
+
+    assert np.all(output_detections[output_detections.tracker_id == 0].xyxy[0] == detections.xyxy[0])
+    assert np.all(output_detections[output_detections.tracker_id == 1].xyxy[0] == detections.xyxy[1])
+
+    # Check that low-confidence detection has tracker_id -1 if unmatched
+    low_conf_mask = output_detections.confidence < 0.5
+    assert (output_detections.tracker_id[low_conf_mask] == -1).all()
+
+    # After first update, number of internal trackers should be at least 2
+    assert len(tracker.trackers) >= 2
+
+
+    # Now change order of detections 
+    high_conf_bboxes = [
+        [200, 200, 250, 250],  # Detection 2
+        [100, 100, 150, 150],  # Detection 1
+    ]
+    low_conf_bboxes = [
+    ]
+    low_confidences = []
+
+    all_bboxes = high_conf_bboxes + low_conf_bboxes
+    all_confidences = high_confidences + low_confidences
+
+
+    detections = make_detections(all_bboxes, all_confidences)
+    output_detections = tracker.update(detections, frame)
+
+    assert np.all(output_detections[output_detections.tracker_id == 1].xyxy[0] == detections.xyxy[0])# Associates correctly detection changing order
+    assert np.all(output_detections[output_detections.tracker_id == 0].xyxy[0] == detections.xyxy[1]) # Associates correctly detection changing order 
+    assert len(detections) == len(output_detections)
+ 
+    # Now make it dont match a high confidence Bbox and match a displaced low confidence one.
+    trackers_ammount = len(tracker.trackers) # Save number of trackers up to now for testing if increases 
+
+    high_conf_bboxes = [
+        [126, 126, 200, 200],  # shouldnt match
+    ]
+    high_confidences = [0.6]
+
+    # Low-confidence detection: may or may not be matched
+    low_conf_bboxes = [
+        [120, 120, 150, 150],  # Should match Detection 1
+    ]
+    low_confidences = [0.4]
+    all_bboxes = high_conf_bboxes + low_conf_bboxes
+    all_confidences = high_confidences + low_confidences
+
+    detections = make_detections(all_bboxes, all_confidences)
+    output_detections = tracker.update(detections, frame)
+
+    assert np.all(output_detections[output_detections.tracker_id == 0].xyxy[0] == detections.xyxy[1])# Associates correctly the low confidence box by IoU
+    
+    # Doesnt associate high confidence box that doesnt match and starts new track
+    assert np.all(output_detections.tracker_id[1] == -1 )
+    assert trackers_ammount+1==len(tracker.trackers) 
+
+    assert len(detections) == len(output_detections) # tracker returns all the detections
 
     print("Test passed: Full ByteTrack-style update works.")
