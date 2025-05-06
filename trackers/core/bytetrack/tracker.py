@@ -10,7 +10,8 @@ from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
 )
-#from trackers.utils.general_utils import (clip_coordinates)
+from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
+
 class ByteTrackTracker(BaseTracker):
     """Implements ByteTrack.
 
@@ -58,7 +59,7 @@ class ByteTrackTracker(BaseTracker):
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.2,
         high_prob_boxes_threshold: float = 0.5,
-        feature_extractor = None, #The type should be the new feature extractor class
+        feature_extractor: Optional[DeepSORTFeatureExtractor] = None, #The type should be the new feature extractor class once implemented
         distance_metric: str = "cosine", # None, 'cosine' or 'euclidean'
         max_appearance_distance: float = 0.75 # Default maximum distance for RE-ID matching with cosine distance.
 
@@ -108,7 +109,7 @@ class ByteTrackTracker(BaseTracker):
             sv.Detections: A copy of the input detections, augmented with assigned
                 `tracker_id` for each successfully tracked object. Detections not
                 associated with a track will not have a `tracker_id`.
-        """  # noqa: E501
+        """
 
         if len(self.trackers) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
@@ -304,7 +305,7 @@ class ByteTrackTracker(BaseTracker):
         ByteTrackKalmanBoxTracker.count_id = 0
 
     def _get_appearance_distance_matrix(self, detection_features: np.ndarray, trackers: list[ByteTrackKalmanBoxTracker]
-                                         #!!!In my opinion this should be outside of the class, as is reutilized in DeepSORT and here
+            #!!!In the future  this should be outside of the class in a utils file, as is reutilized in DeepSORT and here
     ) -> np.ndarray:
         """
         Calculate appearance distance matrix between tracks and detections.
