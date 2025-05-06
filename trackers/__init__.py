@@ -6,11 +6,11 @@ __all__ = ["SORTTracker"]
 logger = get_logger(__name__)
 
 try:
+    from trackers.core.bytetrack.tracker import ByteTrackTracker
     from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
     from trackers.core.deepsort.tracker import DeepSORTTracker
-    from trackers.core.bytetrack.tracker import ByteTrackTracker
 
-    __all__.extend(["DeepSORTFeatureExtractor", "DeepSORTTracker","ByteTrackTracker"])
+    __all__.extend(["ByteTrackTracker", "DeepSORTFeatureExtractor", "DeepSORTTracker"])
 except ImportError:
     logger.warning(
         "DeepSORT dependencies not installed. DeepSORT features will not be available. "
