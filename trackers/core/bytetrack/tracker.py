@@ -8,11 +8,12 @@ from scipy.spatial.distance import cdist
 
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
+from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
 )
-from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
+
 
 class ByteTrackTracker(BaseTracker):
     """Implements ByteTrack.
@@ -61,10 +62,11 @@ class ByteTrackTracker(BaseTracker):
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.2,
         high_prob_boxes_threshold: float = 0.5,
-        feature_extractor: Optional[DeepSORTFeatureExtractor] = None, #The type should be the new feature extractor class once implemented
-        distance_metric: str = "cosine", # None, 'cosine' or 'euclidean'
-        max_appearance_distance: float = 0.75 # Default maximum distance for RE-ID matching with cosine distance.
-
+        feature_extractor: Optional[
+            DeepSORTFeatureExtractor
+        ] = None,  # The type should be the new feature extractor class once implemented
+        distance_metric: str = "cosine",  # None, 'cosine' or 'euclidean'
+        max_appearance_distance: float = 0.75,  # Default maximum distance for RE-ID matching with cosine distance.
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -346,8 +348,11 @@ class ByteTrackTracker(BaseTracker):
         self.trackers = []
         ByteTrackKalmanBoxTracker.count_id = 0
 
-    def _get_appearance_distance_matrix(self, detection_features: np.ndarray, trackers: list[ByteTrackKalmanBoxTracker]
-            #!!!In the future  this should be outside of the class in a utils file, as is reutilized in DeepSORT and here
+    def _get_appearance_distance_matrix(
+        self,
+        detection_features: np.ndarray,
+        trackers: list[ByteTrackKalmanBoxTracker],
+        #!!!In the future  this should be outside of the class in a utils file, as is reutilized in DeepSORT and here
     ) -> np.ndarray:
         """
         Calculate appearance distance matrix between tracks and detections.
