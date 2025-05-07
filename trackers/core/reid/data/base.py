@@ -38,7 +38,7 @@ class TripletsDataset(Dataset):
     ):
         self.tracker_id_to_images = validate_tracker_id_to_images(tracker_id_to_images)
         self.transforms = transforms or ToTensor()
-        self.tracker_ids = list(tracker_id_to_images.keys())
+        self.tracker_ids = list(self.tracker_id_to_images.keys())
 
     def __len__(self) -> int:
         return len(self.tracker_ids)
