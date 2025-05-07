@@ -5,6 +5,7 @@ import pytest
 from firerequests import FireRequests
 
 from trackers.core.reid import get_market1501_dataset
+from trackers.core.reid.data.market_1501 import parse_market1501_dataset
 from trackers.utils.data_utils import unzip_file
 
 DATASET_URL = "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/market_1501.zip"
@@ -23,72 +24,78 @@ def market_dataset():
     yield dataset_path
 
 
-def test_market1501_dataset_triplet_paths_train_val_split(market_dataset):
-    train_dataset, val_dataset = get_market1501_dataset(
-        os.path.join(market_dataset, "bounding_box_train"), split_ratio=0.8
+def validate_dataset_triplet_paths(dataset):
+    for tracker_id in dataset.tracker_ids:
+        anchor_image_path, positive_image_path, negative_image_path = (
+            dataset._get_triplet_image_paths(tracker_id)
+        )
+        anchor_image_id = os.path.basename(anchor_image_path).split("_")[0]
+        positive_image_id = os.path.basename(positive_image_path).split("_")[0]
+        negative_image_id = os.path.basename(negative_image_path).split("_")[0]
+        if anchor_image_id != positive_image_id:
+            pytest.fail(
+                "Anchor and positive image IDs mismatch. "
+                f"Expected {anchor_image_id} == {positive_image_id}"
+            )
+        if anchor_image_id == negative_image_id:
+            pytest.fail(
+                "Anchor and negative image IDs mismatch. "
+                f"Expected {anchor_image_id} != {negative_image_id}"
+            )
+
+
+@pytest.mark.parametrize("split", ["train", "test"])
+def test_market1501_dataset_triplet_paths(market_dataset, split):
+    dataset = get_market1501_dataset(
+        os.path.join(market_dataset, f"bounding_box_{split}")
     )
-    if not len(train_dataset) == 600:  # nosec B101
-        pytest.fail(f"Dataset length mismatch. Expected 751, got {len(train_dataset)}")
-    if not len(val_dataset) == 151:  # nosec B101
-        pytest.fail(f"Dataset length mismatch. Expected 151, got {len(val_dataset)}")
-
-    for tracker_id in train_dataset.tracker_ids:
-        anchor_image_path, positive_image_path, negative_image_path = (
-            train_dataset._get_triplet_image_paths(tracker_id)
-        )
-        anchor_image_id = os.path.basename(anchor_image_path).split("_")[0]
-        positive_image_id = os.path.basename(positive_image_path).split("_")[0]
-        negative_image_id = os.path.basename(negative_image_path).split("_")[0]
-        if anchor_image_id != positive_image_id:
-            pytest.fail(
-                "Anchor and positive image IDs mismatch. "
-                f"Expected {anchor_image_id} == {positive_image_id}"
-            )
-        if anchor_image_id == negative_image_id:
-            pytest.fail(
-                "Anchor and negative image IDs mismatch. "
-                f"Expected {anchor_image_id} != {negative_image_id}"
-            )
-
-    for tracker_id in val_dataset.tracker_ids:
-        anchor_image_path, positive_image_path, negative_image_path = (
-            val_dataset._get_triplet_image_paths(tracker_id)
-        )
-        anchor_image_id = os.path.basename(anchor_image_path).split("_")[0]
-        positive_image_id = os.path.basename(positive_image_path).split("_")[0]
-        negative_image_id = os.path.basename(negative_image_path).split("_")[0]
-        if anchor_image_id != positive_image_id:
-            pytest.fail(
-                "Anchor and positive image IDs mismatch. "
-                f"Expected {anchor_image_id} == {positive_image_id}"
-            )
-        if anchor_image_id == negative_image_id:
-            pytest.fail(
-                "Anchor and negative image IDs mismatch. "
-                f"Expected {anchor_image_id} != {negative_image_id}"
-            )
+    if split == "train":
+        if not len(dataset) == 751:  # nosec B101
+            pytest.fail(f"Dataset length mismatch. Expected 751, got {len(dataset)}")
+    elif split == "test":
+        if not len(dataset) == 752:  # nosec B101
+            pytest.fail(f"Dataset length mismatch. Expected 752, got {len(dataset)}")
+    else:
+        pytest.fail(f"Invalid split. Expected 'train' or 'test', got {split}")
+    validate_dataset_triplet_paths(dataset)
+    
 
 
-def test_market1501_dataset_triplet_paths_test_split(market_dataset):
-    test_dataset = get_market1501_dataset(
-        os.path.join(market_dataset, "bounding_box_test"), split_ratio=None
+@pytest.mark.parametrize("split_ratio", [None, 0.8])
+def test_market1501_dataset_split_ratio(market_dataset, split_ratio):
+    dataset = get_market1501_dataset(
+        os.path.join(market_dataset, "bounding_box_train"), split_ratio=split_ratio
     )
-    if not len(test_dataset) == 752:  # nosec B101
-        pytest.fail(f"Dataset length mismatch. Expected 752, got {len(test_dataset)}")
-    for tracker_id in test_dataset.tracker_ids:
-        anchor_image_path, positive_image_path, negative_image_path = (
-            test_dataset._get_triplet_image_paths(tracker_id)
-        )
-        anchor_image_id = os.path.basename(anchor_image_path).split("_")[0]
-        positive_image_id = os.path.basename(positive_image_path).split("_")[0]
-        negative_image_id = os.path.basename(negative_image_path).split("_")[0]
-        if anchor_image_id != positive_image_id:
+    if split_ratio is None:
+        if not len(dataset) == 751:  # nosec B101
+            pytest.fail(f"Dataset length mismatch. Expected 751, got {len(dataset)}")
+        validate_dataset_triplet_paths(dataset)
+    else:
+        train_dataset, val_dataset = dataset
+        if not len(train_dataset) == 600:  # nosec B101
+            pytest.fail(f"Dataset length mismatch. Expected 751, got {len(train_dataset)}")
+        if not len(val_dataset) == 151:  # nosec B101
+            pytest.fail(f"Dataset length mismatch. Expected 151, got {len(val_dataset)}")
+        validate_dataset_triplet_paths(train_dataset)
+        validate_dataset_triplet_paths(val_dataset)
+    
+
+
+@pytest.mark.parametrize("split", ["train", "test"])
+def test_parse_market1501_dataset(market_dataset, split):
+    dataset_path = os.path.join(market_dataset, f"bounding_box_{split}")
+    tracker_id_to_images = parse_market1501_dataset(dataset_path)
+    if split == "train":
+        if not len(tracker_id_to_images) == 751:  # nosec B101
             pytest.fail(
-                "Anchor and positive image IDs mismatch. "
-                f"Expected {anchor_image_id} == {positive_image_id}"
+                "Dataset length mismatch. "
+                f"Expected 751, got {len(tracker_id_to_images)}"
             )
-        if anchor_image_id == negative_image_id:
+    elif split == "test":
+        if not len(tracker_id_to_images) == 752:  # nosec B101
             pytest.fail(
-                "Anchor and negative image IDs mismatch. "
-                f"Expected {anchor_image_id} != {negative_image_id}"
+                "Dataset length mismatch. "
+                f"Expected 752, got {len(tracker_id_to_images)}"
             )
+    else:
+        pytest.fail(f"Invalid split. Expected 'train' or 'test', got {split}")
