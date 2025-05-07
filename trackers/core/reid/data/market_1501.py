@@ -1,7 +1,7 @@
 import os
 import random
 from glob import glob
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from torchvision.transforms import Compose
 
@@ -37,6 +37,7 @@ def get_market1501_dataset(
     data_dir: str,
     validation_split_fraction: float = 0.2,
     transforms: Optional[Compose] = None,
+    seed: Optional[Union[int, float, str, bytes, bytearray]] = None,
 ) -> dict[str, TripletsDataset]:
     """Get the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
 
@@ -46,11 +47,15 @@ def get_market1501_dataset(
         validation_split_fraction (float): The fraction of the dataset to use
             for validation.
         transforms (Compose): The transforms to apply to the images.
+        seed (Optional[Union[int, float, str, bytes, bytearray]]): The seed to use for the
+            random number generator. If None, the random number generator will not be
+            seeded.
 
     Returns:
         dict[str, TripletsDataset]: A dictionary mapping dataset splits to
             `TripletsDataset` objects.
     """
+    random.seed(seed)
     if validation_split_fraction < 0 or validation_split_fraction > 1:
         raise ValueError("Validation split fraction must be between 0 and 1")
     tracker_id_to_images = parse_market1501_dataset(data_dir, "train")
