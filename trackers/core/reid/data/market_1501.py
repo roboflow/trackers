@@ -7,17 +7,18 @@ from torchvision.transforms import Compose
 from trackers.core.reid.data.base import TripletsDataset
 
 
-def parse_market1501_dataset(data_dir: str) -> Dict[str, List[str]]:
+def parse_market1501_dataset(data_dir: str, split: str) -> Dict[str, List[str]]:
     """Parse the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501)
     to create a dictionary mapping tracker IDs to lists of image paths.
 
     Args:
         data_dir (str): The path to the Market1501 dataset.
+        split (str): The split to use. Must be one of "train" or "test".
 
     Returns:
         Dict[str, List[str]]: A dictionary mapping tracker IDs to lists of image paths.
     """
-    train_data_dir = os.path.join(data_dir, "bounding_box_train")
+    train_data_dir = os.path.join(data_dir, f"bounding_box_{split}")
     image_files = glob(os.path.join(train_data_dir, "*.jpg"))
     unique_ids = set(
         os.path.basename(image_file).split("_")[0] for image_file in image_files
@@ -37,9 +38,17 @@ class Market1501Dataset(TripletsDataset):
 
     Args:
         data_dir (str): The path to the Market1501 dataset.
+        split (str): The split to use. Must be one of "train" or "test".
         transforms (Optional[Compose]): Optional image transformations to apply.
     """
 
-    def __init__(self, data_dir: str, transforms: Optional[Compose] = None):
-        tracker_id_to_images = parse_market1501_dataset(data_dir)
+    def __init__(
+        self,
+        data_dir: str,
+        split: str = "train",
+        transforms: Optional[Compose] = None,
+    ):
+        if split not in ["train", "test"]:
+            raise ValueError("Split must be one of 'train' or 'test'")
+        tracker_id_to_images = parse_market1501_dataset(data_dir, split)
         super().__init__(tracker_id_to_images, transforms)
