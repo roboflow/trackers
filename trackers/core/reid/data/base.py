@@ -6,6 +6,8 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor
 
+from trackers.utils.data_utils import validate_tracker_id_to_images
+
 
 class TripletsDataset(Dataset):
     """A dataset that provides triplets of images for training ReID models.
@@ -31,7 +33,7 @@ class TripletsDataset(Dataset):
         tracker_id_to_images: dict[str, list[str]],
         transforms: Optional[Compose] = None,
     ):
-        self.tracker_id_to_images = tracker_id_to_images
+        self.tracker_id_to_images = validate_tracker_id_to_images(tracker_id_to_images)
         self.transforms = transforms or ToTensor()
         self.tracker_ids = list(tracker_id_to_images.keys())
 
