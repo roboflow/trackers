@@ -46,7 +46,7 @@ def validate_dataset_triplet_paths(dataset):
         anchor_image = dataset._load_and_transform_image(anchor_image_path)
         positive_image = dataset._load_and_transform_image(positive_image_path)
         negative_image = dataset._load_and_transform_image(negative_image_path)
-        
+
         item = dataset[idx]
         if item[0].shape != anchor_image.shape:
             pytest.fail(
@@ -63,6 +63,7 @@ def validate_dataset_triplet_paths(dataset):
                 "Negative image shape mismatch. "
                 f"Expected {negative_image.shape} == {item[2].shape}"
             )
+
 
 @pytest.mark.parametrize("split", ["train", "test"])
 def test_market1501_dataset_triplet_paths(market_dataset, split):
