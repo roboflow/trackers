@@ -3,15 +3,16 @@ import shutil
 
 import pytest
 from firerequests import FireRequests
+from tqdm import tqdm
 
 from trackers.core.reid import Market1501Dataset
 from trackers.utils.data_utils import unzip_file
 
-DATASET_URL = "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/market_1501.zip"
+MARKER_1501_DATASET_URL = "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/market_1501.zip"
 
 
-def test_reid_dataset():
-    FireRequests().download(DATASET_URL)
+def test_market_1501_dataset():
+    FireRequests().download(MARKER_1501_DATASET_URL)
     os.makedirs("test_data", exist_ok=True)
     shutil.move("market_1501.zip", "test_data/market_1501.zip")
     unzip_file("test_data/market_1501.zip", "test_data")
@@ -27,7 +28,7 @@ def test_reid_dataset():
             f"got {len(dataset.tracker_id_to_images['0002'])}"
         )
 
-    for idx in range(len(dataset)):
+    for idx in tqdm(dataset.tracker_ids):
         (
             anchor_image,
             positive_image,
