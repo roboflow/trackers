@@ -64,7 +64,7 @@ class ByteTrackTracker(BaseTracker):
         high_prob_boxes_threshold: float = 0.5,
         feature_extractor: Optional[
             DeepSORTFeatureExtractor
-        ] = None,  # The type should be the new feature extractor class once implemented
+        ] = None,  
         distance_metric: str = "cosine",  # None, 'cosine' or 'euclidean'
         max_appearance_distance: float = 0.75,  # Default maximum distance for RE-ID matching with cosine distance.
     ) -> None:
