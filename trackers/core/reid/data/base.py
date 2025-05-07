@@ -1,8 +1,9 @@
 import random
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import torch
 from PIL import Image
+from supervision.dataset.utils import train_test_split
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor
 
@@ -76,3 +77,20 @@ class TripletsDataset(Dataset):
         negative_image = self._load_and_transform_image(negative_image_path)
 
         return anchor_image, positive_image, negative_image
+
+    def split(
+        self,
+        split_ratio: float = 0.8,
+        random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
+        shuffle: bool = True,
+    ) -> Tuple[Dataset, Dataset]:
+        train_tracker_id_to_images, validation_tracker_id_to_images = train_test_split(
+            self.tracker_id_to_images,
+            split_ratio=split_ratio,
+            random_state=random_state,
+            shuffle=shuffle,
+        )
+        return (
+            TripletsDataset(train_tracker_id_to_images, self.transforms),
+            TripletsDataset(validation_tracker_id_to_images, self.transforms),
+        )
