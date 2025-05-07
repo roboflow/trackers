@@ -114,9 +114,14 @@ def test_parse_market1501_dataset(market_dataset, split):
             "0111": ["0111_00000000.jpg", "0111_00000001.jpg"],
             "0112": ["0111_00000000.jpg", "0111_00000001.jpg"],
         },
+        {
+            "0111": ["0111_00000000.jpg", "0111_00000001.jpg"],
+            "0112": ["0111_00000000.jpg", "0111_00000001.jpg"],
+            "0113": ["0111_00000000.jpg"],
+        }
     ],
 )
-def test_triplet_dataset_validation_unique_ids(tracker_id_to_images):
+def test_triplet_dataset_validation(tracker_id_to_images):
     if len(tracker_id_to_images) < 2:
         with pytest.raises(ValueError):
             TripletsDataset(tracker_id_to_images)
@@ -124,4 +129,5 @@ def test_triplet_dataset_validation_unique_ids(tracker_id_to_images):
         TripletsDataset(tracker_id_to_images)
     if len(tracker_id_to_images) > 2:
         dataset = TripletsDataset(tracker_id_to_images)
-        print(len(dataset))
+        if not(len(tracker_id_to_images) > len(dataset)):
+            pytest.fail("Tracker IDs validation mismatch.")
