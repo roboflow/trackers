@@ -32,5 +32,5 @@ jobs:
       - name: 🧪 Run the Import test
         run: uv run python -c "import trackers"
 
-      # - name: 🧪 Run the Test
-      #   run: uv run pytest
+      #- name: 🧪 Run the Test
+        #run: uv run pytest
