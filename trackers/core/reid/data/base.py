@@ -16,10 +16,6 @@ class TripletsDataset(Dataset):
     consists of an anchor image, a positive image (same identity as anchor),
     and a negative image (different identity from anchor).
 
-    The dataset securely samples images to create these triplets, ensuring
-    that positive pairs share the same identity and negative samples have
-    different identities from the anchor.
-
     Args:
         tracker_id_to_images (dict[str, list[str]]): Dictionary mapping tracker IDs
             to lists of image paths
