@@ -19,6 +19,7 @@ except ImportError:
     pass
 try:
     from trackers.core.bytetrack.tracker import ByteTrackTracker
+
     __all__.extend(["ByteTrackTracker", "DeepSORTFeatureExtractor", "DeepSORTTracker"])
 except ImportError:
     logger.warning(
