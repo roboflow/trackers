@@ -52,5 +52,5 @@ def validate_tracker_id_to_images(
             "Tracker ID to images dictionary must contain at least 2 items "
             "to select negative samples."
         )
-    
+
     return valid_tracker_ids
