@@ -19,4 +19,9 @@ def test_reid_dataset():
     dataset = Market1501Dataset("./test_data/Market-1501-v15.09.15")
     if not len(dataset) == 751:  # nosec B101
         pytest.fail(f"Dataset length mismatch. Expected 751, got {len(dataset)}")
+    if not len(dataset.tracker_id_to_images["0002"]) == 46:  # nosec B101
+        pytest.fail(
+            "Tracker ID 0002 length mismatch. Expected 46,"
+            f"got {len(dataset.tracker_id_to_images['0002'])}"
+        )
     shutil.rmtree("test_data")
