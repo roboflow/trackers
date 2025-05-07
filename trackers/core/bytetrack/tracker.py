@@ -184,6 +184,12 @@ class ByteTrackTracker(BaseTracker):
             updated_detections,
         )
 
+        # Kill lost tracks 
+        self.trackers = get_alive_trackers(
+            trackers=self.trackers,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
+        )
         updated_detections = sv.Detections.merge(updated_detections)
         if len(updated_detections) == 0:
             updated_detections.tracker_id = np.array([], dtype=int)
@@ -289,11 +295,7 @@ class ByteTrackTracker(BaseTracker):
             new_det.tracker_id = np.array([-1])
             updated_detections.append(new_det)
 
-        self.trackers = get_alive_trackers(
-            trackers=self.trackers,
-            maximum_frames_without_update=self.maximum_frames_without_update,
-            minimum_consecutive_frames=self.minimum_consecutive_frames,
-        )
+
 
     def _similarity_step(
         self,
@@ -319,7 +321,6 @@ class ByteTrackTracker(BaseTracker):
         if association_metric == "IoU":
             # Build IOU cost matrix between detections and predicted bounding boxes
             similarity_matrix = get_iou_matrix(trackers, detections.xyxy)
-            print(similarity_matrix)
             thresh = self.minimum_iou_threshold
         elif association_metric == "RE-ID":
             # Build feature distance matrix between detections and predicted bounding boxes
