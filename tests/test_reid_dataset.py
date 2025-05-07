@@ -49,7 +49,7 @@ def test_reid_dataset(market_dataset):
                 "Anchor and negative image IDs mismatch. "
                 f"Expected {anchor_image_id} != {negative_image_id}"
             )
-    
+
     for tracker_id in val_dataset.tracker_ids:
         anchor_image_path, positive_image_path, negative_image_path = (
             val_dataset._get_triplet_image_paths(tracker_id)
