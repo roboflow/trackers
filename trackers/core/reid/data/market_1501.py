@@ -1,4 +1,5 @@
 import os
+import random
 from glob import glob
 from typing import Dict, List, Optional
 
@@ -7,19 +8,19 @@ from torchvision.transforms import Compose
 from trackers.core.reid.data.base import TripletsDataset
 
 
-def parse_market1501_dataset(data_dir: str, split: str) -> Dict[str, List[str]]:
+def parse_market1501_dataset(data_dir: str, mode: str) -> Dict[str, List[str]]:
     """Parse the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501)
     to create a dictionary mapping tracker IDs to lists of image paths.
 
     Args:
         data_dir (str): The path to the Market1501 dataset.
-        split (str): The split to use. Must be one of "train" or "test".
+        mode (str): The mode to use. Must be one of "train" or "test".
 
     Returns:
         Dict[str, List[str]]: A dictionary mapping tracker IDs to lists of image paths.
     """
-    train_data_dir = os.path.join(data_dir, f"bounding_box_{split}")
-    image_files = glob(os.path.join(train_data_dir, "*.jpg"))
+    data_dir = os.path.join(data_dir, f"bounding_box_{mode}")
+    image_files = glob(os.path.join(data_dir, "*.jpg"))
     unique_ids = set(
         os.path.basename(image_file).split("_")[0] for image_file in image_files
     )
@@ -32,23 +33,29 @@ def parse_market1501_dataset(data_dir: str, split: str) -> Dict[str, List[str]]:
     return tracker_id_to_images
 
 
-class Market1501Dataset(TripletsDataset):
-    """[Market1501 dataset](https://paperswithcode.com/dataset/market-1501)
-    that provides triplets of images for training ReID models.
-
-    Args:
-        data_dir (str): The path to the Market1501 dataset.
-        split (str): The split to use. Must be one of "train" or "test".
-        transforms (Optional[Compose]): Optional image transformations to apply.
-    """
-
-    def __init__(
-        self,
-        data_dir: str,
-        split: str = "train",
-        transforms: Optional[Compose] = None,
-    ):
-        if split not in ["train", "test"]:
-            raise ValueError("Split must be one of 'train' or 'test'")
-        tracker_id_to_images = parse_market1501_dataset(data_dir, split)
-        super().__init__(tracker_id_to_images, transforms)
+def get_market1501_dataset(
+    data_dir: str,
+    validation_split_fraction: float = 0.2,
+    transforms: Optional[Compose] = None,
+) -> dict[str, TripletsDataset]:
+    if validation_split_fraction < 0 or validation_split_fraction > 1:
+        raise ValueError("Validation split fraction must be between 0 and 1")
+    tracker_id_to_images = parse_market1501_dataset(data_dir, "train")
+    tracker_ids = list(tracker_id_to_images.keys())
+    random.shuffle(tracker_ids)
+    num_train_samples = len(tracker_ids) * (1 - validation_split_fraction)
+    train_tracker_ids = tracker_ids[: int(num_train_samples)]
+    validation_tracker_ids = tracker_ids[int(num_train_samples) :]
+    train_tracker_id_to_images = {
+        tracker_id: tracker_id_to_images[tracker_id] for tracker_id in train_tracker_ids
+    }
+    validation_tracker_id_to_images = {
+        tracker_id: tracker_id_to_images[tracker_id]
+        for tracker_id in validation_tracker_ids
+    }
+    test_tracker_id_to_images = parse_market1501_dataset(data_dir, "test")
+    return {
+        "train": TripletsDataset(train_tracker_id_to_images, transforms),
+        "validation": TripletsDataset(validation_tracker_id_to_images, transforms),
+        "test": TripletsDataset(test_tracker_id_to_images, transforms),
+    }
