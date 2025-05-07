@@ -1,5 +1,6 @@
 import os
 import random
+from collections import defaultdict
 from glob import glob
 from typing import Dict, List, Optional, Union
 
@@ -21,16 +22,11 @@ def parse_market1501_dataset(data_dir: str, split: str) -> Dict[str, List[str]]:
     """
     data_dir = os.path.join(data_dir, f"bounding_box_{split}")
     image_files = glob(os.path.join(data_dir, "*.jpg"))
-    unique_ids = set(
-        os.path.basename(image_file).split("_")[0] for image_file in image_files
-    )
-    tracker_id_to_images: Dict[str, List[str]] = {
-        tracker_id: [] for tracker_id in unique_ids
-    }
+    tracker_id_to_images = defaultdict(list)
     for image_file in image_files:
         tracker_id = os.path.basename(image_file).split("_")[0]
         tracker_id_to_images[tracker_id].append(image_file)
-    return tracker_id_to_images
+    return dict(tracker_id_to_images)
 
 
 def get_market1501_dataset(
