@@ -47,9 +47,9 @@ def get_market1501_dataset(
         validation_split_fraction (float): The fraction of the dataset to use
             for validation.
         transforms (Compose): The transforms to apply to the images.
-        seed (Optional[Union[int, float, str, bytes, bytearray]]): The seed to use for the
-            random number generator. If None, the random number generator will not be
-            seeded.
+        seed (Optional[Union[int, float, str, bytes, bytearray]]): The seed to use
+            for the random number generator. If None, the random number generator will
+            not be seeded.
 
     Returns:
         dict[str, TripletsDataset]: A dictionary mapping dataset splits to
