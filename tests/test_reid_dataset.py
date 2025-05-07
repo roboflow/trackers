@@ -23,7 +23,7 @@ def market_dataset():
     yield dataset_path
 
 
-def test_market1501_dataset_train_val_split(market_dataset):
+def test_market1501_dataset_triplet_paths_train_val_split(market_dataset):
     train_dataset, val_dataset = get_market1501_dataset(
         os.path.join(market_dataset, "bounding_box_train"), split_ratio=0.8
     )
@@ -69,7 +69,7 @@ def test_market1501_dataset_train_val_split(market_dataset):
             )
 
 
-def test_market1501_dataset_test_split(market_dataset):
+def test_market1501_dataset_triplet_paths_test_split(market_dataset):
     test_dataset = get_market1501_dataset(
         os.path.join(market_dataset, "bounding_box_test"), split_ratio=None
     )

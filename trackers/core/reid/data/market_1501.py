@@ -38,8 +38,8 @@ def get_market1501_dataset(
     Args:
         data_dir (str): The path to the bounding box train/test directory of the
             [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
-        split_ratio (Optional[float]): The ratio of the dataset to split into training and
-            validation sets. If `None`, the dataset is returned as a single
+        split_ratio (Optional[float]): The ratio of the dataset to split into training
+            and validation sets. If `None`, the dataset is returned as a single
             `TripletsDataset` object, otherwise the dataset is split into a tuple of
             training and validation `TripletsDataset` objects.
         random_state (Optional[Union[int, float, str, bytes, bytearray]]): The random
