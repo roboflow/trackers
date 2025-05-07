@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import random
 from typing import Optional, Tuple, Union
 
@@ -83,7 +85,7 @@ class TripletsDataset(Dataset):
         split_ratio: float = 0.8,
         random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
         shuffle: bool = True,
-    ) -> Tuple[Dataset, Dataset]:
+    ) -> Tuple[TripletsDataset, TripletsDataset]:
         train_tracker_id_to_images, validation_tracker_id_to_images = train_test_split(
             list(self.tracker_id_to_images.keys()),
             train_ratio=split_ratio,
