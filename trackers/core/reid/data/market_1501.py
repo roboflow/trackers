@@ -28,18 +28,20 @@ def parse_market1501_dataset(data_dir: str) -> Dict[str, List[str]]:
 
 def get_market1501_dataset(
     data_dir: str,
-    split_ratio: float = 0.8,
+    split_ratio: Optional[float] = None,
     random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
     shuffle: bool = True,
     transforms: Optional[Compose] = None,
-) -> Tuple[TripletsDataset, TripletsDataset]:
+) -> Union[TripletsDataset, Tuple[TripletsDataset, TripletsDataset]]:
     """Get the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
 
     Args:
         data_dir (str): The path to the bounding box train/test directory of the
             [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
-        split_ratio (float): The ratio of the dataset to split into training and
-            validation sets.
+        split_ratio (Optional[float]): The ratio of the dataset to split into training and
+            validation sets. If `None`, the dataset is returned as a single
+            `TripletsDataset` object, otherwise the dataset is split into a tuple of
+            training and validation `TripletsDataset` objects.
         random_state (Optional[Union[int, float, str, bytes, bytearray]]): The random
             state to use for the split.
         shuffle (bool): Whether to shuffle the dataset.
@@ -51,7 +53,9 @@ def get_market1501_dataset(
     """
     tracker_id_to_images = parse_market1501_dataset(data_dir)
     dataset = TripletsDataset(tracker_id_to_images, transforms)
-    train_dataset, validation_dataset = dataset.split(
-        split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
-    )
-    return train_dataset, validation_dataset
+    if split_ratio is not None:
+        train_dataset, validation_dataset = dataset.split(
+            split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
+        )
+        return train_dataset, validation_dataset
+    return dataset
