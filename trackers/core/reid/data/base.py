@@ -85,11 +85,19 @@ class TripletsDataset(Dataset):
         shuffle: bool = True,
     ) -> Tuple[Dataset, Dataset]:
         train_tracker_id_to_images, validation_tracker_id_to_images = train_test_split(
-            self.tracker_id_to_images,
-            split_ratio=split_ratio,
+            list(self.tracker_id_to_images.keys()),
+            train_ratio=split_ratio,
             random_state=random_state,
             shuffle=shuffle,
         )
+        train_tracker_id_to_images = {
+            tracker_id: self.tracker_id_to_images[tracker_id]
+            for tracker_id in train_tracker_id_to_images
+        }
+        validation_tracker_id_to_images = {
+            tracker_id: self.tracker_id_to_images[tracker_id]
+            for tracker_id in validation_tracker_id_to_images
+        }
         return (
             TripletsDataset(train_tracker_id_to_images, self.transforms),
             TripletsDataset(validation_tracker_id_to_images, self.transforms),

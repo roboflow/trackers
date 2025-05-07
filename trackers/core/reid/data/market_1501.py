@@ -8,13 +8,12 @@ from torchvision.transforms import Compose
 from trackers.core.reid.data.base import TripletsDataset
 
 
-def parse_market1501_dataset(data_dir: str, split: str) -> Dict[str, List[str]]:
+def parse_market1501_dataset(data_dir: str) -> Dict[str, List[str]]:
     """Parse the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501)
     to create a dictionary mapping tracker IDs to lists of image paths.
 
     Args:
         data_dir (str): The path to the Market1501 dataset.
-        split (str): The mode to use. Must be one of "train" or "test".
 
     Returns:
         Dict[str, List[str]]: A dictionary mapping tracker IDs to lists of image paths.
@@ -50,7 +49,7 @@ def get_market1501_dataset(
         Tuple[TripletsDataset, TripletsDataset]: A tuple of training and validation
             `TripletsDataset` objects.
     """
-    tracker_id_to_images = parse_market1501_dataset(data_dir, "train")
+    tracker_id_to_images = parse_market1501_dataset(data_dir)
     dataset = TripletsDataset(tracker_id_to_images, transforms)
     train_dataset, validation_dataset = dataset.split(
         split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
