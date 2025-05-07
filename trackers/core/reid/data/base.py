@@ -38,24 +38,29 @@ class TripletsDataset(Dataset):
             result[i], result[j] = result[j], result[i]
         return result[:k]
 
-    def __getitem__(
-        self, index: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        tracker_id = self.tracker_ids[index]
+    def _get_triplet_image_paths(self, tracker_id: str) -> Tuple[str, str, str]:
         tracker_id_image_paths = self.tracker_id_to_images[tracker_id]
 
-        # Use secure sampling for anchor and positive images
         anchor_image_path, positive_image_path = self._secure_sample(
             tracker_id_image_paths, 2
         )
 
-        # Use secrets for negative tracker ID selection
         negative_candidates = [tid for tid in self.tracker_ids if tid != tracker_id]
         negative_tracker_id = secrets.choice(negative_candidates)
 
-        # Use secrets for negative image selection
         negative_image_path = secrets.choice(
             self.tracker_id_to_images[negative_tracker_id]
+        )
+
+        return anchor_image_path, positive_image_path, negative_image_path
+
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        tracker_id = self.tracker_ids[index]
+
+        anchor_image_path, positive_image_path, negative_image_path = (
+            self._get_triplet_image_paths(tracker_id)
         )
 
         anchor_image = self._load_and_transform_image(anchor_image_path)
