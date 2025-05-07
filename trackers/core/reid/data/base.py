@@ -1,12 +1,10 @@
-import secrets
+import random
 from typing import Optional, Tuple
 
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor
-
-from trackers.utils.data_utils import secure_sample
 
 
 class TripletsDataset(Dataset):
@@ -49,14 +47,14 @@ class TripletsDataset(Dataset):
     def _get_triplet_image_paths(self, tracker_id: str) -> Tuple[str, str, str]:
         tracker_id_image_paths = self.tracker_id_to_images[tracker_id]
 
-        anchor_image_path, positive_image_path = secure_sample(
+        anchor_image_path, positive_image_path = random.sample(  # nosec B311
             tracker_id_image_paths, 2
         )
 
         negative_candidates = [tid for tid in self.tracker_ids if tid != tracker_id]
-        negative_tracker_id = secrets.choice(negative_candidates)
+        negative_tracker_id = random.choice(negative_candidates)  # nosec B311
 
-        negative_image_path = secrets.choice(
+        negative_image_path = random.choice(  # nosec B311
             self.tracker_id_to_images[negative_tracker_id]
         )
 

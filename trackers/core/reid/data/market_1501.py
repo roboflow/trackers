@@ -60,7 +60,7 @@ def get_market1501_dataset(
         raise ValueError("Validation split fraction must be between 0 and 1")
     tracker_id_to_images = parse_market1501_dataset(data_dir, "train")
     tracker_ids = list(tracker_id_to_images.keys())
-    random.shuffle(tracker_ids)
+    random.shuffle(tracker_ids)  # nosec B311
     num_train_samples = len(tracker_ids) * (1 - validation_split_fraction)
     train_tracker_ids = tracker_ids[: int(num_train_samples)]
     validation_tracker_ids = tracker_ids[int(num_train_samples) :]
