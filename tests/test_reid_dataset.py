@@ -26,7 +26,7 @@ def market_dataset():
 
 
 def validate_dataset_triplet_paths(dataset):
-    for tracker_id in dataset.tracker_ids:
+    for idx, tracker_id in enumerate(dataset.tracker_ids):
         anchor_image_path, positive_image_path, negative_image_path = (
             dataset._get_triplet_image_paths(tracker_id)
         )
@@ -43,7 +43,26 @@ def validate_dataset_triplet_paths(dataset):
                 "Anchor and negative image IDs mismatch. "
                 f"Expected {anchor_image_id} != {negative_image_id}"
             )
-
+        anchor_image = dataset._load_and_transform_image(anchor_image_path)
+        positive_image = dataset._load_and_transform_image(positive_image_path)
+        negative_image = dataset._load_and_transform_image(negative_image_path)
+        
+        item = dataset[idx]
+        if item[0].shape != anchor_image.shape:
+            pytest.fail(
+                "Anchor image shape mismatch. "
+                f"Expected {anchor_image.shape} == {item[0].shape}"
+            )
+        if item[1].shape != positive_image.shape:
+            pytest.fail(
+                "Positive image shape mismatch. "
+                f"Expected {positive_image.shape} == {item[1].shape}"
+            )
+        if item[2].shape != negative_image.shape:
+            pytest.fail(
+                "Negative image shape mismatch. "
+                f"Expected {negative_image.shape} == {item[2].shape}"
+            )
 
 @pytest.mark.parametrize("split", ["train", "test"])
 def test_market1501_dataset_triplet_paths(market_dataset, split):
