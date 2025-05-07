@@ -8,18 +8,18 @@ from torchvision.transforms import Compose
 from trackers.core.reid.data.base import TripletsDataset
 
 
-def parse_market1501_dataset(data_dir: str, mode: str) -> Dict[str, List[str]]:
+def parse_market1501_dataset(data_dir: str, split: str) -> Dict[str, List[str]]:
     """Parse the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501)
     to create a dictionary mapping tracker IDs to lists of image paths.
 
     Args:
         data_dir (str): The path to the Market1501 dataset.
-        mode (str): The mode to use. Must be one of "train" or "test".
+        split (str): The mode to use. Must be one of "train" or "test".
 
     Returns:
         Dict[str, List[str]]: A dictionary mapping tracker IDs to lists of image paths.
     """
-    data_dir = os.path.join(data_dir, f"bounding_box_{mode}")
+    data_dir = os.path.join(data_dir, f"bounding_box_{split}")
     image_files = glob(os.path.join(data_dir, "*.jpg"))
     unique_ids = set(
         os.path.basename(image_file).split("_")[0] for image_file in image_files
@@ -38,6 +38,19 @@ def get_market1501_dataset(
     validation_split_fraction: float = 0.2,
     transforms: Optional[Compose] = None,
 ) -> dict[str, TripletsDataset]:
+    """Get the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
+
+    Args:
+        data_dir (str): The path to the
+            [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
+        validation_split_fraction (float): The fraction of the dataset to use
+            for validation.
+        transforms (Compose): The transforms to apply to the images.
+
+    Returns:
+        dict[str, TripletsDataset]: A dictionary mapping dataset splits to
+            `TripletsDataset` objects.
+    """
     if validation_split_fraction < 0 or validation_split_fraction > 1:
         raise ValueError("Validation split fraction must be between 0 and 1")
     tracker_id_to_images = parse_market1501_dataset(data_dir, "train")
