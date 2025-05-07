@@ -45,7 +45,7 @@ class ByteTrackTracker(BaseTracker):
             existing tracks.
         high_prob_boxes_threshold (float): threshold for assigning predicted boxes to high probability class.
             ByteTrack Specific parameter.
-        feature_extractor (FeatureExtractor OR THE NAME OF THE FINAL CLASS): model that will be use for extracting RE-ID features for
+        feature_extractor (DeepSORTFeatureExtractor): model that will be use for extracting RE-ID features for
             high probability detected boxes.
         distance_metric (str): Distance metric for appearance features (e.g., 'cosine',
             'euclidean'). See `scipy.spatial.distance.cdist`.
