@@ -5,6 +5,7 @@ import pytest
 from firerequests import FireRequests
 
 from trackers.core.reid import get_market1501_dataset
+from trackers.core.reid.data.base import TripletsDataset
 from trackers.core.reid.data.market_1501 import parse_market1501_dataset
 from trackers.utils.data_utils import unzip_file
 
@@ -101,3 +102,26 @@ def test_parse_market1501_dataset(market_dataset, split):
             )
     else:
         pytest.fail(f"Invalid split. Expected 'train' or 'test', got {split}")
+
+
+@pytest.mark.parametrize(
+    "tracker_id_to_images",
+    [
+        {"0111": []},
+        {"0111": ["0111_00000000.jpg"]},
+        {"0111": ["0111_00000000.jpg", "0111_00000001.jpg"]},
+        {
+            "0111": ["0111_00000000.jpg", "0111_00000001.jpg"],
+            "0112": ["0111_00000000.jpg", "0111_00000001.jpg"]
+        },
+    ],
+)
+def test_triplet_dataset_validation_unique_ids(tracker_id_to_images):
+    if len(tracker_id_to_images) < 2:
+        with pytest.raises(ValueError):
+            TripletsDataset(tracker_id_to_images)
+    else:
+        TripletsDataset(tracker_id_to_images)
+    if len(tracker_id_to_images) > 2:
+        dataset = TripletsDataset(tracker_id_to_images)
+        print(len(dataset))
