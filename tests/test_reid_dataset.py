@@ -58,7 +58,6 @@ def test_market1501_dataset_triplet_paths(market_dataset, split):
     else:
         pytest.fail(f"Invalid split. Expected 'train' or 'test', got {split}")
     validate_dataset_triplet_paths(dataset)
-    
 
 
 @pytest.mark.parametrize("split_ratio", [None, 0.8])
@@ -73,12 +72,15 @@ def test_market1501_dataset_split_ratio(market_dataset, split_ratio):
     else:
         train_dataset, val_dataset = dataset
         if not len(train_dataset) == 600:  # nosec B101
-            pytest.fail(f"Dataset length mismatch. Expected 751, got {len(train_dataset)}")
+            pytest.fail(
+                f"Dataset length mismatch. Expected 751, got {len(train_dataset)}"
+            )
         if not len(val_dataset) == 151:  # nosec B101
-            pytest.fail(f"Dataset length mismatch. Expected 151, got {len(val_dataset)}")
+            pytest.fail(
+                f"Dataset length mismatch. Expected 151, got {len(val_dataset)}"
+            )
         validate_dataset_triplet_paths(train_dataset)
         validate_dataset_triplet_paths(val_dataset)
-    
 
 
 @pytest.mark.parametrize("split", ["train", "test"])
