@@ -1,16 +1,40 @@
 import secrets
-from typing import Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor
 
+from trackers.utils.data_utils import secure_sample
+
 
 class TripletsDataset(Dataset):
+    """A dataset that provides triplets of images for training ReID models.
+
+    This dataset is designed for training models with triplet loss, where each sample
+    consists of an anchor image, a positive image (same identity as anchor),
+    and a negative image (different identity from anchor).
+
+    The dataset securely samples images to create these triplets, ensuring
+    that positive pairs share the same identity and negative samples have
+    different identities from the anchor.
+
+    Args:
+        tracker_id_to_images (dict[str, list[str]]): Dictionary mapping tracker IDs
+            to lists of image paths
+        transforms (Optional[Compose]): Optional image transformations to apply
+
+    Attributes:
+        tracker_id_to_images (dict[str, list[str]]): Dictionary mapping tracker IDs
+            to lists of image paths
+        transforms (Optional[Compose]): Optional image transformations to apply
+        tracker_ids (list[str]): List of all unique tracker IDs in the dataset
+    """
+
     def __init__(
         self,
-        tracker_id_to_images: Dict[str, List[str]],
+        tracker_id_to_images: dict[str, list[str]],
         transforms: Optional[Compose] = None,
     ):
         self.tracker_id_to_images = tracker_id_to_images
@@ -26,22 +50,10 @@ class TripletsDataset(Dataset):
             image = self.transforms(image)
         return image
 
-    def _secure_sample(self, population, k=1):
-        """Securely sample k elements from the population."""
-        if k == 1:
-            return [secrets.choice(population)]
-
-        # For multiple samples, shuffle and take first k
-        result = list(population)
-        for i in range(len(result) - 1, 0, -1):
-            j = secrets.randbelow(i + 1)
-            result[i], result[j] = result[j], result[i]
-        return result[:k]
-
     def _get_triplet_image_paths(self, tracker_id: str) -> Tuple[str, str, str]:
         tracker_id_image_paths = self.tracker_id_to_images[tracker_id]
 
-        anchor_image_path, positive_image_path = self._secure_sample(
+        anchor_image_path, positive_image_path = secure_sample(
             tracker_id_image_paths, 2
         )
 
