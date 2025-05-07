@@ -186,7 +186,7 @@ class ByteTrackTracker(BaseTracker):
             updated_detections,
         )
 
-        # Kill lost tracks 
+        # Kill lost tracks
         self.trackers = get_alive_trackers(
             trackers=self.trackers,
             maximum_frames_without_update=self.maximum_frames_without_update,
@@ -296,8 +296,6 @@ class ByteTrackTracker(BaseTracker):
             new_det = deepcopy(detections[detection_idx : detection_idx + 1])
             new_det.tracker_id = np.array([-1])
             updated_detections.append(new_det)
-
-
 
     def _similarity_step(
         self,
