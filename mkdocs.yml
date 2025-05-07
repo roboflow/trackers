@@ -111,4 +111,3 @@ nav:
     - SORT: trackers/core/sort/tracker.md
     - DeepSORT: trackers/core/deepsort/tracker.md
     - ByteTrack: trackers/core/bytetrack/tracker.md
-

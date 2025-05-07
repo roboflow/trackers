@@ -5,17 +5,17 @@ comments: true
 # ByteTrack
 
 [![arXiv](https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg)](https://arxiv.org/pdf/2110.06864)
-[![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1C7XyJV8_V6HJwx20E838oQ03F5DLauuC?usp=sharing) <!-- Change the URL to custom Roboflow one before merging --> 
+[![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1C7XyJV8_V6HJwx20E838oQ03F5DLauuC?usp=sharing) <!-- Change the URL to custom Roboflow one before merging -->
 
 ## Overview
 
-ByteTrack presents a simple and generic association method which associates almost every detection box instead of only the high probability ones. Low score boxes are typically occluded object, so leaving out this objects of the tracking will result in a fatal failure, but because they aren't clearly seen in the image we cannot trust on it's appearance. 
+ByteTrack presents a simple and generic association method which associates almost every detection box instead of only the high probability ones. Low score boxes are typically occluded object, so leaving out this objects of the tracking will result in a fatal failure, but because they aren't clearly seen in the image we cannot trust on it's appearance.
 
 That's why the proposed method consists in 2 key steps. The first step will associate the high score detections to the existing tracks using a chosen similarity metric that can be either IoU or based in appearance features. The second step will associate the low score detections to the trackers that didn't match in the previous step using IoU distance. In addition to this, we added parametrized thresholds for accepting the matches only if the similarity is higher to the corresponding threshold. Finally it starts new tracks with the high score detections that didn't match in step 1. Just like [SORT](../sort/tracker.md) and [DeepSORT](../deepsort/tracker.md) this method combines Kalman Filters for having a motion model in order to match low score boxes and the Hungarian algorithm for calculating the optimal associations.
 
 While calculating the appearance features with a Convolutional Neural Network might be slower than only comparing IoU, it makes it possible to track unpredictable trajectories and objects that dissapear and reappear in the scene, while also being suitable for real time tracking.
 
-BytTrack is independent on the object detector and feature extractor network so it can be used for any tracking task as long as the user provides the adequate model. 
+BytTrack is independent on the object detector and feature extractor network so it can be used for any tracking task as long as the user provides the adequate model.
 
 
 ## Examples

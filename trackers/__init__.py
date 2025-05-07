@@ -8,6 +8,7 @@ logger = get_logger(__name__)
 try:
     from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
     from trackers.core.deepsort.tracker import DeepSORTTracker
+
     __all__.extend(["DeepSORTFeatureExtractor", "DeepSORTTracker"])
 except ImportError:
     logger.warning(
