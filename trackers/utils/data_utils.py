@@ -10,17 +10,15 @@ def unzip_file(source_zip_path: str, target_dir_path: str) -> None:
         source_zip_path (str): The path to the zip file.
         target_dir_path (str): The directory to extract the contents to.
             If the directory doesn't exist, it will be created.
+
+    Raises:
+        FileNotFoundError: If the zip file doesn't exist.
+        zipfile.BadZipFile: If the file is not a valid zip file or is corrupted.
+        Exception: If any other error occurs during extraction.
     """
-    try:
-        with zipfile.ZipFile(source_zip_path, "r") as zip_ref:
-            zip_ref.extractall(target_dir_path)
-        print(f"Successfully extracted '{source_zip_path}' to '{target_dir_path}'")
-    except FileNotFoundError:
-        print(f"Error: Zip file '{source_zip_path}' not found.")
-    except zipfile.BadZipFile:
-        print(f"Error: '{source_zip_path}' is not a valid zip file or is corrupted.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    with zipfile.ZipFile(source_zip_path, "r") as zip_ref:
+        zip_ref.extractall(target_dir_path)
+    print(f"Successfully extracted '{source_zip_path}' to '{target_dir_path}'")
 
 
 def secure_sample(population: list[str], k: int = 1) -> list[str]:
