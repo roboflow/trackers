@@ -333,7 +333,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             # Build feature distance matrix between detections and predicted bounding boxes # noqa: E501
             similarity_matrix = -self._get_appearance_distance_matrix(
                 detection_features, trackers
-            )  # THe minus because _get_associated_indices considers the higher the best
+            )  
+            # The minus because _get_associated_indices considers the higher the best
             thresh = -self.max_appearance_distance
 
         else:
