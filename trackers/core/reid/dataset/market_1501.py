@@ -1,11 +1,11 @@
 import os
 from collections import defaultdict
-from glob import glob
+import glob
 from typing import Dict, List, Optional, Tuple, Union
 
 from torchvision.transforms import Compose
 
-from trackers.core.reid.data.base import TripletsDataset
+from trackers.core.reid.dataset.base import TripletsDataset
 
 
 def parse_market1501_dataset(data_dir: str) -> Dict[str, List[str]]:
@@ -18,7 +18,7 @@ def parse_market1501_dataset(data_dir: str) -> Dict[str, List[str]]:
     Returns:
         Dict[str, List[str]]: A dictionary mapping tracker IDs to lists of image paths.
     """
-    image_files = glob(os.path.join(data_dir, "*.jpg"))
+    image_files = glob.glob(os.path.join(data_dir, "*.jpg"))
     tracker_id_to_images = defaultdict(list)
     for image_file in image_files:
         tracker_id = os.path.basename(image_file).split("_")[0]
