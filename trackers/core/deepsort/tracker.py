@@ -147,7 +147,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         Returns:
             np.ndarray: Combined distance matrix.
         """
-        iou_distance = 1 - iou_matrix
+        iou_distance: np.ndarray = 1 - iou_matrix
         combined_dist = (
             1 - self.appearance_weight
         ) * iou_distance + self.appearance_weight * appearance_dist_matrix

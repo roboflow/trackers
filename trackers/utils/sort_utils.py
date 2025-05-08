@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import List, Sequence, TypeVar, Union
+from typing import List, Sequence, Set, TypeVar, Union
 
 import numpy as np
 import supervision as sv
@@ -121,14 +121,14 @@ def update_detections_with_track_ids(
         key=lambda x: iou_matrix_final[x[0], x[1]],
         reverse=True,
     )
-    used_rows = set()
-    used_cols = set()
+    used_rows: Set[int] = set()
+    used_cols: Set[int] = set()
     for row, col in sorted_pairs:
         # Double check index is in range
         if row < len(trackers):
-            tracker_obj = trackers[row]
+            tracker_obj = trackers[int(row)]
             # Only assign if the track is "mature" or is new but has enough hits
-            if (row not in used_rows) and (col not in used_cols):
+            if (int(row) not in used_rows) and (int(col) not in used_cols):
                 if (
                     tracker_obj.number_of_successful_updates
                     >= minimum_consecutive_frames
@@ -138,9 +138,9 @@ def update_detections_with_track_ids(
                         tracker_obj.tracker_id = (
                             SORTKalmanBoxTracker.get_next_tracker_id()
                         )
-                    final_tracker_ids[col] = tracker_obj.tracker_id
-                used_rows.add(row)
-                used_cols.add(col)
+                    final_tracker_ids[int(col)] = tracker_obj.tracker_id
+                used_rows.add(int(row))
+                used_cols.add(int(col))
 
     # Assign tracker IDs to the returned Detections
     updated_detections = deepcopy(detections)

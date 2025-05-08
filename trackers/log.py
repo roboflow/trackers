@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from typing import Final, Optional
+from typing import Any, Dict, Final, Literal, Optional
 
 _LOG_LEVELS: Final[dict[str, int]] = {
     "DEBUG": logging.DEBUG,
@@ -28,8 +28,14 @@ class LogFormatter(logging.Formatter):
     """
 
     def __init__(
-        self, fmt=None, datefmt=None, style="%", validate=True, *, defaults=None
-    ):
+        self,
+        fmt: Optional[str] = None,
+        datefmt: Optional[str] = None,
+        style: Literal["%", "{", "$"] = "%",
+        validate: bool = True,
+        *,
+        defaults: Optional[Dict[str, Any]] = None,
+    ) -> None:
         if sys.version_info >= (3, 10):
             super().__init__(fmt, datefmt, style, validate, defaults=defaults)
         else:
