@@ -130,3 +130,30 @@ def test_triplet_dataset_split(
             f"Expected validation dataset size {expected_val_size}, "
             f"got {len(val_dataset)}"
         )
+
+
+@pytest.mark.parametrize(
+    "tracker_id_to_images, tracker_id, exception",
+    [
+        (
+            {
+                "0111": ["0111_00000000.jpg", "0111_00000001.jpg"],
+                "0112": ["0112_00000000.jpg", "0112_00000001.jpg"],
+                "0113": ["0113_00000000.jpg", "0113_00000001.jpg"],
+            },
+            "0111",
+            DoesNotRaise(),
+        ),
+    ],
+)
+def test_get_triplet_image_paths(
+    tracker_id_to_images, tracker_id, exception
+) -> None:
+    with exception:
+        dataset = TripletsDataset(tracker_id_to_images)
+        anchor_path, positive_path, negative_path = dataset._get_triplet_image_paths(tracker_id)
+        
+        assert anchor_path in tracker_id_to_images[tracker_id]
+        assert positive_path in tracker_id_to_images[tracker_id]
+        assert negative_path not in tracker_id_to_images[tracker_id]
+        assert anchor_path != positive_path

@@ -182,12 +182,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["trackers"]
 
-#[tool.bandit]
-## Ignore B614 temporary until permanent fix
-## B614: Test for unsafe PyTorch load or save
-## https://bandit.readthedocs.io/en/1.7.10/plugins/b704_pytorch_load_save.html
-#skips = ["B614"]
-
 [tool.bandit]
 target = ["test", "trackers"]
 tests = ["B201", "B301", "B318", "B314", "B303", "B413", "B412"]
