@@ -226,7 +226,15 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                 (confidence >= threshold) and the second for low-confidence detections
                 (confidence < threshold).
         """
-        condition = detections.confidence >= self.high_prob_boxes_threshold
+        # Check if confidence scores exist before comparing
+        if detections.confidence is not None:
+            # Perform element-wise comparison if confidence is a NumPy array
+            condition = detections.confidence >= self.high_prob_boxes_threshold
+        else:
+            # If no confidence scores, no detections meet the threshold
+            # Create a boolean array of False with the same length as detections
+            condition = np.zeros(len(detections), dtype=bool) # ADDED: Handle None confidence
+
         high_confidence = detections[condition]
         low_confidence = detections[np.logical_not(condition)]
         return high_confidence, low_confidence
@@ -297,14 +305,14 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                 # Assign to a temporary variable with explicit type hint
                 confidence_score: float = detections.confidence[
                     detection_idx
-                ]  # ADDED: Explicitly type as float
+                ]  
 
                 # Use the temporary variable in the comparison
                 if (
                     confidence_score >= self.track_activation_threshold
                 ):  # Changed to use confidence_score
                     # Original logic for high confidence detection
-                    feature = None
+                    feature: Optional[np.ndarray] = None
                     if (
                         detection_features is not None
                         and len(detection_features) > detection_idx
