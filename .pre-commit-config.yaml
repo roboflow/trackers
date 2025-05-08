@@ -30,7 +30,7 @@ repos:
           additional_dependencies: ["bandit[toml]"]
 
   -   repo: https://github.com/astral-sh/ruff-pre-commit
-      rev: v0.11.6
+      rev: v0.11.8
       hooks:
       -   id: ruff
           args: [--fix, --exit-non-zero-on-fix]
@@ -41,3 +41,5 @@ repos:
       rev: 'v1.15.0'
       hooks:
       -   id: mypy
+          additional_dependencies: [numpy, "supervision>=0.26.0rc7",timm,torchvision,torch,validators]
+          args: ["--config-file", "mypy.ini"]
