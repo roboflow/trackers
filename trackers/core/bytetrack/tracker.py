@@ -144,11 +144,13 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         )
 
         # If detector avaible, compute the features for high probability images
-        detection_features = [None] * len(high_prob_detections)
+        detection_features: Optional[np.ndarray]
         if self.feature_extractor is not None:
             detection_features = self.feature_extractor.extract_features(
                 frame, high_prob_detections
             )
+        else:
+            detection_features = None
 
         # Step 1: first association, with high confidence boxes
         matched_indices, unmatched_trackers, unmatched_high_prob_detections = (
@@ -265,7 +267,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         self,
         detections: sv.Detections,
         detection_boxes: np.ndarray,
-        detection_features: np.ndarray,
+        detection_features: Optional[np.ndarray],
         unmatched_detections: set[int],
         updated_detections: list[sv.Detections],
     ):
@@ -275,7 +277,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         Args:
             detections (sv.Detections): Current detections.
             detection_boxes (np.ndarray): Bounding boxes for detections.
-            detection_features (np.ndarray): Features for detections.
+            detection_features (Optional[np.ndarray]): Features for detections.
             unmatched_detections (set[int]): Indices of unmatched detections.
             unmatched_detections (set[int]): Indices of unmatched detections.
             updated_detections (list[sv.Detections]): List with all the detections
@@ -333,7 +335,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             # Build feature distance matrix between detections and predicted bounding boxes # noqa: E501
             similarity_matrix = -self._get_appearance_distance_matrix(
                 detection_features, trackers
-            )  
+            )
             # The minus because _get_associated_indices considers the higher the best
             thresh = -self.max_appearance_distance
 
