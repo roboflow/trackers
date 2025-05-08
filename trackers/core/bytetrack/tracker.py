@@ -102,12 +102,15 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             t = trackers[row]
             t.update(det_bboxes[col])
             # If tracker is mature but still has ID -1, assign a new ID
-            if t.number_of_successful_updates >= self.minimum_consecutive_frames and t.tracker_id == -1: # Check maturity before assigning ID
+            if (
+                t.number_of_successful_updates >= self.minimum_consecutive_frames
+                and t.tracker_id == -1
+            ):  # Check maturity before assigning ID
                 t.tracker_id = ByteTrackKalmanBoxTracker.get_next_tracker_id()
 
             new_det = deepcopy(detections[col : col + 1])
             # Add cast to clarify type for mypy
-            new_det = cast(sv.Detections, new_det) # ADDED cast
+            new_det = cast(sv.Detections, new_det)  # ADDED cast
             new_det.tracker_id = np.array([t.tracker_id])
             updated_detections.append(new_det)
 
@@ -288,8 +291,13 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         """  # noqa: E501
         for detection_idx in unmatched_detections:
             # ADDED check for detections.confidence existence
-            if detections.confidence is not None and detection_idx < len(detections.confidence):
-                if detections.confidence[detection_idx] >= self.track_activation_threshold:
+            if detections.confidence is not None and detection_idx < len(
+                detections.confidence
+            ):
+                if (
+                    detections.confidence[detection_idx]
+                    >= self.track_activation_threshold
+                ):
                     feature = None
                     if (
                         detection_features is not None
@@ -303,13 +311,14 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                     self.trackers.append(new_tracker)
 
                     new_det = deepcopy(detections[detection_idx : detection_idx + 1])
-                    new_det = cast(sv.Detections, new_det) # Cast added in step 1
+                    new_det = cast(sv.Detections, new_det)  # Cast added in step 1
                     new_det.tracker_id = np.array([-1])
                     updated_detections.append(new_det)
             else:
                 # If confidence is None or index out of bounds, it cannot meet the threshold
                 # Treat as low confidence / not meeting activation threshold
-                pass # Do nothing, the detection remains unmatched
+                pass  # Do nothing, the detection remains unmatched
+
     def _similarity_step(
         self,
         detections: sv.Detections,
