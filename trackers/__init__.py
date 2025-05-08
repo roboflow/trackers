@@ -8,6 +8,7 @@ logger = get_logger(__name__)
 try:
     from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
     from trackers.core.deepsort.tracker import DeepSORTTracker
+
     __all__.extend(["DeepSORTFeatureExtractor", "DeepSORTTracker"])
 except ImportError:
     logger.warning(
@@ -21,6 +22,6 @@ try:
     __all__.extend(["ByteTrackTracker"])
 except ImportError:
     logger.warning(
-        "ByteTrack dependencies not installed. ByteTrack features will not be available. "
+        "ByteTrack dependencies not installed. ByteTrack features will not be available. "  # noqa: E501
         "Please run `pip install trackers` and try again."
     )
