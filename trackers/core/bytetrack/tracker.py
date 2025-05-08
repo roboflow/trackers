@@ -233,7 +233,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         else:
             # If no confidence scores, no detections meet the threshold
             # Create a boolean array of False with the same length as detections
-            condition = np.zeros(len(detections), dtype=bool) # ADDED: Handle None confidence
+            condition = np.zeros(
+                len(detections), dtype=bool
+            )  # ADDED: Handle None confidence
 
         high_confidence = detections[condition]
         low_confidence = detections[np.logical_not(condition)]
@@ -303,9 +305,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                 detections.confidence
             ):
                 # Assign to a temporary variable with explicit type hint
-                confidence_score: float = detections.confidence[
-                    detection_idx
-                ]  
+                confidence_score: float = detections.confidence[detection_idx]
 
                 # Use the temporary variable in the comparison
                 if (
