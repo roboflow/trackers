@@ -50,7 +50,7 @@ def test_triplet_dataset_initialization(tracker_id_to_images, exception):
 
 
 @pytest.mark.parametrize(
-    "tracker_id_to_images, split_ratio, expected_train_size, expected_val_size, exception", # noqa: E501
+    "tracker_id_to_images, split_ratio, expected_train_size, expected_val_size, exception",  # noqa: E501
     [
         (
             {
@@ -116,11 +116,7 @@ def test_triplet_dataset_initialization(tracker_id_to_images, exception):
     ],
 )
 def test_triplet_dataset_split(
-    tracker_id_to_images,
-    split_ratio,
-    expected_train_size,
-    expected_val_size,
-    exception
+    tracker_id_to_images, split_ratio, expected_train_size, expected_val_size, exception
 ):
     with exception:
         dataset = TripletsDataset(tracker_id_to_images)
