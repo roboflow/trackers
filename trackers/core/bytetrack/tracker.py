@@ -331,7 +331,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             # Build IOU cost matrix between detections and predicted bounding boxes
             similarity_matrix = get_iou_matrix(trackers, detections.xyxy)
             thresh = self.minimum_iou_threshold
-        elif association_metric == "RE-ID":
+        elif association_metric == "RE-ID" and detection_features is not None:
             # Build feature distance matrix between detections and predicted bounding boxes # noqa: E501
             similarity_matrix = -self._get_appearance_distance_matrix(
                 detection_features, trackers
