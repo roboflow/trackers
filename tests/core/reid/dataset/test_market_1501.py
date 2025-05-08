@@ -1,4 +1,3 @@
-from contextlib import ExitStack as DoesNotRaise
 from unittest.mock import patch
 
 import pytest
@@ -27,23 +26,22 @@ from trackers.core.reid.dataset.market_1501 import parse_market1501_dataset
         (
             # Multiple people with multiple images
             [
-                "0111_00000000.jpg", "0111_00000001.jpg",
-                "0112_00000000.jpg", "0112_00000001.jpg"
+                "0111_00000000.jpg",
+                "0111_00000001.jpg",
+                "0112_00000000.jpg",
+                "0112_00000001.jpg",
             ],
             {
                 "0111": ["0111_00000000.jpg", "0111_00000001.jpg"],
-                "0112": ["0112_00000000.jpg", "0112_00000001.jpg"]
+                "0112": ["0112_00000000.jpg", "0112_00000001.jpg"],
             },
         ),
         (
             # Multiple people with varying number of images
-            [
-                "0111_00000000.jpg", "0111_00000001.jpg",
-                "0112_00000000.jpg"
-            ],
+            ["0111_00000000.jpg", "0111_00000001.jpg", "0112_00000000.jpg"],
             {
                 "0111": ["0111_00000000.jpg", "0111_00000001.jpg"],
-                "0112": ["0112_00000000.jpg"]
+                "0112": ["0112_00000000.jpg"],
             },
         ),
     ],

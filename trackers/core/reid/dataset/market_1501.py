@@ -1,6 +1,6 @@
+import glob
 import os
 from collections import defaultdict
-import glob
 from typing import Dict, List, Optional, Tuple, Union
 
 from torchvision.transforms import Compose
