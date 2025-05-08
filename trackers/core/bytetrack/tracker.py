@@ -290,14 +290,20 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         """  # noqa: E501
         for detection_idx in unmatched_detections:
-            # ADDED check for detections.confidence existence
+            # Check for detections.confidence existence and index bounds
             if detections.confidence is not None and detection_idx < len(
                 detections.confidence
             ):
+                # Assign to a temporary variable with explicit type hint
+                confidence_score: float = detections.confidence[
+                    detection_idx
+                ]  # ADDED: Explicitly type as float
+
+                # Use the temporary variable in the comparison
                 if (
-                    detections.confidence[detection_idx]
-                    >= self.track_activation_threshold
-                ):
+                    confidence_score >= self.track_activation_threshold
+                ):  # Changed to use confidence_score
+                    # Original logic for high confidence detection
                     feature = None
                     if (
                         detection_features is not None
@@ -311,12 +317,10 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                     self.trackers.append(new_tracker)
 
                     new_det = deepcopy(detections[detection_idx : detection_idx + 1])
-                    new_det = cast(sv.Detections, new_det)  # Cast added in step 1
+                    new_det = cast(sv.Detections, new_det)  # Cast added previously
                     new_det.tracker_id = np.array([-1])
                     updated_detections.append(new_det)
             else:
-                # If confidence is None or index out of bounds, it cannot meet the threshold
-                # Treat as low confidence / not meeting activation threshold
                 pass  # Do nothing, the detection remains unmatched
 
     def _similarity_step(
