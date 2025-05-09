@@ -10,10 +10,10 @@ import torch.nn as nn
 import torch.optim as optim
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 from tqdm.auto import tqdm
 
+from trackers.core.reid.callbacks import TensorboardCallback
 from trackers.utils.torch_utils import parse_device_spec
 
 
@@ -107,16 +107,19 @@ class ReIDModel:
 
         return np.array(features)
 
-    def compile(
-        self, optimizer: ReIDOptimizer = ReIDOptimizer.ADAM, learning_rate: float = 1e-4
+    def compile_for_training(
+        self,
+        optimizer: ReIDOptimizer = ReIDOptimizer.ADAM,
+        learning_rate: float = 1e-4,
+        **kwargs,
     ) -> None:
         if optimizer == ReIDOptimizer.ADAM:
             self.optimizer = optim.Adam(
-                self.backbone_model.parameters(), lr=learning_rate
+                self.backbone_model.parameters(), lr=learning_rate, **kwargs
             )
         elif optimizer == ReIDOptimizer.SGD:
             self.optimizer = optim.SGD(
-                self.backbone_model.parameters(), lr=learning_rate
+                self.backbone_model.parameters(), lr=learning_rate, **kwargs
             )
         self.criterion = nn.TripletMarginLoss(margin=1.0)
 
@@ -126,15 +129,11 @@ class ReIDModel:
         positive_image: torch.Tensor,
         negative_image: torch.Tensor,
     ) -> torch.Tensor:
-        anchor_image = anchor_image.to(self.device)
-        positive_image = positive_image.to(self.device)
-        negative_image = negative_image.to(self.device)
-
         self.optimizer.zero_grad()
 
-        anchor_image_features = self.backbone_model(anchor_image)
-        positive_image_features = self.backbone_model(positive_image)
-        negative_image_features = self.backbone_model(negative_image)
+        anchor_image_features = self.backbone_model(anchor_image.to(self.device))
+        positive_image_features = self.backbone_model(positive_image.to(self.device))
+        negative_image_features = self.backbone_model(negative_image.to(self.device))
 
         loss = self.criterion(
             anchor_image_features,
@@ -152,14 +151,14 @@ class ReIDModel:
         positive_image: torch.Tensor,
         negative_image: torch.Tensor,
     ) -> torch.Tensor:
-        anchor_image = anchor_image.to(self.device)
-        positive_image = positive_image.to(self.device)
-        negative_image = negative_image.to(self.device)
-
         with torch.no_grad():
-            anchor_image_features = self.backbone_model(anchor_image)
-            positive_image_features = self.backbone_model(positive_image)
-            negative_image_features = self.backbone_model(negative_image)
+            anchor_image_features = self.backbone_model(anchor_image.to(self.device))
+            positive_image_features = self.backbone_model(
+                positive_image.to(self.device)
+            )
+            negative_image_features = self.backbone_model(
+                negative_image.to(self.device)
+            )
 
         loss = self.criterion(
             anchor_image_features,
@@ -175,12 +174,11 @@ class ReIDModel:
         epochs: int,
         checkpoint_interval: int = 1,
         checkpoint_dir: str = "checkpoints",
-        tensorboard: bool = False,
+        log_to_tensorboard: bool = False,
     ) -> None:
         os.makedirs(checkpoint_dir, exist_ok=True)
 
-        if tensorboard:
-            writer = SummaryWriter()
+        metric_logger_callback = TensorboardCallback() if log_to_tensorboard else None
 
         for epoch in tqdm(range(epochs), desc="Epochs"):
             for idx, data in enumerate(train_loader):
@@ -189,17 +187,19 @@ class ReIDModel:
                     anchor_image, positive_image, negative_image
                 )
 
-                if tensorboard:
-                    for key, value in train_logs.items():
-                        writer.add_scalar(key, value, epoch * len(train_loader) + idx)
+                if metric_logger_callback:
+                    metric_logger_callback.on_train_end(
+                        train_logs, epoch * len(train_loader) + idx
+                    )
 
                 validation_logs = self.validation_step(
                     anchor_image, positive_image, negative_image
                 )
 
-                if tensorboard:
-                    for key, value in validation_logs.items():
-                        writer.add_scalar(key, value, epoch * len(train_loader) + idx)
+                if metric_logger_callback:
+                    metric_logger_callback.on_validation_end(
+                        validation_logs, epoch * len(train_loader) + idx
+                    )
 
                 if (epoch + 1) % checkpoint_interval == 0:
                     state_dict = self.backbone_model.state_dict()
@@ -210,6 +210,5 @@ class ReIDModel:
                         ),
                     )
 
-        if tensorboard:
-            writer.flush()
-            writer.close()
+        if metric_logger_callback:
+            metric_logger_callback.on_end()
