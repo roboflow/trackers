@@ -94,7 +94,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         detections: sv.Detections,
         updated_detections: list[sv.Detections],
         matched_indices: list[tuple[int, int]],
-    ):
+    ) -> list[sv.Detections]:
         # Update matched trackers with assigned detections.
         det_bboxes = detections.xyxy
         for row, col in matched_indices:
@@ -112,6 +112,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             new_det = cast(sv.Detections, new_det)  # ADDED cast
             new_det.tracker_id = np.array([t.tracker_id])
             updated_detections.append(new_det)
+        return updated_detections
 
     def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
         """Updates the tracker state with new detections.
