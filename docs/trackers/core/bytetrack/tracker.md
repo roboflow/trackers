@@ -19,138 +19,248 @@ BytTrack is independent on the object detector and feature extractor network so 
 
 
 ## Examples
+=== "No Feature Extractor"
+    === "rf-detr"
 
-=== "rf-detr"
+        ```python hl_lines="3 7 13"
+        import supervision as sv
+        from rfdetr import RFDETRBase
+        from trackers import ByteTrackTracker
 
-    ```python hl_lines="2 5-8 15"
-    import supervision as sv
-    from rfdetr import RFDETRBase
-    from trackers import ByteTrackTracker
-    from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
+        model = RFDETRBase(device="cuda") 
 
-    model = RFDETRBase(device="cuda")  # Load the Object Detector
-    feature_extractor = DeepSORTFeatureExtractor.from_timm(
-        model_name="mobilenetv4_conv_small.e1200_r224_in1k",
-    )
-    tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        tracker = ByteTrackTracker(feature_extractor=None)
 
-    annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+        annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
-    def callback(frame, _):
-        # Obtain bounding box predictions from RF-DETR
-        detections = model.predict(frame, threshold=0.5)
+        def callback(frame, _):
+            detections = model.predict(frame, threshold=0.5)
+            detections = tracker.update(detections, frame)
+            return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
-        # Update tracker with new detections and retrieve updated IDs
-        detections = tracker.update(detections, frame)
-        return annotator.annotate(frame, detections, labels=detections.tracker_id)
+        sv.process_video(
+            source_path="input.mp4",
+            target_path="output.mp4",
+            callback=callback,
+        )
+        ```
+    === "inference"
 
-    sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
-        callback=callback,
-    )
-    ```
-=== "inference"
+        ```python hl_lines="2 5 12"
+        import supervision as sv
+        from trackers import ByteTrackTracker
+        from inference import get_model
 
-    ```python hl_lines="2 5-8 15"
-    import supervision as sv
-    from trackers import DeepSORTFeatureExtractor
-    from trackers import ByteTrackTracker
-    from inference import get_model
+        tracker = ByteTrackTracker(feature_extractor=None)
+        model = get_model(model_id="yolov11m-640")
+        annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
-    feature_extractor = DeepSORTFeatureExtractor.from_timm(
-        model_name="mobilenetv4_conv_small.e1200_r224_in1k"
-    )
-    tracker = ByteTrackTracker(feature_extractor=feature_extractor)
-    model = get_model(model_id="yolov11m-640")
-    annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+        def callback(frame, _):
+            result = model.infer(frame)[0]
+            detections = sv.Detections.from_inference(result)
+            detections = tracker.update(detections, frame)
+            return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
-    def callback(frame, _):
-        result = model.infer(frame)[0]
-        detections = sv.Detections.from_inference(result)
-        detections = tracker.update(detections, frame)
-        return annotator.annotate(frame, detections, labels=detections.tracker_id)
+        sv.process_video(
+            source_path="input.mp4",
+            target_path="output.mp4",
+            callback=callback,
+        )
+        ```
 
-    sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
-        callback=callback,
-    )
-    ```
+    === "ultralytics"
 
+        ```python hl_lines="2 5 12"
+        import supervision as sv
+        from trackers import ByteTrackTracker
+        from ultralytics import YOLO
 
-=== "ultralytics"
+        tracker = ByteTrackTracker(feature_extractor=None)
+        model = YOLO("yolo11m.pt")
+        annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
-    ```python hl_lines="2 5-8 15"
-    import supervision as sv
-    from trackers import DeepSORTFeatureExtractor
-    from trackers import ByteTrackTracker
+        def callback(frame, _):
+            result = model(frame)[0]
+            detections = sv.Detections.from_ultralytics(result)
+            detections = tracker.update(detections, frame)
+            return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
-    from ultralytics import YOLO
+        sv.process_video(
+            source_path="input.mp4",
+            target_path="output.mp4",
+            callback=callback,
+        )
+        ```
 
-    feature_extractor = DeepSORTFeatureExtractor.from_timm(
-        model_name="mobilenetv4_conv_small.e1200_r224_in1k"
-    )
-    tracker = ByteTrackTracker(feature_extractor=feature_extractor)
-    model = YOLO("yolo11m.pt")
-    annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+    === "transformers"
 
-    def callback(frame, _):
-        result = model(frame)[0]
-        detections = sv.Detections.from_ultralytics(result)
-        detections = tracker.update(detections, frame)
-        return annotator.annotate(frame, detections, labels=detections.tracker_id)
+        ```python hl_lines="3 6 28"
+        import torch
+        import supervision as sv
+        from trackers import ByteTrackTracker
+        from transformers import RTDetrV2ForObjectDetection, RTDetrImageProcessor
 
-    sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
-        callback=callback,
-    )
-    ```
+        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
+        model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
+        annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
-=== "transformers"
+        def callback(frame, _):
+            inputs = processor(images=frame, return_tensors="pt")
+            with torch.no_grad():
+                outputs = model(**inputs)
 
-    ```python hl_lines="3 6-9 31"
-    import torch
-    import supervision as sv
-    from trackers import DeepSORTFeatureExtractor
-    from trackers import ByteTrackTracker
-    from transformers import RTDetrV2ForObjectDetection, RTDetrImageProcessor
+            h, w, _ = frame.shape
+            results = processor.post_process_object_detection(
+                outputs,
+                target_sizes=torch.tensor([(h, w)]),
+                threshold=0.5
+            )[0]
 
-    feature_extractor = DeepSORTFeatureExtractor.from_timm(
-        model_name="mobilenetv4_conv_small.e1200_r224_in1k"
-    )
-    tracker = ByteTrackTracker(feature_extractor=feature_extractor)
-    processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
-    model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
-    annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+            detections = sv.Detections.from_transformers(
+                transformers_results=results,
+                id2label=model.config.id2label
+            )
 
-    def callback(frame, _):
-        inputs = processor(images=frame, return_tensors="pt")
-        with torch.no_grad():
-            outputs = model(**inputs)
+            detections = tracker.update(detections, frame)
+            return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
-        h, w, _ = frame.shape
-        results = processor.post_process_object_detection(
-            outputs,
-            target_sizes=torch.tensor([(h, w)]),
-            threshold=0.5
-        )[0]
+        sv.process_video(
+            source_path="input.mp4",
+            target_path="output.mp4",
+            callback=callback,
+        )
+        ```
 
-        detections = sv.Detections.from_transformers(
-            transformers_results=results,
-            id2label=model.config.id2label
+=== "With Feature Extractor"
+    === "rf-detr"
+
+        ```python hl_lines="3 7-9 10 15"
+        import supervision as sv
+        from rfdetr import RFDETRBase
+        from trackers import ByteTrackTracker
+        from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
+
+        model = RFDETRBase(device="cuda")  
+        feature_extractor = DeepSORTFeatureExtractor.from_timm(
+            model_name="mobilenetv4_conv_small.e1200_r224_in1k",
+        )
+        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+
+        def callback(frame, _):
+            detections = model.predict(frame, threshold=0.5)
+            detections = tracker.update(detections, frame)
+            return annotator.annotate(frame, detections, labels=detections.tracker_id)
+
+        sv.process_video(
+            source_path="input.mp4",
+            target_path="output.mp4",
+            callback=callback,
+        )
+        ```
+    === "inference"
+
+        ```python hl_lines="3 6-8 10 17"
+        import supervision as sv
+        from trackers import DeepSORTFeatureExtractor
+        from trackers import ByteTrackTracker
+        from inference import get_model
+
+        feature_extractor = DeepSORTFeatureExtractor.from_timm(
+            model_name="mobilenetv4_conv_small.e1200_r224_in1k"
         )
 
-        detections = tracker.update(detections, frame)
-        return annotator.annotate(frame, detections, labels=detections.tracker_id)
+        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        model = get_model(model_id="yolov11m-640")
+        annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
-    sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
-        callback=callback,
-    )
-    ```
+        def callback(frame, _):
+            result = model.infer(frame)[0]
+            detections = sv.Detections.from_inference(result)
+            detections = tracker.update(detections, frame)
+            return annotator.annotate(frame, detections, labels=detections.tracker_id)
+
+        sv.process_video(
+            source_path="input.mp4",
+            target_path="output.mp4",
+            callback=callback,
+        )
+        ```
+
+
+    === "ultralytics"
+
+        ```python hl_lines="3 7-10 17"
+        import supervision as sv
+        from trackers import DeepSORTFeatureExtractor
+        from trackers import ByteTrackTracker
+
+        from ultralytics import YOLO
+
+        feature_extractor = DeepSORTFeatureExtractor.from_timm(
+            model_name="mobilenetv4_conv_small.e1200_r224_in1k"
+        )
+        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        model = YOLO("yolo11m.pt")
+        annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+
+        def callback(frame, _):
+            result = model(frame)[0]
+            detections = sv.Detections.from_ultralytics(result)
+            detections = tracker.update(detections, frame)
+            return annotator.annotate(frame, detections, labels=detections.tracker_id)
+
+        sv.process_video(
+            source_path="input.mp4",
+            target_path="output.mp4",
+            callback=callback,
+        )
+        ```
+
+    === "transformers"
+
+        ```python hl_lines="4 7-10 32"
+        import torch
+        import supervision as sv
+        from trackers import DeepSORTFeatureExtractor
+        from trackers import ByteTrackTracker
+        from transformers import RTDetrV2ForObjectDetection, RTDetrImageProcessor
+
+        feature_extractor = DeepSORTFeatureExtractor.from_timm(
+            model_name="mobilenetv4_conv_small.e1200_r224_in1k"
+        )
+        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
+        model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
+        annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+
+        def callback(frame, _):
+            inputs = processor(images=frame, return_tensors="pt")
+            with torch.no_grad():
+                outputs = model(**inputs)
+
+            h, w, _ = frame.shape
+            results = processor.post_process_object_detection(
+                outputs,
+                target_sizes=torch.tensor([(h, w)]),
+                threshold=0.5
+            )[0]
+
+            detections = sv.Detections.from_transformers(
+                transformers_results=results,
+                id2label=model.config.id2label
+            )
+
+            detections = tracker.update(detections, frame)
+            return annotator.annotate(frame, detections, labels=detections.tracker_id)
+
+        sv.process_video(
+            source_path="input.mp4",
+            target_path="output.mp4",
+            callback=callback,
+        )
+        ```
 
 ## Usage
 
