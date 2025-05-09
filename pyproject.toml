@@ -36,7 +36,9 @@ keywords = ["tracking","mot","sort","deepsort", "machine-learning", "deep-learni
 dependencies = [
     "firerequests>=0.1.2",
     "numpy>=2.0.2",
+    "safetensors>=0.5.3",
     "supervision>=0.26.0rc7",
+    "tensorboard>=2.19.0",
     "validators>=0.34.0",
 ]
 

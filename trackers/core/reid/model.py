@@ -1,20 +1,46 @@
-from typing import Optional
+import os
+from enum import Enum
+from typing import Optional, Tuple
 
 import numpy as np
 import supervision as sv
 import timm
 import torch
 import torch.nn as nn
+import torch.optim as optim
+from safetensors.torch import save_file
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from torchvision import transforms
+from tqdm.auto import tqdm
 
 from trackers.utils.torch_utils import parse_device_spec
 
 
+class ReIDOptimizer(str, Enum):
+    ADAM = "adam"
+    SGD = "sgd"
+
+
 class ReIDModel:
-    def __init__(self, backbone_model: nn.Module, device: Optional[str] = "auto"):
+    def __init__(
+        self,
+        backbone_model: nn.Module,
+        device: Optional[str] = "auto",
+        input_size: Tuple[int, int] = (128, 128),
+    ):
         self.backbone_model = backbone_model
         self.device = parse_device_spec(device or "auto")
         self.backbone_model.to(self.device)
         self.backbone_model.eval()
+
+        self.inference_transforms = transforms.Compose(
+            [
+                transforms.ToPILImage(),
+                transforms.Resize(input_size),
+                transforms.ToTensor(),
+            ]
+        )
 
     @classmethod
     def from_timm(
@@ -73,8 +99,117 @@ class ReIDModel:
         with torch.no_grad():
             for box in detections.xyxy:
                 crop = sv.crop_image(image=frame, xyxy=[*box.astype(int)])
-                tensor = self.transform(crop).unsqueeze(0).to(self.device)
-                feature = torch.squeeze(self.model(tensor)).cpu().numpy().flatten()
+                tensor = self.inference_transforms(crop).unsqueeze(0).to(self.device)
+                feature = (
+                    torch.squeeze(self.backbone_model(tensor)).cpu().numpy().flatten()
+                )
                 features.append(feature)
 
         return np.array(features)
+
+    def compile(
+        self, optimizer: ReIDOptimizer = ReIDOptimizer.ADAM, learning_rate: float = 1e-4
+    ) -> None:
+        if optimizer == ReIDOptimizer.ADAM:
+            self.optimizer = optim.Adam(
+                self.backbone_model.parameters(), lr=learning_rate
+            )
+        elif optimizer == ReIDOptimizer.SGD:
+            self.optimizer = optim.SGD(
+                self.backbone_model.parameters(), lr=learning_rate
+            )
+        self.criterion = nn.TripletMarginLoss(margin=1.0)
+
+    def train_step(
+        self,
+        anchor_image: torch.Tensor,
+        positive_image: torch.Tensor,
+        negative_image: torch.Tensor,
+    ) -> torch.Tensor:
+        anchor_image = anchor_image.to(self.device)
+        positive_image = positive_image.to(self.device)
+        negative_image = negative_image.to(self.device)
+
+        self.optimizer.zero_grad()
+
+        anchor_image_features = self.backbone_model(anchor_image)
+        positive_image_features = self.backbone_model(positive_image)
+        negative_image_features = self.backbone_model(negative_image)
+
+        loss = self.criterion(
+            anchor_image_features,
+            positive_image_features,
+            negative_image_features,
+        )
+        loss.backward()
+        self.optimizer.step()
+
+        return {"train/loss": loss.item()}
+
+    def validation_step(
+        self,
+        anchor_image: torch.Tensor,
+        positive_image: torch.Tensor,
+        negative_image: torch.Tensor,
+    ) -> torch.Tensor:
+        anchor_image = anchor_image.to(self.device)
+        positive_image = positive_image.to(self.device)
+        negative_image = negative_image.to(self.device)
+
+        with torch.no_grad():
+            anchor_image_features = self.backbone_model(anchor_image)
+            positive_image_features = self.backbone_model(positive_image)
+            negative_image_features = self.backbone_model(negative_image)
+
+        loss = self.criterion(
+            anchor_image_features,
+            positive_image_features,
+            negative_image_features,
+        )
+
+        return {"validation/loss": loss.item()}
+
+    def train(
+        self,
+        train_loader: DataLoader,
+        epochs: int,
+        checkpoint_interval: int = 1,
+        checkpoint_dir: str = "checkpoints",
+        tensorboard: bool = False,
+    ) -> None:
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
+        if tensorboard:
+            writer = SummaryWriter()
+
+        for epoch in tqdm(range(epochs), desc="Epochs"):
+            for idx, data in enumerate(train_loader):
+                anchor_image, positive_image, negative_image = data
+                train_logs = self.train_step(
+                    anchor_image, positive_image, negative_image
+                )
+
+                if tensorboard:
+                    for key, value in train_logs.items():
+                        writer.add_scalar(key, value, epoch * len(train_loader) + idx)
+
+                validation_logs = self.validation_step(
+                    anchor_image, positive_image, negative_image
+                )
+
+                if tensorboard:
+                    for key, value in validation_logs.items():
+                        writer.add_scalar(key, value, epoch * len(train_loader) + idx)
+
+                if (epoch + 1) % checkpoint_interval == 0:
+                    state_dict = self.backbone_model.state_dict()
+                    save_file(
+                        state_dict,
+                        os.path.join(
+                            checkpoint_dir, f"reid_model_{epoch + 1}.safetensors"
+                        ),
+                    )
+
+        if tensorboard:
+            writer.flush()
+            writer.close()
