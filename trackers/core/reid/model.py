@@ -169,7 +169,8 @@ class ReIDModel:
         self,
         train_loader: DataLoader,
         epochs: int,
-        checkpoint_interval: int = 1,
+        validation_loader: Optional[DataLoader] = None,
+        checkpoint_interval: Optional[int] = None,
         checkpoint_dir: str = "checkpoints",
         log_to_tensorboard: bool = False,
     ) -> None:
@@ -183,7 +184,7 @@ class ReIDModel:
             for idx, data in tqdm(
                 enumerate(train_loader),
                 total=len(train_loader),
-                desc=f"Epoch {epoch + 1}/{epochs}",
+                desc=f"Training Epoch {epoch + 1}/{epochs}",
                 leave=False,
             ):
                 anchor_image, positive_image, negative_image = data
@@ -197,24 +198,33 @@ class ReIDModel:
                             train_logs, epoch * len(train_loader) + idx
                         )
 
-                validation_logs = self.validation_step(
-                    anchor_image, positive_image, negative_image
-                )
-
-                if metric_logger_callback:
-                    for callback in metric_logger_callback:
-                        callback.on_validation_end(
-                            validation_logs, epoch * len(train_loader) + idx
-                        )
-
-                if (epoch + 1) % checkpoint_interval == 0:
-                    state_dict = self.backbone_model.state_dict()
-                    save_file(
-                        state_dict,
-                        os.path.join(
-                            checkpoint_dir, f"reid_model_{epoch + 1}.safetensors"
-                        ),
+            if validation_loader is not None:
+                for idx, data in tqdm(
+                    enumerate(validation_loader),
+                    total=len(validation_loader),
+                    desc=f"Validation Epoch {epoch + 1}/{epochs}",
+                    leave=False,
+                ):
+                    anchor_image, positive_image, negative_image = data
+                    validation_logs = self.validation_step(
+                        anchor_image, positive_image, negative_image
                     )
+
+                    if metric_logger_callback:
+                        for callback in metric_logger_callback:
+                            callback.on_validation_end(
+                                validation_logs, epoch * len(train_loader) + idx
+                            )
+
+            if (
+                checkpoint_interval is not None
+                and (epoch + 1) % checkpoint_interval == 0
+            ):
+                state_dict = self.backbone_model.state_dict()
+                save_file(
+                    state_dict,
+                    os.path.join(checkpoint_dir, f"reid_model_{epoch + 1}.safetensors"),
+                )
 
         if metric_logger_callback:
             for callback in metric_logger_callback:
