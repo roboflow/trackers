@@ -8,6 +8,7 @@ from scipy.spatial.distance import cdist
 from trackers.core.base import BaseTrackerWithFeatures
 from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
 from trackers.core.deepsort.kalman_box_tracker import DeepSORTKalmanBoxTracker
+from trackers.core.reid import ReIDModel
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
@@ -23,7 +24,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
     It combines motion (Kalman filter) and appearance cues for data association.
 
     Args:
-        feature_extractor (Union[DeepSORTFeatureExtractor, torch.nn.Module, str]):
+        feature_extractor (Union[DeepSORTFeatureExtractor, ReIDModel, torch.nn.Module, str]):
             A feature extractor model checkpoint URL, model checkpoint path, a model
             instance, or an instance of `DeepSORTFeatureExtractor` to extract
             appearance features. By default, a default model checkpoint is downloaded
@@ -51,7 +52,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
     def __init__(
         self,
-        feature_extractor: Union[DeepSORTFeatureExtractor, torch.nn.Module, str],
+        feature_extractor: Union[
+            DeepSORTFeatureExtractor, ReIDModel, torch.nn.Module, str
+        ],
         device: Optional[str] = None,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,

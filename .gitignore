@@ -169,3 +169,7 @@ test.py
 **.pt
 **.pth
 .DS_Store
+data/
+checkpoints/
+runs/
+wandb/

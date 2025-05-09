@@ -1,7 +1,8 @@
+from trackers.core.reid import ReIDModel
 from trackers.core.sort.tracker import SORTTracker
 from trackers.log import get_logger
 
-__all__ = ["SORTTracker"]
+__all__ = ["ReIDModel", "SORTTracker"]
 
 logger = get_logger(__name__)
 
