@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 
 import numpy as np
 import supervision as sv
@@ -104,22 +104,6 @@ class ReIDModel:
 
         return np.array(features)
 
-    def compile_for_training(
-        self,
-        optimizer: ReIDOptimizer = ReIDOptimizer.ADAM,
-        learning_rate: float = 1e-4,
-        **kwargs,
-    ) -> None:
-        if optimizer == ReIDOptimizer.ADAM:
-            self.optimizer = optim.Adam(
-                self.backbone_model.parameters(), lr=learning_rate, **kwargs
-            )
-        elif optimizer == ReIDOptimizer.SGD:
-            self.optimizer = optim.SGD(
-                self.backbone_model.parameters(), lr=learning_rate, **kwargs
-            )
-        self.criterion = nn.TripletMarginLoss(margin=1.0)
-
     def train_step(
         self,
         anchor_image: torch.Tensor,
@@ -170,11 +154,24 @@ class ReIDModel:
         train_loader: DataLoader,
         epochs: int,
         validation_loader: Optional[DataLoader] = None,
+        optimizer: ReIDOptimizer = ReIDOptimizer.ADAM,
+        learning_rate: float = 5e-5,
+        optimizer_kwargs: dict[str, Any] = {},
         checkpoint_interval: Optional[int] = None,
         checkpoint_dir: str = "checkpoints",
         log_to_tensorboard: bool = False,
     ) -> None:
         os.makedirs(checkpoint_dir, exist_ok=True)
+
+        if optimizer == ReIDOptimizer.ADAM:
+            self.optimizer = optim.Adam(
+                self.backbone_model.parameters(), lr=learning_rate, **optimizer_kwargs
+            )
+        elif optimizer == ReIDOptimizer.SGD:
+            self.optimizer = optim.SGD(
+                self.backbone_model.parameters(), lr=learning_rate, **optimizer_kwargs
+            )
+        self.criterion = nn.TripletMarginLoss(margin=1.0)
 
         metric_logger_callback = []
         if log_to_tensorboard:
