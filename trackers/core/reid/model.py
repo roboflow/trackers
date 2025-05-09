@@ -178,28 +178,37 @@ class ReIDModel:
     ) -> None:
         os.makedirs(checkpoint_dir, exist_ok=True)
 
-        metric_logger_callback = TensorboardCallback() if log_to_tensorboard else None
+        metric_logger_callback = []
+        if log_to_tensorboard:
+            metric_logger_callback.append(TensorboardCallback())
 
-        for epoch in tqdm(range(epochs), desc="Epochs"):
-            for idx, data in enumerate(train_loader):
+        for epoch in tqdm(range(epochs), desc="Training"):
+            for idx, data in tqdm(
+                enumerate(train_loader),
+                total=len(train_loader),
+                desc=f"Epoch {epoch + 1}/{epochs}",
+                leave=False,
+            ):
                 anchor_image, positive_image, negative_image = data
                 train_logs = self.train_step(
                     anchor_image, positive_image, negative_image
                 )
 
                 if metric_logger_callback:
-                    metric_logger_callback.on_train_end(
-                        train_logs, epoch * len(train_loader) + idx
-                    )
+                    for callback in metric_logger_callback:
+                        callback.on_train_end(
+                            train_logs, epoch * len(train_loader) + idx
+                        )
 
                 validation_logs = self.validation_step(
                     anchor_image, positive_image, negative_image
                 )
 
                 if metric_logger_callback:
-                    metric_logger_callback.on_validation_end(
-                        validation_logs, epoch * len(train_loader) + idx
-                    )
+                    for callback in metric_logger_callback:
+                        callback.on_validation_end(
+                            validation_logs, epoch * len(train_loader) + idx
+                        )
 
                 if (epoch + 1) % checkpoint_interval == 0:
                     state_dict = self.backbone_model.state_dict()
@@ -211,4 +220,5 @@ class ReIDModel:
                     )
 
         if metric_logger_callback:
-            metric_logger_callback.on_end()
+            for callback in metric_logger_callback:
+                callback.on_end()
