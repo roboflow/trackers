@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Callable, Optional
 
 import numpy as np
 import supervision as sv
@@ -9,8 +9,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from safetensors.torch import save_file
+from timm.data import resolve_data_config
+from timm.data.transforms_factory import create_transform
 from torch.utils.data import DataLoader
-from torchvision import transforms
+from torchvision.transforms import Compose, ToPILImage
 from tqdm.auto import tqdm
 
 from trackers.core.reid.callbacks import TensorboardCallback
@@ -27,20 +29,13 @@ class ReIDModel:
         self,
         backbone_model: nn.Module,
         device: Optional[str] = "auto",
-        input_size: Tuple[int, int] = (128, 128),
+        transforms: Optional[Callable] = None,
     ):
         self.backbone_model = backbone_model
         self.device = parse_device_spec(device or "auto")
         self.backbone_model.to(self.device)
         self.backbone_model.eval()
-
-        self.inference_transforms = transforms.Compose(
-            [
-                transforms.ToPILImage(),
-                transforms.Resize(input_size),
-                transforms.ToTensor(),
-            ]
-        )
+        self.inference_transforms = Compose([ToPILImage(), transforms])
 
     @classmethod
     def from_timm(
@@ -77,7 +72,9 @@ class ReIDModel:
         model = timm.create_model(
             model_name, pretrained=pretrained, num_classes=0, **kwargs
         )
-        return cls(model, device)
+        config = resolve_data_config(model.pretrained_cfg)
+        transforms = create_transform(**config)
+        return cls(model, device, transforms)
 
     def extract_features(
         self, frame: np.ndarray, detections: sv.Detections
