@@ -14,7 +14,6 @@ from trackers.utils.sort_utils import (
     get_iou_matrix,
 )
 
-
 class ByteTrackTracker(BaseTrackerWithFeatures):
     """Implements ByteTrack.
 
@@ -25,6 +24,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
     and the Hungarian algorithm for data association.
 
     Args:
+        feature_extractor (Optional[DeepSORTFeatureExtractor]): model that will be use for extracting
+            RE-ID features for high probability detected boxes. If None is passed, it will use
+            IoU in the first similarity step.
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
             improving tracking through occlusions, but may increase the possibility
@@ -44,33 +46,30 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         minimum_iou_threshold (float): IOU threshold for associating detections to existing tracks.
             Prevents the association of low IoU bounding boxes.
             A higher value will only associate boxes that have more overlapping when using IoU metric.
+        appearance_threshold (float): Maximum allowed distance for appearance-based
+            matching when using 'RE-ID' as the `high_prob_association_metric`.
+            Prevents the association of detections which distance to the track isn't lower than the threshold.
+            Lower values result in stricter appearance matching.
+        distance_metric (str): Distance metric for appearance features (e.g., 'cosine',
+            'euclidean'). See `scipy.spatial.distance.cdist`.
         high_prob_boxes_threshold (float): threshold for assigning predicted boxes to high probability class.
             A higher value will classify only higher probability boxes as 'high probability'
             per the ByteTrack algorithm, which are used in the first similarity step of
             the algorithm.  If feature extractor is used, high probability boxes are the
             only ones that are matched using the appearance features.
-        feature_extractor (Optional[DeepSORTFeatureExtractor]): model that will be use for extracting
-            RE-ID features for high probability detected boxes. If None is passed, it will use
-            IoU in the first similarity step.
-        distance_metric (str): Distance metric for appearance features (e.g., 'cosine',
-            'euclidean'). See `scipy.spatial.distance.cdist`.
-        max_appearance_distance (float): Maximum allowed distance for appearance-based
-            matching when using 'RE-ID' as the `high_prob_association_metric`.
-            Prevents the association of detections which distance to the track isn't lower than the threshold.
-            Lower values result in stricter appearance matching.
     """  # noqa: E501
 
     def __init__(
         self,
+        feature_extractor: Optional[DeepSORTFeatureExtractor] = None,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.25,
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.2,
-        high_prob_boxes_threshold: float = 0.5,
-        feature_extractor: Optional[DeepSORTFeatureExtractor] = None,
+        appearance_threshold: float = 0.7,
         distance_metric: str = "cosine",
-        max_appearance_distance: float = 0.75,
+        high_prob_boxes_threshold: float = 0.5,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -85,9 +84,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         )
         self.feature_extractor = feature_extractor
         self.distance_metric = distance_metric
-        # Active trackers
         self.trackers: list[ByteTrackKalmanBoxTracker] = []
-        self.max_appearance_distance = max_appearance_distance
+        self.appearance_threshold = appearance_threshold
 
     def _update_detections(
         self,
@@ -360,7 +358,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                 detection_features, trackers
             )
             # The minus because _get_associated_indices considers the higher the best
-            thresh = -self.max_appearance_distance
+            thresh = -self.appearance_threshold
 
         else:
             raise Exception("Your association metric is not supported")
