@@ -30,4 +30,4 @@ jobs:
         run: uv pip install -r pyproject.toml --group dev --group docs --extra cpu --extra deepsort
 
       - name: 🧪 Run MyPy Test
-        run: uv run mypy --config-file mypy.ini --exclude "tests|docs" .
+        run: uv run mypy --config-file mypy.ini --exclude "test|docs" .
