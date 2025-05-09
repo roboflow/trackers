@@ -286,7 +286,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         updated_detections: list[sv.Detections],
     ):
         """
-        Create new trackers for unmatched detections and append detections to updated_detections detections.
+        Create new trackers for unmatched detections and
+            append detections to updated_detections detections.
 
         Args:
             detections (sv.Detections): Current detections.
@@ -296,7 +297,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             unmatched_detections (set[int]): Indices of unmatched detections.
             updated_detections (list[sv.Detections]): List with all the detections
 
-        """  # noqa: E501
+        """
         for detection_idx in unmatched_detections:
             # Check for detections.confidence existence and index bounds
             if detections.confidence is not None and detection_idx < len(
@@ -347,7 +348,15 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             detection_features (Optional[np.ndarray]): Features extracted from detections, used for 'RE-ID' association. Defaults to None.
 
         Returns:
-            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices, unmatched trackers indices, unmatched detections indices.
+            tuple[list[tuple[int, int]], set[int], set[int]]: A tuple containing:
+                - matched_indices: A list of (tracker_idx, detection_idx) pairs.
+                - unmatched_trackers_indices: A set of indices for trackers that
+                  were not matched.
+                - unmatched_detections_indices: A set of indices for detections
+                  that were not matched.
+
+        Raises:
+            Exception: If an unsupported `association_metric` is provided.
         """  # noqa: E501
         similarity_matrix = None
         if association_metric == "IoU":
@@ -365,6 +374,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         else:
             raise Exception("Your association metric is not supported")
         # Associate detections to trackers based on the higher value of the
+        # similarity matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
         matched_indices, unmatched_trackers, unmatched_detections = (
             self._get_associated_indices(
                 similarity_matrix, detections.xyxy, trackers, thresh
