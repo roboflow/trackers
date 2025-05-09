@@ -34,9 +34,11 @@ classifiers = [
 keywords = ["tracking","mot","sort","deepsort", "machine-learning", "deep-learning", "vision", "ML", "DL", "AI", "DETR", "YOLO", "Roboflow"]
 
 dependencies = [
-    "firerequests>=0.1.2",
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.11.16",
     "numpy>=2.0.2",
     "supervision>=0.26.0rc7",
+    "tqdm>=4.67.1",
     "validators>=0.34.0",
 ]
 
@@ -89,6 +91,7 @@ dev = [
     "pre-commit>=4.2.0",
 ]
 
+
 docs = [
     "jupyter>=1.1.1",
     "mkdocs>=1.6.1",
@@ -105,6 +108,12 @@ build = [
     "twine>=5.1.1",
     "wheel>=0.40",
     "build>=0.10"
+]
+
+mypy-types = [
+    "types-aiofiles>=24.1.0.20250326",
+    "types-requests>=2.32.0.20250328",
+    "types-tqdm>=4.67.0.20250417",
 ]
 
 

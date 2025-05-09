@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional, Tuple, Union
 
 import numpy as np
@@ -6,7 +7,6 @@ import timm
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-from firerequests import FireRequests
 
 from trackers.utils.torch_utils import parse_device_spec
 
@@ -105,6 +105,33 @@ class DeepSORTFeatureExtractor:
         backbone_model = FeatureExtractionBackbone(model)
         return cls(backbone_model, device, input_size)
 
+    def _download_checkpoint_from_url(self, url: str) -> str:
+        """Downloads a model checkpoint from a URL.
+
+        Args:
+            url (str): The URL to download the model checkpoint from.
+
+        Returns:
+            str: The local path to the downloaded checkpoint file.
+        """
+        from trackers.utils.download_file_utils import AsyncFileDownloader
+
+        downloader = AsyncFileDownloader()
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                future = asyncio.ensure_future(downloader.process_url(url))
+                checkpoint_path = loop.run_until_complete(future)
+            else:
+                checkpoint_path = loop.run_until_complete(downloader.process_url(url))
+        except RuntimeError:
+            checkpoint_path = asyncio.run(downloader.process_url(url))
+        print(
+            f"Model downloaded to {checkpoint_path}. "
+            "Loading the model from the checkpoint."
+        )
+        return checkpoint_path
+
     def _initialize_model(
         self, model_or_checkpoint_path: Union[str, torch.nn.Module, None]
     ):
@@ -112,7 +139,9 @@ class DeepSORTFeatureExtractor:
             import validators
 
             if validators.url(model_or_checkpoint_path):
-                checkpoint_path = FireRequests().download(model_or_checkpoint_path)[0]
+                checkpoint_path = self._download_checkpoint_from_url(
+                    model_or_checkpoint_path
+                )
                 self._load_model_from_path(checkpoint_path)
             else:
                 self._load_model_from_path(model_or_checkpoint_path)
