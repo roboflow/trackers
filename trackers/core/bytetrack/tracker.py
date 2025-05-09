@@ -14,6 +14,7 @@ from trackers.utils.sort_utils import (
     get_iou_matrix,
 )
 
+
 class ByteTrackTracker(BaseTrackerWithFeatures):
     """Implements ByteTrack.
 
