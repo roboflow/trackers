@@ -27,7 +27,7 @@ BytTrack is independent on the object detector and feature extractor network so 
         from rfdetr import RFDETRBase
         from trackers import ByteTrackTracker
 
-        model = RFDETRBase(device="cuda") 
+        model = RFDETRBase(device="cuda")
 
         tracker = ByteTrackTracker(feature_extractor=None)
 
@@ -141,7 +141,7 @@ BytTrack is independent on the object detector and feature extractor network so 
         from trackers import ByteTrackTracker
         from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
 
-        model = RFDETRBase(device="cuda")  
+        model = RFDETRBase(device="cuda")
         feature_extractor = DeepSORTFeatureExtractor.from_timm(
             model_name="mobilenetv4_conv_small.e1200_r224_in1k",
         )
