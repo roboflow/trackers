@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import Callable, Optional, Any
+from typing import Any, Callable, Optional
 
 import numpy as np
 import supervision as sv
