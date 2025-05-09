@@ -12,16 +12,19 @@ try:
     __all__.extend(["DeepSORTFeatureExtractor", "DeepSORTTracker"])
 except ImportError:
     logger.warning(
-        "DeepSORT dependencies not installed. DeepSORT features will not be available. "
+        "DeepSORT dependencies not installed. "
+        "DeepSORT features will not be available. "
         "Please run `pip install trackers[deepsort]` and try again."
     )
     pass
+
 try:
     from trackers.core.bytetrack.tracker import ByteTrackTracker
 
     __all__.extend(["ByteTrackTracker"])
 except ImportError:
     logger.warning(
-        "ByteTrack dependencies not installed. ByteTrack features will not be available. "  # noqa: E501
-        "Please run `pip install trackers` and try again."
+        "ByteTrack dependencies not installed. "
+        "ByteTrack features will not be available. "
+        "Please run `pip install trackers[bytetrack]` and try again."
     )
