@@ -27,7 +27,7 @@ jobs:
           prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
-        run: uv pip install -r pyproject.toml --group dev --group docs --extra cpu --extra deepsort
+        run: uv pip install -r pyproject.toml --group dev --group docs --group mypy-types --extra cpu --extra deepsort 
 
       - name: 🧪 Run MyPy Test
         run: uv run mypy --config-file mypy.ini --exclude "test|docs" .
