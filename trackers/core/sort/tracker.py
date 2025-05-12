@@ -115,11 +115,6 @@ class SORTTracker(BaseTracker):
             ):
                 new_tracker = SORTKalmanBoxTracker(detection_boxes[detection_idx])
                 self.trackers.append(new_tracker)
-        self.trackers = get_alive_trackers(
-            self.trackers,
-            self.minimum_consecutive_frames,
-            self.maximum_frames_without_update,
-        )
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """Updates the tracker state with new detections.
@@ -163,6 +158,13 @@ class SORTTracker(BaseTracker):
             self.trackers[row].update(detection_boxes[col])
 
         self._spawn_new_trackers(detections, detection_boxes, unmatched_detections)
+
+        # Remove dead trackers
+        self.trackers = get_alive_trackers(
+            self.trackers,
+            self.minimum_consecutive_frames,
+            self.maximum_frames_without_update,
+        )
 
         updated_detections = update_detections_with_track_ids(
             self.trackers,
