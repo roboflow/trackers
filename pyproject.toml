@@ -41,6 +41,7 @@ dependencies = [
     "scipy>=1.13.1",
     "tqdm>=4.67.1",
     "validators>=0.34.0",
+    "scipy>=1.13.1",
 ]
 
 [project.optional-dependencies]
@@ -77,12 +78,15 @@ rocm624 = [
     "pytorch-triton-rocm>=2.0.0",
 ]
 
-deepsort = [
+reid = [
+    "safetensors>=0.5.3",
     "timm>=1.0.15",
 ]
 
-bytetrack = [
-    "timm>=1.0.15",
+metrics = [
+    "matplotlib>=3.9.4",
+    "tensorboard>=2.19.0",
+    "wandb>=0.19.11",
 ]
 
 [dependency-groups]
@@ -196,10 +200,8 @@ build-backend = "hatchling.build"
 packages = ["trackers"]
 
 [tool.bandit]
-# Ignore B614 temporary until permanent fix
-# B614: Test for unsafe PyTorch load or save
-# https://bandit.readthedocs.io/en/1.7.10/plugins/b704_pytorch_load_save.html
-skips = ["B614"]
+target = ["test", "trackers"]
+tests = ["B201", "B301", "B318", "B314", "B303", "B413", "B412"]
 
 [tool.ruff]
 target-version = "py39"
@@ -322,3 +324,7 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+testpaths = ["test"]

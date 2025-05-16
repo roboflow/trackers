@@ -29,7 +29,7 @@ BytTrack is independent on the object detector and feature extractor network so 
 
         model = RFDETRBase(device="cuda")
 
-        tracker = ByteTrackTracker(feature_extractor=None)
+        tracker = ByteTrackTracker(reid_model=None)
 
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -51,7 +51,7 @@ BytTrack is independent on the object detector and feature extractor network so 
         from trackers import ByteTrackTracker
         from inference import get_model
 
-        tracker = ByteTrackTracker(feature_extractor=None)
+        tracker = ByteTrackTracker(reid_model=None)
         model = get_model(model_id="yolov11m-640")
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -75,7 +75,7 @@ BytTrack is independent on the object detector and feature extractor network so 
         from trackers import ByteTrackTracker
         from ultralytics import YOLO
 
-        tracker = ByteTrackTracker(feature_extractor=None)
+        tracker = ByteTrackTracker(reid_model=None)
         model = YOLO("yolo11m.pt")
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -100,7 +100,7 @@ BytTrack is independent on the object detector and feature extractor network so 
         from trackers import ByteTrackTracker
         from transformers import RTDetrV2ForObjectDetection, RTDetrImageProcessor
 
-        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        tracker = ByteTrackTracker(reid_model = None)
         processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
         model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
@@ -142,10 +142,10 @@ BytTrack is independent on the object detector and feature extractor network so 
         from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
 
         model = RFDETRBase(device="cuda")
-        feature_extractor = DeepSORTFeatureExtractor.from_timm(
+        reid_model = DeepSORTFeatureExtractor.from_timm(
             model_name="mobilenetv4_conv_small.e1200_r224_in1k",
         )
-        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        tracker = ByteTrackTracker(reid_model=reid_model)
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
         def callback(frame, _):

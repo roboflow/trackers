@@ -8,7 +8,7 @@ from scipy.spatial.distance import cdist
 
 from trackers.core.base import BaseTrackerWithFeatures
 from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
-from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
+from trackers.core.reid import ReIDModel
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
@@ -25,9 +25,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
     and the Hungarian algorithm for data association.
 
     Args:
-        feature_extractor (Optional[DeepSORTFeatureExtractor]): model that will be use for extracting
-            RE-ID features for high probability detected boxes. If None is passed, it will use
-            IoU in the first similarity step.
+        reid_model (ReIDModel): An instance of a `ReIDModel` to extract
+            appearance features.
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
             improving tracking through occlusions, but may increase the possibility
@@ -62,7 +61,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
     def __init__(
         self,
-        feature_extractor: Optional[DeepSORTFeatureExtractor] = None,
+        reid_model: ReIDModel,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.25,
@@ -81,9 +80,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         self.track_activation_threshold = track_activation_threshold
         self.high_prob_boxes_threshold = high_prob_boxes_threshold
         self.high_prob_association_metric = (
-            "IoU" if feature_extractor is None else "RE-ID"
+            "IoU" if reid_model is None else "RE-ID"
         )
-        self.feature_extractor = feature_extractor
+        self.reid_model = reid_model
         self.distance_metric = distance_metric
         self.trackers: list[ByteTrackKalmanBoxTracker] = []
         self.appearance_threshold = appearance_threshold
@@ -151,8 +150,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         # If detector avaible, compute the features for high probability images
         detection_features: Optional[np.ndarray]
-        if self.feature_extractor is not None:
-            detection_features = self.feature_extractor.extract_features(
+        if self.reid_model is not None:
+            detection_features = self.reid_model.extract_features(
                 frame, high_prob_detections
             )
         else:

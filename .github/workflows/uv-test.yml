@@ -28,10 +28,10 @@ jobs:
           prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
-        run: uv pip install -r pyproject.toml --group dev --group docs --extra cpu
+        run: uv pip install -r pyproject.toml --group dev --group docs --extra cpu --extra reid
 
       - name: 🧪 Run the Import test
         run: uv run python -c "import trackers"
 
-      #- name: 🧪 Run the Test
-        #run: uv run pytest
+      - name: 🧪 Run the Test
+        run: uv run pytest

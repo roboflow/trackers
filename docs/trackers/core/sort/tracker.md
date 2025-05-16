@@ -31,8 +31,8 @@ SORT (Simple Online and Realtime Tracking) is a lean, tracking-by-detection meth
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
+        source_path="<INPUT_VIDEO_PATH>",
+        target_path="<OUTPUT_VIDEO_PATH>",
         callback=callback,
     )
     ```
@@ -54,8 +54,8 @@ SORT (Simple Online and Realtime Tracking) is a lean, tracking-by-detection meth
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
+        source_path="<INPUT_VIDEO_PATH>",
+        target_path="<OUTPUT_VIDEO_PATH>",
         callback=callback,
     )
     ```
@@ -78,8 +78,8 @@ SORT (Simple Online and Realtime Tracking) is a lean, tracking-by-detection meth
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
+        source_path="<INPUT_VIDEO_PATH>",
+        target_path="<OUTPUT_VIDEO_PATH>",
         callback=callback,
     )
     ```
@@ -118,12 +118,12 @@ SORT (Simple Online and Realtime Tracking) is a lean, tracking-by-detection meth
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
+        source_path="<INPUT_VIDEO_PATH>",
+        target_path="<OUTPUT_VIDEO_PATH>",
         callback=callback,
     )
     ```
 
-## Usage
+## API
 
 ::: trackers.core.sort.tracker.SORTTracker
