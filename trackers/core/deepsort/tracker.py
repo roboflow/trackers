@@ -245,12 +245,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
                 )
                 self.trackers.append(new_tracker)
 
-        self.trackers = get_alive_trackers(
-            trackers=self.trackers,
-            maximum_frames_without_update=self.maximum_frames_without_update,
-            minimum_consecutive_frames=self.minimum_consecutive_frames,
-        )
-
     def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
         """Updates the tracker state with new detections and appearance features.
 
@@ -304,6 +298,13 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         # Create new trackers for unmatched detections with confidence above threshold
         self._spawn_new_trackers(
             detections, detection_boxes, detection_features, unmatched_detections
+        )
+
+        # Remove dead trackers
+        self.trackers = get_alive_trackers(
+            trackers=self.trackers,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
         )
 
         # Update detections with tracker IDs
