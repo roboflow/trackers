@@ -79,9 +79,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
         self.high_prob_boxes_threshold = high_prob_boxes_threshold
-        self.high_prob_association_metric = (
-            "IoU" if reid_model is None else "RE-ID"
-        )
+        self.high_prob_association_metric = "IoU" if reid_model is None else "RE-ID"
         self.reid_model = reid_model
         self.distance_metric = distance_metric
         self.trackers: list[ByteTrackKalmanBoxTracker] = []
@@ -151,8 +149,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         # If detector avaible, compute the features for high probability images
         detection_features: Optional[np.ndarray]
         if self.reid_model is not None:
+            print(len(high_prob_detections.xyxy))
             detection_features = self.reid_model.extract_features(
-                frame, high_prob_detections
+                high_prob_detections, frame
             )
         else:
             detection_features = None
