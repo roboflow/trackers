@@ -208,10 +208,23 @@ class ReIDModel:
                 for param in self.backbone_model.parameters():
                     param.requires_grad = False
 
+            if not hasattr(self.backbone_model, "num_features"):
+                raise AttributeError(
+                    "Backbone model is missing 'num_features' attribute, "
+                    "cannot add projection layer."
+                )
+
+            num_model_features = getattr(self.backbone_model, "num_features")
+            if not isinstance(num_model_features, int):
+                raise TypeError(
+                    f"Backbone model's 'num_features' must be an int, "
+                    f"but got {type(num_model_features)}."
+                )
+
             # Add projection layer if projection_dimension is specified
             self.backbone_model = nn.Sequential(
                 self.backbone_model,
-                nn.Linear(self.backbone_model.num_features, projection_dimension),
+                nn.Linear(num_model_features, projection_dimension),
             )
             self.backbone_model.to(self.device)
 
