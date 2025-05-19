@@ -211,14 +211,14 @@ class ReIDModel:
                     "Backbone model is missing 'num_features' attribute, "
                     "cannot add projection layer."
                 )
-            
+
             num_model_features = getattr(self.backbone_model, "num_features")
             if not isinstance(num_model_features, int):
                 raise TypeError(
                     f"Backbone model's 'num_features' must be an int, "
                     f"but got {type(num_model_features)}."
                 )
-                
+
             # Add projection layer if projection_dimension is specified
             self.backbone_model = nn.Sequential(
                 self.backbone_model,
