@@ -87,6 +87,10 @@ metrics = [
     "tensorboard>=2.19.0",
     "wandb>=0.19.11",
 ]
+annoation = [
+    "hydra-core>=1.3.2",
+    "omegaconf>=2.3.0",
+]
 
 [dependency-groups]
 dev = [

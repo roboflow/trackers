@@ -173,3 +173,5 @@ data/
 logs/
 runs/
 wandb/
+datasets/
+test_data/

@@ -3,7 +3,12 @@ import re
 from typing import Any, Tuple, Union
 
 import torch
+import torch.nn as nn
 from safetensors import safe_open
+
+from trackers.log import get_logger
+
+logger = get_logger(__name__)
 
 
 def parse_device_spec(device_spec: Union[str, torch.device]) -> torch.device:
@@ -85,3 +90,23 @@ def load_safetensors_checkpoint(
         model_metadata = {**kwargs, **model_metadata}
     config["model_metadata"] = model_metadata
     return state_dict, config
+
+
+def load_torch_checkpoint(checkpoint_path: str, model: nn.Module):
+    """
+    Load a torch checkpoint into a model.
+
+    Args:
+        checkpoint_path (str): The path to the torch checkpoint.
+        model (nn.Module): The model to load the checkpoint into.
+    """
+    if checkpoint_path is not None:
+        sd = torch.load(checkpoint_path, map_location="cpu")["model"]
+        missing_keys, unexpected_keys = model.load_state_dict(sd)
+        if missing_keys:
+            logger.error(missing_keys)
+            raise RuntimeError()
+        if unexpected_keys:
+            logger.error(unexpected_keys)
+            raise RuntimeError()
+        logger.info("Loaded checkpoint sucessfully")

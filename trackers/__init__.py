@@ -16,3 +16,15 @@ except ImportError:
         "Please run `pip install trackers[reid]` and try again."
     )
     pass
+
+try:
+    from trackers.core.annoation import TripletAnnotator
+
+    __all__.extend(["TripletAnnotator"])
+except ImportError:
+    logger.warning(
+        "TripletAnnotator dependencies not installed. "
+        "TripletAnnotator will not be available. "
+        "Please run `pip install trackers[annotation]` and try again."
+    )
+    pass
