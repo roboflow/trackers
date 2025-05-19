@@ -242,7 +242,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         )
 
         # Extract appearance features from the frame and detections
-        detection_features = self.reid_model.extract_features(frame, detections)
+        detection_features = self.reid_model.extract_features(detections, frame)
 
         # Predict new locations for existing trackers
         for tracker in self.trackers:
