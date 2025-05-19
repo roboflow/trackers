@@ -178,7 +178,9 @@ class ReIDModel:
         features = []
         with torch.inference_mode():
             for box in detections.xyxy:
+                box = np.array([0 if i < 0 else i for i in box])
                 crop = sv.crop_image(image=frame, xyxy=[*box.astype(int)])
+
                 tensor = self.inference_transforms(crop).unsqueeze(0).to(self.device)
                 feature = (
                     torch.squeeze(self.backbone_model(tensor)).cpu().numpy().flatten()
