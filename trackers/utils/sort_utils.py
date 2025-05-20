@@ -5,11 +5,15 @@ import numpy as np
 import supervision as sv
 from supervision.detection.utils import box_iou_batch
 
+from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
 from trackers.core.deepsort.kalman_box_tracker import DeepSORTKalmanBoxTracker
 from trackers.core.sort.kalman_box_tracker import SORTKalmanBoxTracker
 
 KalmanBoxTrackerType = TypeVar(
-    "KalmanBoxTrackerType", bound=Union[SORTKalmanBoxTracker, DeepSORTKalmanBoxTracker]
+    "KalmanBoxTrackerType",
+    bound=Union[
+        SORTKalmanBoxTracker, DeepSORTKalmanBoxTracker, ByteTrackKalmanBoxTracker
+    ],
 )
 
 

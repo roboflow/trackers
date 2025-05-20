@@ -178,7 +178,9 @@ class ReIDModel:
         features = []
         with torch.inference_mode():
             for box in detections.xyxy:
+                box = np.array([0 if i < 0 else i for i in box])
                 crop = sv.crop_image(image=frame, xyxy=[*box.astype(int)])
+
                 tensor = self.inference_transforms(crop).unsqueeze(0).to(self.device)
                 feature = (
                     torch.squeeze(self.backbone_model(tensor)).cpu().numpy().flatten()
@@ -206,10 +208,23 @@ class ReIDModel:
                 for param in self.backbone_model.parameters():
                     param.requires_grad = False
 
+            if not hasattr(self.backbone_model, "num_features"):
+                raise AttributeError(
+                    "Backbone model is missing 'num_features' attribute, "
+                    "cannot add projection layer."
+                )
+
+            num_model_features = getattr(self.backbone_model, "num_features")
+            if not isinstance(num_model_features, int):
+                raise TypeError(
+                    f"Backbone model's 'num_features' must be an int, "
+                    f"but got {type(num_model_features)}."
+                )
+
             # Add projection layer if projection_dimension is specified
             self.backbone_model = nn.Sequential(
                 self.backbone_model,
-                nn.Linear(self.backbone_model.num_features, projection_dimension),
+                nn.Linear(num_model_features, projection_dimension),
             )
             self.backbone_model.to(self.device)
 
