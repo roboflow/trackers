@@ -1,5 +1,6 @@
 import numpy as np
 import supervision as sv
+from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.sort.kalman_box_tracker import SORTKalmanBoxTracker
@@ -76,25 +77,17 @@ class SORTTracker(BaseTracker):
         unmatched_trackers = set(range(len(self.trackers)))
         unmatched_detections = set(range(len(detection_boxes)))
 
-        if iou_matrix.size > 0:
-            row_indices, col_indices = np.where(iou_matrix > self.minimum_iou_threshold)
-            # Sort in descending order of IOU. Higher = better match.
-            sorted_pairs = sorted(
-                zip(row_indices, col_indices),
-                key=lambda x: iou_matrix[x[0], x[1]],
-                reverse=True,
-            )
-            # keep each unique row/col pair at most once
-            used_rows = set()
-            used_cols = set()
-            for row, col in sorted_pairs:
-                if (row not in used_rows) and (col not in used_cols):
-                    used_rows.add(row)
-                    used_cols.add(col)
+        if len(self.trackers) > 0 and len(detection_boxes) > 0:
+            # Find optimal assignment using scipy.optimize.linear_sum_assignment.
+            # Note that it uses a a modified Jonker-Volgenant algorithm with no
+            # initialization instead of the Hungarian algorithm as mentioned in the
+            # SORT paper.
+            row_indices, col_indices = linear_sum_assignment(iou_matrix, maximize=True)
+            for row, col in zip(row_indices, col_indices):
+                if iou_matrix[row, col] >= self.minimum_iou_threshold:
                     matched_indices.append((row, col))
-
-            unmatched_trackers = unmatched_trackers - used_rows
-            unmatched_detections = unmatched_detections - used_cols
+                    unmatched_trackers.remove(row)
+                    unmatched_detections.remove(col)
 
         return matched_indices, unmatched_trackers, unmatched_detections
 
@@ -122,11 +115,6 @@ class SORTTracker(BaseTracker):
             ):
                 new_tracker = SORTKalmanBoxTracker(detection_boxes[detection_idx])
                 self.trackers.append(new_tracker)
-        self.trackers = get_alive_trackers(
-            self.trackers,
-            self.minimum_consecutive_frames,
-            self.maximum_frames_without_update,
-        )
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """Updates the tracker state with new detections.
@@ -170,6 +158,13 @@ class SORTTracker(BaseTracker):
             self.trackers[row].update(detection_boxes[col])
 
         self._spawn_new_trackers(detections, detection_boxes, unmatched_detections)
+
+        # Remove dead trackers
+        self.trackers = get_alive_trackers(
+            self.trackers,
+            self.minimum_consecutive_frames,
+            self.maximum_frames_without_update,
+        )
 
         updated_detections = update_detections_with_track_ids(
             self.trackers,

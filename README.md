@@ -3,6 +3,7 @@
     <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/main/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
 
 [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
+[![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
 [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/main/LICENSE.md)
 [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
 
@@ -114,8 +115,8 @@ def callback(frame, _):
     return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
 sv.process_video(
-    source_path="input.mp4",
-    target_path="output.mp4",
+    source_path="<INPUT_VIDEO_PATH>",
+    target_path="<OUTPUT_VIDEO_PATH>",
     callback=callback,
 )
 ```
@@ -141,8 +142,8 @@ def callback(frame, _):
     return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
 sv.process_video(
-    source_path="input.mp4",
-    target_path="output.mp4",
+    source_path="<INPUT_VIDEO_PATH>",
+    target_path="<OUTPUT_VIDEO_PATH>",
     callback=callback,
 )
 ```
@@ -186,8 +187,8 @@ def callback(frame, _):
     return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
 sv.process_video(
-    source_path="input.mp4",
-    target_path="output.mp4",
+    source_path="<INPUT_VIDEO_PATH>",
+    target_path="<OUTPUT_VIDEO_PATH>",
     callback=callback,
 )
 ```

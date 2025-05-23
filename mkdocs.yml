@@ -110,3 +110,4 @@ nav:
   - Trackers:
     - SORT: trackers/core/sort/tracker.md
     - DeepSORT: trackers/core/deepsort/tracker.md
+  - ReID: trackers/core/reid/reid.md

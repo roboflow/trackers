@@ -165,8 +165,11 @@ cython_debug/
 # Repository-specific stuff
 .ipynb_checkpoints/
 .idea/
-data/
 test.py
 **.pt
 **.pth
 .DS_Store
+data/
+logs/
+runs/
+wandb/

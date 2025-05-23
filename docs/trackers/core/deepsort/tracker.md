@@ -16,15 +16,13 @@ DeepSORT extends the original [SORT](../sort/tracker.md) algorithm by integratin
 
 === "inference"
 
-    ```python hl_lines="2 5-8 15"
+    ```python hl_lines="2 5-6 13"
     import supervision as sv
-    from trackers import DeepSORTFeatureExtractor, DeepSORTTracker
+    from trackers import DeepSORTTracker, ReIDModel
     from inference import get_model
 
-    feature_extractor = DeepSORTFeatureExtractor.from_timm(
-        model_name="mobilenetv4_conv_small.e1200_r224_in1k"
-    )
-    tracker = DeepSORTTracker(feature_extractor=feature_extractor)
+    reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
+    tracker = DeepSORTTracker(reid_model=reid_model)
     model = get_model(model_id="yolov11m-640")
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -35,23 +33,21 @@ DeepSORT extends the original [SORT](../sort/tracker.md) algorithm by integratin
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
+        source_path="<INPUT_VIDEO_PATH>",
+        target_path="<OUTPUT_VIDEO_PATH>",
         callback=callback,
     )
     ```
 
 === "rf-detr"
 
-    ```python hl_lines="2 5-8 14"
+    ```python hl_lines="2 5-6 12"
     import supervision as sv
-    from trackers import DeepSORTFeatureExtractor, DeepSORTTracker
+    from trackers import DeepSORTTracker, ReIDModel
     from rfdetr import RFDETRBase
 
-    feature_extractor = DeepSORTFeatureExtractor.from_timm(
-        model_name="mobilenetv4_conv_small.e1200_r224_in1k"
-    )
-    tracker = DeepSORTTracker(feature_extractor=feature_extractor)
+    reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
+    tracker = DeepSORTTracker(reid_model=reid_model)
     model = RFDETRBase()
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -61,23 +57,21 @@ DeepSORT extends the original [SORT](../sort/tracker.md) algorithm by integratin
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
+        source_path="<INPUT_VIDEO_PATH>",
+        target_path="<OUTPUT_VIDEO_PATH>",
         callback=callback,
     )
     ```
 
 === "ultralytics"
 
-    ```python hl_lines="2 5-8 15"
+    ```python hl_lines="2 5-6 13"
     import supervision as sv
-    from trackers import DeepSORTFeatureExtractor, DeepSORTTracker
+    from trackers import DeepSORTTracker, ReIDModel
     from ultralytics import YOLO
 
-    feature_extractor = DeepSORTFeatureExtractor.from_timm(
-        model_name="mobilenetv4_conv_small.e1200_r224_in1k"
-    )
-    tracker = DeepSORTTracker(feature_extractor=feature_extractor)
+    reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
+    tracker = DeepSORTTracker(reid_model=reid_model)
     model = YOLO("yolo11m.pt")
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -88,24 +82,22 @@ DeepSORT extends the original [SORT](../sort/tracker.md) algorithm by integratin
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
+        source_path="<INPUT_VIDEO_PATH>",
+        target_path="<OUTPUT_VIDEO_PATH>",
         callback=callback,
     )
     ```
 
 === "transformers"
 
-    ```python hl_lines="3 6-9 31"
+    ```python hl_lines="3 6-7 29"
     import torch
     import supervision as sv
-    from trackers import DeepSORTFeatureExtractor, DeepSORTTracker
+    from trackers import DeepSORTTracker, ReIDModel
     from transformers import RTDetrV2ForObjectDetection, RTDetrImageProcessor
 
-    feature_extractor = DeepSORTFeatureExtractor.from_timm(
-        model_name="mobilenetv4_conv_small.e1200_r224_in1k"
-    )
-    tracker = DeepSORTTracker(feature_extractor=feature_extractor)
+    reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
+    tracker = DeepSORTTracker(reid_model=reid_model)
     processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
     model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
@@ -131,44 +123,44 @@ DeepSORT extends the original [SORT](../sort/tracker.md) algorithm by integratin
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
-        source_path="input.mp4",
-        target_path="output.mp4",
+        source_path="<INPUT_VIDEO_PATH>",
+        target_path="<OUTPUT_VIDEO_PATH>",
         callback=callback,
     )
     ```
 
-## Usage
+## API
 
 !!! example "Install DeepSORT"
 
     === "CPU"
         ```bash
-        pip install "trackers[deepsort,cpu]"
+        pip install "trackers[reid,cpu]"
         ```
 
     === "CUDA 11.8"
         ```bash
-        pip install "trackers[deepsort,cu118]"
+        pip install "trackers[reid,cu118]"
         ```
 
     === "CUDA 12.4"
         ```bash
-        pip install "trackers[deepsort,cu124]"
+        pip install "trackers[reid,cu124]"
         ```
 
     === "CUDA 12.6"
         ```bash
-        pip install "trackers[deepsort,cu126]"
+        pip install "trackers[reid,cu126]"
         ```
 
     === "ROCm 6.1"
         ```bash
-        pip install "trackers[deepsort,rocm61]"
+        pip install "trackers[reid,rocm61]"
         ```
 
     === "ROCm 6.2.4"
         ```bash
-        pip install "trackers[deepsort,rocm624]"
+        pip install "trackers[reid,rocm624]"
         ```
 
 ::: trackers.core.deepsort.tracker.DeepSORTTracker

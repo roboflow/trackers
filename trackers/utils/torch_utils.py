@@ -1,7 +1,9 @@
+import json
 import re
-from typing import Union
+from typing import Any, Tuple, Union
 
 import torch
+from safetensors import safe_open
 
 
 def parse_device_spec(device_spec: Union[str, torch.device]) -> torch.device:
@@ -54,3 +56,32 @@ def parse_device_spec(device_spec: Union[str, torch.device]) -> torch.device:
             return torch.device(f"cuda:{index}")
 
         raise ValueError(f"Unrecognized device spec: {device_spec}")
+
+
+def load_safetensors_checkpoint(
+    checkpoint_path: str, device: str = "cpu"
+) -> Tuple[dict[str, torch.Tensor], dict[str, Any]]:
+    """
+    Load a safetensors checkpoint into a dictionary of tensors and a dictionary
+    of metadata.
+
+    Args:
+        checkpoint_path (str): The path to the safetensors checkpoint.
+        device (str): The device to load the checkpoint on.
+
+    Returns:
+        Tuple[dict[str, torch.Tensor], dict[str, Any]]: A tuple containing the
+            state_dict and the config.
+    """
+    state_dict = {}
+    with safe_open(checkpoint_path, framework="pt", device=device) as f:
+        for key in f.keys():
+            state_dict[key] = f.get_tensor(key)
+        metadata = f.metadata()
+        config = json.loads(metadata["config"]) if "config" in metadata else {}
+    model_metadata = config.pop("model_metadata") if "model_metadata" in config else {}
+    if "kwargs" in model_metadata:
+        kwargs = model_metadata.pop("kwargs")
+        model_metadata = {**kwargs, **model_metadata}
+    config["model_metadata"] = model_metadata
+    return state_dict, config

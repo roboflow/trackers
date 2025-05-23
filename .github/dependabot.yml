@@ -7,12 +7,12 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: ⬆️
-    target-branch: "develop"
+    target-branch: "main"
   # Python
-  - package-ecosystem: "pip"
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     commit-message:
       prefix: ⬆️
-    target-branch: "develop"
+    target-branch: "main"

@@ -34,10 +34,13 @@ classifiers = [
 keywords = ["tracking","mot","sort","deepsort", "machine-learning", "deep-learning", "vision", "ML", "DL", "AI", "DETR", "YOLO", "Roboflow"]
 
 dependencies = [
-    "firerequests>=0.1.2",
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.11.16",
     "numpy>=2.0.2",
     "supervision>=0.26.0rc7",
+    "tqdm>=4.67.1",
     "validators>=0.34.0",
+    "scipy>=1.13.1",
 ]
 
 [project.optional-dependencies]
@@ -74,9 +77,15 @@ rocm624 = [
     "pytorch-triton-rocm>=2.0.0",
 ]
 
-deepsort = [
-    "scipy>=1.13.1",
+reid = [
+    "safetensors>=0.5.3",
     "timm>=1.0.15",
+]
+
+metrics = [
+    "matplotlib>=3.9.4",
+    "tensorboard>=2.19.0",
+    "wandb>=0.19.11",
 ]
 
 [dependency-groups]
@@ -88,6 +97,7 @@ dev = [
     "mypy>=1.15.0",
     "pre-commit>=4.2.0",
 ]
+
 
 docs = [
     "jupyter>=1.1.1",
@@ -105,6 +115,12 @@ build = [
     "twine>=5.1.1",
     "wheel>=0.40",
     "build>=0.10"
+]
+
+mypy-types = [
+    "types-aiofiles>=24.1.0.20250326",
+    "types-requests>=2.32.0.20250328",
+    "types-tqdm>=4.67.0.20250417",
 ]
 
 
@@ -183,10 +199,8 @@ build-backend = "hatchling.build"
 packages = ["trackers"]
 
 [tool.bandit]
-# Ignore B614 temporary until permanent fix
-# B614: Test for unsafe PyTorch load or save
-# https://bandit.readthedocs.io/en/1.7.10/plugins/b704_pytorch_load_save.html
-skips = ["B614"]
+target = ["test", "trackers"]
+tests = ["B201", "B301", "B318", "B314", "B303", "B413", "B412"]
 
 [tool.ruff]
 target-version = "py39"
@@ -309,3 +323,7 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+testpaths = ["test"]

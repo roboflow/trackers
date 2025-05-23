@@ -7,16 +7,17 @@ from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
 from trackers.core.base import BaseTrackerWithFeatures
-from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
-from trackers.core.deepsort.kalman_box_tracker import (
-    MAHALANOBIS_THRESHOLD,
-    DeepSORTKalmanBoxTracker,
-)
+from trackers.core.deepsort.kalman_box_tracker import DeepSORTKalmanBoxTracker
+from trackers.core.reid import ReIDModel
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
     update_detections_with_track_ids,
     xyxy_to_xcycarh,
+)
+from trackers.core.deepsort.kalman_box_tracker import (
+    MAHALANOBIS_THRESHOLD,
+    DeepSORTKalmanBoxTracker,
 )
 
 
@@ -28,11 +29,8 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
     It combines motion (Kalman filter) and appearance cues for data association.
 
     Args:
-        feature_extractor (Union[DeepSORTFeatureExtractor, torch.nn.Module, str]):
-            A feature extractor model checkpoint URL, model checkpoint path, a model
-            instance, or an instance of `DeepSORTFeatureExtractor` to extract
-            appearance features. By default, a default model checkpoint is downloaded
-            and loaded.
+        reid_model (ReIDModel): An instance of a `ReIDModel` to extract
+            appearance features.
         device (Optional[str]): Device to run the feature extraction
             model on (e.g., 'cpu', 'cuda').
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
@@ -56,7 +54,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
 
     def __init__(
         self,
-        feature_extractor: Union[DeepSORTFeatureExtractor, torch.nn.Module, str],
+        reid_model: ReIDModel,
         device: Optional[str] = None,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
@@ -67,10 +65,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         appearance_weight: float = 0.5,
         distance_metric: str = "cosine",
     ):
-        self.feature_extractor = self._initialize_feature_extractor(
-            feature_extractor, device
-        )
-
+        self.reid_model = reid_model
         self.lost_track_buffer = lost_track_buffer
         self.frame_rate = frame_rate
         self.minimum_consecutive_frames = minimum_consecutive_frames
@@ -87,30 +82,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         )
 
         self.trackers: list[DeepSORTKalmanBoxTracker] = []
-
-    def _initialize_feature_extractor(
-        self,
-        feature_extractor: Union[DeepSORTFeatureExtractor, torch.nn.Module, str],
-        device: Optional[str],
-    ) -> DeepSORTFeatureExtractor:
-        """
-        Initialize the feature extractor based on the input type.
-
-        Args:
-            feature_extractor: The feature extractor input, which can be a model path,
-                a torch module, or a DeepSORTFeatureExtractor instance.
-            device: The device to run the model on.
-
-        Returns:
-            DeepSORTFeatureExtractor: The initialized feature extractor.
-        """
-        if isinstance(feature_extractor, (str, torch.nn.Module)):
-            return DeepSORTFeatureExtractor(
-                model_or_checkpoint_path=feature_extractor,
-                device=device,
-            )
-        else:
-            return feature_extractor
 
     def _get_appearance_distance_matrix(
         self,
@@ -389,12 +360,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
                 )
                 self.trackers.append(new_tracker)
 
-        self.trackers = get_alive_trackers(
-            trackers=self.trackers,
-            maximum_frames_without_update=self.maximum_frames_without_update,
-            minimum_consecutive_frames=self.minimum_consecutive_frames,
-        )
-
     def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
         """Updates the tracker state with new detections and appearance features.
 
@@ -423,7 +388,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         )
 
         # Extract appearance features from the frame and detections
-        detection_features = self.feature_extractor.extract_features(frame, detections)
+        detection_features = self.reid_model.extract_features(detections, frame)
 
         # Predict new locations for existing trackers
         for tracker in self.trackers:
@@ -443,6 +408,13 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         # Create new trackers for unmatched detections with confidence above threshold
         self._spawn_new_trackers(
             detections, detection_boxes, detection_features, unmatched_detections
+        )
+
+        # Remove dead trackers
+        self.trackers = get_alive_trackers(
+            trackers=self.trackers,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
         )
 
         # Update detections with tracker IDs
