@@ -1,23 +1,21 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import numpy as np
 import supervision as sv
-import torch
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
 from trackers.core.base import BaseTrackerWithFeatures
-from trackers.core.deepsort.kalman_box_tracker import DeepSORTKalmanBoxTracker
+from trackers.core.deepsort.kalman_box_tracker import (
+    MAHALANOBIS_THRESHOLD,
+    DeepSORTKalmanBoxTracker,
+)
 from trackers.core.reid import ReIDModel
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
     update_detections_with_track_ids,
     xyxy_to_xcycarh,
-)
-from trackers.core.deepsort.kalman_box_tracker import (
-    MAHALANOBIS_THRESHOLD,
-    DeepSORTKalmanBoxTracker,
 )
 
 
