@@ -168,6 +168,6 @@ class ByteTrackKalmanBoxTracker:
             # "average appearance" of the object, which should be more robust
             # to minor appearance changes. Otherwise, the last feature can
             # also be returned like the following:
-            return self.features[-1]
-            # return np.mean(self.features, axis=0)
+            # return self.features[-1]
+            return np.mean(self.features, axis=0)
         return None
