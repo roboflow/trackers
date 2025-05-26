@@ -153,7 +153,6 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             self._get_high_and_low_probability_detections(detections)
         )
 
-        # If detector avaible, compute the features for high probability images
         detection_features: Optional[np.ndarray] = (
             self.reid_model.extract_features(high_prob_detections, frame)
             if self.reid_model is not None
