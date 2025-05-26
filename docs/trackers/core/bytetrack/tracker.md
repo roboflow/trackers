@@ -27,9 +27,9 @@ BytTrack is independent on the object detector and feature extractor network so 
         from rfdetr import RFDETRBase
         from trackers import ByteTrackTracker
 
-        model = RFDETRBase(device="cuda")
+        model = RFDETRBase(device ="cuda")
 
-        tracker = ByteTrackTracker(reid_model=None)
+        tracker = ByteTrackTracker(reid_model = None)
 
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -51,7 +51,7 @@ BytTrack is independent on the object detector and feature extractor network so 
         from trackers import ByteTrackTracker
         from inference import get_model
 
-        tracker = ByteTrackTracker(reid_model=None)
+        tracker = ByteTrackTracker(reid_model = None)
         model = get_model(model_id="yolov11m-640")
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -75,7 +75,7 @@ BytTrack is independent on the object detector and feature extractor network so 
         from trackers import ByteTrackTracker
         from ultralytics import YOLO
 
-        tracker = ByteTrackTracker(reid_model=None)
+        tracker = ByteTrackTracker(reid_model = None)
         model = YOLO("yolo11m.pt")
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -135,17 +135,16 @@ BytTrack is independent on the object detector and feature extractor network so 
 === "With Feature Extractor"
     === "rf-detr"
 
-        ```python hl_lines="3 7-9 10 15"
+        ```python hl_lines="3 6-8 9 14"
         import supervision as sv
         from rfdetr import RFDETRBase
-        from trackers import ByteTrackTracker
-        from trackers.core.deepsort.feature_extractor import DeepSORTFeatureExtractor
+        from trackers import ByteTrackTracker, ReIDModel
 
-        model = RFDETRBase(device="cuda")
-        reid_model = DeepSORTFeatureExtractor.from_timm(
-            model_name="mobilenetv4_conv_small.e1200_r224_in1k",
+        model = RFDETRBase(device = "cuda")
+        reid_model = ReIDModel.from_timm(
+            "mobilenetv4_conv_small.e1200_r224_in1k",
         )
-        tracker = ByteTrackTracker(reid_model=reid_model)
+        tracker = ByteTrackTracker(reid_model = reid_model)
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
         def callback(frame, _):
@@ -161,17 +160,16 @@ BytTrack is independent on the object detector and feature extractor network so 
         ```
     === "inference"
 
-        ```python hl_lines="3 6-8 10 17"
+        ```python hl_lines="2 5-7 9 16"
         import supervision as sv
-        from trackers import DeepSORTFeatureExtractor
-        from trackers import ByteTrackTracker
+        from trackers import ByteTrackTracker, ReIDModel
         from inference import get_model
 
-        feature_extractor = DeepSORTFeatureExtractor.from_timm(
-            model_name="mobilenetv4_conv_small.e1200_r224_in1k"
+        reid_model = ReIDModel.from_timm(
+            "mobilenetv4_conv_small.e1200_r224_in1k"
         )
 
-        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        tracker = ByteTrackTracker(reid_model = reid_model)
         model = get_model(model_id="yolov11m-640")
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -191,17 +189,16 @@ BytTrack is independent on the object detector and feature extractor network so 
 
     === "ultralytics"
 
-        ```python hl_lines="3 7-10 17"
+        ```python hl_lines="2 6-9 16"
         import supervision as sv
-        from trackers import DeepSORTFeatureExtractor
-        from trackers import ByteTrackTracker
+        from trackers import ByteTrackTracker, ReIDModel
 
         from ultralytics import YOLO
 
-        feature_extractor = DeepSORTFeatureExtractor.from_timm(
-            model_name="mobilenetv4_conv_small.e1200_r224_in1k"
+        reid_model = ReIDModel.from_timm(
+            "mobilenetv4_conv_small.e1200_r224_in1k"
         )
-        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        tracker = ByteTrackTracker(reid_model = reid_model)
         model = YOLO("yolo11m.pt")
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
@@ -220,17 +217,16 @@ BytTrack is independent on the object detector and feature extractor network so 
 
     === "transformers"
 
-        ```python hl_lines="4 7-10 32"
+        ```python hl_lines="3 6-9 31"
         import torch
         import supervision as sv
-        from trackers import DeepSORTFeatureExtractor
-        from trackers import ByteTrackTracker
+        from trackers import ByteTrackTracker, ReIDModel
         from transformers import RTDetrV2ForObjectDetection, RTDetrImageProcessor
 
-        feature_extractor = DeepSORTFeatureExtractor.from_timm(
-            model_name="mobilenetv4_conv_small.e1200_r224_in1k"
+        reid_model = ReIDModel.from_timm(
+            "mobilenetv4_conv_small.e1200_r224_in1k"
         )
-        tracker = ByteTrackTracker(feature_extractor=feature_extractor)
+        tracker = ByteTrackTracker(reid_model = reid_model)
         processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
         model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
         annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
