@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import numpy as np
 from scipy.linalg import solve_triangular
@@ -47,10 +47,16 @@ class DeepSORTKalmanBoxTracker:
         cls.count_id += 1
         return next_id
 
-    def __init__(self, bbox: np.ndarray, feature: Optional[np.ndarray] = None):
+    def __init__(
+        self,
+        bbox: np.ndarray,
+        feature: Optional[np.ndarray] = None,
+        max_features_gallery_size: int = 100,
+    ):
         # Initialize with a temporary ID of -1
         # Will be assigned a real ID when the track is considered mature
         self.tracker_id = -1
+        self.max_features_gallery_size = max_features_gallery_size
 
         # Number of hits indicates how many times the object has been
         # updated successfully
@@ -208,19 +214,5 @@ class DeepSORTKalmanBoxTracker:
 
     def update_feature(self, feature: np.ndarray):
         self.features.append(feature)
-
-    def get_feature(self) -> Union[np.ndarray, None]:
-        """
-        Get the mean feature vector for this tracker.
-
-        Returns:
-            np.ndarray: Mean feature vector.
-        """
-        if len(self.features) > 0:
-            # Return the mean of all features, thus (in theory) capturing the
-            # "average appearance" of the object, which should be more robust
-            # to minor appearance changes. Otherwise, the last feature can
-            # also be returned like the following:
-            # return self.features[-1]
-            return np.mean(self.features, axis=0)
-        return None
+        if len(self.features) > self.max_features_gallery_size:
+            self.features.pop(0)  # Remove the oldest feature
