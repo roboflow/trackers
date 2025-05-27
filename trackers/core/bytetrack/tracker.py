@@ -91,12 +91,19 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         detections: sv.Detections,
         updated_detections: list[sv.Detections],
         matched_indices: list[tuple[int, int]],
+        associated_detection_features: Optional[np.ndarray] = None,
     ) -> list[sv.Detections]:
         # Update matched trackers with assigned detections.
         det_bboxes = detections.xyxy
         for row, col in matched_indices:
             t = trackers[row]
-            t.update(det_bboxes[col])
+            current_detection_feature: Optional[np.ndarray] = None
+            if associated_detection_features is not None and col < len(
+                associated_detection_features
+            ):
+                current_detection_feature = associated_detection_features[col]
+
+            t.update(det_bboxes[col], feature=current_detection_feature)
             # If tracker is mature but still has ID -1, assign a new ID
             if (
                 t.number_of_successful_updates >= self.minimum_consecutive_frames
@@ -146,14 +153,11 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             self._get_high_and_low_probability_detections(detections)
         )
 
-        # If detector avaible, compute the features for high probability images
-        detection_features: Optional[np.ndarray]
-        if self.reid_model is not None:
-            detection_features = self.reid_model.extract_features(
-                high_prob_detections, frame
-            )
-        else:
-            detection_features = None
+        detection_features: Optional[np.ndarray] = (
+            self.reid_model.extract_features(high_prob_detections, frame)
+            if self.reid_model is not None
+            else None
+        )
 
         # Step 1: first association, with high confidence boxes
         matched_indices, unmatched_trackers, unmatched_high_prob_detections = (
@@ -165,8 +169,14 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             )
         )
 
+        # Update matched trackers with high-confidence detections
+        # with associated appearance features
         self._update_detections(
-            self.trackers, high_prob_detections, updated_detections, matched_indices
+            self.trackers,
+            high_prob_detections,
+            updated_detections,
+            matched_indices,
+            detection_features,
         )
 
         remaining_trackers = [self.trackers[i] for i in unmatched_trackers]
@@ -176,9 +186,14 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             self._similarity_step(low_prob_detections, remaining_trackers, "IoU")
         )
 
-        # Update matched trackers with assigned detections.
+        # Update matched trackers with low-confidence detections
+        # without associated appearance features
         self._update_detections(
-            remaining_trackers, low_prob_detections, updated_detections, matched_indices
+            remaining_trackers,
+            low_prob_detections,
+            updated_detections,
+            matched_indices,
+            None,
         )
 
         # Add unmatched low prob predictions to updated predictions
