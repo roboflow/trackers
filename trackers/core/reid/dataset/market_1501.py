@@ -29,7 +29,7 @@ def parse_market1501_dataset(data_dir: str) -> Dict[str, List[str]]:
 def get_market1501_dataset(
     data_dir: str,
     split_ratio: Optional[float] = None,
-    random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
+    random_state: Optional[int] = None,
     shuffle: bool = True,
     transforms: Optional[Compose] = None,
 ) -> Union[TripletsDataset, Tuple[TripletsDataset, TripletsDataset]]:
@@ -42,7 +42,7 @@ def get_market1501_dataset(
             and validation sets. If `None`, the dataset is returned as a single
             `TripletsDataset` object, otherwise the dataset is split into a tuple of
             training and validation `TripletsDataset` objects.
-        random_state (Optional[Union[int, float, str, bytes, bytearray]]): The random
+        random_state (Optional[int]): The random
             state to use for the split.
         shuffle (bool): Whether to shuffle the dataset.
         transforms (Optional[Compose]): The transforms to apply to the dataset.

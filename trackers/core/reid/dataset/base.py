@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import random
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import torch
 from PIL import Image
@@ -28,7 +34,7 @@ class TripletsDataset(Dataset):
     Attributes:
         tracker_id_to_images (dict[str, list[str]]): Dictionary mapping tracker IDs
             to lists of image paths
-        transforms (Optional[Compose]): Optional image transformations to apply
+        transforms (Union[Compose, ToTensor]): Image transformations to apply
         tracker_ids (list[str]): List of all unique tracker IDs in the dataset
     """
 
@@ -38,7 +44,7 @@ class TripletsDataset(Dataset):
         transforms: Optional[Compose] = None,
     ):
         self.tracker_id_to_images = validate_tracker_id_to_images(tracker_id_to_images)
-        self.transforms = transforms or ToTensor()
+        self.transforms: Union[Compose, ToTensor] = transforms or ToTensor()
         self.tracker_ids = list(self.tracker_id_to_images.keys())
 
     @classmethod
@@ -95,9 +101,8 @@ class TripletsDataset(Dataset):
 
     def _load_and_transform_image(self, image_path: str) -> torch.Tensor:
         image = Image.open(image_path).convert("RGB")
-        if self.transforms:
-            image = self.transforms(image)
-        return image
+        transformed_image: torch.Tensor = self.transforms(image)
+        return transformed_image
 
     def _get_triplet_image_paths(self, tracker_id: str) -> Tuple[str, str, str]:
         tracker_id_image_paths = self.tracker_id_to_images[tracker_id]
@@ -148,7 +153,7 @@ class TripletsDataset(Dataset):
     def split(
         self,
         split_ratio: float = 0.8,
-        random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
+        random_state: Optional[int] = None,
         shuffle: bool = True,
     ) -> Tuple[TripletsDataset, TripletsDataset]:
         train_tracker_id_to_images, validation_tracker_id_to_images = train_test_split(
@@ -157,15 +162,15 @@ class TripletsDataset(Dataset):
             random_state=random_state,
             shuffle=shuffle,
         )
-        train_tracker_id_to_images = {
+        train_data: Dict[str, List[str]] = {
             tracker_id: self.tracker_id_to_images[tracker_id]
             for tracker_id in train_tracker_id_to_images
         }
-        validation_tracker_id_to_images = {
+        val_data: Dict[str, List[str]] = {
             tracker_id: self.tracker_id_to_images[tracker_id]
             for tracker_id in validation_tracker_id_to_images
         }
         return (
-            TripletsDataset(train_tracker_id_to_images, self.transforms),
-            TripletsDataset(validation_tracker_id_to_images, self.transforms),
+            TripletsDataset(train_data, self.transforms),
+            TripletsDataset(val_data, self.transforms),
         )
