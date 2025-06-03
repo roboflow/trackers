@@ -178,8 +178,8 @@ class ReIDModel:
             loss_name (str): Loss function to optimize the model. Currently supports
                 "softmax" and "triplet".
             device (str): Device to run the model on.
-            crop_size (tuple[int, int]): The size a bounding box crop should be resized to
-                before being fed to the model.
+            crop_size (tuple[int, int]): The size a bounding box crop should be
+                resized to before being fed to the model.
         """
         from torchreid.models import build_model
         from torchreid.utils import load_pretrained_weights
