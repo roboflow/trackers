@@ -7,14 +7,11 @@ from typing import Any, Callable, Optional, Union
 import numpy as np
 import PIL
 import supervision as sv
-import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from safetensors.torch import save_file
-from timm.data import resolve_data_config
-from timm.data.transforms_factory import create_transform
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Normalize, Resize, ToPILImage, ToTensor
 from tqdm.auto import tqdm
@@ -24,64 +21,14 @@ from trackers.core.reid.metrics import (
     TripletAccuracyMetric,
     TripletMetric,
 )
+from trackers.core.reid.utils import (
+    initialize_reid_model_from_checkpoint,
+    initialize_reid_model_from_timm,
+)
 from trackers.log import get_logger
-from trackers.utils.torch_utils import load_safetensors_checkpoint, parse_device_spec
+from trackers.utils.torch_utils import parse_device_spec
 
 logger = get_logger(__name__)
-
-
-def _initialize_reid_model_from_timm(
-    cls,
-    model_name_or_checkpoint_path: str,
-    device: Optional[str] = "auto",
-    get_pooled_features: bool = True,
-    **kwargs,
-):
-    if model_name_or_checkpoint_path not in timm.list_models(
-        filter=model_name_or_checkpoint_path, pretrained=True
-    ):
-        probable_model_name_list = timm.list_models(
-            f"*{model_name_or_checkpoint_path}*", pretrained=True
-        )
-        if len(probable_model_name_list) == 0:
-            raise ValueError(
-                f"Model {model_name_or_checkpoint_path} not found in timm. "
-                + "Please check the model name and try again."
-            )
-        logger.warning(
-            f"Model {model_name_or_checkpoint_path} not found in timm. "
-            + f"Using {probable_model_name_list[0]} instead."
-        )
-        model_name_or_checkpoint_path = probable_model_name_list[0]
-    if not get_pooled_features:
-        kwargs["global_pool"] = ""
-    model = timm.create_model(
-        model_name_or_checkpoint_path, pretrained=True, num_classes=0, **kwargs
-    )
-    config = resolve_data_config(model.pretrained_cfg)
-    transforms = create_transform(**config)
-    model_metadata = {
-        "model_source": "timm",
-        "model_name_or_checkpoint_path": model_name_or_checkpoint_path,
-        "get_pooled_features": get_pooled_features,
-        "kwargs": kwargs,
-    }
-    return cls(model, device, transforms, model_metadata)
-
-
-def _initialize_reid_model_from_checkpoint(cls, checkpoint_path: str):
-    state_dict, config = load_safetensors_checkpoint(checkpoint_path)
-    reid_model_instance = _initialize_reid_model_from_timm(
-        cls, **config["model_metadata"]
-    )
-    if config["projection_dimension"]:
-        reid_model_instance._add_projection_layer(
-            projection_dimension=config["projection_dimension"]
-        )
-    for k, v in state_dict.items():
-        state_dict[k].to(reid_model_instance.device)
-    reid_model_instance.backbone_model.load_state_dict(state_dict)
-    return reid_model_instance
 
 
 class ReIDModel:
@@ -145,11 +92,11 @@ class ReIDModel:
             ReIDModel: A new instance of `ReIDModel`.
         """
         if os.path.exists(model_name_or_checkpoint_path):
-            return _initialize_reid_model_from_checkpoint(
+            return initialize_reid_model_from_checkpoint(
                 cls, model_name_or_checkpoint_path
             )
         else:
-            return _initialize_reid_model_from_timm(
+            return initialize_reid_model_from_timm(
                 cls,
                 model_name_or_checkpoint_path,
                 device,
@@ -160,7 +107,7 @@ class ReIDModel:
     @classmethod
     def from_torchreid(
         cls,
-        model_name: str,
+        model_name_or_checkpoint_path: str,
         num_classes: int,
         loss_name: str = "softmax",
         device: str = "auto",
@@ -171,7 +118,7 @@ class ReIDModel:
         model as the backbone.
 
         Args:
-            model_name (str): Name of the torchreid model to use.
+            model_name_or_checkpoint_path (str): Name of the torchreid model to use.
             num_classes (int): Number of training identities.
             loss_name (str): Loss function to optimize the model. Currently supports
                 "softmax" and "triplet".
@@ -179,13 +126,16 @@ class ReIDModel:
         """
         from torchreid.models import build_model
 
-        model = build_model(
-            name=model_name,
-            num_classes=num_classes,
-            loss=loss_name,
-            pretrained=True,
-            use_gpu=False,
-        )
+        if os.path.exists(model_name_or_checkpoint_path):
+            pass
+        else:
+            model = build_model(
+                name=model_name_or_checkpoint_path,
+                num_classes=num_classes,
+                loss=loss_name,
+                pretrained=True,
+                use_gpu=False,
+            )
 
         transforms = [
             Resize(crop_size),
