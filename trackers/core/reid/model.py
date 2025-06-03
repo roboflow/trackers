@@ -10,12 +10,13 @@ import supervision as sv
 import timm
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from safetensors.torch import save_file
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, ToPILImage
+from torchvision.transforms import Compose, Normalize, Resize, ToPILImage, ToTensor
 from tqdm.auto import tqdm
 
 from trackers.core.reid.callbacks import BaseCallback
@@ -60,6 +61,7 @@ def _initialize_reid_model_from_timm(
     config = resolve_data_config(model.pretrained_cfg)
     transforms = create_transform(**config)
     model_metadata = {
+        "model_source": "timm",
         "model_name_or_checkpoint_path": model_name_or_checkpoint_path,
         "get_pooled_features": get_pooled_features,
         "kwargs": kwargs,
@@ -105,7 +107,6 @@ class ReIDModel:
         self.backbone_model = backbone_model
         self.device = parse_device_spec(device or "auto")
         self.backbone_model.to(self.device)
-        self.backbone_model.eval()
         self.train_transforms = (
             (Compose(*transforms) if isinstance(transforms, list) else transforms)
             if transforms is not None
@@ -163,6 +164,7 @@ class ReIDModel:
         num_classes: int,
         loss_name: str = "softmax",
         device: str = "auto",
+        crop_size: tuple[int, int] = (256, 128),
     ) -> ReIDModel:
         """
         Create a `ReIDModel` with a [torchreid](https://github.com/KaiyangZhou/deep-person-reid)
@@ -185,7 +187,20 @@ class ReIDModel:
             use_gpu=False,
         )
 
-        return cls(model, device)
+        transforms = [
+            Resize(crop_size),
+            ToTensor(),
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+
+        model_metadata = {"model_source": "torchreid"}
+
+        return cls(
+            model,
+            device=device,
+            transforms=transforms,
+            model_metadata=model_metadata,
+        )
 
     def extract_features(
         self, detections: sv.Detections, frame: Union[np.ndarray, PIL.Image.Image]
@@ -210,11 +225,26 @@ class ReIDModel:
         with torch.inference_mode():
             for box in detections.xyxy:
                 crop = sv.crop_image(image=frame, xyxy=[*box.astype(int)])
-                tensor = self.inference_transforms(crop).unsqueeze(0).to(self.device)
-                feature = (
-                    torch.squeeze(self.backbone_model(tensor)).cpu().numpy().flatten()
+                input_tensor = (
+                    self.inference_transforms(crop).unsqueeze(0).to(self.device)
                 )
-                features.append(feature)
+                if self.model_metadata["model_source"] == "timm":
+                    feature = (
+                        torch.squeeze(self.backbone_model(input_tensor))
+                        .cpu()
+                        .numpy()
+                        .flatten()
+                    )
+                    features.append(feature)
+                elif self.model_metadata["model_source"] == "torchreid":
+                    model_output = self.backbone_model.featuremaps(input_tensor)
+                    pooled_featuremaps = F.adaptive_avg_pool2d(model_output, (1, 1))
+                    feature = torch.squeeze(pooled_featuremaps).cpu().numpy().flatten()
+                    features.append(feature)
+                else:
+                    raise ValueError(
+                        f"Model source {self.model_metadata['model_source']} not supported."  # noqa: E501
+                    )
 
         return np.array(features)
 
