@@ -107,8 +107,9 @@ class ReIDModel:
     @classmethod
     def from_torchreid(
         cls,
-        model_name_or_checkpoint_path: str,
+        model_name: str,
         num_classes: int,
+        checkpoint_path: Optional[str] = None,
         loss_name: str = "softmax",
         device: str = "auto",
         crop_size: tuple[int, int] = (256, 128),
@@ -118,30 +119,34 @@ class ReIDModel:
         model as the backbone.
 
         Args:
-            model_name_or_checkpoint_path (str): Name of the torchreid model to use.
+            model_name (str): Name of the torchreid model to use.
             num_classes (int): Number of training identities.
+            checkpoint_path (Optional[str]): Path to the checkpoint file to load.
             loss_name (str): Loss function to optimize the model. Currently supports
                 "softmax" and "triplet".
             device (str): Device to run the model on.
         """
         from torchreid.models import build_model
+        from torchreid.utils import load_pretrained_weights
 
-        if os.path.exists(model_name_or_checkpoint_path):
-            pass
-        else:
-            model = build_model(
-                name=model_name_or_checkpoint_path,
-                num_classes=num_classes,
-                loss=loss_name,
-                pretrained=True,
-                use_gpu=False,
-            )
+        model = build_model(
+            name=model_name,
+            num_classes=num_classes,
+            loss=loss_name,
+            pretrained=True,
+            use_gpu=False,
+        )
 
-        transforms = [
-            Resize(crop_size),
-            ToTensor(),
-            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
+        if checkpoint_path is not None:
+            load_pretrained_weights(model, checkpoint_path)
+
+        transforms = Compose(
+            [
+                Resize(crop_size),
+                ToTensor(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
 
         model_metadata = {"model_source": "torchreid"}
 

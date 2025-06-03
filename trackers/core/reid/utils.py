@@ -10,7 +10,6 @@ from trackers.utils.torch_utils import load_safetensors_checkpoint
 logger = get_logger(__name__)
 
 
-
 def initialize_reid_model_from_timm(
     cls,
     model_name_or_checkpoint_path: str,
