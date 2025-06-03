@@ -156,6 +156,37 @@ class ReIDModel:
                 **kwargs,
             )
 
+    @classmethod
+    def from_torchreid(
+        cls,
+        model_name: str,
+        num_classes: int,
+        loss_name: str = "softmax",
+        device: str = "auto",
+    ) -> ReIDModel:
+        """
+        Create a `ReIDModel` with a [torchreid](https://github.com/KaiyangZhou/deep-person-reid)
+        model as the backbone.
+
+        Args:
+            model_name (str): Name of the torchreid model to use.
+            num_classes (int): Number of training identities.
+            loss_name (str): Loss function to optimize the model. Currently supports
+                "softmax" and "triplet".
+            device (str): Device to run the model on.
+        """
+        from torchreid.models import build_model
+
+        model = build_model(
+            name=model_name,
+            num_classes=num_classes,
+            loss=loss_name,
+            pretrained=True,
+            use_gpu=False,
+        )
+
+        return cls(model, device)
+
     def extract_features(
         self, detections: sv.Detections, frame: Union[np.ndarray, PIL.Image.Image]
     ) -> np.ndarray:
