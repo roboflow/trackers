@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
 import supervision as sv
@@ -29,8 +29,6 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
     Args:
         reid_model (ReIDModel): An instance of a `ReIDModel` to extract
             appearance features.
-        device (Optional[str]): Device to run the feature extraction
-            model on (e.g., 'cpu', 'cuda').
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Enhances occlusion handling but may increase ID switches for similar objects.
         frame_rate (float): Frame rate of the video (frames per second).
@@ -48,20 +46,21 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
             distance in the combined matching cost.
         distance_metric (str): Distance metric for appearance features (e.g., 'cosine',
             'euclidean'). See `scipy.spatial.distance.cdist`.
+        max_features_gallery_size (int): Maximum size of the feature gallery for appearance matching.
     """  # noqa: E501
 
     def __init__(
         self,
         reid_model: ReIDModel,
-        device: Optional[str] = None,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.25,
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
-        appearance_threshold: float = 0.7,
+        appearance_threshold: float = 0.2,
         appearance_weight: float = 0.5,
         distance_metric: str = "cosine",
+        max_features_gallery_size: int = 100,
     ):
         self.reid_model = reid_model
         self.lost_track_buffer = lost_track_buffer
@@ -72,6 +71,7 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         self.appearance_threshold = appearance_threshold
         self.appearance_weight = appearance_weight
         self.distance_metric = distance_metric
+        self.max_features_gallery_size = max_features_gallery_size
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
@@ -98,10 +98,22 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         if len(self.trackers) == 0 or len(detection_features) == 0:
             return np.zeros((len(self.trackers), len(detection_features)))
 
-        track_features = np.array([t.get_feature() for t in self.trackers])
-        distance_matrix = cdist(
-            track_features, detection_features, metric=self.distance_metric
-        )
+        # Initialize an empty distance matrix
+        distance_matrix = np.full((len(self.trackers), len(detection_features)), np.inf)
+
+        for i, tracker in enumerate(self.trackers):
+            if not tracker.features:  # Skip if tracker has no features
+                continue
+            track_gallery_features = np.array(tracker.features)
+            # Calculate cdist between all features in the track's gallery
+            # and all detection features.
+            cost_matrix_gallery = cdist(
+                track_gallery_features, detection_features, metric=self.distance_metric
+            )
+            # Find the minimum cdist for this tracker against all detections
+            min_distances_to_detections = np.min(cost_matrix_gallery, axis=0)
+            distance_matrix[i, :] = min_distances_to_detections
+
         distance_matrix = np.clip(distance_matrix, 0, 1)
 
         return distance_matrix
@@ -304,13 +316,10 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
         iou_matches: list[tuple[int, int]] = []
         if iou_track_candidates and unmatched_detections:
             iou_dist_matrix: np.ndarray = 1 - iou_matrix
-            iou_dist_matrix_filtered: np.ndarray = iou_dist_matrix.copy()
-            mask: np.ndarray = iou_matrix < self.minimum_iou_threshold
-            iou_dist_matrix_filtered[mask] = 1.0
 
             iou_matches, unmatched_candidates, unmatched_detections = (
                 self._match_tracks_using_linear_sum_assignment(
-                    iou_dist_matrix_filtered,
+                    iou_dist_matrix,
                     iou_track_candidates,
                     list(unmatched_detections),
                 )
@@ -354,7 +363,9 @@ class DeepSORTTracker(BaseTrackerWithFeatures):
                     feature = detection_features[detection_idx]
 
                 new_tracker = DeepSORTKalmanBoxTracker(
-                    bbox=detection_boxes[detection_idx], feature=feature
+                    bbox=detection_boxes[detection_idx],
+                    feature=feature,
+                    max_features_gallery_size=self.max_features_gallery_size,
                 )
                 self.trackers.append(new_tracker)
 
