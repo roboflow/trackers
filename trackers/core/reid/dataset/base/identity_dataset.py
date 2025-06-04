@@ -10,12 +10,15 @@ from torchvision.transforms import Compose, ToTensor
 
 class IdentityDataset(Dataset):
     """
-    A dataset that provides each individual identity along with associated images and metadata as a sample.
-    This dataset is useful for training models with cross-entropy loss.
+    A dataset that provides each individual identity along with associated
+    images and metadata as a sample. This dataset is useful for training
+    models with cross-entropy loss.
 
     Args:
-        identity_mappings (List[Dict[str, Any]]): A list of dictionaries mapping image paths to entity IDs.
-        transforms (Optional[Compose]): A torchvision.transforms.Compose object to apply to the images.
+        identity_mappings (List[Dict[str, Any]]): A list of dictionaries mapping
+            image paths to entity IDs.
+        transforms (Optional[Compose]): A `torchvision.transforms.Compose` object
+            to apply to the images.
     """
 
     def __init__(
@@ -51,7 +54,8 @@ class IdentityDataset(Dataset):
             index (int): The index of the sample to retrieve.
 
         Returns:
-            dict[str, Any]: A dictionary containing the image and metadata for the sample.
+            dict[str, Any]: A dictionary containing the image and metadata for
+                the sample.
         """
         item = self.identity_mappings[index]
         image = Image.open(item["image_path"]).convert("RGB")
