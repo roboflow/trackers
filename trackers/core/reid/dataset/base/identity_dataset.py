@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Dict, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PIL import Image
 from supervision.dataset.utils import train_test_split
@@ -12,15 +12,20 @@ class IdentityDataset(Dataset):
     """
     A dataset that provides each individual identity along with associated images and metadata as a sample.
     This dataset is useful for training models with cross-entropy loss.
-    
+
     Args:
         identity_mappings (List[Dict[str, Any]]): A list of dictionaries mapping image paths to entity IDs.
         transforms (Optional[Compose]): A torchvision.transforms.Compose object to apply to the images.
     """
-    def __init__(self, identity_mappings: List[Dict[str, Any]], transforms: Optional[Compose] = None):
+
+    def __init__(
+        self,
+        identity_mappings: List[Dict[str, Any]],
+        transforms: Optional[Compose] = None,
+    ):
         self.identity_mappings = identity_mappings
         self.transforms = transforms or ToTensor()
-    
+
     def get_num_identities(self):
         """
         Returns the number of unique identities in the dataset.
@@ -41,7 +46,7 @@ class IdentityDataset(Dataset):
         """
         Retrieves a sample from the dataset which is a dictionary containing
         the keys "image_path", "entity_id", "camera_id", and "image" (tensor).
-        
+
         Args:
             index (int): The index of the sample to retrieve.
 
