@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from trackers.core.reid.dataset.market_1501 import parse_market1501_dataset
+from trackers.core.reid.dataset.market_1501 import parse_market1501_triplet_mapping
 
 
 @pytest.mark.parametrize(
@@ -48,5 +48,5 @@ from trackers.core.reid.dataset.market_1501 import parse_market1501_dataset
 )
 def test_parse_market1501_dataset(mock_glob_output, expected_result):
     with patch("glob.glob", return_value=mock_glob_output):
-        result = parse_market1501_dataset("dummy_path")
+        result = parse_market1501_triplet_mapping("dummy_path")
         assert result == expected_result
