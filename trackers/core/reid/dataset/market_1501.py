@@ -7,10 +7,17 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from torchvision.transforms import Compose
 
-from trackers.core.reid.dataset.base import TripletsDataset
+from trackers.core.reid.dataset.base import IdentityDataset, TripletsDataset
+
+DATASET_TYPE_HINT = Union[
+    TripletsDataset,
+    IdentityDataset,
+    Tuple[TripletsDataset, TripletsDataset],
+    Tuple[IdentityDataset, IdentityDataset],
+]
 
 
-class DatasetType(Enum):
+class DatasetType(str, Enum):
     TRIPLET = "triplet"
     IDENTITY = "identity"
 
@@ -87,7 +94,7 @@ def get_market1501_triplets_dataset(
     random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
     shuffle: bool = True,
     transforms: Optional[Compose] = None,
-) -> Union[TripletsDataset, Tuple[TripletsDataset, TripletsDataset]]:
+) -> DATASET_TYPE_HINT:
     """Get the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
 
     Args:
@@ -104,9 +111,9 @@ def get_market1501_triplets_dataset(
         transforms (Optional[Compose]): The transforms to apply to the dataset.
 
     Returns:
-        Union[TripletsDataset, Tuple[TripletsDataset, TripletsDataset]]: A single
-            `TripletsDataset` object or a tuple of training and validation
-            `TripletsDataset` objects.
+        DATASET_TYPE_HINT: A single `TripletsDataset` or `IdentityDataset` object or a
+            tuple of training and validation `TripletsDataset` or `IdentityDataset`
+            objects.
     """
     if dataset_type == DatasetType.TRIPLET:
         tracker_id_to_images = parse_market1501_triplet_mapping(data_dir)
@@ -117,6 +124,12 @@ def get_market1501_triplets_dataset(
             )
             return train_dataset, validation_dataset
         return dataset
-    else:
-        # Handle other dataset types if needed in the future
-        raise NotImplementedError(f"Dataset type {dataset_type} is not implemented")
+    elif dataset_type == DatasetType.IDENTITY:
+        identity_mappings = parse_market1501_identity_mapping(data_dir)
+        dataset = IdentityDataset(identity_mappings, transforms)
+        if split_ratio is not None:
+            train_dataset, validation_dataset = dataset.split(
+                split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
+            )
+            return train_dataset, validation_dataset
+        return dataset
