@@ -10,7 +10,7 @@ class PKSampler(Sampler):
     """
     A sampler that samples a batch of `num_identities * num_instances` identities from the dataset.
 
-    References: Section 3.1 of the paper
+    Reference: Section 3.1 of the paper
     [ICE: Inter-instance Contrastive Encoding for Unsupervised Person Re-identification](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/hao_iccv2021.pdf)
 
     Args:
@@ -55,9 +55,19 @@ class PKSampler(Sampler):
                 self.num_samples += self.batch_size
 
     def __len__(self) -> int:
+        """Returns the total number of samples in the dataset."""
         return self.num_samples
 
     def __iter__(self):
+        """
+        Iterates over the dataset, yielding sample indices in a structured manner.
+        The iterator groups samples by identity, ensuring each batch contains exactly
+        `num_identities` different identities with `num_instances` samples each.
+        
+        Yields:
+            int: Individual sample indices from the dataset, yielded in batches
+                of size `num_identities * num_instances`.
+        """
         random.shuffle(self.entity_ids)
         batch_indices = []
         # Partition the shuffled identities into chunks of size num_identities

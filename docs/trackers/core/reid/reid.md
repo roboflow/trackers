@@ -234,3 +234,5 @@ reid_model = ReIDModel.from_timm("<PATH_TO_CUSTOM_SAFETENSORS_CHECKPOINT>")
 ::: trackers.core.reid.dataset.base.IdentityDataset
 
 ::: trackers.core.reid.dataset.base.TripletsDataset
+
+::: trackers.core.reid.dataset.sampling.PKSampler
