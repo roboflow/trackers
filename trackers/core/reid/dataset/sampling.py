@@ -18,7 +18,6 @@ class PKSampler(Sampler):
             "image_path", "entity_id", and "camera_id" or the corresponding `torch.utils.data.Dataset` instance.
         num_identities (int): The number of identities to sample.
         num_instances (int): The number of instances to sample for each identity.
-        drop_last (bool): Whether to drop the last batch if it is not complete.
     """  # noqa: E501
 
     def __init__(
@@ -26,13 +25,11 @@ class PKSampler(Sampler):
         data_source: Union[List[Dict[str, Any]], Dataset],
         num_identities: int,
         num_instances: int,
-        drop_last: bool = True,
     ):
         super().__init__(data_source)
         self.data_source = data_source
         self.num_identities = num_identities
         self.num_instances = num_instances
-        self.drop_last = drop_last
         self.batch_size = num_identities * num_instances
 
         self.index_dict = defaultdict(list)
@@ -48,11 +45,6 @@ class PKSampler(Sampler):
         self.num_samples = (
             len(self.entity_ids) // self.num_identities
         ) * self.batch_size
-        if not self.drop_last:
-            # If not dropping last, ensure we can cover all images
-            # by adding an extra batch if needed
-            if len(self.entity_ids) % self.num_identities != 0:
-                self.num_samples += self.batch_size
 
     def __len__(self) -> int:
         """Returns the total number of samples in the dataset."""
@@ -92,7 +84,6 @@ class PKSampler(Sampler):
                 for idx in batch_indices:
                     yield idx
                 batch_indices = []
-        # If there are leftover indices and not dropping the last batch, yield them
-        if len(batch_indices) > 0 and not self.drop_last:
+        if len(batch_indices) > 0:
             for idx in batch_indices:
                 yield idx
