@@ -63,7 +63,7 @@ class PKSampler(Sampler):
         Iterates over the dataset, yielding sample indices in a structured manner.
         The iterator groups samples by identity, ensuring each batch contains exactly
         `num_identities` different identities with `num_instances` samples each.
-        
+
         Yields:
             int: Individual sample indices from the dataset, yielded in batches
                 of size `num_identities * num_instances`.
