@@ -15,8 +15,8 @@ class IdentityDataset(Dataset):
     models with cross-entropy loss.
 
     Args:
-        identity_mappings (List[Dict[str, Any]]): A list of dictionaries mapping
-            image paths to entity IDs.
+        identity_mappings (List[Dict[str, Any]]): A list of dictionaries containing
+            the keys "image_path", "entity_id", and "camera_id".
         transforms (Optional[Compose]): A `torchvision.transforms.Compose` object
             to apply to the images.
     """
