@@ -347,11 +347,39 @@ class OCSORTTracker(BaseTrackerWithFeatures):
             unmatched_trks = np.setdiff1d(unmatched_trks, np.array(to_remove_trk_indices))
 
         return unmatched_trks
+    
+    def _filter_by_tracker_id(self, detections : sv.Detections) -> sv.Detections:
+        """
+        Filters all detection attributes to keep only entries with a valid tracker ID.
+
+        This method removes all elements across the detection object's attributes
+        (`xyxy`, `mask`, `confidence`, `class_id`, `tracker_id`) where the `tracker_id` is -1.
+        It ensures consistency across all arrays by applying the same mask to each.
+
+        If `tracker_id` is `None`, the method does nothing.
+
+        Returns:
+            None
+        """
+
+        tracker_id = detections.tracker_id
+        if np.max(tracker_id) == -1:
+            return detections  # No filtering possible
+
+        valid = tracker_id != -1
+
+        detections.xyxy = detections.xyxy[valid]
+        detections.confidence = detections.confidence[valid]
+        detections.tracker_id = detections.tracker_id[valid]
+        detections.class_id = detections.class_id[valid]
+
+        return detections
+
 
     def _update_detection_with_track_ids(
         self,
         detections : sv.Detections
-    ) -> np.ndarray:
+    ) -> sv.Detections:
         """
         Updation of matched detections with tracking IDs 
         """
@@ -378,15 +406,7 @@ class OCSORTTracker(BaseTrackerWithFeatures):
                 to_remove.append(i)
 
         self.trackers = [item for i, item in enumerate(self.trackers) if i not in to_remove]
-
-        # if(len(ret) > 0):
-        #     ret = np.concatenate(ret)
-        #     detections.tracker_id = np.array(ret, dtype=int)
-        #     return detections
-        
-        # detections.tracker_id = np.array([], dtype=int)
         return detections
-
 
     def _get_unassociated_indices(
         self,
@@ -491,6 +511,7 @@ class OCSORTTracker(BaseTrackerWithFeatures):
 
         # Update detections with tracker IDs
         dets = self._update_detection_with_track_ids(detections)
+        dets = self._filter_by_tracker_id(detections)
         return dets
     
     def reset(self) -> None:
