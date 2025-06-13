@@ -158,9 +158,9 @@ class KalmanBoxTracker(object):
         )
 
         self.kf.R[2:, 2:] *= 10.0
-        self.kf.P[4:, 4:] *= (
-            1000.0  # give high uncertainty to the unobservable initial velocities
-        )
+        self.kf.P[
+            4:, 4:
+        ] *= 1000.0  # give high uncertainty to the unobservable initial velocities
         self.kf.P *= 10.0
         self.kf.Q[-1, -1] *= 0.01
         self.kf.Q[4:, 4:] *= 0.01
@@ -358,9 +358,9 @@ class OCSORTTracker(BaseTrackerWithFeatures):
         iou_left = np.array(iou_left)
         if iou_left.max() > self.iou_threshold:
             """
-                NOTE: by using a lower threshold, e.g., self.iou_threshold - 0.1, you may
-                get a higher performance especially on MOT17/MOT20 datasets. But we keep it
-                uniform here for simplicity
+            NOTE: by using a lower threshold, e.g., self.iou_threshold - 0.1, you may
+            get a higher performance especially on MOT17/MOT20 datasets. But we keep it
+            uniform here for simplicity
             """
             matched_indices = linear_assignment(-iou_left)
             to_remove_trk_indices = []
@@ -418,8 +418,8 @@ class OCSORTTracker(BaseTrackerWithFeatures):
                 d = trk.get_state()[0]
             else:
                 """
-                    this is optional to use the recent observation or the kalman filter prediction,
-                    we didn't notice significant difference here
+                this is optional to use the recent observation or the kalman filter prediction,
+                we didn't notice significant difference here
                 """
                 d = trk.last_observation[:4]
             if (trk.time_since_update < 1) and (
@@ -451,9 +451,9 @@ class OCSORTTracker(BaseTrackerWithFeatures):
         iou_left = np.array(iou_left)
         if iou_left.max() > self.iou_threshold:
             """
-                NOTE: by using a lower threshold, e.g., self.iou_threshold - 0.1, you may
-                get a higher performance especially on MOT17/MOT20 datasets. But we keep it
-                uniform here for simplicity
+            NOTE: by using a lower threshold, e.g., self.iou_threshold - 0.1, you may
+            get a higher performance especially on MOT17/MOT20 datasets. But we keep it
+            uniform here for simplicity
             """
             rematched_indices = linear_assignment(-iou_left)
             to_remove_det_indices = []

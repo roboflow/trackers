@@ -409,9 +409,9 @@ class KalmanFilterNew(object):
             dh = (h2 - h1) / time_gap
             for i in range(index2 - index1):
                 """
-                    The default virtual trajectory generation is by linear
-                    motion (constant speed hypothesis), you could modify this
-                    part to implement your own.
+                The default virtual trajectory generation is by linear
+                motion (constant speed hypothesis), you could modify this
+                part to implement your own.
                 """
                 x = x1 + (i + 1) * dx
                 y = y1 + (i + 1) * dy
@@ -461,8 +461,8 @@ class KalmanFilterNew(object):
         if z is None:
             if self.observed:
                 """
-                    Got no observation so freeze the current parameters for future
-                    potential online smoothing.
+                Got no observation so freeze the current parameters for future
+                potential online smoothing.
                 """
                 self.freeze()
             self.observed = False
@@ -475,7 +475,7 @@ class KalmanFilterNew(object):
         # self.observed = True
         if not self.observed:
             """
-                Get observation, use online smoothing to re-update parameters
+            Get observation, use online smoothing to re-update parameters
             """
             self.unfreeze()
         self.observed = True
@@ -1136,44 +1136,48 @@ class KalmanFilterNew(object):
         x = self.x
         P = self.P
 
-        assert x.ndim == 1 or x.ndim == 2, (
-            "x must have one or two dimensions, but has {}".format(x.ndim)
-        )
+        assert (
+            x.ndim == 1 or x.ndim == 2
+        ), "x must have one or two dimensions, but has {}".format(x.ndim)
 
         if x.ndim == 1:
-            assert x.shape[0] == self.dim_x, (
-                "Shape of x must be ({},{}), but is {}".format(self.dim_x, 1, x.shape)
-            )
+            assert (
+                x.shape[0] == self.dim_x
+            ), "Shape of x must be ({},{}), but is {}".format(self.dim_x, 1, x.shape)
         else:
-            assert x.shape == (self.dim_x, 1), (
-                "Shape of x must be ({},{}), but is {}".format(self.dim_x, 1, x.shape)
-            )
+            assert x.shape == (
+                self.dim_x,
+                1,
+            ), "Shape of x must be ({},{}), but is {}".format(self.dim_x, 1, x.shape)
 
-        assert P.shape == (self.dim_x, self.dim_x), (
-            "Shape of P must be ({},{}), but is {}".format(
-                self.dim_x, self.dim_x, P.shape
-            )
+        assert P.shape == (
+            self.dim_x,
+            self.dim_x,
+        ), "Shape of P must be ({},{}), but is {}".format(
+            self.dim_x, self.dim_x, P.shape
         )
 
-        assert Q.shape == (self.dim_x, self.dim_x), (
-            "Shape of Q must be ({},{}), but is {}".format(
-                self.dim_x, self.dim_x, P.shape
-            )
+        assert Q.shape == (
+            self.dim_x,
+            self.dim_x,
+        ), "Shape of Q must be ({},{}), but is {}".format(
+            self.dim_x, self.dim_x, P.shape
         )
 
-        assert F.shape == (self.dim_x, self.dim_x), (
-            "Shape of F must be ({},{}), but is {}".format(
-                self.dim_x, self.dim_x, F.shape
-            )
+        assert F.shape == (
+            self.dim_x,
+            self.dim_x,
+        ), "Shape of F must be ({},{}), but is {}".format(
+            self.dim_x, self.dim_x, F.shape
         )
 
         assert np.ndim(H) == 2, "Shape of H must be (dim_z, {}), but is {}".format(
             P.shape[0], shape(H)
         )
 
-        assert H.shape[1] == P.shape[0], (
-            "Shape of H must be (dim_z, {}), but is {}".format(P.shape[0], H.shape)
-        )
+        assert (
+            H.shape[1] == P.shape[0]
+        ), "Shape of H must be (dim_z, {}), but is {}".format(P.shape[0], H.shape)
 
         # shape of R must be the same as HPH'
         hph_shape = (H.shape[0], H.shape[0])
@@ -1181,11 +1185,11 @@ class KalmanFilterNew(object):
 
         if H.shape[0] == 1:
             # r can be scalar, 1D, or 2D in this case
-            assert r_shape in [(), (1,), (1, 1)], (
-                "R must be scalar or one element array, but is shaped {}".format(
-                    r_shape
-                )
-            )
+            assert r_shape in [
+                (),
+                (1,),
+                (1, 1),
+            ], "R must be scalar or one element array, but is shaped {}".format(r_shape)
         else:
             assert r_shape == hph_shape, "shape of R should be {} but it is {}".format(
                 hph_shape, r_shape
@@ -1200,10 +1204,11 @@ class KalmanFilterNew(object):
         Hx = dot(H, x)
 
         if z_shape == ():  # scalar or np.array(scalar)
-            assert Hx.ndim == 1 or shape(Hx) == (1, 1), (
-                "shape of z should be {}, not {} for the given H".format(
-                    shape(Hx), z_shape
-                )
+            assert Hx.ndim == 1 or shape(Hx) == (
+                1,
+                1,
+            ), "shape of z should be {}, not {} for the given H".format(
+                shape(Hx), z_shape
             )
 
         elif shape(Hx) == (1,):
@@ -1219,10 +1224,10 @@ class KalmanFilterNew(object):
             )
 
         if np.ndim(Hx) > 1 and shape(Hx) != (1, 1):
-            assert shape(Hx) == z_shape, (
-                "shape of z should be {} for the given H, but it is {}".format(
-                    shape(Hx), z_shape
-                )
+            assert (
+                shape(Hx) == z_shape
+            ), "shape of z should be {} for the given H, but it is {}".format(
+                shape(Hx), z_shape
             )
 
 
