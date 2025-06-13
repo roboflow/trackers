@@ -6,8 +6,10 @@ Reference Link : https://github.com/rlabbe/filterpy
 """
 
 from collections import deque
+
 import numpy as np
-from scipy.stats import norm, multivariate_normal
+from scipy.stats import multivariate_normal
+
 
 def reshape_z(z, dim_z, ndim):
     """ensure z is a (dim_z, 1) shaped vector"""
@@ -28,6 +30,7 @@ def reshape_z(z, dim_z, ndim):
         z = z[0, 0]
 
     return z
+
 
 def pretty_str(label, arr):
     """
@@ -86,14 +89,16 @@ def pretty_str(label, arr):
 
     return s
 
+
 _support_singular = True
 
+
 def logpdf(
-        x, 
-        mean = None, 
-        cov = 1, 
-        allow_singular = True,
-    ):
+    x,
+    mean=None,
+    cov=1,
+    allow_singular=True,
+):
     """
     Computes the log of the probability density function of the normal
     N(mean, cov) for the data x. The normal may be univariate or multivariate.
