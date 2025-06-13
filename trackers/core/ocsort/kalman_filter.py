@@ -1136,14 +1136,14 @@ class KalmanFilterNew(object):
         x = self.x
         P = self.P
 
-        assert (
-            x.ndim == 1 or x.ndim == 2
-        ), "x must have one or two dimensions, but has {}".format(x.ndim)
+        assert x.ndim == 1 or x.ndim == 2, (
+            "x must have one or two dimensions, but has {}".format(x.ndim)
+        )
 
         if x.ndim == 1:
-            assert (
-                x.shape[0] == self.dim_x
-            ), "Shape of x must be ({},{}), but is {}".format(self.dim_x, 1, x.shape)
+            assert x.shape[0] == self.dim_x, (
+                "Shape of x must be ({},{}), but is {}".format(self.dim_x, 1, x.shape)
+            )
         else:
             assert x.shape == (
                 self.dim_x,
@@ -1175,9 +1175,9 @@ class KalmanFilterNew(object):
             P.shape[0], shape(H)
         )
 
-        assert (
-            H.shape[1] == P.shape[0]
-        ), "Shape of H must be (dim_z, {}), but is {}".format(P.shape[0], H.shape)
+        assert H.shape[1] == P.shape[0], (
+            "Shape of H must be (dim_z, {}), but is {}".format(P.shape[0], H.shape)
+        )
 
         # shape of R must be the same as HPH'
         hph_shape = (H.shape[0], H.shape[0])
@@ -1224,10 +1224,10 @@ class KalmanFilterNew(object):
             )
 
         if np.ndim(Hx) > 1 and shape(Hx) != (1, 1):
-            assert (
-                shape(Hx) == z_shape
-            ), "shape of z should be {} for the given H, but it is {}".format(
-                shape(Hx), z_shape
+            assert shape(Hx) == z_shape, (
+                "shape of z should be {} for the given H, but it is {}".format(
+                    shape(Hx), z_shape
+                )
             )
 
 
