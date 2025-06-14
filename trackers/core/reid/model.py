@@ -345,9 +345,9 @@ class ReIDModel:
             trainer = TripletsTrainer(
                 model=self.backbone_model,
                 optimizer=self.optimizer,
-                criterion=nn.TripletMarginLoss(margin=triplet_margin),
                 train_transforms=self.train_transforms,
                 device=self.device,
+                triplet_margin=triplet_margin,
             )
             trainer.train(
                 train_loader=train_loader,

@@ -4,6 +4,7 @@ from typing import Any, Callable, Optional, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
@@ -19,15 +20,15 @@ class TripletsTrainer:
         self,
         model: nn.Module,
         optimizer: optim.Optimizer,
-        criterion: nn.Module,
         train_transforms: Optional[Callable] = None,
         device: Optional[Union[str, torch.device]] = "auto",
+        triplet_margin: Optional[float] = 1.0,
     ):
         self.model = model
         self.optimizer = optimizer
-        self.criterion = criterion
         self.device = parse_device_spec(device) if isinstance(device, str) else device
         self.train_transforms = train_transforms
+        self.triplet_margin = triplet_margin
 
     def train_step(
         self,
@@ -45,16 +46,17 @@ class TripletsTrainer:
             negative_image (torch.Tensor): The negative image.
             metrics_list (list[Metric]): The list of metrics to update.
         """
-        self.optimizer.zero_grad()
         anchor_image_features = self.model(anchor_image)
         positive_image_features = self.model(positive_image)
         negative_image_features = self.model(negative_image)
 
-        loss = self.criterion(
+        loss = F.triplet_margin_loss(
             anchor_image_features,
             positive_image_features,
             negative_image_features,
+            margin=self.triplet_margin,
         )
+        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
@@ -93,10 +95,11 @@ class TripletsTrainer:
             positive_image_features = self.model(positive_image)
             negative_image_features = self.model(negative_image)
 
-            loss = self.criterion(
+            loss = F.triplet_margin_loss(
                 anchor_image_features,
                 positive_image_features,
                 negative_image_features,
+                margin=self.triplet_margin,
             )
 
             # Update metrics
@@ -112,6 +115,28 @@ class TripletsTrainer:
             validation_logs[f"validation/{metric!s}"] = metric.compute()
 
         return validation_logs
+
+    def save_checkpoint(
+        self,
+        checkpoint_interval: int,
+        epoch: int,
+        log_dir: str,
+        config: dict[str, Any],
+        callbacks: list[BaseCallback],
+    ):
+        if checkpoint_interval is not None and (epoch + 1) % checkpoint_interval == 0:
+            state_dict = self.model.state_dict()
+            checkpoint_path = os.path.join(
+                log_dir, "checkpoints", f"reid_model_{epoch + 1}.safetensors"
+            )
+            save_file(
+                state_dict,
+                checkpoint_path,
+                metadata={"config": json.dumps(config), "format": "pt"},
+            )
+            if callbacks:
+                for callback in callbacks:
+                    callback.on_checkpoint_save(checkpoint_path, epoch + 1)
 
     def train(
         self,
@@ -244,20 +269,4 @@ class TripletsTrainer:
                 for callback in callbacks:
                     callback.on_validation_epoch_end(accumulated_validation_logs, epoch)
 
-            # Save checkpoint
-            if (
-                checkpoint_interval is not None
-                and (epoch + 1) % checkpoint_interval == 0
-            ):
-                state_dict = self.model.state_dict()
-                checkpoint_path = os.path.join(
-                    log_dir, "checkpoints", f"reid_model_{epoch + 1}.safetensors"
-                )
-                save_file(
-                    state_dict,
-                    checkpoint_path,
-                    metadata={"config": json.dumps(config), "format": "pt"},
-                )
-                if callbacks:
-                    for callback in callbacks:
-                        callback.on_checkpoint_save(checkpoint_path, epoch + 1)
+            self.save_checkpoint(checkpoint_interval, epoch, log_dir, config, callbacks)
