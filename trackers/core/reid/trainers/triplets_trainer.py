@@ -1,16 +1,14 @@
-import json
-import os
 from typing import Any, Callable, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from safetensors.torch import save_file
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from trackers.core.reid.trainers.callbacks import BaseCallback
+from trackers.core.reid.trainers.commons import save_checkpoint
 from trackers.core.reid.trainers.metrics import TripletMetric
 from trackers.utils.torch_utils import parse_device_spec
 
@@ -115,28 +113,6 @@ class TripletsTrainer:
             validation_logs[f"validation/{metric!s}"] = metric.compute()
 
         return validation_logs
-
-    def save_checkpoint(
-        self,
-        checkpoint_interval: int,
-        epoch: int,
-        log_dir: str,
-        config: dict[str, Any],
-        callbacks: list[BaseCallback],
-    ):
-        if checkpoint_interval is not None and (epoch + 1) % checkpoint_interval == 0:
-            state_dict = self.model.state_dict()
-            checkpoint_path = os.path.join(
-                log_dir, "checkpoints", f"reid_model_{epoch + 1}.safetensors"
-            )
-            save_file(
-                state_dict,
-                checkpoint_path,
-                metadata={"config": json.dumps(config), "format": "pt"},
-            )
-            if callbacks:
-                for callback in callbacks:
-                    callback.on_checkpoint_save(checkpoint_path, epoch + 1)
 
     def train(
         self,
@@ -269,4 +245,6 @@ class TripletsTrainer:
                 for callback in callbacks:
                     callback.on_validation_epoch_end(accumulated_validation_logs, epoch)
 
-            self.save_checkpoint(checkpoint_interval, epoch, log_dir, config, callbacks)
+            save_checkpoint(
+                self.model, checkpoint_interval, epoch, log_dir, config, callbacks
+            )
