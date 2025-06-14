@@ -15,8 +15,8 @@ from timm.data.transforms_factory import create_transform
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToPILImage
 
-from trackers.core.reid.trainers.callbacks import BaseCallback
 from trackers.core.reid.dataset.base import TripletsDataset
+from trackers.core.reid.trainers.callbacks import BaseCallback
 from trackers.core.reid.trainers.metrics import (
     TripletAccuracyMetric,
     TripletMetric,
