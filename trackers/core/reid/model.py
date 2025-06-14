@@ -15,13 +15,13 @@ from timm.data.transforms_factory import create_transform
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToPILImage
 
-from trackers.core.reid.dataset.base import TripletsDataset
+from trackers.core.reid.dataset.base import IdentityDataset, TripletsDataset
+from trackers.core.reid.trainers import IdentityTrainer, TripletsTrainer
 from trackers.core.reid.trainers.callbacks import BaseCallback
 from trackers.core.reid.trainers.metrics import (
     TripletAccuracyMetric,
     TripletMetric,
 )
-from trackers.core.reid.trainers.triplets_trainer import TripletsTrainer
 from trackers.log import get_logger
 from trackers.utils.torch_utils import load_safetensors_checkpoint, parse_device_spec
 
@@ -271,6 +271,7 @@ class ReIDModel:
         learning_rate: float = 5e-5,
         weight_decay: float = 0.0,
         triplet_margin: float = 1.0,
+        label_smoothing: float = 0.1,
         random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
         checkpoint_interval: Optional[int] = None,
         log_dir: str = "logs",
@@ -292,6 +293,8 @@ class ReIDModel:
             weight_decay (float): The weight decay to use for the optimizer.
             triplet_margin (float): The margin to use for the triplet loss.
                 This is only used if the dataset is a `TripletsDataset`.
+            label_smoothing (float): The label smoothing to use for the cross entropy
+                loss. This is only used if the dataset is a `IdentityDataset`.
             random_state (Optional[Union[int, float, str, bytes, bytearray]]): The
                 random state to use for the training.
             checkpoint_interval (Optional[int]): The interval to save checkpoints.
@@ -354,6 +357,24 @@ class ReIDModel:
                 epochs=epochs,
                 validation_loader=validation_loader,
                 metrics_list=metrics_list,
+                callbacks=callbacks,
+                checkpoint_interval=checkpoint_interval,
+                log_dir=log_dir,
+                config=config,
+            )
+        elif isinstance(train_loader.dataset, IdentityDataset):
+            config["label_smoothing"] = label_smoothing
+            trainer = IdentityTrainer(
+                model=self.backbone_model,
+                optimizer=self.optimizer,
+                train_transforms=self.train_transforms,
+                device=self.device,
+                label_smoothing=label_smoothing,
+            )
+            trainer.train(
+                train_loader=train_loader,
+                epochs=epochs,
+                validation_loader=validation_loader,
                 callbacks=callbacks,
                 checkpoint_interval=checkpoint_interval,
                 log_dir=log_dir,
