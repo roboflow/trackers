@@ -212,6 +212,55 @@ class ReIDModel:
             )
             self.backbone_model.to(self.device)
 
+    def _initialize_callbacks(
+        self,
+        log_to_matplotlib: bool,
+        log_to_tensorboard: bool,
+        log_to_wandb: bool,
+        log_dir: str,
+        config: dict[str, Any],
+    ) -> list[BaseCallback]:
+        callbacks: list[BaseCallback] = []
+        if log_to_matplotlib:
+            try:
+                from trackers.core.reid.callbacks import MatplotlibCallback
+
+                callbacks.append(MatplotlibCallback(log_dir=log_dir))
+            except (ImportError, AttributeError) as e:
+                logger.error(
+                    "Metric logging dependencies are not installed. "
+                    "Please install it using `pip install trackers[metrics]`.",
+                )
+                raise e
+        if log_to_tensorboard:
+            try:
+                from trackers.core.reid.callbacks import TensorboardCallback
+
+                callbacks.append(
+                    TensorboardCallback(
+                        log_dir=os.path.join(log_dir, "tensorboard_logs")
+                    )
+                )
+            except (ImportError, AttributeError) as e:
+                logger.error(
+                    "Metric logging dependencies are not installed. "
+                    "Please install it using `pip install trackers[metrics]`."
+                )
+                raise e
+        if log_to_wandb:
+            try:
+                from trackers.core.reid.callbacks import WandbCallback
+
+                callbacks.append(WandbCallback(config=config))
+            except (ImportError, AttributeError) as e:
+                logger.error(
+                    "Metric logging dependencies are not installed. "
+                    "Please install it using `pip install trackers[metrics]`."
+                )
+                raise e
+
+        return callbacks
+
     def train(
         self,
         train_loader: DataLoader,
@@ -284,45 +333,13 @@ class ReIDModel:
         }
 
         # Initialize callbacks
-        callbacks: list[BaseCallback] = []
-        if log_to_matplotlib:
-            try:
-                from trackers.core.reid.callbacks import MatplotlibCallback
-
-                callbacks.append(MatplotlibCallback(log_dir=log_dir))
-            except (ImportError, AttributeError) as e:
-                logger.error(
-                    "Metric logging dependencies are not installed. "
-                    "Please install it using `pip install trackers[metrics]`.",
-                )
-                raise e
-        if log_to_tensorboard:
-            try:
-                from trackers.core.reid.callbacks import TensorboardCallback
-
-                callbacks.append(
-                    TensorboardCallback(
-                        log_dir=os.path.join(log_dir, "tensorboard_logs")
-                    )
-                )
-            except (ImportError, AttributeError) as e:
-                logger.error(
-                    "Metric logging dependencies are not installed. "
-                    "Please install it using `pip install trackers[metrics]`."
-                )
-                raise e
-
-        if log_to_wandb:
-            try:
-                from trackers.core.reid.callbacks import WandbCallback
-
-                callbacks.append(WandbCallback(config=config))
-            except (ImportError, AttributeError) as e:
-                logger.error(
-                    "Metric logging dependencies are not installed. "
-                    "Please install it using `pip install trackers[metrics]`."
-                )
-                raise e
+        callbacks = self._initialize_callbacks(
+            log_to_matplotlib=log_to_matplotlib,
+            log_to_tensorboard=log_to_tensorboard,
+            log_to_wandb=log_to_wandb,
+            log_dir=log_dir,
+            config=config,
+        )
 
         if isinstance(train_loader.dataset, TripletsDataset):
             trainer = TripletsTrainer(
