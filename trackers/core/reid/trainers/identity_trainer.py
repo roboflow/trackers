@@ -59,6 +59,10 @@ class IdentityTrainer:
         epochs: int,
         callbacks: list[BaseCallback],
     ):
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            self.optimizer, step_size=20, gamma=0.1
+        )
+
         accumulated_train_logs: dict[str, Union[float, int]] = {}
         for idx, data in tqdm(
             enumerate(train_loader),
@@ -89,6 +93,8 @@ class IdentityTrainer:
                         callback.on_train_batch_end(
                             {f"batch/{key}": value}, epoch * len(train_loader) + idx
                         )
+
+        scheduler.step()
 
         for key, value in accumulated_train_logs.items():
             accumulated_train_logs[key] = value / len(train_loader)
@@ -140,6 +146,7 @@ class IdentityTrainer:
                                 {f"batch/{key}": value},
                                 epoch * len(validation_loader) + idx,
                             )
+
             for key, value in accumulated_validation_logs.items():
                 accumulated_validation_logs[key] = value / len(validation_loader)
 

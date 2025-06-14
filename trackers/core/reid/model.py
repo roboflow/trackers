@@ -53,6 +53,7 @@ def _initialize_reid_model_from_timm(
         model_name_or_checkpoint_path = probable_model_name_list[0]
     if not get_pooled_features:
         kwargs["global_pool"] = ""
+    print(model_name_or_checkpoint_path)
     model = timm.create_model(
         model_name_or_checkpoint_path, pretrained=True, num_classes=0, **kwargs
     )
