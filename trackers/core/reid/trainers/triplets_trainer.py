@@ -9,8 +9,8 @@ from safetensors.torch import save_file
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from trackers.core.reid.callbacks import BaseCallback
-from trackers.core.reid.metrics import TripletMetric
+from trackers.core.reid.trainers.callbacks import BaseCallback
+from trackers.core.reid.trainers.metrics import TripletMetric
 from trackers.utils.torch_utils import parse_device_spec
 
 

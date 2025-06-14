@@ -15,9 +15,9 @@ from timm.data.transforms_factory import create_transform
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToPILImage
 
-from trackers.core.reid.callbacks import BaseCallback
+from trackers.core.reid.trainers.callbacks import BaseCallback
 from trackers.core.reid.dataset.base import TripletsDataset
-from trackers.core.reid.metrics import (
+from trackers.core.reid.trainers.metrics import (
     TripletAccuracyMetric,
     TripletMetric,
 )
@@ -223,7 +223,7 @@ class ReIDModel:
         callbacks: list[BaseCallback] = []
         if log_to_matplotlib:
             try:
-                from trackers.core.reid.callbacks import MatplotlibCallback
+                from trackers.core.reid.trainers.callbacks import MatplotlibCallback
 
                 callbacks.append(MatplotlibCallback(log_dir=log_dir))
             except (ImportError, AttributeError) as e:
@@ -234,7 +234,7 @@ class ReIDModel:
                 raise e
         if log_to_tensorboard:
             try:
-                from trackers.core.reid.callbacks import TensorboardCallback
+                from trackers.core.reid.trainers.callbacks import TensorboardCallback
 
                 callbacks.append(
                     TensorboardCallback(
@@ -249,7 +249,7 @@ class ReIDModel:
                 raise e
         if log_to_wandb:
             try:
-                from trackers.core.reid.callbacks import WandbCallback
+                from trackers.core.reid.trainers.callbacks import WandbCallback
 
                 callbacks.append(WandbCallback(config=config))
             except (ImportError, AttributeError) as e:
@@ -328,7 +328,6 @@ class ReIDModel:
             "random_state": random_state,
             "projection_dimension": projection_dimension,
             "freeze_backbone": freeze_backbone,
-            "triplet_margin": triplet_margin,
             "model_metadata": self.model_metadata,
         }
 
@@ -342,6 +341,7 @@ class ReIDModel:
         )
 
         if isinstance(train_loader.dataset, TripletsDataset):
+            config["triplet_margin"] = triplet_margin
             trainer = TripletsTrainer(
                 model=self.backbone_model,
                 optimizer=self.optimizer,
