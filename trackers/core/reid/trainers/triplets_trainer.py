@@ -120,10 +120,10 @@ class TripletsTrainer:
         epochs: int,
         validation_loader: Optional[DataLoader] = None,
         metrics_list: Optional[list[TripletMetric]] = None,
-        callbacks: Optional[list[BaseCallback]] = None,
+        callbacks: list[BaseCallback] = [],
         checkpoint_interval: Optional[int] = None,
         log_dir: str = "logs",
-        config: Optional[dict[str, Any]] = None,
+        config: dict[str, Any] = {},
     ):
         for epoch in tqdm(range(epochs), desc="Training"):
             # Reset metrics at the start of each epoch
@@ -246,5 +246,10 @@ class TripletsTrainer:
                     callback.on_validation_epoch_end(accumulated_validation_logs, epoch)
 
             save_checkpoint(
-                self.model, checkpoint_interval, epoch, log_dir, config, callbacks
+                model=self.model,
+                epoch=epoch,
+                checkpoint_interval=checkpoint_interval,
+                log_dir=log_dir,
+                config=config,
+                callbacks=callbacks,
             )

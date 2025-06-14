@@ -345,14 +345,14 @@ class ReIDModel:
 
         if isinstance(train_loader.dataset, TripletsDataset):
             config["triplet_margin"] = triplet_margin
-            trainer = TripletsTrainer(
+            triplets_trainer = TripletsTrainer(
                 model=self.backbone_model,
                 optimizer=self.optimizer,
                 train_transforms=self.train_transforms,
                 device=self.device,
                 triplet_margin=triplet_margin,
             )
-            trainer.train(
+            triplets_trainer.train(
                 train_loader=train_loader,
                 epochs=epochs,
                 validation_loader=validation_loader,
@@ -364,14 +364,14 @@ class ReIDModel:
             )
         elif isinstance(train_loader.dataset, IdentityDataset):
             config["label_smoothing"] = label_smoothing
-            trainer = IdentityTrainer(
+            identity_trainer = IdentityTrainer(
                 model=self.backbone_model,
                 optimizer=self.optimizer,
                 train_transforms=self.train_transforms,
                 device=self.device,
                 label_smoothing=label_smoothing,
             )
-            trainer.train(
+            identity_trainer.train(
                 train_loader=train_loader,
                 epochs=epochs,
                 validation_loader=validation_loader,

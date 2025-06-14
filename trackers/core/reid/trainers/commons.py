@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any
+from typing import Any, Optional
 
 import torch.nn as nn
 from safetensors.torch import save_file
@@ -10,11 +10,11 @@ from trackers.core.reid.trainers.callbacks import BaseCallback
 
 def save_checkpoint(
     model: nn.Module,
-    checkpoint_interval: int,
     epoch: int,
-    log_dir: str,
-    config: dict[str, Any],
-    callbacks: list[BaseCallback],
+    checkpoint_interval: Optional[int] = None,
+    log_dir: str = "logs",
+    config: dict[str, Any] = {},
+    callbacks: list[BaseCallback] = [],
 ):
     if checkpoint_interval is not None and (epoch + 1) % checkpoint_interval == 0:
         state_dict = model.state_dict()

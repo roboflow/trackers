@@ -46,10 +46,10 @@ class IdentityTrainer:
         train_loader: DataLoader,
         epochs: int,
         validation_loader: Optional[DataLoader] = None,
-        callbacks: Optional[list[BaseCallback]] = None,
+        callbacks: list[BaseCallback] = [],
         checkpoint_interval: Optional[int] = None,
         log_dir: str = "logs",
-        config: Optional[dict[str, Any]] = None,
+        config: dict[str, Any] = {},
     ):
         for epoch in tqdm(range(epochs), desc="Training"):
             accumulated_train_logs: dict[str, Union[float, int]] = {}
@@ -95,5 +95,10 @@ class IdentityTrainer:
                     callback.on_train_epoch_end(accumulated_train_logs, epoch)
 
             save_checkpoint(
-                self.model, checkpoint_interval, epoch, log_dir, config, callbacks
+                model=self.model,
+                epoch=epoch,
+                checkpoint_interval=checkpoint_interval,
+                log_dir=log_dir,
+                config=config,
+                callbacks=callbacks,
             )
