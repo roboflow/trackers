@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 from typing import Any, Callable, Optional, Union
 
@@ -11,18 +10,18 @@ import timm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from safetensors.torch import save_file
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToPILImage
-from tqdm.auto import tqdm
 
 from trackers.core.reid.callbacks import BaseCallback
+from trackers.core.reid.dataset.base import TripletsDataset
 from trackers.core.reid.metrics import (
     TripletAccuracyMetric,
     TripletMetric,
 )
+from trackers.core.reid.trainers.triplets_trainer import TripletsTrainer
 from trackers.log import get_logger
 from trackers.utils.torch_utils import load_safetensors_checkpoint, parse_device_spec
 
@@ -213,90 +212,6 @@ class ReIDModel:
             )
             self.backbone_model.to(self.device)
 
-    def _train_step(
-        self,
-        anchor_image: torch.Tensor,
-        positive_image: torch.Tensor,
-        negative_image: torch.Tensor,
-        metrics_list: list[TripletMetric],
-    ) -> dict[str, float]:
-        """
-        Perform a single training step.
-
-        Args:
-            anchor_image (torch.Tensor): The anchor image.
-            positive_image (torch.Tensor): The positive image.
-            negative_image (torch.Tensor): The negative image.
-            metrics_list (list[Metric]): The list of metrics to update.
-        """
-        self.optimizer.zero_grad()
-        anchor_image_features = self.backbone_model(anchor_image)
-        positive_image_features = self.backbone_model(positive_image)
-        negative_image_features = self.backbone_model(negative_image)
-
-        loss = self.criterion(
-            anchor_image_features,
-            positive_image_features,
-            negative_image_features,
-        )
-        loss.backward()
-        self.optimizer.step()
-
-        # Update metrics
-        for metric in metrics_list:
-            metric.update(
-                anchor_image_features.detach(),
-                positive_image_features.detach(),
-                negative_image_features.detach(),
-            )
-
-        train_logs = {"train/loss": loss.item()}
-        for metric in metrics_list:
-            train_logs[f"train/{metric!s}"] = metric.compute()
-
-        return train_logs
-
-    def _validation_step(
-        self,
-        anchor_image: torch.Tensor,
-        positive_image: torch.Tensor,
-        negative_image: torch.Tensor,
-        metrics_list: list[TripletMetric],
-    ) -> dict[str, float]:
-        """
-        Perform a single validation step.
-
-        Args:
-            anchor_image (torch.Tensor): The anchor image.
-            positive_image (torch.Tensor): The positive image.
-            negative_image (torch.Tensor): The negative image.
-            metrics_list (list[Metric]): The list of metrics to update.
-        """
-        with torch.inference_mode():
-            anchor_image_features = self.backbone_model(anchor_image)
-            positive_image_features = self.backbone_model(positive_image)
-            negative_image_features = self.backbone_model(negative_image)
-
-            loss = self.criterion(
-                anchor_image_features,
-                positive_image_features,
-                negative_image_features,
-            )
-
-            # Update metrics
-            for metric in metrics_list:
-                metric.update(
-                    anchor_image_features.detach(),
-                    positive_image_features.detach(),
-                    negative_image_features.detach(),
-                )
-
-        validation_logs = {"validation/loss": loss.item()}
-        for metric in metrics_list:
-            validation_logs[f"validation/{metric!s}"] = metric.compute()
-
-        return validation_logs
-
     def train(
         self,
         train_loader: DataLoader,
@@ -327,6 +242,7 @@ class ReIDModel:
             learning_rate (float): The learning rate to use for the optimizer.
             weight_decay (float): The weight decay to use for the optimizer.
             triplet_margin (float): The margin to use for the triplet loss.
+                This is only used if the dataset is a `TripletsDataset`.
             random_state (Optional[Union[int, float, str, bytes, bytearray]]): The
                 random state to use for the training.
             checkpoint_interval (Optional[int]): The interval to save checkpoints.
@@ -354,7 +270,6 @@ class ReIDModel:
             lr=learning_rate,
             weight_decay=weight_decay,
         )
-        self.criterion = nn.TripletMarginLoss(margin=triplet_margin)
         metrics_list: list[TripletMetric] = [TripletAccuracyMetric()]
 
         config = {
@@ -409,140 +324,24 @@ class ReIDModel:
                 )
                 raise e
 
-        # Training loop over epochs
-        for epoch in tqdm(range(epochs), desc="Training"):
-            # Reset metrics at the start of each epoch
-            for metric in metrics_list:
-                metric.reset()
-
-            # Training loop over batches
-            accumulated_train_logs: dict[str, Union[float, int]] = {}
-            for idx, data in tqdm(
-                enumerate(train_loader),
-                total=len(train_loader),
-                desc=f"Training Epoch {epoch + 1}/{epochs}",
-                leave=False,
-            ):
-                anchor_image, positive_image, negative_image = data
-                if self.train_transforms is not None:
-                    anchor_image = self.train_transforms(anchor_image)
-                    positive_image = self.train_transforms(positive_image)
-                    negative_image = self.train_transforms(negative_image)
-
-                anchor_image = anchor_image.to(self.device)
-                positive_image = positive_image.to(self.device)
-                negative_image = negative_image.to(self.device)
-
-                if callbacks:
-                    for callback in callbacks:
-                        callback.on_train_batch_start(
-                            {}, epoch * len(train_loader) + idx
-                        )
-
-                train_logs = self._train_step(
-                    anchor_image, positive_image, negative_image, metrics_list
-                )
-
-                for key, value in train_logs.items():
-                    accumulated_train_logs[key] = (
-                        accumulated_train_logs.get(key, 0) + value
-                    )
-
-                if callbacks:
-                    for callback in callbacks:
-                        for key, value in train_logs.items():
-                            callback.on_train_batch_end(
-                                {f"batch/{key}": value}, epoch * len(train_loader) + idx
-                            )
-
-            for key, value in accumulated_train_logs.items():
-                accumulated_train_logs[key] = value / len(train_loader)
-
-            # Compute and add training metrics to logs
-            for metric in metrics_list:
-                accumulated_train_logs[f"train/{metric!s}"] = metric.compute()
-            # Metrics are reset at the start of the next epoch or before validation
-
-            if callbacks:
-                for callback in callbacks:
-                    callback.on_train_epoch_end(accumulated_train_logs, epoch)
-
-            # Validation loop over batches
-            accumulated_validation_logs: dict[str, Union[float, int]] = {}
-            if validation_loader is not None:
-                # Reset metrics for validation
-                for metric in metrics_list:
-                    metric.reset()
-                for idx, data in tqdm(
-                    enumerate(validation_loader),
-                    total=len(validation_loader),
-                    desc=f"Validation Epoch {epoch + 1}/{epochs}",
-                    leave=False,
-                ):
-                    if callbacks:
-                        for callback in callbacks:
-                            callback.on_validation_batch_start(
-                                {}, epoch * len(train_loader) + idx
-                            )
-
-                    anchor_image, positive_image, negative_image = data
-                    if self.train_transforms is not None:
-                        anchor_image = self.train_transforms(anchor_image)
-                        positive_image = self.train_transforms(positive_image)
-                        negative_image = self.train_transforms(negative_image)
-
-                    anchor_image = anchor_image.to(self.device)
-                    positive_image = positive_image.to(self.device)
-                    negative_image = negative_image.to(self.device)
-
-                    validation_logs = self._validation_step(
-                        anchor_image, positive_image, negative_image, metrics_list
-                    )
-
-                    for key, value in validation_logs.items():
-                        accumulated_validation_logs[key] = (
-                            accumulated_validation_logs.get(key, 0) + value
-                        )
-
-                    if callbacks:
-                        for callback in callbacks:
-                            for key, value in validation_logs.items():
-                                callback.on_validation_batch_end(
-                                    {f"batch/{key}": value},
-                                    epoch * len(train_loader) + idx,
-                                )
-
-                for key, value in accumulated_validation_logs.items():
-                    accumulated_validation_logs[key] = value / len(validation_loader)
-
-                # Compute and add validation metrics to logs
-                for metric in metrics_list:
-                    accumulated_validation_logs[f"validation/{metric!s}"] = (
-                        metric.compute()
-                    )
-                # Metrics will be reset at the start of the next training epoch loop
-
-            if callbacks:
-                for callback in callbacks:
-                    callback.on_validation_epoch_end(accumulated_validation_logs, epoch)
-
-            # Save checkpoint
-            if (
-                checkpoint_interval is not None
-                and (epoch + 1) % checkpoint_interval == 0
-            ):
-                state_dict = self.backbone_model.state_dict()
-                checkpoint_path = os.path.join(
-                    log_dir, "checkpoints", f"reid_model_{epoch + 1}.safetensors"
-                )
-                save_file(
-                    state_dict,
-                    checkpoint_path,
-                    metadata={"config": json.dumps(config), "format": "pt"},
-                )
-                if callbacks:
-                    for callback in callbacks:
-                        callback.on_checkpoint_save(checkpoint_path, epoch + 1)
+        if isinstance(train_loader.dataset, TripletsDataset):
+            trainer = TripletsTrainer(
+                model=self.backbone_model,
+                optimizer=self.optimizer,
+                criterion=nn.TripletMarginLoss(margin=triplet_margin),
+                train_transforms=self.train_transforms,
+                device=self.device,
+            )
+            trainer.train(
+                train_loader=train_loader,
+                epochs=epochs,
+                validation_loader=validation_loader,
+                metrics_list=metrics_list,
+                callbacks=callbacks,
+                checkpoint_interval=checkpoint_interval,
+                log_dir=log_dir,
+                config=config,
+            )
 
         if callbacks:
             for callback in callbacks:
