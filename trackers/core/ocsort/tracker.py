@@ -6,10 +6,18 @@ from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import supervision as sv
+from filterpy.kalman import KalmanFilter
 
 from trackers.core.base import BaseTrackerWithFeatures
-from trackers.core.ocsort.association import *
-from trackers.core.ocsort.kalman_filter import KalmanFilterNew as KalmanFilter
+from trackers.core.ocsort.association import (
+    associate,
+    ciou_batch,
+    ct_dist,
+    diou_batch,
+    giou_batch,
+    iou_batch,
+    linear_assignment,
+)
 
 
 def k_previous_obs(observations: np.ndarray, cur_age: int, k: int) -> np.ndarray:
@@ -67,7 +75,8 @@ def convert_x_to_bbox(
     x: Union[List[int], np.ndarray], score: Optional[float] = None
 ) -> np.ndarray:
     """
-    Converts a bounding box from center format [x, y, s, r] to corner format [x1, y1, x2, y2].
+    Converts a bounding box from center format [x, y, s, r]
+    to corner format [x1, y1, x2, y2].
 
     The input format:
         - x, y: Center coordinates of the bounding box.
@@ -89,7 +98,7 @@ def convert_x_to_bbox(
 
     w = np.sqrt(x[2] * x[3])
     h = x[2] / w
-    if score == None:
+    if score is None:
         return np.array(
             [x[0] - w / 2.0, x[1] - h / 2.0, x[0] + w / 2.0, x[1] + h / 2.0]
         ).reshape((1, 4))
@@ -125,7 +134,8 @@ def speed_direction(
 
 class KalmanBoxTracker(object):
     """
-    This class represents the internal state of individual tracked objects observed as bbox.
+    This class represents the internal state of individual tracked objects
+    observed as bbox.
     """
 
     count = 0
@@ -158,9 +168,9 @@ class KalmanBoxTracker(object):
         )
 
         self.kf.R[2:, 2:] *= 10.0
-        self.kf.P[4:, 4:] *= (
-            1000.0  # give high uncertainty to the unobservable initial velocities
-        )
+        self.kf.P[
+            4:, 4:
+        ] *= 1000.0  # give high uncertainty to the unobservable initial velocities
         self.kf.P *= 10.0
         self.kf.Q[-1, -1] *= 0.01
         self.kf.Q[4:, 4:] *= 0.01
@@ -174,11 +184,6 @@ class KalmanBoxTracker(object):
         self.hit_streak = 0
         self.age = 0
         position = None
-        """
-        NOTE: [-1,-1,-1,-1,-1] is a compromising placeholder for non-observation status, the same for the return of
-        function k_previous_obs. It is ugly and I do not like it. But to support generate observation array in a
-        fast and unified way, which you would see below k_observations = np.array([k_previous_obs(...]]), let's bear it for now.
-        """
         self.last_observation = np.array([-1, -1, -1, -1, -1])  # placeholder
         self.observations = dict()
         self.history_observations = []
@@ -199,15 +204,7 @@ class KalmanBoxTracker(object):
                         break
                 if previous_box is None:
                     previous_box = self.last_observation
-                r"""
-                  Estimate the track speed direction with observations \Delta t steps away
-                """
                 self.velocity = speed_direction(previous_box, bbox)
-
-            """
-              Insert new observations. This is a ugly way to maintain both self.observations
-              and self.history_observations. Bear it for the moment.
-            """
             self.last_observation = bbox
             self.observations[self.age] = bbox
             self.history_observations.append(bbox)
@@ -335,7 +332,7 @@ class OCSORTTracker(BaseTrackerWithFeatures):
         return trks, velocities, last_boxes, k_observations
 
     def _byte_association(
-        self, trks: np.ndarray, dets_second: np.ndarray
+        self, trks: np.ndarray, dets_second: np.ndarray, unmatched_trks : np.ndarray
     ) -> np.ndarray:
         """
         Performs BYTE-level association as a secondary matching step.
@@ -345,7 +342,7 @@ class OCSORTTracker(BaseTrackerWithFeatures):
         association strategy like confidence-guided IOU.
 
         Args:
-            trks (np.ndarray): Array of unmatched track predictions in the format [[x1, y1, x2, y2, conf], [x1, y1, x2, y2, conf],...].
+            trks (np.ndarray): Array of unmatched track predictions
             dets_second (np.ndarray): Array of unmatched detections in the same format.
 
         Returns:
@@ -381,8 +378,7 @@ class OCSORTTracker(BaseTrackerWithFeatures):
         Filters all detection attributes to keep only entries with a valid tracker ID.
 
         This method removes all elements across the detection object's attributes
-        (`xyxy`, `mask`, `confidence`, `class_id`, `tracker_id`) where the `tracker_id` is -1.
-        It ensures consistency across all arrays by applying the same mask to each.
+        (`xyxy`, `confidence`, `class_id`, `tracker_id`) where the `tracker_id` is -1.
 
         If `tracker_id` is `None`, the method does nothing.
 
@@ -417,10 +413,6 @@ class OCSORTTracker(BaseTrackerWithFeatures):
             if trk.last_observation.sum() < 0:
                 d = trk.get_state()[0]
             else:
-                """
-                this is optional to use the recent observation or the kalman filter prediction,
-                we didn't notice significant difference here
-                """
                 d = trk.last_observation[:4]
             if (trk.time_since_update < 1) and (
                 trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits
@@ -477,10 +469,13 @@ class OCSORTTracker(BaseTrackerWithFeatures):
     def update(self, detections: sv.Detections) -> np.ndarray:
         """
         Params:
-          dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
-        Requires: this method must be called once for each frame even with empty detections (use np.empty((0, 5)) for frames without detections).
-        Returns the a similar array, where the last column is the object ID.
-        NOTE: The number of objects returned may differ from the number of detections provided.
+          dets - sv.Detections
+        Requires: this method must be called once for each frame
+                even with empty detections for frames without detections)
+        Returns:
+            sv.Detections
+        NOTE: The number of objects returned may differ from the number of
+            detections provided.
         """
 
         if len(detections) == 0:
@@ -527,7 +522,7 @@ class OCSORTTracker(BaseTrackerWithFeatures):
 
         # Second round of associaton by OCR
         if self.use_byte and len(dets_second) > 0 and unmatched_trks.shape[0] > 0:
-            unmatched_trks = self._byte_association(trks, dets_second)
+            unmatched_trks = self._byte_association(trks, dets_second, unmatched_trks)
 
         # Associate detections to trackers based on Association Function
         if unmatched_dets.shape[0] > 0 and unmatched_trks.shape[0] > 0:

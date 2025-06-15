@@ -43,15 +43,17 @@ def iou_batch(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
 
 def giou_batch(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
     """
-    Computes the Generalized Intersection over Union (GIoU) between two batches of bounding boxes.
+    Computes the Generalized Intersection over Union (GIoU)
+    between two batches of bounding boxes.
 
     GIoU extends the traditional IoU metric by accounting for non-overlapping areas,
     improving gradient behavior when boxes do not intersect.
 
     Args:
-        bboxes1 (np.ndarray): Predicted bounding boxes of shape (N, 4), where each box is in
-                              [x1, y1, x2, y2] format.
-        bboxes2 (np.ndarray): Ground truth bounding boxes of shape (N, 4), same format as `bboxes1`.
+        bboxes1 (np.ndarray): Predicted bounding boxes of shape (N, 4),
+                            where each box is in [x1, y1, x2, y2] format.
+        bboxes2 (np.ndarray): Ground truth bounding boxes of shape (N, 4),
+                            same format as `bboxes1`.
 
     Returns:
         np.ndarray: A 1D array of shape (N,) where each element is the GIoU between
@@ -217,8 +219,9 @@ def ct_dist(bboxes1: np.ndarray, bboxes2: np.ndarray) -> np.ndarray:
     between two sets of bounding boxes.
 
     This function calculates the Euclidean distance between the centers of each
-    bounding box in `bboxes1` and `bboxes2`, then linearly rescales the values to [0, 1],
-    where 1 represents the closest match (smallest distance) and 0 the farthest.
+    bounding box in `bboxes1` and `bboxes2`, then linearly rescales the values
+    to [0, 1], where 1 represents the closest match (smallest distance)
+    and 0 the farthest.
 
     Note:
         This is a coarse metric and may be unstable as a standalone association
@@ -259,8 +262,8 @@ def speed_direction_batch(
     Computes normalized direction vectors (dy, dx) from tracks to detections.
 
     For each pair of detection and track, this function computes the direction vector
-    from the center of the track bounding box to the center of the detection bounding box,
-    and normalizes it to unit length.
+    from the center of the track bounding box to the center of the detection bounding
+    box, and normalizes it to unit length.
 
     Args:
         dets (np.ndarray): Array of detection bounding boxes with shape (N, 4),
@@ -290,15 +293,16 @@ def linear_assignment(cost_matrix: np.ndarray) -> np.ndarray:
     to find the optimal one-to-one assignment with minimum total cost.
 
     This function attempts to use the `lap` library (LAPJV algorithm) for efficient
-    computation. If unavailable, it falls back to `scipy.optimize.linear_sum_assignment`.
+    computation. (Not included yet)
+    If unavailable, it falls back to `scipy.optimize.linear_sum_assignment`
 
     Args:
         cost_matrix (np.ndarray): A 2D array of shape (N, M) representing the cost
                                   of assigning each row to each column.
 
     Returns:
-        np.ndarray: An array of shape (K, 2), where each row is a pair [row_index, col_index]
-                    indicating an optimal assignment. K ≤ min(N, M).
+        np.ndarray: An array of shape (K, 2), where each row is a pair
+                    [row_index, col_index] indicating an optimal assignment.
     """
     try:
         import lap
@@ -324,18 +328,22 @@ def associate_detections_to_trackers(
     considered invalid and treated as unmatched.
 
     Args:
-        detections (np.ndarray): Array of shape (N, 4), representing N detected bounding boxes
-                                 in [x1, y1, x2, y2] format.
-        trackers (np.ndarray): Array of shape (M, 4), representing M tracker bounding boxes
-                               in [x1, y1, x2, y2] format.
-        iou_threshold (float, optional): Minimum IoU required to consider a detection-tracker
-                                         pair as a valid match. Defaults to 0.3.
+        detections (np.ndarray): Array of shape (N, 4), representing N detected
+                                bounding boxes in [x1, y1, x2, y2] format.
+        trackers (np.ndarray): Array of shape (M, 4), representing M tracker
+                                bounding boxes in [x1, y1, x2, y2] format.
+        iou_threshold (float, optional): Minimum IoU required to consider a
+                                        detection-tracker pair as a valid match.
+                                        Defaults to 0.3.
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]:
-            - matches: Array of shape (K, 2), each row is a pair [detection_idx, tracker_idx].
-            - unmatched_detections: Array of detection indices that did not match any tracker.
-            - unmatched_trackers: Array of tracker indices that did not match any detection.
+        - matches: Array of shape (K, 2), where each row is a
+                   pair of [detection_idx, tracker_idx]
+        - unmatched_detections: Array of detection indices that did not
+                                match any tracker
+        - unmatched_trackers: Array of tracker indices that did not match
+                                any detection
     """
 
     if len(trackers) == 0:
@@ -405,7 +413,6 @@ def associate(
 
     iou_matrix = iou_batch(detections, trackers)
     scores = np.repeat(detections[:, -1][:, np.newaxis], trackers.shape[0], axis=1)
-    # iou_matrix = iou_matrix * scores # a trick sometiems works, we don't encourage this
     valid_mask = np.repeat(valid_mask[:, np.newaxis], X.shape[1], axis=1)
 
     angle_diff_cost = (valid_mask * diff_angle) * vdc_weight
