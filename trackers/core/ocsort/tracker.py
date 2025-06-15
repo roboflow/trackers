@@ -168,9 +168,9 @@ class KalmanBoxTracker(object):
         )
 
         self.kf.R[2:, 2:] *= 10.0
-        self.kf.P[
-            4:, 4:
-        ] *= 1000.0  # give high uncertainty to the unobservable initial velocities
+        self.kf.P[4:, 4:] *= (
+            1000.0  # give high uncertainty to the unobservable initial velocities
+        )
         self.kf.P *= 10.0
         self.kf.Q[-1, -1] *= 0.01
         self.kf.Q[4:, 4:] *= 0.01
@@ -332,7 +332,7 @@ class OCSORTTracker(BaseTrackerWithFeatures):
         return trks, velocities, last_boxes, k_observations
 
     def _byte_association(
-        self, trks: np.ndarray, dets_second: np.ndarray, unmatched_trks : np.ndarray
+        self, trks: np.ndarray, dets_second: np.ndarray, unmatched_trks: np.ndarray
     ) -> np.ndarray:
         """
         Performs BYTE-level association as a secondary matching step.
