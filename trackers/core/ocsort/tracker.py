@@ -366,6 +366,7 @@ class OCSORTTracker(BaseTrackerWithFeatures):
                 if iou_left[m[0], m[1]] < self.iou_threshold:
                     continue
                 self.trackers[trk_ind].update(dets_second[det_ind, :])
+                self.trackers[m[1]].position = m[0]
                 to_remove_trk_indices.append(trk_ind)
             unmatched_trks = np.setdiff1d(
                 unmatched_trks, np.array(to_remove_trk_indices)
