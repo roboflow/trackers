@@ -37,13 +37,12 @@ class KSPTracker(BaseTracker):
 
     def _can_connect_nodes(self, node1: TrackNode, node2: TrackNode) -> bool:
         iou = self._calc_iou(node1.bbox, node2.bbox)
-        eps = (1 - self.max_distance)
 
-        return iou / eps
+        return iou >= (1 - self.max_distance)
 
     def _calc_iou(self, bbox1: np.ndarray, bbox2: np.ndarray):
-        x1, y1 = max(bbox1[0], bbox2[0]), max(bbox1[1], bbox2[1])
-        x2, y2 = min(bbox1[2], bbox2[2]), min(bbox1[3], bbox2[3])
+        x1, y1 = max(bbox1[0], bbox2[0]), min(bbox1[1], bbox2[1])
+        x2, y2 = max(bbox1[2], bbox2[2]), min(bbox1[3], bbox2[3])
         eps = 1e-5 # To not allow division by 0
 
         x_inter, y_inter = max(0, x2 - x1) , min(0, y2 - y1)
@@ -112,23 +111,18 @@ class KSPTracker(BaseTracker):
         return paths
     
     def _update_detections_with_tracks(self, assignments: dict) -> sv.Detections:
-        all_detections = []
-        all_tracker_ids = []
+        output = []
 
         for frame_idx, detections in enumerate(self.detection_buffer):
-            all_tracker_ids = [-1] * len(detections)
-
+            tracker_ids = []
             for det_idx in range(len(detections)):
-                if (frame_idx, det_idx) in assignments:
-                    all_tracker_ids[det_idx] = assignments[(all_tracker_ids, det_idx)]
+                tracker_ids.append(assignments.get((frame_idx, det_idx), -1))
 
-            all_detections.append(detections)
-            all_detections.extend(all_tracker_ids)
+            new_dets = detections.with_tracker_ids(np.array(tracker_ids))
+            output.append(new_dets)
 
-        final_detections = sv.Detections.merge(all_detections)
-        final_detections.tracker_id = np.array(all_tracker_ids)
+        return sv.Detections.merge(output)
 
-        return final_detections 
 
 
     def process_tracks(self) -> sv.Detections:
