@@ -28,6 +28,13 @@ class KSPTracker(BaseTracker):
         self.max_distance = max_distance
         self.reset()
 
+    def update(self, detections: sv.Detections) -> sv.Detections:
+        """
+        Run KSP algorithm on all detections (offline).
+        """
+        self.detection_buffer.append(detections)
+        return detections
+
     def _can_connect_nodes(self, node1: TrackNode, node2: TrackNode) -> bool:
         iou = self._calc_iou(node1.bbox, node2.bbox)
         eps = (1 - self.max_distance)
@@ -94,21 +101,49 @@ class KSPTracker(BaseTracker):
                             diGraph.add_edge(node, future_node, weight=weight)
         return diGraph                
 
-    def ksp(self, diGraph: nx.DiGraph):
+    def ksp(self, diGraph: nx.DiGraph) -> List[List[TrackNode]]:
         paths = []
         for path in nx.shortest_simple_paths(diGraph, "source", "sink", weight="weight"):
             if len(paths) > self.max_paths:
                 break
-            
+
             # Add path to paths but remove the source and sink nodes
             paths.append(path[1 : -1])
+        return paths
+    
+    def _update_detections_with_tracks(self, assignments: dict) -> sv.Detections:
+        all_detections = []
+        all_tracker_ids = []
 
-    def update(self, detections: sv.Detections) -> sv.Detections:
-        """
-        Run KSP algorithm on all detections (offline).
-        """
-        self.detection_buffer.append(detections)
-        return detections
+        for frame_idx, detections in enumerate(self.detection_buffer):
+            all_tracker_ids = [-1] * len(detections)
+
+            for det_idx in range(len(detections)):
+                if (frame_idx, det_idx) in assignments:
+                    all_tracker_ids[det_idx] = assignments[(all_tracker_ids, det_idx)]
+
+            all_detections.append(detections)
+            all_detections.extend(all_tracker_ids)
+
+        final_detections = sv.Detections.merge(all_detections)
+        final_detections.tracker_id = np.array(all_tracker_ids)
+
+        return final_detections 
+
+
+    def process_tracks(self) -> sv.Detections:
+        diGraph = self._build_graph(self.detection_buffer)
+        
+        paths = self.ksp(diGraph=diGraph)
+
+        track_id = 0
+        assignments = {}
+        for path in paths:
+            track_id += 1
+            for node in path:
+                assignments[(node.frame_id, node.detection_id)] = track_id
+
+        return self._update_detections_with_tracks(assignments)
 
     def reset(self) -> None:
         pass
