@@ -146,4 +146,4 @@ class KSPTracker(BaseTracker):
         return self._update_detections_with_tracks(assignments)
 
     def reset(self) -> None:
-        pass
+        self.detection_buffer = []
