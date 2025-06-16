@@ -94,6 +94,14 @@ class KSPTracker(BaseTracker):
                             diGraph.add_edge(node, future_node, weight=weight)
         return diGraph                
 
+    def ksp(self, diGraph: nx.DiGraph):
+        paths = []
+        for path in nx.shortest_simple_paths(diGraph, "source", "sink", weight="weight"):
+            if len(paths) > self.max_paths:
+                break
+            
+            # Add path to paths but remove the source and sink nodes
+            paths.append(path[1 : -1])
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """
