@@ -1,9 +1,12 @@
+from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple, Union
+
+import networkx as nx
 import numpy as np
 import supervision as sv
-import networkx as nx
-from dataclasses import dataclass
-from typing import List, Dict, Tuple, Union, Any
+
 from trackers.core.base import BaseTracker
+
 
 @dataclass(frozen=True)
 class TrackNode:
@@ -16,6 +19,7 @@ class TrackNode:
         bbox (tuple): Bounding box coordinates (x1, y1, x2, y2)
         confidence (float): Detection confidence score
     """
+
     frame_id: int
     detection_id: int
     bbox: tuple
@@ -27,8 +31,11 @@ class TrackNode:
 
     def __eq__(self, other: Any) -> bool:
         """Compares equality based on frame_id and detection_id."""
-        return isinstance(other, TrackNode) and \
-               (self.frame_id, self.detection_id) == (other.frame_id, other.detection_id)
+        return isinstance(other, TrackNode) and (self.frame_id, self.detection_id) == (
+            other.frame_id,
+            other.detection_id,
+        )
+
 
 class KSPTracker(BaseTracker):
     """
@@ -40,12 +47,14 @@ class KSPTracker(BaseTracker):
         max_paths (int): Maximum number of paths to find in KSP algorithm
         max_distance (float): Maximum allowed dissimilarity (1 - IoU) for edge connections
     """
-    
-    def __init__(self,
-                 max_gap: int = 30,
-                 min_confidence: float = 0.3,
-                 max_paths: int = 1000,
-                 max_distance: float = 0.3) -> None:
+
+    def __init__(
+        self,
+        max_gap: int = 30,
+        min_confidence: float = 0.3,
+        max_paths: int = 1000,
+        max_distance: float = 0.3,
+    ) -> None:
         """
         Initializes KSP tracker with configuration parameters.
 
@@ -78,7 +87,9 @@ class KSPTracker(BaseTracker):
         self.detection_buffer.append(detections)
         return detections
 
-    def _calc_iou(self, bbox1: Union[np.ndarray, tuple], bbox2: Union[np.ndarray, tuple]) -> float:
+    def _calc_iou(
+        self, bbox1: Union[np.ndarray, tuple], bbox2: Union[np.ndarray, tuple]
+    ) -> float:
         """
         Calculates Intersection over Union (IoU) between two bounding boxes.
 
@@ -154,7 +165,7 @@ class KSPTracker(BaseTracker):
                     frame_id=frame_idx,
                     detection_id=det_idx,
                     bbox=tuple(detections.xyxy[det_idx]),
-                    confidence=detections.confidence[det_idx]
+                    confidence=detections.confidence[det_idx],
                 )
                 diGraph.add_node(node)
 
@@ -167,17 +178,23 @@ class KSPTracker(BaseTracker):
                     diGraph.add_edge(node, "sink", weight=0)
 
                 # Create edges to future frames
-                for next_frame in range(frame_idx + 1, min(frame_idx + self.max_gap, len(all_detections))):
+                for next_frame in range(
+                    frame_idx + 1, min(frame_idx + self.max_gap, len(all_detections))
+                ):
                     for next_idx in range(len(all_detections[next_frame])):
                         future_node = TrackNode(
                             frame_id=next_frame,
                             detection_id=next_idx,
                             bbox=tuple(all_detections[next_frame].xyxy[next_idx]),
-                            confidence=all_detections[next_frame].confidence[next_idx]
+                            confidence=all_detections[next_frame].confidence[next_idx],
                         )
 
                         if self._can_connect_nodes(node, future_node):
-                            diGraph.add_edge(node, future_node, weight=self._edge_cost(node, future_node))
+                            diGraph.add_edge(
+                                node,
+                                future_node,
+                                weight=self._edge_cost(node, future_node),
+                            )
 
         return diGraph
 
@@ -193,7 +210,9 @@ class KSPTracker(BaseTracker):
         """
         paths: List[List[TrackNode]] = []
         try:
-            gen_paths = nx.shortest_simple_paths(diGraph, "source", "sink", weight="weight")
+            gen_paths = nx.shortest_simple_paths(
+                diGraph, "source", "sink", weight="weight"
+            )
             for i, path in enumerate(gen_paths):
                 if i >= self.max_paths:
                     break
@@ -213,11 +232,13 @@ class KSPTracker(BaseTracker):
             detections (sv.Detections): Detections with tracker_id attribute populated
         """
         output: List[sv.Detections] = []
-        
+
         for frame_idx, detections in enumerate(self.detection_buffer):
             tracker_ids: List[int] = []
             for det_idx in range(len(detections)):
-                tracker_ids.append(assignments.get((frame_idx, det_idx), -1))  # -1 for unassigned
+                tracker_ids.append(
+                    assignments.get((frame_idx, det_idx), -1)
+                )  # -1 for unassigned
 
             # Attach tracker IDs to current frame detections
             detections.tracker_id = np.array(tracker_ids)
