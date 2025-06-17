@@ -29,7 +29,7 @@ theme:
   custom_dir: docs/overrides/
   icon:
     edit: material/pencil
-  logo: assets/logo-trackers-white.svg
+  logo: assets/logo-trackers-violet.svg
   favicon: assets/logo-trackers-black.svg
   features:
     - content.code.annotate
@@ -39,27 +39,29 @@ theme:
     - content.tooltips
     - navigation.tracking
     - navigation.expand
+    - navigation.tabs
 
-  palette:
+  # palette:
     # Palette toggle for light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: deep purple
-      accent: deep purple
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
+    # - media: "(prefers-color-scheme: light)"
+    #   scheme: default
+    #   primary: deep purple
+    #   accent: deep purple
+    #   toggle:
+    #     icon: material/brightness-7
+    #     name: Switch to dark mode
     # Palette toggle for dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: deep purple
-      accent: deep purple
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+    # - media: "(prefers-color-scheme: dark)"
+    #   scheme: slate
+    #   primary: deep purple
+    #   accent: deep purple
+    #   toggle:
+    #     icon: material/brightness-4
+    #     name: Switch to light mode
 
 extra_css:
   - stylesheets/style.css
+  - stylesheets/rf.css
 
 markdown_extensions:
   # Code syntax highlighting with line numbers and anchors
@@ -86,6 +88,7 @@ markdown_extensions:
       alternate_style: true
 
 plugins:
+  - search
   - mkdocstrings:
       handlers:
         python:
