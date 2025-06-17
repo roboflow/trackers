@@ -251,7 +251,7 @@ class KSPTracker(BaseTracker):
         Returns:
             List[List[TrackNode]]: List of paths, each path is list of TrackNodes
         """
-        paths = []
+        paths: List[List[TrackNode]] = []
         for path in nx.shortest_simple_paths(graph, "source", "sink", weight="weight"):
             if len(paths) >= self.max_paths:
                 break
