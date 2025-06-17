@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Union
 
 import networkx as nx
 import numpy as np
@@ -98,9 +98,7 @@ class KSPTracker(BaseTracker):
         return detections
 
     def _calc_iou(
-        self,
-        bbox1: Union[np.ndarray, tuple],
-        bbox2: Union[np.ndarray, tuple]
+        self, bbox1: Union[np.ndarray, tuple], bbox2: Union[np.ndarray, tuple]
     ) -> float:
         """Calculate Intersection over Union (IoU) between two bounding boxes.
 
@@ -180,7 +178,7 @@ class KSPTracker(BaseTracker):
                     frame_id=frame_idx,
                     detection_id=det_idx,
                     bbox=tuple(dets.xyxy[det_idx]),
-                    confidence=dets.confidence[det_idx]
+                    confidence=dets.confidence[det_idx],
                 )
                 G.add_node(node)
 
@@ -195,7 +193,7 @@ class KSPTracker(BaseTracker):
                 # Connect to future frames within max_gap
                 future_range = range(
                     frame_idx + 1,
-                    min(frame_idx + self.max_gap + 1, len(all_detections))
+                    min(frame_idx + self.max_gap + 1, len(all_detections)),
                 )
                 for future_idx in future_range:
                     future_dets = all_detections[future_idx]
@@ -207,7 +205,7 @@ class KSPTracker(BaseTracker):
                             frame_id=future_idx,
                             detection_id=future_det_idx,
                             bbox=tuple(future_dets.xyxy[future_det_idx]),
-                            confidence=future_dets.confidence[future_det_idx]
+                            confidence=future_dets.confidence[future_det_idx],
                         )
 
                         if self._can_connect_nodes(node, future_node):
@@ -216,10 +214,7 @@ class KSPTracker(BaseTracker):
 
         return G
 
-    def _update_detections_with_tracks(
-        self,
-        assignments: Dict
-    ) -> sv.Detections:
+    def _update_detections_with_tracks(self, assignments: Dict) -> sv.Detections:
         """Update detections with track IDs based on assignments.
 
         Args:
@@ -257,12 +252,7 @@ class KSPTracker(BaseTracker):
             List[List[TrackNode]]: List of paths, each path is list of TrackNodes
         """
         paths = []
-        for path in nx.shortest_simple_paths(
-            graph,
-            "source",
-            "sink",
-            weight="weight"
-        ):
+        for path in nx.shortest_simple_paths(graph, "source", "sink", weight="weight"):
             if len(paths) >= self.max_paths:
                 break
             # Remove source and sink nodes from path
