@@ -2,7 +2,7 @@ import numpy as np
 import supervision as sv
 import networkx as nx
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Union, Optional, Any
+from typing import List, Dict, Tuple, Union, Any
 from trackers.core.base import BaseTracker
 
 @dataclass(frozen=True)
