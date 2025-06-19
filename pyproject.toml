@@ -87,6 +87,9 @@ metrics = [
     "tensorboard>=2.19.0",
     "wandb>=0.19.11",
 ]
+ksptracker = [
+    "networkx>=3.2.1",
+]
 
 [dependency-groups]
 dev = [
