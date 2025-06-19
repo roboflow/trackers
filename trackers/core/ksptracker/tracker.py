@@ -177,9 +177,7 @@ class KSPTracker(BaseTracker):
 
         return G
 
-    def _update_detections_with_tracks(
-        self, assignments: List[List[TrackNode]]
-    ) -> sv.Detections:
+    def _update_detections_with_tracks(self, assignments: List[List[TrackNode]]) -> List[sv.Detections]:
         """
         Assign track IDs to detections.
 
@@ -187,10 +185,9 @@ class KSPTracker(BaseTracker):
             assignments (Dict): Paths from KSP with track IDs
 
         Returns:
-            sv.Detections: Merged detections with tracker IDs
+            List[sv.Detections]: Merged detections with tracker IDs
         """
         all_detections = []
-        all_tracker_ids = []
 
         assigned = set()
         assignment_map = {}
@@ -208,12 +205,10 @@ class KSPTracker(BaseTracker):
                 if key in assignment_map:
                     frame_tracker_ids[det_idx] = assignment_map[key]
 
+            dets.tracker_id = np.array(frame_tracker_ids)
             all_detections.append(dets)
-            all_tracker_ids.extend(frame_tracker_ids)
 
-        final_detections = sv.Detections.merge(all_detections)
-        final_detections.tracker_id = np.array(all_tracker_ids)
-        return final_detections
+        return all_detections
 
     def ksp(self, graph: nx.DiGraph) -> List[List[TrackNode]]:
         """
@@ -243,12 +238,12 @@ class KSPTracker(BaseTracker):
 
         return paths
 
-    def process_tracks(self) -> sv.Detections:
+    def process_tracks(self) -> List[sv.Detections]:
         """
         Run tracker and assign detections to tracks.
 
         Returns:
-            sv.Detections: Final detections with track IDs
+            List[sv.Detections]: Final detections with track IDs
         """
         graph = self._build_graph(self.detection_buffer)
         disjoint_paths = self.ksp(graph)
