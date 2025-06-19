@@ -96,34 +96,7 @@ class KSPTracker(BaseTracker):
         """
         self.detection_buffer.append(detections)
         return detections
-
-    def _calc_iou(
-        self, bbox1: Union[np.ndarray, tuple], bbox2: Union[np.ndarray, tuple]
-    ) -> float:
-        """Calculate Intersection over Union (IoU) between two bounding boxes.
-
-        Args:
-            bbox1 (Union[np.ndarray, tuple]): First bounding box (x1, y1, x2, y2)
-            bbox2 (Union[np.ndarray, tuple]): Second bounding box (x1, y1, x2, y2)
-
-        Returns:
-            float: IoU value between 0.0 and 1.0
-        """
-        bbox1 = np.array(bbox1)
-        bbox2 = np.array(bbox2)
-
-        x1 = max(bbox1[0], bbox2[0])
-        y1 = max(bbox1[1], bbox2[1])
-        x2 = min(bbox1[2], bbox2[2])
-        y2 = min(bbox1[3], bbox2[3])
-
-        inter_area = max(0, x2 - x1) * max(0, y2 - y1)
-        area1 = (bbox1[2] - bbox1[0]) * (bbox1[3] - bbox1[1])
-        area2 = (bbox2[2] - bbox2[0]) * (bbox2[3] - bbox2[1])
-        union = area1 + area2 - inter_area + 1e-5  # epsilon to avoid div by 0
-
-        return inter_area / union
-
+    
     def _can_connect_nodes(self, node1: TrackNode, node2: TrackNode) -> bool:
         """Determine if two nodes can be connected based on IoU threshold.
 
@@ -138,7 +111,7 @@ class KSPTracker(BaseTracker):
             return False
         if node2.frame_id - node1.frame_id > self.max_gap:
             return False
-        iou = self._calc_iou(node1.bbox, node2.bbox)
+        iou = sv.box_iou_batch(node1.bbox, node2.bbox)
         return iou >= (1 - self.max_distance)
 
     def _edge_cost(self, node1: TrackNode, node2: TrackNode) -> float:
@@ -151,7 +124,7 @@ class KSPTracker(BaseTracker):
         Returns:
             float: Edge cost based on IoU and frame gap
         """
-        iou = self._calc_iou(node1.bbox, node2.bbox)
+        iou = sv.box_iou_batch(node1.bbox, node2.bbox)
         frame_gap = node2.frame_id - node1.frame_id
         return -iou * (1.0 / frame_gap)
 
