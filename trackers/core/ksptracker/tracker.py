@@ -247,4 +247,4 @@ class KSPTracker(BaseTracker):
             for node in path:
                 assignments[(node.frame_id, node.detection_id)] = track_id
 
-        return
+        return self._update_detections_with_tracks(assignments=assignments)
