@@ -10,36 +10,38 @@ from trackers.core.base import BaseTracker
 
 @dataclass(frozen=True)
 class TrackNode:
-    """Represents a detection node in the tracking graph.
+    """
+    Represents a detection node in the tracking graph.
 
     Attributes:
         frame_id (int): Frame index where detection occurred
-        grid_cell_id (int): Discretized grid cell id where the detection center
-        position (tuple): Grid coordinates of the detection center (x_center, y_center)
+        grid_cell_id (int): Discretized grid cell ID of detection center
+        position (tuple): Grid coordinates (x_bin, y_bin)
         confidence (float): Detection confidence score
     """
-
     frame_id: int
     grid_cell_id: int
     position: tuple
     confidence: float
 
     def __hash__(self) -> int:
-        """Generates hash based on frame_id and detection_id.
+        """
+        Generate hash using frame and grid cell.
 
         Returns:
-            int: Hash value of the node
+            int: Hash value for node
         """
         return hash((self.frame_id, self.grid_cell_id))
 
     def __eq__(self, other: Any) -> bool:
-        """Compares equality based on frame_id and detection_id.
+        """
+        Compare nodes by frame and grid cell ID.
 
         Args:
-            other (Any): Object to compare with
+            other (Any): Object to compare
 
         Returns:
-            bool: True if nodes are equal, False otherwise
+            bool: True if same node, False otherwise
         """
         if not isinstance(other, TrackNode):
             return False
@@ -50,13 +52,14 @@ class TrackNode:
 
 
 class KSPTracker(BaseTracker):
-    """Offline tracker using K-Shortest Paths (KSP) algorithm.
+    """
+    Offline tracker using K-Shortest Paths (KSP).
 
     Attributes:
-        max_gap (int): Maximum allowed frame gap between detections in a track
-        min_confidence (float): Minimum confidence threshold for detections
-        max_distance (float): Maximum allowed dissimilarity (1 - IoU) for edges
-        detection_buffer (List[sv.Detections]): Buffer storing all frame detections
+        grid_size (int): Size of each grid cell (in pixels)
+        max_gap (int): Max frame gap between connections
+        min_confidence (float): Minimum detection confidence
+        max_distance (float): Max dissimilarity (1 - IoU) allowed
     """
 
     def __init__(
@@ -66,13 +69,14 @@ class KSPTracker(BaseTracker):
         min_confidence: float = 0.3,
         max_distance: float = 0.3,
     ) -> None:
-        """Initialize KSP tracker with configuration parameters.
+        """
+        Initialize KSP tracker with config parameters.
 
         Args:
-            grid_size (int): Size (in pixels) of each square cell in the spatial grid
-            max_gap (int): Max frame gap between connected detections
-            min_confidence (float): Minimum detection confidence
-            max_distance (float): Max dissimilarity (1-IoU) for connections
+            grid_size (int): Pixel size of each grid cell
+            max_gap (int): Max frames between connected detections
+            min_confidence (float): Min detection confidence
+            max_distance (float): Max allowed dissimilarity
         """
         self.grid_size = grid_size
         self.max_gap = max_gap
@@ -81,37 +85,49 @@ class KSPTracker(BaseTracker):
         self.reset()
 
     def reset(self) -> None:
-        """Reset the tracker's internal state."""
+        """
+        Reset the internal detection buffer.
+        """
         self.detection_buffer: List[sv.Detections] = []
 
     def update(self, detections: sv.Detections) -> sv.Detections:
-        """Update tracker with new detections (stores without processing).
+        """
+        Append new detections to the buffer.
 
         Args:
-            detections (sv.Detections): New detections for current frame
+            detections (sv.Detections): Frame detections
 
         Returns:
-            sv.Detections: Input detections (unmodified)
+            sv.Detections: Same as input
         """
         self.detection_buffer.append(detections)
         return detections
-    
+
     def _discretized_grid_cell_id(self, bbox: np.ndarray) -> tuple:
+        """
+        Get grid cell ID from bbox center.
+
+        Args:
+            bbox (np.ndarray): Bounding box coordinates
+
+        Returns:
+            tuple: Grid (x_bin, y_bin)
+        """
         x_center = (bbox[2] - bbox[0]) / 2
         y_center = (bbox[3] - bbox[1]) / 2
         grid_x_center = int(x_center // self.grid_size)
         grid_y_center = int(y_center // self.grid_size)
-        
         return (grid_x_center, grid_y_center)
 
     def _build_graph(self, all_detections: List[sv.Detections]) -> nx.DiGraph:
-        """Build directed graph from all detections.
+        """
+        Build graph from all buffered detections.
 
         Args:
-            all_detections (List[sv.Detections]): List of detections from frames
+            all_detections (List[sv.Detections]): All video detections
 
         Returns:
-            nx.DiGraph: Directed graph with detection nodes and edges
+            nx.DiGraph: Directed graph with detection nodes
         """
         G = nx.DiGraph()
         G.add_node("source")
@@ -142,27 +158,35 @@ class KSPTracker(BaseTracker):
 
                 if frame_idx == 0:
                     G.add_edge("source", node, weight=max(-node.confidence, 0.001))
-                
                 if frame_idx == len(all_detections) - 1:
                     G.add_edge(node, "sink", weight=0)
 
         for i in range(len(all_detections) - 1):
             for node in node_dict[i]:
                 for node_next in node_dict[i + 1]:
-                    dist = np.linalg.norm(np.array(node.position) - np.array(node_next.position))
+                    dist = np.linalg.norm(
+                        np.array(node.position) - np.array(node_next.position)
+                    )
                     if dist <= 2:
-                        G.add_edge(node, node_next, weight=max(dist - node_next.confidence, 0.001))
+                        G.add_edge(
+                            node_next,
+                            node,
+                            weight=max(dist - node_next.confidence, 0.001),
+                        )
 
         return G
 
-    def _update_detections_with_tracks(self, assignments: Dict) -> sv.Detections:
-        """Update detections with track IDs based on assignments.
+    def _update_detections_with_tracks(
+        self, assignments: Dict
+    ) -> sv.Detections:
+        """
+        Assign track IDs to detections.
 
         Args:
-            assignments (Dict): Maps (frame_id, det_id) to track_id
+            assignments (Dict): Paths from KSP with track IDs
 
         Returns:
-            sv.Detections: Updated detections with tracker_ids assigned
+            sv.Detections: Merged detections with tracker IDs
         """
         all_detections = []
         all_tracker_ids = []
@@ -178,35 +202,36 @@ class KSPTracker(BaseTracker):
 
         for frame_idx, dets in enumerate(self.detection_buffer):
             frame_tracker_ids = [-1] * len(dets)
-
             for det_idx in range(len(dets)):
                 key = (frame_idx, det_idx)
-                if key in assignments:
-                    frame_tracker_ids[det_idx] = assignments[key]
+                if key in assignment_map:
+                    frame_tracker_ids[det_idx] = assignment_map[key]
 
             all_detections.append(dets)
             all_tracker_ids.extend(frame_tracker_ids)
 
         final_detections = sv.Detections.merge(all_detections)
         final_detections.tracker_id = np.array(all_tracker_ids)
-
         return final_detections
 
     def ksp(self, graph: nx.DiGraph) -> List[List[TrackNode]]:
-        """Find K-shortest paths in the graph.
+        """
+        Find multiple disjoint shortest paths.
 
         Args:
-            graph (nx.DiGraph): Directed graph of detection nodes
+            graph (nx.DiGraph): Detection graph
 
         Returns:
-            List[List[TrackNode]]: List of paths, each path is list of TrackNodes
+            List[List[TrackNode]]: Disjoint detection paths
         """
         paths: List[List[TrackNode]] = []
         G_copy = graph.copy()
 
         while True:
             try:
-                path = nx.shortest_path(G_copy, source="source", target="sink", weight="weight")
+                path = nx.shortest_path(
+                    G_copy, source="source", target="sink", weight="weight"
+                )
                 if len(path) < 2:
                     break
                 paths.append(path[1:-1])
@@ -214,13 +239,15 @@ class KSPTracker(BaseTracker):
                     G_copy.remove_node(node)
             except nx.NetworkXNoPath:
                 break
+
         return paths
 
     def process_tracks(self) -> sv.Detections:
-        """Process all buffered detections to create final tracks.
+        """
+        Run tracker and assign detections to tracks.
 
         Returns:
-            sv.Detections: Detections with assigned track IDs
+            sv.Detections: Final detections with track IDs
         """
         graph = self._build_graph(self.detection_buffer)
         disjoint_paths = self.ksp(graph)
