@@ -1,14 +1,28 @@
 import glob
 import os
+import re
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from torchvision.transforms import Compose
 
-from trackers.core.reid.dataset.base import TripletsDataset
+from trackers.core.reid.dataset.base import IdentityDataset, TripletsDataset
+
+DATASET_TYPE_HINT = Union[
+    TripletsDataset,
+    IdentityDataset,
+    Tuple[TripletsDataset, TripletsDataset],
+    Tuple[IdentityDataset, IdentityDataset],
+]
 
 
-def parse_market1501_dataset(data_dir: str) -> Dict[str, List[str]]:
+class DatasetType(str, Enum):
+    TRIPLET = "triplet"
+    IDENTITY = "identity"
+
+
+def parse_market1501_triplet_mapping(data_dir: str) -> Dict[str, List[str]]:
     """Parse the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501)
     to create a dictionary mapping tracker IDs to lists of image paths.
 
@@ -26,18 +40,67 @@ def parse_market1501_dataset(data_dir: str) -> Dict[str, List[str]]:
     return dict(tracker_id_to_images)
 
 
-def get_market1501_dataset(
+def parse_market1501_identity_mapping(
+    data_dir: str, relabel: bool = True
+) -> List[Dict[str, Any]]:
+    """Parse the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501)
+    to create a list of dictionaries mapping image paths to entity IDs and camera IDs.
+
+    Args:
+        data_dir (str): The path to the Market1501 dataset.
+        relabel (bool): Whether to relabel the entity IDs.
+
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries mapping image paths to
+            entity IDs and camera IDs.
+    """
+    image_paths = glob.glob(os.path.join(data_dir, "*.jpg"))
+    pattern = re.compile(r"([-\d]+)_c(\d)")
+    entity_ids = set()
+    for image_path in image_paths:
+        match = pattern.search(image_path)
+        if match is None:
+            continue
+        entity_id, _ = map(int, match.groups())
+        if entity_id != -1:
+            entity_ids.add(entity_id)
+    entity_id_to_label = {
+        entity_id: label for label, entity_id in enumerate(entity_ids)
+    }
+    identity_mappings = []
+    for image_path in image_paths:
+        match = pattern.search(image_path)
+        if match is None:
+            continue
+        entity_id, camera_id = map(int, match.groups())
+        if entity_id != -1:
+            camera_id -= 1
+            if relabel:
+                entity_id = entity_id_to_label[entity_id]
+            identity_mappings.append(
+                {
+                    "image_path": image_path,
+                    "entity_id": entity_id,
+                    "camera_id": camera_id,
+                }
+            )
+    return identity_mappings
+
+
+def get_market1501_triplets_dataset(
     data_dir: str,
+    dataset_type: DatasetType = DatasetType.TRIPLET,
     split_ratio: Optional[float] = None,
     random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
     shuffle: bool = True,
     transforms: Optional[Compose] = None,
-) -> Union[TripletsDataset, Tuple[TripletsDataset, TripletsDataset]]:
+) -> DATASET_TYPE_HINT:
     """Get the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
 
     Args:
         data_dir (str): The path to the bounding box train/test directory of the
             [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
+        dataset_type (DatasetType): The type of the dataset to return.
         split_ratio (Optional[float]): The ratio of the dataset to split into training
             and validation sets. If `None`, the dataset is returned as a single
             `TripletsDataset` object, otherwise the dataset is split into a tuple of
@@ -48,14 +111,25 @@ def get_market1501_dataset(
         transforms (Optional[Compose]): The transforms to apply to the dataset.
 
     Returns:
-        Tuple[TripletsDataset, TripletsDataset]: A tuple of training and validation
-            `TripletsDataset` objects.
+        DATASET_TYPE_HINT: A single `TripletsDataset` or `IdentityDataset` object or a
+            tuple of training and validation `TripletsDataset` or `IdentityDataset`
+            objects.
     """
-    tracker_id_to_images = parse_market1501_dataset(data_dir)
-    dataset = TripletsDataset(tracker_id_to_images, transforms)
-    if split_ratio is not None:
-        train_dataset, validation_dataset = dataset.split(
-            split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
-        )
-        return train_dataset, validation_dataset
-    return dataset
+    if dataset_type == DatasetType.TRIPLET:
+        tracker_id_to_images = parse_market1501_triplet_mapping(data_dir)
+        dataset = TripletsDataset(tracker_id_to_images, transforms)
+        if split_ratio is not None:
+            train_dataset, validation_dataset = dataset.split(
+                split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
+            )
+            return train_dataset, validation_dataset
+        return dataset
+    elif dataset_type == DatasetType.IDENTITY:
+        identity_mappings = parse_market1501_identity_mapping(data_dir)
+        dataset = IdentityDataset(identity_mappings, transforms)
+        if split_ratio is not None:
+            train_dataset, validation_dataset = dataset.split(
+                split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
+            )
+            return train_dataset, validation_dataset
+        return dataset
