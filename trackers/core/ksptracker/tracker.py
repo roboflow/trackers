@@ -19,6 +19,7 @@ class TrackNode:
         position (tuple): Grid coordinates (x_bin, y_bin)
         confidence (float): Detection confidence score
     """
+
     frame_id: int
     grid_cell_id: int
     position: tuple
@@ -176,9 +177,7 @@ class KSPTracker(BaseTracker):
 
         return G
 
-    def _update_detections_with_tracks(
-        self, assignments: Dict
-    ) -> sv.Detections:
+    def _update_detections_with_tracks(self, assignments: Dict) -> sv.Detections:
         """
         Assign track IDs to detections.
 
