@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 import networkx as nx
 import numpy as np
@@ -96,7 +96,7 @@ class KSPTracker(BaseTracker):
         """
         self.detection_buffer.append(detections)
         return detections
-    
+
     def _can_connect_nodes(self, node1: TrackNode, node2: TrackNode) -> bool:
         """Determine if two nodes can be connected based on IoU threshold.
 
