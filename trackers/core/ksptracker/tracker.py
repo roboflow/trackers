@@ -129,7 +129,7 @@ class KSPTracker(BaseTracker):
                 if dets.confidence[det_idx] < self.min_confidence:
                     continue
 
-                pos = self._discretized_grid_cell_id(dets.xyxy[det_idx])
+                pos = self._discretized_grid_cell_id(np.array(dets.xyxy[det_idx]))
                 cell_id = hash(pos)
 
                 node = TrackNode(
@@ -216,7 +216,7 @@ class KSPTracker(BaseTracker):
         for track_id, path in enumerate(paths, start=1):
             for node in path:
                 for det_idx, det in enumerate(self.detection_buffer[node.frame_id]):
-                    pos = self._discretized_grid_cell_idation(det.xyxy[det_idx])
+                    pos = self._discretized_grid_cell_idation(np.array(det.xyxy[det_idx]))
                     if pos == node.position:
                         assignments[(node.frame_id, node.detection_id)] = track_id
 
