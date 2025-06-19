@@ -58,7 +58,6 @@ class KSPTracker(BaseTracker):
 
     Attributes:
         grid_size (int): Size of each grid cell (in pixels)
-        max_gap (int): Max frame gap between connections
         min_confidence (float): Minimum detection confidence
         max_distance (float): Max dissimilarity (1 - IoU) allowed
     """
@@ -66,7 +65,6 @@ class KSPTracker(BaseTracker):
     def __init__(
         self,
         grid_size: int = 20,
-        max_gap: int = 30,
         min_confidence: float = 0.3,
         max_distance: float = 0.3,
     ) -> None:
@@ -75,12 +73,10 @@ class KSPTracker(BaseTracker):
 
         Args:
             grid_size (int): Pixel size of each grid cell
-            max_gap (int): Max frames between connected detections
             min_confidence (float): Min detection confidence
             max_distance (float): Max allowed dissimilarity
         """
         self.grid_size = grid_size
-        self.max_gap = max_gap
         self.min_confidence = min_confidence
         self.max_distance = max_distance
         self.reset()
