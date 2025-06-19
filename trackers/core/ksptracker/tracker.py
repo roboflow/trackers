@@ -30,7 +30,7 @@ class TrackNode:
         Returns:
             int: Hash value of the node
         """
-        return hash((self.frame_id, self.detection_id))
+        return hash((self.frame_id, self.grid_cell_id))
 
     def __eq__(self, other: Any) -> bool:
         """Compares equality based on frame_id and detection_id.
@@ -43,9 +43,9 @@ class TrackNode:
         """
         if not isinstance(other, TrackNode):
             return False
-        return (self.frame_id, self.detection_id) == (
+        return (self.frame_id, self.grid_cell_id) == (
             other.frame_id,
-            other.detection_id,
+            other.grid_cell_id,
         )
 
 
@@ -216,8 +216,9 @@ class KSPTracker(BaseTracker):
         for track_id, path in enumerate(paths, start=1):
             for node in path:
                 for det_idx, det in enumerate(self.detection_buffer[node.frame_id]):
-                    pos = self._discretized_grid_cell_idation(np.array(det.xyxy[det_idx]))
+                   #  print(det)
+                    pos = self._discretized_grid_cell_id(np.array(det[0]))
                     if pos == node.position:
-                        assignments[(node.frame_id, node.detection_id)] = track_id
+                        assignments[(node.frame_id, node.grid_cell_id)] = track_id
 
         return self._update_detections_with_tracks(assignments=assignments)
