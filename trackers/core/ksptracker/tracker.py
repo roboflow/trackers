@@ -154,7 +154,7 @@ class KSPTracker(BaseTracker):
                     dist = np.linalg.norm(np.array(node.position) - np.array(node_next.position))
                     if dist <= 2:
                         G.add_edge(node, node_next, weight=dist - node_next.confidence)
-                        
+
         return G
 
     def _update_detections_with_tracks(self, assignments: Dict) -> sv.Detections:
@@ -215,6 +215,9 @@ class KSPTracker(BaseTracker):
         assignments = {}
         for track_id, path in enumerate(paths, start=1):
             for node in path:
-                assignments[(node.frame_id, node.detection_id)] = track_id
+                for det_idx, det in enumerate(self.detection_buffer[node.frame_id]):
+                    pos = self._discretized_grid_cell_idation(det.xyxy[det_idx], 1, 1)
+                    if pos == node.position:
+                        assignments[(node.frame_id, node.detection_id)] = track_id
 
         return self._update_detections_with_tracks(assignments=assignments)
