@@ -14,14 +14,14 @@ class TrackNode:
 
     Attributes:
         frame_id (int): Frame index where detection occurred
-        detection_id (int): Detection index within the frame
-        bbox (tuple): Bounding box coordinates (x1, y1, x2, y2)
+        grid_cell_id (int): Discretized grid cell id where the detection center
+        position (tuple): Grid coordinates of the detection center (x_center, y_center)
         confidence (float): Detection confidence score
     """
 
     frame_id: int
-    detection_id: int
-    bbox: tuple
+    grid_cell_id: int
+    position: tuple
     confidence: float
 
     def __hash__(self) -> int:
@@ -62,6 +62,7 @@ class KSPTracker(BaseTracker):
 
     def __init__(
         self,
+        grid_size: int = 20,
         max_gap: int = 30,
         min_confidence: float = 0.3,
         max_paths: int = 1000,
@@ -70,11 +71,13 @@ class KSPTracker(BaseTracker):
         """Initialize KSP tracker with configuration parameters.
 
         Args:
+            grid_size (int): Size (in pixels) of each square cell in the spatial grid
             max_gap (int): Max frame gap between connected detections
             min_confidence (float): Minimum detection confidence
             max_paths (int): Maximum number of paths to find
             max_distance (float): Max dissimilarity (1-IoU) for connections
         """
+        self.grid_size = grid_size
         self.max_gap = max_gap
         self.min_confidence = min_confidence
         self.max_paths = max_paths
@@ -97,36 +100,13 @@ class KSPTracker(BaseTracker):
         self.detection_buffer.append(detections)
         return detections
     
-    def _can_connect_nodes(self, node1: TrackNode, node2: TrackNode) -> bool:
-        """Determine if two nodes can be connected based on IoU threshold.
-
-        Args:
-            node1 (TrackNode): First track node
-            node2 (TrackNode): Second track node
-
-        Returns:
-            bool: True if nodes can be connected, False otherwise
-        """
-        if node2.frame_id <= node1.frame_id:
-            return False
-        if node2.frame_id - node1.frame_id > self.max_gap:
-            return False
-        iou = sv.box_iou_batch(node1.bbox, node2.bbox)
-        return iou >= (1 - self.max_distance)
-
-    def _edge_cost(self, node1: TrackNode, node2: TrackNode) -> float:
-        """Calculate edge cost between two nodes.
-
-        Args:
-            node1 (TrackNode): First track node
-            node2 (TrackNode): Second track node
-
-        Returns:
-            float: Edge cost based on IoU and frame gap
-        """
-        iou = sv.box_iou_batch(node1.bbox, node2.bbox)
-        frame_gap = node2.frame_id - node1.frame_id
-        return -iou * (1.0 / frame_gap)
+    def _discretized_grid_cell_idation(self, bbox: np.ndarray) -> tuple:
+        x_center = (bbox[2] - bbox[0]) / 2
+        y_center = (bbox[3] - bbox[1]) / 2
+        grid_x_center = int(x_center // self.grid_size)
+        grid_y_center = int(y_center // self.grid_size)
+        
+        return (grid_x_center, grid_y_center)
 
     def _build_graph(self, all_detections: List[sv.Detections]) -> nx.DiGraph:
         """Build directed graph from all detections.
@@ -141,50 +121,40 @@ class KSPTracker(BaseTracker):
         G.add_node("source")
         G.add_node("sink")
 
-        # Add detection nodes and edges
+        node_dict: Dict[int, List[TrackNode]] = {}
+
         for frame_idx, dets in enumerate(all_detections):
+            node_dict[frame_idx] = []
             for det_idx in range(len(dets)):
                 if dets.confidence[det_idx] < self.min_confidence:
                     continue
 
+                pos = self._discretized_grid_cell_idation(dets.xyxy[det_idx], 1, 1)
+                cell_id = hash(pos)
+
                 node = TrackNode(
                     frame_id=frame_idx,
-                    detection_id=det_idx,
-                    bbox=tuple(dets.xyxy[det_idx]),
+                    grid_cell_id=cell_id,
+                    position=pos,
                     confidence=dets.confidence[det_idx],
                 )
-                G.add_node(node)
 
-                # Connect to source if first frame
+                G.add_node(node)
+                node_dict[frame_idx].append(node)
+
                 if frame_idx == 0:
                     G.add_edge("source", node, weight=-node.confidence)
-
-                # Connect to sink if last frame
+                
                 if frame_idx == len(all_detections) - 1:
                     G.add_edge(node, "sink", weight=0)
 
-                # Connect to future frames within max_gap
-                future_range = range(
-                    frame_idx + 1,
-                    min(frame_idx + self.max_gap + 1, len(all_detections)),
-                )
-                for future_idx in future_range:
-                    future_dets = all_detections[future_idx]
-                    for future_det_idx in range(len(future_dets)):
-                        if future_dets.confidence[future_det_idx] < self.min_confidence:
-                            continue
-
-                        future_node = TrackNode(
-                            frame_id=future_idx,
-                            detection_id=future_det_idx,
-                            bbox=tuple(future_dets.xyxy[future_det_idx]),
-                            confidence=future_dets.confidence[future_det_idx],
-                        )
-
-                        if self._can_connect_nodes(node, future_node):
-                            weight = self._edge_cost(node, future_node)
-                            G.add_edge(node, future_node, weight=weight)
-
+        for i in range(len(all_detections) - 1):
+            for node in node_dict[i]:
+                for node_next in node_dict[i + 1]:
+                    dist = np.linalg.norm(np.array(node.position) - np.array(node_next.position))
+                    if dist <= 2:
+                        G.add_edge(node, node_next, weight=dist - node_next.confidence)
+                        
         return G
 
     def _update_detections_with_tracks(self, assignments: Dict) -> sv.Detections:
