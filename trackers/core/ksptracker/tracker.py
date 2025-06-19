@@ -177,7 +177,9 @@ class KSPTracker(BaseTracker):
 
         return G
 
-    def _update_detections_with_tracks(self, assignments: List[List[TrackNode]]) -> sv.Detections:
+    def _update_detections_with_tracks(
+        self, assignments: List[List[TrackNode]]
+    ) -> sv.Detections:
         """
         Assign track IDs to detections.
 
