@@ -67,6 +67,7 @@ class KSPTracker(BaseTracker):
         self.min_confidence = min_confidence
         self.max_distance = max_distance
         self.max_paths = max_paths
+        self.G = nx.DiGraph()
         self.reset()
 
     def reset(self) -> None:
@@ -125,9 +126,9 @@ class KSPTracker(BaseTracker):
         Returns:
             nx.DiGraph: Directed graph representing detections and edges.
         """
-        G = nx.DiGraph()
-        G.add_node("source")
-        G.add_node("sink")
+        self.G = nx.DiGraph()
+        self.G.add_node("source")
+        self.G.add_node("sink")
 
         self.node_to_detection: Dict[TrackNode, tuple] = {}
         node_dict: Dict[int, List[TrackNode]] = {}
@@ -148,14 +149,14 @@ class KSPTracker(BaseTracker):
                     confidence=dets.confidence[det_idx],
                 )
 
-                G.add_node(node)
+                self.G.add_node(node)
                 node_dict[frame_idx].append(node)
                 self.node_to_detection[node] = (frame_idx, det_idx)
 
                 if frame_idx == 0:
-                    G.add_edge("source", node, weight=0)
+                    self.G.add_edge("source", node, weight=0)
                 if frame_idx == len(all_detections) - 1:
-                    G.add_edge(node, "sink", weight=0)
+                    self.G.add_edge(node, "sink", weight=0)
 
         for i in range(len(all_detections) - 1):
             for node in node_dict[i]:
@@ -164,13 +165,12 @@ class KSPTracker(BaseTracker):
                         np.array(node.position) - np.array(node_next.position)
                     )
                     if dist <= 2:
-                        G.add_edge(
+                        self.G.add_edge(
                             node,
                             node_next,
                             weight=self._edge_cost(confidence=node.confidence),
                         )
 
-        return G
 
     def _update_detections_with_tracks(
         self, assignments: List[List[TrackNode]]
@@ -207,12 +207,12 @@ class KSPTracker(BaseTracker):
 
         return all_detections
 
-    def _shortest_path(self, G: nx.DiGraph) -> tuple:
+    def _shortest_path(self) -> tuple:
         """
         Compute shortest path from 'source' to 'sink' using Bellman-Ford.
 
         Args:
-            G (nx.DiGraph): Graph with possible negative edges.
+            self.G (nx.DiGraph): Graph with possible negative edges.
 
         Returns:
             tuple: (path, total_cost, lengths) where path is list of nodes,
@@ -224,25 +224,25 @@ class KSPTracker(BaseTracker):
             KeyError: If sink unreachable.
         """
         try:
-            lengths, paths = nx.single_source_bellman_ford(G, "source", weight="weight")
+            lengths, paths = nx.single_source_bellman_ford(self.G, "source", weight="weight")
             if "sink" not in paths:
                 raise KeyError("No path found from source to sink.")
             return paths["sink"], lengths["sink"], lengths
         except nx.NetworkXUnbounded:
             raise RuntimeError("Graph contains a negative weight cycle.")
 
-    def _extend_graph(self, G: nx.DiGraph, paths: List[List[TrackNode]]) -> nx.DiGraph:
+    def _extend_graph(self, paths: List[List[TrackNode]]) -> nx.DiGraph:
         """
         Remove nodes used in previous paths to enforce disjointness.
 
         Args:
-            G (nx.DiGraph): Original graph.
+            self.G (nx.DiGraph): Original graph.
             paths (List[List[TrackNode]]): Previously found paths.
 
         Returns:
             nx.DiGraph: Extended graph with used nodes removed.
         """
-        G_extended = G.copy()
+        G_extended = self.G.copy()
         for path in paths:
             for node in path:
                 if node in G_extended and node not in {"source", "sink"}:
@@ -250,20 +250,20 @@ class KSPTracker(BaseTracker):
         return G_extended
 
     def _transform_edge_cost(
-        self, G: nx.DiGraph, shortest_costs: Dict[Any, float]
+        self, shortest_costs: Dict[Any, float]
     ) -> nx.DiGraph:
         """
         Apply cost transformation to ensure non-negative edge weights.
 
         Args:
-            G (nx.DiGraph): Graph with possibly negative weights.
+            self.G (nx.DiGraph): Graph with possibly negative weights.
             shortest_costs (dict): Shortest path distances from source.
 
         Returns:
             nx.DiGraph: Cost-transformed graph.
         """
         Gc = nx.DiGraph()
-        for u, v, data in G.edges(data=True):
+        for u, v, data in self.G.edges(data=True):
             if u not in shortest_costs or v not in shortest_costs:
                 continue
             original = data["weight"]
@@ -299,17 +299,17 @@ class KSPTracker(BaseTracker):
 
         return interlaced
 
-    def ksp(self, G: nx.DiGraph) -> List[List[TrackNode]]:
+    def ksp(self) -> List[List[TrackNode]]:
         """
         Compute k disjoint shortest paths using KSP algorithm.
 
         Args:
-            G (nx.DiGraph): Detection graph.
+            self.G (nx.DiGraph): Detection graph.
 
         Returns:
             List[List[TrackNode]]: List of disjoint detection paths.
         """
-        path, cost, lengths = self._shortest_path(G)
+        path, cost, lengths = self._shortest_path(self.G)
         P = [path]
         cost_P = [cost]
 
@@ -317,7 +317,7 @@ class KSPTracker(BaseTracker):
             if l != 1 and cost_P[-1] >= cost_P[-2]:
                 return P  # early termination
 
-            Gl = self._extend_graph(G, P)
+            Gl = self._extend_graph(self.G, P)
             Gc_l = self._transform_edge_cost(Gl, lengths)
 
             try:
@@ -344,6 +344,6 @@ class KSPTracker(BaseTracker):
         Returns:
             List[sv.Detections]: Detections updated with tracker IDs.
         """
-        graph = self._build_graph(self.detection_buffer)
-        disjoint_paths = self.ksp(graph)
+        self._build_graph(self.detection_buffer)
+        disjoint_paths = self.ksp()
         return self._update_detections_with_tracks(assignments=disjoint_paths)
