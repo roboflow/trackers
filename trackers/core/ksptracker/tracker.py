@@ -111,20 +111,21 @@ class KSPTracker(BaseTracker):
             confidence (float): Detection confidence score.
 
         Returns:
-            float: Edge cost for KSP (should be non-negative after transform).
+            float: Edge cost for KSP (non-negative after transform).
         """
         # Add small epsilon to denominator to avoid division by zero
         return -np.log(confidence / ((1 - confidence) + 1e-6))
 
-    def _build_graph(self, all_detections: List[sv.Detections]) -> nx.DiGraph:
+    def _build_graph(self, all_detections: List[sv.Detections]) -> None:
         """
         Build a directed graph from buffered detections.
 
         Args:
             all_detections (List[sv.Detections]): List of detections per frame.
 
-        Returns:
-            nx.DiGraph: Directed graph representing detections and edges.
+        Side Effects:
+            Sets self.G to the constructed graph.
+            Populates self.node_to_detection mapping.
         """
         self.G = nx.DiGraph()
         self.G.add_node("source")
@@ -171,7 +172,6 @@ class KSPTracker(BaseTracker):
                             weight=self._edge_cost(confidence=node.confidence),
                         )
 
-
     def _update_detections_with_tracks(
         self, assignments: List[List[TrackNode]]
     ) -> List[sv.Detections]:
@@ -211,9 +211,6 @@ class KSPTracker(BaseTracker):
         """
         Compute shortest path from 'source' to 'sink' using Bellman-Ford.
 
-        Args:
-            self.G (nx.DiGraph): Graph with possible negative edges.
-
         Returns:
             tuple: (path, total_cost, lengths) where path is list of nodes,
                 total_cost is the total weight of that path, and lengths is
@@ -236,7 +233,6 @@ class KSPTracker(BaseTracker):
         Remove nodes used in previous paths to enforce disjointness.
 
         Args:
-            self.G (nx.DiGraph): Original graph.
             paths (List[List[TrackNode]]): Previously found paths.
 
         Returns:
@@ -250,20 +246,20 @@ class KSPTracker(BaseTracker):
         return G_extended
 
     def _transform_edge_cost(
-        self, shortest_costs: Dict[Any, float]
+        self, G: nx.DiGraph, shortest_costs: Dict[Any, float]
     ) -> nx.DiGraph:
         """
         Apply cost transformation to ensure non-negative edge weights.
 
         Args:
-            self.G (nx.DiGraph): Graph with possibly negative weights.
+            G (nx.DiGraph): Graph with possibly negative weights.
             shortest_costs (dict): Shortest path distances from source.
 
         Returns:
             nx.DiGraph: Cost-transformed graph.
         """
         Gc = nx.DiGraph()
-        for u, v, data in self.G.edges(data=True):
+        for u, v, data in G.edges(data=True):
             if u not in shortest_costs or v not in shortest_costs:
                 continue
             original = data["weight"]
@@ -303,13 +299,10 @@ class KSPTracker(BaseTracker):
         """
         Compute k disjoint shortest paths using KSP algorithm.
 
-        Args:
-            self.G (nx.DiGraph): Detection graph.
-
         Returns:
             List[List[TrackNode]]: List of disjoint detection paths.
         """
-        path, cost, lengths = self._shortest_path(self.G)
+        path, cost, lengths = self._shortest_path()
         P = [path]
         cost_P = [cost]
 
@@ -317,7 +310,7 @@ class KSPTracker(BaseTracker):
             if l != 1 and cost_P[-1] >= cost_P[-2]:
                 return P  # early termination
 
-            Gl = self._extend_graph(self.G, P)
+            Gl = self._extend_graph(P)
             Gc_l = self._transform_edge_cost(Gl, lengths)
 
             try:
