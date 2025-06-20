@@ -14,10 +14,10 @@ class TrackNode:
     Represents a detection node in the tracking graph.
 
     Attributes:
-        frame_id (int): Frame index where detection occurred
-        grid_cell_id (int): Discretized grid cell ID of detection center
-        position (tuple): Grid coordinates (x_bin, y_bin)
-        confidence (float): Detection confidence score
+        frame_id (int): Frame index where detection occurred.
+        grid_cell_id (int): Discretized grid cell ID of detection center.
+        position (tuple): Grid coordinates (x_bin, y_bin).
+        confidence (float): Detection confidence score.
     """
 
     frame_id: int
@@ -26,40 +26,25 @@ class TrackNode:
     confidence: float
 
     def __hash__(self) -> int:
-        """
-        Generate hash using frame and grid cell.
-
-        Returns:
-            int: Hash value for node
-        """
+        """Generate hash using frame and grid cell."""
         return hash((self.frame_id, self.grid_cell_id))
 
     def __eq__(self, other: Any) -> bool:
-        """
-        Compare nodes by frame and grid cell ID.
-
-        Args:
-            other (Any): Object to compare
-
-        Returns:
-            bool: True if same node, False otherwise
-        """
+        """Compare nodes by frame and grid cell ID."""
         if not isinstance(other, TrackNode):
             return False
-        return (self.frame_id, self.grid_cell_id) == (
-            other.frame_id,
-            other.grid_cell_id,
-        )
+        return (self.frame_id, self.grid_cell_id) == (other.frame_id, other.grid_cell_id)
 
 
 class KSPTracker(BaseTracker):
     """
-    Offline tracker using K-Shortest Paths (KSP).
+    Offline tracker using K-Shortest Paths (KSP) algorithm.
 
     Attributes:
-        grid_size (int): Size of each grid cell (in pixels)
-        min_confidence (float): Minimum detection confidence
-        max_distance (float): Max dissimilarity (1 - IoU) allowed
+        grid_size (int): Size of each grid cell (pixels).
+        min_confidence (float): Minimum detection confidence to consider.
+        max_distance (float): Maximum spatial distance between nodes to connect.
+        max_paths (int): Maximum number of paths (tracks) to find.
     """
 
     def __init__(
@@ -70,12 +55,13 @@ class KSPTracker(BaseTracker):
         max_distance: float = 0.3,
     ) -> None:
         """
-        Initialize KSP tracker with config parameters.
+        Initialize the KSP tracker.
 
         Args:
-            grid_size (int): Pixel size of each grid cell
-            min_confidence (float): Min detection confidence
-            max_distance (float): Max allowed dissimilarity
+            grid_size (int): Pixel size of grid cells.
+            max_paths (int): Max number of paths to find.
+            min_confidence (float): Minimum confidence to keep detection.
+            max_distance (float): Max allowed spatial distance between nodes.
         """
         self.grid_size = grid_size
         self.min_confidence = min_confidence
@@ -84,9 +70,7 @@ class KSPTracker(BaseTracker):
         self.reset()
 
     def reset(self) -> None:
-        """
-        Reset the internal detection buffer.
-        """
+        """Reset the detection buffer."""
         self.detection_buffer: List[sv.Detections] = []
 
     def update(self, detections: sv.Detections) -> sv.Detections:
@@ -94,42 +78,52 @@ class KSPTracker(BaseTracker):
         Append new detections to the buffer.
 
         Args:
-            detections (sv.Detections): Frame detections
+            detections (sv.Detections): Detections for the current frame.
 
         Returns:
-            sv.Detections: Same as input
+            sv.Detections: The same detections passed in.
         """
         self.detection_buffer.append(detections)
         return detections
 
     def _discretized_grid_cell_id(self, bbox: np.ndarray) -> tuple:
         """
-        Get grid cell ID from bbox center.
+        Compute discretized grid cell coordinates from bbox center.
 
         Args:
-            bbox (np.ndarray): Bounding box coordinates
+            bbox (np.ndarray): Bounding box [x1, y1, x2, y2].
 
         Returns:
-            tuple: Grid (x_bin, y_bin)
+            tuple: (grid_x, grid_y) discretized coordinates.
         """
-        x_center = (bbox[2] - bbox[0]) / 2
-        y_center = (bbox[3] - bbox[1]) / 2
-        grid_x_center = int(x_center // self.grid_size)
-        grid_y_center = int(y_center // self.grid_size)
-        return (grid_x_center, grid_y_center)
-    
-    def _edge_cost(self, confidence: float):
-        return -np.log( confidence / ((1 - confidence) + 1e6))
+        x_center = (bbox[2] + bbox[0]) / 2
+        y_center = (bbox[3] + bbox[1]) / 2
+        grid_x = int(x_center // self.grid_size)
+        grid_y = int(y_center // self.grid_size)
+        return (grid_x, grid_y)
+
+    def _edge_cost(self, confidence: float) -> float:
+        """
+        Compute edge cost from detection confidence.
+
+        Args:
+            confidence (float): Detection confidence score.
+
+        Returns:
+            float: Edge cost for KSP (should be non-negative after transform).
+        """
+        # Add small epsilon to denominator to avoid division by zero
+        return -np.log(confidence / ((1 - confidence) + 1e-6))
 
     def _build_graph(self, all_detections: List[sv.Detections]) -> nx.DiGraph:
         """
-        Build graph from all buffered detections.
+        Build a directed graph from buffered detections.
 
         Args:
-            all_detections (List[sv.Detections]): All video detections
+            all_detections (List[sv.Detections]): List of detections per frame.
 
         Returns:
-            nx.DiGraph: Directed graph with detection nodes
+            nx.DiGraph: Directed graph representing detections and edges.
         """
         G = nx.DiGraph()
         G.add_node("source")
@@ -157,7 +151,7 @@ class KSPTracker(BaseTracker):
                 G.add_node(node)
                 node_dict[frame_idx].append(node)
                 self.node_to_detection[node] = (frame_idx, det_idx)
-            
+
                 if frame_idx == 0:
                     G.add_edge("source", node, weight=0)
                 if frame_idx == len(all_detections) - 1:
@@ -175,25 +169,6 @@ class KSPTracker(BaseTracker):
                             node_next,
                             weight=self._edge_cost(confidence=node.confidence),
                         )
-        print(f"Number of detections in frame 0: {len(node_dict.get(0, []))}")
-        print(f"Number of detections in last frame: {len(node_dict.get(len(all_detections) - 1, []))}")
-
-        print("Edges from source:")
-        for u, v in G.edges("source"):
-            print(f"source -> {v}")
-
-        print("Edges to sink:")
-        for u, v in G.in_edges("sink"):
-            print(f"{u} -> sink")
-
-        for i in range(len(all_detections) - 1):
-            edges_between = 0
-            for node in node_dict[i]:
-                for node_next in node_dict[i + 1]:
-                    if G.has_edge(node, node_next):
-                        edges_between += 1
-            print(f"Edges between frame {i} and {i+1}: {edges_between}")
-
 
         return G
 
@@ -201,13 +176,13 @@ class KSPTracker(BaseTracker):
         self, assignments: List[List[TrackNode]]
     ) -> List[sv.Detections]:
         """
-        Assign track IDs to detections.
+        Assign track IDs to detections based on paths.
 
         Args:
-            assignments (Dict): Paths from KSP with track IDs
+            assignments (List[List[TrackNode]]): List of detection paths.
 
         Returns:
-            List[sv.Detections]: Merged detections with tracker IDs
+            List[sv.Detections]: Detections with assigned tracker IDs.
         """
         all_detections = []
 
@@ -234,19 +209,19 @@ class KSPTracker(BaseTracker):
 
     def _shortest_path(self, G: nx.DiGraph) -> tuple:
         """
-        Compute the shortest path from 'source' to 'sink' using Bellman-Ford.
+        Compute shortest path from 'source' to 'sink' using Bellman-Ford.
 
         Args:
-            G (nx.DiGraph): Graph with possible negative edge weights.
+            G (nx.DiGraph): Graph with possible negative edges.
 
         Returns:
-            tuple: (path, total_cost, lengths) where path is a list of nodes, 
-                total_cost is the path weight, and lengths is a dict of all
-                shortest distances from source.
+            tuple: (path, total_cost, lengths) where path is list of nodes,
+                total_cost is the total weight of that path, and lengths is
+                dict of shortest distances from source.
 
         Raises:
-            RuntimeError: If a negative weight cycle is detected.
-            KeyError: If 'sink' is not reachable.
+            RuntimeError: If negative cycle detected.
+            KeyError: If sink unreachable.
         """
         try:
             lengths, paths = nx.single_source_bellman_ford(G, "source", weight="weight")
@@ -258,33 +233,34 @@ class KSPTracker(BaseTracker):
 
     def _extend_graph(self, G: nx.DiGraph, paths: List[List[TrackNode]]) -> nx.DiGraph:
         """
-        Extend the graph by removing previously used nodes.
+        Remove nodes used in previous paths to enforce disjointness.
 
         Args:
-            G (nx.DiGraph): Original detection graph.
-            paths (List[List[TrackNode]]): Found disjoint paths.
+            G (nx.DiGraph): Original graph.
+            paths (List[List[TrackNode]]): Previously found paths.
 
         Returns:
-            nx.DiGraph: Modified graph with used nodes removed.
+            nx.DiGraph: Extended graph with used nodes removed.
         """
         G_extended = G.copy()
         for path in paths:
             for node in path:
-                if node in G_extended:
-                    if node in G_extended and node not in {"source", "sink"}:
-                        G_extended.remove_node(node)
+                if node in G_extended and node not in {"source", "sink"}:
+                    G_extended.remove_node(node)
         return G_extended
 
-    def _transform_edge_cost(self, G: nx.DiGraph, shortest_costs: Dict[Any, float]) -> nx.DiGraph:
+    def _transform_edge_cost(
+        self, G: nx.DiGraph, shortest_costs: Dict[Any, float]
+    ) -> nx.DiGraph:
         """
-        Transform edge weights to non-negative using cost shifting.
+        Apply cost transformation to ensure non-negative edge weights.
 
         Args:
             G (nx.DiGraph): Graph with possibly negative weights.
-            shortest_costs (dict): Shortest distances from source.
+            shortest_costs (dict): Shortest path distances from source.
 
         Returns:
-            nx.DiGraph: Cost-shifted graph.
+            nx.DiGraph: Cost-transformed graph.
         """
         Gc = nx.DiGraph()
         for u, v, data in G.edges(data=True):
@@ -294,24 +270,24 @@ class KSPTracker(BaseTracker):
             transformed = original + shortest_costs[u] - shortest_costs[v]
             Gc.add_edge(u, v, weight=transformed)
         return Gc
-    
+
     def _interlace_paths(
         self, current_paths: List[List[TrackNode]], new_path: List[TrackNode]
     ) -> List[TrackNode]:
         """
-        Filter out nodes from the new path that conflict with existing paths.
+        Remove nodes from new_path that conflict with current_paths.
 
         Args:
             current_paths (List[List[TrackNode]]): Existing disjoint paths.
-            new_path (List[TrackNode]): New shortest path candidate.
+            new_path (List[TrackNode]): New candidate path.
 
         Returns:
-            List[TrackNode]: Cleaned, non-conflicting path.
+            List[TrackNode]: Interlaced path without conflicts.
         """
         used_nodes = set()
         for path in current_paths:
             for node in path:
-                if isinstance(node, TrackNode):  # Skip 'source'/'sink' nodes
+                if isinstance(node, TrackNode):
                     used_nodes.add((node.frame_id, node.grid_cell_id))
 
         interlaced = []
@@ -323,11 +299,9 @@ class KSPTracker(BaseTracker):
 
         return interlaced
 
-
-
     def ksp(self, G: nx.DiGraph) -> List[List[TrackNode]]:
         """
-        Find multiple disjoint shortest paths.
+        Compute k disjoint shortest paths using KSP algorithm.
 
         Args:
             G (nx.DiGraph): Detection graph.
@@ -347,18 +321,17 @@ class KSPTracker(BaseTracker):
             Gc_l = self._transform_edge_cost(Gl, lengths)
 
             try:
-                dkslengths, paths_dict = nx.single_source_dijkstra(Gc_l, "source", weight="weight")
+                lengths, paths_dict = nx.single_source_dijkstra(Gc_l, "source", weight="weight")
 
                 if "sink" not in paths_dict:
                     break
 
                 new_path = paths_dict["sink"]
                 cost_P.append(lengths["sink"])
-                print(new_path)
+
                 interlaced_path = self._interlace_paths(P, new_path)
                 P.append(interlaced_path)
 
-                lengths = dkslengths
             except nx.NetworkXNoPath:
                 break
 
@@ -366,10 +339,10 @@ class KSPTracker(BaseTracker):
 
     def process_tracks(self) -> List[sv.Detections]:
         """
-        Run tracker and assign detections to tracks.
+        Run the tracking algorithm and assign track IDs to detections.
 
         Returns:
-            List[sv.Detections]: Final detections with track IDs
+            List[sv.Detections]: Detections updated with tracker IDs.
         """
         graph = self._build_graph(self.detection_buffer)
         disjoint_paths = self.ksp(graph)
