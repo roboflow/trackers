@@ -113,7 +113,6 @@ class KSPTracker(BaseTracker):
         Returns:
             float: Edge cost for KSP (non-negative after transform).
         """
-        # Add small epsilon to denominator to avoid division by zero
         return -np.log(confidence / ((1 - confidence) + 1e-6))
 
     def _build_graph(self, all_detections: List[sv.Detections]) -> None:
@@ -205,6 +204,18 @@ class KSPTracker(BaseTracker):
             dets.tracker_id = np.array(frame_tracker_ids)
             all_detections.append(dets)
 
+        for frame_idx, dets in enumerate(all_detections):
+            tracker_ids = dets.tracker_id
+            num_tracked = np.sum(tracker_ids != -1)
+            print(f"[Frame {frame_idx}] Total Detections: {len(tracker_ids)} | Tracked: {num_tracked}")
+
+            for det_idx, tid in enumerate(tracker_ids):
+                if tid == -1:
+                    print(f"  ⛔ Untracked Detection {det_idx}: BBox={dets.xyxy[det_idx]}, Conf={dets.confidence[det_idx]:.2f}")
+                else:
+                    print(f"  ✅ Track {tid} assigned to Detection {det_idx}: BBox={dets.xyxy[det_idx]}, Conf={dets.confidence[det_idx]:.2f}")
+
+
         return all_detections
 
     def _shortest_path(self) -> tuple:
@@ -212,9 +223,7 @@ class KSPTracker(BaseTracker):
         Compute shortest path from 'source' to 'sink' using Bellman-Ford.
 
         Returns:
-            tuple: (path, total_cost, lengths) where path is list of nodes,
-                total_cost is the total weight of that path, and lengths is
-                dict of shortest distances from source.
+            tuple: (path, total_cost, lengths)
 
         Raises:
             RuntimeError: If negative cycle detected.
