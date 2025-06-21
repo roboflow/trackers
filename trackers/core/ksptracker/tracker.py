@@ -7,7 +7,252 @@ import supervision as sv
 
 from trackers.core.base import BaseTracker
 
+import matplotlib.pyplot as plt
+import networkx as nx
 
+import itertools
+
+
+def visualize_tracking_graph_debug(G: nx.DiGraph, max_edges=500):
+    import matplotlib.pyplot as plt
+    import networkx as nx
+
+    plt.figure(figsize=(18, 8))
+
+    # Collect all TrackNode nodes
+    track_nodes = [n for n in G.nodes if isinstance(n, TrackNode)]
+    frames = sorted(set(n.frame_id for n in track_nodes))
+
+    frame_to_x = {f: i for i, f in enumerate(frames)}
+
+    # Group nodes by frame and sort by det_idx (or confidence)
+    nodes_by_frame = {}
+    for node in track_nodes:
+        nodes_by_frame.setdefault(node.frame_id, []).append(node)
+    for frame in nodes_by_frame:
+        nodes_by_frame[frame].sort(key=lambda n: n.det_idx)  # or key=lambda n: -n.confidence for sorting by confidence
+
+    pos = {}
+    for node in G.nodes:
+        if node == "source":
+            pos[node] = (-1, 0)
+        elif node == "sink":
+            pos[node] = (len(frames), 0)
+        elif isinstance(node, TrackNode):
+            x = frame_to_x[node.frame_id]
+            # vertical spacing: spread nodes evenly in y-axis
+            idx = nodes_by_frame[node.frame_id].index(node)
+            total = len(nodes_by_frame[node.frame_id])
+            # spread vertically between 0 and total, centered around 0
+            y = idx - total / 2
+            pos[node] = (x, y)
+
+    # Draw nodes
+    nx.draw_networkx_nodes(G, pos, node_size=200, node_color="lightblue", alpha=0.9)
+
+    # Labels
+    labels = {}
+    for node in G.nodes:
+        if node == "source":
+            labels[node] = "SRC"
+        elif node == "sink":
+            labels[node] = "SNK"
+        elif isinstance(node, TrackNode):
+            labels[node] = f"F{node.frame_id},D{node.det_idx}"
+    nx.draw_networkx_labels(G, pos, labels, font_size=8)
+
+    # Edges (limit number)
+    edges_to_draw = list(G.edges(data=True))[:max_edges]
+    edge_list = [(u, v) for u, v, _ in edges_to_draw]
+    nx.draw_networkx_edges(G, pos, edgelist=edge_list, arrowstyle='->', arrowsize=15, edge_color='gray')
+
+    # Edge weights
+    edge_labels = {(u, v): f"{d['weight']:.2f}" for u, v, d in edges_to_draw}
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7, label_pos=0.5)
+
+    plt.title("Tracking Graph - Directed Timeline Layout with Vertical Spacing")
+    plt.xlabel("Frame Index")
+    plt.ylabel("Detection Vertical Position (Jittered)")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def visualize_all_shortest_bellman_ford_paths(G: nx.DiGraph):
+    try:
+        all_paths = list(nx.all_shortest_paths(G, source="source", target="sink", weight="weight", method="bellman-ford"))
+        if not all_paths:
+            print("No path found from source to sink.")
+            return
+        shortest_path_length = sum(G[u][v]['weight'] for u, v in zip(all_paths[0][:-1], all_paths[0][1:]))
+        print(f"Number of shortest paths from source to sink: {len(all_paths)}")
+        print(f"Each shortest path has cost: {shortest_path_length:.2f}")
+
+    except nx.NetworkXUnbounded:
+        print("Negative weight cycle detected.")
+        return
+
+    plt.figure(figsize=(18, 8))
+
+    # Layout
+    track_nodes = [n for n in G.nodes if isinstance(n, TrackNode)]
+    frames = sorted(set(n.frame_id for n in track_nodes))
+    frame_to_x = {f: i for i, f in enumerate(frames)}
+
+    nodes_by_frame = {}
+    for node in track_nodes:
+        nodes_by_frame.setdefault(node.frame_id, []).append(node)
+    for frame in nodes_by_frame:
+        nodes_by_frame[frame].sort(key=lambda n: n.det_idx)
+
+    pos = {}
+    for node in G.nodes:
+        if node == "source":
+            pos[node] = (-1, 0)
+        elif node == "sink":
+            pos[node] = (len(frames), 0)
+        elif isinstance(node, TrackNode):
+            x = frame_to_x[node.frame_id]
+            idx = nodes_by_frame[node.frame_id].index(node)
+            total = len(nodes_by_frame[node.frame_id])
+            y = idx - total / 2
+            pos[node] = (x, y)
+
+    # Draw all nodes and labels
+    nx.draw_networkx_nodes(G, pos, node_size=200, node_color="lightgray", alpha=0.7)
+    labels = {
+        node: (
+            "SRC" if node == "source"
+            else "SNK" if node == "sink"
+            else f"F{node.frame_id},D{node.det_idx}"
+        )
+        for node in G.nodes
+    }
+    nx.draw_networkx_labels(G, pos, labels, font_size=8)
+
+    # Draw all edges (light gray)
+    nx.draw_networkx_edges(G, pos, edge_color="lightgray", alpha=0.3)
+
+    # Draw edge weights for all edges
+    edge_labels = {(u, v): f"{d['weight']:.2f}" for u, v, d in G.edges(data=True)}
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=6)
+
+    # Collect all edges in all shortest paths
+    edges_in_paths = set()
+    nodes_in_paths = set()
+    for path in all_paths:
+        nodes_in_paths.update(path)
+        edges_in_paths.update(zip(path[:-1], path[1:]))
+
+    # Draw all nodes in shortest paths highlighted (orange)
+    nx.draw_networkx_nodes(G, pos, nodelist=nodes_in_paths, node_color="orange")
+
+    # Draw all edges in shortest paths highlighted (red, thicker)
+    nx.draw_networkx_edges(
+        G, pos,
+        edgelist=edges_in_paths,
+        edge_color="red",
+        width=2.5,
+        arrowstyle="->",
+        arrowsize=15,
+        label="Shortest Paths"
+    )
+
+    plt.title("Bellman-Ford All Shortest Paths Visualization")
+    plt.xlabel("Frame Index")
+    plt.ylabel("Detection Index Offset")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def visualize_path(G, path, pos, path_num, color="red"):
+    plt.figure(figsize=(12, 6))
+
+    # Draw all nodes and edges lightly
+    nx.draw_networkx_nodes(G, pos, node_size=200, node_color="lightgray", alpha=0.7)
+    nx.draw_networkx_edges(G, pos, edge_color="lightgray", alpha=0.3)
+    labels = {
+        node: (
+            "SRC" if node == "source"
+            else "SNK" if node == "sink"
+            else f"F{node.frame_id},D{node.det_idx}"
+        )
+        for node in G.nodes
+    }
+    nx.draw_networkx_labels(G, pos, labels, font_size=8)
+
+    # Highlight the path nodes and edges
+    nx.draw_networkx_nodes(G, pos, nodelist=path, node_color=color)
+    path_edges = list(zip(path[:-1], path[1:]))
+    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color=color, width=3, arrowstyle="->", arrowsize=15)
+
+    plt.title(f"Node-Disjoint Shortest Path #{path_num}")
+    plt.xlabel("Frame Index")
+    plt.ylabel("Detection Index Offset")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+def find_and_visualize_disjoint_paths(G_orig, source="source", sink="sink", weight="weight"):
+    G = G_orig.copy()
+    
+    # Setup layout once to keep consistent positioning
+    track_nodes = [n for n in G.nodes if hasattr(n, "frame_id") and hasattr(n, "det_idx")]
+    frames = sorted(set(n.frame_id for n in track_nodes))
+    frame_to_x = {f: i for i, f in enumerate(frames)}
+    nodes_by_frame = {}
+    for node in track_nodes:
+        nodes_by_frame.setdefault(node.frame_id, []).append(node)
+    for frame in nodes_by_frame:
+        nodes_by_frame[frame].sort(key=lambda n: n.det_idx)
+    pos = {}
+    for node in G.nodes:
+        if node == "source":
+            pos[node] = (-1, 0)
+        elif node == "sink":
+            pos[node] = (len(frames), 0)
+        elif hasattr(node, "frame_id") and hasattr(node, "det_idx"):
+            x = frame_to_x[node.frame_id]
+            idx = nodes_by_frame[node.frame_id].index(node)
+            total = len(nodes_by_frame[node.frame_id])
+            y = idx - total / 2
+            pos[node] = (x, y)
+        else:
+            pos[node] = (0, 0)  # fallback
+
+    all_paths = []
+    colors = itertools.cycle(["red", "blue", "green", "orange", "purple", "brown", "cyan", "magenta"])
+
+    while True:
+        try:
+            length, paths = nx.single_source_bellman_ford(G, source=source, weight=weight)
+            if sink not in paths:
+                print("No more paths found.")
+                break
+
+            shortest_path = paths[sink]
+            cost = length[sink]
+            all_paths.append(shortest_path)
+            color = next(colors)
+            print(f"Found path #{len(all_paths)} with cost {cost:.2f}: {shortest_path}")
+
+            # Visualize current path
+            visualize_path(G_orig, shortest_path, pos, len(all_paths), color=color)
+
+            # Remove intermediate nodes to get node-disjoint paths
+            intermediate_nodes = shortest_path[1:-1]
+            G.remove_nodes_from(intermediate_nodes)
+
+        except nx.NetworkXNoPath:
+            print("No more paths found.")
+            break
+        except nx.NetworkXUnbounded:
+            print("Negative weight cycle detected.")
+            break
+
+    print(f"Total node-disjoint shortest paths found: {len(all_paths)}")
+    return all_paths
+  
 @dataclass(frozen=True)
 class TrackNode:
     """
@@ -22,6 +267,7 @@ class TrackNode:
 
     frame_id: int
     grid_cell_id: int
+    det_idx: int
     position: tuple
     confidence: float
 
@@ -34,6 +280,9 @@ class TrackNode:
         if not isinstance(other, TrackNode):
             return False
         return (self.frame_id, self.grid_cell_id) == (other.frame_id, other.grid_cell_id)
+    
+    def __str__(self):
+        return str(self.frame_id) + " " + str(self.det_idx)
 
 
 class KSPTracker(BaseTracker):
@@ -103,7 +352,7 @@ class KSPTracker(BaseTracker):
         grid_y = int(y_center // self.grid_size)
         return (grid_x, grid_y)
 
-    def _edge_cost(self, confidence: float) -> float:
+    def _edge_cost(self, confidence: float, dist: float) -> float:
         """
         Compute edge cost from detection confidence.
 
@@ -113,7 +362,7 @@ class KSPTracker(BaseTracker):
         Returns:
             float: Edge cost for KSP (non-negative after transform).
         """
-        return -np.log(confidence / ((1 - confidence) + 1e-6))
+        return -np.log(confidence)
 
     def _build_graph(self, all_detections: List[sv.Detections]) -> None:
         """
@@ -145,6 +394,7 @@ class KSPTracker(BaseTracker):
                 node = TrackNode(
                     frame_id=frame_idx,
                     grid_cell_id=cell_id,
+                    det_idx=det_idx,
                     position=pos,
                     confidence=dets.confidence[det_idx],
                 )
@@ -164,11 +414,11 @@ class KSPTracker(BaseTracker):
                     dist = np.linalg.norm(
                         np.array(node.position) - np.array(node_next.position)
                     )
-                    if dist <= 2:
-                        self.G.add_edge(
+
+                    self.G.add_edge(
                             node,
                             node_next,
-                            weight=self._edge_cost(confidence=node.confidence),
+                            weight=self._edge_cost(confidence=node.confidence, dist=dist),
                         )
 
     def _update_detections_with_tracks(
@@ -347,5 +597,8 @@ class KSPTracker(BaseTracker):
             List[sv.Detections]: Detections updated with tracker IDs.
         """
         self._build_graph(self.detection_buffer)
-        disjoint_paths = self.ksp()
-        return self._update_detections_with_tracks(assignments=disjoint_paths)
+        visualize_tracking_graph_debug(self.G)
+        paths = find_and_visualize_disjoint_paths(self.G)
+        return []
+        # disjoint_paths = self.ksp()
+        # return self._update_detections_with_tracks(assignments=disjoint_paths)
