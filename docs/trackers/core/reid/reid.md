@@ -48,22 +48,40 @@ The `ReIDModel` class provides a flexible interface to extract appearance featur
 
 ### Loading a ReIDModel
 
-You can initialize a `ReIDModel` from any supported pretrained model in the [`timm`](https://huggingface.co/docs/timm/en/index) library using the `from_timm` method.
+=== "timm"
+    You can initialize a `ReIDModel` from any supported pretrained model in the [`timm`](https://huggingface.co/docs/timm/en/index) library using the `from_timm` method.
 
-```python
-from trackers import ReIDModel
+    ```python
+    from trackers import ReIDModel
 
-reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
-```
+    reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
+    ```
+
+=== "torchreid"
+    You can initialize a `ReIDModel` from any supported pretrained or fine-tuned model in the [`torchreid`](https://github.com/KaiyangZhou/deep-person-reid) library using the `from_torchreid` method.
+
+    ```python
+    from trackers import ReIDModel
+
+    reid_model = ReIDModel.from_timm(
+        model_name="resnet50", num_classes=751
+    )
+    ```
 
 ### Supported Models
 
-The `ReIDModel` supports all models available in the timm library. You can list available models using:
+=== "timm"
 
-```python
-import timm
-print(timm.list_models())
-```
+    The `ReIDModel` supports all models available in the timm library. You can list available models using:
+
+    ```python
+    import timm
+    print(timm.list_models())
+    ```
+
+=== "torchreid"
+
+    The `ReIDModel` supports all models available in the torchreid library [model zoo](https://kaiyangzhou.github.io/deep-person-reid/MODEL_ZOO.html).
 
 ### Extracting Embeddings
 
