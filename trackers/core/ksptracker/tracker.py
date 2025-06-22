@@ -193,10 +193,43 @@ def visualize_path(G, path, pos, path_num, color="red"):
     plt.show()
 
 
-def find_and_visualize_disjoint_paths(G_orig, source="source", sink="sink", weight="weight"):
+def path_to_detections(path) -> sv.Detections:
+    track_nodes = [node for node in path if hasattr(node, "frame_id") and hasattr(node, "det_idx")]
+
+    xyxys = []
+    confidences = []
+    class_ids = []
+
+    for node in track_nodes:
+        det_idx = node.det_idx
+        dets = node.dets  # sv.Detections
+
+        bbox = dets.xyxy[det_idx]
+        if bbox is None or len(bbox) != 4:
+            raise ValueError(f"Invalid bbox at node {node}: {bbox}")
+
+        xyxys.append(bbox)
+        confidences.append(dets.confidence[det_idx])
+
+        if hasattr(dets, "class_id") and len(dets.class_id) > det_idx:
+            class_ids.append(dets.class_id[det_idx])
+        else:
+            class_ids.append(0)
+
+    xyxys = np.array(xyxys)
+    confidences = np.array(confidences)
+    class_ids = np.array(class_ids)
+
+    if xyxys.ndim != 2 or xyxys.shape[1] != 4:
+        raise ValueError(f"xyxy must be 2D array with shape (_,4), got shape {xyxys.shape}")
+
+    return sv.Detections(xyxy=xyxys, confidence=confidences, class_id=class_ids)
+
+
+def find_and_visualize_disjoint_paths(G_orig, source="source", sink="sink", weight="weight") -> List[sv.Detections]:
     G = G_orig.copy()
-    
-    # Setup layout once to keep consistent positioning
+
+    # Compute layout positions once for consistency
     track_nodes = [n for n in G.nodes if hasattr(n, "frame_id") and hasattr(n, "det_idx")]
     frames = sorted(set(n.frame_id for n in track_nodes))
     frame_to_x = {f: i for i, f in enumerate(frames)}
@@ -207,9 +240,9 @@ def find_and_visualize_disjoint_paths(G_orig, source="source", sink="sink", weig
         nodes_by_frame[frame].sort(key=lambda n: n.det_idx)
     pos = {}
     for node in G.nodes:
-        if node == "source":
+        if node == source:
             pos[node] = (-1, 0)
-        elif node == "sink":
+        elif node == sink:
             pos[node] = (len(frames), 0)
         elif hasattr(node, "frame_id") and hasattr(node, "det_idx"):
             x = frame_to_x[node.frame_id]
@@ -220,7 +253,7 @@ def find_and_visualize_disjoint_paths(G_orig, source="source", sink="sink", weig
         else:
             pos[node] = (0, 0)  # fallback
 
-    all_paths = []
+    all_detections = []
     colors = itertools.cycle(["red", "blue", "green", "orange", "purple", "brown", "cyan", "magenta"])
 
     while True:
@@ -232,14 +265,15 @@ def find_and_visualize_disjoint_paths(G_orig, source="source", sink="sink", weig
 
             shortest_path = paths[sink]
             cost = length[sink]
-            all_paths.append(shortest_path)
             color = next(colors)
-            print(f"Found path #{len(all_paths)} with cost {cost:.2f}: {shortest_path}")
+            print(f"Found path with cost {cost:.2f}: {shortest_path}")
 
-            # Visualize current path
-            visualize_path(G_orig, shortest_path, pos, len(all_paths), color=color)
+            visualize_path(G_orig, shortest_path, pos, len(all_detections) + 1, color=color)
 
-            # Remove intermediate nodes to get node-disjoint paths
+            dets = path_to_detections(shortest_path)
+            all_detections.append(dets)
+
+            # Remove intermediate nodes to enforce node-disjointness
             intermediate_nodes = shortest_path[1:-1]
             G.remove_nodes_from(intermediate_nodes)
 
@@ -250,9 +284,9 @@ def find_and_visualize_disjoint_paths(G_orig, source="source", sink="sink", weig
             print("Negative weight cycle detected.")
             break
 
-    print(f"Total node-disjoint shortest paths found: {len(all_paths)}")
-    return all_paths
-  
+    print(f"Total node-disjoint shortest paths found: {len(all_detections)}")
+    return all_detections
+
 @dataclass(frozen=True)
 class TrackNode:
     """
@@ -270,6 +304,7 @@ class TrackNode:
     det_idx: int
     position: tuple
     confidence: float
+    dets: Any
 
     def __hash__(self) -> int:
         """Generate hash using frame and grid cell."""
@@ -396,6 +431,7 @@ class KSPTracker(BaseTracker):
                     grid_cell_id=cell_id,
                     det_idx=det_idx,
                     position=pos,
+                    dets=dets,
                     confidence=dets.confidence[det_idx],
                 )
 
@@ -598,7 +634,7 @@ class KSPTracker(BaseTracker):
         """
         self._build_graph(self.detection_buffer)
         visualize_tracking_graph_debug(self.G)
-        paths = find_and_visualize_disjoint_paths(self.G)
-        return []
+        detections_list  = find_and_visualize_disjoint_paths(self.G)
+        return detections_list 
         # disjoint_paths = self.ksp()
         # return self._update_detections_with_tracks(assignments=disjoint_paths)
