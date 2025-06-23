@@ -557,6 +557,7 @@ class TrackNode:
     grid_cell_id: int
     det_idx: int
     position: tuple
+    bbox: Any
     confidence: float
     # dets: Any
 
@@ -669,7 +670,7 @@ class KSPTracker(BaseTracker):
                 overlapped_cells.append((gx, gy))
         return overlapped_cells
     
-    def get_node_probability(self, node: TrackNode) -> float:
+    def get_node_probability(self, node: TrackNode, Position) -> float:
         """
         Retrieve the probability from p_map for the given TrackNode.
 
@@ -680,7 +681,7 @@ class KSPTracker(BaseTracker):
             float: Probability value at the node's grid cell.
         """
         frame_id = node.frame_id
-        grid_x, grid_y = node.position
+        grid_x, grid_y = Position
 
         if frame_id < 0 or frame_id >= len(self.p_maps):
             return 0.0  # Invalid frame index
@@ -689,11 +690,15 @@ class KSPTracker(BaseTracker):
         grid_height, grid_width = p_map.shape
 
         if 0 <= grid_x < grid_width and 0 <= grid_y < grid_height:
-            return float(p_map[grid_y, grid_x])  # Note row=y, col=x in numpy indexing
+            cells = self.get_overlapped_cells(node.bbox)
+            if ((grid_x, grid_y) in cells):
+                return float(p_map[grid_y, grid_x])  # Note row=y, col=x in numpy indexing
+            else:
+                return 0
         else:
             return 0.0  # Out of bounds
 
-    def _edge_cost(self, node: TrackNode) -> float:
+    def _edge_cost(self, node: TrackNode, node_next_pos: tuple) -> float:
         """
         Compute edge cost from detection confidence.
 
@@ -703,9 +708,9 @@ class KSPTracker(BaseTracker):
         Returns:
             float: Edge cost for KSP (non-negative after transform).
         """
-        pu = self.get_node_probability(node)
-        print(node, "PU: " + str(pu), -math.log10(pu / ((1 - pu) + 1e-6)))
-        return -math.log10(pu / ((1 - pu) + 1e-6))
+        pu = self.get_node_probability(node, node_next_pos)
+        print(node, "PU: " + str(pu), -math.log10((pu + 1e-6) / ((1 - pu) + 1e-6)))
+        return -math.log10((pu + 1e-6) / ((1 - pu) + 1e-6))
 
     def build_probability_maps(self, all_detections):
         """
@@ -803,6 +808,7 @@ class KSPTracker(BaseTracker):
                     frame_id=frame_idx,
                     grid_cell_id=cell_id,
                     det_idx=new_det_idx,  # use stable new_det_idx
+                    bbox=np.array(dets.xyxy[original_det_idx]),
                     position=pos,
                     confidence=dets.confidence[original_det_idx],
                 )
@@ -819,10 +825,10 @@ class KSPTracker(BaseTracker):
         # Add edges as before
         for i in range(len(all_detections) - 1):
             for node in node_dict[i]:
-                w = self._edge_cost(node)
 
                 for node_next in node_dict[i + 1]:
                     dist = np.linalg.norm(np.array(node.position) - np.array(node_next.position))
+                    w = self._edge_cost(node, node_next.position)
                     self.G.add_edge(
                         node,
                         node_next,
@@ -1042,7 +1048,13 @@ class KSPTracker(BaseTracker):
             List[List[TrackNode]]: List of disjoint detection paths.
         """
         
-        path, cost, s_lengths = self._shortest_path(self.G)
+        #path, cost, s_lengths = self._shortest_path(self.G)
+        lengths, paths = nx.single_source_bellman_ford(self.G, "source", weight="weight")
+        if "sink" not in paths:
+            raise KeyError("No path found from source to sink.")
+        
+        path, cost = paths["sink"], lengths["sink"]
+        print(cost, nx.shortest_path_length(self.G, "source", "sink", weight="weight"))
         P = [path]
         cost_P = [cost]
         Gc_l_last = None
@@ -1053,36 +1065,35 @@ class KSPTracker(BaseTracker):
         print(self.G)
         visualize_tracking_graph_with_path_pyvis(self.G, P[-1], "graph1.html")
 
-        for l in range(1, self.max_paths):
-            if l != 1 and cost_P[-1] >= cost_P[-2]:
-                return P  # early termination
+        # for l in range(1, self.max_paths):
+        #     if l != 1 and cost_P[-1] >= cost_P[-2]:
+        #         return P  # early termination
 
 
-            wHa = Gc_l_last or self.G
-            print(l, wHa)
-            s_lens, _ = nx.single_source_dijkstra(wHa, "source", weight="weight")
-            print(s_lengths == s_lens)
-            shortest_costs = s_lens
+        #     wHa = Gc_l_last or self.G
+        #     print(l, wHa)
+        #     s_lens, _ = nx.single_source_dijkstra(wHa, "source", weight="weight")
+        #     shortest_costs = s_lens
 
-            Gl = self._extend_graph(P)
-            Gc_l = self._transform_edge_cost(Gl, shortest_costs)
+        #     Gl = self._extend_graph(P)
+        #     Gc_l = self._transform_edge_cost(Gl, shortest_costs)
 
-            try:
-                lengths, paths_dict = nx.single_source_dijkstra(Gc_l, "source", weight="weight")
+        #     try:
+        #         lengths, paths_dict = nx.single_source_dijkstra(Gc_l, "source", weight="weight")
 
-                if "sink" not in paths_dict:
-                    break
+        #         if "sink" not in paths_dict:
+        #             break
 
-                new_path = paths_dict["sink"]
-                cost_P.append(lengths["sink"])
+        #         new_path = paths_dict["sink"]
+        #         cost_P.append(lengths["sink"])
 
-                interlaced_path = self._interlace_paths(P, new_path)
-                P.append(interlaced_path)
-                Gc_l_last = Gc_l
-                visualize_tracking_graph_with_path_pyvis(Gc_l, P[-1], "graph" + str(len(P)) + ".html")
-            except nx.NetworkXNoPath:
-                break
-        print(len(P))
+        #         interlaced_path = self._interlace_paths(P, new_path)
+        #         P.append(interlaced_path)
+        #         Gc_l_last = Gc_l
+        #         visualize_tracking_graph_with_path_pyvis(Gc_l, P[-1], "graph" + str(len(P)) + ".html")
+        #     except nx.NetworkXNoPath:
+        #         break
+        # print(len(P))
         return P
 
     def process_tracks(self) -> List[sv.Detections]:
