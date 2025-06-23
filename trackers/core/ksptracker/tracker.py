@@ -10,6 +10,7 @@ from trackers.core.base import BaseTracker
 import matplotlib.pyplot as plt
 import networkx as nx
 
+import math
 import cv2
 import itertools
 from copy import deepcopy
@@ -557,7 +558,7 @@ class TrackNode:
     det_idx: int
     position: tuple
     confidence: float
-    dets: Any
+    # dets: Any
 
     def __hash__(self) -> int:
         """Generate hash using frame and grid cell."""
@@ -570,7 +571,7 @@ class TrackNode:
         return (self.frame_id, self.grid_cell_id) == (other.frame_id, other.grid_cell_id)
     
     def __str__(self):
-        return str(self.frame_id) + " " + str(self.det_idx)
+        return str(self.frame_id) + " " + str(self.det_idx) + " " + str(self.grid_cell_id)
 
 
 class KSPTracker(BaseTracker):
@@ -692,7 +693,7 @@ class KSPTracker(BaseTracker):
         else:
             return 0.0  # Out of bounds
 
-    def _edge_cost(self, node: TrackNode, confidence: float, dist: float) -> float:
+    def _edge_cost(self, node: TrackNode) -> float:
         """
         Compute edge cost from detection confidence.
 
@@ -703,64 +704,65 @@ class KSPTracker(BaseTracker):
             float: Edge cost for KSP (non-negative after transform).
         """
         pu = self.get_node_probability(node)
-        print(pu)
-        return -np.log10(pu / (1 - pu))
+        print(node, "PU: " + str(pu), -math.log10(pu / ((1 - pu) + 1e-6)))
+        return -math.log10(pu / ((1 - pu) + 1e-6))
 
     def build_probability_maps(self, all_detections):
         """
-        Build a list of probability maps, one per frame.
+        Build a list of probability maps (with Gaussian spread), one per frame.
 
         Args:
-            all_detections (list of list of dict):
-                Each element is a list of detections for a frame,
-                each detection dict has:
-                    'xyxy': [x1, y1, x2, y2]
-                    'confidence': float between 0 and 1
+            all_detections (list of sv.Detections): List of detection sets per frame.
 
         Returns:
             list of np.ndarray: Each element is a 2D probability map for that frame.
         """
-
         img_width, img_height = self.img_dim
+        grid_size = self.grid_size
 
-        grid_width = (img_width + self.grid_size - 1) // self.grid_size
-        grid_height = (img_height + self.grid_size - 1) // self.grid_size
+        grid_width = (img_width + grid_size - 1) // grid_size
+        grid_height = (img_height + grid_size - 1) // grid_size
+
+        print(f"Image size: {img_width}x{img_height}")
+        print(f"Grid size: {grid_size}")
+        print(f"Grid width cells: {grid_width}, Grid height cells: {grid_height}")
 
         all_p_maps = []
+        sigma = 1 # in grid units; controls the spread of confidence
 
         for dets in all_detections:
             p_map = np.zeros((grid_height, grid_width), dtype=np.float32)
 
-            # If no detections, just append zero map
             if dets.is_empty():
                 all_p_maps.append(p_map)
                 continue
 
             for i in range(len(dets)):
-                bbox = dets.xyxy[i]      # tensor or numpy array [x1,y1,x2,y2]
-                conf = dets.confidence[i]  # tensor or numpy scalar
+                bbox = dets.xyxy[i]
+                conf = dets.confidence[i]
 
-                # Convert bbox to numpy if needed
                 if hasattr(bbox, 'cpu'):
                     bbox = bbox.cpu().numpy()
                 if hasattr(conf, 'item'):
                     conf = conf.item()
 
                 x1, y1, x2, y2 = bbox
+                x_center = (x1 + x2) / 2
+                y_center = (y1 + y2) / 2
 
-                grid_x1 = int(x1 // self.grid_size)
-                grid_y1 = int(y1 // self.grid_size)
-                grid_x2 = int(x2 // self.grid_size)
-                grid_y2 = int(y2 // self.grid_size)
+                # center in grid units
+                grid_xc = x_center / grid_size
+                grid_yc = y_center / grid_size
 
-                grid_x1 = max(0, min(grid_x1, grid_width - 1))
-                grid_x2 = max(0, min(grid_x2, grid_width - 1))
-                grid_y1 = max(0, min(grid_y1, grid_height - 1))
-                grid_y2 = max(0, min(grid_y2, grid_height - 1))
-
-                for gx in range(grid_x1, grid_x2 + 1):
-                    for gy in range(grid_y1, grid_y2 + 1):
-                        p_map[gy, gx] = max(p_map[gy, gx], conf)
+                radius = int(2 * sigma)
+                for dx in range(-radius, radius + 1):
+                    for dy in range(-radius, radius + 1):
+                        gx = int(grid_xc + dx)
+                        gy = int(grid_yc + dy)
+                        if 0 <= gx < grid_width and 0 <= gy < grid_height:
+                            dist2 = dx**2 + dy**2
+                            weight = conf * math.exp(-dist2 / (2 * sigma**2))
+                            p_map[gy, gx] = max(p_map[gy, gx], weight)
 
             all_p_maps.append(p_map)
 
@@ -779,13 +781,15 @@ class KSPTracker(BaseTracker):
         for frame_idx, dets in enumerate(all_detections):
             node_dict[frame_idx] = []
 
-            # Sort detections by (x1, y1) top-left corner of bbox
-            if len(dets) > 0:
-                # Get an array of [x1, y1]
-                coords = np.array([[bbox[0], bbox[1]] for bbox in dets.xyxy])
-                sorted_indices = np.lexsort((coords[:, 1], coords[:, 0]))  # sort by x then y
-            else:
-                sorted_indices = []
+            # # Sort detections by (x1, y1) top-left corner of bbox
+            # if len(dets) > 0:
+            #     # Get an array of [x1, y1]
+            #     coords = np.array([[bbox[0], bbox[1]] for bbox in dets.xyxy])
+            #     sorted_indices = np.lexsort((coords[:, 1], coords[:, 0]))  # sort by x then y
+            # else:
+            #     sorted_indices = []
+
+            sorted_indices = list(range(len(dets))) if len(dets) > 0 else []
 
             # Build nodes in sorted order for stable det_idx
             for new_det_idx, original_det_idx in enumerate(sorted_indices):
@@ -800,7 +804,6 @@ class KSPTracker(BaseTracker):
                     grid_cell_id=cell_id,
                     det_idx=new_det_idx,  # use stable new_det_idx
                     position=pos,
-                    dets=dets,
                     confidence=dets.confidence[original_det_idx],
                 )
 
@@ -816,10 +819,10 @@ class KSPTracker(BaseTracker):
         # Add edges as before
         for i in range(len(all_detections) - 1):
             for node in node_dict[i]:
+                w = self._edge_cost(node)
+
                 for node_next in node_dict[i + 1]:
                     dist = np.linalg.norm(np.array(node.position) - np.array(node_next.position))
-                    w = self._edge_cost(node, confidence=node.confidence, dist=dist)
-                    print(w)
                     self.G.add_edge(
                         node,
                         node_next,
@@ -894,7 +897,7 @@ class KSPTracker(BaseTracker):
         InteractivePMapViewer(frames_rgb, self.p_maps, grid_size=self.grid_size, show_text=True)
         return all_detections
 
-    def _shortest_path(self) -> tuple:
+    def _shortest_path(self, G: nx.Graph) -> tuple:
         """
         Compute shortest path from 'source' to 'sink' using Bellman-Ford.
 
@@ -906,7 +909,7 @@ class KSPTracker(BaseTracker):
             KeyError: If sink unreachable.
         """
         try:
-            lengths, paths = nx.single_source_bellman_ford(self.G, "source", weight="weight")
+            lengths, paths = nx.single_source_bellman_ford(G, "source", weight="weight")
             if "sink" not in paths:
                 raise KeyError("No path found from source to sink.")
             return paths["sink"], lengths["sink"], lengths
@@ -999,7 +1002,7 @@ class KSPTracker(BaseTracker):
             if u not in shortest_costs or v not in shortest_costs:
                 continue
             original = data["weight"]
-            transformed = abs(original + shortest_costs[u] - shortest_costs[v])
+            transformed = original + shortest_costs[u] - shortest_costs[v]
             Gc.add_edge(u, v, weight=transformed)
         return Gc
 
@@ -1039,18 +1042,30 @@ class KSPTracker(BaseTracker):
             List[List[TrackNode]]: List of disjoint detection paths.
         """
         
-        path, cost, lengths = self._shortest_path()
+        path, cost, s_lengths = self._shortest_path(self.G)
         P = [path]
-        cost_P = []
+        cost_P = [cost]
+        Gc_l_last = None
+
+        
+
         print("Cost: " + str(cost))
+        print(self.G)
         visualize_tracking_graph_with_path_pyvis(self.G, P[-1], "graph1.html")
 
         for l in range(1, self.max_paths):
-            if l > 2 and cost_P[-1] >= cost_P[-2]:
+            if l != 1 and cost_P[-1] >= cost_P[-2]:
                 return P  # early termination
 
+
+            wHa = Gc_l_last or self.G
+            print(l, wHa)
+            s_lens, _ = nx.single_source_dijkstra(wHa, "source", weight="weight")
+            print(s_lengths == s_lens)
+            shortest_costs = s_lens
+
             Gl = self._extend_graph(P)
-            Gc_l = self._transform_edge_cost(Gl, lengths)
+            Gc_l = self._transform_edge_cost(Gl, shortest_costs)
 
             try:
                 lengths, paths_dict = nx.single_source_dijkstra(Gc_l, "source", weight="weight")
@@ -1063,6 +1078,7 @@ class KSPTracker(BaseTracker):
 
                 interlaced_path = self._interlace_paths(P, new_path)
                 P.append(interlaced_path)
+                Gc_l_last = Gc_l
                 visualize_tracking_graph_with_path_pyvis(Gc_l, P[-1], "graph" + str(len(P)) + ".html")
             except nx.NetworkXNoPath:
                 break
