@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Tuple, Union
 
+import torch
 from PIL import Image
 from supervision.dataset.utils import train_test_split
 from torch.utils.data import Dataset
@@ -20,11 +21,16 @@ class IdentityDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> dict[str, Union[torch.Tensor, str, int]]:
         image_path, identity, camera_id = self.data[index]
         image = Image.open(image_path).convert("RGB")
         image = self.transforms(image)
-        return image, identity, camera_id
+        return {
+            "image": image,
+            "image_path": image_path,
+            "identity": identity,
+            "camera_id": camera_id,
+        }
 
     def get_num_identities(self) -> int:
         identities = set()

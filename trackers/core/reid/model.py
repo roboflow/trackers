@@ -10,8 +10,11 @@ import torch
 import torch.nn as nn
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
+from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToPILImage
 
+from trackers.core.reid.dataset.base import IdentityDataset
+from trackers.core.reid.trainer.cross_entropy_trainer import CrossEntropyTrainer
 from trackers.log import get_logger
 from trackers.utils.torch_utils import parse_device_spec
 
@@ -111,3 +114,22 @@ class ReIDModel:
                 features.append(feature)
 
         return np.array(features)
+
+    def train(
+        self,
+        train_loader: DataLoader,
+        epochs: int,
+        num_classes: int,
+        validation_loader: Optional[DataLoader] = None,
+        freeze_backbone: bool = True,
+    ):
+        if isinstance(train_loader.dataset, IdentityDataset):
+            if validation_loader is not None:
+                assert isinstance(validation_loader.dataset, IdentityDataset)
+            self.add_classification_head(num_classes, freeze_backbone=freeze_backbone)
+            trainer = CrossEntropyTrainer(
+                model=self.backbone,
+                device=self.device,
+                transforms=self.train_transforms,
+            )
+            trainer.train(train_loader, epochs)
