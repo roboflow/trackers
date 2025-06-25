@@ -710,7 +710,7 @@ class KSPTracker(BaseTracker):
         """
         pu = self.get_node_probability(node, node_next_pos)
         print(node, "PU: " + str(pu), -math.log10((pu + 1e-6) / ((1 - pu) + 1e-6)))
-        return -math.log10((pu + 1e-6) / ((1 - pu) + 1e-6))
+        return np.linalg.norm(np.array(node.position) - np.array(node_next_pos))
 
     def build_probability_maps(self, all_detections):
         """
@@ -1065,35 +1065,35 @@ class KSPTracker(BaseTracker):
         print(self.G)
         visualize_tracking_graph_with_path_pyvis(self.G, P[-1], "graph1.html")
 
-        # for l in range(1, self.max_paths):
-        #     if l != 1 and cost_P[-1] >= cost_P[-2]:
-        #         return P  # early termination
+        for l in range(1, self.max_paths):
+            if l != 1 and cost_P[-1] >= cost_P[-2]:
+                return P  # early termination
 
 
-        #     wHa = Gc_l_last or self.G
-        #     print(l, wHa)
-        #     s_lens, _ = nx.single_source_dijkstra(wHa, "source", weight="weight")
-        #     shortest_costs = s_lens
+            wHa = Gc_l_last or self.G
+            print(l, wHa)
+            #s_lens, _ = nx.single_source_dijkstra(wHa, "source", weight="weight")
+            #shortest_costs = s_lens
 
-        #     Gl = self._extend_graph(P)
-        #     Gc_l = self._transform_edge_cost(Gl, shortest_costs)
+            Gl = self._extend_graph(P)
+            Gc_l = Gl # self._transform_edge_cost(Gl, shortest_costs)
 
-        #     try:
-        #         lengths, paths_dict = nx.single_source_dijkstra(Gc_l, "source", weight="weight")
+            try:
+                lengths, paths_dict = nx.single_source_bellman_ford(Gc_l, "source", weight="weight")
 
-        #         if "sink" not in paths_dict:
-        #             break
+                if "sink" not in paths_dict:
+                    break
 
-        #         new_path = paths_dict["sink"]
-        #         cost_P.append(lengths["sink"])
+                new_path = paths_dict["sink"]
+                cost_P.append(lengths["sink"])
 
-        #         interlaced_path = self._interlace_paths(P, new_path)
-        #         P.append(interlaced_path)
-        #         Gc_l_last = Gc_l
-        #         visualize_tracking_graph_with_path_pyvis(Gc_l, P[-1], "graph" + str(len(P)) + ".html")
-        #     except nx.NetworkXNoPath:
-        #         break
-        # print(len(P))
+                interlaced_path = self._interlace_paths(P, new_path)
+                P.append(interlaced_path)
+                Gc_l_last = Gc_l
+                visualize_tracking_graph_with_path_pyvis(Gc_l, P[-1], "graph" + str(len(P)) + ".html")
+            except nx.NetworkXNoPath:
+                break
+        print(len(P))
         return P
 
     def process_tracks(self) -> List[sv.Detections]:
