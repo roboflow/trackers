@@ -29,7 +29,10 @@ def parse_market1501_dataset(
     id_container = set()
     data = []
     for img_path in image_files:
-        identity, camera_id = map(int, file_pattern.search(img_path).groups())
+        match = file_pattern.search(img_path)
+        if match is None:
+            continue
+        identity, camera_id = map(int, match.groups())
         if identity != -1:
             id_container.add(identity)
             data.append((img_path, identity, camera_id - 1))
