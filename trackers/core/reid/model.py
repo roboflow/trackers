@@ -70,6 +70,19 @@ class ReIDModel:
             **kwargs,
         )
 
+    def add_classification_head(
+        self, num_classes: int, freeze_backbone: bool = True
+    ) -> None:
+        if hasattr(self.backbone, "fc"):
+            self.backbone.fc = nn.Identity()
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+        self.backbone = nn.Sequential(
+            self.backbone, nn.Linear(self.backbone.num_features, num_classes)
+        )
+        self.backbone.to(self.device)
+
     def extract_features(
         self, detections: sv.Detections, frame: Union[np.ndarray, PIL.Image.Image]
     ) -> np.ndarray:
