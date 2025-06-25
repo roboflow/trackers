@@ -119,8 +119,14 @@ class ReIDModel:
         num_classes: int,
         validation_loader: Optional[DataLoader] = None,
         freeze_backbone: bool = False,
+        label_smoothing: float = 1e-2,
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-2,
+        random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
+        log_dir: str = "logs",
+        log_to_matplotlib: bool = False,
+        log_to_tensorboard: bool = False,
+        log_to_wandb: bool = False,
     ):
         if isinstance(train_loader.dataset, IdentityDataset):
             if validation_loader is not None:
@@ -130,7 +136,14 @@ class ReIDModel:
                 model=self.backbone,
                 device=self.device,
                 transforms=self.train_transforms,
+                epochs=epochs,
+                label_smoothing=label_smoothing,
                 learning_rate=learning_rate,
                 weight_decay=weight_decay,
+                random_state=random_state,
+                log_dir=log_dir,
+                log_to_matplotlib=log_to_matplotlib,
+                log_to_tensorboard=log_to_tensorboard,
+                log_to_wandb=log_to_wandb,
             )
-            trainer.train(train_loader, epochs)
+            trainer.train(train_loader)
