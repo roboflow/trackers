@@ -41,14 +41,14 @@ class ReIDModel:
         self,
         backbone: nn.Module,
         device: Optional[str] = "auto",
-        transforms: Optional[Union[Callable, list[Callable]]] = None,
+        transforms: Optional[Union[Callable, list[Callable], Compose]] = None,
     ):
         self.device = parse_device_spec(device or "auto")
         self.backbone = backbone.to(self.device)
         self._initialize_transforms(transforms)
 
     def _initialize_transforms(
-        self, transforms: Optional[Union[Callable, list[Callable]]]
+        self, transforms: Optional[Union[Callable, list[Callable], Compose]]
     ) -> None:
         if isinstance(transforms, list):
             self.train_transforms = Compose(transforms)
@@ -76,14 +76,11 @@ class ReIDModel:
     def add_classification_head(
         self, num_classes: int, freeze_backbone: bool = True
     ) -> None:
-        if hasattr(self.backbone, "fc"):
-            self.backbone.fc = nn.Identity()
         if freeze_backbone:
             for param in self.backbone.parameters():
                 param.requires_grad = False
-        self.backbone = nn.Sequential(
-            self.backbone, nn.Linear(self.backbone.num_features, num_classes)
-        )
+        if hasattr(self.backbone, "fc"):
+            self.backbone.fc = nn.Linear(self.backbone.num_features, num_classes)
         self.backbone.to(self.device)
 
     def extract_features(
@@ -121,7 +118,9 @@ class ReIDModel:
         epochs: int,
         num_classes: int,
         validation_loader: Optional[DataLoader] = None,
-        freeze_backbone: bool = True,
+        freeze_backbone: bool = False,
+        learning_rate: float = 1e-3,
+        weight_decay: float = 1e-2,
     ):
         if isinstance(train_loader.dataset, IdentityDataset):
             if validation_loader is not None:
@@ -131,5 +130,7 @@ class ReIDModel:
                 model=self.backbone,
                 device=self.device,
                 transforms=self.train_transforms,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
             )
             trainer.train(train_loader, epochs)

@@ -52,4 +52,4 @@ def test_reid_model_classification_head(market_1501_dataset, dataset_split):
     model.add_classification_head(
         num_classes=dataset.get_num_identities(), freeze_backbone=True
     )
-    assert model.backbone[-1].out_features == dataset.get_num_identities()
+    assert model.backbone.fc.out_features == dataset.get_num_identities()

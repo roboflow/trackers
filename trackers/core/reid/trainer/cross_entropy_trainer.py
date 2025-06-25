@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import wandb
 from torch.utils.data import DataLoader
+from torchvision.transforms import Compose
 from tqdm.auto import tqdm
 
 
@@ -14,18 +14,17 @@ class CrossEntropyTrainer:
         self,
         model: nn.Module,
         device: torch.device,
-        transforms: Optional[Union[Callable, list[Callable]]] = None,
+        transforms: Optional[Union[Callable, list[Callable], Compose]] = None,
         label_smoothing: float = 1e-2,
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-2,
     ):
-        wandb.init(project="reid")
         self.device = device
         self.model = model.to(device)
         self.transforms = transforms
         self.label_smoothing = label_smoothing
         self.criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
-        self.optimizer = optim.AdamW(
+        self.optimizer = optim.Adam(
             self.model.parameters(), lr=learning_rate, weight_decay=weight_decay
         )
 
@@ -38,7 +37,7 @@ class CrossEntropyTrainer:
         loss.backward()
         self.optimizer.step()
         return {
-            "loss": loss.item(),
+            "Train/loss": loss.item(),
         }
 
     def train(
@@ -53,4 +52,4 @@ class CrossEntropyTrainer:
                 desc=f"Training Epoch {epoch + 1}/{epochs}",
                 leave=False,
             ):
-                train_results = self.train_step(data)
+                _ = self.train_step(data)
