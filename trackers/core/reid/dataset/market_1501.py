@@ -54,7 +54,12 @@ def get_market1501_dataset(
     random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
     shuffle: bool = True,
     transforms: Optional[Union[Callable, Compose]] = None,
-) -> Union[IdentityDataset, Tuple[IdentityDataset, IdentityDataset]]:
+) -> Union[
+    IdentityDataset,
+    Tuple[IdentityDataset, IdentityDataset],
+    Tuple[IdentityDataset, IdentityDataset, IdentityDataset],
+    Tuple[IdentityDataset, IdentityDataset, IdentityDataset, IdentityDataset],
+]:
     """Get the [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
 
     Args:
@@ -73,16 +78,48 @@ def get_market1501_dataset(
             the dataset.
 
     Returns:
-        Union[IdentityDataset, Tuple[IdentityDataset, IdentityDataset]]: A single
-            `IdentityDataset` object if `split_ratio` is `None`, otherwise a tuple of
-            training and validation `IdentityDataset` objects.
-    """
-    dataset = IdentityDataset(
-        parse_market1501_dataset(data_dir, relabel=relabel), transforms=transforms
-    )
-    if split_ratio is not None:
-        train_dataset, validation_dataset = dataset.split(
-            split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
+        Union[
+            IdentityDataset,
+            Tuple[IdentityDataset, IdentityDataset],
+            Tuple[IdentityDataset, IdentityDataset, IdentityDataset],
+            Tuple[IdentityDataset, IdentityDataset, IdentityDataset, IdentityDataset],
+        ]: The return type depends on the directory structure and split_ratio:
+            - If standard Market1501 structure with split_ratio: (train, validation, test, query)
+            - If standard Market1501 structure without split_ratio: (train, test, query)
+            - If custom directory with split_ratio: (train, validation)
+            - If custom directory without split_ratio: single IdentityDataset
+    """  # noqa: E501
+    dirs = os.listdir(data_dir)
+    if "bounding_box_train" in dirs and "bounding_box_test" in dirs and "query" in dirs:
+        train_dataset = IdentityDataset(
+            parse_market1501_dataset(
+                os.path.join(data_dir, "bounding_box_train"), relabel=relabel
+            ),
+            transforms=transforms,
         )
-        return train_dataset, validation_dataset
-    return dataset
+        test_dataset = IdentityDataset(
+            parse_market1501_dataset(
+                os.path.join(data_dir, "bounding_box_test"), relabel=relabel
+            ),
+            transforms=transforms,
+        )
+        query_dataset = IdentityDataset(
+            parse_market1501_dataset(os.path.join(data_dir, "query"), relabel=relabel),
+            transforms=transforms,
+        )
+        if split_ratio is not None:
+            train_dataset, validation_dataset = train_dataset.split(
+                split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
+            )
+            return train_dataset, validation_dataset, test_dataset, query_dataset
+        return train_dataset, test_dataset, query_dataset
+    else:
+        dataset = IdentityDataset(
+            parse_market1501_dataset(data_dir, relabel=relabel), transforms=transforms
+        )
+        if split_ratio is not None:
+            train_dataset, validation_dataset = dataset.split(
+                split_ratio=split_ratio, random_state=random_state, shuffle=shuffle
+            )
+            return train_dataset, validation_dataset
+        return dataset
