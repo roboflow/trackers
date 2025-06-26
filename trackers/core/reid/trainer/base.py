@@ -52,10 +52,8 @@ class BaseTrainer(ABC):
         if random_state is not None:
             torch.manual_seed(random_state)
 
-        self.initialize_callbacks(
-            log_to_matplotlib, log_to_tensorboard, log_to_wandb
-        )
-    
+        self.initialize_callbacks(log_to_matplotlib, log_to_tensorboard, log_to_wandb)
+
     def initialize_callbacks(
         self,
         log_to_matplotlib: bool = False,
@@ -101,10 +99,12 @@ class BaseTrainer(ABC):
                     "Please install it using `pip install trackers[metrics]`."
                 )
                 raise e
-    
+
     @abstractmethod
     def train_step(self, data: dict[str, torch.Tensor]):
-        raise NotImplementedError("Subclasses of `BaseTrainer` must implement `train_step`")
+        raise NotImplementedError(
+            "Subclasses of `BaseTrainer` must implement `train_step`"
+        )
 
     def train(self, train_loader: DataLoader):
         self.model.train()
