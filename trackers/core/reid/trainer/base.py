@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose
 from tqdm.auto import tqdm
 
-from trackers.core.reid.callbacks import BaseCallback
+from trackers.core.reid.trainer.callbacks import BaseCallback
 from trackers.log import get_logger
 
 logger = get_logger(__name__)
@@ -63,7 +63,7 @@ class BaseTrainer(ABC):
         self.callbacks: list[BaseCallback] = []
         if log_to_matplotlib:
             try:
-                from trackers.core.reid.callbacks import MatplotlibCallback
+                from trackers.core.reid.trainer.callbacks import MatplotlibCallback
 
                 self.callbacks.append(MatplotlibCallback(log_dir=self.log_dir))
             except (ImportError, AttributeError) as e:
@@ -74,7 +74,7 @@ class BaseTrainer(ABC):
                 raise e
         if log_to_tensorboard:
             try:
-                from trackers.core.reid.callbacks import TensorboardCallback
+                from trackers.core.reid.trainer.callbacks import TensorboardCallback
 
                 self.callbacks.append(
                     TensorboardCallback(
@@ -87,10 +87,9 @@ class BaseTrainer(ABC):
                     "Please install it using `pip install trackers[metrics]`."
                 )
                 raise e
-
         if log_to_wandb:
             try:
-                from trackers.core.reid.callbacks import WandbCallback
+                from trackers.core.reid.trainer.callbacks import WandbCallback
 
                 self.callbacks.append(WandbCallback(config=self.config))
             except (ImportError, AttributeError) as e:
