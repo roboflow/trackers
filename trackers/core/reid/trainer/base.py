@@ -1,3 +1,4 @@
+import json
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Union
@@ -5,6 +6,7 @@ from typing import Any, Optional, Union
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from safetensors.torch import save_file
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose
 from tqdm.auto import tqdm
@@ -157,11 +159,29 @@ class BaseTrainer(ABC):
         for callback in self.callbacks:
             callback.on_validation_epoch_end(accumulated_validation_logs, epoch)
 
+    def save_checkpoint(self, epoch: int, checkpoint_interval: Optional[int] = None):
+        if checkpoint_interval is not None and (epoch + 1) % checkpoint_interval == 0:
+            state_dict = self.model.state_dict()
+            checkpoint_path = os.path.join(
+                self.log_dir, "checkpoints", f"reid_model_{epoch + 1}.safetensors"
+            )
+            save_file(
+                state_dict,
+                checkpoint_path,
+                metadata={"config": json.dumps(self.config), "format": "pt"},
+            )
+            for callback in self.callbacks:
+                callback.on_checkpoint_save(checkpoint_path, epoch + 1)
+
     def train(
-        self, train_loader: DataLoader, validation_loader: Optional[DataLoader] = None
+        self,
+        train_loader: DataLoader,
+        validation_loader: Optional[DataLoader] = None,
+        checkpoint_interval: Optional[int] = None,
     ):
         self.model.train()
         for epoch in tqdm(range(self.epochs), desc="Training"):
             self.execute_train_batch_loop(train_loader, epoch)
             if validation_loader is not None:
                 self.execute_validation_batch_loop(validation_loader, epoch)
+            self.save_checkpoint(epoch, checkpoint_interval)

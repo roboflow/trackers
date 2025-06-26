@@ -5,16 +5,10 @@ import matplotlib.pyplot as plt
 
 
 class BaseCallback:
-    def on_train_batch_start(self, logs: dict, idx: int):
-        pass
-
     def on_train_batch_end(self, logs: dict, idx: int):
         pass
 
     def on_train_epoch_end(self, logs: dict, epoch: int):
-        pass
-
-    def on_validation_batch_start(self, logs: dict, idx: int):
         pass
 
     def on_validation_batch_end(self, logs: dict, idx: int):

@@ -123,6 +123,7 @@ class ReIDModel:
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-2,
         random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
+        checkpoint_interval: Optional[int] = None,
         log_dir: str = "logs",
         log_to_matplotlib: bool = False,
         log_to_tensorboard: bool = False,
@@ -146,4 +147,8 @@ class ReIDModel:
                 log_to_tensorboard=log_to_tensorboard,
                 log_to_wandb=log_to_wandb,
             )
-            trainer.train(train_loader, validation_loader)
+            trainer.train(
+                train_loader=train_loader,
+                validation_loader=validation_loader,
+                checkpoint_interval=checkpoint_interval,
+            )
