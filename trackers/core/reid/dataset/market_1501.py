@@ -49,6 +49,7 @@ def parse_market1501_dataset(
 
 def get_market1501_dataset(
     data_dir: str,
+    relabel: bool = False,
     split_ratio: Optional[float] = None,
     random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
     shuffle: bool = True,
@@ -59,6 +60,8 @@ def get_market1501_dataset(
     Args:
         data_dir (str): The path to the bounding box train/test directory of the
             [Market1501 dataset](https://paperswithcode.com/dataset/market-1501).
+        relabel (bool): Whether to relabel the identities to a compact range of starting
+            from 0.
         split_ratio (Optional[float]): The ratio of the dataset to split into training
             and validation sets. If `None`, the dataset is returned as a single
             `IdentityDataset` object, otherwise the dataset is split into a tuple of
@@ -74,7 +77,9 @@ def get_market1501_dataset(
             `IdentityDataset` object if `split_ratio` is `None`, otherwise a tuple of
             training and validation `IdentityDataset` objects.
     """
-    dataset = IdentityDataset(parse_market1501_dataset(data_dir), transforms=transforms)
+    dataset = IdentityDataset(
+        parse_market1501_dataset(data_dir, relabel=relabel), transforms=transforms
+    )
     if split_ratio is not None:
         train_dataset, validation_dataset = dataset.split(
             split_ratio=split_ratio, random_state=random_state, shuffle=shuffle

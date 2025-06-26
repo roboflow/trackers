@@ -146,4 +146,4 @@ class ReIDModel:
                 log_to_tensorboard=log_to_tensorboard,
                 log_to_wandb=log_to_wandb,
             )
-            trainer.train(train_loader)
+            trainer.train(train_loader, validation_loader)

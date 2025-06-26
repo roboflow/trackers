@@ -59,3 +59,11 @@ class CrossEntropyTrainer(BaseTrainer):
         loss.backward()
         self.optimizer.step()
         return {"train/loss": loss.item()}
+
+    def validation_step(self, data: dict[str, torch.Tensor]):
+        images = self.transforms(data["image"]).to(self.device)
+        identities = data["identity"].to(self.device)
+        with torch.inference_mode():
+            outputs = self.model(images)
+            loss = self.criterion(F.log_softmax(outputs, dim=1), identities)
+        return {"validation/loss": loss.item()}
