@@ -16,8 +16,11 @@ def top_k_accuracy(
 ) -> torch.Tensor:
     if isinstance(logits, (tuple, list)):
         logits = logits[0]
-    top_k_predicted_indices = logits.topk(top_k, 1, True, True)[1].t()
-    correct_matches = top_k_predicted_indices.eq(
+    top_k_predicted_indices = torch.t(
+        torch.topk(logits, top_k, dim=1, largest=True, sorted=True)[1]
+    )
+    correct_matches = torch.eq(
+        top_k_predicted_indices,
         true_labels.view(1, -1).expand_as(top_k_predicted_indices)
     )
     num_correct_in_top_k = correct_matches[:top_k].view(-1).float().sum(0, keepdim=True)
