@@ -1,21 +1,17 @@
-import os
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from torch.utils.data import DataLoader
 from torchvision.transforms import Compose
-from tqdm.auto import tqdm
 
-from trackers.core.reid.callbacks import BaseCallback
+from trackers.core.reid.trainer.base import BaseTrainer
 from trackers.log import get_logger
 
 logger = get_logger(__name__)
 
 
-class CrossEntropyTrainer:
+class CrossEntropyTrainer(BaseTrainer):
     def __init__(
         self,
         model: nn.Module,
@@ -31,28 +27,6 @@ class CrossEntropyTrainer:
         log_to_tensorboard: bool = False,
         log_to_wandb: bool = False,
     ):
-        self.device = device
-        self.model = model.to(device)
-        self.transforms = transforms
-        self.epochs = epochs
-        self.label_smoothing = label_smoothing
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
-        self.random_state = random_state
-        self.log_dir = log_dir
-
-        self.criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
-        self.optimizer = optim.Adam(
-            self.model.parameters(), lr=learning_rate, weight_decay=weight_decay
-        )
-
-        os.makedirs(self.log_dir, exist_ok=True)
-        os.makedirs(os.path.join(self.log_dir, "checkpoints"), exist_ok=True)
-        os.makedirs(os.path.join(self.log_dir, "tensorboard_logs"), exist_ok=True)
-
-        if random_state is not None:
-            torch.manual_seed(random_state)
-
         config = {
             "epochs": epochs,
             "learning_rate": learning_rate,
@@ -60,57 +34,21 @@ class CrossEntropyTrainer:
             "random_state": random_state,
             "label_smoothing": label_smoothing,
         }
-
-        self._initialize_callbacks(
-            config, log_to_matplotlib, log_to_tensorboard, log_to_wandb
+        self.criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+        super().__init__(
+            model=model,
+            device=device,
+            transforms=transforms,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            random_state=random_state,
+            log_dir=log_dir,
+            log_to_matplotlib=log_to_matplotlib,
+            log_to_tensorboard=log_to_tensorboard,
+            log_to_wandb=log_to_wandb,
+            config=config,
         )
-
-    def _initialize_callbacks(
-        self,
-        config: dict[str, Any],
-        log_to_matplotlib: bool = False,
-        log_to_tensorboard: bool = False,
-        log_to_wandb: bool = False,
-    ):
-        self.callbacks: list[BaseCallback] = []
-        if log_to_matplotlib:
-            try:
-                from trackers.core.reid.callbacks import MatplotlibCallback
-
-                self.callbacks.append(MatplotlibCallback(log_dir=self.log_dir))
-            except (ImportError, AttributeError) as e:
-                logger.error(
-                    "Metric logging dependencies are not installed. "
-                    "Please install it using `pip install trackers[metrics]`.",
-                )
-                raise e
-        if log_to_tensorboard:
-            try:
-                from trackers.core.reid.callbacks import TensorboardCallback
-
-                self.callbacks.append(
-                    TensorboardCallback(
-                        log_dir=os.path.join(self.log_dir, "tensorboard_logs")
-                    )
-                )
-            except (ImportError, AttributeError) as e:
-                logger.error(
-                    "Metric logging dependencies are not installed. "
-                    "Please install it using `pip install trackers[metrics]`."
-                )
-                raise e
-
-        if log_to_wandb:
-            try:
-                from trackers.core.reid.callbacks import WandbCallback
-
-                self.callbacks.append(WandbCallback(config=config))
-            except (ImportError, AttributeError) as e:
-                logger.error(
-                    "Metric logging dependencies are not installed. "
-                    "Please install it using `pip install trackers[metrics]`."
-                )
-                raise e
 
     def train_step(self, data: dict[str, torch.Tensor]):
         images = self.transforms(data["image"]).to(self.device)
@@ -121,29 +59,3 @@ class CrossEntropyTrainer:
         loss.backward()
         self.optimizer.step()
         return {"train/loss": loss.item()}
-
-    def train(self, train_loader: DataLoader):
-        self.model.train()
-        for epoch in tqdm(range(self.epochs), desc="Training"):
-            accumulated_train_logs: dict[str, Union[float, int]] = {}
-            for idx, data in tqdm(
-                enumerate(train_loader),
-                total=len(train_loader),
-                desc=f"Training Epoch {epoch + 1}/{self.epochs}",
-                leave=False,
-            ):
-                train_logs = self.train_step(data)
-                for key, value in train_logs.items():
-                    accumulated_train_logs[key] = (
-                        accumulated_train_logs.get(key, 0) + value
-                    )
-                for callback in self.callbacks:
-                    for key, value in train_logs.items():
-                        callback.on_train_batch_end(
-                            {f"batch/{key}": value}, epoch * len(train_loader) + idx
-                        )
-            for key, value in accumulated_train_logs.items():
-                accumulated_train_logs[key] = value / len(train_loader)
-
-            for callback in self.callbacks:
-                callback.on_train_epoch_end(accumulated_train_logs, epoch)
