@@ -152,3 +152,4 @@ class ReIDModel:
                 validation_loader=validation_loader,
                 checkpoint_interval=checkpoint_interval,
             )
+            self.backbone = trainer.model

@@ -185,3 +185,5 @@ class BaseTrainer(ABC):
             if validation_loader is not None:
                 self.execute_validation_batch_loop(validation_loader, epoch)
             self.save_checkpoint(epoch, checkpoint_interval)
+        for callback in self.callbacks:
+            callback.on_end()

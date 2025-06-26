@@ -11,6 +11,19 @@ from trackers.log import get_logger
 logger = get_logger(__name__)
 
 
+def top_k_accuracy(
+    logits: torch.Tensor, true_labels: torch.Tensor, top_k: int = 1
+) -> torch.Tensor:
+    if isinstance(logits, (tuple, list)):
+        logits = logits[0]
+    top_k_predicted_indices = logits.topk(top_k, 1, True, True)[1].t()
+    correct_matches = top_k_predicted_indices.eq(
+        true_labels.view(1, -1).expand_as(top_k_predicted_indices)
+    )
+    num_correct_in_top_k = correct_matches[:top_k].view(-1).float().sum(0, keepdim=True)
+    return num_correct_in_top_k.mul_(100.0 / true_labels.size(0))
+
+
 class CrossEntropyTrainer(BaseTrainer):
     def __init__(
         self,
@@ -58,7 +71,10 @@ class CrossEntropyTrainer(BaseTrainer):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        return {"train/loss": loss.item()}
+        return {
+            "train/loss": loss.item(),
+            "train/accuracy": top_k_accuracy(outputs, identities).item(),
+        }
 
     def validation_step(self, data: dict[str, torch.Tensor]):
         images = self.transforms(data["image"]).to(self.device)
@@ -66,4 +82,7 @@ class CrossEntropyTrainer(BaseTrainer):
         with torch.inference_mode():
             outputs = self.model(images)
             loss = self.criterion(F.log_softmax(outputs, dim=1), identities)
-        return {"validation/loss": loss.item()}
+        return {
+            "validation/loss": loss.item(),
+            "validation/accuracy": top_k_accuracy(outputs, identities).item(),
+        }
