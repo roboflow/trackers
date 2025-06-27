@@ -21,16 +21,24 @@ from trackers.utils.torch_utils import parse_device_spec
 logger = get_logger(__name__)
 
 
-def _initialize_reid_model_from_timm(
-    cls,
-    model_name: str,
-    device: Optional[str] = "auto",
-    **kwargs,
-):
-    model = timm.create_model(model_name, pretrained=True, num_classes=0, **kwargs)
-    config = resolve_data_config(model.pretrained_cfg)
-    transforms = create_transform(**config)
-    return cls(model, device, transforms)
+class FeatureExtractorModel(nn.Module):
+    def __init__(self, backbone: nn.Module):
+        super().__init__()
+        self.backbone = backbone
+        self.fc: Optional[nn.Linear] = None
+
+    def add_classification_head(self, num_classes: int) -> None:
+        self.fc = nn.Linear(self.backbone.num_features, num_classes)
+
+    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        features = self.backbone.forward_features(x)
+        pooled_features = self.backbone.global_pool(features)
+        return pooled_features
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        pooled_features = self.forward_features(x)
+        output = self.fc(pooled_features) if self.fc is not None else pooled_features
+        return output
 
 
 class ReIDModel:
@@ -41,7 +49,7 @@ class ReIDModel:
         transforms: Optional[Union[Callable, list[Callable], Compose]] = None,
     ):
         self.device = parse_device_spec(device or "auto")
-        self.backbone = backbone.to(self.device)
+        self.feature_extractor = FeatureExtractorModel(backbone).to(self.device)
         self._initialize_transforms(transforms)
 
     def _initialize_transforms(
@@ -61,22 +69,20 @@ class ReIDModel:
         device: Optional[str] = "auto",
         **kwargs,
     ) -> ReIDModel:
-        return _initialize_reid_model_from_timm(
-            cls,
-            model_name_or_checkpoint_path,
-            device,
-            **kwargs,
+        model = timm.create_model(
+            model_name_or_checkpoint_path, pretrained=True, num_classes=0, **kwargs
         )
+        config = resolve_data_config(model.pretrained_cfg)
+        transforms = create_transform(**config)
+        return cls(model, device, transforms)
 
     def add_classification_head(
         self, num_classes: int, freeze_backbone: bool = True
     ) -> None:
         if freeze_backbone:
-            for param in self.backbone.parameters():
+            for param in self.feature_extractor.backbone.parameters():
                 param.requires_grad = False
-        if hasattr(self.backbone, "fc"):
-            self.backbone.fc = nn.Linear(self.backbone.num_features, num_classes)
-        self.backbone.to(self.device)
+        self.feature_extractor.add_classification_head(num_classes)
 
     def extract_features(
         self, detections: sv.Detections, frame: Union[np.ndarray, PIL.Image.Image]
@@ -104,8 +110,7 @@ class ReIDModel:
                 crop_tensor = (
                     self.inference_transforms(crop).unsqueeze(0).to(self.device)
                 )
-                features = self.backbone.forward_features(crop_tensor)
-                pooled_features = self.backbone.global_pool(features)
+                pooled_features = self.feature_extractor.forward_features(crop_tensor)
                 pooled_features = torch.squeeze(pooled_features).cpu().numpy().flatten()
                 features_list.append(pooled_features)
 
@@ -133,7 +138,7 @@ class ReIDModel:
                 assert isinstance(validation_loader.dataset, IdentityDataset)
             self.add_classification_head(num_classes, freeze_backbone=freeze_backbone)
             trainer = CrossEntropyTrainer(
-                model=self.backbone,
+                model=self.feature_extractor,
                 device=self.device,
                 transforms=self.train_transforms,
                 epochs=epochs,
@@ -151,4 +156,4 @@ class ReIDModel:
                 validation_loader=validation_loader,
                 checkpoint_interval=checkpoint_interval,
             )
-            self.backbone = trainer.model
+            self.feature_extractor = trainer.model
