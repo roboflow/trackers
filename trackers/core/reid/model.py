@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Union
+import os
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import PIL
@@ -16,7 +17,7 @@ from torchvision.transforms import Compose, ToPILImage
 from trackers.core.reid.dataset.base import IdentityDataset
 from trackers.core.reid.trainer.cross_entropy_trainer import CrossEntropyTrainer
 from trackers.log import get_logger
-from trackers.utils.torch_utils import parse_device_spec
+from trackers.utils.torch_utils import load_safetensors_checkpoint, parse_device_spec
 
 logger = get_logger(__name__)
 
@@ -47,10 +48,16 @@ class ReIDModel:
         backbone: nn.Module,
         device: Optional[str] = "auto",
         transforms: Optional[Union[Callable, list[Callable], Compose]] = None,
+        model_metadata: dict[str, Any] = {},
     ):
         self.device = parse_device_spec(device or "auto")
-        self.feature_extractor = FeatureExtractorModel(backbone).to(self.device)
+        self.feature_extractor = (
+            FeatureExtractorModel(backbone)
+            if not isinstance(backbone, FeatureExtractorModel)
+            else backbone
+        ).to(self.device)
         self._initialize_transforms(transforms)
+        self.model_metadata = model_metadata
 
     def _initialize_transforms(
         self, transforms: Optional[Union[Callable, list[Callable], Compose]]
@@ -69,12 +76,31 @@ class ReIDModel:
         device: Optional[str] = "auto",
         **kwargs,
     ) -> ReIDModel:
-        model = timm.create_model(
-            model_name_or_checkpoint_path, pretrained=True, num_classes=0, **kwargs
-        )
-        config = resolve_data_config(model.pretrained_cfg)
-        transforms = create_transform(**config)
-        return cls(model, device, transforms)
+        if not os.path.exists(model_name_or_checkpoint_path):
+            model = timm.create_model(
+                model_name_or_checkpoint_path, pretrained=True, num_classes=0, **kwargs
+            )
+            config = resolve_data_config(model.pretrained_cfg)
+            transforms = create_transform(**config)
+            return cls(model, device, transforms)
+        else:
+            state_dict, config = load_safetensors_checkpoint(
+                model_name_or_checkpoint_path
+            )
+            model = timm.create_model(
+                model_name_or_checkpoint_path, pretrained=True, num_classes=0, **kwargs
+            )
+            config = resolve_data_config(model.pretrained_cfg)
+            transforms = create_transform(**config)
+            reid_model_instance = cls(model, device, transforms)
+            if config["num_classes"]:
+                reid_model_instance.add_classification_head(
+                    num_classes=config["num_classes"]
+                )
+            for k, _ in state_dict.items():
+                state_dict[k].to(reid_model_instance.device)
+            reid_model_instance.feature_extractor.load_state_dict(state_dict)
+            return reid_model_instance
 
     def add_classification_head(
         self, num_classes: int, freeze_backbone: bool = False

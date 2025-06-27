@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -27,6 +27,7 @@ class CrossEntropyTrainer(BaseTrainer):
         log_to_matplotlib: bool = False,
         log_to_tensorboard: bool = False,
         log_to_wandb: bool = False,
+        model_metadata: dict[str, Any] = {},
     ):
         config = {
             "epochs": epochs,
@@ -34,6 +35,7 @@ class CrossEntropyTrainer(BaseTrainer):
             "weight_decay": weight_decay,
             "random_state": random_state,
             "label_smoothing": label_smoothing,
+            "model_metadata": model_metadata,
         }
         self.criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
         super().__init__(
