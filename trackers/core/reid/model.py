@@ -25,11 +25,8 @@ def _initialize_reid_model_from_timm(
     cls,
     model_name: str,
     device: Optional[str] = "auto",
-    get_pooled_features: bool = True,
     **kwargs,
 ):
-    if not get_pooled_features:
-        kwargs["global_pool"] = ""
     model = timm.create_model(model_name, pretrained=True, num_classes=0, **kwargs)
     config = resolve_data_config(model.pretrained_cfg)
     transforms = create_transform(**config)
@@ -62,14 +59,12 @@ class ReIDModel:
         cls,
         model_name_or_checkpoint_path: str,
         device: Optional[str] = "auto",
-        get_pooled_features: bool = True,
         **kwargs,
     ) -> ReIDModel:
         return _initialize_reid_model_from_timm(
             cls,
             model_name_or_checkpoint_path,
             device,
-            get_pooled_features,
             **kwargs,
         )
 
@@ -102,15 +97,19 @@ class ReIDModel:
         if isinstance(frame, PIL.Image.Image):
             frame = np.array(frame)
 
-        features = []
+        features_list = []
         with torch.inference_mode():
             for box in detections.xyxy:
                 crop = sv.crop_image(image=frame, xyxy=[*box.astype(int)])
-                tensor = self.inference_transforms(crop).unsqueeze(0).to(self.device)
-                feature = torch.squeeze(self.backbone(tensor)).cpu().numpy().flatten()
-                features.append(feature)
+                crop_tensor = (
+                    self.inference_transforms(crop).unsqueeze(0).to(self.device)
+                )
+                features = self.backbone.forward_features(crop_tensor)
+                pooled_features = self.backbone.global_pool(features)
+                pooled_features = torch.squeeze(pooled_features).cpu().numpy().flatten()
+                features_list.append(pooled_features)
 
-        return np.array(features)
+        return np.array(features_list)
 
     def train(
         self,
