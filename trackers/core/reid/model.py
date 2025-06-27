@@ -77,7 +77,7 @@ class ReIDModel:
         return cls(model, device, transforms)
 
     def add_classification_head(
-        self, num_classes: int, freeze_backbone: bool = True
+        self, num_classes: int, freeze_backbone: bool = False
     ) -> None:
         if freeze_backbone:
             for param in self.feature_extractor.backbone.parameters():
