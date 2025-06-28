@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import numpy as np
 import supervision as sv
@@ -65,7 +65,7 @@ class KSPTracker(BaseTracker):
         # Select best tracker for each node based on minimal displacement
         node_to_tracker = {}
         for node, candidates in node_to_candidates.items():
-            min_displacement = float('inf')
+            min_displacement = float("inf")
             selected_tracker = None
             for tracker_id, next_node in candidates:
                 if next_node:
@@ -84,18 +84,22 @@ class KSPTracker(BaseTracker):
         # Organize detections by frame
         frame_to_dets = defaultdict(list)
         for node, tracker_id in node_to_tracker.items():
-            frame_to_dets[node.frame_id].append({
-                "xyxy": node.bbox,
-                "confidence": node.confidence,
-                "class_id": node.class_id,
-                "tracker_id": tracker_id,
-            })
+            frame_to_dets[node.frame_id].append(
+                {
+                    "xyxy": node.bbox,
+                    "confidence": node.confidence,
+                    "class_id": node.class_id,
+                    "tracker_id": tracker_id,
+                }
+            )
 
         # Convert into sv.Detections
         frame_to_detections = {}
         for frame, dets_list in frame_to_dets.items():
             xyxy = np.array([d["xyxy"] for d in dets_list], dtype=np.float32)
-            confidence = np.array([d["confidence"] for d in dets_list], dtype=np.float32)
+            confidence = np.array(
+                [d["confidence"] for d in dets_list], dtype=np.float32
+            )
             class_id = np.array([d["class_id"] for d in dets_list], dtype=int)
             tracker_id = np.array([d["tracker_id"] for d in dets_list], dtype=int)
             detections = sv.Detections(
