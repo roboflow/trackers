@@ -122,6 +122,4 @@ class KSPTracker(BaseTracker):
         paths = self._solver.solve(num_of_tracks)
         if not paths:
             return []
-        return self.assign_tracker_ids_from_paths(
-            paths
-        )
+        return self.assign_tracker_ids_from_paths(paths)
