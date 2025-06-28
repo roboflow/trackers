@@ -1,248 +1,128 @@
-from dataclasses import dataclass
-from typing import Any, Dict, List
+from collections import defaultdict
+from typing import Dict, List
 
-import networkx as nx
 import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker
-
-
-@dataclass(frozen=True)
-class TrackNode:
-    """
-    Represents a detection node in the tracking graph.
-
-    Attributes:
-        frame_id (int): Frame index where detection occurred
-        grid_cell_id (int): Discretized grid cell ID of detection center
-        position (tuple): Grid coordinates (x_bin, y_bin)
-        confidence (float): Detection confidence score
-    """
-
-    frame_id: int
-    grid_cell_id: int
-    position: tuple
-    confidence: float
-
-    def __hash__(self) -> int:
-        """
-        Generate hash using frame and grid cell.
-
-        Returns:
-            int: Hash value for node
-        """
-        return hash((self.frame_id, self.grid_cell_id))
-
-    def __eq__(self, other: Any) -> bool:
-        """
-        Compare nodes by frame and grid cell ID.
-
-        Args:
-            other (Any): Object to compare
-
-        Returns:
-            bool: True if same node, False otherwise
-        """
-        if not isinstance(other, TrackNode):
-            return False
-        return (self.frame_id, self.grid_cell_id) == (
-            other.frame_id,
-            other.grid_cell_id,
-        )
+from trackers.core.ksptracker.solver import KSP_Solver, TrackNode
 
 
 class KSPTracker(BaseTracker):
     """
-    Offline tracker using K-Shortest Paths (KSP).
-
-    Attributes:
-        grid_size (int): Size of each grid cell (in pixels)
-        min_confidence (float): Minimum detection confidence
-        max_distance (float): Max dissimilarity (1 - IoU) allowed
+    Offline tracker using K-Shortest Paths (KSP) algorithm.
     """
 
-    def __init__(
-        self,
-        grid_size: int = 20,
-        min_confidence: float = 0.3,
-        max_distance: float = 0.3,
-    ) -> None:
+    def __init__(self) -> None:
         """
-        Initialize KSP tracker with config parameters.
-
-        Args:
-            grid_size (int): Pixel size of each grid cell
-            min_confidence (float): Min detection confidence
-            max_distance (float): Max allowed dissimilarity
+        Initialize the KSPTracker and its solver.
         """
-        self.grid_size = grid_size
-        self.min_confidence = min_confidence
-        self.max_distance = max_distance
+        self._solver = KSP_Solver()
+        self._solver.reset()
         self.reset()
 
     def reset(self) -> None:
         """
-        Reset the internal detection buffer.
+        Reset the solver and clear any stored state.
         """
-        self.detection_buffer: List[sv.Detections] = []
+        self._solver.reset()
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """
-        Append new detections to the buffer.
+        Add detections for the current frame to the solver.
 
         Args:
-            detections (sv.Detections): Frame detections
+            detections (sv.Detections): Detections for the current frame.
 
         Returns:
-            sv.Detections: Same as input
+            sv.Detections: The same detections passed in.
         """
-        self.detection_buffer.append(detections)
+        self._solver.append_frame(detections)
         return detections
 
-    def _discretized_grid_cell_id(self, bbox: np.ndarray) -> tuple:
+    def assign_tracker_ids_from_paths(
+        self, paths: List[List[TrackNode]], num_frames: int
+    ) -> Dict[int, sv.Detections]:
         """
-        Get grid cell ID from bbox center.
+        Assigns each detection a unique tracker ID by preferring the path with
+        the least motion change (displacement).
 
         Args:
-            bbox (np.ndarray): Bounding box coordinates
+            paths (List[List[TrackNode]]): List of tracks, each a list of TrackNode.
+            num_frames (int): Number of frames in the sequence.
 
         Returns:
-            tuple: Grid (x_bin, y_bin)
+            Dict[int, sv.Detections]: Mapping from frame index to sv.Detections
+                                      with tracker IDs assigned.
         """
-        x_center = (bbox[2] - bbox[0]) / 2
-        y_center = (bbox[3] - bbox[1]) / 2
-        grid_x_center = int(x_center // self.grid_size)
-        grid_y_center = int(y_center // self.grid_size)
-        return (grid_x_center, grid_y_center)
+        # Track where each node appears
+        node_to_candidates = defaultdict(list)
+        for tracker_id, path in enumerate(paths, start=1):
+            for i, node in enumerate(path):
+                next_node = path[i + 1] if i + 1 < len(path) else None
+                node_to_candidates[node].append((tracker_id, next_node))
 
-    def _build_graph(self, all_detections: List[sv.Detections]) -> nx.DiGraph:
-        """
-        Build graph from all buffered detections.
+        # Select best tracker for each node based on minimal displacement
+        node_to_tracker = {}
+        for node, candidates in node_to_candidates.items():
+            min_displacement = float("inf")
+            selected_tracker = None
+            for tracker_id, next_node in candidates:
+                if next_node:
+                    dx = node.position[0] - next_node.position[0]
+                    dy = node.position[1] - next_node.position[1]
+                    displacement = dx * dx + dy * dy  # squared distance
+                else:
+                    displacement = 0  # last node in path, no penalty
 
-        Args:
-            all_detections (List[sv.Detections]): All video detections
+                if displacement < min_displacement:
+                    min_displacement = displacement
+                    selected_tracker = tracker_id
 
-        Returns:
-            nx.DiGraph: Directed graph with detection nodes
-        """
-        G = nx.DiGraph()
-        G.add_node("source")
-        G.add_node("sink")
+            node_to_tracker[node] = selected_tracker
 
-        self.node_to_detection: Dict[TrackNode, tuple] = {}
-        node_dict: Dict[int, List[TrackNode]] = {}
+        # Organize detections by frame
+        frame_to_dets = defaultdict(list)
+        for node, tracker_id in node_to_tracker.items():
+            frame_to_dets[node.frame_id].append(
+                {
+                    "xyxy": node.bbox,
+                    "confidence": node.confidence,
+                    "class_id": node.class_id,
+                    "tracker_id": tracker_id,
+                }
+            )
 
-        for frame_idx, dets in enumerate(all_detections):
-            node_dict[frame_idx] = []
-            for det_idx in range(len(dets)):
-                if dets.confidence[det_idx] < self.min_confidence:
-                    continue
+        # Convert into sv.Detections
+        frame_to_detections = {}
+        for frame, dets_list in frame_to_dets.items():
+            xyxy = np.array([d["xyxy"] for d in dets_list], dtype=np.float32)
+            confidence = np.array(
+                [d["confidence"] for d in dets_list], dtype=np.float32
+            )
+            class_id = np.array([d["class_id"] for d in dets_list], dtype=int)
+            tracker_id = np.array([d["tracker_id"] for d in dets_list], dtype=int)
+            detections = sv.Detections(
+                xyxy=xyxy,
+                confidence=confidence,
+                class_id=class_id,
+                tracker_id=tracker_id,
+            )
+            frame_to_detections[frame] = detections
 
-                pos = self._discretized_grid_cell_id(np.array(dets.xyxy[det_idx]))
-                cell_id = hash(pos)
-
-                node = TrackNode(
-                    frame_id=frame_idx,
-                    grid_cell_id=cell_id,
-                    position=pos,
-                    confidence=dets.confidence[det_idx],
-                )
-
-                G.add_node(node)
-                node_dict[frame_idx].append(node)
-                self.node_to_detection[node] = (frame_idx, det_idx)
-
-                if frame_idx == 0:
-                    G.add_edge("source", node, weight=max(-node.confidence, 0.001))
-                if frame_idx == len(all_detections) - 1:
-                    G.add_edge(node, "sink", weight=0)
-
-        for i in range(len(all_detections) - 1):
-            for node in node_dict[i]:
-                for node_next in node_dict[i + 1]:
-                    dist = np.linalg.norm(
-                        np.array(node.position) - np.array(node_next.position)
-                    )
-                    if dist <= 2:
-                        G.add_edge(
-                            node_next,
-                            node,
-                            weight=max(dist - node_next.confidence, 0.001),
-                        )
-
-        return G
-
-    def _update_detections_with_tracks(
-        self, assignments: List[List[TrackNode]]
-    ) -> List[sv.Detections]:
-        """
-        Assign track IDs to detections.
-
-        Args:
-            assignments (Dict): Paths from KSP with track IDs
-
-        Returns:
-            List[sv.Detections]: Merged detections with tracker IDs
-        """
-        all_detections = []
-
-        assigned = set()
-        assignment_map = {}
-        for track_id, path in enumerate(assignments, start=1):
-            for node in path:
-                det_key = self.node_to_detection.get(node)
-                if det_key and det_key not in assigned:
-                    assignment_map[det_key] = track_id
-                    assigned.add(det_key)
-
-        for frame_idx, dets in enumerate(self.detection_buffer):
-            frame_tracker_ids = [-1] * len(dets)
-            for det_idx in range(len(dets)):
-                key = (frame_idx, det_idx)
-                if key in assignment_map:
-                    frame_tracker_ids[det_idx] = assignment_map[key]
-
-            dets.tracker_id = np.array(frame_tracker_ids)
-            all_detections.append(dets)
-
-        return all_detections
-
-    def ksp(self, graph: nx.DiGraph) -> List[List[TrackNode]]:
-        """
-        Find multiple disjoint shortest paths.
-
-        Args:
-            graph (nx.DiGraph): Detection graph
-
-        Returns:
-            List[List[TrackNode]]: Disjoint detection paths
-        """
-        paths: List[List[TrackNode]] = []
-        G_copy = graph.copy()
-
-        while True:
-            try:
-                path = nx.shortest_path(
-                    G_copy, source="source", target="sink", weight="weight"
-                )
-                if len(path) < 2:
-                    break
-                paths.append(path[1:-1])
-                for node in path[1:-1]:
-                    G_copy.remove_node(node)
-            except nx.NetworkXNoPath:
-                break
-
-        return paths
+        return frame_to_detections
 
     def process_tracks(self) -> List[sv.Detections]:
         """
-        Run tracker and assign detections to tracks.
+        Run the KSP solver and assign tracker IDs to detections.
 
         Returns:
-            List[sv.Detections]: Final detections with track IDs
+            List[sv.Detections]: Mapping from frame index to sv.Detections
+                                      with tracker IDs assigned.
         """
-        graph = self._build_graph(self.detection_buffer)
-        disjoint_paths = self.ksp(graph)
-        return self._update_detections_with_tracks(assignments=disjoint_paths)
+        paths = self._solver.solve()
+        if not paths:
+            return {}
+        return self.assign_tracker_ids_from_paths(
+            paths, num_frames=len(self._solver.detection_per_frame)
+        )
