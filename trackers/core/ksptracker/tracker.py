@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List
 
 import numpy as np
 import supervision as sv
@@ -13,25 +13,48 @@ class KSPTracker(BaseTracker):
     Offline tracker using K-Shortest Paths (KSP) algorithm.
     """
 
-    def __init__(
-        self,
-    ) -> None:
+    def __init__(self) -> None:
+        """
+        Initialize the KSPTracker and its solver.
+        """
         self._solver = KSP_Solver()
         self._solver.reset()
         self.reset()
 
     def reset(self) -> None:
+        """
+        Reset the solver and clear any stored state.
+        """
         self._solver.reset()
 
     def update(self, detections: sv.Detections) -> sv.Detections:
+        """
+        Add detections for the current frame to the solver.
+
+        Args:
+            detections (sv.Detections): Detections for the current frame.
+
+        Returns:
+            sv.Detections: The same detections passed in.
+        """
         self._solver.append_frame(detections)
         return detections
-    
-    def assign_tracker_ids_from_paths(self, paths: List[List[TrackNode]], num_frames: int) -> Dict[int, sv.Detections]:
-        """
-        Assigns each detection a unique tracker ID by preferring the path with the least motion change (displacement).
-        """
 
+    def assign_tracker_ids_from_paths(
+        self, paths: List[List[TrackNode]], num_frames: int
+    ) -> Dict[int, sv.Detections]:
+        """
+        Assigns each detection a unique tracker ID by preferring the path with
+        the least motion change (displacement).
+
+        Args:
+            paths (List[List[TrackNode]]): List of tracks, each a list of TrackNode.
+            num_frames (int): Number of frames in the sequence.
+
+        Returns:
+            Dict[int, sv.Detections]: Mapping from frame index to sv.Detections
+                                      with tracker IDs assigned.
+        """
         # Track where each node appears
         node_to_candidates = defaultdict(list)
         for tracker_id, path in enumerate(paths, start=1):
@@ -48,7 +71,7 @@ class KSPTracker(BaseTracker):
                 if next_node:
                     dx = node.position[0] - next_node.position[0]
                     dy = node.position[1] - next_node.position[1]
-                    displacement = dx * dx + dy * dy  # use squared distance for speed
+                    displacement = dx * dx + dy * dy  # squared distance
                 else:
                     displacement = 0  # last node in path, no penalty
 
@@ -84,11 +107,18 @@ class KSPTracker(BaseTracker):
             frame_to_detections[frame] = detections
 
         return frame_to_detections
-    
-    def process_tracks(self) -> Dict[int, sv.Detections]:
-        paths = self._solver.solve()
 
+    def process_tracks(self) -> List[sv.Detections]:
+        """
+        Run the KSP solver and assign tracker IDs to detections.
+
+        Returns:
+            List[sv.Detections]: Mapping from frame index to sv.Detections
+                                      with tracker IDs assigned.
+        """
+        paths = self._solver.solve()
         if not paths:
             return {}
-        
-        return self.assign_tracker_ids_from_paths(paths, num_frames=len(self._solver.detection_per_frame))
+        return self.assign_tracker_ids_from_paths(
+            paths, num_frames=len(self._solver.detection_per_frame)
+        )
