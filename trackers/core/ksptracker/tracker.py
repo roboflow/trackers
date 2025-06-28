@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple, Optional
 
 import networkx as nx
 import numpy as np
@@ -7,31 +7,13 @@ import supervision as sv
 
 from trackers.core.base import BaseTracker
 
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import math
-import cv2
-import itertools
-from copy import deepcopy
-from pyvis.network import Network
-import matplotlib.colors as mcolors
-import matplotlib.cm as cm
-from trackers.core.ksptracker.InteractivePMapViewer import InteractivePMapViewer
-
 import pprint
-p = pprint.PrettyPrinter(4)
-import copy
+p = pprint.PrettyPrinter()
 
 @dataclass(frozen=True)
 class TrackNode:
     """
     Represents a detection node in the tracking graph.
-
-    Attributes:
-        frame_id (int): Frame index where detection occurred.
-        grid_cell_id (int): Discretized grid cell ID of detection center.
-        position (tuple): Grid coordinates (x_bin, y_bin).
-        confidence (float): Detection confidence score.
     """
     frame_id: int
     grid_cell_id: int
@@ -41,15 +23,13 @@ class TrackNode:
     confidence: float
 
     def __hash__(self) -> int:
-        """Generate hash using frame and grid cell."""
-        return hash((self.frame_id, self.grid_cell_id))
+        return hash((self.frame_id, self.det_idx))
 
     def __eq__(self, other: Any) -> bool:
-        """Compare nodes by frame and grid cell ID."""
         if not isinstance(other, TrackNode):
             return False
-        return (self.frame_id, self.grid_cell_id) == (other.frame_id, other.grid_cell_id)
-    
+        return (self.frame_id, self.det_idx) == (other.frame_id, other.det_idx)
+
     def __str__(self):
         return f"{self.frame_id} {self.det_idx} {self.grid_cell_id}"
 
@@ -57,20 +37,16 @@ def compute_edge_cost(
     det_a_xyxy, det_b_xyxy, conf_a, conf_b, class_a, class_b,
     iou_weight=0.5, dist_weight=0.3, size_weight=0.1, conf_weight=0.1
 ):
-    # Block if class doesn't match
-    if class_a != class_b:
-        return float('inf')
-
-    # Get box centers
+    print("TEST")
+    print(det_a_xyxy)
     def get_center(box):
         x1, y1, x2, y2 = box
         return np.array([(x1 + x2) / 2, (y1 + y2) / 2])
-    
+
     center_a = get_center(det_a_xyxy)
     center_b = get_center(det_b_xyxy)
     euclidean_dist = np.linalg.norm(center_a - center_b)
 
-    # IoU between boxes
     def box_iou(boxA, boxB):
         xA = max(boxA[0], boxB[0])
         yA = max(boxA[1], boxB[1])
@@ -83,18 +59,15 @@ def compute_edge_cost(
         return inter_area / union_area if union_area > 0 else 0
 
     iou = box_iou(det_a_xyxy, det_b_xyxy)
-    iou_penalty = 1 - iou  # lower IoU = higher cost
+    iou_penalty = 1 - iou
 
-    # Size ratio penalty
     area_a = (det_a_xyxy[2] - det_a_xyxy[0]) * (det_a_xyxy[3] - det_a_xyxy[1])
     area_b = (det_b_xyxy[2] - det_b_xyxy[0]) * (det_b_xyxy[3] - det_b_xyxy[1])
     size_ratio = max(area_a, area_b) / (min(area_a, area_b) + 1e-5)
-    size_penalty = np.log(size_ratio + 1e-5)  # higher penalty for large size change
+    size_penalty = np.log(size_ratio + 1e-5)
 
-    # Confidence penalty
     conf_penalty = 1 - min(conf_a, conf_b)
 
-    # Weighted sum
     cost = (
         iou_weight * iou_penalty +
         dist_weight * euclidean_dist +
@@ -103,40 +76,47 @@ def compute_edge_cost(
     )
     return cost
 
-def build_tracking_graph_with_source_sink(detections_per_frame: List):
+def build_tracking_graph_with_source_sink(detections_per_frame: List[sv.Detections]):
     G = nx.DiGraph()
-    node_data = {}
-
+    node_list_per_frame = []
+    print("SDFSDFSD")
     # Add all detection nodes
     for frame_idx, detections in enumerate(detections_per_frame):
+        frame_nodes = []
         for det_idx, bbox in enumerate(detections.xyxy):
-            node_id = (frame_idx, det_idx)
-            G.add_node(node_id)
-            node_data[node_id] = {
-                "bbox": bbox,
-                "confidence": float(detections.confidence[det_idx]),
-                "class": str(detections.data["class_name"][det_idx])
-            }
+            position = (
+                float(bbox[0] + bbox[2]) / 2.0,
+                float(bbox[1] + bbox[3]) / 2.0
+            )
+            node = TrackNode(
+                frame_id=frame_idx,
+                det_idx=det_idx,
+                position=position,
+                bbox=bbox,
+                confidence=float(detections.confidence[det_idx]),
+                grid_cell_id=None
+            )
+            G.add_node(node)
+            frame_nodes.append(node)
+        node_list_per_frame.append(frame_nodes)
 
     # Add edges between detections in consecutive frames
-    for t in range(len(detections_per_frame) - 1):
+    for t in range(len(node_list_per_frame) - 1):
+        nodes_a = node_list_per_frame[t]
+        nodes_b = node_list_per_frame[t + 1]
         dets_a = detections_per_frame[t]
         dets_b = detections_per_frame[t + 1]
 
-        for i, box_a in enumerate(dets_a.xyxy):
-            for j, box_b in enumerate(dets_b.xyxy):
-                node_a = (t, i)
-                node_b = (t + 1, j)
-
+        for i, node_a in enumerate(nodes_a):
+            for j, node_b in enumerate(nodes_b):
                 class_a = str(dets_a.data["class_name"][i])
                 class_b = str(dets_b.data["class_name"][j])
                 conf_a = float(dets_a.confidence[i])
                 conf_b = float(dets_b.confidence[j])
 
                 cost = compute_edge_cost(
-                    box_a, box_b, conf_a, conf_b, class_a, class_b
+                    node_a.bbox, node_b.bbox, conf_a, conf_b, class_a, class_b
                 )
-
                 if cost < float('inf'):
                     G.add_edge(node_a, node_b, weight=cost)
 
@@ -145,145 +125,39 @@ def build_tracking_graph_with_source_sink(detections_per_frame: List):
     G.add_node("SINK")
 
     # Connect SOURCE to all detections in the first frame
-    for det_idx in range(len(detections_per_frame[0].xyxy)):
-        G.add_edge("SOURCE", (0, det_idx), weight=0)
+    for node in node_list_per_frame[0]:
+        G.add_edge("SOURCE", node, weight=0)
 
     # Connect all detections in the last frame to SINK
-    last_frame = len(detections_per_frame) - 1
-    for det_idx in range(len(detections_per_frame[-1].xyxy)):
-        G.add_edge((last_frame, det_idx), "SINK", weight=0)
+    for node in node_list_per_frame[-1]:
+        G.add_edge(node, "SINK", weight=0)
 
-    return G, node_data
+    return G
 
-def visualize_tracking_graph_with_path_pyvis(
-    G, node_data, path=None, output_file="graph.html"
-):
-    net = Network(height="800px", width="100%", directed=True)
-    net.toggle_physics(False)
-    spacing_x = 300
-    spacing_y = 50
-
-    path_edges = set(zip(path, path[1:])) if path else set()
-
-    # Collect frames and assign vertical positions
-    frame_positions = {}
-    for node in G.nodes():
-        if isinstance(node, tuple) and len(node) == 2:
-            frame, det_idx = node
-            frame_positions.setdefault(frame, []).append(det_idx)
-    for frame in frame_positions:
-        frame_positions[frame].sort()
-
-    frames = list(frame_positions.keys())
-    max_frame = max(frames) if frames else 0
-
-    for node in G.nodes():
-        if node == "SOURCE":
-            x, y = -spacing_x, 0
-            label = "SOURCE"
-            color = "green"
-            title = "Source node"
-        elif node == "SINK":
-            x, y = spacing_x * (max_frame + 1), 0
-            label = "SINK"
-            color = "red"
-            title = "Sink node"
-        else:
-            frame, det_idx = node
-            x = spacing_x * frame
-            y = spacing_y * frame_positions[frame].index(det_idx)
-            label = f"{frame}:{det_idx}"
-            color = "orange" if path and node in path else "lightgray"
-            data = node_data.get(node, {})
-            title = f"Frame: {frame}<br>ID: {det_idx}"
-            if "confidence" in data:
-                title += f"<br>Conf: {data['confidence']:.2f}"
-            if "class" in data:
-                title += f"<br>Class: {data['class']}"
-        net.add_node(
-            str(node), label=label, color=color, x=x, y=y,
-            physics=False, title=title
-        )
-
-    for u, v, data in G.edges(data=True):
-        u_id, v_id = str(u), str(v)
-        color = "orange" if (u, v) in path_edges else "gray"
-        width = 3 if (u, v) in path_edges else 1
-        weight = float(data.get("weight", 0))
-        label = f"{weight:.2f}"
-        net.add_edge(u_id, v_id, color=color, width=width, label=label)
-
-    net.set_options("""
-    var options = {
-      "nodes": {
-        "font": {
-          "size": 14
-        }
-      },
-      "edges": {
-        "font": {
-          "size": 10,
-          "align": "middle"
-        },
-        "smooth": false
-      },
-      "physics": {
-        "enabled": false
-      }
-    }
-    """)
-
-    net.write_html(output_file, notebook=False, open_browser=True)
-
-def assign_tracker_ids_from_paths(paths, node_data):
+def assign_tracker_ids_from_paths(paths: List[List[TrackNode]], num_frames: int) -> Dict[int, sv.Detections]:
     """
-    Converts paths and node data into frame-wise sv.Detections with tracker IDs assigned.
-    
-    Args:
-        paths (list of lists): Each inner list is a tracking path (list of nodes).
-        node_data (dict): Maps node tuples (frame, det_idx) to dicts containing detection info,
-                          e.g. 'xyxy', 'confidence', 'class_id', etc.
-    
-    Returns:
-        dict: frame_index -> sv.Detections for that frame with tracker_id assigned.
+    Converts paths (list of list of TrackNode) into frame-wise sv.Detections with tracker IDs assigned.
     """
-    # Normalize input: if a single path, wrap into a list
-    if isinstance(paths, list) and len(paths) > 0 and not isinstance(paths[0], list):
-        paths = [paths]
-
-    frame_to_raw_dets = {}
+    frame_to_dets = {frame: [] for frame in range(num_frames)}
 
     for tracker_id, path in enumerate(paths, start=1):
         for node in path:
-            if node in ("SOURCE", "SINK"):
-                continue
-            try:
-                frame, det_idx = node
-            except Exception:
-                continue
+            if isinstance(node, TrackNode):
+                frame_to_dets[node.frame_id].append({
+                    "xyxy": node.bbox,
+                    "confidence": node.confidence,
+                    "class_id": 0,
+                    "tracker_id": tracker_id,
+                })
 
-            det_info = node_data.get(node)
-            if det_info is None:
-                continue
-            
-            # Store detection info per frame
-            frame_to_raw_dets.setdefault(frame, []).append({
-                "xyxy": det_info["bbox"],
-                "confidence": det_info["confidence"],
-                "class_id": 0,
-                "tracker_id": tracker_id,
-            })
-
-    # Now convert each frame detections to sv.Detections objects
     frame_to_detections = {}
-
-    for frame, dets_list in frame_to_raw_dets.items():
+    for frame, dets_list in frame_to_dets.items():
+        if not dets_list:
+            continue
         xyxy = np.array([d["xyxy"] for d in dets_list], dtype=np.float32)
         confidence = np.array([d["confidence"] for d in dets_list], dtype=np.float32)
         class_id = np.array([d["class_id"] for d in dets_list], dtype=int)
         tracker_id = np.array([d["tracker_id"] for d in dets_list], dtype=int)
-
-        # Construct sv.Detections with tracker_id as an attribute
         detections = sv.Detections(
             xyxy=xyxy,
             confidence=confidence,
@@ -294,89 +168,62 @@ def assign_tracker_ids_from_paths(paths, node_data):
 
     return frame_to_detections
 
-def extend_graph(
-    G: nx.DiGraph, path: list, weight_key="weight", discourage_weight=1e6
+def path_cost(G: nx.DiGraph, path: list, weight_key="weight") -> float:
+    return sum(G[u][v][weight_key] for u, v in zip(path[:-1], path[1:]))
+
+# ------------- Main Function ----------------
+from collections import defaultdict
+
+def discourage_path_edges(G, path, weight_key="weight", penalty=1e6):
+    """
+    Add penalty to edges along the given path to discourage reuse.
+    """
+    for u, v in zip(path[:-1], path[1:]):
+        if G.has_edge(u, v):
+            G[u][v][weight_key] += penalty
+
+def iterative_k_shortest_paths_soft_penalty(
+    G: nx.DiGraph,
+    source="SOURCE",
+    sink="SINK",
+    k=5,
+    weight_key="weight",
+    base_penalty=10.0,  # smaller penalty
 ):
-    """
-    Given a path, extend the graph by:
-    - Splitting each node (except SOURCE/SINK) into v_in and v_out
-    - Redirecting incoming edges to v_in and outgoing edges from v_out
-    - Adding a zero-weight edge between v_in and v_out
-    - Reversing the used path and adding high-weight edges to discourage reuse
-    """
-    extended_G = nx.DiGraph()
-    extended_G.add_nodes_from(G.nodes(data=True))
-    
-    # Add all original edges
-    for u, v, data in G.edges(data=True):
-        extended_G.add_edge(u, v, **data)
-
-    for node in path:
-        if node in ("SOURCE", "SINK"):
-            continue
-
-        node_in = f"{node}_in"
-        node_out = f"{node}_out"
-
-        # Split node
-        extended_G.add_node(node_in, **G.nodes[node])
-        extended_G.add_node(node_out, **G.nodes[node])
-        extended_G.add_edge(node_in, node_out, **{weight_key: 0.0})
-
-        # Rewire incoming edges to node_in
-        for pred in list(G.predecessors(node)):
-            extended_G.add_edge(pred, node_in, **G.edges[pred, node])
-
-        # Rewire outgoing edges from node_out
-        for succ in list(G.successors(node)):
-            extended_G.add_edge(node_out, succ, **G.edges[node, succ])
-
-        # Remove original node edges
-        extended_G.remove_node(node)
-
-    # Discourage reusing this path by reversing it and setting high weights
-    for i in range(len(path) - 1):
-        u, v = path[i], path[i + 1]
-        if u in ("SOURCE", "SINK") or v in ("SOURCE", "SINK"):
-            continue
-
-        u_out = f"{u}_out" if f"{u}_out" in extended_G else u
-        v_in = f"{v}_in" if f"{v}_in" in extended_G else v
-
-        # Reverse with discourage weight
-        extended_G.add_edge(v_in, u_out, **{weight_key: discourage_weight})
-
-    return extended_G
-
-def greedy_disjoint_paths_with_extension(
-    G: nx.DiGraph, node_data, source="SOURCE", sink="SINK", max_paths=10000
-) -> list:
-    """
-    Extract disjoint paths using graph extension and discourage reuse.
-    """
-    G = copy.deepcopy(G)  # Don't mutate original
+    G_base = G.copy()
     paths = []
+    edge_reuse_count = defaultdict(int)
 
-    for _ in range(max_paths):
+    for iteration in range(k):
+        G_mod = G_base.copy()
+
+        # Increase edge weights softly according to reuse count
+        for (u, v, data) in G_mod.edges(data=True):
+            base_cost = data[weight_key]
+            reuse_pen = base_penalty * edge_reuse_count[(u, v)] * base_cost
+            data[weight_key] = base_cost + reuse_pen
+
         try:
-            path = nx.shortest_path(G, source=source, target=sink, weight="weight")
-            paths.append(path)
-            G = extend_graph(G, path)  # Extend to discourage reuse, preserve structure
+            length, path = nx.single_source_dijkstra(G_mod, source, sink, weight=weight_key)
         except nx.NetworkXNoPath:
-            print("no path")
-            
+            print(f"No more paths found after {len(paths)} iterations.")
             break
-    return paths
 
+        if path in paths:
+            print("Duplicate path found, stopping early.")
+            break
+
+        print(f"Found path {iteration + 1} with cost {length}")
+        paths.append(path)
+
+        # Update reuse counts for edges in this path
+        for u, v in zip(path[:-1], path[1:]):
+            edge_reuse_count[(u, v)] += 1
+
+    return paths
 class KSPTracker(BaseTracker):
     """
     Offline tracker using K-Shortest Paths (KSP) algorithm.
-
-    Attributes:
-        grid_size (int): Size of each grid cell (pixels).
-        min_confidence (float): Minimum detection confidence to consider.
-        max_distance (float): Maximum spatial distance between nodes to connect.
-        max_paths (int): Maximum number of paths (tracks) to find.
     """
 
     def __init__(
@@ -387,15 +234,6 @@ class KSPTracker(BaseTracker):
         max_distance: float = 0.3,
         img_dim: tuple = (512, 512),
     ) -> None:
-        """
-        Initialize the KSP tracker.
-
-        Args:
-            grid_size (int): Pixel size of grid cells.
-            max_paths (int): Max number of paths to find.
-            min_confidence (float): Minimum confidence to keep detection.
-            max_distance (float): Max allowed spatial distance between nodes.
-        """
         self.grid_size = grid_size
         self.min_confidence = min_confidence
         self.max_distance = max_distance
@@ -409,33 +247,26 @@ class KSPTracker(BaseTracker):
         self.img_dim = dim
 
     def reset(self) -> None:
-        """Reset the detection buffer."""
         self.detection_buffer: List[sv.Detections] = []
 
     def update(self, detections: sv.Detections) -> sv.Detections:
-        """
-        Append new detections to the buffer.
-
-        Args:
-            detections (sv.Detections): Detections for the current frame.
-
-        Returns:
-            sv.Detections: The same detections passed in.
-        """
         self.detection_buffer.append(detections)
         return detections
-        
-    def process_tracks(self) -> List[sv.Detections]:
-        G, node_data = build_tracking_graph_with_source_sink(self.detection_buffer)
-        paths = greedy_disjoint_paths_with_extension(G, node_data)
-        print(len(paths))
 
+    def process_tracks(self) -> Dict[int, sv.Detections]:
+        max_detection_obj = len(max(self.detection_buffer, key=lambda d: len(d.xyxy)))
+
+        print(f"Number of detections: {max_detection_obj}")
+        G = build_tracking_graph_with_source_sink(self.detection_buffer)
+        paths = iterative_k_shortest_paths_soft_penalty(G, source="SOURCE", sink="SINK", k=max_detection_obj)
+        print(f"Extracted {len(paths)} tracks.")
+        for i in paths:
+           p.pprint(i)
+        # print(paths[0] == paths[1])
+        # for path in paths:
+        #     print(path)
+        #     print([p.position for p in path[1:-1]])
         if not paths:
             print("No valid paths found.")
-            return []
-
-        return assign_tracker_ids_from_paths(paths, node_data)
-        # self._build_graph(self.detection_buffer)
-        # # visualize_tracking_graph_debug(self.G)
-        # # detections_list  = find_and_visualize_disjoint_paths(self.G)
-        # # return detections_list
+            return {}
+        return assign_tracker_ids_from_paths(paths, num_frames=len(self.detection_buffer))
