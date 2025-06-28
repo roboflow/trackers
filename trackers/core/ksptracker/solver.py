@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 import networkx as nx
 import numpy as np
@@ -198,7 +198,7 @@ class KSP_Solver:
         self._build_graph()
 
         G_base = self.graph.copy()
-        edge_reuse = defaultdict(int)
+        edge_reuse: defaultdict[Tuple[Any, Any], int] = defaultdict(int)
         paths: List[List[TrackNode]] = []
 
         if k is None:

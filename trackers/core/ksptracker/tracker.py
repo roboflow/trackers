@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 import supervision as sv
@@ -59,7 +59,7 @@ class KSPTracker(BaseTracker):
         node_to_candidates = defaultdict(list)
         for tracker_id, path in enumerate(paths, start=1):
             for i, node in enumerate(path):
-                next_node = path[i + 1] if i + 1 < len(path) else None
+                next_node: Any = path[i + 1] if i + 1 < len(path) else None
                 node_to_candidates[node].append((tracker_id, next_node))
 
         # Select best tracker for each node based on minimal displacement
@@ -68,7 +68,7 @@ class KSPTracker(BaseTracker):
             min_displacement = float("inf")
             selected_tracker = None
             for tracker_id, next_node in candidates:
-                if next_node:
+                if next_node is not None:
                     dx = node.position[0] - next_node.position[0]
                     dy = node.position[1] - next_node.position[1]
                     displacement = dx * dx + dy * dy  # squared distance
