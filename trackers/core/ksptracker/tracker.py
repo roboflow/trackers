@@ -111,7 +111,7 @@ class KSPTracker(BaseTracker):
 
         return frame_to_detections
 
-    def process_tracks(self) -> List[sv.Detections]:
+    def process_tracks(self, num_of_tracks=None) -> List[sv.Detections]:
         """
         Run the KSP solver and assign tracker IDs to detections.
 
@@ -119,7 +119,7 @@ class KSPTracker(BaseTracker):
             List[sv.Detections]: Mapping from frame index to sv.Detections
                                       with tracker IDs assigned.
         """
-        paths = self._solver.solve()
+        paths = self._solver.solve(num_of_tracks)
         if not paths:
             return []
         return self.assign_tracker_ids_from_paths(
