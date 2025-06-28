@@ -41,7 +41,7 @@ class KSPTracker(BaseTracker):
         return detections
 
     def assign_tracker_ids_from_paths(
-        self, paths: List[List[TrackNode]], num_frames: int
+        self, paths: List[List[TrackNode]]
     ) -> List[sv.Detections]:
         """
         Assigns each detection a unique tracker ID by preferring the path with
@@ -49,7 +49,6 @@ class KSPTracker(BaseTracker):
 
         Args:
             paths (List[List[TrackNode]]): List of tracks, each a list of TrackNode.
-            num_frames (int): Number of frames in the sequence.
 
         Returns:
             Dict[int, sv.Detections]: Mapping from frame index to sv.Detections
@@ -66,7 +65,7 @@ class KSPTracker(BaseTracker):
         node_to_tracker = {}
         for node, candidates in node_to_candidates.items():
             min_displacement = float("inf")
-            selected_tracker = None
+            selected_tracker = -1
             for tracker_id, next_node in candidates:
                 if next_node is not None:
                     dx = node.position[0] - next_node.position[0]
