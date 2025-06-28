@@ -42,7 +42,7 @@ class KSPTracker(BaseTracker):
 
     def assign_tracker_ids_from_paths(
         self, paths: List[List[TrackNode]], num_frames: int
-    ) -> Dict[int, sv.Detections]:
+    ) -> List[sv.Detections]:
         """
         Assigns each detection a unique tracker ID by preferring the path with
         the least motion change (displacement).
@@ -94,7 +94,7 @@ class KSPTracker(BaseTracker):
             )
 
         # Convert into sv.Detections
-        frame_to_detections = {}
+        frame_to_detections = []
         for frame, dets_list in frame_to_dets.items():
             xyxy = np.array([d["xyxy"] for d in dets_list], dtype=np.float32)
             confidence = np.array(
@@ -108,7 +108,7 @@ class KSPTracker(BaseTracker):
                 class_id=class_id,
                 tracker_id=tracker_id,
             )
-            frame_to_detections[frame] = detections
+            frame_to_detections.append(detections)
 
         return frame_to_detections
 
@@ -122,7 +122,7 @@ class KSPTracker(BaseTracker):
         """
         paths = self._solver.solve()
         if not paths:
-            return {}
+            return []
         return self.assign_tracker_ids_from_paths(
             paths, num_frames=len(self._solver.detection_per_frame)
         )

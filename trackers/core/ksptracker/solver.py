@@ -66,8 +66,8 @@ class KSP_Solver:
         """
         Reset the solver state and clear all detections and graph.
         """
-        self.detection_per_frame: List[sv.Detections] = []
-        self.graph: nx.DiGraph = nx.DiGraph()
+        self.detection_per_frame = []
+        self.graph = nx.DiGraph()
 
     def append_frame(self, detections: sv.Detections):
         """
@@ -153,7 +153,7 @@ class KSP_Solver:
         G.add_node(self.source)
         G.add_node(self.sink)
 
-        node_frames: List[List[TrackNode]] = []
+        node_frames = []
 
         for frame_id, detections in enumerate(self.detection_per_frame):
             frame_nodes = []
