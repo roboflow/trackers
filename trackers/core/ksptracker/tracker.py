@@ -1,7 +1,6 @@
-from dataclasses import dataclass
+from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Optional
 
-import networkx as nx
 import numpy as np
 import supervision as sv
 
@@ -18,7 +17,6 @@ class KSPTracker(BaseTracker):
         self,
     ) -> None:
         self._solver = KSP_Solver()
-        
         self._solver.reset()
         self.reset()
 
@@ -31,24 +29,48 @@ class KSPTracker(BaseTracker):
     
     def assign_tracker_ids_from_paths(self, paths: List[List[TrackNode]], num_frames: int) -> Dict[int, sv.Detections]:
         """
-        Converts paths (list of list of TrackNode) into frame-wise sv.Detections with tracker IDs assigned.
+        Assigns each detection a unique tracker ID by preferring the path with the least motion change (displacement).
         """
-        frame_to_dets = {frame: [] for frame in range(num_frames)}
 
+        # Track where each node appears
+        node_to_candidates = defaultdict(list)
         for tracker_id, path in enumerate(paths, start=1):
-            for node in path:
-                if isinstance(node, TrackNode):
-                    frame_to_dets[node.frame_id].append({
-                        "xyxy": node.bbox,
-                        "confidence": node.confidence,
-                        "class_id": node.class_id,
-                        "tracker_id": tracker_id,
-                    })
+            for i, node in enumerate(path):
+                next_node = path[i + 1] if i + 1 < len(path) else None
+                node_to_candidates[node].append((tracker_id, next_node))
 
+        # Select best tracker for each node based on minimal displacement
+        node_to_tracker = {}
+        for node, candidates in node_to_candidates.items():
+            min_displacement = float('inf')
+            selected_tracker = None
+            for tracker_id, next_node in candidates:
+                if next_node:
+                    dx = node.position[0] - next_node.position[0]
+                    dy = node.position[1] - next_node.position[1]
+                    displacement = dx * dx + dy * dy  # use squared distance for speed
+                else:
+                    displacement = 0  # last node in path, no penalty
+
+                if displacement < min_displacement:
+                    min_displacement = displacement
+                    selected_tracker = tracker_id
+
+            node_to_tracker[node] = selected_tracker
+
+        # Organize detections by frame
+        frame_to_dets = defaultdict(list)
+        for node, tracker_id in node_to_tracker.items():
+            frame_to_dets[node.frame_id].append({
+                "xyxy": node.bbox,
+                "confidence": node.confidence,
+                "class_id": node.class_id,
+                "tracker_id": tracker_id,
+            })
+
+        # Convert into sv.Detections
         frame_to_detections = {}
         for frame, dets_list in frame_to_dets.items():
-            if not dets_list:
-                continue
             xyxy = np.array([d["xyxy"] for d in dets_list], dtype=np.float32)
             confidence = np.array([d["confidence"] for d in dets_list], dtype=np.float32)
             class_id = np.array([d["class_id"] for d in dets_list], dtype=int)
@@ -62,13 +84,11 @@ class KSPTracker(BaseTracker):
             frame_to_detections[frame] = detections
 
         return frame_to_detections
-
+    
     def process_tracks(self) -> Dict[int, sv.Detections]:
         paths = self._solver.solve()
-        print(f"Extracted {len(paths)} tracks.")
 
         if not paths:
-            print("No valid paths found.")
             return {}
         
         return self.assign_tracker_ids_from_paths(paths, num_frames=len(self._solver.detection_per_frame))

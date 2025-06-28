@@ -123,10 +123,10 @@ class KSP_Solver:
             except nx.NetworkXNoPath:
                 break
 
-            if path in paths:
+            if path[1:-1] in paths:
                 break
 
-            paths.append(path)
+            paths.append(path[1:-1])
 
             for u, v in zip(path[:-1], path[1:]):
                 edge_reuse[(u, v)] += 1
