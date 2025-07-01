@@ -175,8 +175,14 @@ class KSP_Solver:
             for node_a in node_frames[t]:
                 for node_b in node_frames[t + 1]:
                     cost = self._edge_cost(
-                        node_a.bbox, node_b.bbox, node_a.confidence, node_b.confidence,
-                        iou_w=iou_w, dist_w=dist_w, size_w=size_w, conf_w=conf_w
+                        node_a.bbox,
+                        node_b.bbox,
+                        node_a.confidence,
+                        node_b.confidence,
+                        iou_w=iou_w,
+                        dist_w=dist_w,
+                        size_w=size_w,
+                        conf_w=conf_w,
                     )
                     G.add_edge(node_a, node_b, weight=cost)
 
@@ -187,7 +193,14 @@ class KSP_Solver:
 
         self.graph = G
 
-    def solve(self, k: Optional[int] = None, iou_weight=0.9, dist_weight=0.4, size_weight=0.1, conf_weight=0.1) -> List[List[TrackNode]]:
+    def solve(
+        self,
+        k: Optional[int] = None,
+        iou_weight=0.9,
+        dist_weight=0.4,
+        size_weight=0.1,
+        conf_weight=0.1,
+    ) -> List[List[TrackNode]]:
         """
         Extract up to k node-disjoint shortest paths from the graph.
 

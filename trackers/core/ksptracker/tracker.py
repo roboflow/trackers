@@ -93,7 +93,7 @@ class KSPTracker(BaseTracker):
                     "class_id": node.class_id,
                     "tracker_id": tracker_id,
                 }
-            )   
+            )
 
         # Convert into sv.Detections
         frame_to_detections = []
