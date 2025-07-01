@@ -55,11 +55,13 @@ class KSPTracker(BaseTracker):
                                       with tracker IDs assigned.
         """
         # Track where each node appears
+        framed_nodes = defaultdict(list)
         node_to_candidates = defaultdict(list)
         for tracker_id, path in enumerate(paths, start=1):
             for i, node in enumerate(path):
                 next_node: Any = path[i + 1] if i + 1 < len(path) else None
                 node_to_candidates[node].append((tracker_id, next_node))
+                framed_nodes[node.frame_id].append(node)
 
         # Select best tracker for each node based on minimal displacement
         node_to_tracker = {}
@@ -82,6 +84,7 @@ class KSPTracker(BaseTracker):
 
         # Organize detections by frame
         frame_to_dets = defaultdict(list)
+
         for node, tracker_id in node_to_tracker.items():
             frame_to_dets[node.frame_id].append(
                 {
@@ -90,7 +93,7 @@ class KSPTracker(BaseTracker):
                     "class_id": node.class_id,
                     "tracker_id": tracker_id,
                 }
-            )
+            )   
 
         # Convert into sv.Detections
         frame_to_detections = []

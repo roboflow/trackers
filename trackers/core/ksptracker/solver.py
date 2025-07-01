@@ -5,6 +5,7 @@ from typing import Any, List, Optional, Tuple
 import networkx as nx
 import numpy as np
 import supervision as sv
+from tqdm import tqdm
 
 
 @dataclass(frozen=True)
@@ -114,7 +115,7 @@ class KSP_Solver:
         return inter / (area_a + area_b - inter + 1e-6)
 
     def _edge_cost(
-        self, a, b, conf_a, conf_b, iou_w=0.5, dist_w=0.3, size_w=0.1, conf_w=0.1
+        self, a, b, conf_a, conf_b, iou_w=0.9, dist_w=0.1, size_w=0.1, conf_w=0.1
     ):
         """
         Compute the cost of connecting two detections.
@@ -145,7 +146,7 @@ class KSP_Solver:
             + conf_w * conf_penalty
         )
 
-    def _build_graph(self):
+    def _build_graph(self, iou_w=0.9, dist_w=0.1, size_w=0.1, conf_w=0.1):
         """
         Build the tracking graph from all buffered detections.
         """
@@ -174,7 +175,8 @@ class KSP_Solver:
             for node_a in node_frames[t]:
                 for node_b in node_frames[t + 1]:
                     cost = self._edge_cost(
-                        node_a.bbox, node_b.bbox, node_a.confidence, node_b.confidence
+                        node_a.bbox, node_b.bbox, node_a.confidence, node_b.confidence,
+                        iou_w=iou_w, dist_w=dist_w, size_w=size_w, conf_w=conf_w
                     )
                     G.add_edge(node_a, node_b, weight=cost)
 
@@ -185,7 +187,7 @@ class KSP_Solver:
 
         self.graph = G
 
-    def solve(self, k: Optional[int] = None) -> List[List[TrackNode]]:
+    def solve(self, k: Optional[int] = None, iou_weight=0.9, dist_weight=0.4, size_weight=0.1, conf_weight=0.1) -> List[List[TrackNode]]:
         """
         Extract up to k node-disjoint shortest paths from the graph.
 
@@ -195,7 +197,7 @@ class KSP_Solver:
         Returns:
             List[List[TrackNode]]: List of node-disjoint paths (tracks).
         """
-        self._build_graph()
+        self._build_graph(iou_w=iou_weight)
 
         G_base = self.graph.copy()
         edge_reuse: defaultdict[Tuple[Any, Any], int] = defaultdict(int)
@@ -204,7 +206,7 @@ class KSP_Solver:
         if k is None:
             k = max(len(f.xyxy) for f in self.detection_per_frame)
 
-        for _ in range(k):
+        for _ in tqdm(range(k), desc="Extracting k-shortest paths", leave=True):
             G_mod = G_base.copy()
 
             for u, v, data in G_mod.edges(data=True):
