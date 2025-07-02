@@ -105,7 +105,12 @@ class KSPSolver:
         self.graph = nx.DiGraph()
 
     def append_config(
-        self, path_overlap_penalty=40, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
+        self,
+        path_overlap_penalty=40,
+        iou_weight=0.9,
+        dist_weight=0.1,
+        size_weight=0.1,
+        conf_weight=0.1,
     ):
         """
         Update the weights for edge cost calculation and path overlap penalty.

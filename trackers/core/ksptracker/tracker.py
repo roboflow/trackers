@@ -17,7 +17,12 @@ class KSPTracker(BaseTracker):
     """
 
     def __init__(
-        self, path_overlap_penalty: Optional[int] = None, iou_weight: Optional[int] = None, dist_weight: Optional[int] = None, size_weight: Optional[int] = None, conf_weight: Optional[int] = None
+        self,
+        path_overlap_penalty: Optional[int] = None,
+        iou_weight: Optional[int] = None,
+        dist_weight: Optional[int] = None,
+        size_weight: Optional[int] = None,
+        conf_weight: Optional[int] = None,
     ) -> None:
         """
         Initialize the KSPTracker and its solver.
@@ -207,7 +212,7 @@ class KSPTracker(BaseTracker):
                 self.update(detections)
         else:
             raise ValueError(f"{source_path} not found!")
-        
+
         paths = self._solver.solve(num_of_tracks)
         if not paths:
             return []
