@@ -145,7 +145,7 @@ class KSPTracker(BaseTracker):
 
     def process_tracks(
         self,
-        source_path: str = None,
+        source_path: Optional[str] = None,
         get_model_detections: Optional[Callable[[np.ndarray], sv.Detections]] = None,
         num_of_tracks: Optional[int] = None,
     ) -> List[sv.Detections]:
@@ -153,7 +153,7 @@ class KSPTracker(BaseTracker):
         Run the KSP solver and assign tracker IDs to detections.
 
         Args:
-            source_path (str, optional): Path to video file or directory of frames.
+            source_path (Optional[str]): Path to video file or directory of frames.
             get_model_detections (Optional[Callable[[np.ndarray], sv.Detections]]):
                 Function that takes an image (np.ndarray) and returns sv.Detections.
             num_of_tracks (Optional[int]): Number of tracks to extract (K).
@@ -167,7 +167,8 @@ class KSPTracker(BaseTracker):
             )
         if not get_model_detections:
             raise TypeError(
-                "`get_model_detections` must be a callable that returns an instance of `sv.Detections`."
+                "`get_model_detections` must be a callable that returns an "
+                "instance of `sv.Detections`."
             )
         if source_path.lower().endswith(".mp4"):
             frames_generator = sv.get_video_frames_generator(source_path=source_path)
@@ -185,12 +186,12 @@ class KSPTracker(BaseTracker):
                 [
                     os.path.join(source_path, f)
                     for f in os.listdir(source_path)
-                    if f.lower().endswith(".jpg")
+                    if f.lower().endswith('.jpg')
                 ]
             )
             for frame_path in tqdm(
                 frame_paths,
-                desc="Extracting detections and buffering directory",
+                desc='Extracting detections and buffering directory',
                 dynamic_ncols=True,
             ):
                 image = cv2.imread(frame_path)
