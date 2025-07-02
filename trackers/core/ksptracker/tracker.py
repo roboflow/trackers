@@ -56,7 +56,8 @@ class KSPTracker(BaseTracker):
         Update the configuration weights for the KSP algorithm.
 
         Args:
-            path_overlap_penalty (Optional[int]): Penalty for edge reuse in successive paths.
+            path_overlap_penalty (Optional[int]): Penalty for edge reuse in
+                successive paths.
             iou_weight (Optional[float]): Weight for IoU component.
             dist_weight (Optional[float]): Weight for distance component.
             size_weight (Optional[float]): Weight for size component.
@@ -94,7 +95,8 @@ class KSPTracker(BaseTracker):
             paths (List[List[TrackNode]]): List of tracks, each a list of TrackNode.
 
         Returns:
-            List[sv.Detections]: List of sv.Detections with tracker IDs assigned for each frame.
+            List[sv.Detections]: List of sv.Detections with tracker IDs assigned
+                for each frame.
         """
         # Track where each node appears
         framed_nodes = defaultdict(list)

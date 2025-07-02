@@ -180,7 +180,8 @@ class KSPSolver:
     def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode):
         """
         Compute the cost of connecting two detections (nodes) in the graph.
-        The cost is a weighted sum of IoU penalty, center distance, size penalty, and confidence penalty.
+        The cost is a weighted sum of IoU penalty, center distance,
+        size penalty, and confidence penalty.
 
         Args:
             nodeU (TrackNode): Source node.
@@ -254,13 +255,16 @@ class KSPSolver:
         k: Optional[int] = None,
     ) -> List[List[TrackNode]]:
         """
-        Extract up to k node-disjoint shortest paths from the graph using a successive shortest path approach.
+        Extract up to k node-disjoint shortest paths from the graph using a
+        successive shortest path approach.
 
         Args:
-            k (Optional[int]): Maximum number of paths to extract. If None, uses the maximum number of detections in any frame.
+            k (Optional[int]): Maximum number of paths to extract. If None,
+                uses the maximum number of detections in any frame.
 
         Returns:
-            List[List[TrackNode]]: List of node-disjoint paths (tracks), each path is a list of TrackNode objects.
+            List[List[TrackNode]]: List of node-disjoint paths (tracks),
+                each path is a list of TrackNode objects.
         """
         self._build_graph()
 
@@ -292,7 +296,8 @@ class KSPSolver:
             # Check for duplicate paths
             if path[1:-1] in paths:
                 print("Duplicate path found!")
-                # NOTE: Changed to continue for debugging to extrapolate the track detects to investigate the reason for fewer paths generated
+                # NOTE: Changed to continue for debugging to extrapolate the
+                # track detects to investigate the reason for fewer paths generated
                 # Change this to break when done
                 continue
 
