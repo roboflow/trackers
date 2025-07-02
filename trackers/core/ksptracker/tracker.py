@@ -160,16 +160,16 @@ class KSPTracker(BaseTracker):
 
     def process_tracks(
         self,
-        source_path: Optional[str] = None,
-        get_model_detections: Optional[Callable[[np.ndarray], sv.Detections]] = None,
+        source_path: str = None,
+        get_model_detections: Callable[[np.ndarray], sv.Detections] = None,
         num_of_tracks: Optional[int] = None,
     ) -> List[sv.Detections]:
         """
         Run the KSP solver and assign tracker IDs to detections.
 
         Args:
-            source_path (Optional[str]): Path to video file or directory of frames.
-            get_model_detections (Optional[Callable[[np.ndarray], sv.Detections]]):
+            source_path (str): Path to video file or directory of frames.
+            get_model_detections (Callable[[np.ndarray], sv.Detections]):
                 Function that takes an image (np.ndarray) and returns sv.Detections.
             num_of_tracks (Optional[int]): Number of tracks to extract (K).
 
