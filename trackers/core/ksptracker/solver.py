@@ -59,19 +59,24 @@ def box_iou_batch(boxes_true: np.ndarray, boxes_detection: np.ndarray) -> np.nda
             `shape = (N, M)` where `N` is number of true objects and
             `M` is number of detected objects.
     """
-    area_true = (boxes_true[:, 2] - boxes_true[:, 0]) * (boxes_true[:, 3] - boxes_true[:, 1])
-    area_detection = (boxes_detection[:, 2] - boxes_detection[:, 0]) * (boxes_detection[:, 3] - boxes_detection[:, 1]) 
+    area_true = (boxes_true[:, 2] - boxes_true[:, 0]) * (
+        boxes_true[:, 3] - boxes_true[:, 1]
+    )
+    area_detection = (boxes_detection[:, 2] - boxes_detection[:, 0]) * (
+        boxes_detection[:, 3] - boxes_detection[:, 1]
+    )
 
-    top_left = np.maximum(boxes_true[:, None, :2], boxes_detection[:, :2])       
-    bottom_right = np.minimum(boxes_true[:, None, 2:], boxes_detection[:, 2:])   
+    top_left = np.maximum(boxes_true[:, None, :2], boxes_detection[:, :2])
+    bottom_right = np.minimum(boxes_true[:, None, 2:], boxes_detection[:, 2:])
 
-    wh = np.clip(bottom_right - top_left, a_min=0, a_max=None) 
-    area_inter = wh[:, :, 0] * wh[:, :, 1] 
+    wh = np.clip(bottom_right - top_left, a_min=0, a_max=None)
+    area_inter = wh[:, :, 0] * wh[:, :, 1]
 
     ious = area_inter / (area_true[:, None] + area_detection - area_inter)
 
     ious = np.nan_to_num(ious)
     return ious
+
 
 class KSPSolver:
     """
@@ -92,12 +97,7 @@ class KSPSolver:
         self.source = "SOURCE"
         self.sink = "SINK"
         self.detection_per_frame: List[sv.Detections] = []
-        self.weights = {
-            "iou": 0.9,
-            "dist": 0.1,
-            "size": 0.1,
-            "conf": 0.1
-        }
+        self.weights = {"iou": 0.9, "dist": 0.1, "size": 0.1, "conf": 0.1}
         self.reset()
 
     def reset(self):
@@ -107,7 +107,9 @@ class KSPSolver:
         self.detection_per_frame = []
         self.graph = nx.DiGraph()
 
-    def append_config(self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1):
+    def append_config(
+        self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
+    ):
         """
         Update the weights for edge cost calculation.
 

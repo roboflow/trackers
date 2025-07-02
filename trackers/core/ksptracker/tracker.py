@@ -1,14 +1,14 @@
-from collections import defaultdict
-from typing import Any, List, Optional, Callable
-
-import numpy as np
-import cv2
 import os
+from collections import defaultdict
+from typing import Any, Callable, List, Optional
+
+import cv2
+import numpy as np
 import supervision as sv
+from tqdm import tqdm
 
 from trackers.core.base import BaseTracker
 from trackers.core.ksptracker.solver import KSPSolver, TrackNode
-from tqdm import tqdm
 
 
 class KSPTracker(BaseTracker):
@@ -16,7 +16,9 @@ class KSPTracker(BaseTracker):
     Offline tracker using K-Shortest Paths (KSP) algorithm.
     """
 
-    def __init__(self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1) -> None:
+    def __init__(
+        self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
+    ) -> None:
         """
         Initialize the KSPTracker and its solver.
         """
@@ -25,7 +27,7 @@ class KSPTracker(BaseTracker):
             iou_weight=iou_weight,
             dist_weight=dist_weight,
             size_weight=size_weight,
-            conf_weight=conf_weight
+            conf_weight=conf_weight,
         )
         self.reset()
 
@@ -35,7 +37,9 @@ class KSPTracker(BaseTracker):
         """
         self._solver.reset()
 
-    def update_config(self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1):
+    def update_config(
+        self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
+    ):
         """
         Update the configuration weights for the KSP algorithm.
 
@@ -49,7 +53,7 @@ class KSPTracker(BaseTracker):
             iou_weight=iou_weight,
             dist_weight=dist_weight,
             size_weight=size_weight,
-            conf_weight=conf_weight
+            conf_weight=conf_weight,
         )
 
     def update(self, detections: sv.Detections) -> sv.Detections:
@@ -143,7 +147,7 @@ class KSPTracker(BaseTracker):
         self,
         source_path: str = None,
         get_model_detections: Optional[Callable[[np.ndarray], sv.Detections]] = None,
-        num_of_tracks: Optional[int] = None
+        num_of_tracks: Optional[int] = None,
     ) -> List[sv.Detections]:
         """
         Run the KSP solver and assign tracker IDs to detections.
@@ -181,12 +185,12 @@ class KSPTracker(BaseTracker):
                 [
                     os.path.join(source_path, f)
                     for f in os.listdir(source_path)
-                    if f.lower().endswith('.jpg')
+                    if f.lower().endswith(".jpg")
                 ]
             )
             for frame_path in tqdm(
                 frame_paths,
-                desc='Extracting detections and buffering directory',
+                desc="Extracting detections and buffering directory",
                 dynamic_ncols=True,
             ):
                 image = cv2.imread(frame_path)
