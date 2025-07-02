@@ -266,7 +266,7 @@ class KSPSolver:
 
         for _ in tqdm(range(k), desc="Extracting k-shortest paths", leave=True):
             print(f"{_}th iteration")
-            
+
             G_mod = G_base.copy()
 
             for u, v, data in G_mod.edges(data=True):
