@@ -180,7 +180,7 @@ class KSPTracker(BaseTracker):
             raise ValueError(
                 "`source_path` must be a string path to a directory or an .mp4 file."
             )
-        if not get_model_detections:
+        if get_model_detections is None:
             raise TypeError(
                 "`get_model_detections` must be a callable that returns an "
                 "instance of `sv.Detections`."
