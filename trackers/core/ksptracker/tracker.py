@@ -160,8 +160,8 @@ class KSPTracker(BaseTracker):
 
     def process_tracks(
         self,
-        source_path: str = None,
-        get_model_detections: Callable[[np.ndarray], sv.Detections] = None,
+        source_path: str,
+        get_model_detections: Callable[[np.ndarray], sv.Detections],
         num_of_tracks: Optional[int] = None,
     ) -> List[sv.Detections]:
         """
