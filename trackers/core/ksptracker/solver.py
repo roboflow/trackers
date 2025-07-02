@@ -281,7 +281,7 @@ class KSPSolver:
                 break
 
             if path[1:-1] in paths:
-                print(f"Duplicate path found!")
+                print("Duplicate path found!")
                 break
 
             paths.append(path[1:-1])
