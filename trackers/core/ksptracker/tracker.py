@@ -214,7 +214,6 @@ class KSPTracker(BaseTracker):
                 self.update(detections)
         else:
             raise ValueError(f"{source_path} not found!")
-
         paths = self._solver.solve(num_of_tracks)
         if not paths:
             return []
