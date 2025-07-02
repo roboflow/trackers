@@ -1,11 +1,14 @@
 from collections import defaultdict
-from typing import Any, List
+from typing import Any, List, Optional, Callable
 
 import numpy as np
+import cv2
+import os
 import supervision as sv
 
 from trackers.core.base import BaseTracker
-from trackers.core.ksptracker.solver import KSP_Solver, TrackNode
+from trackers.core.ksptracker.solver import KSPSolver, TrackNode
+from tqdm import tqdm
 
 
 class KSPTracker(BaseTracker):
@@ -13,12 +16,17 @@ class KSPTracker(BaseTracker):
     Offline tracker using K-Shortest Paths (KSP) algorithm.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1) -> None:
         """
         Initialize the KSPTracker and its solver.
         """
-        self._solver = KSP_Solver()
-        self._solver.reset()
+        self._solver = KSPSolver()
+        self._solver.append_config(
+            iou_weight=iou_weight,
+            dist_weight=dist_weight,
+            size_weight=size_weight,
+            conf_weight=conf_weight
+        )
         self.reset()
 
     def reset(self) -> None:
@@ -26,6 +34,23 @@ class KSPTracker(BaseTracker):
         Reset the solver and clear any stored state.
         """
         self._solver.reset()
+
+    def update_config(self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1):
+        """
+        Update the configuration weights for the KSP algorithm.
+
+        Args:
+            iou_weight (float): Weight for IoU component.
+            dist_weight (float): Weight for distance component.
+            size_weight (float): Weight for size component.
+            conf_weight (float): Weight for confidence component.
+        """
+        self._solver.append_config(
+            iou_weight=iou_weight,
+            dist_weight=dist_weight,
+            size_weight=size_weight,
+            conf_weight=conf_weight
+        )
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """
@@ -114,14 +139,61 @@ class KSPTracker(BaseTracker):
 
         return frame_to_detections
 
-    def process_tracks(self, num_of_tracks=None) -> List[sv.Detections]:
+    def process_tracks(
+        self,
+        source_path: str = None,
+        get_model_detections: Optional[Callable[[np.ndarray], sv.Detections]] = None,
+        num_of_tracks: Optional[int] = None
+    ) -> List[sv.Detections]:
         """
         Run the KSP solver and assign tracker IDs to detections.
 
+        Args:
+            source_path (str, optional): Path to video file or directory of frames.
+            get_model_detections (Optional[Callable[[np.ndarray], sv.Detections]]):
+                Function that takes an image (np.ndarray) and returns sv.Detections.
+            num_of_tracks (Optional[int]): Number of tracks to extract (K).
+
         Returns:
-            List[sv.Detections]: Mapping from frame index to sv.Detections
-                                      with tracker IDs assigned.
+            List[sv.Detections]: List of sv.Detections with tracker IDs assigned.
         """
+        if not source_path:
+            raise ValueError(
+                "`source_path` must be a string path to a directory or an .mp4 file."
+            )
+        if not get_model_detections:
+            raise TypeError(
+                "`get_model_detections` must be a callable that returns an instance of `sv.Detections`."
+            )
+        if source_path.lower().endswith(".mp4"):
+            frames_generator = sv.get_video_frames_generator(source_path=source_path)
+            video_info = sv.VideoInfo.from_video_path(video_path=source_path)
+            for frame in tqdm(
+                frames_generator,
+                total=video_info.total_frames,
+                desc="Extracting detections and buffering from video",
+                dynamic_ncols=True,
+            ):
+                detections = get_model_detections(frame)
+                self.update(detections)
+        elif os.path.isdir(source_path):
+            frame_paths = sorted(
+                [
+                    os.path.join(source_path, f)
+                    for f in os.listdir(source_path)
+                    if f.lower().endswith('.jpg')
+                ]
+            )
+            for frame_path in tqdm(
+                frame_paths,
+                desc='Extracting detections and buffering directory',
+                dynamic_ncols=True,
+            ):
+                image = cv2.imread(frame_path)
+                detections = get_model_detections(image)
+                self.update(detections)
+        else:
+            raise ValueError(f"{source_path} not found!")
         paths = self._solver.solve(num_of_tracks)
         if not paths:
             return []

@@ -42,7 +42,38 @@ class TrackNode:
         return f"{self.frame_id}:{self.det_idx}@{self.position}"
 
 
-class KSP_Solver:
+def box_iou_batch(boxes_true: np.ndarray, boxes_detection: np.ndarray) -> np.ndarray:
+    """
+    Compute Intersection over Union (IoU) of two sets of bounding boxes -
+        `boxes_true` and `boxes_detection`. Both sets
+        of boxes are expected to be in `(x_min, y_min, x_max, y_max)` format.
+
+    Args:
+        boxes_true (np.ndarray): 2D `np.ndarray` representing ground-truth boxes.
+            `shape = (N, 4)` where `N` is number of true objects.
+        boxes_detection (np.ndarray): 2D `np.ndarray` representing detection boxes.
+            `shape = (M, 4)` where `M` is number of detected objects.
+
+    Returns:
+        np.ndarray: Pairwise IoU of boxes from `boxes_true` and `boxes_detection`.
+            `shape = (N, M)` where `N` is number of true objects and
+            `M` is number of detected objects.
+    """
+    area_true = (boxes_true[:, 2] - boxes_true[:, 0]) * (boxes_true[:, 3] - boxes_true[:, 1])
+    area_detection = (boxes_detection[:, 2] - boxes_detection[:, 0]) * (boxes_detection[:, 3] - boxes_detection[:, 1]) 
+
+    top_left = np.maximum(boxes_true[:, None, :2], boxes_detection[:, :2])       
+    bottom_right = np.minimum(boxes_true[:, None, 2:], boxes_detection[:, 2:])   
+
+    wh = np.clip(bottom_right - top_left, a_min=0, a_max=None) 
+    area_inter = wh[:, :, 0] * wh[:, :, 1] 
+
+    ious = area_inter / (area_true[:, None] + area_detection - area_inter)
+
+    ious = np.nan_to_num(ious)
+    return ious
+
+class KSPSolver:
     """
     Solver for the K-Shortest Paths (KSP) tracking problem.
     Builds a graph from detections and extracts multiple disjoint paths.
@@ -61,6 +92,12 @@ class KSP_Solver:
         self.source = "SOURCE"
         self.sink = "SINK"
         self.detection_per_frame: List[sv.Detections] = []
+        self.weights = {
+            "iou": 0.9,
+            "dist": 0.1,
+            "size": 0.1,
+            "conf": 0.1
+        }
         self.reset()
 
     def reset(self):
@@ -69,6 +106,25 @@ class KSP_Solver:
         """
         self.detection_per_frame = []
         self.graph = nx.DiGraph()
+
+    def append_config(self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1):
+        """
+        Update the weights for edge cost calculation.
+
+        Args:
+            iou_weight (float): Weight for IoU penalty.
+            dist_weight (float): Weight for center distance.
+            size_weight (float): Weight for size penalty.
+            conf_weight (float): Weight for confidence penalty.
+        """
+        if iou_weight is not None:
+            self.weights["iou"] = iou_weight
+        if dist_weight is not None:
+            self.weights["dist"] = dist_weight
+        if size_weight is not None:
+            self.weights["size"] = size_weight
+        if conf_weight is not None:
+            self.weights["conf"] = conf_weight
 
     def append_frame(self, detections: sv.Detections):
         """
@@ -114,39 +170,39 @@ class KSP_Solver:
         area_b = (b[2] - b[0]) * (b[3] - b[1])
         return inter / (area_a + area_b - inter + 1e-6)
 
-    def _edge_cost(
-        self, a, b, conf_a, conf_b, iou_w=0.9, dist_w=0.1, size_w=0.1, conf_w=0.1
-    ):
+    def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode):
         """
         Compute the cost of connecting two detections.
 
         Args:
             a, b (np.ndarray): Bounding boxes.
             conf_a, conf_b (float): Detection confidences.
-            iou_w, dist_w, size_w, conf_w (float): Weights for cost components.
 
         Returns:
             float: Edge cost.
         """
-        center_dist = np.linalg.norm(self._get_center(a) - self._get_center(b))
-        iou_penalty = 1 - self._iou(a, b)
+        bboxU, bboxV = nodeU.bbox, nodeV.bbox
+        conf_u, conf_v = nodeU.confidence, nodeV.confidence
 
-        area_a = (a[2] - a[0]) * (a[3] - a[1])
-        area_b = (b[2] - b[0]) * (b[3] - b[1])
+        center_dist = np.linalg.norm(self._get_center(bboxU) - self._get_center(bboxV))
+        iou_penalty = 1 - self._iou(bboxU, bboxV)
+
+        area_a = (bboxU[2] - bboxU[0]) * (bboxU[3] - bboxU[1])
+        area_b = (bboxV[2] - bboxV[0]) * (bboxV[3] - bboxV[1])
         size_penalty = np.log(
             (max(area_a, area_b) / (min(area_a, area_b) + 1e-6)) + 1e-6
         )
 
-        conf_penalty = 1 - min(conf_a, conf_b)
+        conf_penalty = 1 - min(conf_u, conf_v)
 
         return (
-            iou_w * iou_penalty
-            + dist_w * center_dist
-            + size_w * size_penalty
-            + conf_w * conf_penalty
+            self.weights["iou"] * iou_penalty
+            + self.weights["dist"] * center_dist
+            + self.weights["size"] * size_penalty
+            + self.weights["conf"] * conf_penalty
         )
 
-    def _build_graph(self, iou_w=0.9, dist_w=0.1, size_w=0.1, conf_w=0.1):
+    def _build_graph(self):
         """
         Build the tracking graph from all buffered detections.
         """
@@ -174,16 +230,7 @@ class KSP_Solver:
         for t in range(len(node_frames) - 1):
             for node_a in node_frames[t]:
                 for node_b in node_frames[t + 1]:
-                    cost = self._edge_cost(
-                        node_a.bbox,
-                        node_b.bbox,
-                        node_a.confidence,
-                        node_b.confidence,
-                        iou_w=iou_w,
-                        dist_w=dist_w,
-                        size_w=size_w,
-                        conf_w=conf_w,
-                    )
+                    cost = self._edge_cost(node_a, node_b)
                     G.add_edge(node_a, node_b, weight=cost)
 
         for node in node_frames[0]:
@@ -196,10 +243,6 @@ class KSP_Solver:
     def solve(
         self,
         k: Optional[int] = None,
-        iou_weight=0.9,
-        dist_weight=0.4,
-        size_weight=0.1,
-        conf_weight=0.1,
     ) -> List[List[TrackNode]]:
         """
         Extract up to k node-disjoint shortest paths from the graph.
@@ -210,7 +253,7 @@ class KSP_Solver:
         Returns:
             List[List[TrackNode]]: List of node-disjoint paths (tracks).
         """
-        self._build_graph(iou_w=iou_weight)
+        self._build_graph()
 
         G_base = self.graph.copy()
         edge_reuse: defaultdict[Tuple[Any, Any], int] = defaultdict(int)
