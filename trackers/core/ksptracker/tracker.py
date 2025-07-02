@@ -17,13 +17,14 @@ class KSPTracker(BaseTracker):
     """
 
     def __init__(
-        self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
+        self, path_overlap_penalty: Optional[int] = None, iou_weight: Optional[int] = None, dist_weight: Optional[int] = None, size_weight: Optional[int] = None, conf_weight: Optional[int] = None
     ) -> None:
         """
         Initialize the KSPTracker and its solver.
         """
         self._solver = KSPSolver()
         self._solver.append_config(
+            path_overlap_penalty=path_overlap_penalty,
             iou_weight=iou_weight,
             dist_weight=dist_weight,
             size_weight=size_weight,
@@ -38,7 +39,7 @@ class KSPTracker(BaseTracker):
         self._solver.reset()
 
     def update_config(
-        self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
+        self, path_overlap_penalty: Optional[int] = None, iou_weight: Optional[int] = None, dist_weight: Optional[int] = None, size_weight: Optional[int] = None, conf_weight: Optional[int] = None
     ):
         """
         Update the configuration weights for the KSP algorithm.
@@ -50,6 +51,7 @@ class KSPTracker(BaseTracker):
             conf_weight (float): Weight for confidence component.
         """
         self._solver.append_config(
+            path_overlap_penalty=path_overlap_penalty,
             iou_weight=iou_weight,
             dist_weight=dist_weight,
             size_weight=size_weight,
@@ -199,6 +201,7 @@ class KSPTracker(BaseTracker):
                 self.update(detections)
         else:
             raise ValueError(f"{source_path} not found!")
+        
         paths = self._solver.solve(num_of_tracks)
         if not paths:
             return []

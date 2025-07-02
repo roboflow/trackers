@@ -84,16 +84,12 @@ class KSPSolver:
     Builds a graph from detections and extracts multiple disjoint paths.
     """
 
-    def __init__(self, base_penalty: float = 40.0, weight_key: str = "weight"):
+    def __init__(self):
         """
         Initialize the KSP_Solver.
-
-        Args:
-            base_penalty (float): Penalty for edge reuse in successive paths.
-            weight_key (str): Edge attribute to use for weights.
         """
-        self.base_penalty = base_penalty
-        self.weight_key = weight_key
+        self.path_overlap_penalty = 40
+        self.weight_key = "weight"
         self.source = "SOURCE"
         self.sink = "SINK"
         self.detection_per_frame: List[sv.Detections] = []
@@ -108,7 +104,7 @@ class KSPSolver:
         self.graph = nx.DiGraph()
 
     def append_config(
-        self, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
+        self, path_overlap_penalty=40, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
     ):
         """
         Update the weights for edge cost calculation.
@@ -119,6 +115,9 @@ class KSPSolver:
             size_weight (float): Weight for size penalty.
             conf_weight (float): Weight for confidence penalty.
         """
+        if path_overlap_penalty is not None:
+            self.path_overlap_penalty = path_overlap_penalty
+
         if iou_weight is not None:
             self.weights["iou"] = iou_weight
         if dist_weight is not None:
@@ -264,12 +263,12 @@ class KSPSolver:
         if k is None:
             k = max(len(f.xyxy) for f in self.detection_per_frame)
 
-        for _ in tqdm(range(k), desc="Extracting k-shortest paths", leave=True):
+        for _i in tqdm(range(k), desc="Extracting k-shortest paths", leave=True):
             G_mod = G_base.copy()
 
             for u, v, data in G_mod.edges(data=True):
                 base = data[self.weight_key]
-                penalty = self.base_penalty * edge_reuse[(u, v)] * base
+                penalty = self.path_overlap_penalty * edge_reuse[(u, v)] * base
                 data[self.weight_key] = base + penalty
 
             try:
@@ -277,11 +276,13 @@ class KSPSolver:
                     G_mod, self.source, self.sink, weight=self.weight_key
                 )
             except nx.NetworkXNoPath:
-                print(f"No path found from source to sink at {_}th iteration")
+                print(f"No path found from source to sink at {_i}th iteration")
                 break
 
             if path[1:-1] in paths:
                 print("Duplicate path found!")
+                # NOTE: Changed to continue for debugging to extrapolate the track detects to investigate the reason for fewer paths generated
+                # Change this to break when done
                 continue
 
             paths.append(path[1:-1])
