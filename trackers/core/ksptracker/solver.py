@@ -277,9 +277,11 @@ class KSPSolver:
                     G_mod, self.source, self.sink, weight=self.weight_key
                 )
             except nx.NetworkXNoPath:
+                print(f"No path found from source to sink at {_}th iteration")
                 break
 
             if path[1:-1] in paths:
+                print(f"Duplicate path found!")
                 break
 
             paths.append(path[1:-1])
