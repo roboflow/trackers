@@ -186,12 +186,12 @@ class KSPTracker(BaseTracker):
                 [
                     os.path.join(source_path, f)
                     for f in os.listdir(source_path)
-                    if f.lower().endswith('.jpg')
+                    if f.lower().endswith(".jpg")
                 ]
             )
             for frame_path in tqdm(
                 frame_paths,
-                desc='Extracting detections and buffering directory',
+                desc="Extracting detections and buffering directory",
                 dynamic_ncols=True,
             ):
                 image = cv2.imread(frame_path)
