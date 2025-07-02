@@ -84,7 +84,7 @@ class KSPSolver:
     Builds a graph from detections and extracts multiple disjoint paths.
     """
 
-    def __init__(self, base_penalty: float = 10.0, weight_key: str = "weight"):
+    def __init__(self, base_penalty: float = 40.0, weight_key: str = "weight"):
         """
         Initialize the KSP_Solver.
 
