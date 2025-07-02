@@ -34,21 +34,28 @@ class KSPTracker(BaseTracker):
 
     def reset(self) -> None:
         """
-        Reset the solver and clear any stored state.
+        Reset the KSPTracker and its solver state.
+        This clears all buffered detections and resets the underlying solver.
         """
         self._solver.reset()
 
     def update_config(
-        self, path_overlap_penalty: Optional[int] = None, iou_weight: Optional[int] = None, dist_weight: Optional[int] = None, size_weight: Optional[int] = None, conf_weight: Optional[int] = None
+        self,
+        path_overlap_penalty: Optional[int] = None,
+        iou_weight: Optional[int] = None,
+        dist_weight: Optional[int] = None,
+        size_weight: Optional[int] = None,
+        conf_weight: Optional[int] = None,
     ):
         """
         Update the configuration weights for the KSP algorithm.
 
         Args:
-            iou_weight (float): Weight for IoU component.
-            dist_weight (float): Weight for distance component.
-            size_weight (float): Weight for size component.
-            conf_weight (float): Weight for confidence component.
+            path_overlap_penalty (Optional[int]): Penalty for edge reuse in successive paths.
+            iou_weight (Optional[float]): Weight for IoU component.
+            dist_weight (Optional[float]): Weight for distance component.
+            size_weight (Optional[float]): Weight for size component.
+            conf_weight (Optional[float]): Weight for confidence component.
         """
         self._solver.append_config(
             path_overlap_penalty=path_overlap_penalty,
@@ -82,8 +89,7 @@ class KSPTracker(BaseTracker):
             paths (List[List[TrackNode]]): List of tracks, each a list of TrackNode.
 
         Returns:
-            Dict[int, sv.Detections]: Mapping from frame index to sv.Detections
-                                      with tracker IDs assigned.
+            List[sv.Detections]: List of sv.Detections with tracker IDs assigned for each frame.
         """
         # Track where each node appears
         framed_nodes = defaultdict(list)

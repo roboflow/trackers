@@ -99,6 +99,7 @@ class KSPSolver:
     def reset(self):
         """
         Reset the solver state and clear all detections and graph.
+        This clears the detection buffer and initializes a new empty graph.
         """
         self.detection_per_frame = []
         self.graph = nx.DiGraph()
@@ -107,9 +108,10 @@ class KSPSolver:
         self, path_overlap_penalty=40, iou_weight=0.9, dist_weight=0.1, size_weight=0.1, conf_weight=0.1
     ):
         """
-        Update the weights for edge cost calculation.
+        Update the weights for edge cost calculation and path overlap penalty.
 
         Args:
+            path_overlap_penalty (float): Penalty for edge reuse in successive paths.
             iou_weight (float): Weight for IoU penalty.
             dist_weight (float): Weight for center distance.
             size_weight (float): Weight for size penalty.
@@ -117,7 +119,6 @@ class KSPSolver:
         """
         if path_overlap_penalty is not None:
             self.path_overlap_penalty = path_overlap_penalty
-
         if iou_weight is not None:
             self.weights["iou"] = iou_weight
         if dist_weight is not None:
@@ -129,7 +130,7 @@ class KSPSolver:
 
     def append_frame(self, detections: sv.Detections):
         """
-        Add detections for a new frame.
+        Add detections for a new frame to the buffer.
 
         Args:
             detections (sv.Detections): Detections for the frame.
@@ -141,10 +142,10 @@ class KSPSolver:
         Compute the center of a bounding box.
 
         Args:
-            bbox (np.ndarray): Bounding box coordinates.
+            bbox (np.ndarray): Bounding box coordinates (x1, y1, x2, y2).
 
         Returns:
-            np.ndarray: Center coordinates.
+            np.ndarray: Center coordinates (x, y).
         """
         x1, y1, x2, y2 = bbox
         return np.array([(x1 + x2) / 2, (y1 + y2) / 2])
@@ -158,7 +159,7 @@ class KSPSolver:
             b (np.ndarray): Second bounding box.
 
         Returns:
-            float: IoU value.
+            float: IoU value between 0 and 1.
         """
         x1, y1, x2, y2 = (
             max(a[0], b[0]),
@@ -173,11 +174,12 @@ class KSPSolver:
 
     def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode):
         """
-        Compute the cost of connecting two detections.
+        Compute the cost of connecting two detections (nodes) in the graph.
+        The cost is a weighted sum of IoU penalty, center distance, size penalty, and confidence penalty.
 
         Args:
-            a, b (np.ndarray): Bounding boxes.
-            conf_a, conf_b (float): Detection confidences.
+            nodeU (TrackNode): Source node.
+            nodeV (TrackNode): Target node.
 
         Returns:
             float: Edge cost.
@@ -206,6 +208,7 @@ class KSPSolver:
     def _build_graph(self):
         """
         Build the tracking graph from all buffered detections.
+        Each detection is a node, and edges connect detections in consecutive frames.
         """
         G = nx.DiGraph()
         G.add_node(self.source)
@@ -246,13 +249,13 @@ class KSPSolver:
         k: Optional[int] = None,
     ) -> List[List[TrackNode]]:
         """
-        Extract up to k node-disjoint shortest paths from the graph.
+        Extract up to k node-disjoint shortest paths from the graph using a successive shortest path approach.
 
         Args:
-            k (Optional[int]): Maximum number of paths to extract.
+            k (Optional[int]): Maximum number of paths to extract. If None, uses the maximum number of detections in any frame.
 
         Returns:
-            List[List[TrackNode]]: List of node-disjoint paths (tracks).
+            List[List[TrackNode]]: List of node-disjoint paths (tracks), each path is a list of TrackNode objects.
         """
         self._build_graph()
 
@@ -266,12 +269,14 @@ class KSPSolver:
         for _i in tqdm(range(k), desc="Extracting k-shortest paths", leave=True):
             G_mod = G_base.copy()
 
+            # Update edge weights to penalize reused edges
             for u, v, data in G_mod.edges(data=True):
                 base = data[self.weight_key]
                 penalty = self.path_overlap_penalty * edge_reuse[(u, v)] * base
                 data[self.weight_key] = base + penalty
 
             try:
+                # Find shortest path from source to sink
                 _, path = nx.single_source_dijkstra(
                     G_mod, self.source, self.sink, weight=self.weight_key
                 )
@@ -279,6 +284,7 @@ class KSPSolver:
                 print(f"No path found from source to sink at {_i}th iteration")
                 break
 
+            # Check for duplicate paths
             if path[1:-1] in paths:
                 print("Duplicate path found!")
                 # NOTE: Changed to continue for debugging to extrapolate the track detects to investigate the reason for fewer paths generated
@@ -287,6 +293,7 @@ class KSPSolver:
 
             paths.append(path[1:-1])
 
+            # Mark edges in this path as reused for future penalty
             for u, v in zip(path[:-1], path[1:]):
                 edge_reuse[(u, v)] += 1
 
