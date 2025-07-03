@@ -28,11 +28,30 @@ class KSPTracker(BaseOfflineTracker):
         Initialize the KSPTracker and its solver.
 
         Args:
-            path_overlap_penalty (Optional[int]): Penalty for reusing the same edge (detection pairing) in multiple tracks. Increasing this value encourages the tracker to produce more distinct, non-overlapping tracks by discouraging shared detections between tracks.
-            iou_weight (Optional[int]): Weight for the Intersection-over-Union (IoU) penalty in the edge cost. Higher values make the tracker favor linking detections with greater spatial overlap, which helps maintain track continuity for objects that move smoothly.
-            dist_weight (Optional[int]): Weight for the Euclidean distance between detection centers in the edge cost. Increasing this value penalizes large jumps between detections in consecutive frames, promoting smoother, more physically plausible tracks.
-            size_weight (Optional[int]): Weight for the size difference penalty in the edge cost. Higher values penalize linking detections with significantly different bounding box areas, which helps prevent identity switches when object size changes abruptly.
-            conf_weight (Optional[int]): Weight for the confidence penalty in the edge cost. Higher values penalize edges between detections with lower confidence scores, making the tracker prefer more reliable detections and reducing the impact of false positives.
+            path_overlap_penalty (Optional[int]): Penalty for reusing the same edge
+                (detection pairing) in multiple tracks. Increasing this value encourages
+                the tracker to produce more distinct, non-overlapping tracks by
+                discouraging shared detections between tracks.
+
+            iou_weight (Optional[int]): Weight for the Intersection-over-Union (IoU)
+                penalty in the edge cost. Higher values make the tracker favor linking
+                detections with greater spatial overlap, which helps maintain track
+                continuity for objects that move smoothly.
+
+            dist_weight (Optional[int]): Weight for the Euclidean distance between
+                detection centers in the edge cost. Increasing this value penalizes
+                large jumps between detections in consecutive frames, promoting
+                smoother, more physically plausible tracks.
+
+            size_weight (Optional[int]): Weight for the size difference penalty in the
+                edge cost. Higher values penalize linking detections with significantly
+                different bounding box areas, which helps prevent identity switches when
+                object size changes abruptly.
+
+            conf_weight (Optional[int]): Weight for the confidence penalty in the edge
+                cost. Higher values penalize edges between detections with lower
+                confidence scores, making the tracker prefer more reliable detections
+                and reducing the impact of false positives.
         """
         self._solver = KSPSolver(
             path_overlap_penalty=path_overlap_penalty,
