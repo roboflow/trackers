@@ -5,7 +5,7 @@ from typing import Any, List, Optional, Tuple
 import networkx as nx
 import numpy as np
 import supervision as sv
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 @dataclass(frozen=True)
@@ -41,80 +41,22 @@ class TrackNode:
     def __str__(self):
         return f"{self.frame_id}:{self.det_idx}@{self.position}"
 
-
-def box_iou_batch(boxes_true: np.ndarray, boxes_detection: np.ndarray) -> np.ndarray:
-    """
-    Compute Intersection over Union (IoU) of two sets of bounding boxes -
-        `boxes_true` and `boxes_detection`. Both sets
-        of boxes are expected to be in `(x_min, y_min, x_max, y_max)` format.
-
-    Args:
-        boxes_true (np.ndarray): 2D `np.ndarray` representing ground-truth boxes.
-            `shape = (N, 4)` where `N` is number of true objects.
-        boxes_detection (np.ndarray): 2D `np.ndarray` representing detection boxes.
-            `shape = (M, 4)` where `M` is number of detected objects.
-
-    Returns:
-        np.ndarray: Pairwise IoU of boxes from `boxes_true` and `boxes_detection`.
-            `shape = (N, M)` where `N` is number of true objects and
-            `M` is number of detected objects.
-    """
-    area_true = (boxes_true[:, 2] - boxes_true[:, 0]) * (
-        boxes_true[:, 3] - boxes_true[:, 1]
-    )
-    area_detection = (boxes_detection[:, 2] - boxes_detection[:, 0]) * (
-        boxes_detection[:, 3] - boxes_detection[:, 1]
-    )
-
-    top_left = np.maximum(boxes_true[:, None, :2], boxes_detection[:, :2])
-    bottom_right = np.minimum(boxes_true[:, None, 2:], boxes_detection[:, 2:])
-
-    wh = np.clip(bottom_right - top_left, a_min=0, a_max=None)
-    area_inter = wh[:, :, 0] * wh[:, :, 1]
-
-    ious = area_inter / (area_true[:, None] + area_detection - area_inter)
-
-    ious = np.nan_to_num(ious)
-    return ious
-
-
 class KSPSolver:
     """
     Solver for the K-Shortest Paths (KSP) tracking problem.
     Builds a graph from detections and extracts multiple disjoint paths.
     """
 
-    def __init__(self):
-        """
-        Initialize the KSP_Solver.
-        """
-        self.path_overlap_penalty = 40
-        self.weight_key = "weight"
-        self.source = "SOURCE"
-        self.sink = "SINK"
-        self.detection_per_frame: List[sv.Detections] = []
-        self.weights = {"iou": 0.9, "dist": 0.1, "size": 0.1, "conf": 0.1}
-        self.reset()
-
-    def reset(self):
-        """
-        Reset the solver state and clear all detections and graph.
-        This clears the detection buffer and initializes a new empty graph.
-        """
-        self.detection_per_frame = []
-        self.graph = nx.DiGraph()
-
-    def append_config(
-        self,
+    def __init__(self, 
         path_overlap_penalty=40,
         iou_weight=0.9,
         dist_weight=0.1,
         size_weight=0.1,
-        conf_weight=0.1,
-    ):
+        conf_weight=0.1
+        ):
         """
-        Update the weights for edge cost calculation and path overlap penalty.
-
+        Initialize the KSPSolver.
+        
         Args:
             path_overlap_penalty (float): Penalty for edge reuse in successive paths.
             iou_weight (float): Weight for IoU penalty.
@@ -122,6 +64,13 @@ class KSPSolver:
             size_weight (float): Weight for size penalty.
             conf_weight (float): Weight for confidence penalty.
         """
+        self.path_overlap_penalty = 40
+        self.weight_key = "weight"
+        self.source = "SOURCE"
+        self.sink = "SINK"
+        self.detection_per_frame: List[sv.Detections] = []
+        self.weights = {"iou": 0.9, "dist": 0.1, "size": 0.1, "conf": 0.1}
+
         if path_overlap_penalty is not None:
             self.path_overlap_penalty = path_overlap_penalty
         if iou_weight is not None:
@@ -132,6 +81,16 @@ class KSPSolver:
             self.weights["size"] = size_weight
         if conf_weight is not None:
             self.weights["conf"] = conf_weight
+
+        self.reset()
+
+    def reset(self):
+        """
+        Reset the solver state and clear all detections and graph.
+        This clears the detection buffer and initializes a new empty graph.
+        """
+        self.detection_per_frame = []
+        self.graph = nx.DiGraph()
 
     def append_frame(self, detections: sv.Detections):
         """

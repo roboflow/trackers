@@ -5,13 +5,13 @@ from typing import Any, Callable, List, Optional
 import cv2
 import numpy as np
 import supervision as sv
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
-from trackers.core.base import BaseTracker
+from trackers.core.base import BaseOfflineTracker
 from trackers.core.ksptracker.solver import KSPSolver, TrackNode
 
 
-class KSPTracker(BaseTracker):
+class KSPTracker(BaseOfflineTracker):
     """
     Offline tracker using K-Shortest Paths (KSP) algorithm.
     """
@@ -26,9 +26,15 @@ class KSPTracker(BaseTracker):
     ) -> None:
         """
         Initialize the KSPTracker and its solver.
+
+        Args:
+            path_overlap_penalty (Optional[int]): Penalty for reusing the same edge (detection pairing) in multiple tracks. Increasing this value encourages the tracker to produce more distinct, non-overlapping tracks by discouraging shared detections between tracks.
+            iou_weight (Optional[int]): Weight for the Intersection-over-Union (IoU) penalty in the edge cost. Higher values make the tracker favor linking detections with greater spatial overlap, which helps maintain track continuity for objects that move smoothly.
+            dist_weight (Optional[int]): Weight for the Euclidean distance between detection centers in the edge cost. Increasing this value penalizes large jumps between detections in consecutive frames, promoting smoother, more physically plausible tracks.
+            size_weight (Optional[int]): Weight for the size difference penalty in the edge cost. Higher values penalize linking detections with significantly different bounding box areas, which helps prevent identity switches when object size changes abruptly.
+            conf_weight (Optional[int]): Weight for the confidence penalty in the edge cost. Higher values penalize edges between detections with lower confidence scores, making the tracker prefer more reliable detections and reducing the impact of false positives.
         """
-        self._solver = KSPSolver()
-        self._solver.append_config(
+        self._solver = KSPSolver(
             path_overlap_penalty=path_overlap_penalty,
             iou_weight=iou_weight,
             dist_weight=dist_weight,
@@ -40,38 +46,12 @@ class KSPTracker(BaseTracker):
     def reset(self) -> None:
         """
         Reset the KSPTracker and its solver state.
+
         This clears all buffered detections and resets the underlying solver.
         """
         self._solver.reset()
 
-    def update_config(
-        self,
-        path_overlap_penalty: Optional[int] = None,
-        iou_weight: Optional[int] = None,
-        dist_weight: Optional[int] = None,
-        size_weight: Optional[int] = None,
-        conf_weight: Optional[int] = None,
-    ):
-        """
-        Update the configuration weights for the KSP algorithm.
-
-        Args:
-            path_overlap_penalty (Optional[int]): Penalty for edge reuse in
-                successive paths.
-            iou_weight (Optional[float]): Weight for IoU component.
-            dist_weight (Optional[float]): Weight for distance component.
-            size_weight (Optional[float]): Weight for size component.
-            conf_weight (Optional[float]): Weight for confidence component.
-        """
-        self._solver.append_config(
-            path_overlap_penalty=path_overlap_penalty,
-            iou_weight=iou_weight,
-            dist_weight=dist_weight,
-            size_weight=size_weight,
-            conf_weight=conf_weight,
-        )
-
-    def update(self, detections: sv.Detections) -> sv.Detections:
+    def __update(self, detections: sv.Detections) -> sv.Detections:
         """
         Add detections for the current frame to the solver.
 
@@ -84,7 +64,7 @@ class KSPTracker(BaseTracker):
         self._solver.append_frame(detections)
         return detections
 
-    def assign_tracker_ids_from_paths(
+    def __assign_tracker_ids_from_paths(
         self, paths: List[List[TrackNode]]
     ) -> List[sv.Detections]:
         """
@@ -158,7 +138,7 @@ class KSPTracker(BaseTracker):
 
         return frame_to_detections
 
-    def process_tracks(
+    def track(
         self,
         source_path: str,
         get_model_detections: Callable[[np.ndarray], sv.Detections],
@@ -195,7 +175,7 @@ class KSPTracker(BaseTracker):
                 dynamic_ncols=True,
             ):
                 detections = get_model_detections(frame)
-                self.update(detections)
+                self.__update(detections)
         elif os.path.isdir(source_path):
             frame_paths = sorted(
                 [
@@ -211,10 +191,10 @@ class KSPTracker(BaseTracker):
             ):
                 image = cv2.imread(frame_path)
                 detections = get_model_detections(image)
-                self.update(detections)
+                self.__update(detections)
         else:
             raise ValueError(f"{source_path} not found!")
         paths = self._solver.solve(num_of_tracks)
         if not paths:
             return []
-        return self.assign_tracker_ids_from_paths(paths)
+        return self.__assign_tracker_ids_from_paths(paths)
