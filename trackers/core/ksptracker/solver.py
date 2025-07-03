@@ -41,22 +41,24 @@ class TrackNode:
     def __str__(self):
         return f"{self.frame_id}:{self.det_idx}@{self.position}"
 
+
 class KSPSolver:
     """
     Solver for the K-Shortest Paths (KSP) tracking problem.
     Builds a graph from detections and extracts multiple disjoint paths.
     """
 
-    def __init__(self, 
+    def __init__(
+        self,
         path_overlap_penalty=40,
         iou_weight=0.9,
         dist_weight=0.1,
         size_weight=0.1,
-        conf_weight=0.1
-        ):
+        conf_weight=0.1,
+    ):
         """
         Initialize the KSPSolver.
-        
+
         Args:
             path_overlap_penalty (float): Penalty for edge reuse in successive paths.
             iou_weight (float): Weight for IoU penalty.

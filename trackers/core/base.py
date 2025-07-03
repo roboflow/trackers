@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Callable, List, Optional
 
 import numpy as np
 import supervision as sv
-from typing import Any, Callable, List, Optional
 
 
 class BaseTracker(ABC):
@@ -24,16 +24,17 @@ class BaseTrackerWithFeatures(ABC):
     def reset(self) -> None:
         pass
 
+
 class BaseOfflineTracker(ABC):
     @abstractmethod
     def reset(self) -> None:
         pass
 
     @abstractmethod
-    def track(self, 
-            source_path: str,
-            get_model_detections: Callable[[np.ndarray], sv.Detections],
-            num_of_tracks: Optional[int] = None
-        ) -> List[sv.Detections]:
+    def track(
+        self,
+        source_path: str,
+        get_model_detections: Callable[[np.ndarray], sv.Detections],
+        num_of_tracks: Optional[int] = None,
+    ) -> List[sv.Detections]:
         pass
-            
