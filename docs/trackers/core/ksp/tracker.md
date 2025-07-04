@@ -34,7 +34,7 @@ Unlike online trackers, which make frame-by-frame decisions, KSP Tracker leverag
         return sv.Detections.from_inference(result)
 
     tracked_dets = tracker.track(
-        source_path="<INPUT_VIDEO_PATH>", 
+        source_path="<INPUT_VIDEO_PATH>",
         get_model_detections=get_model_detections
     )
 
@@ -71,7 +71,7 @@ Unlike online trackers, which make frame-by-frame decisions, KSP Tracker leverag
         return model.predict(frame)
 
     tracked_dets = tracker.track(
-        source_path="<INPUT_VIDEO_PATH>", 
+        source_path="<INPUT_VIDEO_PATH>",
         get_model_detections=get_model_detections
     )
 
@@ -110,7 +110,7 @@ Unlike online trackers, which make frame-by-frame decisions, KSP Tracker leverag
         return detections[detections.class_id == 0] if not detections.is_empty() else detections
 
     tracked_dets = tracker.track(
-        source_path="<INPUT_VIDEO_PATH>", 
+        source_path="<INPUT_VIDEO_PATH>",
         get_model_detections=get_model_detections
     )
 
@@ -160,7 +160,7 @@ Unlike online trackers, which make frame-by-frame decisions, KSP Tracker leverag
         return sv.Detections.from_transformers(results, id2label=model.config.id2label)
 
     tracked_dets = tracker.track(
-        "<INPUT_VIDEO_PATH>", 
+        "<INPUT_VIDEO_PATH>",
         get_model_detections=get_model_detections
     )
 
