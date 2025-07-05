@@ -4,8 +4,8 @@ from typing import Any, Callable, List, Optional
 
 import cv2
 import numpy as np
-import supervision as sv
 import PIL
+import supervision as sv
 from tqdm.auto import tqdm
 
 from trackers.core.base import BaseOfflineTracker
