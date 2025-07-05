@@ -5,6 +5,7 @@ from typing import Any, Callable, List, Optional
 import cv2
 import numpy as np
 import supervision as sv
+import PIL
 from tqdm.auto import tqdm
 
 from trackers.core.base import BaseOfflineTracker
@@ -70,7 +71,7 @@ class KSPTracker(BaseOfflineTracker):
         """
         self._solver.reset()
 
-    def __update(self, detections: sv.Detections) -> sv.Detections:
+    def _update(self, detections: sv.Detections) -> sv.Detections:
         """
         Add detections for the current frame to the solver.
 
@@ -83,7 +84,7 @@ class KSPTracker(BaseOfflineTracker):
         self._solver.append_frame(detections)
         return detections
 
-    def __assign_tracker_ids_from_paths(
+    def _assign_tracker_ids_from_paths(
         self, paths: List[List[TrackNode]]
     ) -> List[sv.Detections]:
         """
@@ -159,7 +160,7 @@ class KSPTracker(BaseOfflineTracker):
 
     def track(
         self,
-        source_path: str,
+        source: str | List[PIL.Image.Image],
         get_model_detections: Callable[[np.ndarray], sv.Detections],
         num_of_tracks: Optional[int] = None,
     ) -> List[sv.Detections]:
@@ -175,7 +176,7 @@ class KSPTracker(BaseOfflineTracker):
         Returns:
             List[sv.Detections]: List of sv.Detections with tracker IDs assigned.
         """
-        if not source_path:
+        if not source:
             raise ValueError(
                 "`source_path` must be a string path to a directory or an .mp4 file."
             )
@@ -184,9 +185,9 @@ class KSPTracker(BaseOfflineTracker):
                 "`get_model_detections` must be a callable that returns an "
                 "instance of `sv.Detections`."
             )
-        if source_path.lower().endswith(".mp4"):
-            frames_generator = sv.get_video_frames_generator(source_path=source_path)
-            video_info = sv.VideoInfo.from_video_path(video_path=source_path)
+        if source.lower().endswith(".mp4"):
+            frames_generator = sv.get_video_frames_generator(source_path=source)
+            video_info = sv.VideoInfo.from_video_path(video_path=source)
             for frame in tqdm(
                 frames_generator,
                 total=video_info.total_frames,
@@ -194,12 +195,12 @@ class KSPTracker(BaseOfflineTracker):
                 dynamic_ncols=True,
             ):
                 detections = get_model_detections(frame)
-                self.__update(detections)
-        elif os.path.isdir(source_path):
+                self._update(detections)
+        elif os.path.isdir(source):
             frame_paths = sorted(
                 [
-                    os.path.join(source_path, f)
-                    for f in os.listdir(source_path)
+                    os.path.join(source, f)
+                    for f in os.listdir(source)
                     if f.lower().endswith(".jpg")
                 ]
             )
@@ -210,10 +211,10 @@ class KSPTracker(BaseOfflineTracker):
             ):
                 image = cv2.imread(frame_path)
                 detections = get_model_detections(image)
-                self.__update(detections)
+                self._update(detections)
         else:
-            raise ValueError(f"{source_path} not found!")
+            raise ValueError(f"{source} not a valid path or list of PIL.Image.Image.")
         paths = self._solver.solve(num_of_tracks)
         if not paths:
             return []
-        return self.__assign_tracker_ids_from_paths(paths)
+        return self._assign_tracker_ids_from_paths(paths)

@@ -50,11 +50,11 @@ class KSPSolver:
 
     def __init__(
         self,
-        path_overlap_penalty=40,
-        iou_weight=0.9,
-        dist_weight=0.1,
-        size_weight=0.1,
-        conf_weight=0.1,
+        path_overlap_penalty: float = 40,
+        iou_weight: float = 0.9,
+        dist_weight: float = 0.1,
+        size_weight: float = 0.1,
+        conf_weight: float = 0.1,
     ):
         """
         Initialize the KSPSolver.
@@ -86,7 +86,7 @@ class KSPSolver:
 
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Reset the solver state and clear all detections and graph.
         This clears the detection buffer and initializes a new empty graph.
@@ -94,7 +94,7 @@ class KSPSolver:
         self.detection_per_frame = []
         self.graph = nx.DiGraph()
 
-    def append_frame(self, detections: sv.Detections):
+    def append_frame(self, detections: sv.Detections) -> None:
         """
         Add detections for a new frame to the buffer.
 
@@ -103,7 +103,7 @@ class KSPSolver:
         """
         self.detection_per_frame.append(detections)
 
-    def _get_center(self, bbox):
+    def _get_center(self, bbox: np.ndarray) -> np.ndarray:
         """
         Compute the center of a bounding box.
 
@@ -116,29 +116,7 @@ class KSPSolver:
         x1, y1, x2, y2 = bbox
         return np.array([(x1 + x2) / 2, (y1 + y2) / 2])
 
-    def _iou(self, a, b):
-        """
-        Compute Intersection over Union (IoU) between two bounding boxes.
-
-        Args:
-            a (np.ndarray): First bounding box.
-            b (np.ndarray): Second bounding box.
-
-        Returns:
-            float: IoU value between 0 and 1.
-        """
-        x1, y1, x2, y2 = (
-            max(a[0], b[0]),
-            max(a[1], b[1]),
-            min(a[2], b[2]),
-            min(a[3], b[3]),
-        )
-        inter = max(0, x2 - x1) * max(0, y2 - y1)
-        area_a = (a[2] - a[0]) * (a[3] - a[1])
-        area_b = (b[2] - b[0]) * (b[3] - b[1])
-        return inter / (area_a + area_b - inter + 1e-6)
-
-    def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode):
+    def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode) -> float:
         """
         Compute the cost of connecting two detections (nodes) in the graph.
         The cost is a weighted sum of IoU penalty, center distance,
@@ -155,7 +133,7 @@ class KSPSolver:
         conf_u, conf_v = nodeU.confidence, nodeV.confidence
 
         center_dist = np.linalg.norm(self._get_center(bboxU) - self._get_center(bboxV))
-        iou_penalty = 1 - self._iou(bboxU, bboxV)
+        iou_penalty = 1 - sv.box_iou_batch(np.array([bboxU]), np.array([bboxV]))
 
         area_a = (bboxU[2] - bboxU[0]) * (bboxU[3] - bboxU[1])
         area_b = (bboxV[2] - bboxV[0]) * (bboxV[3] - bboxV[1])
