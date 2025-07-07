@@ -75,7 +75,7 @@ class OCSORTTracker(BaseTracker):
         self, trackers: list[OCSORTKalmanBoxTracker], detections: NDArray[np.float32]
     ) -> NDArray[np.float32]:
         """
-        Calculate the OCM cost matrix.
+        Calculate the OCM cost matrix based on velocity direction consistency.
         """
         cost_matrix = np.zeros((len(trackers), len(detections)))
         for i, tracker in enumerate(trackers):
@@ -90,24 +90,38 @@ class OCSORTTracker(BaseTracker):
                 intention_velocity = (
                     get_center(detection) - get_center(tracker.last_observation)
                 ) / (tracker.time_since_update + 1)
-                cost_matrix[i, j] = np.dot(track_velocity, intention_velocity) / (
-                    np.linalg.norm(track_velocity) * np.linalg.norm(intention_velocity)
-                    + 1e-6
+
+                # Calculate angle difference as specified in the paper
+                if np.linalg.norm(intention_velocity) < 1e-6:
+                    continue
+
+                track_angle = np.arctan2(track_velocity[1], track_velocity[0])
+                intention_angle = np.arctan2(
+                    intention_velocity[1], intention_velocity[0]
                 )
+                angle_diff = abs(track_angle - intention_angle)
+
+                # Normalize to [theta, pi] range
+                angle_diff = min(angle_diff, 2 * np.pi - angle_diff)
+
+                # Convert to cost (smaller angle difference = lower cost)
+                cost_matrix[i, j] = angle_diff
+
         return cost_matrix
 
     def _associate_detections(
         self, iou_matrix: np.ndarray, ocm_matrix: np.ndarray
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-        cost_matrix = iou_matrix - self.ocm_cost_weight * ocm_matrix
+        # Combine OCM angle cost with IoU cost
+        cost_matrix = self.ocm_cost_weight * ocm_matrix - iou_matrix
         matched_indices = []
         unmatched_trackers = set(range(len(self.trackers)))
         unmatched_detections = set(range(iou_matrix.shape[1]))
 
         if iou_matrix.shape[0] > 0 and iou_matrix.shape[1] > 0:
-            row_indices, col_indices = linear_sum_assignment(cost_matrix, maximize=True)
+            row_indices, col_indices = linear_sum_assignment(cost_matrix)
             for row, col in zip(row_indices, col_indices):
-                if cost_matrix[row, col] >= self.minimum_iou_threshold:
+                if iou_matrix[row, col] >= self.minimum_iou_threshold:
                     matched_indices.append((row, col))
                     unmatched_trackers.remove(row)
                     unmatched_detections.remove(col)
