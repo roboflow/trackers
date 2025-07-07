@@ -1,7 +1,8 @@
+from trackers.core.oc_sort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
 from trackers.log import get_logger
 
-__all__ = ["SORTTracker"]
+__all__ = ["OCSORTTracker", "SORTTracker"]
 
 logger = get_logger(__name__)
 

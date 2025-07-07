@@ -91,7 +91,9 @@ class OCSORTTracker(BaseTracker):
                     get_center(detection) - get_center(tracker.last_observation)
                 ) / (tracker.time_since_update + 1)
 
-                # Calculate angle difference as specified in the paper
+                # If the magnitude of the intention velocity is too small,
+                # it means that the new detection's center is in the exact same spot
+                # as the track's last observed center, so we skip this detection
                 if np.linalg.norm(intention_velocity) < 1e-6:
                     continue
 
@@ -100,11 +102,7 @@ class OCSORTTracker(BaseTracker):
                     intention_velocity[1], intention_velocity[0]
                 )
                 angle_diff = abs(track_angle - intention_angle)
-
-                # Normalize to [theta, pi] range
                 angle_diff = min(angle_diff, 2 * np.pi - angle_diff)
-
-                # Convert to cost (smaller angle difference = lower cost)
                 cost_matrix[i, j] = angle_diff
 
         return cost_matrix
@@ -112,7 +110,17 @@ class OCSORTTracker(BaseTracker):
     def _associate_detections(
         self, iou_matrix: np.ndarray, ocm_matrix: np.ndarray
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-        # Combine OCM angle cost with IoU cost
+        """
+        Associate detections with trackers.
+
+        Args:
+            iou_matrix (np.ndarray): IoU matrix between trackers and detections.
+            ocm_matrix (np.ndarray): OCM matrix between trackers and detections.
+
+        Returns:
+            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices,
+                unmatched trackers, and unmatched detections.
+        """
         cost_matrix = self.ocm_cost_weight * ocm_matrix - iou_matrix
         matched_indices = []
         unmatched_trackers = set(range(len(self.trackers)))
@@ -134,6 +142,18 @@ class OCSORTTracker(BaseTracker):
         unmatched_detections: set[int],
         detection_boxes: np.ndarray,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
+        """
+        Associate detections with trackers using OCR.
+
+        Args:
+            unmatched_trackers (set[int]): Set of unmatched tracker indices.
+            unmatched_detections (set[int]): Set of unmatched detection indices.
+            detection_boxes (np.ndarray): Detection bounding boxes.
+
+        Returns:
+            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices,
+                unmatched trackers, and unmatched detections.
+        """
         unmatched_tracker_list = list(unmatched_trackers)
         unmatched_detection_list = list(unmatched_detections)
 
@@ -172,6 +192,14 @@ class OCSORTTracker(BaseTracker):
         detection_boxes: np.ndarray,
         unmatched_detections: set[int],
     ) -> None:
+        """
+        Spawn new trackers for unmatched detections.
+
+        Args:
+            detections (sv.Detections): Detections.
+            detection_boxes (np.ndarray): Detection bounding boxes.
+            unmatched_detections (set[int]): Set of unmatched detection indices.
+        """
         for detection_idx in unmatched_detections:
             if (
                 detections.confidence is None
@@ -185,6 +213,15 @@ class OCSORTTracker(BaseTracker):
                 self.trackers.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
+        """
+        Update the tracker with new detections.
+
+        Args:
+            detections (sv.Detections): Detections.
+
+        Returns:
+            sv.Detections: Updated detections with tracker IDs.
+        """
         if len(self.trackers) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
             return detections
@@ -238,5 +275,8 @@ class OCSORTTracker(BaseTracker):
         return updated_detections
 
     def reset(self) -> None:
+        """
+        Reset the tracker.
+        """
         self.trackers = []
         OCSORTKalmanBoxTracker.count_id = 0
