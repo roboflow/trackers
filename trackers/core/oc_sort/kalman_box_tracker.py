@@ -67,24 +67,32 @@ class OCSORTKalmanBoxTracker(SORTKalmanBoxTracker):
         """
         Applies Observation-centric Re-Update (ORU).
 
-        When a track is re-activated, this method is called to correct the
-        accumulated error during the untracked period using a virtual trajectory.
-
         Args:
             observation (NDArray[np.float32]): The new observation that re-activated
                 the track.
         """
+        if self.time_since_update <= 1:
+            # No need for ORU if the track was not untracked for more than 1 frame
+            return
+
+        # Restore the KF state to when the track was last seen
         self.state = self.kf_state_at_last_observation.copy()
         self.P = self.P_at_last_observation.copy()
 
         untracked_period = self.time_since_update
 
-        for i in range(1, untracked_period + 1):
+        # Generate virtual trajectory and replay the predict-update cycle
+        for t in range(1, untracked_period + 1):
+            # Predict step
             self.state = (self.F @ self.state).astype(np.float32)
             self.P = (self.F @ self.P @ self.F.T + self.Q).astype(np.float32)
 
-            # Update with virtual observation
-            virtual_observation = self.last_observation + (
+            # Generate virtual observation using linear interpolation
+            # as per the adopted version of eqn 6 from section 5.1 in the paper
+            interpolation_factor = t / untracked_period
+            virtual_observation = self.last_observation + interpolation_factor * (
                 observation - self.last_observation
-            ) * (i / untracked_period)
+            )
+
+            # Re-update step with virtual observation
             self._observation_centric_re_update(virtual_observation)

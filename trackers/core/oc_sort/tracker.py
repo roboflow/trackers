@@ -215,6 +215,8 @@ class OCSORTTracker(BaseTracker):
 
         for row, col in ocr_matched:
             tracker = self.trackers[row]
+            if tracker.time_since_update > 1:
+                tracker.apply_oru(detection_boxes[col])
             tracker.update(detection_boxes[col])
 
         self._spawn_new_trackers(detections, detection_boxes, unmatched_det)
