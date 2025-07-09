@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple, Set
 
 import cv2
 import numpy as np
@@ -19,11 +19,16 @@ class KSPTracker(BaseOfflineTracker):
 
     def __init__(
         self,
-        path_overlap_penalty: Optional[int] = None,
-        iou_weight: Optional[int] = None,
-        dist_weight: Optional[int] = None,
-        size_weight: Optional[int] = None,
-        conf_weight: Optional[int] = None,
+        path_overlap_penalty: Optional[int] = 40,
+        iou_weight: Optional[int] = 0.9,
+        dist_weight: Optional[int] = 0.1,
+        size_weight: Optional[int] = 0.1,
+        conf_weight: Optional[int] = 0.1,
+        entry_exit_regions: Optional[List[Tuple[int, int, int, int]]] = None,
+        use_border: Optional[bool] = True,
+        borders: Optional[Set[str]] = None,
+        border_margin: Optional[int] = 40,
+        frame_size: Optional[Tuple[int, int]] = (1920, 1080),
     ) -> None:
         """
         Initialize the KSPTracker and its solver.
@@ -53,13 +58,31 @@ class KSPTracker(BaseOfflineTracker):
                 cost. Higher values penalize edges between detections with lower
                 confidence scores, making the tracker prefer more reliable detections
                 and reducing the impact of false positives.
+
+            entry_exit_regions (Optional[List[Tuple[int, int, int, int]]]): List of rectangular entry/exit regions.
+            use_border (Optional[bool]): Enable/disable border-based entry/exit.
+            borders (Optional[Set[str]]): Set of borders to use. {"left", "right", "top", "bottom"}
+            border_margin (Optional[int]): Border thickness in pixels.
+            frame_size (Optional[Tuple[int, int]]): Size of the image (width, height).
         """
+        self.entry_exit_regions = entry_exit_regions if entry_exit_regions is not None else []
+        self.use_border = use_border
+        self.borders = borders if borders is not None else {"left", "right", "top", "bottom"}
+        self.border_margin = border_margin
+        self.frame_size = frame_size
         self._solver = KSPSolver(
             path_overlap_penalty=path_overlap_penalty,
             iou_weight=iou_weight,
             dist_weight=dist_weight,
             size_weight=size_weight,
             conf_weight=conf_weight,
+        )
+        self._solver.set_entry_exit_regions(self.entry_exit_regions)
+        self._solver.set_border_entry_exit(
+            use_border=self.use_border,
+            borders=self.borders,
+            margin=self.border_margin,
+            frame_size=self.frame_size,
         )
         self.reset()
 
@@ -83,6 +106,31 @@ class KSPTracker(BaseOfflineTracker):
         """
         self._solver.append_frame(detections)
         return detections
+    
+    def set_entry_exit_regions(self, regions: List[Tuple[int, int, int, int]]) -> None:
+        """
+        Set rectangular entry/exit zones (x1, y1, x2, y2).
+        """
+        self.entry_exit_regions = regions
+        self._solver.set_entry_exit_regions(regions)
+
+    def set_border_entry_exit(
+        self,
+        use_border: Optional[bool] = True,
+        borders: Optional[Set[str]] = None,
+        margin: Optional[int] = 40,
+        frame_size: Optional[Tuple[int, int]] = (1920, 1080),
+    ) -> None:
+        self.use_border = use_border
+        self.borders = borders if borders is not None else {"left", "right", "top", "bottom"}
+        self.border_margin = margin
+        self.frame_size = frame_size
+        self._solver.set_border_entry_exit(
+            use_border=self.use_border,
+            borders=self.borders,
+            margin=self.border_margin,
+            frame_size=self.frame_size,
+        )
 
     def _assign_tracker_ids_from_paths(
         self, paths: List[List[TrackNode]]
@@ -163,6 +211,14 @@ class KSPTracker(BaseOfflineTracker):
         if source.lower().endswith(".mp4"):
             frames_generator = sv.get_video_frames_generator(source_path=source)
             video_info = sv.VideoInfo.from_video_path(video_path=source)
+            
+            self._solver.set_border_entry_exit(
+                self.use_border, 
+                self.borders, 
+                self.border_margin, 
+                (video_info.width, video_info.height)
+            )
+
             for frame in tqdm(
                 frames_generator,
                 total=video_info.total_frames,
@@ -177,14 +233,27 @@ class KSPTracker(BaseOfflineTracker):
                     os.path.join(source, f)
                     for f in os.listdir(source)
                     if f.lower().endswith(".jpg")
-                ][:100]
+                ]
             )
+
+            has_set_frame_size = False
+
             for frame_path in tqdm(
                 frame_paths,
                 desc="Extracting detections and buffering directory",
                 dynamic_ncols=True,
             ):
                 image = cv2.imread(frame_path)
+                height, width = image.shape[:2]
+
+                if not has_set_frame_size:
+                    self._solver.set_border_entry_exit(
+                            self.use_border, 
+                            self.borders, 
+                            self.border_margin, 
+                            (width, height)
+                        )
+                    
                 detections = get_model_detections(image)
                 self._update(detections)
         else:

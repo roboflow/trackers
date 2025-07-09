@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Set
 
 import networkx as nx
 import numpy as np
@@ -10,18 +10,6 @@ from tqdm.auto import tqdm
 
 @dataclass(frozen=True)
 class TrackNode:
-    """
-    Represents a detection node in the tracking graph.
-
-    Attributes:
-        frame_id (int): Frame index where detection occurred.
-        det_idx (int): Detection index in the frame.
-        class_id (int): Class ID of the detection.
-        position (tuple): Center position of the detection.
-        bbox (np.ndarray): Bounding box coordinates.
-        confidence (float): Detection confidence score.
-    """
-
     frame_id: int
     det_idx: int
     class_id: int
@@ -43,11 +31,6 @@ class TrackNode:
 
 
 class KSPSolver:
-    """
-    Solver for the K-Shortest Paths (KSP) tracking problem.
-    Builds a graph from detections and extracts multiple disjoint paths.
-    """
-
     def __init__(
         self,
         path_overlap_penalty: float = 40,
@@ -56,17 +39,7 @@ class KSPSolver:
         size_weight: float = 0.1,
         conf_weight: float = 0.1,
     ):
-        """
-        Initialize the KSPSolver.
-
-        Args:
-            path_overlap_penalty (float): Penalty for edge reuse in successive paths.
-            iou_weight (float): Weight for IoU penalty.
-            dist_weight (float): Weight for center distance.
-            size_weight (float): Weight for size penalty.
-            conf_weight (float): Weight for confidence penalty.
-        """
-        self.path_overlap_penalty = 40
+        self.path_overlap_penalty = path_overlap_penalty if path_overlap_penalty is not None else 40  
         self.weight_key = "weight"
         self.source = "SOURCE"
         self.sink = "SINK"
@@ -84,65 +57,80 @@ class KSPSolver:
         if conf_weight is not None:
             self.weights["conf"] = conf_weight
 
+        # Entry/exit region settings
+        self.entry_exit_regions: List[Tuple[int, int, int, int]] = []  # (x1, y1, x2, y2)
+
+        # Border region settings
+        self.use_border_regions = True
+        self.active_borders: Set[str] = {"left", "right", "top", "bottom"}
+        self.border_margin = 40
+        self.frame_size = (1920, 1080)
+
         self.reset()
 
     def reset(self) -> None:
-        """
-        Reset the solver state and clear all detections and graph.
-        This clears the detection buffer and initializes a new empty graph.
-        """
         self.detection_per_frame = []
         self.graph = nx.DiGraph()
 
     def append_frame(self, detections: sv.Detections) -> None:
-        """
-        Add detections for a new frame to the buffer.
-
-        Args:
-            detections (sv.Detections): Detections for the frame.
-        """
         self.detection_per_frame.append(detections)
 
     def _get_center(self, bbox: np.ndarray) -> np.ndarray:
-        """
-        Compute the center of a bounding box.
-
-        Args:
-            bbox (np.ndarray): Bounding box coordinates (x1, y1, x2, y2).
-
-        Returns:
-            np.ndarray: Center coordinates (x, y).
-        """
         x1, y1, x2, y2 = bbox
         return np.array([(x1 + x2) / 2, (y1 + y2) / 2])
 
-    def _in_door(self, node: TrackNode):
-        x, y = node.position
-        width, height = (1920, 1080)
-
-        border_margin = 40
-        in_border = (
-            x <= border_margin
-            or x >= width - border_margin
-            or y <= border_margin
-            or y >= height - border_margin
-        )
-
-        return in_border
-
-    def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode) -> float:
+    def set_entry_exit_regions(self, regions: List[Tuple[int, int, int, int]]) -> None:
         """
-        Compute the cost of connecting two detections (nodes) in the graph.
-        The cost is a weighted sum of IoU penalty, center distance,
-        size penalty, and confidence penalty.
+        Set rectangular entry/exit zones (x1, y1, x2, y2).
+        """
+        self.entry_exit_regions = regions
+
+    def set_border_entry_exit(
+        self,
+        use_border: Optional[bool] = True,
+        borders: Optional[Set[str]] = None,
+        margin: Optional[int] = 40,
+        frame_size: Optional[Tuple[int, int]] = (1920, 1080),
+    ) -> None:
+        """
+        Configure border-based entry/exit zones.
 
         Args:
-            nodeU (TrackNode): Source node.
-            nodeV (TrackNode): Target node.
-
-        Returns:
-            float: Edge cost.
+            use_border (bool): Enable/disable border-based entry/exit.
+            borders (set): Set of borders to use. {"left", "right", "top", "bottom"}
+            margin (int): Border thickness in pixels.
+            frame_size (Tuple[int, int]): Size of the image (width, height).
         """
+        self.use_border_regions = use_border
+        self.active_borders = borders if borders is not None else {"left", "right", "top", "bottom"}
+        self.border_margin = margin
+        self.frame_size = frame_size
+
+    def _in_door(self, node: TrackNode) -> bool:
+        x, y = node.position
+
+        # Check custom rectangular regions
+        for x1, y1, x2, y2 in self.entry_exit_regions:
+            if x1 <= x <= x2 and y1 <= y <= y2:
+                return True
+
+        # Check image border zones
+        if self.use_border_regions:
+            width, height = self.frame_size
+            m = self.border_margin
+
+            if "left" in self.active_borders and x <= m:
+                return True
+            if "right" in self.active_borders and x >= width - m:
+                return True
+            if "top" in self.active_borders and y <= m:
+                return True
+            if "bottom" in self.active_borders and y >= height - m:
+                return True
+
+        return False
+
+    def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode) -> float:
         bboxU, bboxV = nodeU.bbox, nodeV.bbox
         conf_u, conf_v = nodeU.confidence, nodeV.confidence
 
@@ -151,9 +139,7 @@ class KSPSolver:
 
         area_a = (bboxU[2] - bboxU[0]) * (bboxU[3] - bboxU[1])
         area_b = (bboxV[2] - bboxV[0]) * (bboxV[3] - bboxV[1])
-        size_penalty = np.log(
-            (max(area_a, area_b) / (min(area_a, area_b) + 1e-6)) + 1e-6
-        )
+        size_penalty = np.log((max(area_a, area_b) / (min(area_a, area_b) + 1e-6)) + 1e-6)
 
         conf_penalty = 1 - min(conf_u, conf_v)
 
@@ -165,10 +151,6 @@ class KSPSolver:
         )
 
     def _build_graph(self):
-        """
-        Build the tracking graph from all buffered detections.
-        Each detection is a node, and edges connect detections in consecutive frames.
-        """
         G = nx.DiGraph()
         G.add_node(self.source)
         G.add_node(self.sink)
@@ -193,10 +175,8 @@ class KSPSolver:
         for t in range(len(node_frames) - 1):
             for node_a in node_frames[t]:
                 if self._in_door(node_a):
-                    G.add_edge(self.source, node_a, weight=(t) * 2)
-                    G.add_edge(
-                        node_a, self.sink, weight=((len(node_frames) - 1) - (t)) * 2
-                    )
+                    G.add_edge(self.source, node_a, weight=t * 2)
+                    G.add_edge(node_a, self.sink, weight=(len(node_frames) - 1 - t) * 2)
 
                 for node_b in node_frames[t + 1]:
                     cost = self._edge_cost(node_a, node_b)
@@ -209,22 +189,7 @@ class KSPSolver:
 
         self.graph = G
 
-    def solve(
-        self,
-        k: Optional[int] = None,
-    ) -> List[List[TrackNode]]:
-        """
-        Extract up to k node-disjoint shortest paths from the graph using a
-        successive shortest path approach.
-
-        Args:
-            k (Optional[int]): Maximum number of paths to extract. If None,
-                uses the maximum number of detections in any frame.
-
-        Returns:
-            List[List[TrackNode]]: List of node-disjoint paths (tracks),
-                each path is a list of TrackNode objects.
-        """
+    def solve(self, k: Optional[int] = None) -> List[List[TrackNode]]:
         self._build_graph()
 
         G_base = self.graph.copy()
@@ -237,32 +202,23 @@ class KSPSolver:
         for _i in tqdm(range(k), desc="Extracting k-shortest paths", leave=True):
             G_mod = G_base.copy()
 
-            # Update edge weights to penalize reused edges
             for u, v, data in G_mod.edges(data=True):
                 base = data[self.weight_key]
                 penalty = self.path_overlap_penalty * 1000 * edge_reuse[(u, v)] * base
                 data[self.weight_key] = base + penalty
 
             try:
-                # Find shortest path from source to sink
-                _, path = nx.single_source_dijkstra(
-                    G_mod, self.source, self.sink, weight=self.weight_key
-                )
+                _, path = nx.single_source_dijkstra(G_mod, self.source, self.sink, weight=self.weight_key)
             except nx.NetworkXNoPath:
                 print(f"No path found from source to sink at {_i}th iteration")
                 break
 
-            # Check for duplicate paths
             if path[1:-1] in paths:
                 print("Duplicate path found!")
-                # NOTE: Changed to continue for debugging to extrapolate the
-                # track detects to investigate the reason for fewer paths generated
-                # Change this to break when done
                 continue
 
             paths.append(path[1:-1])
 
-            # Mark edges in this path as reused for future penalty
             for u, v in zip(path[:-1], path[1:]):
                 edge_reuse[(u, v)] += 1
 
