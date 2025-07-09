@@ -88,8 +88,7 @@ class KSPTracker(BaseOfflineTracker):
         self, paths: List[List[TrackNode]]
     ) -> List[sv.Detections]:
         """
-        Assigns each detection a unique tracker ID by preferring the path with
-        the least motion change (displacement).
+        Assigns each detection a unique tracker ID directly from node-disjoint paths.
 
         Args:
             paths (List[List[TrackNode]]): List of tracks, each a list of TrackNode.
@@ -98,56 +97,30 @@ class KSPTracker(BaseOfflineTracker):
             List[sv.Detections]: List of sv.Detections with tracker IDs assigned
                 for each frame.
         """
-        # Track where each node appears
-        framed_nodes = defaultdict(list)
-        node_to_candidates = defaultdict(list)
-        for tracker_id, path in enumerate(paths, start=1):
-            for i, node in enumerate(path):
-                next_node: Any = path[i + 1] if i + 1 < len(path) else None
-                node_to_candidates[node].append((tracker_id, next_node))
-                framed_nodes[node.frame_id].append(node)
-
-        # Select best tracker for each node based on minimal displacement
-        node_to_tracker = {}
-        for node, candidates in node_to_candidates.items():
-            min_displacement = float("inf")
-            selected_tracker = -1
-            for tracker_id, next_node in candidates:
-                if next_node is not None:
-                    dx = node.position[0] - next_node.position[0]
-                    dy = node.position[1] - next_node.position[1]
-                    displacement = dx * dx + dy * dy  # squared distance
-                else:
-                    displacement = 0  # last node in path, no penalty
-
-                if displacement < min_displacement:
-                    min_displacement = displacement
-                    selected_tracker = tracker_id
-
-            node_to_tracker[node] = selected_tracker
-
-        # Organize detections by frame
+        # Map from frame to list of dicts with detection info + tracker_id
         frame_to_dets = defaultdict(list)
 
-        for node, tracker_id in node_to_tracker.items():
-            frame_to_dets[node.frame_id].append(
-                {
-                    "xyxy": node.bbox,
-                    "confidence": node.confidence,
-                    "class_id": node.class_id,
-                    "tracker_id": tracker_id,
-                }
-            )
+        # Assign each node a unique tracker ID (path index + 1)
+        for tracker_id, path in enumerate(paths, start=1):
+            for node in path:
+                frame_to_dets[node.frame_id].append(
+                    {
+                        "xyxy": node.bbox,
+                        "confidence": node.confidence,
+                        "class_id": node.class_id,
+                        "tracker_id": tracker_id,
+                    }
+                )
 
-        # Convert into sv.Detections
+        # Convert detections per frame into sv.Detections objects
         frame_to_detections = []
-        for frame, dets_list in frame_to_dets.items():
+        for frame in sorted(frame_to_dets.keys()):
+            dets_list = frame_to_dets[frame]
             xyxy = np.array([d["xyxy"] for d in dets_list], dtype=np.float32)
-            confidence = np.array(
-                [d["confidence"] for d in dets_list], dtype=np.float32
-            )
+            confidence = np.array([d["confidence"] for d in dets_list], dtype=np.float32)
             class_id = np.array([d["class_id"] for d in dets_list], dtype=int)
             tracker_id = np.array([d["tracker_id"] for d in dets_list], dtype=int)
+
             detections = sv.Detections(
                 xyxy=xyxy,
                 confidence=confidence,
@@ -202,7 +175,7 @@ class KSPTracker(BaseOfflineTracker):
                     os.path.join(source, f)
                     for f in os.listdir(source)
                     if f.lower().endswith(".jpg")
-                ]
+                ][:100]
             )
             for frame_path in tqdm(
                 frame_paths,
@@ -215,6 +188,8 @@ class KSPTracker(BaseOfflineTracker):
         else:
             raise ValueError(f"{source} not a valid path or list of PIL.Image.Image.")
         paths = self._solver.solve(num_of_tracks)
+        for i in paths:
+            print(len(i))
         if not paths:
             return []
         return self._assign_tracker_ids_from_paths(paths)

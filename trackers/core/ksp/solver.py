@@ -115,6 +115,18 @@ class KSPSolver:
         """
         x1, y1, x2, y2 = bbox
         return np.array([(x1 + x2) / 2, (y1 + y2) / 2])
+    
+    def _in_door(self, node: TrackNode):
+        x, y = node.position
+        width, height = (1920 , 1080)
+
+        border_margin = 40
+        in_border = (
+            x <= border_margin or x >= width - border_margin or
+            y <= border_margin or y >= height - border_margin
+        )
+
+        return in_border
 
     def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode) -> float:
         """
@@ -178,6 +190,10 @@ class KSPSolver:
 
         for t in range(len(node_frames) - 1):
             for node_a in node_frames[t]:
+                if self._in_door(node_a):
+                    G.add_edge(self.source, node_a, weight=(t) * 2)
+                    G.add_edge(node_a, self.sink, weight=((len(node_frames) - 1) - (t)) * 2)
+
                 for node_b in node_frames[t + 1]:
                     cost = self._edge_cost(node_a, node_b)
                     G.add_edge(node_a, node_b, weight=cost)
@@ -220,7 +236,7 @@ class KSPSolver:
             # Update edge weights to penalize reused edges
             for u, v, data in G_mod.edges(data=True):
                 base = data[self.weight_key]
-                penalty = self.path_overlap_penalty * edge_reuse[(u, v)] * base
+                penalty = self.path_overlap_penalty * 1000 * edge_reuse[(u, v)] * base
                 data[self.weight_key] = base + penalty
 
             try:
