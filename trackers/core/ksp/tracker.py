@@ -20,10 +20,10 @@ class KSPTracker(BaseOfflineTracker):
     def __init__(
         self,
         path_overlap_penalty: Optional[int] = 40,
-        iou_weight: Optional[int] = 0.9,
-        dist_weight: Optional[int] = 0.1,
-        size_weight: Optional[int] = 0.1,
-        conf_weight: Optional[int] = 0.1,
+        iou_weight: Optional[float] = 0.9,
+        dist_weight: Optional[float] = 0.1,
+        size_weight: Optional[float] = 0.1,
+        conf_weight: Optional[float] = 0.1,
         entry_exit_regions: Optional[List[Tuple[int, int, int, int]]] = None,
         use_border: Optional[bool] = True,
         borders: Optional[Set[str]] = None,
@@ -31,49 +31,46 @@ class KSPTracker(BaseOfflineTracker):
         frame_size: Optional[Tuple[int, int]] = (1920, 1080),
     ) -> None:
         """
-        Initialize the KSPTracker and its solver.
+        Initialize the KSPTracker and its underlying solver with region and cost configuration.
 
         Args:
-            path_overlap_penalty (Optional[int]): Penalty for reusing the same edge
-                (detection pairing) in multiple tracks. Increasing this value encourages
-                the tracker to produce more distinct, non-overlapping tracks by
-                discouraging shared detections between tracks.
-
-            iou_weight (Optional[int]): Weight for the Intersection-over-Union (IoU)
-                penalty in the edge cost. Higher values make the tracker favor linking
-                detections with greater spatial overlap, which helps maintain track
-                continuity for objects that move smoothly.
-
-            dist_weight (Optional[int]): Weight for the Euclidean distance between
-                detection centers in the edge cost. Increasing this value penalizes
-                large jumps between detections in consecutive frames, promoting
-                smoother, more physically plausible tracks.
-
-            size_weight (Optional[int]): Weight for the size difference penalty in the
-                edge cost. Higher values penalize linking detections with significantly
-                different bounding box areas, which helps prevent identity switches when
-                object size changes abruptly.
-
-            conf_weight (Optional[int]): Weight for the confidence penalty in the edge
-                cost. Higher values penalize edges between detections with lower
-                confidence scores, making the tracker prefer more reliable detections
-                and reducing the impact of false positives.
-
-            entry_exit_regions (Optional[List[Tuple[int, int, int, int]]]): List of rectangular entry/exit regions.
-            use_border (Optional[bool]): Enable/disable border-based entry/exit.
-            borders (Optional[Set[str]]): Set of borders to use. {"left", "right", "top", "bottom"}
-            border_margin (Optional[int]): Border thickness in pixels.
-            frame_size (Optional[Tuple[int, int]]): Size of the image (width, height).
+            path_overlap_penalty (Optional[int]): Penalty for reusing the same edge (detection pairing) in multiple tracks.
+                Higher values encourage the tracker to produce more distinct, non-overlapping tracks by discouraging shared
+                detections between tracks. Default is 40.
+            iou_weight (Optional[float]): Weight for the Intersection-over-Union (IoU) penalty in the edge cost.
+                Higher values make the tracker favor linking detections with greater spatial overlap, which helps maintain
+                track continuity for objects that move smoothly. Default is 0.9.
+            dist_weight (Optional[float]): Weight for the Euclidean distance between detection centers in the edge cost.
+                Increasing this value penalizes large jumps between detections in consecutive frames, promoting smoother,
+                more physically plausible tracks. Default is 0.1.
+            size_weight (Optional[float]): Weight for the size difference penalty in the edge cost.
+                Higher values penalize linking detections with significantly different bounding box areas, which helps
+                prevent identity switches when object size changes abruptly. Default is 0.1.
+            conf_weight (Optional[float]): Weight for the confidence penalty in the edge cost.
+                Higher values penalize edges between detections with lower confidence scores, making the tracker prefer
+                more reliable detections and reducing the impact of false positives. Default is 0.1.
+            entry_exit_regions (Optional[List[Tuple[int, int, int, int]]]): List of rectangular entry/exit regions,
+                each defined as (x1, y1, x2, y2) in pixel coordinates. These regions are used to determine when objects
+                enter or exit the scene. Default is an empty list.
+            use_border (Optional[bool]): Whether to enable border-based entry/exit logic. If True, objects entering or
+                exiting through the image borders (as defined by `borders` and `border_margin`) are considered for
+                entry/exit events. Default is True.
+            borders (Optional[Set[str]]): Set of border sides to use for entry/exit logic. Valid values are any subset
+                of {"left", "right", "top", "bottom"}. Default is all four borders.
+            border_margin (Optional[int]): Thickness of the border region (in pixels) used for entry/exit detection.
+                Default is 40.
+            frame_size (Optional[Tuple[int, int]]): Size of the image frames as (width, height). Used to determine
+                border region extents. Default is (1920, 1080).
         """
-        self.entry_exit_regions = (
+        self.entry_exit_regions: List[Tuple[int, int, int, int]] = (
             entry_exit_regions if entry_exit_regions is not None else []
         )
-        self.use_border = use_border
-        self.borders = (
+        self.use_border: bool = use_border if use_border is not None else True
+        self.borders: Set[str] = (
             borders if borders is not None else {"left", "right", "top", "bottom"}
         )
-        self.border_margin = border_margin
-        self.frame_size = frame_size
+        self.border_margin: int = border_margin if border_margin is not None else 40
+        self.frame_size: Tuple[int, int] = frame_size if frame_size is not None else (1920, 1080)
         self._solver = KSPSolver(
             path_overlap_penalty=path_overlap_penalty,
             iou_weight=iou_weight,
@@ -113,7 +110,10 @@ class KSPTracker(BaseOfflineTracker):
 
     def set_entry_exit_regions(self, regions: List[Tuple[int, int, int, int]]) -> None:
         """
-        Set rectangular entry/exit zones (x1, y1, x2, y2).
+        Set rectangular entry/exit zones (x1, y1, x2, y2) and update both the tracker and solver.
+
+        Args:
+            regions (List[Tuple[int, int, int, int]]): List of rectangular regions for entry/exit logic.
         """
         self.entry_exit_regions = regions
         self._solver.set_entry_exit_regions(regions)
@@ -125,12 +125,19 @@ class KSPTracker(BaseOfflineTracker):
         margin: Optional[int] = 40,
         frame_size: Optional[Tuple[int, int]] = (1920, 1080),
     ) -> None:
-        self.use_border = use_border
-        self.borders = (
-            borders if borders is not None else {"left", "right", "top", "bottom"}
-        )
-        self.border_margin = margin
-        self.frame_size = frame_size
+        """
+        Configure border-based entry/exit zones and update both the tracker and solver.
+
+        Args:
+            use_border (Optional[bool]): Enable/disable border-based entry/exit.
+            borders (Optional[Set[str]]): Set of borders to use. {"left", "right", "top", "bottom"}
+            margin (Optional[int]): Border thickness in pixels.
+            frame_size (Optional[Tuple[int, int]]): Size of the image (width, height).
+        """
+        self.use_border = use_border if use_border is not None else True
+        self.borders = borders if borders is not None else {"left", "right", "top", "bottom"}
+        self.border_margin = margin if margin is not None else 40
+        self.frame_size = frame_size if frame_size is not None else (1920, 1080)
         self._solver.set_border_entry_exit(
             use_border=self.use_border,
             borders=self.borders,

@@ -73,19 +73,40 @@ class KSPSolver:
         self.reset()
 
     def reset(self) -> None:
+        """
+        Reset the solver state, clearing all buffered detections and the graph.
+        """
         self.detection_per_frame = []
         self.graph = nx.DiGraph()
 
     def append_frame(self, detections: sv.Detections) -> None:
+        """
+        Add detections for the current frame to the solver's buffer.
+
+        Args:
+            detections (sv.Detections): Detections for the current frame.
+        """
         self.detection_per_frame.append(detections)
 
     def _get_center(self, bbox: np.ndarray) -> np.ndarray:
+        """
+        Compute the center (x, y) of a bounding box.
+
+        Args:
+            bbox (np.ndarray): Bounding box as [x1, y1, x2, y2].
+
+        Returns:
+            np.ndarray: Center coordinates as (x, y).
+        """
         x1, y1, x2, y2 = bbox
         return np.array([(x1 + x2) / 2, (y1 + y2) / 2])
 
     def set_entry_exit_regions(self, regions: List[Tuple[int, int, int, int]]) -> None:
         """
         Set rectangular entry/exit zones (x1, y1, x2, y2).
+
+        Args:
+            regions (List[Tuple[int, int, int, int]]): List of rectangular regions.
         """
         self.entry_exit_regions = regions
 
@@ -101,9 +122,9 @@ class KSPSolver:
 
         Args:
             use_border (bool): Enable/disable border-based entry/exit.
-            borders (set): Set of borders to use. {"left", "right", "top", "bottom"}
-            margin (int): Border thickness in pixels.
-            frame_size (Tuple[int, int]): Size of the image (width, height).
+            borders (Optional[Set[str]]): Set of borders to use.
+            margin (Optional[int]): Border thickness in pixels.
+            frame_size (Optional[Tuple[int, int]]): Size of the image (width, height).
         """
         self.use_border_regions = use_border
         self.active_borders = (
@@ -113,6 +134,15 @@ class KSPSolver:
         self.frame_size = frame_size
 
     def _in_door(self, node: TrackNode) -> bool:
+        """
+        Check if a node is inside any entry/exit region (rectangular or border).
+
+        Args:
+            node (TrackNode): The node to check.
+
+        Returns:
+            bool: True if in any entry/exit region, else False.
+        """
         x, y = node.position
 
         # Check custom rectangular regions
@@ -137,6 +167,16 @@ class KSPSolver:
         return False
 
     def _edge_cost(self, nodeU: TrackNode, nodeV: TrackNode) -> float:
+        """
+        Compute the cost of linking two detections (nodes) in the graph.
+
+        Args:
+            nodeU (TrackNode): Source node.
+            nodeV (TrackNode): Destination node.
+
+        Returns:
+            float: Edge cost based on IoU, distance, size, and confidence weights.
+        """
         bboxU, bboxV = nodeU.bbox, nodeV.bbox
         conf_u, conf_v = nodeU.confidence, nodeV.confidence
 
@@ -159,6 +199,10 @@ class KSPSolver:
         )
 
     def _build_graph(self):
+        """
+        Build the directed graph of detections for KSP computation.
+        Nodes represent detections; edges represent possible associations.
+        """
         G = nx.DiGraph()
         G.add_node(self.source)
         G.add_node(self.sink)
@@ -198,6 +242,22 @@ class KSPSolver:
         self.graph = G
 
     def solve(self, k: Optional[int] = None) -> List[List[TrackNode]]:
+        """
+        Solve the K-Shortest Paths problem on the constructed detection graph.
+
+        This method extracts up to k node-disjoint paths from the source to the sink in
+        the detection graph, assigning each path as a unique object track. Edge reuse is
+        penalized to encourage distinct tracks. The cost of each edge is determined by
+        the configured weights for IoU, distance, size, and confidence.
+
+        Args:
+            k (Optional[int]): The number of tracks (paths) to extract. If None, uses
+                the maximum number of detections in any frame as the default.
+
+        Returns:
+            List[List[TrackNode]]: A list of tracks, each track is a list of TrackNode
+                objects representing the detections assigned to that track.
+        """
         self._build_graph()
 
         G_base = self.graph.copy()
