@@ -265,8 +265,7 @@ class KSPTracker(BaseOfflineTracker):
         else:
             raise ValueError(f"{source} not a valid path or list of PIL.Image.Image.")
         paths = self._solver.solve(num_of_tracks)
-        for i in paths:
-            print(len(i))
+        
         if not paths:
             return []
         return self._assign_tracker_ids_from_paths(paths)
