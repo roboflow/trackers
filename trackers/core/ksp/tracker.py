@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Callable, List, Optional, Set, Tuple
+from typing import Callable, List, Optional, Set, Tuple, Union
 
 import cv2
 import numpy as np
@@ -19,39 +19,39 @@ class KSPTracker(BaseOfflineTracker):
 
     def __init__(
         self,
-        path_overlap_penalty: Optional[int] = 40,
-        iou_weight: Optional[float] = 0.9,
-        dist_weight: Optional[float] = 0.1,
-        size_weight: Optional[float] = 0.1,
-        conf_weight: Optional[float] = 0.1,
+        path_overlap_penalty: float = 40,
+        iou_weight: float = 0.9,
+        dist_weight: float = 0.1,
+        size_weight: float = 0.1,
+        conf_weight: float = 0.1,
         entry_exit_regions: Optional[List[Tuple[int, int, int, int]]] = None,
-        use_border: Optional[bool] = True,
+        use_border: bool = True,
         borders: Optional[Set[str]] = None,
-        border_margin: Optional[int] = 40,
-        frame_size: Optional[Tuple[int, int]] = (1920, 1080),
+        border_margin: int = 40,
+        frame_size: Tuple[int, int] = (1920, 1080),
     ) -> None:
         """
         Initialize the KSPTracker and its underlying solver with region and cost
         configuration.
 
         Args:
-            path_overlap_penalty (Optional[int]): Penalty for reusing the same edge
+            path_overlap_penalty (float): Penalty for reusing the same edge
                 (detection pairing) in multiple tracks. Higher values encourage the
                 tracker to produce more distinct, non-overlapping tracks by
                 discouraging shared detections between tracks. Default is 40.
-            iou_weight (Optional[float]): Weight for the IoU penalty in the edge cost.
+            iou_weight (float): Weight for the IoU penalty in the edge cost.
                 Higher values make the tracker favor linking detections with greater
                 spatial overlap, which helps maintain track continuity for objects
                 that move smoothly. Default is 0.9.
-            dist_weight (Optional[float]): Weight for the Euclidean distance between
+            dist_weight (float): Weight for the Euclidean distance between
                 detection centers in the edge cost. Increasing this value penalizes
                 large jumps between detections in consecutive frames, promoting
                 smoother, more physically plausible tracks. Default is 0.1.
-            size_weight (Optional[float]): Weight for the size difference penalty in
+            size_weight (float): Weight for the size difference penalty in
                 the edge cost. Higher values penalize linking detections with
                 significantly different bounding box areas, which helps prevent
                 identity switches when object size changes abruptly. Default is 0.1.
-            conf_weight (Optional[float]): Weight for the confidence penalty in the
+            conf_weight (float): Weight for the confidence penalty in the
                 edge cost. Higher values penalize edges between detections with lower
                 confidence scores, making the tracker prefer more reliable detections
                 and reducing the impact of false positives. Default is 0.1.
@@ -59,16 +59,16 @@ class KSPTracker(BaseOfflineTracker):
                 rectangular entry/exit regions, each as (x1, y1, x2, y2) in pixels.
                 Used to determine when objects enter or exit the scene. Default is
                 an empty list.
-            use_border (Optional[bool]): Whether to enable border-based entry/exit
+            use_border (bool): Whether to enable border-based entry/exit
                 logic. If True, objects entering or exiting through the image borders
                 (as defined by `borders` and `border_margin`) are considered for
                 entry/exit events. Default is True.
             borders (Optional[Set[str]]): Set of border sides to use for entry/exit
                 logic. Valid values are any subset of {"left", "right", "top",
                 "bottom"}. Default is all four borders.
-            border_margin (Optional[int]): Thickness of the border region (in pixels)
+            border_margin (int): Thickness of the border region (in pixels)
                 used for entry/exit detection. Default is 40.
-            frame_size (Optional[Tuple[int, int]]): Size of the image frames as
+            frame_size (Tuple[int, int]): Size of the image frames as
                 (width, height). Used to determine border region extents. Default is
                 (1920, 1080).
         """
@@ -120,38 +120,44 @@ class KSPTracker(BaseOfflineTracker):
         self._solver.append_frame(detections)
         return detections
 
-    def set_entry_exit_regions(self, regions: List[Tuple[int, int, int, int]]) -> None:
+    def set_entry_exit_regions(
+        self, regions: List[Tuple[int, int, int, int]]
+    ) -> None:
         """
-        Set rectangular entry/exit zones (x1, y1, x2, y2) and update both the tracker and solver.
+        Set rectangular entry/exit zones (x1, y1, x2, y2) and update both the
+        tracker and solver.
 
         Args:
-            regions (List[Tuple[int, int, int, int]]): List of rectangular regions for entry/exit logic.
+            regions (List[Tuple[int, int, int, int]]): List of rectangular
+                regions for entry/exit logic.
         """
         self.entry_exit_regions = regions
         self._solver.set_entry_exit_regions(regions)
 
     def set_border_entry_exit(
         self,
-        use_border: Optional[bool] = True,
+        use_border: bool = True,
         borders: Optional[Set[str]] = None,
-        margin: Optional[int] = 40,
-        frame_size: Optional[Tuple[int, int]] = (1920, 1080),
+        margin: int = 40,
+        frame_size: Tuple[int, int] = (1920, 1080),
     ) -> None:
         """
-        Configure border-based entry/exit zones and update both the tracker and solver.
+        Configure border-based entry/exit zones and update both the tracker and
+        solver.
 
         Args:
-            use_border (Optional[bool]): Enable/disable border-based entry/exit.
-            borders (Optional[Set[str]]): Set of borders to use. {"left", "right", "top", "bottom"}
-            margin (Optional[int]): Border thickness in pixels.
-            frame_size (Optional[Tuple[int, int]]): Size of the image (width, height).
+            use_border (bool): Enable/disable border-based entry/exit.
+            borders (Optional[Set[str]]): Set of borders to use. Each value should
+                be one of "left", "right", "top", "bottom".
+            margin (int): Border thickness in pixels.
+            frame_size (Tuple[int, int]): Size of the image (width, height).
         """
-        self.use_border = use_border if use_border is not None else True
+        self.use_border = use_border
         self.borders = (
             borders if borders is not None else {"left", "right", "top", "bottom"}
         )
-        self.border_margin = margin if margin is not None else 40
-        self.frame_size = frame_size if frame_size is not None else (1920, 1080)
+        self.border_margin = margin
+        self.frame_size = frame_size
         self._solver.set_border_entry_exit(
             use_border=self.use_border,
             borders=self.borders,
@@ -210,7 +216,7 @@ class KSPTracker(BaseOfflineTracker):
 
     def track(
         self,
-        source: str | List[PIL.Image.Image],
+        source: Union[str, List[PIL.Image.Image]],
         get_model_detections: Callable[[np.ndarray], sv.Detections],
         num_of_tracks: Optional[int] = None,
     ) -> List[sv.Detections]:
@@ -235,7 +241,7 @@ class KSPTracker(BaseOfflineTracker):
                 "`get_model_detections` must be a callable that returns an "
                 "instance of `sv.Detections`."
             )
-        if source.lower().endswith(".mp4"):
+        if isinstance(source, str) and source.lower().endswith(".mp4"):
             frames_generator = sv.get_video_frames_generator(source_path=source)
             video_info = sv.VideoInfo.from_video_path(video_path=source)
 
@@ -254,7 +260,7 @@ class KSPTracker(BaseOfflineTracker):
             ):
                 detections = get_model_detections(frame)
                 self._update(detections)
-        elif os.path.isdir(source):
+        elif isinstance(source, str) and os.path.isdir(source):
             frame_paths = sorted(
                 [
                     os.path.join(source, f)
