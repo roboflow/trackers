@@ -70,7 +70,9 @@ class KSPTracker(BaseOfflineTracker):
             borders if borders is not None else {"left", "right", "top", "bottom"}
         )
         self.border_margin: int = border_margin if border_margin is not None else 40
-        self.frame_size: Tuple[int, int] = frame_size if frame_size is not None else (1920, 1080)
+        self.frame_size: Tuple[int, int] = (
+            frame_size if frame_size is not None else (1920, 1080)
+        )
         self._solver = KSPSolver(
             path_overlap_penalty=path_overlap_penalty,
             iou_weight=iou_weight,
@@ -135,7 +137,9 @@ class KSPTracker(BaseOfflineTracker):
             frame_size (Optional[Tuple[int, int]]): Size of the image (width, height).
         """
         self.use_border = use_border if use_border is not None else True
-        self.borders = borders if borders is not None else {"left", "right", "top", "bottom"}
+        self.borders = (
+            borders if borders is not None else {"left", "right", "top", "bottom"}
+        )
         self.border_margin = margin if margin is not None else 40
         self.frame_size = frame_size if frame_size is not None else (1920, 1080)
         self._solver.set_border_entry_exit(
@@ -272,7 +276,7 @@ class KSPTracker(BaseOfflineTracker):
         else:
             raise ValueError(f"{source} not a valid path or list of PIL.Image.Image.")
         paths = self._solver.solve(num_of_tracks)
-        
+
         if not paths:
             return []
         return self._assign_tracker_ids_from_paths(paths)
