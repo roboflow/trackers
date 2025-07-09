@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Any, Callable, List, Optional
+from typing import Callable, List, Optional
 
 import cv2
 import numpy as np
@@ -117,7 +117,9 @@ class KSPTracker(BaseOfflineTracker):
         for frame in sorted(frame_to_dets.keys()):
             dets_list = frame_to_dets[frame]
             xyxy = np.array([d["xyxy"] for d in dets_list], dtype=np.float32)
-            confidence = np.array([d["confidence"] for d in dets_list], dtype=np.float32)
+            confidence = np.array(
+                [d["confidence"] for d in dets_list], dtype=np.float32
+            )
             class_id = np.array([d["class_id"] for d in dets_list], dtype=int)
             tracker_id = np.array([d["tracker_id"] for d in dets_list], dtype=int)
 

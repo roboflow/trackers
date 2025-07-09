@@ -115,15 +115,17 @@ class KSPSolver:
         """
         x1, y1, x2, y2 = bbox
         return np.array([(x1 + x2) / 2, (y1 + y2) / 2])
-    
+
     def _in_door(self, node: TrackNode):
         x, y = node.position
-        width, height = (1920 , 1080)
+        width, height = (1920, 1080)
 
         border_margin = 40
         in_border = (
-            x <= border_margin or x >= width - border_margin or
-            y <= border_margin or y >= height - border_margin
+            x <= border_margin
+            or x >= width - border_margin
+            or y <= border_margin
+            or y >= height - border_margin
         )
 
         return in_border
@@ -192,7 +194,9 @@ class KSPSolver:
             for node_a in node_frames[t]:
                 if self._in_door(node_a):
                     G.add_edge(self.source, node_a, weight=(t) * 2)
-                    G.add_edge(node_a, self.sink, weight=((len(node_frames) - 1) - (t)) * 2)
+                    G.add_edge(
+                        node_a, self.sink, weight=((len(node_frames) - 1) - (t)) * 2
+                    )
 
                 for node_b in node_frames[t + 1]:
                     cost = self._edge_cost(node_a, node_b)
