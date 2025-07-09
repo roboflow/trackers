@@ -120,9 +120,7 @@ class KSPTracker(BaseOfflineTracker):
         self._solver.append_frame(detections)
         return detections
 
-    def set_entry_exit_regions(
-        self, regions: List[Tuple[int, int, int, int]]
-    ) -> None:
+    def set_entry_exit_regions(self, regions: List[Tuple[int, int, int, int]]) -> None:
         """
         Set rectangular entry/exit zones (x1, y1, x2, y2) and update both the
         tracker and solver.
