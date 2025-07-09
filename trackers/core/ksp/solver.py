@@ -112,10 +112,10 @@ class KSPSolver:
 
     def set_border_entry_exit(
         self,
-        use_border: Optional[bool] = True,
+        use_border: bool = True,
         borders: Optional[Set[str]] = None,
-        margin: Optional[int] = 40,
-        frame_size: Optional[Tuple[int, int]] = (1920, 1080),
+        margin: int = 40,
+        frame_size: Tuple[int, int] = (1920, 1080),
     ) -> None:
         """
         Configure border-based entry/exit zones.
@@ -123,8 +123,8 @@ class KSPSolver:
         Args:
             use_border (bool): Enable/disable border-based entry/exit.
             borders (Optional[Set[str]]): Set of borders to use.
-            margin (Optional[int]): Border thickness in pixels.
-            frame_size (Optional[Tuple[int, int]]): Size of the image (width, height).
+            margin (int): Border thickness in pixels.
+            frame_size (Tuple[int, int]): Size of the image (width, height).
         """
         self.use_border_regions = use_border
         self.active_borders = (
