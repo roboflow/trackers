@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple, Set
+from typing import Any, List, Optional, Set, Tuple
 
 import networkx as nx
 import numpy as np
@@ -39,7 +39,9 @@ class KSPSolver:
         size_weight: float = 0.1,
         conf_weight: float = 0.1,
     ):
-        self.path_overlap_penalty = path_overlap_penalty if path_overlap_penalty is not None else 40  
+        self.path_overlap_penalty = (
+            path_overlap_penalty if path_overlap_penalty is not None else 40
+        )
         self.weight_key = "weight"
         self.source = "SOURCE"
         self.sink = "SINK"
@@ -58,7 +60,9 @@ class KSPSolver:
             self.weights["conf"] = conf_weight
 
         # Entry/exit region settings
-        self.entry_exit_regions: List[Tuple[int, int, int, int]] = []  # (x1, y1, x2, y2)
+        self.entry_exit_regions: List[
+            Tuple[int, int, int, int]
+        ] = []  # (x1, y1, x2, y2)
 
         # Border region settings
         self.use_border_regions = True
@@ -102,7 +106,9 @@ class KSPSolver:
             frame_size (Tuple[int, int]): Size of the image (width, height).
         """
         self.use_border_regions = use_border
-        self.active_borders = borders if borders is not None else {"left", "right", "top", "bottom"}
+        self.active_borders = (
+            borders if borders is not None else {"left", "right", "top", "bottom"}
+        )
         self.border_margin = margin
         self.frame_size = frame_size
 
@@ -139,7 +145,9 @@ class KSPSolver:
 
         area_a = (bboxU[2] - bboxU[0]) * (bboxU[3] - bboxU[1])
         area_b = (bboxV[2] - bboxV[0]) * (bboxV[3] - bboxV[1])
-        size_penalty = np.log((max(area_a, area_b) / (min(area_a, area_b) + 1e-6)) + 1e-6)
+        size_penalty = np.log(
+            (max(area_a, area_b) / (min(area_a, area_b) + 1e-6)) + 1e-6
+        )
 
         conf_penalty = 1 - min(conf_u, conf_v)
 
@@ -208,7 +216,9 @@ class KSPSolver:
                 data[self.weight_key] = base + penalty
 
             try:
-                _, path = nx.single_source_dijkstra(G_mod, self.source, self.sink, weight=self.weight_key)
+                _, path = nx.single_source_dijkstra(
+                    G_mod, self.source, self.sink, weight=self.weight_key
+                )
             except nx.NetworkXNoPath:
                 print(f"No path found from source to sink at {_i}th iteration")
                 break
