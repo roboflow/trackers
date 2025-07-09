@@ -5,6 +5,7 @@ comments: true
 # KSP
 
 [![IEEE](https://img.shields.io/badge/IEEE-10.1109/TPAMI.2011.21-blue.svg)](https://doi.org/10.1109/TPAMI.2011.21)
+[![arXiv](https://img.shields.io/badge/arXiv-1808.01562-b31b1b.svg)](https://arxiv.org/abs/1808.01562)
 [![PDF (Unofficial)](https://img.shields.io/badge/PDF-Stanford--Preprint-red.svg)](http://vision.stanford.edu/teaching/cs231b_spring1415/papers/Berclaz-tracking.pdf)
 [![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb)
 
