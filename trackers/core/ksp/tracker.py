@@ -31,36 +31,46 @@ class KSPTracker(BaseOfflineTracker):
         frame_size: Optional[Tuple[int, int]] = (1920, 1080),
     ) -> None:
         """
-        Initialize the KSPTracker and its underlying solver with region and cost configuration.
+        Initialize the KSPTracker and its underlying solver with region and cost
+        configuration.
 
         Args:
-            path_overlap_penalty (Optional[int]): Penalty for reusing the same edge (detection pairing) in multiple tracks.
-                Higher values encourage the tracker to produce more distinct, non-overlapping tracks by discouraging shared
-                detections between tracks. Default is 40.
-            iou_weight (Optional[float]): Weight for the Intersection-over-Union (IoU) penalty in the edge cost.
-                Higher values make the tracker favor linking detections with greater spatial overlap, which helps maintain
-                track continuity for objects that move smoothly. Default is 0.9.
-            dist_weight (Optional[float]): Weight for the Euclidean distance between detection centers in the edge cost.
-                Increasing this value penalizes large jumps between detections in consecutive frames, promoting smoother,
-                more physically plausible tracks. Default is 0.1.
-            size_weight (Optional[float]): Weight for the size difference penalty in the edge cost.
-                Higher values penalize linking detections with significantly different bounding box areas, which helps
-                prevent identity switches when object size changes abruptly. Default is 0.1.
-            conf_weight (Optional[float]): Weight for the confidence penalty in the edge cost.
-                Higher values penalize edges between detections with lower confidence scores, making the tracker prefer
-                more reliable detections and reducing the impact of false positives. Default is 0.1.
-            entry_exit_regions (Optional[List[Tuple[int, int, int, int]]]): List of rectangular entry/exit regions,
-                each defined as (x1, y1, x2, y2) in pixel coordinates. These regions are used to determine when objects
-                enter or exit the scene. Default is an empty list.
-            use_border (Optional[bool]): Whether to enable border-based entry/exit logic. If True, objects entering or
-                exiting through the image borders (as defined by `borders` and `border_margin`) are considered for
+            path_overlap_penalty (Optional[int]): Penalty for reusing the same edge
+                (detection pairing) in multiple tracks. Higher values encourage the
+                tracker to produce more distinct, non-overlapping tracks by
+                discouraging shared detections between tracks. Default is 40.
+            iou_weight (Optional[float]): Weight for the IoU penalty in the edge cost.
+                Higher values make the tracker favor linking detections with greater
+                spatial overlap, which helps maintain track continuity for objects
+                that move smoothly. Default is 0.9.
+            dist_weight (Optional[float]): Weight for the Euclidean distance between
+                detection centers in the edge cost. Increasing this value penalizes
+                large jumps between detections in consecutive frames, promoting
+                smoother, more physically plausible tracks. Default is 0.1.
+            size_weight (Optional[float]): Weight for the size difference penalty in
+                the edge cost. Higher values penalize linking detections with
+                significantly different bounding box areas, which helps prevent
+                identity switches when object size changes abruptly. Default is 0.1.
+            conf_weight (Optional[float]): Weight for the confidence penalty in the
+                edge cost. Higher values penalize edges between detections with lower
+                confidence scores, making the tracker prefer more reliable detections
+                and reducing the impact of false positives. Default is 0.1.
+            entry_exit_regions (Optional[List[Tuple[int, int, int, int]]]): List of
+                rectangular entry/exit regions, each as (x1, y1, x2, y2) in pixels.
+                Used to determine when objects enter or exit the scene. Default is
+                an empty list.
+            use_border (Optional[bool]): Whether to enable border-based entry/exit
+                logic. If True, objects entering or exiting through the image borders
+                (as defined by `borders` and `border_margin`) are considered for
                 entry/exit events. Default is True.
-            borders (Optional[Set[str]]): Set of border sides to use for entry/exit logic. Valid values are any subset
-                of {"left", "right", "top", "bottom"}. Default is all four borders.
-            border_margin (Optional[int]): Thickness of the border region (in pixels) used for entry/exit detection.
-                Default is 40.
-            frame_size (Optional[Tuple[int, int]]): Size of the image frames as (width, height). Used to determine
-                border region extents. Default is (1920, 1080).
+            borders (Optional[Set[str]]): Set of border sides to use for entry/exit
+                logic. Valid values are any subset of {"left", "right", "top",
+                "bottom"}. Default is all four borders.
+            border_margin (Optional[int]): Thickness of the border region (in pixels)
+                used for entry/exit detection. Default is 40.
+            frame_size (Optional[Tuple[int, int]]): Size of the image frames as
+                (width, height). Used to determine border region extents. Default is
+                (1920, 1080).
         """
         self.entry_exit_regions: List[Tuple[int, int, int, int]] = (
             entry_exit_regions if entry_exit_regions is not None else []
