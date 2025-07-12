@@ -5,16 +5,10 @@ import matplotlib.pyplot as plt
 
 
 class BaseCallback:
-    def on_train_batch_start(self, logs: dict, idx: int):
-        pass
-
     def on_train_batch_end(self, logs: dict, idx: int):
         pass
 
     def on_train_epoch_end(self, logs: dict, epoch: int):
-        pass
-
-    def on_validation_batch_start(self, logs: dict, idx: int):
         pass
 
     def on_validation_batch_end(self, logs: dict, idx: int):
@@ -69,7 +63,7 @@ class TensorboardCallback(BaseCallback):
 
 
 class WandbCallback(BaseCallback):
-    def __init__(self, config: dict[str, Any]) -> None:
+    def __init__(self, config: Optional[dict[str, Any]] = {}) -> None:
         import wandb
 
         self.run = wandb.init(config=config) if not wandb.run else wandb.run  # type: ignore
