@@ -24,6 +24,8 @@ class KSPTracker(BaseOfflineTracker):
         dist_weight: float = 0.1,
         size_weight: float = 0.1,
         conf_weight: float = 0.1,
+        entry_weight: float = 2.0,
+        exit_weight: float = 2.0,
         entry_exit_regions: Optional[List[Tuple[int, int, int, int]]] = None,
         use_border: bool = True,
         borders: Optional[Set[str]] = None,
@@ -55,6 +57,12 @@ class KSPTracker(BaseOfflineTracker):
                 edge cost. Higher values penalize edges between detections with lower
                 confidence scores, making the tracker prefer more reliable detections
                 and reducing the impact of false positives. Default is 0.1.
+            entry_weight (float): Weight for entry node connections in the graph.
+                Higher values make the tracker more conservative about creating new tracks
+                when objects appear. Default is 2.0.
+            exit_weight (float): Weight for exit node connections in the graph.
+                Higher values make the tracker more conservative about ending tracks
+                when objects disappear. Default is 2.0.
             entry_exit_regions (Optional[List[Tuple[int, int, int, int]]]): List of
                 rectangular entry/exit regions, each as (x1, y1, x2, y2) in pixels.
                 Used to determine when objects enter or exit the scene. Default is
@@ -89,6 +97,8 @@ class KSPTracker(BaseOfflineTracker):
             dist_weight=dist_weight,
             size_weight=size_weight,
             conf_weight=conf_weight,
+            entry_weight=entry_weight,
+            exit_weight=exit_weight,
         )
         self._solver.set_entry_exit_regions(self.entry_exit_regions)
         self._solver.set_border_entry_exit(

@@ -38,6 +38,8 @@ class KSPSolver:
         dist_weight: float = 0.1,
         size_weight: float = 0.1,
         conf_weight: float = 0.1,
+        entry_weight: float = 2.0,
+        exit_weight: float = 2.0,
     ):
         self.path_overlap_penalty = (
             path_overlap_penalty if path_overlap_penalty is not None else 40
@@ -47,6 +49,8 @@ class KSPSolver:
         self.sink = "SINK"
         self.detection_per_frame: List[sv.Detections] = []
         self.weights = {"iou": 0.9, "dist": 0.1, "size": 0.1, "conf": 0.1}
+        self.entry_weight = entry_weight
+        self.exit_weight = exit_weight
 
         if path_overlap_penalty is not None:
             self.path_overlap_penalty = path_overlap_penalty
@@ -227,8 +231,8 @@ class KSPSolver:
         for t in range(len(node_frames) - 1):
             for node_a in node_frames[t]:
                 if self._in_door(node_a):
-                    G.add_edge(self.source, node_a, weight=t * 2)
-                    G.add_edge(node_a, self.sink, weight=(len(node_frames) - 1 - t) * 2)
+                    G.add_edge(self.source, node_a, weight=t * self.entry_weight)
+                    G.add_edge(node_a, self.sink, weight=(len(node_frames) - 1 - t) * self.exit_weight)
 
                 for node_b in node_frames[t + 1]:
                     cost = self._edge_cost(node_a, node_b)
