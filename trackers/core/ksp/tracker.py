@@ -303,4 +303,4 @@ class KSPTracker(BaseOfflineTracker):
 
         if not paths:
             return []
-        return self._assign_tracker_ids_from_paths(paths)
+        return self._assign_tracker_ids_from_paths(paths), self._solver.detection_per_frame
