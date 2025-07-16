@@ -5386,7 +5386,7 @@ wheels = [
 
 [[package]]
 name = "supervision"
-version = "0.26.0rc7"
+version = "0.26.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "defusedxml" },
@@ -5402,9 +5402,9 @@ dependencies = [
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10' or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-cu118') or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-cu124') or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-cu126') or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-rocm61') or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-rocm624') or (extra == 'extra-8-trackers-cu118' and extra == 'extra-8-trackers-cu124') or (extra == 'extra-8-trackers-cu118' and extra == 'extra-8-trackers-cu126') or (extra == 'extra-8-trackers-cu118' and extra == 'extra-8-trackers-rocm61') or (extra == 'extra-8-trackers-cu118' and extra == 'extra-8-trackers-rocm624') or (extra == 'extra-8-trackers-cu124' and extra == 'extra-8-trackers-cu126') or (extra == 'extra-8-trackers-cu124' and extra == 'extra-8-trackers-rocm61') or (extra == 'extra-8-trackers-cu124' and extra == 'extra-8-trackers-rocm624') or (extra == 'extra-8-trackers-cu126' and extra == 'extra-8-trackers-rocm61') or (extra == 'extra-8-trackers-cu126' and extra == 'extra-8-trackers-rocm624') or (extra == 'extra-8-trackers-rocm61' and extra == 'extra-8-trackers-rocm624')" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/16/a8/1d9b70f41985c65544a15483302720ca22f7cbaf163aacab8ba647832f29/supervision-0.26.0rc7.tar.gz", hash = "sha256:428f01ada109c119a1c05dd9c72eec603d0e4b51e5e0285a34d40db68769ff3d", size = 154961, upload-time = "2025-04-25T12:57:45.808Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/e9/502cb036a3aba19a4278f68a007958687ddb628b97f1646d4689b831525a/supervision-0.26.0.tar.gz", hash = "sha256:03801068ab55f75be10142772c3b1f68826b3d7af98ae341dfe6a474af299fcc", size = 175968, upload-time = "2025-07-16T00:40:52.826Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/e1/a9de01b0c424a2140de476b9e94e06112a239111772930f491cef178195c/supervision-0.26.0rc7-py3-none-any.whl", hash = "sha256:f125dc69335ccaa7bfc761d2847d131f00bcefe9238e40303ee4ec0df7259f35", size = 187228, upload-time = "2025-04-25T12:57:43.66Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/a4/3265c5ae60f278c63ecd3fd52528594e8c70c66f15d8d92ff930f47aca50/supervision-0.26.0-py3-none-any.whl", hash = "sha256:dfece5805f8511817f140de2a94a5bcf55b3bb329a2ed6e2b00fb11218301ea6", size = 206739, upload-time = "2025-07-16T00:40:51.007Z" },
 ]
 
 [[package]]
