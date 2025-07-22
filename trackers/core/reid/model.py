@@ -211,7 +211,8 @@ class ReIDModel:
         self, detections: sv.Detections, frame: Union[np.ndarray, PIL.Image.Image]
     ) -> np.ndarray:
         """
-        Extract features from detection crops in the frame in parallel in a single batch.
+        Extract features from detection crops in the frame in parallel in a single
+        batch.
         This inference approach should be considered when on GPU and GPU memory is not
         limited.
 
