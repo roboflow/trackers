@@ -104,6 +104,7 @@ class ReIDModel:
     ):
         self.backbone_model = backbone_model
         self.device = parse_device_spec(device or "auto")
+        self.can_batch = "cuda" in self.device.type
         self.backbone_model.to(self.device)
         self.backbone_model.eval()
         self.train_transforms = (
@@ -169,6 +170,25 @@ class ReIDModel:
         Returns:
             np.ndarray: Extracted features for each detection.
         """
+
+        if self.can_batch:
+            return self._extract_features_batched(detections, frame)
+        return self._extract_features_in_series(detections, frame)
+
+    def _extract_features_in_series(
+        self, detections: sv.Detections, frame: Union[np.ndarray, PIL.Image.Image]
+    ) -> np.ndarray:
+        """
+        Extract features from detection crops in the frame in series. This inference
+        approach should be considered when on CPU or GPU memory is limited.
+
+        Args:
+            detections (sv.Detections): Detections from which to extract features.
+            frame (np.ndarray or PIL.Image.Image): The input frame.
+
+        Returns:
+            np.ndarray: Extracted features for each detection.
+        """
         if len(detections) == 0:
             return np.array([])
 
@@ -186,6 +206,43 @@ class ReIDModel:
                 features.append(feature)
 
         return np.array(features)
+
+    def _extract_features_batched(
+        self, detections: sv.Detections, frame: Union[np.ndarray, PIL.Image.Image]
+    ) -> np.ndarray:
+        """
+        Extract features from detection crops in the frame in parallel in a single batch.
+        This inference approach should be considered when on GPU and GPU memory is not
+        limited.
+
+        Args:
+            detections (sv.Detections): Detections from which to extract features.
+            frame (np.ndarray or PIL.Image.Image): The input frame.
+
+        Returns:
+            np.ndarray: Extracted features for each detection.
+
+        """
+        if len(detections) == 0:
+            return np.array([])
+
+        if isinstance(frame, PIL.Image.Image):
+            frame = np.array(frame)
+
+        crops = []
+        for box in detections.xyxy:
+            crop = sv.crop_image(image=frame, xyxy=[*box.astype(int)])
+            tensor = self.inference_transforms(crop)  # [C, H, W]
+            crops.append(tensor)
+
+        batch_tensor = torch.stack(crops).to(
+            self.device
+        )  # [N, C, H, W], where N = len(detections)
+
+        with torch.inference_mode():
+            batch_features = self.backbone_model(batch_tensor)  # [N, feature_dim]
+
+        return batch_features.cpu().numpy()
 
     def _add_projection_layer(
         self, projection_dimension: Optional[int] = None, freeze_backbone: bool = False
