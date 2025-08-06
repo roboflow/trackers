@@ -5386,7 +5386,7 @@ wheels = [
 
 [[package]]
 name = "supervision"
-version = "0.26.0rc7"
+version = "0.27.0rc0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "defusedxml" },
@@ -5402,9 +5402,9 @@ dependencies = [
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10' or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-cu118') or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-cu124') or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-cu126') or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-rocm61') or (extra == 'extra-8-trackers-cpu' and extra == 'extra-8-trackers-rocm624') or (extra == 'extra-8-trackers-cu118' and extra == 'extra-8-trackers-cu124') or (extra == 'extra-8-trackers-cu118' and extra == 'extra-8-trackers-cu126') or (extra == 'extra-8-trackers-cu118' and extra == 'extra-8-trackers-rocm61') or (extra == 'extra-8-trackers-cu118' and extra == 'extra-8-trackers-rocm624') or (extra == 'extra-8-trackers-cu124' and extra == 'extra-8-trackers-cu126') or (extra == 'extra-8-trackers-cu124' and extra == 'extra-8-trackers-rocm61') or (extra == 'extra-8-trackers-cu124' and extra == 'extra-8-trackers-rocm624') or (extra == 'extra-8-trackers-cu126' and extra == 'extra-8-trackers-rocm61') or (extra == 'extra-8-trackers-cu126' and extra == 'extra-8-trackers-rocm624') or (extra == 'extra-8-trackers-rocm61' and extra == 'extra-8-trackers-rocm624')" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/16/a8/1d9b70f41985c65544a15483302720ca22f7cbaf163aacab8ba647832f29/supervision-0.26.0rc7.tar.gz", hash = "sha256:428f01ada109c119a1c05dd9c72eec603d0e4b51e5e0285a34d40db68769ff3d", size = 154961, upload-time = "2025-04-25T12:57:45.808Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/5b/c7e8a952baafc2d0a330e92a436f971bc9e6277171b1cee12feb68e1c896/supervision-0.27.0rc0.tar.gz", hash = "sha256:f8b39b04eccda8f8c54f158da88b11baa4af162fb714e47e0690a5a5f0cb67fb", size = 179504, upload-time = "2025-07-31T15:50:32.69Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/e1/a9de01b0c424a2140de476b9e94e06112a239111772930f491cef178195c/supervision-0.26.0rc7-py3-none-any.whl", hash = "sha256:f125dc69335ccaa7bfc761d2847d131f00bcefe9238e40303ee4ec0df7259f35", size = 187228, upload-time = "2025-04-25T12:57:43.66Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/73/24cf14d60fb313d0f5c51a204ec8ffce3e117849cdc0bc7483387806116a/supervision-0.27.0rc0-py3-none-any.whl", hash = "sha256:d581d10aaf103794ee7feed9e4d01148345a7295831f3ad4efd42c2f5387be74", size = 210792, upload-time = "2025-07-31T15:50:30.981Z" },
 ]
 
 [[package]]
@@ -5960,6 +5960,7 @@ wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:3bf2db5adf77b433844f080887ade049c4705ddf9fe1a32023ff84ff735aa5ad" },
     { url = "https://download.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:8f8b3cfc53010a4b4a3c7ecb88c212e9decc4f5eeb6af75c3c803937d2d60947" },
     { url = "https://download.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-win_amd64.whl", hash = "sha256:0bc887068772233f532b51a3e8c8cfc682ae62bef74bf4e0c53526c8b9e4138f" },
+    { url = "https://download.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-win_arm64.whl", hash = "sha256:a2618775f32eb4126c5b2050686da52001a08cffa331637d9cf51c8250931e00" },
     { url = "https://download.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:eb17646792ac4374ffc87e42369f45d21eff17c790868963b90483ef0b6db4ef" },
     { url = "https://download.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:84ea1f6a1d15663037d01b121d6e33bb9da3c90af8e069e5072c30f413455a57" },
     { url = "https://download.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp313-cp313-win_amd64.whl", hash = "sha256:b66f77f6f67317344ee083aa7ac4751a14395fcb38060d564bf513978d267153" },
