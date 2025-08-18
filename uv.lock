@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-8-trackers-cpu' and extra != 'extra-8-trackers-cu118' and extra != 'extra-8-trackers-cu124' and extra != 'extra-8-trackers-cu126' and extra != 'extra-8-trackers-rocm61' and extra == 'extra-8-trackers-rocm624'",
