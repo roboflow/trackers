@@ -1,6 +1,10 @@
-from typing import Optional, Union
+from typing import Optional, Tuple
 
 import numpy as np
+from scipy.linalg import solve_triangular
+
+# Chi-square 0.95 quantile for 4 degrees of freedom (Mahalanobis threshold)
+MAHALANOBIS_THRESHOLD = 9.4877
 
 
 class DeepSORTKalmanBoxTracker:
@@ -43,10 +47,16 @@ class DeepSORTKalmanBoxTracker:
         cls.count_id += 1
         return next_id
 
-    def __init__(self, bbox: np.ndarray, feature: Optional[np.ndarray] = None):
+    def __init__(
+        self,
+        bbox: np.ndarray,
+        feature: Optional[np.ndarray] = None,
+        max_features_gallery_size: int = 100,
+    ):
         # Initialize with a temporary ID of -1
         # Will be assigned a real ID when the track is considered mature
         self.tracker_id = -1
+        self.max_features_gallery_size = max_features_gallery_size
 
         # Number of hits indicates how many times the object has been
         # updated successfully
@@ -95,6 +105,58 @@ class DeepSORTKalmanBoxTracker:
 
         # Error covariance matrix (P)
         self.P = np.eye(8, dtype=np.float32)
+
+    def project(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Projects the current state distribution to measurement space.
+
+        As per the Kalman Filter formulation mentioned implicitly in
+        Section 2.1 of the DeepSORT paper, this function computes:
+            (y_i, S_i) = (H·μ_i, H·Σ_i·H^T + R)
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: Projected mean (y_i) and innovation
+                covariance (S_i) for gating and association.
+        """
+        # Project state mean to measurement space: y_i = H·μ_i
+        projected_mean = self.H @ self.state
+
+        # Project state covariance to measurement space: H·Σ_i·H^T
+        projected_covariance = self.H @ self.P @ self.H.T
+
+        # Add measurement noise: S_i = H·Σ_i·H^T + R
+        innovation_covariance = projected_covariance + self.R
+
+        return projected_mean, innovation_covariance
+
+    def compute_gating_distance(self, measurements: np.ndarray) -> np.ndarray:
+        """
+        Computes the squared Mahalanobis distance between the track and
+        measurements.
+
+        This function is used for gating (ruling out) unlikely associations
+        as described in Eq. (1)-(2) of the DeepSORT paper:
+        d^(1)(i,j) = (d_j - y_i)^T · S_i^(-1) · (d_j - y_i)
+
+        Args:
+            measurements (np.ndarray): An Nx4 matrix of N measurements, each in
+                format [x1, y1, x2, y2] representing detected bounding boxes.
+
+        Returns:
+            np.ndarray: An array of length N, where the i-th element contains the
+                squared Mahalanobis distance between the track and measurements[i].
+        """
+        # Project current state to measurement space
+        mean, covariance = self.project()
+        mean = mean.reshape(1, 4)
+        cholesky_factor = np.linalg.cholesky(covariance)
+        d = measurements - mean
+        # Solve the system L·z = d^T efficiently using triangular solver
+        # This gives us z where z = L^(-1)·d^T
+        z = solve_triangular(cholesky_factor, d.T, lower=True, check_finite=False)
+        # Compute squared Mahalanobis distance as the squared norm of z
+        # d_m^2 = z^T·z = d^T·S^(-1)·d
+        return np.sum(z * z, axis=0)
 
     def predict(self) -> None:
         """
@@ -152,19 +214,5 @@ class DeepSORTKalmanBoxTracker:
 
     def update_feature(self, feature: np.ndarray):
         self.features.append(feature)
-
-    def get_feature(self) -> Union[np.ndarray, None]:
-        """
-        Get the mean feature vector for this tracker.
-
-        Returns:
-            np.ndarray: Mean feature vector.
-        """
-        if len(self.features) > 0:
-            # Return the mean of all features, thus (in theory) capturing the
-            # "average appearance" of the object, which should be more robust
-            # to minor appearance changes. Otherwise, the last feature can
-            # also be returned like the following:
-            # return self.features[-1]
-            return np.mean(self.features, axis=0)
-        return None
+        if len(self.features) > self.max_features_gallery_size:
+            self.features.pop(0)  # Remove the oldest feature
