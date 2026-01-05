@@ -9,6 +9,10 @@ from scipy.spatial.distance import cdist
 from trackers.core.base import BaseTrackerWithFeatures
 from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
 from trackers.core.reid import ReIDModel
+from trackers.utils.bytetrack_utils import (
+    fuse_score,
+)
+
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
@@ -25,8 +29,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
     and the Hungarian algorithm for data association.
 
     Args:
-        reid_model (ReIDModel): An instance of a `ReIDModel` to extract
-            appearance features.
+        reid_model (Optional[ReIDModel]): An instance of a `ReIDModel` to extract
+            appearance features or None if want to use IoU matching. Default is None. 
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
             improving tracking through occlusions, but may increase the possibility
@@ -61,15 +65,15 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
     def __init__(
         self,
-        reid_model: ReIDModel,
+        reid_model: Optional[ReIDModel] = None,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
-        track_activation_threshold: float = 0.25,
-        minimum_consecutive_frames: int = 3,
-        minimum_iou_threshold: float = 0.2,
-        appearance_threshold: float = 0.7,
+        track_activation_threshold: float = 0.7,
+        minimum_consecutive_frames: int = 2,
+        minimum_iou_threshold: float = 0.1,
+        appearance_threshold: float = 0.5,
         distance_metric: str = "cosine",
-        high_prob_boxes_threshold: float = 0.5,
+        high_prob_boxes_threshold: float = 0.6,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -166,6 +170,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                 self.trackers,
                 self.high_prob_association_metric,
                 detection_features,
+                fuse_enabled=True
             )
         )
 
@@ -248,26 +253,31 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             condition = np.zeros(len(detections), dtype=bool)
 
         high_confidence = detections[condition]
-        low_confidence = detections[np.logical_not(condition)]
+
+        not_low = detections.confidence >0.1
+        remaining = np.logical_not(condition)
+
+
+        low_confidence = detections[np.logical_and(remaining, not_low)]
         return high_confidence, low_confidence
 
     def _get_associated_indices(
         self,
-        similarity_matrix: np.ndarray,
+        cost_matrix: np.ndarray,
         detection_boxes: np.ndarray,
         trackers: list[ByteTrackKalmanBoxTracker],
-        min_similarity_thresh: float,
+        max_cost_thresh: float,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to trackers based on Similarity (IoU or -(minus) Distance between appeareance features) using the
+        Associate detections to trackers based on cost (1 - IoU or Distance between appeareance features) using the
         Jonker-Volgenant algorithm approach with no initialization instead of the Hungarian algorithm as mentioned in the SORT paper, but
         it solves the assignment problem in an optimal way.
 
         Args:
-            similarity_matrix (np.ndarray): Similarity matrix betw  een trackers (rows) and detections (columns).
+            cost_matrix (np.ndarray): Distance/Cost matrix between trackers (rows) and detections (columns).
             detections (sv.Detections): The set of object detections.
             trackers (list[ByteTrackKalmanBoxTracker]): The list of trackers.
-            min_similarity_thresh (float): Minimum similarity threshold for a valid match.
+            max_cost_thresh (float): Maximum cost threshold for a valid match. THIS HAS TO BE CHANGED YET TO MATCH ACTUAL BEHAVIOR
 
         Returns:
             tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices (list of (tracker_idx, detection_idx)),
@@ -279,10 +289,10 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         if len(trackers) > 0 and len(detection_boxes) > 0:
             row_indices, col_indices = linear_sum_assignment(
-                similarity_matrix, maximize=True
+                cost_matrix, maximize=False
             )
             for row, col in zip(row_indices, col_indices):
-                if similarity_matrix[row, col] >= min_similarity_thresh:
+                if cost_matrix[row, col] <= max_cost_thresh:
                     matched_indices.append((row, col))
                     unmatched_trackers.remove(row)
                     unmatched_detections.remove(col)
@@ -348,6 +358,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         trackers: list[ByteTrackKalmanBoxTracker],
         association_metric: str,
         detection_features: Optional[np.ndarray] = None,
+        fuse_enabled = False,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """Measures similarity as indicated by the user between tracks and detections and returns the matches and unmatched trackers/detections.
             Is useful for step 1 and 2 of the BYTE algorithm.
@@ -358,7 +369,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             association_metric (str): The metric that will compare the detections with the trackers. Can be either object features (RE-ID) or
                 based on location (IoU).
             detection_features (Optional[np.ndarray]): Features extracted from detections, used for 'RE-ID' association. Defaults to None.
-
+            fuse_enabled (bool): Whether to apply score fusion (enforces matches for each detection based on detection confidence)
+                to the cost matrix. Defaults to False.
         Returns:
             tuple[list[tuple[int, int]], set[int], set[int]]: A tuple containing:
                 - matched_indices: A list of (tracker_idx, detection_idx) pairs.
@@ -370,26 +382,27 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         Raises:
             Exception: If an unsupported `association_metric` is provided.
         """  # noqa: E501
-        similarity_matrix = None
+        cost_matrix = None
         if association_metric == "IoU":
             # Build IOU cost matrix between detections and predicted bounding boxes
-            similarity_matrix = get_iou_matrix(trackers, detections.xyxy)
-            thresh = self.minimum_iou_threshold
+            cost_matrix = 1 - get_iou_matrix(trackers, detections.xyxy)
+            if fuse_enabled:
+                cost_matrix = fuse_score(cost_matrix, detections)
+            thresh = 1- self.minimum_iou_threshold
         elif association_metric == "RE-ID" and detection_features is not None:
             # Build feature distance matrix between detections and predicted bounding boxes # noqa: E501
-            similarity_matrix = -self._get_appearance_distance_matrix(
+            cost_matrix = self._get_appearance_distance_matrix(
                 detection_features, trackers
             )
-            # The minus because _get_associated_indices considers the higher the best
-            thresh = -self.appearance_threshold
+            thresh = self.appearance_threshold
 
         else:
             raise Exception("Your association metric is not supported")
-        # Associate detections to trackers based on the higher value of the
-        # similarity matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
+        # Associate detections to trackers based on the lower value of the
+        # cost matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
         matched_indices, unmatched_trackers, unmatched_detections = (
             self._get_associated_indices(
-                similarity_matrix, detections.xyxy, trackers, thresh
+                cost_matrix, detections.xyxy, trackers, thresh
             )
         )
         return matched_indices, unmatched_trackers, unmatched_detections
