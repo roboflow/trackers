@@ -11,6 +11,7 @@ from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
 from trackers.core.reid import ReIDModel
 from trackers.utils.bytetrack_utils import (
     fuse_score,
+    linear_assignment_with_cost_limit_scipy,
 )
 
 from trackers.utils.sort_utils import (
@@ -300,8 +301,6 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
     def _get_associated_indices(
         self,
         cost_matrix: np.ndarray,
-        detection_boxes: np.ndarray,
-        tracks: list[ByteTrackKalmanBoxTracker],
         max_cost_thresh: float,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
@@ -319,20 +318,11 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices (list of (tracker_idx, detection_idx)),
                 indices of unmatched tracks, indices of unmatched detections.
         """  # noqa: E501
-        matched_indices = []
-        unmatched_tracks = set(range(len(tracks)))
-        unmatched_detections = set(range(len(detection_boxes)))
-
-        if len(tracks) > 0 and len(detection_boxes) > 0:
-            row_indices, col_indices = linear_sum_assignment(
-                cost_matrix, maximize=False
-            )
-            for row, col in zip(row_indices, col_indices):
-                if cost_matrix[row, col] <= max_cost_thresh:
-                    matched_indices.append((row, col))
-                    unmatched_tracks.remove(row)
-                    unmatched_detections.remove(col)
-
+        
+        n_tracks, n_dets = cost_matrix.shape
+        matched_indices, matched_tracks, matched_dets = linear_assignment_with_cost_limit_scipy(cost_matrix, cost_limit = max_cost_thresh)
+        unmatched_tracks = set(range(n_tracks)) - matched_tracks
+        unmatched_detections = set(range(n_dets)) - matched_dets
         return matched_indices, unmatched_tracks, unmatched_detections
 
     def _spawn_new_tracks(
@@ -438,7 +428,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         # cost matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
         matched_indices, unmatched_tracks, unmatched_detections = (
             self._get_associated_indices(
-                cost_matrix, detections.xyxy, tracks, thresh
+                cost_matrix, thresh
             )
         )
         return matched_indices, unmatched_tracks, unmatched_detections
