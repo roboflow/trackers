@@ -88,7 +88,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         self.distance_metric = distance_metric
         self.trackers: list[ByteTrackKalmanBoxTracker] = []
         self.appearance_threshold = appearance_threshold
-
+        self.unconfirmed_tracks: list[ByteTrackKalmanBoxTracker] = []
     def _update_detections(
         self,
         trackers: list[ByteTrackKalmanBoxTracker],
@@ -114,7 +114,6 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                 and t.tracker_id == -1
             ):  # Check maturity before assigning ID
                 t.tracker_id = ByteTrackKalmanBoxTracker.get_next_tracker_id()
-
             new_det = deepcopy(detections[col : col + 1])
             # Add cast to clarify type for mypy
             new_det = cast(sv.Detections, new_det)  # ADDED cast
@@ -164,7 +163,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         )
 
         # Step 1: first association, with high confidence boxes
-        matched_indices, unmatched_trackers, unmatched_high_prob_detections = (
+        matched_indices, unmatched_trackers, unmatched_high_prob_detections_ind = (
             self._similarity_step(
                 high_prob_detections,
                 self.trackers,
@@ -184,9 +183,13 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             detection_features,
         )
 
-        remaining_trackers = [self.trackers[i] for i in unmatched_trackers]
+
+        remaining_trackers = [self.trackers[i] for i in unmatched_trackers
+                               if self.trackers[i].time_since_update == 1 
+                               ]
 
         # Step 2: associate Low Probability detections with remaining trackers
+
         matched_indices, unmatched_trackers, unmatched_detections = (
             self._similarity_step(low_prob_detections, remaining_trackers, "IoU")
         )
@@ -207,12 +210,44 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
             new_det.tracker_id = np.array([-1])
             updated_detections.append(new_det)
+        
+        for t in self.unconfirmed_tracks:
+            t.predict()
+        # Match unconfirmed tracks with unmatched high probability detections
 
+        unmatched_high_prob_detections_ind = list(unmatched_high_prob_detections_ind)
+        matched_indices, unmatched_unconfirmed_tracks, unconfirmed_unmatched_high_prob_detections_ind = (
+            self._similarity_step(
+                high_prob_detections[unmatched_high_prob_detections_ind],
+                self.unconfirmed_tracks,
+                "IoU", # Unconfirmed tracks are only matched using IoU
+                fuse_enabled=True
+            )
+        )
+
+        self._update_detections(
+            self.unconfirmed_tracks,
+            high_prob_detections[unmatched_high_prob_detections_ind],
+            updated_detections,
+            matched_indices,
+            None,
+        )
+        
+        # Confirm matched
+        self.trackers.extend(
+            [self.unconfirmed_tracks[track] for track, det in matched_indices]) 
+        self.unconfirmed_tracks = [] # if not confirmed -> discard unconfirmed tracks
+        
+        # Spawn new trackers for unmatched high-confidence detections   
+        if detection_features is not None:
+            detection_features = detection_features[
+                unmatched_high_prob_detections_ind
+            ]
         self._spawn_new_trackers(
-            high_prob_detections,
-            high_prob_detections.xyxy,
+            high_prob_detections[unmatched_high_prob_detections_ind],
+            high_prob_detections[unmatched_high_prob_detections_ind].xyxy,
             detection_features,
-            unmatched_high_prob_detections,
+            unconfirmed_unmatched_high_prob_detections_ind,
             updated_detections,
         )
 
@@ -343,7 +378,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                     new_tracker = ByteTrackKalmanBoxTracker(
                         bbox=detection_boxes[detection_idx], feature=feature
                     )
-                    self.trackers.append(new_tracker)
+                    self.unconfirmed_tracks.append(new_tracker)
 
                     new_det = deepcopy(detections[detection_idx : detection_idx + 1])
                     new_det = cast(sv.Detections, new_det)  # Cast added previously
@@ -386,7 +421,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         if association_metric == "IoU":
             # Build IOU cost matrix between detections and predicted bounding boxes
             cost_matrix = 1 - get_iou_matrix(trackers, detections.xyxy)
-            if fuse_enabled:
+            if fuse_enabled:        
                 cost_matrix = fuse_score(cost_matrix, detections)
             thresh = 1- self.minimum_iou_threshold
         elif association_metric == "RE-ID" and detection_features is not None:
