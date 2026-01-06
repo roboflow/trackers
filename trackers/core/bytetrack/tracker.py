@@ -3,7 +3,6 @@ from typing import Optional, cast
 
 import numpy as np
 import supervision as sv
-from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 
 from trackers.core.base import BaseTrackerWithFeatures
@@ -13,7 +12,6 @@ from trackers.utils.bytetrack_utils import (
     fuse_score,
     linear_assignment_with_cost_limit_scipy,
 )
-
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
@@ -31,7 +29,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
     Args:
         reid_model (Optional[ReIDModel]): An instance of a `ReIDModel` to extract
-            appearance features or None if want to use IoU matching. Default is None. 
+            appearance features or None if want to use IoU matching. Default is None.
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
             improving tracking through occlusions, but may increase the possibility
@@ -90,6 +88,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
         self.appearance_threshold = appearance_threshold
         self.unconfirmed_tracks: list[ByteTrackKalmanBoxTracker] = []
+
     def _update_detections(
         self,
         tracks: list[ByteTrackKalmanBoxTracker],
@@ -122,7 +121,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             updated_detections.append(new_det)
         return updated_detections
 
-    def update(self, detections: sv.Detections, frame: Optional[np.ndarray] = None) -> sv.Detections:
+    def update(
+        self, detections: sv.Detections, frame: Optional[np.ndarray] = None
+    ) -> sv.Detections:
         """Updates the tracker state with new detections.
 
         Performs Kalman filter prediction, associates detections with existing
@@ -171,7 +172,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                 self.tracks,
                 self.high_prob_association_metric,
                 detection_features,
-                fuse_enabled=True
+                fuse_enabled=True,
             )
         )
 
@@ -185,10 +186,11 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             detection_features,
         )
 
-
-        remaining_tracks = [self.tracks[i] for i in unmatched_tracks_ids
-                               if self.tracks[i].time_since_update == 1 
-                               ]
+        remaining_tracks = [
+            self.tracks[i]
+            for i in unmatched_tracks_ids
+            if self.tracks[i].time_since_update == 1
+        ]
 
         # Step 2: associate Low Probability detections with remaining trackers
 
@@ -212,42 +214,45 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
             new_det.tracker_id = np.array([-1])
             updated_detections.append(new_det)
-        
+
         for t in self.unconfirmed_tracks:
             t.predict()
         # Match unconfirmed tracks with unmatched high probability detections
 
-        unmatched_high_prob_detections_ind = list(unmatched_high_prob_detections_ind)
-        matched_indices, unmatched_unconfirmed_tracks, unconfirmed_unmatched_high_prob_detections_ind = (
-            self._similarity_step(
-                high_prob_detections[unmatched_high_prob_detections_ind],
-                self.unconfirmed_tracks,
-                "IoU", # Unconfirmed tracks are only matched using IoU
-                fuse_enabled=True
-            )
+        unmatched_high_prob_detections_ind_l = list(unmatched_high_prob_detections_ind)
+        (
+            matched_indices,
+            unmatched_unconfirmed_tracks,
+            unconfirmed_unmatched_high_prob_detections_ind,
+        ) = self._similarity_step(
+            high_prob_detections[unmatched_high_prob_detections_ind_l],
+            self.unconfirmed_tracks,
+            "IoU",  # Unconfirmed tracks are only matched using IoU
+            fuse_enabled=True,
         )
 
         self._update_detections(
             self.unconfirmed_tracks,
-            high_prob_detections[unmatched_high_prob_detections_ind],
+            high_prob_detections[unmatched_high_prob_detections_ind_l],
             updated_detections,
             matched_indices,
             None,
         )
-        
+
         # Confirm matched
         self.tracks.extend(
-            [self.unconfirmed_tracks[track] for track, det in matched_indices]) 
-        self.unconfirmed_tracks = [] # if not confirmed -> discard unconfirmed tracks
-        
-        # Spawn new tracks for unmatched high-confidence detections   
+            [self.unconfirmed_tracks[track] for track, det in matched_indices]
+        )
+        self.unconfirmed_tracks = []  # if not confirmed -> discard unconfirmed tracks
+
+        # Spawn new tracks for unmatched high-confidence detections
         if detection_features is not None:
             detection_features = detection_features[
-                unmatched_high_prob_detections_ind
+                unmatched_high_prob_detections_ind_l
             ]
         self._spawn_new_tracks(
-            high_prob_detections[unmatched_high_prob_detections_ind],
-            high_prob_detections[unmatched_high_prob_detections_ind].xyxy,
+            high_prob_detections[unmatched_high_prob_detections_ind_l],
+            high_prob_detections[unmatched_high_prob_detections_ind_l].xyxy,
             detection_features,
             unconfirmed_unmatched_high_prob_detections_ind,
             updated_detections,
@@ -291,9 +296,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         high_confidence = detections[condition]
 
-        not_low = detections.confidence >0.1
+        not_low = detections.confidence > 0.1
         remaining = np.logical_not(condition)
-
 
         low_confidence = detections[np.logical_and(remaining, not_low)]
         return high_confidence, low_confidence
@@ -310,17 +314,19 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         Args:
             cost_matrix (np.ndarray): Distance/Cost matrix between tracks (rows) and detections (columns).
-            detections (sv.Detections): The set of object detections.
-            tracks (list[ByteTrackKalmanBoxTracker]): The list of tracks.
-            max_cost_thresh (float): Maximum cost threshold for a valid match. THIS HAS TO BE CHANGED YET TO MATCH ACTUAL BEHAVIOR
+            max_cost_thresh (float): Maximum cost threshold for a valid match.
 
         Returns:
             tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices (list of (tracker_idx, detection_idx)),
                 indices of unmatched tracks, indices of unmatched detections.
         """  # noqa: E501
-        
+
         n_tracks, n_dets = cost_matrix.shape
-        matched_indices, matched_tracks, matched_dets = linear_assignment_with_cost_limit_scipy(cost_matrix, cost_limit = max_cost_thresh)
+        matched_indices, matched_tracks, matched_dets = (
+            linear_assignment_with_cost_limit_scipy(
+                cost_matrix, cost_limit=max_cost_thresh
+            )
+        )
         unmatched_tracks = set(range(n_tracks)) - matched_tracks
         unmatched_detections = set(range(n_dets)) - matched_dets
         return matched_indices, unmatched_tracks, unmatched_detections
@@ -384,7 +390,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         tracks: list[ByteTrackKalmanBoxTracker],
         association_metric: str,
         detection_features: Optional[np.ndarray] = None,
-        fuse_enabled = False,
+        fuse_enabled=False,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """Measures similarity as indicated by the user between tracks and detections and returns the matches and unmatched tracks/detections.
             Is useful for step 1 and 2 of the BYTE algorithm.
@@ -408,13 +414,13 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         Raises:
             Exception: If an unsupported `association_metric` is provided.
         """  # noqa: E501
-        cost_matrix = None
+        cost_matrix: np.ndarray
         if association_metric == "IoU":
             # Build IOU cost matrix between detections and predicted bounding boxes
             cost_matrix = 1 - get_iou_matrix(tracks, detections.xyxy)
-            if fuse_enabled:        
+            if fuse_enabled:
                 cost_matrix = fuse_score(cost_matrix, detections)
-            thresh = 1- self.minimum_iou_threshold
+            thresh = 1 - self.minimum_iou_threshold
         elif association_metric == "RE-ID" and detection_features is not None:
             # Build feature distance matrix between detections and predicted bounding boxes # noqa: E501
             cost_matrix = self._get_appearance_distance_matrix(
@@ -424,12 +430,11 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         else:
             raise Exception("Your association metric is not supported")
+
         # Associate detections to tracks based on the lower value of the
         # cost matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
         matched_indices, unmatched_tracks, unmatched_detections = (
-            self._get_associated_indices(
-                cost_matrix, thresh
-            )
+            self._get_associated_indices(cost_matrix, thresh)
         )
         return matched_indices, unmatched_tracks, unmatched_detections
 
@@ -454,7 +459,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             tracks (list[ByteTrackKalmanBoxTracker]): tracks to be compared.
         Returns:
             np.ndarray: Appearance distance matrix (rows: tracks, columns: detections).
-        """  # noqa: E501
+        """
 
         if len(tracks) == 0 or len(detection_features) == 0:  # Handle empty cases
             return np.zeros((len(tracks), len(detection_features)), dtype=np.float32)
