@@ -46,22 +46,28 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             from false detection or double detection, but risks missing shorter
             tracks. Before the tracker is considered valid, it will be assigned
             `-1` as its `tracker_id`.
-        minimum_iou_threshold (float): IOU threshold for associating detections to existing tracks.
-            Prevents the association of low IoU bounding boxes.
+        minimum_iou_threshold_high_conf (float): IOU threshold for associating detections to existing tracks in
+            the first association step with high confidence boxes.
+            Prevents the association of lower IoU than the threshold between boxes and tracks.
             A higher value will only associate boxes that have more overlapping when using IoU metric.
+        minimum_iou_threshold_low_conf (float): IOU threshold for associating detections to existing tracks in
+            the second association step which associates low confidence boxes.
+        minimum_iou_threshold_unconfirmed (float):  IOU threshold for associating detections to existing tracks in
+            the third association step which associates uncofirmed tracks (tracks created in the previous time step)
+            to remaining high confidence boxes.
         appearance_threshold (float): Maximum allowed distance for appearance-based
             matching when using 'RE-ID' as the `high_prob_association_metric`.
             Prevents the association of detections which distance to the track isn't lower than the threshold.
             Lower values result in stricter appearance matching.
         distance_metric (str): Distance metric for appearance features (e.g., 'cosine',
             'euclidean'). See `scipy.spatial.distance.cdist`.
-        high_prob_boxes_threshold (float): threshold for assigning predicted boxes to high probability class.
+        high_conf_boxes_threshold (float): threshold for assigning predicted boxes to high probability class.
             A higher value will classify only higher probability boxes as 'high probability'
             per the ByteTrack algorithm, which are used in the first similarity step of
             the algorithm.  If feature extractor is used, high probability boxes are the
             only ones that are matched using the appearance features.
-        low_prob_boxes_lower_bound (float): lowest confidence value for assigning predicted boxes to
-            low probability class. A higher value will classify only higher probability boxes as 
+        low_conf_boxes_lower_bound (float): lowest confidence value for assigning predicted boxes to
+            low probability class. A higher value will classify only higher probability boxes as
             'low probability'. Defaults to 0.1.
     """  # noqa: E501
 
@@ -72,27 +78,33 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.7,
         minimum_consecutive_frames: int = 2,
-        minimum_iou_threshold: float = 0.1,
+        minimum_iou_threshold_high_conf: float = 0.1,
+        minimum_iou_threshold_low_conf: float = 0.5,
+        minimum_iou_threshold_unconfirmed: float = 0.7,
         appearance_threshold: float = 0.5,
         distance_metric: str = "cosine",
-        high_prob_boxes_threshold: float = 0.6,
-        low_prob_boxes_lower_bound: float = 0.1,
+        high_conf_boxes_threshold: float = 0.6,
+        low_conf_boxes_lower_bound: float = 0.1,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
         self.minimum_consecutive_frames = minimum_consecutive_frames
-        self.minimum_iou_threshold = minimum_iou_threshold
+        self.minimum_iou_threshold_high_conf = minimum_iou_threshold_high_conf
+        self.minimum_iou_threshold_low_conf = minimum_iou_threshold_low_conf
+        self.minimum_iou_threshold_unconfirmed = minimum_iou_threshold_unconfirmed
+
         self.track_activation_threshold = track_activation_threshold
-        self.high_prob_boxes_threshold = high_prob_boxes_threshold
+        self.high_conf_boxes_threshold = high_conf_boxes_threshold
         self.high_prob_association_metric = "IoU" if reid_model is None else "RE-ID"
         self.reid_model = reid_model
         self.distance_metric = distance_metric
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
         self.appearance_threshold = appearance_threshold
         self.unconfirmed_tracks: list[ByteTrackKalmanBoxTracker] = []
-        self.low_prob_boxes_lower_bound=low_prob_boxes_lower_bound
+        self.low_conf_boxes_lower_bound = low_conf_boxes_lower_bound
+
     def _update_detections(
         self,
         tracks: list[ByteTrackKalmanBoxTracker],
@@ -158,7 +170,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             tracker.predict()
         # Assign a default tracker_id with the correct shape
         detections.tracker_id = -np.ones(len(detections))
-        # Split into high confidence boxes and lower based on self.high_prob_boxes_threshold # noqa: E501
+        # Split into high confidence boxes and lower based on self.high_conf_boxes_threshold # noqa: E501
         high_prob_detections, low_prob_detections = (
             self._get_high_and_low_probability_detections(detections)
         )
@@ -175,6 +187,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
                 high_prob_detections,
                 self.tracks,
                 self.high_prob_association_metric,
+                self.minimum_iou_threshold_high_conf,
                 detection_features,
                 fuse_enabled=True,
             )
@@ -199,7 +212,13 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         # Step 2: associate Low Probability detections with remaining trackers
 
         matched_indices, unmatched_trackers, unmatched_detections = (
-            self._similarity_step(low_prob_detections, remaining_tracks, "IoU")
+            self._similarity_step(
+                low_prob_detections,
+                remaining_tracks,
+                "IoU",
+                self.minimum_iou_threshold_low_conf,
+                fuse_enabled=False,
+            )
         )
 
         # Update matched tracks with low-confidence detections
@@ -232,6 +251,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             high_prob_detections[unmatched_high_prob_detections_ind_l],
             self.unconfirmed_tracks,
             "IoU",  # Unconfirmed tracks are only matched using IoU
+            step_iou_threshold=self.minimum_iou_threshold_unconfirmed,
             fuse_enabled=True,
         )
 
@@ -278,7 +298,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
     def _get_high_and_low_probability_detections(self, detections: sv.Detections):
         """
         Splits the input detections into high-confidence and low-confidence sets
-        based on the `self.high_prob_boxes_threshold`.
+        based on the `self.high_conf_boxes_threshold`.
 
         Args:
             detections (sv.Detections): The input detections with confidence scores.
@@ -292,7 +312,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         # Check if confidence scores exist before comparing
         if detections.confidence is not None:
             # Perform element-wise comparison if confidence is a NumPy array
-            condition = detections.confidence >= self.high_prob_boxes_threshold
+            condition = detections.confidence >= self.high_conf_boxes_threshold
         else:
             # If no confidence scores, no detections meet the threshold
             # Create a boolean array of False with the same length as detections
@@ -300,7 +320,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         high_confidence = detections[condition]
 
-        not_low = detections.confidence > self.low_prob_boxes_lower_bound
+        not_low = detections.confidence > self.low_conf_boxes_lower_bound
         remaining = np.logical_not(condition)
 
         low_confidence = detections[np.logical_and(remaining, not_low)]
@@ -393,6 +413,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         detections: sv.Detections,
         tracks: list[ByteTrackKalmanBoxTracker],
         association_metric: str,
+        step_iou_threshold: float,
         detection_features: Optional[np.ndarray] = None,
         fuse_enabled=False,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
@@ -404,6 +425,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             tracks (list[ByteTrackKalmanBoxTracker]): The list of tracks that will we matched to the detections.
             association_metric (str): The metric that will compare the detections with the tracks. Can be either object features (RE-ID) or
                 based on location (IoU).
+            step_iou_threshold (float): IOU threshold for associating detections to existing tracks in this step.
+                There are 3 steps in the BYTETRACK algorithm, each with its own IOU threshold: high confidence detections, low
+                confidence detections and unconfirmed tracks. For RE-ID association, this threshold is not used and we use a constant one.
             detection_features (Optional[np.ndarray]): Features extracted from detections, used for 'RE-ID' association. Defaults to None.
             fuse_enabled (bool): Whether to apply score fusion (enforces matches for each detection based on detection confidence)
                 to the cost matrix. Defaults to False.
@@ -424,7 +448,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             cost_matrix = 1 - get_iou_matrix(tracks, detections.xyxy)
             if fuse_enabled:
                 cost_matrix = fuse_score(cost_matrix, detections)
-            thresh = 1 - self.minimum_iou_threshold
+            thresh = 1 - step_iou_threshold
         elif association_metric == "RE-ID" and detection_features is not None:
             # Build feature distance matrix between detections and predicted bounding boxes # noqa: E501
             cost_matrix = self._get_appearance_distance_matrix(
