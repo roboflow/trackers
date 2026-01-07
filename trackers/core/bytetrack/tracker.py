@@ -60,6 +60,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             per the ByteTrack algorithm, which are used in the first similarity step of
             the algorithm.  If feature extractor is used, high probability boxes are the
             only ones that are matched using the appearance features.
+        low_prob_boxes_lower_bound (float): lowest confidence value for assigning predicted boxes to
+            low probability class. A higher value will classify only higher probability boxes as 
+            'low probability'. Defaults to 0.1.
     """  # noqa: E501
 
     def __init__(
@@ -73,6 +76,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         appearance_threshold: float = 0.5,
         distance_metric: str = "cosine",
         high_prob_boxes_threshold: float = 0.6,
+        low_prob_boxes_lower_bound: float = 0.1,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -88,7 +92,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
         self.appearance_threshold = appearance_threshold
         self.unconfirmed_tracks: list[ByteTrackKalmanBoxTracker] = []
-
+        self.low_prob_boxes_lower_bound=low_prob_boxes_lower_bound
     def _update_detections(
         self,
         tracks: list[ByteTrackKalmanBoxTracker],
@@ -296,7 +300,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         high_confidence = detections[condition]
 
-        not_low = detections.confidence > 0.1
+        not_low = detections.confidence > self.low_prob_boxes_lower_bound
         remaining = np.logical_not(condition)
 
         low_confidence = detections[np.logical_and(remaining, not_low)]
