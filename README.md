@@ -99,10 +99,6 @@ pip install git+https://github.com/roboflow/trackers.git
 
 With a modular design, `trackers` lets you combine object detectors from different libraries with the tracker of your choice. Here's how you can use `SORTTracker` with various detectors:
 
-<details>
-<summary>run with <code>RF-DETR</code></summary>
-
-<br>
 
 ```python
 import supervision as sv
@@ -124,7 +120,6 @@ sv.process_video(
     callback=callback,
 )
 ```
-</details>
 
 <details>
 <summary>run with <code>inference</code></summary>
@@ -137,7 +132,7 @@ from trackers import SORTTracker
 from inference import get_model
 
 tracker = SORTTracker()
-model = get_model(model_id="yolov11m-640")
+model = get_model(model_id="rfdetr-base")
 annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
 def callback(frame, _):
