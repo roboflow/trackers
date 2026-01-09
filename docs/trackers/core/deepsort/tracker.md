@@ -23,7 +23,7 @@ DeepSORT extends the original [SORT](../sort/tracker.md) algorithm by integratin
 
     reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
     tracker = DeepSORTTracker(reid_model=reid_model)
-    model = get_model(model_id="yolov11m-640")
+    model = get_model(model_id="rfdetr-base")
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
     def callback(frame, _):
