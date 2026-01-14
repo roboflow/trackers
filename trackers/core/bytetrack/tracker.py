@@ -182,8 +182,8 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
         remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
 
         # Step 2: associate Low Probability detections with remaining tracks
-        matched_indices, unmatched_tracks, unmatched_detections = (
-            self._similarity_step(low_prob_detections, remaining_tracks, "IoU")
+        matched_indices, unmatched_tracks, unmatched_detections = self._similarity_step(
+            low_prob_detections, remaining_tracks, "IoU"
         )
 
         # Update matched tracks with low-confidence detections
@@ -415,7 +415,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             tracks (list[ByteTrackKalmanBoxTracker]): tracks to be compared.
         Returns:
             np.ndarray: Appearance distance matrix (rows: tracks, columns: detections).
-        """  # noqa: E501
+        """
 
         if len(tracks) == 0 or len(detection_features) == 0:  # Handle empty cases
             return np.zeros((len(tracks), len(detection_features)), dtype=np.float32)
