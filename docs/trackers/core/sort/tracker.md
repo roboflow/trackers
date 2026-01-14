@@ -21,7 +21,7 @@ SORT (Simple Online and Realtime Tracking) is a lean, tracking-by-detection meth
     from inference import get_model
 
     tracker = SORTTracker()
-    model = get_model(model_id="rfdetr-base")
+    model = get_model(model_id="rfdetr-medium")
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
     def callback(frame, _):
