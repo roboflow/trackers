@@ -118,7 +118,7 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             updated_detections.append(new_det)
         return updated_detections
 
-    def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
+    def update(self, detections: sv.Detections, frame: Optional[np.ndarray]) -> sv.Detections:
         """Updates the tracker state with new detections.
 
         Performs Kalman filter prediction, associates detections with existing
@@ -127,8 +127,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
 
         Args:
             detections (sv.Detections): The latest set of object detections from a frame.
-            frame (np.ndarray): The current video frame, used for extracting
-                appearance features from detections.
+            frame (Optional[np.ndarray]): The current video frame, used for extracting
+                appearance features from detections. Only required if using RE-ID
+                based association. Defaults to None.
 
         Returns:
             sv.Detections: A copy of the input detections, augmented with assigned
