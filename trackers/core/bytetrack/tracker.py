@@ -118,7 +118,9 @@ class ByteTrackTracker(BaseTrackerWithFeatures):
             updated_detections.append(new_det)
         return updated_detections
 
-    def update(self, detections: sv.Detections, frame: Optional[np.ndarray]) -> sv.Detections:
+    def update(
+        self, detections: sv.Detections, frame: Optional[np.ndarray]
+    ) -> sv.Detections:
         """Updates the tracker state with new detections.
 
         Performs Kalman filter prediction, associates detections with existing
