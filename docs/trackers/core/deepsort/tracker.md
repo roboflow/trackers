@@ -44,11 +44,11 @@ DeepSORT extends the original [SORT](../sort/tracker.md) algorithm by integratin
     ```python hl_lines="2 5-6 12"
     import supervision as sv
     from trackers import DeepSORTTracker, ReIDModel
-    from rfdetr import RFDETRBase
+    from rfdetr import RFDETRMedium
 
     reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
     tracker = DeepSORTTracker(reid_model=reid_model)
-    model = RFDETRBase()
+    model = RFDETRMedium()
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
     def callback(frame, _):

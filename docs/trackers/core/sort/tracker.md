@@ -42,10 +42,10 @@ SORT (Simple Online and Realtime Tracking) is a lean, tracking-by-detection meth
     ```python hl_lines="2 5 11"
     import supervision as sv
     from trackers import SORTTracker
-    from rfdetr import RFDETRBase
+    from rfdetr import RFDETRMedium
 
     tracker = SORTTracker()
-    model = RFDETRBase()
+    model = RFDETRMedium()
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
     def callback(frame, _):

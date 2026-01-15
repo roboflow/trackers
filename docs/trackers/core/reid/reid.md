@@ -76,7 +76,7 @@ from trackers import ReIDModel
 from inference import get_model
 
 reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
-model = get_model(model_id="yolov11m-640")
+model = get_model(model_id="rfdetr-medium")
 
 image = cv2.imread("<INPUT_IMAGE_PATH>")
 
