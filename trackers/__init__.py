@@ -16,3 +16,14 @@ except ImportError:
         "Please run `pip install trackers[reid]` and try again."
     )
     pass
+
+try:
+    from trackers.core.bytetrack.tracker import ByteTrackTracker
+
+    __all__.extend(["ByteTrackTracker"])
+except ImportError:
+    logger.warning(
+        "ByteTrack dependencies not installed. "
+        "ByteTrack features will not be available. "
+        "Please run `pip install trackers[bytetrack]` and try again."
+    )
