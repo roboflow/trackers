@@ -24,10 +24,10 @@ BytTrack is independent on the object detector and feature extractor network so 
 
         ```python hl_lines="3 7 13"
         import supervision as sv
-        from rfdetr import RFDETRBase
+        from rfdetr import RFDETRMedium
         from trackers import ByteTrackTracker
 
-        model = RFDETRBase(device ="cuda")
+        model = RFDETRMedium(device ="cuda")
 
         tracker = ByteTrackTracker(reid_model = None)
 
@@ -137,10 +137,10 @@ BytTrack is independent on the object detector and feature extractor network so 
 
         ```python hl_lines="3 6-8 9 14"
         import supervision as sv
-        from rfdetr import RFDETRBase
+        from rfdetr import RFDETRMedium
         from trackers import ByteTrackTracker, ReIDModel
 
-        model = RFDETRBase(device = "cuda")
+        model = RFDETRMedium(device = "cuda")
         reid_model = ReIDModel.from_timm(
             "mobilenetv4_conv_small.e1200_r224_in1k",
         )
