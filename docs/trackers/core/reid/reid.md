@@ -76,7 +76,7 @@ from trackers import ReIDModel
 from inference import get_model
 
 reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
-model = get_model(model_id="yolov11m-640")
+model = get_model(model_id="rfdetr-medium")
 
 image = cv2.imread("<INPUT_IMAGE_PATH>")
 
@@ -96,7 +96,7 @@ from inference import get_model
 
 reid_model = ReIDModel.from_timm("resnetv2_50.a1h_in1k")
 tracker = DeepSORTTracker(reid_model=reid_model)
-model = get_model(model_id="yolov11m-640")
+model = get_model("rfdetr-medium")
 annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
 def callback(frame, _):
