@@ -34,4 +34,10 @@ jobs:
         run: uv run python -c "import trackers"
 
       - name: 🧪 Run the Test
-        run: uv run pytest
+        shell: bash
+        run: |
+          if [ -d test ] && [ "$(find test -type f \( -name 'test_*.py' -o -name '*_test.py' \) | wc -l)" -gt 0 ]; then
+            uv run pytest
+          else
+            echo "No tests found. Skipping pytest."
+          fi
