@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -28,7 +28,7 @@ jobs:
           prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
-        run: uv pip install -r pyproject.toml --group dev --group docs --extra cpu --extra reid
+        run: uv pip install -r pyproject.toml --group dev
 
       - name: 🧪 Run the Import test
         run: uv run python -c "import trackers"
