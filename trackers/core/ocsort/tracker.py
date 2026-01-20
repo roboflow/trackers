@@ -3,11 +3,11 @@ import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.sort.kalman_box_tracker import SORTKalmanBoxTracker
-from trackers.utils.sort_utils import (
-    get_alive_trackers,
+from trackers.core.ocsort.tracklet import OCSORTTracklet
+from trackers.utils.ocsort_utils import (
+    add_track_id_detections,
+    build_direction_consistency_matrix,
     get_iou_matrix,
-    update_detections_with_track_ids,
 )
 
 
@@ -38,17 +38,19 @@ class OCSORTTracker(BaseTracker):
             `-1` as its `tracker_id`.
         minimum_iou_threshold (float): IOU threshold for associating detections to
             existing tracks.
-        inertia_weight (float): Weight for inertia term in association cost. Higher values give more importance
+        direction_consistency_weight (float): Weight for inertia term in association cost. Higher values give more importance
             to the angle difference between the motion direction and the association direction.
     """  # noqa: E501
+
+    count_id: int = 0
 
     def __init__(
         self,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
-        minimum_consecutive_frames: int = 3,
+        minimum_consecutive_frames: int = 3,  # should change this for min_hits?
         minimum_iou_threshold: float = 0.3,
-        inertia_weight: float = 0.2,
+        direction_consistency_weight: float = 0.2,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -56,48 +58,52 @@ class OCSORTTracker(BaseTracker):
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
-        self.inertia_weight = inertia_weight
+        self.direction_consistency_weight = direction_consistency_weight
 
         # Active trackers
-        self.trackers: list[SORTKalmanBoxTracker] = []
+        self.tracks: list[OCSORTTracklet] = []
 
     def _get_associated_indices(
-        self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
+        self,
+        iou_matrix: np.ndarray,
+        direction_consistency_matrix: np.ndarray,
+        detection_boxes: np.ndarray,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to trackers based on IOU
+        Associate detections to tracks based on IOU
 
         Args:
             iou_matrix (np.ndarray): IOU cost matrix.
+            direction_consistency_matrix (np.ndarray): Direction of the tracklet consistency cost matrix.
             detection_boxes (np.ndarray): Detected bounding boxes in the
                 form [x1, y1, x2, y2].
 
         Returns:
             tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices,
-                unmatched trackers, unmatched detections.
-        """
+                unmatched tracks, unmatched detections.
+        """  # noqa: E501
         matched_indices = []
-        unmatched_trackers = set(range(len(self.trackers)))
+        unmatched_tracks = set(range(len(self.tracks)))
         unmatched_detections = set(range(len(detection_boxes)))
-
-        if len(self.trackers) > 0 and len(detection_boxes) > 0:
+        print(len(self.tracks), len(detection_boxes))
+        if len(self.tracks) > 0 and len(detection_boxes) > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
-            # Note that it uses a a modified Jonker-Volgenant algorithm with no
-            # initialization instead of the Hungarian algorithm as mentioned in the
-            # SORT paper.
-            row_indices, col_indices = linear_sum_assignment(iou_matrix, maximize=True)
+            cost_matrix = (
+                iou_matrix
+                + self.direction_consistency_weight * direction_consistency_matrix
+            )
+            row_indices, col_indices = linear_sum_assignment(cost_matrix, maximize=True)
             for row, col in zip(row_indices, col_indices):
                 if iou_matrix[row, col] >= self.minimum_iou_threshold:
                     matched_indices.append((row, col))
-                    unmatched_trackers.remove(row)
+                    unmatched_tracks.remove(row)
                     unmatched_detections.remove(col)
 
-        return matched_indices, unmatched_trackers, unmatched_detections
+        return matched_indices, unmatched_tracks, unmatched_detections
 
     def _spawn_new_trackers(
         self,
         detections: sv.Detections,
-        detection_boxes: np.ndarray,
         unmatched_detections: set[int],
     ) -> None:
         """
@@ -110,14 +116,8 @@ class OCSORTTracker(BaseTracker):
                 form [x1, y1, x2, y2].
         """
         for detection_idx in unmatched_detections:
-            if (
-                detections.confidence is None
-                or detection_idx >= len(detections.confidence)
-                or detections.confidence[detection_idx]
-                >= self.track_activation_threshold
-            ):
-                new_tracker = SORTKalmanBoxTracker(detection_boxes[detection_idx])
-                self.trackers.append(new_tracker)
+            new_tracker = OCSORTTracklet(detections.xyxy[detection_idx])
+            self.tracks.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """Updates the tracker state with new detections.
@@ -135,54 +135,117 @@ class OCSORTTracker(BaseTracker):
                 associated with a track will not have a `tracker_id`.
         """  # noqa: E501
 
-        if len(self.trackers) == 0 and len(detections) == 0:
+        if len(self.tracks) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
             return detections
 
+        # print("Tracks at beggining of update:", len(self.tracks))
+        updated_detections: list[
+            sv.Detections
+        ] = []  # List for returning the updated detections
         # Convert detections to a (N x 4) array (x1, y1, x2, y2)
         detection_boxes = (
             detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
         )
 
-        # Predict new locations for existing trackers
-        for tracker in self.trackers:
+        # Predict new locations for existing tracks KF
+        for tracker in self.tracks:
             tracker.predict()
 
         # Build IOU cost matrix between detections and predicted bounding boxes
-        iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
+        iou_matrix = get_iou_matrix(self.tracks, detection_boxes)
 
-        # Associate detections to trackers based on IOU
-        matched_indices, _, unmatched_detections = self._get_associated_indices(
-            iou_matrix, detection_boxes
+        direction_consistency_matrix = build_direction_consistency_matrix(
+            self.tracks, detection_boxes
+        )
+        # 1st Association of detections to tracks (OCM)
+        matched_indices, unmatched_tracks, unmatched_detections = (
+            self._get_associated_indices(
+                iou_matrix, direction_consistency_matrix, detection_boxes
+            )
         )
 
         # Update matched trackers with assigned detections
         for row, col in matched_indices:
-            self.trackers[row].update(detection_boxes[col])
+            self.tracks[row].update(detection_boxes[col])
+            add_track_id_detections(
+                self.tracks[row], detections[col : col + 1], updated_detections
+            )
 
-        self._spawn_new_trackers(detections, detection_boxes, unmatched_detections)
+        # Run 2nd Chance Association (OCR)
+        # between the last observation of unmatched tracks to the unmatched observations #noqa: E501
 
-        # Remove dead trackers
-        self.trackers = get_alive_trackers(
-            self.trackers,
-            self.minimum_consecutive_frames,
-            self.maximum_frames_without_update,
-        )
+        if len(unmatched_detections) > 0 and len(unmatched_detections) > 0:
+            ocr_iou_matrix = iou_matrix[
+                np.array(list(unmatched_tracks), dtype=int)[:, None],
+                np.array(list(unmatched_detections), dtype=int),
+            ]  # Check this subsampling
+            ocr_direction_consistency_matrix = direction_consistency_matrix[
+                np.array(list(unmatched_tracks), dtype=int)[:, None],
+                np.array(list(unmatched_detections), dtype=int),
+            ]  # Check this subsampling
 
-        updated_detections = update_detections_with_track_ids(
-            self.trackers,
-            detections,
-            detection_boxes,
-            self.minimum_iou_threshold,
-            self.minimum_consecutive_frames,
-        )
+            ocr_matched_indices, ocr_unmatched_tracks, ocr_unmatched_detections = (
+                self._get_associated_indices(
+                    ocr_iou_matrix,
+                    ocr_direction_consistency_matrix,
+                    detection_boxes[list(unmatched_detections)],
+                )
+            )
 
-        return updated_detections
+            for ocr_row, ocr_col in ocr_matched_indices:
+                track_idx = list(unmatched_tracks)[ocr_row]
+                det_idx = list(unmatched_detections)[ocr_col]
+                self.tracks[track_idx].update(detection_boxes[det_idx])
+                add_track_id_detections(
+                    self.tracks[track_idx],
+                    detections[det_idx : det_idx + 1],
+                    updated_detections,
+                )
+
+            self.tracks = self.activate_or_kill_tracklets()
+            self._spawn_new_trackers(
+                detections[list(unmatched_detections)], ocr_unmatched_detections
+            )
+            left_detections = detections[list(ocr_unmatched_detections)]
+            left_detections.tracker_id = np.array(
+                [-1] * len(left_detections), dtype=int
+            )
+            updated_detections.append(left_detections)
+
+        else:
+            self.tracks = self.activate_or_kill_tracklets()
+
+        final_updated_detections = sv.Detections.merge(updated_detections)
+        if len(final_updated_detections) == 0:
+            final_updated_detections.tracker_id = np.array([], dtype=int)
+        return final_updated_detections
 
     def reset(self) -> None:
         """Resets the tracker's internal state.
 
         Clears all active tracks and resets the track ID counter.
         """
-        self.trackers = []
-        SORTKalmanBoxTracker.count_id = 0
+        self.tracks = []
+        OCSORTTracklet.count_id = 0
+
+    def activate_or_kill_tracklets(self):
+        """Activates or kills tracklets based on their status.
+
+        This method checks each tracklet's status and either activates it
+        (assigning a tracker ID) if it meets the criteria for being a valid
+        track, or kills it (removing it from active tracking) if it has been
+        lost for too long.
+        """
+        alive_tracklets = []
+        for tracklet in self.tracks:
+            is_mature = (
+                tracklet.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
+            )
+            # is_active = tracklet.time_since_update == 0
+            if tracklet.time_since_update < self.maximum_frames_without_update:
+                alive_tracklets.append(tracklet)
+
+            if is_mature and tracklet.tracker_id == -1:
+                tracklet.tracker_id = OCSORTTracklet.get_next_tracker_id()
+        return alive_tracklets
