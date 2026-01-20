@@ -85,7 +85,6 @@ class OCSORTTracker(BaseTracker):
         matched_indices = []
         unmatched_tracks = set(range(len(self.tracks)))
         unmatched_detections = set(range(len(detection_boxes)))
-        print(len(self.tracks), len(detection_boxes))
         if len(self.tracks) > 0 and len(detection_boxes) > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
             cost_matrix = (
@@ -139,7 +138,6 @@ class OCSORTTracker(BaseTracker):
             detections.tracker_id = np.array([], dtype=int)
             return detections
 
-        # print("Tracks at beggining of update:", len(self.tracks))
         updated_detections: list[
             sv.Detections
         ] = []  # List for returning the updated detections
@@ -240,7 +238,8 @@ class OCSORTTracker(BaseTracker):
         alive_tracklets = []
         for tracklet in self.tracks:
             is_mature = (
-                tracklet.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
+                tracklet.number_of_successful_consecutive_updates
+                >= self.minimum_consecutive_frames
             )
             # is_active = tracklet.time_since_update == 0
             if tracklet.time_since_update < self.maximum_frames_without_update:

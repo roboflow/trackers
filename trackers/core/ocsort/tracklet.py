@@ -59,9 +59,7 @@ class OCSORTTracklet:
                 "P": self.kalman_filter.P.copy(),
             }
         self.time_since_update = 0
-        self.number_of_successful_consecutive_updates += (
-            1 
-        )
+        self.number_of_successful_consecutive_updates += 1
         self.previous_to_last_observation = self.last_observation
         self.last_observation = bbox
 
@@ -75,7 +73,7 @@ class OCSORTTracklet:
         self.age += 1
         if self.time_since_update > 0:
             self.number_of_successful_consecutive_updates = 0
-        
+
         self.time_since_update += 1
         predicted_bbox = self.kalman_filter.get_state_bbox()
         return predicted_bbox
@@ -101,14 +99,12 @@ class OCSORTTracklet:
             virtual_bbox = self.last_observation + (bbox - self.last_observation) * (
                 i / (self.time_since_update + 1)
             )
-            # print("REUPDATE STEP", i, "VIRTUAL BBOX", virtual_bbox)
             self.kalman_filter.predict()
             self.kalman_filter.update(virtual_bbox)
 
         self.previous_to_last_observation = self.last_observation
         self.last_observation = bbox
         self.time_since_update = 0
-        print("REUPDATE ENDS")
 
     def get_state_bbox(self) -> np.ndarray:
         """Returns the current bounding box estimate from the Kalman filter.
