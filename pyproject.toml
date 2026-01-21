@@ -32,7 +32,7 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
 ]
-keywords = ["tracking","mot","sort","deepsort", "machine-learning", "deep-learning", "vision", "ML", "DL", "AI", "DETR", "YOLO", "Roboflow"]
+keywords = ["tracking","mot","sort","machine-learning", "deep-learning", "vision", "ML", "DL", "AI", "DETR", "YOLO", "Roboflow"]
 
 dependencies = [
     "aiofiles>=24.1.0",
