@@ -67,15 +67,13 @@ def _initialize_reid_model_from_timm(
     return cls(model, device, transforms, model_metadata)
 
 
-def _initialize_reid_model_from_checkpoint(cls, checkpoint_path: str, config_path:str):
+def _initialize_reid_model_from_checkpoint(cls, checkpoint_path: str, config_path: str):
     state_dict, config = load_safetensors_checkpoint(checkpoint_path, config_path)
     model_name = config.get("architecture")
     init_kwargs = {}
     init_kwargs["pretrained"] = False
     reid_model_instance = _initialize_reid_model_from_timm(
-        cls, 
-        model_name_or_checkpoint_path=model_name, 
-        **init_kwargs
+        cls, model_name_or_checkpoint_path=model_name, **init_kwargs
     )
     if config.get("projection_dimension"):
         reid_model_instance._add_projection_layer(
@@ -83,7 +81,7 @@ def _initialize_reid_model_from_checkpoint(cls, checkpoint_path: str, config_pat
         )
     for k, v in state_dict.items():
         state_dict[k] = v.to(reid_model_instance.device)
-    reid_model_instance.backbone_model.load_state_dict(state_dict,strict=False)
+    reid_model_instance.backbone_model.load_state_dict(state_dict, strict=False)
     return reid_model_instance
 
 
@@ -127,7 +125,7 @@ class ReIDModel:
     def from_timm(
         cls,
         model_name_or_checkpoint_path: str,
-        config_path:Optional[str] = None,
+        config_path: Optional[str] = None,
         device: Optional[str] = "auto",
         get_pooled_features: bool = True,
         **kwargs,
@@ -150,11 +148,11 @@ class ReIDModel:
         Returns:
             ReIDModel: A new instance of `ReIDModel`.
         """
-        if os.path.exists(model_name_or_checkpoint_path) and os.path.exists(config_path):
+        if os.path.exists(model_name_or_checkpoint_path) and os.path.exists(
+            config_path
+        ):
             return _initialize_reid_model_from_checkpoint(
-                cls, 
-                model_name_or_checkpoint_path, 
-                config_path
+                cls, model_name_or_checkpoint_path, config_path
             )
         else:
             return _initialize_reid_model_from_timm(

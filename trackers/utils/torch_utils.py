@@ -87,4 +87,3 @@ def load_safetensors_checkpoint(
         model_metadata = {**kwargs, **model_metadata}
     config["model_metadata"] = model_metadata
     return state_dict, config
-
