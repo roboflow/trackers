@@ -140,7 +140,7 @@ class ReIDModel:
             model_name_or_checkpoint_path (str): Name of the timm model to use or
                 path to a safetensors checkpoint. If the exact model name is not
                 found, the closest match from `timm.list_models` will be used.
-            config_path (str): Path to the config file for the local 
+            config_path (str): Path to the config file for the local
                 safetensors checkpoint.
             device (str): Device to run the model on.
             get_pooled_features (bool): Whether to get the pooled features from the
