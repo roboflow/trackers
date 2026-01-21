@@ -132,7 +132,7 @@ With a modular design, `trackers` lets you combine object detectors from differe
     from inference import get_model
 
     tracker = SORTTracker()
-    model = get_model(model_id="yolov11m-640")
+    model = get_model(model_id="rfdetr-medium")
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
     def callback(frame, _):
@@ -153,10 +153,10 @@ With a modular design, `trackers` lets you combine object detectors from differe
     ```python hl_lines="2 5 11"
     import supervision as sv
     from trackers import SORTTracker
-    from rfdetr import RFDETRBase
+    from rfdetr import RFDETRMedium
 
     tracker = SORTTracker()
-    model = RFDETRBase()
+    model = RFDETRMedium()
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
     def callback(frame, _):
