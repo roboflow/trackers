@@ -18,32 +18,33 @@ class ByteTrackTracker(BaseTracker):
 
     ByteTrack is a simple, effective, and generic multi-object tracking method
     that improves upon tracking-by-detection by associating *every* detection box
-    instead of discarding low-score ones. It uses a two-stage association process
-    and builds on established techniques like the Kalman filter for motion prediction
-    and the Hungarian algorithm for data association.
+    instead of discarding low-score ones. This makes it more robust to occlusions. 
+    It uses a two-stage association process and builds on established techniques 
+    like the Kalman Filter for motion prediction and the Hungarian algorithm for
+    data association.
 
     Args:
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
             improving tracking through occlusions, but may increase the possibility
-            of ID switching for objects with similar appearance.
+            of ID switching for objects that disappear.
         frame_rate (float): Frame rate of the video (frames per second).
             Used to calculate the maximum time a track can be lost.
         track_activation_threshold (float): Detection confidence threshold
             for track activation. Only detections with confidence above this
-            threshold will create new tracks. Increasing this threshold
-            reduces false positives but may miss real objects with low confidence.
+            threshold will create new tracks. Increasing this threshold may
+            reduce false positives but may miss real objects with low confidence.
         minimum_consecutive_frames (int): Number of consecutive frames that an object
-            must be tracked before it is considered a 'valid' track. Increasing
+            must be tracked before it is considered a 'valid'/'active/ track. Increasing
             `minimum_consecutive_frames` prevents the creation of accidental tracks
             from false detection or double detection, but risks missing shorter
             tracks. Before the tracker is considered valid, it will be assigned
             `-1` as its `tracker_id`.
-        minimum_iou_threshold (float): IOU threshold for associating detections to existing tracks.
+        minimum_iou_threshold (float): IoU threshold for associating detections to existing tracks.
             Prevents the association of lower IoU than the threshold between boxes and tracks.
-            A higher value will only associate boxes that have more overlapping when using IoU metric.
+            A higher value will only associate boxes that have more overlapping area.
         high_conf_boxes_threshold (float): threshold for assigning predicted boxes to high probability class.
-            A higher value will classify only higher probability boxes as 'high probability'
+            A higher value will classify only higher confidence/probability boxes as 'high probability'
             per the ByteTrack algorithm, which are used in the first similarity step of
             the algorithm.
     """  # noqa: E501
@@ -99,8 +100,8 @@ class ByteTrackTracker(BaseTracker):
     ) -> sv.Detections:
         """Updates the tracker state with new detections.
 
-        Performs Kalman filter prediction, associates detections with existing
-        tracks based on IOU, updates matched tracks, and initializes new
+        Performs Kalman Filter prediction, associates detections with existing
+        tracks based on IoU, updates matched tracks, and initializes new
         tracks for unmatched high-confidence detections.
 
         Args:
@@ -109,7 +110,8 @@ class ByteTrackTracker(BaseTracker):
         Returns:
             sv.Detections: A copy of the input detections, augmented with assigned
                 `tracker_id` for each successfully tracked object. Detections not
-                associated with a track will not have a `tracker_id`.
+                associated with a track will not have a `tracker_id`. The order of 
+                the detections is not guaranteed to be the same as the input detections.
         """  # noqa: E501
 
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -187,7 +189,7 @@ class ByteTrackTracker(BaseTracker):
             final_updated_detections.tracker_id = np.array([], dtype=int)
         return final_updated_detections
 
-    def _get_high_and_low_probability_detections(self, detections: sv.Detections):
+    def _get_high_and_low_probability_detections(self, detections: sv.Detections)-> tuple[sv.Detections, sv.Detections]:
         """
         Splits the input detections into high-confidence and low-confidence sets
         based on the `self.high_conf_boxes_threshold`.
@@ -217,8 +219,6 @@ class ByteTrackTracker(BaseTracker):
     def _get_associated_indices(
         self,
         similarity_matrix: np.ndarray,
-        detection_boxes: np.ndarray,
-        tracks: list[ByteTrackKalmanBoxTracker],
         min_similarity_thresh: float,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
@@ -227,9 +227,7 @@ class ByteTrackTracker(BaseTracker):
         it solves the assignment problem in an optimal way.
 
         Args:
-            similarity_matrix (np.ndarray): Similarity matrix betw  een tracks (rows) and detections (columns).
-            detections (sv.Detections): The set of object detections.
-            tracks (list[ByteTrackKalmanBoxTracker]): The list of tracks.
+            similarity_matrix (np.ndarray): Similarity matrix between tracks (rows) and detections (columns).
             min_similarity_thresh (float): Minimum similarity threshold for a valid match.
 
         Returns:
@@ -237,10 +235,11 @@ class ByteTrackTracker(BaseTracker):
                 indices of unmatched tracks, indices of unmatched detections.
         """  # noqa: E501
         matched_indices = []
-        unmatched_tracks = set(range(len(tracks)))
-        unmatched_detections = set(range(len(detection_boxes)))
+        n_tracks, n_detections = similarity_matrix.shape
+        unmatched_tracks = set(range(n_tracks))
+        unmatched_detections = set(range(n_detections))
 
-        if len(tracks) > 0 and len(detection_boxes) > 0:
+        if n_tracks > 0 and n_detections > 0:
             row_indices, col_indices = linear_sum_assignment(
                 similarity_matrix, maximize=True
             )
@@ -266,7 +265,6 @@ class ByteTrackTracker(BaseTracker):
         Args:
             detections (sv.Detections): Current detections.
             detection_boxes (np.ndarray): Bounding boxes for detections.
-            unmatched_detections (set[int]): Indices of unmatched detections.
             unmatched_detections (set[int]): Indices of unmatched detections.
             updated_detections (list[sv.Detections]): List with all the detections
 
@@ -300,13 +298,12 @@ class ByteTrackTracker(BaseTracker):
         detections: sv.Detections,
         tracks: list[ByteTrackKalmanBoxTracker],
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-        """Measures similarity as indicated by the user between tracks and detections and returns the matches and unmatched tracks/detections.
-            Is useful for step 1 and 2 of the BYTE algorithm.
+        """Measures similarity based on IoU between tracks and detections and returns the matches 
+            and unmatched tracks/detections. Is used for step 1 and 2 of the BYTE algorithm.
 
         Args:
             detections (sv.Detections): The set of object detections.
-            tracks (list[ByteTrackKalmanBoxTracker]): The list of tracks that will we matched to the detections.
-
+            tracks (list[ByteTrackKalmanBoxTracker]): The list of tracks that will be matched to the detections.
 
         Returns:
             tuple[list[tuple[int, int]], set[int], set[int]]: A tuple containing:
@@ -315,11 +312,8 @@ class ByteTrackTracker(BaseTracker):
                   were not matched.
                 - unmatched_detections_indices: A set of indices for detections
                   that were not matched.
-
-        Raises:
-            Exception: If an unsupported `association_metric` is provided.
         """  # noqa: E501
-        # Build IOU cost matrix between detections and predicted bounding boxes
+        # Build IoU cost matrix between detections and predicted bounding boxes
         similarity_matrix = get_iou_matrix(tracks, detections.xyxy)
         thresh = self.minimum_iou_threshold
 
@@ -327,7 +321,7 @@ class ByteTrackTracker(BaseTracker):
         # similarity matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
         matched_indices, unmatched_tracks, unmatched_detections = (
             self._get_associated_indices(
-                similarity_matrix, detections.xyxy, tracks, thresh
+                similarity_matrix, thresh
             )
         )
         return matched_indices, unmatched_tracks, unmatched_detections

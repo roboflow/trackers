@@ -9,11 +9,11 @@ comments: true
 
 ## Overview
 
-ByteTrack presents a simple and generic association method which associates almost every detection box instead of only the high probability ones. Low score boxes are typically occluded objects, so leaving  this objects out of the tracking would result in lost tracks.
+ByteTrack presents a simple and generic association method which associates almost every detection box instead of only the high probability ones. Low score boxes are typically occluded objects, so leaving these objects out of tracking would result in lost tracks.
 
-That's why the proposed method consists in 2 key steps. The first step will associate the high score detections to the existing tracks using IoU. The second step will associate the low score detections to the trackers that didn't match in the previous step using also IoU distance. In addition to this, we added parametrized thresholds for accepting the matches only if the similarity is higher to the corresponding threshold. Finally it starts new tracks with the high score detections that didn't match in step 1. Just like [SORT](../sort/tracker.md) this method combines Kalman Filters for having a motion model in order to match low score boxes and the Hungarian algorithm for calculating the optimal associations.
+That's why the proposed method consists of two key steps. The first step will associate the high score detections with the existing tracks using IoU. The second step will associate the low score detections with the tracks that didn't match in the previous step using IoU distance. In addition to this, we added parametrized thresholds for accepting the matches only if the similarity is higher than the corresponding threshold. Finally, it starts new tracks with the high score detections that didn't match in step 1. Just like [SORT](../sort/tracker.md) this method combines Kalman Filters for having a motion model in order to match low score boxes and the Hungarian algorithm for calculating the optimal associations.
 
-This tracker keeps the simplicity and efficiency of [SORT](../sort/tracker.md) while improving tracking capabilities for occluded objects, leveraging all detections to enhace multi-object tracking.
+This tracker keeps the simplicity and efficiency of [SORT](../sort/tracker.md) while improving tracking capabilities for occluded objects, leveraging all detections to enhance multi-object tracking.
 
 
 ## Examples
