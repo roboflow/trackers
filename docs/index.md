@@ -40,14 +40,6 @@ comments: true
         <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
       </tr>
       <tr>
-        <td>DeepSORT</td>
-        <td><a href="https://arxiv.org/abs/1703.07402"><img src="https://img.shields.io/badge/arXiv-1703.07402-b31b1b.svg" alt="arXiv"></a></td>
-        <td>75.4</td>
-        <td>2017</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-deepsort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
         <td>ByteTrack</td>
         <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
         <td>77.8</td>
@@ -77,7 +69,7 @@ comments: true
 
 # Installation
 
-You can install `trackers` in a [**Python>=3.9**](https://www.python.org/) environment.
+You can install `trackers` in a [**Python>=3.10**](https://www.python.org/) environment.
 
 !!! example "Basic Installation"
 
