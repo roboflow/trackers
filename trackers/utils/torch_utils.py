@@ -64,7 +64,8 @@ def load_safetensors_checkpoint(
     device: str = "cpu",
 ) -> Tuple[dict[str, torch.Tensor], dict[str, Any]]:
     """
-    Load a safetensors checkpoint into a dictionary of tensors and a separate JSON config file.
+    Load a safetensors checkpoint into a dictionary of tensors and a
+    separate JSON config file.
 
     Args:
         checkpoint_path (str): The path to the safetensors checkpoint.
