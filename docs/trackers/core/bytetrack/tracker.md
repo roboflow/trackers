@@ -9,11 +9,10 @@ comments: true
 
 ## Overview
 
-ByteTrack presents a simple and generic association method which associates almost every detection box instead of only the high probability ones. Low score boxes are typically occluded objects, so leaving these objects out of tracking would result in lost tracks.
+ByteTrack presents a simple and generic association method which overcomes the limitation of only associating high confidence detections. Low score boxes are typically occluded objects, so skipping these objects from association would result in lost and fragmented tracks.
+That's why the proposed method consists of two key steps. The first step will associate the high confidence detections (subject to a threshold) with the existing tracks using Intersection over Union (IoU). The second step will associate the low confidence detections with the tracks that didn't match in the previous step using IoU. In addition to this, we added parametrized thresholds for accepting the matches only if the similarity between the tracked box and the detection is higher than the corresponding threshold. Finally, it starts new tracks with the high confidence detections that didn't match in step 1.
 
-That's why the proposed method consists of two key steps. The first step will associate the high score detections with the existing tracks using IoU. The second step will associate the low score detections with the tracks that didn't match in the previous step using IoU distance. In addition to this, we added parametrized thresholds for accepting the matches only if the similarity is higher than the corresponding threshold. Finally, it starts new tracks with the high score detections that didn't match in step 1. Just like [SORT](../sort/tracker.md) this method combines Kalman Filters for having a motion model in order to match low score boxes and the Hungarian algorithm for calculating the optimal associations.
-
-This tracker keeps the simplicity and efficiency of [SORT](../sort/tracker.md) while improving tracking capabilities for occluded objects, leveraging all detections to enhance multi-object tracking.
+Just like [SORT](../sort/tracker.md), this method combines the Kalman Filter as motion model and the Hungarian algorithm for calculating the associations between the predicted position of the track and the detection. This tracker also keeps the simplicity and efficiency of [SORT](../sort/tracker.md) while improving tracking capabilities for occluded objects, leveraging all detections to enhance multi-object tracking.
 
 
 ## Examples
@@ -55,7 +54,7 @@ This tracker keeps the simplicity and efficiency of [SORT](../sort/tracker.md) w
     def callback(frame, _):
         result = model.infer(frame)[0]
         detections = sv.Detections.from_inference(result)
-        detections = tracker.update(detections, frame)
+        detections = tracker.update(detections)
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
@@ -79,7 +78,7 @@ This tracker keeps the simplicity and efficiency of [SORT](../sort/tracker.md) w
     def callback(frame, _):
         result = model(frame)[0]
         detections = sv.Detections.from_ultralytics(result)
-        detections = tracker.update(detections, frame)
+        detections = tracker.update(detections)
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(
@@ -119,7 +118,7 @@ This tracker keeps the simplicity and efficiency of [SORT](../sort/tracker.md) w
             id2label=model.config.id2label
         )
 
-        detections = tracker.update(detections, frame)
+        detections = tracker.update(detections)
         return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     sv.process_video(

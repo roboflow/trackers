@@ -18,8 +18,8 @@ class ByteTrackTracker(BaseTracker):
 
     ByteTrack is a simple, effective, and generic multi-object tracking method
     that improves upon tracking-by-detection by associating *every* detection box
-    instead of discarding low-score ones. This makes it more robust to occlusions. 
-    It uses a two-stage association process and builds on established techniques 
+    instead of discarding low-score ones. This makes it more robust to occlusions.
+    It uses a two-stage association process and builds on established techniques
     like the Kalman Filter for motion prediction and the Hungarian algorithm for
     data association.
 
@@ -110,7 +110,7 @@ class ByteTrackTracker(BaseTracker):
         Returns:
             sv.Detections: A copy of the input detections, augmented with assigned
                 `tracker_id` for each successfully tracked object. Detections not
-                associated with a track will not have a `tracker_id`. The order of 
+                associated with a track will not have a `tracker_id`. The order of
                 the detections is not guaranteed to be the same as the input detections.
         """  # noqa: E501
 
@@ -189,7 +189,9 @@ class ByteTrackTracker(BaseTracker):
             final_updated_detections.tracker_id = np.array([], dtype=int)
         return final_updated_detections
 
-    def _get_high_and_low_probability_detections(self, detections: sv.Detections)-> tuple[sv.Detections, sv.Detections]:
+    def _get_high_and_low_probability_detections(
+        self, detections: sv.Detections
+    ) -> tuple[sv.Detections, sv.Detections]:
         """
         Splits the input detections into high-confidence and low-confidence sets
         based on the `self.high_conf_boxes_threshold`.
@@ -298,7 +300,7 @@ class ByteTrackTracker(BaseTracker):
         detections: sv.Detections,
         tracks: list[ByteTrackKalmanBoxTracker],
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-        """Measures similarity based on IoU between tracks and detections and returns the matches 
+        """Measures similarity based on IoU between tracks and detections and returns the matches
             and unmatched tracks/detections. Is used for step 1 and 2 of the BYTE algorithm.
 
         Args:
@@ -320,9 +322,7 @@ class ByteTrackTracker(BaseTracker):
         # Associate detections to tracks based on the higher value of the
         # similarity matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
         matched_indices, unmatched_tracks, unmatched_detections = (
-            self._get_associated_indices(
-                similarity_matrix, thresh
-            )
+            self._get_associated_indices(similarity_matrix, thresh)
         )
         return matched_indices, unmatched_tracks, unmatched_detections
 
