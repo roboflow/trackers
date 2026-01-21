@@ -70,10 +70,12 @@ def _initialize_reid_model_from_timm(
 def _initialize_reid_model_from_checkpoint(cls, checkpoint_path: str, config_path: str):
     state_dict, config = load_safetensors_checkpoint(checkpoint_path, config_path)
     model_name = config.get("architecture")
+    if model_name is None:
+        raise ValueError(f"The config at {config_path} is missing the 'architecture' key.")
     init_kwargs = {}
     init_kwargs["pretrained"] = False
     reid_model_instance = _initialize_reid_model_from_timm(
-        cls, model_name_or_checkpoint_path=model_name, **init_kwargs
+        cls, model_name_or_checkpoint_path=model_name, device="auto", **init_kwargs
     )
     if config.get("projection_dimension"):
         reid_model_instance._add_projection_layer(
