@@ -8,6 +8,7 @@ from trackers.utils.ocsort_utils import (
     add_track_id_detections,
     build_direction_consistency_matrix,
     get_iou_matrix,
+    get_iou_matrix_between_boxes,
 )
 
 
@@ -178,15 +179,19 @@ class OCSORTTracker(BaseTracker):
         # Run 2nd Chance Association (OCR)
         # between the last observation of unmatched tracks to the unmatched observations #noqa: E501
 
-        if len(unmatched_detections) > 0 and len(unmatched_detections) > 0:
-            ocr_iou_matrix = iou_matrix[
-                np.array(list(unmatched_tracks), dtype=int)[:, None],
-                np.array(list(unmatched_detections), dtype=int),
-            ]  # Check this subsampling
+        if len(unmatched_detections) > 0 and len(unmatched_tracks) > 0:
             ocr_direction_consistency_matrix = direction_consistency_matrix[
                 np.array(list(unmatched_tracks), dtype=int)[:, None],
                 np.array(list(unmatched_detections), dtype=int),
             ]  # Check this subsampling
+
+            last_observation_of_tracks = np.array(
+                [self.tracks[t_id].last_observation for t_id in list(unmatched_tracks)]
+            )
+
+            ocr_iou_matrix = get_iou_matrix_between_boxes(
+                last_observation_of_tracks, detection_boxes[list(unmatched_detections)]
+            )
 
             ocr_matched_indices, ocr_unmatched_tracks, ocr_unmatched_detections = (
                 self._get_associated_indices(

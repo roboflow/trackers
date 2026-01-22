@@ -149,3 +149,32 @@ def get_iou_matrix(
         iou_matrix = np.zeros((len(trackers), len(detection_boxes)), dtype=np.float32)
 
     return iou_matrix
+
+
+def get_iou_matrix_between_boxes(
+    last_observations: np.ndarray, detection_boxes: np.ndarray
+) -> np.ndarray:
+    """
+    Build IOU cost matrix between detections and predicted bounding boxes
+
+    Args:
+        last_observations (np.ndarray): Last observed bounding boxes of tracks in the
+            form [x1, y1, x2, y2].
+        detection_boxes (np.ndarray): Detected bounding boxes in the
+            form [x1, y1, x2, y2].
+
+    Returns:
+        np.ndarray: IOU cost matrix.
+    """
+    if len(last_observations) == 0 and len(last_observations) > 0:
+        # Handle case where get_state_bbox might return empty array
+        last_observations = np.zeros((len(last_observations), 4), dtype=np.float32)
+
+    if len(last_observations) > 0 and len(detection_boxes) > 0:
+        iou_matrix = sv.box_iou_batch(last_observations, detection_boxes)
+    else:
+        iou_matrix = np.zeros(
+            (len(last_observations), len(detection_boxes)), dtype=np.float32
+        )
+
+    return iou_matrix
