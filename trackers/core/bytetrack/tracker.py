@@ -43,8 +43,8 @@ class ByteTrackTracker(BaseTracker):
         minimum_iou_threshold (float): IoU threshold for associating detections to existing tracks.
             Prevents the association of lower IoU than the threshold between boxes and tracks.
             A higher value will only associate boxes that have more overlapping area.
-        high_conf_boxes_threshold (float): threshold for assigning predicted boxes to high probability class.
-            A higher value will classify only higher confidence/probability boxes as 'high probability'
+        high_conf_det_threshold (float): threshold for assigning detections to high probability class.
+            A higher value will classify only higher confidence/probability detections as 'high probability'
             per the ByteTrack algorithm, which are used in the first similarity step of
             the algorithm.
     """  # noqa: E501
@@ -56,7 +56,7 @@ class ByteTrackTracker(BaseTracker):
         track_activation_threshold: float = 0.7,
         minimum_consecutive_frames: int = 2,
         minimum_iou_threshold: float = 0.1,
-        high_conf_boxes_threshold: float = 0.6,
+        high_conf_det_threshold: float = 0.6,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -65,7 +65,7 @@ class ByteTrackTracker(BaseTracker):
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
-        self.high_conf_boxes_threshold = high_conf_boxes_threshold
+        self.high_conf_det_threshold = high_conf_det_threshold
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
 
     def _update_detections(
@@ -126,7 +126,7 @@ class ByteTrackTracker(BaseTracker):
             tracker.predict()
         # Assign a default tracker_id with the correct shape
         detections.tracker_id = -np.ones(len(detections))
-        # Split into high confidence boxes and lower based on self.high_conf_boxes_threshold # noqa: E501
+        # Split into high confidence boxes and lower based on self.high_conf_det_threshold # noqa: E501
         high_prob_detections, low_prob_detections = (
             self._get_high_and_low_probability_detections(detections)
         )
@@ -194,7 +194,7 @@ class ByteTrackTracker(BaseTracker):
     ) -> tuple[sv.Detections, sv.Detections]:
         """
         Splits the input detections into high-confidence and low-confidence sets
-        based on the `self.high_conf_boxes_threshold`.
+        based on the `self.high_conf_det_threshold`.
 
         Args:
             detections (sv.Detections): The input detections with confidence scores.
@@ -208,7 +208,7 @@ class ByteTrackTracker(BaseTracker):
         # Check if confidence scores exist before comparing
         if detections.confidence is not None:
             # Perform element-wise comparison if confidence is a NumPy array
-            condition = detections.confidence >= self.high_conf_boxes_threshold
+            condition = detections.confidence >= self.high_conf_det_threshold
         else:
             # If no confidence scores, no detections meet the threshold
             # Create a boolean array of False with the same length as detections
