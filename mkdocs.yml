@@ -94,3 +94,4 @@ nav:
   - Home: index.md
   - Trackers:
     - SORT: trackers/core/sort/tracker.md
+    - ByteTrack: trackers/core/bytetrack/tracker.md
