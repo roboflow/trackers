@@ -223,9 +223,7 @@ class OCSORTTracker(BaseTracker):
 
         else:
             self.tracks = self.activate_or_kill_tracklets()
-            self._spawn_new_trackers(
-                detections, unmatched_detections
-            )
+            self._spawn_new_trackers(detections, unmatched_detections)
             left_detections = detections[list(unmatched_detections)]
             left_detections.tracker_id = np.array(
                 [-1] * len(left_detections), dtype=int
