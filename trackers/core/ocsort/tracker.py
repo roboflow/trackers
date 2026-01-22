@@ -144,6 +144,7 @@ class OCSORTTracker(BaseTracker):
             return detections
 
         detections = detections[detections.confidence >= self.high_conf_det_threshold]
+
         updated_detections: list[
             sv.Detections
         ] = []  # List for returning the updated detections
@@ -178,7 +179,6 @@ class OCSORTTracker(BaseTracker):
 
         # Run 2nd Chance Association (OCR)
         # between the last observation of unmatched tracks to the unmatched observations #noqa: E501
-
         if len(unmatched_detections) > 0 and len(unmatched_tracks) > 0:
             ocr_direction_consistency_matrix = direction_consistency_matrix[
                 np.array(list(unmatched_tracks), dtype=int)[:, None],
@@ -223,7 +223,14 @@ class OCSORTTracker(BaseTracker):
 
         else:
             self.tracks = self.activate_or_kill_tracklets()
-
+            self._spawn_new_trackers(
+                detections, unmatched_detections
+            )
+            left_detections = detections[list(unmatched_detections)]
+            left_detections.tracker_id = np.array(
+                [-1] * len(left_detections), dtype=int
+            )
+            updated_detections.append(left_detections)
         final_updated_detections = sv.Detections.merge(updated_detections)
         if len(final_updated_detections) == 0:
             final_updated_detections.tracker_id = np.array([], dtype=int)
