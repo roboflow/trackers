@@ -180,11 +180,6 @@ class OCSORTTracker(BaseTracker):
         # Run 2nd Chance Association (OCR)
         # between the last observation of unmatched tracks to the unmatched observations #noqa: E501
         if len(unmatched_detections) > 0 and len(unmatched_tracks) > 0:
-            ocr_direction_consistency_matrix = direction_consistency_matrix[
-                np.array(list(unmatched_tracks), dtype=int)[:, None],
-                np.array(list(unmatched_detections), dtype=int),
-            ]  # Check this subsampling
-
             last_observation_of_tracks = np.array(
                 [self.tracks[t_id].last_observation for t_id in list(unmatched_tracks)]
             )
@@ -196,7 +191,7 @@ class OCSORTTracker(BaseTracker):
             ocr_matched_indices, ocr_unmatched_tracks, ocr_unmatched_detections = (
                 self._get_associated_indices(
                     ocr_iou_matrix,
-                    ocr_direction_consistency_matrix,
+                    np.zeros_like(ocr_iou_matrix),
                     detection_boxes[list(unmatched_detections)],
                 )
             )
