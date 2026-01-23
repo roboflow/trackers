@@ -88,7 +88,7 @@ class OCSORTTracker(BaseTracker):
         n_tracks, n_detections = iou_matrix.shape
         unmatched_tracks = set(range(n_tracks))
         unmatched_detections = set(range(n_detections))
-        if len(n_tracks) > 0 and len(n_detections) > 0:
+        if n_tracks > 0 and n_detections > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
             cost_matrix = (
                 iou_matrix
