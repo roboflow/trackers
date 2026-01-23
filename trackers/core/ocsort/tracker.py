@@ -72,25 +72,23 @@ class OCSORTTracker(BaseTracker):
         self,
         iou_matrix: np.ndarray,
         direction_consistency_matrix: np.ndarray,
-        detection_boxes: np.ndarray,
-    ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
+    ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
         Associate detections to tracks based on IOU
 
         Args:
             iou_matrix (np.ndarray): IOU cost matrix.
             direction_consistency_matrix (np.ndarray): Direction of the tracklet consistency cost matrix.
-            detection_boxes (np.ndarray): Detected bounding boxes in the
-                form [x1, y1, x2, y2].
 
         Returns:
-            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices,
+            tuple[list[tuple[int, int]], list[int], list[int]]: Matched indices,
                 unmatched tracks, unmatched detections.
         """  # noqa: E501
         matched_indices = []
-        unmatched_tracks = set(range(len(self.tracks)))
-        unmatched_detections = set(range(len(detection_boxes)))
-        if len(self.tracks) > 0 and len(detection_boxes) > 0:
+        n_tracks, n_detections = iou_matrix.shape
+        unmatched_tracks = set(range(n_tracks))
+        unmatched_detections = set(range(n_detections))
+        if len(n_tracks) > 0 and len(n_detections) > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
             cost_matrix = (
                 iou_matrix
@@ -103,12 +101,16 @@ class OCSORTTracker(BaseTracker):
                     unmatched_tracks.remove(row)
                     unmatched_detections.remove(col)
 
-        return matched_indices, unmatched_tracks, unmatched_detections
+        return (
+            matched_indices,
+            sorted(list(unmatched_tracks)),
+            sorted(list(unmatched_detections)),
+        )
 
     def _spawn_new_trackers(
         self,
         detections: sv.Detections,
-        unmatched_detections: set[int],
+        unmatched_detections: list[int],
     ) -> None:
         """
         Create new trackers only for unmatched detections with confidence
@@ -165,9 +167,7 @@ class OCSORTTracker(BaseTracker):
         )
         # 1st Association of detections to tracks (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = (
-            self._get_associated_indices(
-                iou_matrix, direction_consistency_matrix, detection_boxes
-            )
+            self._get_associated_indices(iou_matrix, direction_consistency_matrix)
         )
 
         # Update matched trackers with assigned detections
@@ -181,24 +181,23 @@ class OCSORTTracker(BaseTracker):
         # between the last observation of unmatched tracks to the unmatched observations #noqa: E501
         if len(unmatched_detections) > 0 and len(unmatched_tracks) > 0:
             last_observation_of_tracks = np.array(
-                [self.tracks[t_id].last_observation for t_id in list(unmatched_tracks)]
+                [self.tracks[t_id].last_observation for t_id in unmatched_tracks]
             )
 
             ocr_iou_matrix = get_iou_matrix_between_boxes(
-                last_observation_of_tracks, detection_boxes[list(unmatched_detections)]
+                last_observation_of_tracks, detection_boxes[unmatched_detections]
             )
 
             ocr_matched_indices, ocr_unmatched_tracks, ocr_unmatched_detections = (
                 self._get_associated_indices(
                     ocr_iou_matrix,
                     np.zeros_like(ocr_iou_matrix),
-                    detection_boxes[list(unmatched_detections)],
                 )
             )
 
             for ocr_row, ocr_col in ocr_matched_indices:
-                track_idx = list(unmatched_tracks)[ocr_row]
-                det_idx = list(unmatched_detections)[ocr_col]
+                track_idx = unmatched_tracks[ocr_row]
+                det_idx = unmatched_detections[ocr_col]
                 self.tracks[track_idx].update(detection_boxes[det_idx])
                 add_track_id_detections(
                     self.tracks[track_idx],
@@ -208,9 +207,9 @@ class OCSORTTracker(BaseTracker):
 
             self.tracks = self.activate_or_kill_tracklets()
             self._spawn_new_trackers(
-                detections[list(unmatched_detections)], ocr_unmatched_detections
+                detections[unmatched_detections], ocr_unmatched_detections
             )
-            left_detections = detections[list(ocr_unmatched_detections)]
+            left_detections = detections[ocr_unmatched_detections]
             left_detections.tracker_id = np.array(
                 [-1] * len(left_detections), dtype=int
             )
@@ -219,7 +218,7 @@ class OCSORTTracker(BaseTracker):
         else:
             self.tracks = self.activate_or_kill_tracklets()
             self._spawn_new_trackers(detections, unmatched_detections)
-            left_detections = detections[list(unmatched_detections)]
+            left_detections = detections[unmatched_detections]
             left_detections.tracker_id = np.array(
                 [-1] * len(left_detections), dtype=int
             )
