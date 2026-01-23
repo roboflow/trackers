@@ -14,7 +14,7 @@ It recognizes limitations from SORT and the linear motion assumption of the Kalm
 mechanisms to enhance tracking:
     1. Observation-Centre Re-Update (ORU): runs a predict-update loop with a 'virtual trajectory'
         depending on the last observation and new observation when a track is re-activated after being lost.
-    2. Observation-Centric Momentum (OCM): incorporate the direction consistency of tracks in the cost matrix for the association. 
+    2. Observation-Centric Momentum (OCM): incorporate the direction consistency of tracks in the cost matrix for the association.
     3. Observation-centric Recovery (OCR): a second-stage association step between the last observation of unmatched tracks
         to the unmatched observations after the usual association. It attempts to recover tracks that were lost
         due to object stopping or short-term occlusion. Uses only IoU.
