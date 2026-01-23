@@ -22,7 +22,9 @@ class KalmanFilter:
 
     Args:
         bbox (np.ndarray): Initial bounding box in the form [x1, y1, x2, y2].
-    """
+        state_dim (int): Dimension of the state vector. Default is 7 using (x, y, s, r, vx, vy, vs).
+        state_transition_matrix (np.ndarray): State transition matrix F. Default is identity.
+    """  # noqa: E501
 
     state: NDArray[np.float32]
     F: NDArray[np.float32]
@@ -31,18 +33,22 @@ class KalmanFilter:
     R: NDArray[np.float32]
     P: NDArray[np.float32]
 
-    def __init__(self, bbox: NDArray[np.float64]) -> None:
+    def __init__(
+        self,
+        bbox: NDArray[np.float64],
+        state_dim: int = 7,
+        state_transition_matrix: np.ndarray = np.eye(7),
+    ) -> None:
         # Number of hits indicates how many times the object has been
         # updated successfully
         self.number_of_successful_updates = 1
         # Number of frames since the last update
         self.time_since_update = 0
-
+        self.state_dim = state_dim
         # For simplicity, we keep a small state vector:
-        # (x, y, x2, y2, vx, vy, vx2, vy2).
         # We'll store the bounding box in "self.state"
-        self.state = np.zeros((8, 1), dtype=np.float32)
-
+        self.state = np.zeros((state_dim, 1), dtype=np.float32)
+        self.F = state_transition_matrix.astype(np.float32)
         # Initialize state directly from the first detection
         bbox_float: NDArray[np.float32] = bbox.astype(np.float32)
         self.state[0, 0] = bbox_float[0]
@@ -57,24 +63,20 @@ class KalmanFilter:
         """
         Sets up the matrices for the Kalman filter.
         """
-        # State transition matrix (F): 8x8
         # We assume a constant velocity model. Positions are incremented by
         # velocity each step.
-        self.F = np.eye(8, dtype=np.float32)
-        for i in range(4):
-            self.F[i, i + 4] = 1.0
 
-        # Measurement matrix (H): we directly measure x1, y1, x2, y2
-        self.H = np.eye(4, 8, dtype=np.float32)  # 4x8
+        # Measurement matrix (H)
+        self.H = np.eye(4, self.state_dim, dtype=np.float32)  # 4xself.state_dim
 
         # Process covariance matrix (Q)
-        self.Q = np.eye(8, dtype=np.float32) * 0.01
+        self.Q = np.eye(self.state_dim, dtype=np.float32)  # * 0.01
 
         # Measurement covariance (R): noise in detection
-        self.R = np.eye(4, dtype=np.float32) * 0.1
+        self.R = np.eye(4, dtype=np.float32)  # * 0.1
 
         # Error covariance matrix (P)
-        self.P = np.eye(8, dtype=np.float32)
+        self.P = np.eye(self.state_dim, dtype=np.float32)
 
     def predict(self) -> None:
         """
@@ -114,7 +116,7 @@ class KalmanFilter:
         self.state = (self.state + K @ y).astype(np.float32)
 
         # Update covariance
-        identity_matrix: NDArray[np.float32] = np.eye(8, dtype=np.float32)
+        identity_matrix: NDArray[np.float32] = np.eye(self.state_dim, dtype=np.float32)
         self.P = ((identity_matrix - K @ self.H) @ self.P).astype(np.float32)
 
     def set_parameters(

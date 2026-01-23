@@ -1,6 +1,10 @@
 import numpy as np
 
 from trackers.utils.kalman_filter import KalmanFilter
+from trackers.utils.ocsort_utils import (
+    convert_bbox_to_state_rep,
+    convert_state_rep_to_bbox,
+)
 
 
 class OCSORTTracklet:
@@ -13,7 +17,30 @@ class OCSORTTracklet:
 
     def __init__(self, initial_bbox) -> None:
         self.age = 0
-        self.kalman_filter = KalmanFilter(bbox=initial_bbox)
+        # state format: (x, y, s, r, vx, vy, vs). As detailed in SORT paper, r is the aspect ratio and constant! # noqa: E501
+        self.kalman_filter = KalmanFilter(
+            bbox=convert_bbox_to_state_rep(initial_bbox),
+            state_dim=7,
+            state_transition_matrix=np.array(
+                [
+                    [1, 0, 0, 0, 1, 0, 0],
+                    [0, 1, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 0, 0, 1],
+                    [0, 0, 0, 1, 0, 0, 0],
+                    [0, 0, 0, 0, 1, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 1],
+                ]
+            ),
+        )
+
+        self.kalman_filter.R[2:, 2:] *= 10.0
+        self.kalman_filter.P[4:, 4:] *= (
+            1000.0  # give high uncertainty to the unobservable initial velocities
+        )
+        self.kalman_filter.P *= 10.0
+        self.kalman_filter.Q[-1, -1] *= 0.01
+        self.kalman_filter.Q[4:, 4:] *= 0.01
         self.last_observation = initial_bbox  # None
         self.previous_to_last_observation = None  # For velocity of track
 
@@ -48,7 +75,7 @@ class OCSORTTracklet:
         if self.is_lost():
             self.re_update(bbox)
         else:
-            self.kalman_filter.update(bbox)
+            self.kalman_filter.update(convert_bbox_to_state_rep(bbox))
             # save the last before being lost KF parameters for re-updating
             self.kalman_filter_state_before_being_lost = self.kalman_filter.state.copy()
             # Copying all the time might be slow, is there a better alternative?
@@ -76,7 +103,7 @@ class OCSORTTracklet:
 
         self.time_since_update += 1
         predicted_bbox = self.kalman_filter.get_state_bbox()
-        return predicted_bbox
+        return convert_state_rep_to_bbox(predicted_bbox)
 
     def is_lost(
         self,
@@ -96,9 +123,11 @@ class OCSORTTracklet:
             **self.kalman_filter_parameters_before_being_lost
         )
         for i in range(1, self.time_since_update + 1):
+            # Interpolate linearly between last_observation and bbox
             virtual_bbox = self.last_observation + (bbox - self.last_observation) * (
                 i / (self.time_since_update + 1)
             )
+            virtual_bbox = convert_bbox_to_state_rep(virtual_bbox)
             self.kalman_filter.predict()
             self.kalman_filter.update(virtual_bbox)
 
@@ -112,4 +141,4 @@ class OCSORTTracklet:
         Returns:
             np.ndarray: The current bounding box in the form [x1, y1, x2, y2].
         """
-        return self.kalman_filter.get_state_bbox()
+        return convert_state_rep_to_bbox(self.kalman_filter.get_state_bbox())

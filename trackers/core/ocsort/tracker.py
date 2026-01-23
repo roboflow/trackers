@@ -166,6 +166,7 @@ class OCSORTTracker(BaseTracker):
             self.tracks, detection_boxes
         )
         direction_consistency_matrix *= detections.confidence[np.newaxis, :]
+
         # 1st Association of detections to tracks (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = (
             self._get_associated_indices(iou_matrix, direction_consistency_matrix)
