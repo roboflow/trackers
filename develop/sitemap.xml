@@ -2,18 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://roboflow.github.io/trackers/develop/develop/</loc>
-         <lastmod>2026-01-09</lastmod>
+         <lastmod>2026-01-23</lastmod>
     </url>
     <url>
          <loc>https://roboflow.github.io/trackers/develop/develop/trackers/core/deepsort/tracker/</loc>
-         <lastmod>2026-01-09</lastmod>
+         <lastmod>2026-01-23</lastmod>
     </url>
     <url>
          <loc>https://roboflow.github.io/trackers/develop/develop/trackers/core/reid/reid/</loc>
-         <lastmod>2026-01-09</lastmod>
+         <lastmod>2026-01-23</lastmod>
     </url>
     <url>
          <loc>https://roboflow.github.io/trackers/develop/develop/trackers/core/sort/tracker/</loc>
-         <lastmod>2026-01-09</lastmod>
+         <lastmod>2026-01-23</lastmod>
     </url>
 </urlset>
