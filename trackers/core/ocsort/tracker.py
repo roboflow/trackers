@@ -15,13 +15,13 @@ from trackers.utils.ocsort_utils import (
 class OCSORTTracker(BaseTracker):
     """Implements OC-SORT (Observation Centric Simple Online and Realtime Tracking).
 
-    OC-SORT remains Simple, Online, and Real-Time butimproves robustness during occlusion and non-linear motion.
+    OC-SORT remains Simple, Online, and Real-Time but improves robustness during occlusion and non-linear motion.
     It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three
     mechanisms to enhance tracking:
         1. Observation-Centre Re-Update (ORU): runs a predict-update loop with a 'virtual trajectory'
             depending on the last observation and new observation when a track is re-activated after being lost.
-        2. Observation-Centric Momentum (OCM): Adjusts predicted positions based on the last observation to better handle occlusions.
-        3. Observation-centric Recovery (OCR): A second-stage association step between the last observation of unmatched tracks
+        2. Observation-Centric Momentum (OCM): incorporate the direction consistency of tracks in the cost matrix for the association.
+        3. Observation-centric Recovery (OCR): a second-stage association step between the last observation of unmatched tracks
             to the unmatched observations after the usual association. It attempts to recover tracks that were lost
             due to object stopping or short-term occlusion.
     Args:
