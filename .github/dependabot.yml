@@ -4,15 +4,19 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     commit-message:
-      prefix: ⬆️
+      prefix: 🔄
     target-branch: "main"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
   # Python
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     commit-message:
       prefix: ⬆️
     target-branch: "main"
