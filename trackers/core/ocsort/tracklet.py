@@ -1,10 +1,10 @@
 import numpy as np
 
-from trackers.utils.kalman_filter import KalmanFilter
-from trackers.utils.ocsort_utils import (
+from trackers.utils.bbox_conversions import (
     convert_bbox_to_state_rep,
     convert_state_rep_to_bbox,
 )
+from trackers.utils.kalman_filter import KalmanFilter
 
 
 class OCSORTTracklet:
