@@ -14,6 +14,42 @@ That's why the proposed method consists of two key steps. The first step will as
 
 Just like [SORT](../sort/tracker.md), this method combines the Kalman Filter as motion model and the Hungarian algorithm for calculating the associations between the predicted position of the track and the detection. This tracker also keeps the simplicity and efficiency of [SORT](../sort/tracker.md) while improving tracking capabilities for occluded objects, leveraging all detections to enhance multi-object tracking.
 
+## Benchmarks
+
+Performance on test splits from tracking datasets.
+
+<div align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Dataset</th>
+        <th>HOTA</th>
+        <th>IDF1</th>
+        <th>MOTA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>MOT17</td>
+        <td>60.1</td>
+        <td>73.2</td>
+        <td>74.1</td>
+      </tr>
+      <tr>
+        <td>SportsMOT</td>
+        <td>73.0</td>
+        <td>72.5</td>
+        <td>96.4</td>
+      </tr>
+      <tr>
+        <td>SoccerNet-tracking</td>
+        <td>84.0</td>
+        <td>78.1</td>
+        <td>97.8</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 ## Examples
 === "rf-detr"

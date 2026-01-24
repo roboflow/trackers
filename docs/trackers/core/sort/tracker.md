@@ -11,6 +11,43 @@ comments: true
 
 SORT (Simple Online and Realtime Tracking) is a lean, tracking-by-detection method that combines a Kalman filter for motion prediction with the Hungarian algorithm for data association. It uses object detections—commonly from a high-performing CNN-based detector—as its input, updating each tracked object’s bounding box based on linear velocity estimates. Because SORT relies on minimal appearance modeling (only bounding box geometry is used), it is extremely fast and can run comfortably at hundreds of frames per second. This speed and simplicity make it well suited for real-time applications in robotics or surveillance, where rapid, approximate solutions are essential. However, its reliance on frame-to-frame matching makes SORT susceptible to ID switches and less robust during long occlusions, since there is no built-in re-identification module.
 
+## Benchmarks
+
+Performance on test splits from tracking datasets.
+
+<div align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Dataset</th>
+        <th>HOTA</th>
+        <th>IDF1</th>
+        <th>MOTA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>MOT17</td>
+        <td>58.4</td>
+        <td>69.9</td>
+        <td>67.2</td>
+      </tr>
+      <tr>
+        <td>SportsMOT</td>
+        <td>70.9</td>
+        <td>68.9</td>
+        <td>95.7</td>
+      </tr>
+      <tr>
+        <td>SoccerNet-tracking</td>
+        <td>81.6</td>
+        <td>76.2</td>
+        <td>95.1</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
 ## Examples
 
 === "inference"
