@@ -54,7 +54,6 @@ dev = [
     "pre-commit>=4.2.0",
 ]
 
-
 docs = [
     "jupyter>=1.1.1",
     "mkdocs>=1.6.1",
@@ -126,55 +125,16 @@ indent-width = 4
 
 [tool.ruff.lint]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
-select = ["E", "F", "I", "A", "Q", "W", "RUF"]
-ignore = []
-# Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = [
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G",
-    "I",
-    "N",
-    "Q",
-    "S",
-    "T",
-    "W",
-    "ANN",
-    "ARG",
-    "BLE",
-    "COM",
-    "DJ",
-    "DTZ",
-    "EM",
-    "ERA",
-    "EXE",
-    "FBT",
-    "ICN",
-    "INP",
-    "ISC",
-    "NPY",
-    "PD",
-    "PGH",
-    "PIE",
-    "PL",
-    "PT",
-    "PTH",
-    "PYI",
-    "RET",
-    "RSE",
-    "RUF",
-    "SIM",
-    "SLF",
-    "TCH",
-    "TID",
-    "TRY",
-    "UP",
-    "YTT",
+select = [
+    "E",   # pycodestyle errors and warnings (https://docs.astral.sh/ruff/rules/#error-e)
+    "F",   # Pyflakes (imports, unused variables, etc.) (https://docs.astral.sh/ruff/rules/#pyflakes-f)
+    "I",   # isort (import sorting) (https://docs.astral.sh/ruff/rules/#isort-i)
+    "A",   # flake8-builtins (no use of built-in variable names) (https://docs.astral.sh/ruff/rules/#flake8-builtins-a)
+    "Q",   # flake8-quotes (consistent quote style) (https://docs.astral.sh/ruff/rules/#flake8-quotes-q)
+    "W",   # pycodestyle warnings (https://docs.astral.sh/ruff/rules/#warning-w)
+    "RUF", # Ruff-specific rules (https://docs.astral.sh/ruff/rules/#ruff-ruf)
 ]
+ignore = []
 unfixable = []
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
