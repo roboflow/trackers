@@ -49,11 +49,9 @@ dev = [
     "uv>=0.4.20",
     "pytest>=8.3.3",
     "ruff>=0.6.9",
-    "bandit>=1.8.3",
     "mypy>=1.15.0",
     "pre-commit>=4.2.0",
 ]
-
 docs = [
     "jupyter>=1.1.1",
     "mkdocs>=1.6.1",
@@ -84,10 +82,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["trackers"]
-
-[tool.bandit]
-target = ["test", "trackers"]
-tests = ["B201", "B301", "B318", "B314", "B303", "B413", "B412"]
 
 [tool.ruff]
 target-version = "py310"
@@ -132,7 +126,8 @@ select = [
     "A",   # flake8-builtins (no use of built-in variable names) (https://docs.astral.sh/ruff/rules/#flake8-builtins-a)
     "Q",   # flake8-quotes (consistent quote style) (https://docs.astral.sh/ruff/rules/#flake8-quotes-q)
     "W",   # pycodestyle warnings (https://docs.astral.sh/ruff/rules/#warning-w)
-    "RUF", # Ruff-specific rules (https://docs.astral.sh/ruff/rules/#ruff-ruf)
+    "RUF", # Ruff-specific rules (https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf)
+    "S",   # security rules (https://docs.astral.sh/ruff/rules/#flake8-bandit-s)
 ]
 ignore = []
 unfixable = []
@@ -150,6 +145,8 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "F401"]
+"test" = []
+"trackers" = []
 
 [tool.ruff.lint.mccabe]
 # Flag errors (`C901`) whenever the complexity level exceeds 10.
