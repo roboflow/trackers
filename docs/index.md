@@ -40,21 +40,12 @@ comments: true
         <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
       </tr>
       <tr>
-        <td>DeepSORT</td>
-        <td><a href="https://arxiv.org/abs/1703.07402"><img src="https://img.shields.io/badge/arXiv-1703.07402-b31b1b.svg" alt="arXiv"></a></td>
-        <td>75.4</td>
-        <td>2017</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-deepsort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
         <td>ByteTrack</td>
         <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
         <td>77.8</td>
         <td>2021</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
+        <td>✅</td>
+        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>      </tr>
       <tr>
         <td>OC-SORT</td>
         <td><a href="https://arxiv.org/abs/2203.14360"><img src="https://img.shields.io/badge/arXiv-2203.14360-b31b1b.svg" alt="arXiv"></a></td>
@@ -77,7 +68,7 @@ comments: true
 
 # Installation
 
-You can install `trackers` in a [**Python>=3.9**](https://www.python.org/) environment.
+You can install `trackers` in a [**Python>=3.10**](https://www.python.org/) environment.
 
 !!! example "Basic Installation"
 
@@ -140,7 +131,7 @@ With a modular design, `trackers` lets you combine object detectors from differe
     from inference import get_model
 
     tracker = SORTTracker()
-    model = get_model(model_id="yolov11m-640")
+    model = get_model(model_id="rfdetr-medium")
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
     def callback(frame, _):
@@ -161,10 +152,10 @@ With a modular design, `trackers` lets you combine object detectors from differe
     ```python hl_lines="2 5 11"
     import supervision as sv
     from trackers import SORTTracker
-    from rfdetr import RFDETRBase
+    from rfdetr import RFDETRMedium
 
     tracker = SORTTracker()
-    model = RFDETRBase()
+    model = RFDETRMedium()
     annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
     def callback(frame, _):

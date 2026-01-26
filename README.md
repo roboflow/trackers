@@ -37,14 +37,6 @@
         <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
       </tr>
       <tr>
-        <td>DeepSORT</td>
-        <td><a href="https://arxiv.org/abs/1703.07402"><img src="https://img.shields.io/badge/arXiv-1703.07402-b31b1b.svg" alt="arXiv"></a></td>
-        <td>75.4</td>
-        <td>2017</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-deepsort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
         <td>ByteTrack</td>
         <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
         <td>77.8</td>
@@ -99,13 +91,40 @@ pip install git+https://github.com/roboflow/trackers.git
 
 With a modular design, `trackers` lets you combine object detectors from different libraries with the tracker of your choice. Here's how you can use `SORTTracker` with various detectors:
 
+
+```python
+import supervision as sv
+from trackers import SORTTracker
+from rfdetr import RFDETRMedium
+
+tracker = SORTTracker()
+model = RFDETRMedium(device="cuda")
+annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+
+def callback(frame, _):
+    detections = model.predict(frame, threshold=NMS_THRESHOLD)
+    detections = tracker.update(detections)
+    return annotator.annotate(frame, detections, labels=detections.tracker_id)
+
+sv.process_video(
+    source_path="<INPUT_VIDEO_PATH>",
+    target_path="<OUTPUT_VIDEO_PATH>",
+    callback=callback,
+)
+```
+
+<details>
+<summary>run with <code>inference</code></summary>
+
+<br>
+
 ```python
 import supervision as sv
 from trackers import SORTTracker
 from inference import get_model
 
 tracker = SORTTracker()
-model = get_model(model_id="yolov11m-640")
+model = get_model(model_id="rfdetr-medium")
 annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
 def callback(frame, _):
@@ -120,6 +139,7 @@ sv.process_video(
     callback=callback,
 )
 ```
+</details>
 
 <details>
 <summary>run with <code>ultralytics</code></summary>

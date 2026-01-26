@@ -94,5 +94,4 @@ nav:
   - Home: index.md
   - Trackers:
     - SORT: trackers/core/sort/tracker.md
-    - DeepSORT: trackers/core/deepsort/tracker.md
-  - ReID: trackers/core/reid/reid.md
+    - ByteTrack: trackers/core/bytetrack/tracker.md
