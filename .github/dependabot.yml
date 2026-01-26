@@ -7,7 +7,6 @@ updates:
       interval: "monthly"
     commit-message:
       prefix: 🔄
-    # target-branch: "main" just use the default
     groups:
       github-actions:
         patterns:
