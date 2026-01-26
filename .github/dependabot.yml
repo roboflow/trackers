@@ -18,4 +18,3 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: ⬆️
-    # target-branch: "main" just use the default
