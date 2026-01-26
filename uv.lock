@@ -3582,14 +3582,14 @@ wheels = [
 
 [[package]]
 name = "types-tqdm"
-version = "4.67.0.20250513"
+version = "4.67.0.20250809"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/74/a77b5179e3543853c51ce786b300cd253934477c81aab4d786dff9894724/types_tqdm-4.67.0.20250513.tar.gz", hash = "sha256:907028c8d0a8fc20072132cd0cee72a3b6c72abf32f5ff914a7749e7d13b351e", size = 17207, upload-time = "2025-05-13T03:06:17.539Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/d0/cf498fc630d9fdaf2428b93e60b0e67b08008fec22b78716b8323cf644dc/types_tqdm-4.67.0.20250809.tar.gz", hash = "sha256:02bf7ab91256080b9c4c63f9f11b519c27baaf52718e5fdab9e9606da168d500", size = 17200, upload-time = "2025-08-09T03:17:43.489Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/7b/996a534691afd516f60fa3ad3f4101b38f7222fff6c1b12f508a4c817695/types_tqdm-4.67.0.20250513-py3-none-any.whl", hash = "sha256:73d2bdac28bab49235d8660aece6c415636a0fb406f7a24b39737dfc6bf6a5dd", size = 24060, upload-time = "2025-05-13T03:06:16.241Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/13/3ff0781445d7c12730befce0fddbbc7a76e56eb0e7029446f2853238360a/types_tqdm-4.67.0.20250809-py3-none-any.whl", hash = "sha256:1a73053b31fcabf3c1f3e2a9d5ecdba0f301bde47a418cd0e0bdf774827c5c57", size = 24020, upload-time = "2025-08-09T03:17:42.453Z" },
 ]
 
 [[package]]
