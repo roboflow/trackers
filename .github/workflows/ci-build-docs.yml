@@ -1,4 +1,4 @@
-name: 🧪 Docs Test WorkFlow 📚
+name: Docs Test WorkFlow 📚
 
 on:
   pull_request:
