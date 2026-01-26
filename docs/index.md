@@ -44,9 +44,8 @@ comments: true
         <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
         <td>77.8</td>
         <td>2021</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
+        <td>✅</td>
+        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>      </tr>
       <tr>
         <td>OC-SORT</td>
         <td><a href="https://arxiv.org/abs/2203.14360"><img src="https://img.shields.io/badge/arXiv-2203.14360-b31b1b.svg" alt="arXiv"></a></td>
