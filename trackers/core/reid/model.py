@@ -67,18 +67,25 @@ def _initialize_reid_model_from_timm(
     return cls(model, device, transforms, model_metadata)
 
 
-def _initialize_reid_model_from_checkpoint(cls, checkpoint_path: str):
-    state_dict, config = load_safetensors_checkpoint(checkpoint_path)
+def _initialize_reid_model_from_checkpoint(cls, checkpoint_path: str, config_path: str):
+    state_dict, config = load_safetensors_checkpoint(checkpoint_path, config_path)
+    model_name = config.get("architecture")
+    if model_name is None:
+        raise ValueError(
+            f"The config at {config_path} is missing the 'architecture' key."
+        )
+    init_kwargs = {}
+    init_kwargs["pretrained"] = False
     reid_model_instance = _initialize_reid_model_from_timm(
-        cls, **config["model_metadata"]
+        cls, model_name_or_checkpoint_path=model_name, device="auto", **init_kwargs
     )
-    if config["projection_dimension"]:
+    if config.get("projection_dimension"):
         reid_model_instance._add_projection_layer(
-            projection_dimension=config["projection_dimension"]
+            projection_dimension=config.get("projection_dimension")
         )
     for k, v in state_dict.items():
-        state_dict[k].to(reid_model_instance.device)
-    reid_model_instance.backbone_model.load_state_dict(state_dict)
+        state_dict[k] = v.to(reid_model_instance.device)
+    reid_model_instance.backbone_model.load_state_dict(state_dict, strict=False)
     return reid_model_instance
 
 
@@ -122,6 +129,7 @@ class ReIDModel:
     def from_timm(
         cls,
         model_name_or_checkpoint_path: str,
+        config_path: Optional[str] = None,
         device: Optional[str] = "auto",
         get_pooled_features: bool = True,
         **kwargs,
@@ -134,6 +142,8 @@ class ReIDModel:
             model_name_or_checkpoint_path (str): Name of the timm model to use or
                 path to a safetensors checkpoint. If the exact model name is not
                 found, the closest match from `timm.list_models` will be used.
+            config_path (str): Path to the config file for the local
+                safetensors checkpoint.
             device (str): Device to run the model on.
             get_pooled_features (bool): Whether to get the pooled features from the
                 model or not.
@@ -143,9 +153,13 @@ class ReIDModel:
         Returns:
             ReIDModel: A new instance of `ReIDModel`.
         """
-        if os.path.exists(model_name_or_checkpoint_path):
+        if (
+            config_path is not None
+            and os.path.exists(model_name_or_checkpoint_path)
+            and os.path.exists(config_path)
+        ):
             return _initialize_reid_model_from_checkpoint(
-                cls, model_name_or_checkpoint_path
+                cls, model_name_or_checkpoint_path, config_path
             )
         else:
             return _initialize_reid_model_from_timm(
