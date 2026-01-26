@@ -30,7 +30,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🐍 Install uv and set Python ${{ matrix.python-version }}
+      - name: 🐍 Install uv and set Python 3.10
         uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
         with:
           python-version: "3.10"
