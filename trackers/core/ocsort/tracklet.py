@@ -109,7 +109,7 @@ class OCSORTTracklet:
         self,
     ) -> bool:
         """Determines if the tracklet is considered lost."""
-        return self.time_since_update > 0
+        return self.time_since_update > 1
 
     def re_update(self, bbox: np.ndarray) -> None:
         """Re-updates the tracklet with the virtual trajectory generated out of the line that joins
