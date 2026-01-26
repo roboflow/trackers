@@ -1,4 +1,4 @@
-name: 🔧 Pytest/Test Workflow
+name: Pytest/Test Workflow
 
 on:
   pull_request:
