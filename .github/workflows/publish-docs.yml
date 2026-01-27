@@ -1,4 +1,4 @@
-name: Build and Publish Docs
+name: Docs/Build and Publish
 
 on:
   push:
@@ -24,7 +24,7 @@ permissions:
   pull-requests: write # Required for PR comments
 
 jobs:
-  deploy:
+  docs-build-deploy:
     name: Publish Docs
     runs-on: ubuntu-latest
     timeout-minutes: 10
