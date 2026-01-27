@@ -64,7 +64,7 @@ comments: true
 
 ## Install
 
-You can install and use `trackers` in a [**Python>=3.10**](https://www.python.org/) environment. For detailed installation instructions, including installing from source and setting up a local development environment, check out our [install](how-to/install.md) page.
+You can install and use `trackers` in a [**Python>=3.10**](https://www.python.org/) environment. For detailed installation instructions, including installing from source and setting up a local development environment, check out our [install](learn/install.md) page.
 
 !!! example "Installation"
     [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)

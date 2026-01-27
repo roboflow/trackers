@@ -92,8 +92,9 @@ plugins:
 
 nav:
   - Home: index.md
-  - How to:
-    - Install: how-to/install.md
+  - Learn:
+    - Install: learn/install.md
+    - Benchmarks: learn/benchmarks.md
   - Trackers:
     - SORT: trackers/sort.md
     - ByteTrack: trackers/bytetrack.md

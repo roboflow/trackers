@@ -11,59 +11,9 @@
 [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
 </div>
 
-## Hello
-
-`trackers` is a unified library offering clean room re-implementations of leading multi-object tracking algorithms. Its modular design allows you to easily swap trackers and integrate them with object detectors from various libraries like `inference`, `ultralytics`, or `transformers`.
-
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>Paper</th>
-        <th>Year</th>
-        <th>Status</th>
-        <th>Colab</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td><a href="https://arxiv.org/abs/1602.00763"><img src="https://img.shields.io/badge/arXiv-1602.00763-b31b1b.svg" alt="arXiv"></a></td>
-        <td>2016</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
-        <td>2021</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
-        <td>OC-SORT</td>
-        <td><a href="https://arxiv.org/abs/2203.14360"><img src="https://img.shields.io/badge/arXiv-2203.14360-b31b1b.svg" alt="arXiv"></a></td>
-        <td>2022</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
-      <tr>
-        <td>BoT-SORT</td>
-        <td><a href="https://arxiv.org/abs/2206.14651"><img src="https://img.shields.io/badge/arXiv-2206.14651-b31b1b.svg" alt="arXiv"></a></td>
-        <td>2022</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-https://github.com/user-attachments/assets/eef9b00a-cfe4-40f7-a495-954550e3ef1f
-
 ## Installation
 
-Pip install the `trackers` package in a [**Python>=3.9**](https://www.python.org/) environment.
+Pip install the `trackers` package in a [**Python>=3.10**](https://www.python.org/) environment.
 
 ```bash
 pip install trackers
@@ -77,101 +27,33 @@ pip install trackers
 By installing `trackers` from source, you can explore the most recent features and enhancements that have not yet been officially released. Please note that these updates are still in development and may not be as stable as the latest published release.
 
 ```bash
-pip install git+https://github.com/roboflow/trackers.git
+pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
 ```
 
 </details>
 
-## Benchmarks
+## Supported Trackers & Benchmarks
 
-Performance of the `trackers` on test splits from tracking datasets.
+`trackers` gives you clean, modular re-implementations of leading MOT algorithms released under the permissive **Apache 2.0 license**.
 
-### MOT17
+All numbers below were measured using the official **TrackEval** library across three diverse MOT evaluation datasets (MOT17, SportsMOT, SoccerNet). Table below shows only a selection of the most representative metrics. For full tables (including all metrics on every dataset), detailed dataset descriptions, metric explanations and reproducibility instructions, check out our benchmarks page.
 
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>HOTA</th>
-        <th>IDF1</th>
-        <th>MOTA</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td>58.4</td>
-        <td>69.9</td>
-        <td>67.2</td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td>60.1</td>
-        <td>73.2</td>
-        <td>74.1</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+| Tracker       | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
+|---------------|------------|------------|------------|----------------|----------------|
+| SORT          | 58.4       | 69.9       | 67.2       | 70.9           | 81.6           |
+| **ByteTrack** | **60.1**   | **73.2**   | **74.1**   | **73.0**       | **84.0**       |
+| OC-SORT       | —          | —          | —          | —              | —              |
 
-### SportsMOT
+<details>
+<summary>metric cheat-sheet</summary>
 
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>HOTA</th>
-        <th>IDF1</th>
-        <th>MOTA</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td>70.9</td>
-        <td>68.9</td>
-        <td>95.7</td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td>73.0</td>
-        <td>72.5</td>
-        <td>96.4</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+<br>
 
-### SoccerNet-tracking
+- **HOTA** – overall tracking quality (best single-number comparison across detection & association)  
+- **IDF1** – identity consistency over long periods (crucial for sports analytics, trajectory analysis, re-identification)  
+- **MOTA** – mainly detection coverage & basic frame-to-frame errors (less sensitive to ID switches)
 
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>HOTA</th>
-        <th>IDF1</th>
-        <th>MOTA</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td>81.6</td>
-        <td>76.2</td>
-        <td>95.1</td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td>84.0</td>
-        <td>78.1</td>
-        <td>97.8</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+</details>
 
 ## Quickstart
 
