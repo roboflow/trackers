@@ -108,11 +108,11 @@ class ByteTrackTracker(BaseTracker):
             detections: The latest set of object detections from a frame.
 
         Returns:
-            A copy of the input detections, augmented with assigned `tracker_id` for 
-                each successfully tracked object. Detections not associated with a 
-                track will not have a `tracker_id`. The order of the detections is not 
+            A copy of the input detections, augmented with assigned `tracker_id` for
+                each successfully tracked object. Detections not associated with a
+                track will not have a `tracker_id`. The order of the detections is not
                 guaranteed to be the same as the input detections.
-        """  # noqa: E501
+        """
 
         if len(self.tracks) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
@@ -223,9 +223,9 @@ class ByteTrackTracker(BaseTracker):
         min_similarity_thresh: float,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to tracks based on Similarity (IoU) using the 
-        Jonker-Volgenant algorithm approach with no initialization instead of the 
-        Hungarian algorithm as mentioned in the SORT paper, but it solves the 
+        Associate detections to tracks based on Similarity (IoU) using the
+        Jonker-Volgenant algorithm approach with no initialization instead of the
+        Hungarian algorithm as mentioned in the SORT paper, but it solves the
         assignment problem in an optimal way.
 
         Args:
@@ -233,7 +233,7 @@ class ByteTrackTracker(BaseTracker):
             min_similarity_thresh: Minimum similarity threshold for a valid match.
 
         Returns:
-            Matched indices (list of (tracker_idx, detection_idx)), indices of 
+            Matched indices (list of (tracker_idx, detection_idx)), indices of
                 unmatched tracks, indices of unmatched detections.
         """  # noqa: E501
         matched_indices = []
