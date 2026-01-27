@@ -62,7 +62,7 @@ jobs:
         run: |
           REF_NAME="${{ github.event.inputs.ref }}"
           # If it's a full ref like refs/heads/branch or refs/tags/tag, extract the name
-          CLEAN_REF=$(echo $REF_NAME | sed 's|refs/.*/||')
+          CLEAN_REF=$(echo "$REF_NAME" | sed 's|^refs/[^/]*/||')
           uv run mike deploy --push $CLEAN_REF
 
       - name: 🚀 Deploy Release Docs
