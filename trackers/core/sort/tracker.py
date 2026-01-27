@@ -19,23 +19,23 @@ class SORTTracker(BaseTracker):
     Hungarian algorithm or simple IOU matching for data association.
 
     Args:
-        lost_track_buffer (int): Number of frames to buffer when a track is lost.
+        lost_track_buffer: Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
             improving tracking through occlusions, but may increase the possibility
             of ID switching for objects with similar appearance.
-        frame_rate (float): Frame rate of the video (frames per second).
+        frame_rate: Frame rate of the video (frames per second).
             Used to calculate the maximum time a track can be lost.
-        track_activation_threshold (float): Detection confidence threshold
+        track_activation_threshold: Detection confidence threshold
             for track activation. Only detections with confidence above this
             threshold will create new tracks. Increasing this threshold
             reduces false positives but may miss real objects with low confidence.
-        minimum_consecutive_frames (int): Number of consecutive frames that an object
+        minimum_consecutive_frames: Number of consecutive frames that an object
             must be tracked before it is considered a 'valid' track. Increasing
             `minimum_consecutive_frames` prevents the creation of accidental tracks
             from false detection or double detection, but risks missing shorter
             tracks. Before the tracker is considered valid, it will be assigned
             `-1` as its `tracker_id`.
-        minimum_iou_threshold (float): IOU threshold for associating detections to
+        minimum_iou_threshold: IOU threshold for associating detections to
             existing tracks.
     """
 
@@ -65,13 +65,11 @@ class SORTTracker(BaseTracker):
         Associate detections to trackers based on IOU
 
         Args:
-            iou_matrix (np.ndarray): IOU cost matrix.
-            detection_boxes (np.ndarray): Detected bounding boxes in the
-                form [x1, y1, x2, y2].
+            iou_matrix: IOU cost matrix.
+            detection_boxes: Detected bounding boxes in the form [x1, y1, x2, y2].
 
         Returns:
-            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices,
-                unmatched trackers, unmatched detections.
+            Matched indices, unmatched trackers, unmatched detections.
         """
         matched_indices = []
         unmatched_trackers = set(range(len(self.trackers)))
@@ -102,9 +100,8 @@ class SORTTracker(BaseTracker):
         above threshold.
 
         Args:
-            detections (sv.Detections): The latest set of object detections.
-            detection_boxes (np.ndarray): Detected bounding boxes in the
-                form [x1, y1, x2, y2].
+            detections: The latest set of object detections.
+            detection_boxes: Detected bounding boxes in the form [x1, y1, x2, y2].
         """
         for detection_idx in unmatched_detections:
             if (
@@ -124,12 +121,12 @@ class SORTTracker(BaseTracker):
         trackers for unmatched high-confidence detections.
 
         Args:
-            detections (sv.Detections): The latest set of object detections from a frame.
+            detections: The latest set of object detections from a frame.
 
         Returns:
-            sv.Detections: A copy of the input detections, augmented with assigned
-                `tracker_id` for each successfully tracked object. Detections not
-                associated with a track will not have a `tracker_id`.
+            A copy of the input detections, augmented with assigned `tracker_id` for 
+                each successfully tracked object. Detections not associated with a 
+                track will not have a `tracker_id`.
         """  # noqa: E501
 
         if len(self.trackers) == 0 and len(detections) == 0:

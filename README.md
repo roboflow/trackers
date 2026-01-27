@@ -9,7 +9,7 @@ https://github.com/user-attachments/assets/eef9b00a-cfe4-40f7-a495-954550e3ef1f
 
 ## Install
 
-Pip install the `trackers` package in a [**Python>=3.10**](https://www.python.org/) environment.
+You can install and use `trackers` in a [**Python>=3.10**](https://www.python.org/) environment. For detailed installation instructions, including installing from source and setting up a local development environment, check out our [install](https://trackers.roboflow.com/develop/learn/install/) page.
 
 ```bash
 pip install trackers
@@ -30,7 +30,7 @@ pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
 
 ## Tracking Algorithms
 
-Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the benchmarks page.
+Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the [benchmarks](https://trackers.roboflow.com/develop/learn/benchmarks/) page.
 
 |   Tracker    | Trackers package class | MOT17<br><small>HOTA</small> | MOT17<br><small>IDF1</small> | MOT17<br><small>MOTA</small> | SportsMOT<br><small>HOTA</small> | SoccerNet<br><small>HOTA</small> |
 |:------------:|:----------------------:|:----------------------------:|:----------------------------:|:----------------------------:|:--------------------------------:|:--------------------------------:|

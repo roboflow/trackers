@@ -24,26 +24,26 @@ class ByteTrackTracker(BaseTracker):
     data association.
 
     Args:
-        lost_track_buffer (int): Number of frames to buffer when a track is lost.
+        lost_track_buffer: Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
             improving tracking through occlusions, but may increase the possibility
             of ID switching for objects that disappear.
-        frame_rate (float): Frame rate of the video (frames per second).
+        frame_rate: Frame rate of the video (frames per second).
             Used to calculate the maximum time a track can be lost.
-        track_activation_threshold (float): Detection confidence threshold
+        track_activation_threshold: Detection confidence threshold
             for track activation. Only detections with confidence above this
             threshold will create new tracks. Increasing this threshold may
             reduce false positives but may miss real objects with low confidence.
-        minimum_consecutive_frames (int): Number of consecutive frames that an object
+        minimum_consecutive_frames: Number of consecutive frames that an object
             must be tracked before it is considered a 'valid'/'active/ track. Increasing
             `minimum_consecutive_frames` prevents the creation of accidental tracks
             from false detection or double detection, but risks missing shorter
             tracks. Before the tracker is considered valid, it will be assigned
             `-1` as its `tracker_id`.
-        minimum_iou_threshold (float): IoU threshold for associating detections to existing tracks.
+        minimum_iou_threshold: IoU threshold for associating detections to existing tracks.
             Prevents the association of lower IoU than the threshold between boxes and tracks.
             A higher value will only associate boxes that have more overlapping area.
-        high_conf_det_threshold (float): threshold for assigning detections to high probability class.
+        high_conf_det_threshold: threshold for assigning detections to high probability class.
             A higher value will classify only higher confidence/probability detections as 'high probability'
             per the ByteTrack algorithm, which are used in the first similarity step of
             the algorithm.
@@ -105,13 +105,13 @@ class ByteTrackTracker(BaseTracker):
         tracks for unmatched high-confidence detections.
 
         Args:
-            detections (sv.Detections): The latest set of object detections from a frame.
+            detections: The latest set of object detections from a frame.
 
         Returns:
-            sv.Detections: A copy of the input detections, augmented with assigned
-                `tracker_id` for each successfully tracked object. Detections not
-                associated with a track will not have a `tracker_id`. The order of
-                the detections is not guaranteed to be the same as the input detections.
+            A copy of the input detections, augmented with assigned `tracker_id` for 
+                each successfully tracked object. Detections not associated with a 
+                track will not have a `tracker_id`. The order of the detections is not 
+                guaranteed to be the same as the input detections.
         """  # noqa: E501
 
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -197,13 +197,12 @@ class ByteTrackTracker(BaseTracker):
         based on the `self.high_conf_det_threshold`.
 
         Args:
-            detections (sv.Detections): The input detections with confidence scores.
+            detections: The input detections with confidence scores.
 
         Returns:
-            tuple[sv.Detections, sv.Detections]: A tuple containing two
-                sv.Detections objects: the first for high-confidence detections
-                (confidence >= threshold) and the second for low-confidence detections
-                (confidence < threshold).
+            A tuple containing two `sv.Detections objects`: the first for
+                high-confidence detections `(confidence >= threshold)` and the second
+                for low-confidence detections `(confidence < threshold)`.
         """
         # Check if confidence scores exist before comparing
         if detections.confidence is not None:
@@ -224,17 +223,18 @@ class ByteTrackTracker(BaseTracker):
         min_similarity_thresh: float,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to tracks based on Similarity (IoU) using the
-        Jonker-Volgenant algorithm approach with no initialization instead of the Hungarian algorithm as mentioned in the SORT paper, but
-        it solves the assignment problem in an optimal way.
+        Associate detections to tracks based on Similarity (IoU) using the 
+        Jonker-Volgenant algorithm approach with no initialization instead of the 
+        Hungarian algorithm as mentioned in the SORT paper, but it solves the 
+        assignment problem in an optimal way.
 
         Args:
-            similarity_matrix (np.ndarray): Similarity matrix between tracks (rows) and detections (columns).
-            min_similarity_thresh (float): Minimum similarity threshold for a valid match.
+            similarity_matrix: Similarity matrix between tracks (rows) and detections (columns).
+            min_similarity_thresh: Minimum similarity threshold for a valid match.
 
         Returns:
-            tuple[list[tuple[int, int]], set[int], set[int]]: Matched indices (list of (tracker_idx, detection_idx)),
-                indices of unmatched tracks, indices of unmatched detections.
+            Matched indices (list of (tracker_idx, detection_idx)), indices of 
+                unmatched tracks, indices of unmatched detections.
         """  # noqa: E501
         matched_indices = []
         n_tracks, n_detections = similarity_matrix.shape
@@ -265,10 +265,10 @@ class ByteTrackTracker(BaseTracker):
             append detections to updated_detections detections.
 
         Args:
-            detections (sv.Detections): Current detections.
-            detection_boxes (np.ndarray): Bounding boxes for detections.
-            unmatched_detections (set[int]): Indices of unmatched detections.
-            updated_detections (list[sv.Detections]): List with all the detections
+            detections: Current detections.
+            detection_boxes: Bounding boxes for detections.
+            unmatched_detections: Indices of unmatched detections.
+            updated_detections: List with all the detections
 
         """
         for detection_idx in unmatched_detections:
@@ -304,11 +304,11 @@ class ByteTrackTracker(BaseTracker):
             and unmatched tracks/detections. Is used for step 1 and 2 of the BYTE algorithm.
 
         Args:
-            detections (sv.Detections): The set of object detections.
-            tracks (list[ByteTrackKalmanBoxTracker]): The list of tracks that will be matched to the detections.
+            detections: The set of object detections.
+            tracks: The list of tracks that will be matched to the detections.
 
         Returns:
-            tuple[list[tuple[int, int]], set[int], set[int]]: A tuple containing:
+            A tuple containing:
                 - matched_indices: A list of (tracker_idx, detection_idx) pairs.
                 - unmatched_tracks_indices: A set of indices for tracks that
                   were not matched.
