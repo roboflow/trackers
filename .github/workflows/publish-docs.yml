@@ -56,7 +56,7 @@ jobs:
         run: uv run mike deploy --push develop
 
       - name: 🚀 Deploy Custom Ref Docs
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.ref != 'develop'
+        if: github.event_name == 'workflow_dispatch'
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
         run: |
