@@ -24,7 +24,7 @@ class OCSORTTracklet:
         previous_to_last_observation (np.ndarray): The bounding box observed before the last one.
         kalman_filter_state_before_being_lost (np.ndarray): The Kalman filter state before the tracklet was lost.
         kalman_filter_parameters_before_being_lost (dict):  The Kalman filter parameters before the tracklet was lost.
-        
+
     """
 
     count_id: int = 0
