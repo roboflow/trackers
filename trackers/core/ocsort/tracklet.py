@@ -136,7 +136,7 @@ class OCSORTTracklet:
         self.kalman_filter.set_parameters(
             **self.kalman_filter_parameters_before_being_lost
         )
-        bbox_xywh = xyxy_to_xywh(bbox)
+        bbox_xywh = xyxy_to_xywh(np.array([bbox]))[0]
         last_observation_xywh = xyxy_to_xywh(self.last_observation)
         for i in range(1, self.time_since_update + 1):
             # Interpolate linearly between last_observation and bbox
