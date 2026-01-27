@@ -1,4 +1,5 @@
 import numpy as np
+from supervision import xyxy_to_xywh
 
 from trackers.utils.bbox_conversions import (
     convert_bbox_to_state_rep,
@@ -24,8 +25,7 @@ class OCSORTTracklet:
         previous_to_last_observation (np.ndarray): The bounding box observed before the last one.
         kalman_filter_state_before_being_lost (np.ndarray): The Kalman filter state before the tracklet was lost.
         kalman_filter_parameters_before_being_lost (dict):  The Kalman filter parameters before the tracklet was lost.
-
-    """
+    """  # noqa: E501
 
     count_id: int = 0
 
@@ -136,16 +136,22 @@ class OCSORTTracklet:
         self.kalman_filter.set_parameters(
             **self.kalman_filter_parameters_before_being_lost
         )
-        last_observation = convert_bbox_to_state_rep(self.last_observation)
-        bbox = convert_bbox_to_state_rep(bbox)
+        bbox_xywh = xyxy_to_xywh(bbox)
+        last_observation_xywh = xyxy_to_xywh(self.last_observation)
         for i in range(1, self.time_since_update + 1):
             # Interpolate linearly between last_observation and bbox
-            virtual_bbox = last_observation + (bbox - last_observation) * (
-                i / (self.time_since_update )
-            )
-            virtual_bbox = convert_bbox_to_state_rep(virtual_bbox)
+            virtual_bbox_xywh = last_observation_xywh + (
+                bbox_xywh - last_observation_xywh
+            ) * (i / (self.time_since_update))
+            virtual_bbox_xysa = np.copy(virtual_bbox_xywh)
+            s = virtual_bbox_xywh[2] * virtual_bbox_xywh[3]  # w*h
+            virtual_bbox_xysa[2] = s
+            virtual_bbox_xysa[3] = (
+                virtual_bbox_xywh[2] / virtual_bbox_xywh[3]
+            )  # w/h = r
+
             self.kalman_filter.predict()
-            self.kalman_filter.update(virtual_bbox)
+            self.kalman_filter.update(virtual_bbox_xysa)
 
         self.previous_to_last_observation = self.last_observation
         self.last_observation = bbox
