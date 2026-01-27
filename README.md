@@ -32,11 +32,11 @@ pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
 
 Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the [benchmarks](https://trackers.roboflow.com/develop/learn/benchmarks/) page.
 
-|   Tracker    |                        Trackers package class                                   | MOT17<br><small>HOTA</small> | MOT17<br><small>IDF1</small> | MOT17<br><small>MOTA</small> | SportsMOT<br><small>HOTA</small> | SoccerNet<br><small>HOTA</small> |
-|:------------:|:-------------------------------------------------------------------------------:|:----------------------------:|:----------------------------:|:----------------------------:|:--------------------------------:|:--------------------------------:|
-|     SORT     |      [`SORTTracker`](https://trackers.roboflow.com/develop/trackers/sort/)      |            58.4              |            69.9              |            67.2              |              70.9                |              81.6                |
-|  ByteTrack   | [`ByteTrackTracker`](https://trackers.roboflow.com/develop/trackers/bytetrack/) |          **60.1**            |          **73.2**            |          **74.1**            |            **73.0**              |            **84.0**              |
-|   OC-SORT    |                                 `OCSORTTracker`                                 |              —               |              —               |              —               |                —                 |                —                 |
+|   Algorithm   |                              Trackers API                                       | MOT17 HOTA | MOT17 IDF1  | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
+|:-------------:|:-------------------------------------------------------------------------------:|:----------:|:-----------:|:----------:|:--------------:|:--------------:|
+|     SORT      |      [`SORTTracker`](https://trackers.roboflow.com/develop/trackers/sort/)      |    58.4    |    69.9     |    67.2    |      70.9      |      81.6      |
+|   ByteTrack   | [`ByteTrackTracker`](https://trackers.roboflow.com/develop/trackers/bytetrack/) |  **60.1**  |  **73.2**   |  **74.1**  |    **73.0**    |    **84.0**    |
+|    OC-SORT    |                                 `OCSORTTracker`                                 |     —      |      —      |     —      |       —        |       —        |
 
 ## Quickstart
 
