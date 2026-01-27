@@ -124,10 +124,10 @@ class SORTTracker(BaseTracker):
             detections: The latest set of object detections from a frame.
 
         Returns:
-            A copy of the input detections, augmented with assigned `tracker_id` for 
-                each successfully tracked object. Detections not associated with a 
+            A copy of the input detections, augmented with assigned `tracker_id` for
+                each successfully tracked object. Detections not associated with a
                 track will not have a `tracker_id`.
-        """  # noqa: E501
+        """
 
         if len(self.trackers) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
