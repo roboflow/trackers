@@ -5,7 +5,9 @@
 
 Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms released under the permissive Apache 2.0 license. You combine them with any detection model you already use.
 
-## Installation
+https://github.com/user-attachments/assets/eef9b00a-cfe4-40f7-a495-954550e3ef1f
+
+## Install
 
 Pip install the `trackers` package in a [**Python>=3.10**](https://www.python.org/) environment.
 
@@ -26,32 +28,32 @@ pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
 
 </details>
 
-## Trackers
+## Tracking Algorithms
 
 Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the benchmarks page.
 
-|   Tracker    | Trackers package class | MOT17<br>HOTA | MOT17<br>IDF1 | MOT17<br>MOTA | SportsMOT<br>HOTA | SoccerNet<br>HOTA |
-|:------------:|:----------------------:|:-------------:|:-------------:|:-------------:|:-----------------:|:-----------------:|
-|     SORT     |     `SORTTracker`      |     58.4      |     69.9      |     67.2      |       70.9        |       81.6        |
-|  ByteTrack   |   `ByteTrackTracker`   |   **60.1**    |   **73.2**    |   **74.1**    |     **73.0**      |     **84.0**      |
-|   OC-SORT    |    `OCSORTTracker`     |       —       |       —       |       —       |         —         |         —         |
+|   Tracker    | Trackers package class | MOT17<br><small>HOTA</small> | MOT17<br><small>IDF1</small> | MOT17<br><small>MOTA</small> | SportsMOT<br><small>HOTA</small> | SoccerNet<br><small>HOTA</small> |
+|:------------:|:----------------------:|:----------------------------:|:----------------------------:|:----------------------------:|:--------------------------------:|:--------------------------------:|
+|     SORT     |     `SORTTracker`      |            58.4              |            69.9              |            67.2              |              70.9                |              81.6                |
+|  ByteTrack   |   `ByteTrackTracker`   |          **60.1**            |          **73.2**            |          **74.1**            |            **73.0**              |            **84.0**              |
+|   OC-SORT    |    `OCSORTTracker`     |              —               |              —               |              —               |                —                 |                —                 |
 
 ## Quickstart
 
 With a modular design, `trackers` lets you combine object detectors from different libraries with the tracker of your choice. Here's how you can use `SORTTracker` with various detectors:
 
-
 ```python
 import supervision as sv
-from trackers import SORTTracker
+from trackers import ByteTrackTracker
 from rfdetr import RFDETRMedium
 
-tracker = SORTTracker()
-model = RFDETRMedium(device="cuda")
+tracker = ByteTrackTracker()
+model = RFDETRMedium()
+
 annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
 def callback(frame, _):
-    detections = model.predict(frame, threshold=NMS_THRESHOLD)
+    detections = model.predict(frame)
     detections = tracker.update(detections)
     return annotator.annotate(frame, detections, labels=detections.tracker_id)
 

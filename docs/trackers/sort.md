@@ -13,40 +13,52 @@ SORT (Simple Online and Realtime Tracking) is a lean, tracking-by-detection meth
 
 ## Benchmarks
 
-Performance on test splits from tracking datasets.
+|  Dataset  | HOTA | IDF1 | MOTA |
+|:---------:|:----:|:----:|:----:|
+|   MOT17   | 58.4 | 69.9 | 67.2 |
+| SportsMOT | 70.9 | 68.9 | 95.7 |
+| SoccerNet | 81.6 | 76.2 | 95.1 |
 
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Dataset</th>
-        <th>HOTA</th>
-        <th>IDF1</th>
-        <th>MOTA</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>MOT17</td>
-        <td>58.4</td>
-        <td>69.9</td>
-        <td>67.2</td>
-      </tr>
-      <tr>
-        <td>SportsMOT</td>
-        <td>70.9</td>
-        <td>68.9</td>
-        <td>95.7</td>
-      </tr>
-      <tr>
-        <td>SoccerNet-tracking</td>
-        <td>81.6</td>
-        <td>76.2</td>
-        <td>95.1</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+## Run on video, webcam, or RTSP stream
+
+These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.
+
+=== "video"
+
+    ```python
+    import cv2
+    import supervision as sv
+    from rfdetr import RFDETRMedium
+    from trackers import SORTTracker
+    
+    tracker = SORTTracker()
+    model = RFDETRMedium()
+    
+    box_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
+    
+    video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
+    if not video_capture.isOpened():
+        raise RuntimeError("Failed to open video source")
+    
+    while True:
+        success, frame_bgr = video_capture.read()
+        if not success:
+            break
+    
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        detections = model.predict(frame_rgb, threshold=0.5)
+    
+        annotated_frame = sv.BoxAnnotator().annotate(frame_bgr, detections)
+        annotated_frame = sv.LabelAnnotator().annotate(annotated_frame, detections, labels=detections.tracker_id)
+    
+        cv2.imshow("RF-DETR + ByteTrack", annotated_frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+    
+    video_capture.release()
+    cv2.destroyAllWindows()
+    ```
 
 ## Examples
 
