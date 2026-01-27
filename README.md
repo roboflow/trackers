@@ -49,8 +49,8 @@ All numbers below were measured using the official **TrackEval** library across 
 
 <br>
 
-- **HOTA** – overall tracking quality (best single-number comparison across detection & association)  
-- **IDF1** – identity consistency over long periods (crucial for sports analytics, trajectory analysis, re-identification)  
+- **HOTA** – overall tracking quality (best single-number comparison across detection & association)
+- **IDF1** – identity consistency over long periods (crucial for sports analytics, trajectory analysis, re-identification)
 - **MOTA** – mainly detection coverage & basic frame-to-frame errors (less sensitive to ID switches)
 
 </details>
