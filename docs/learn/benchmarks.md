@@ -24,9 +24,9 @@ Large-scale MOT dataset targeting sports analysis, containing 240 video clips (b
 | SORT      | 70.9     | 68.9     | 95.7     |
 | ByteTrack | **73.0** | **72.5** | **96.4** |
 
-### SoccerNet
+### SoccerNet-tracking
 
-Specialized soccer MOT dataset derived from SoccerNet broadcast videos, containing 200 short 30-second clips + one full 45-minute half-time sequence. Focuses on professional soccer matches with main camera view, including players (both teams), goalkeepers, referees, and the ball; features long sequences with occlusions by players, fast directional changes, and non-linear trajectories. Particularly useful for evaluating long-term association and robustness to crowded penalty areas or midfield clusters.
+Specialized soccer MOT dataset derived from SoccerNet-tracking broadcast videos, containing 200 short 30-second clips + one full 45-minute half-time sequence. Focuses on professional soccer matches with main camera view, including players (both teams), goalkeepers, referees, and the ball; features long sequences with occlusions by players, fast directional changes, and non-linear trajectories. Particularly useful for evaluating long-term association and robustness to crowded penalty areas or midfield clusters.
 
 | Tracker    | HOTA     | IDF1     | MOTA     |
 |------------|----------|----------|----------|
@@ -55,7 +55,7 @@ Use MOTA when detection coverage represents the main objective and identity stab
 
 ## Reproducibility
 
-All reported numbers were obtained using the official [TrackEval](https://github.com/JonathonLuiten/TrackEval) library with public MOT Challenge detections for MOT17 and dataset-provided detections for SportsMOT and SoccerNet.
+All reported numbers were obtained using the official TrackEval library. We used YOLOX detections for MOT17 (provided by the ByteTrack authors), YOLOX detections trained on SportsMOT (provided by the SportsMOT dataset authors), and dataset-provided oracle detections (perfect detections) for SoccerNet-tracking.
 
 We are currently working on releasing dedicated benchmarking utilities in the `trackers` package that will allow users to easily reproduce these exact numbers, run evaluation on custom trackers using the same protocol, and benchmark their own models on these datasets with standardized splits and settings.
 
