@@ -11,7 +11,21 @@ class OCSORTTracklet:
     """
     The `OCSORTTracklet` class represents the internals of a single
     tracked object (bounding box), with a Kalman filter to predict and update
-    its position."""
+    its position.
+    Attributes:
+        age (int): Age of the tracklet in frames.
+        kalman_filter (KalmanFilter): The Kalman filter instance for this tracklet.
+        tracker_id (int): Unique identifier for the tracker.
+        state_transition_matrix (np.ndarray): State transition matrix for the Kalman filter. (referred as F)
+        number_of_successful_consecutive_updates (int): Number of times the object has been
+            updated successfully in a row.
+        time_since_update (int): Number of frames since the last update.
+        last_observation (np.ndarray): The last observed bounding box.
+        previous_to_last_observation (np.ndarray): The bounding box observed before the last one.
+        kalman_filter_state_before_being_lost (np.ndarray): The Kalman filter state before the tracklet was lost.
+        kalman_filter_parameters_before_being_lost (dict):  The Kalman filter parameters before the tracklet was lost.
+        
+    """
 
     count_id: int = 0
 
@@ -122,9 +136,11 @@ class OCSORTTracklet:
         self.kalman_filter.set_parameters(
             **self.kalman_filter_parameters_before_being_lost
         )
+        last_observation = convert_bbox_to_state_rep(self.last_observation)
+        bbox = convert_bbox_to_state_rep(bbox)
         for i in range(1, self.time_since_update + 1):
             # Interpolate linearly between last_observation and bbox
-            virtual_bbox = self.last_observation + (bbox - self.last_observation) * (
+            virtual_bbox = last_observation + (bbox - last_observation) * (
                 i / (self.time_since_update )
             )
             virtual_bbox = convert_bbox_to_state_rep(virtual_bbox)
