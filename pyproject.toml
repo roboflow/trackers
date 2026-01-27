@@ -1,6 +1,6 @@
 [project]
 name = "trackers"
-version = "2.1.0"
+version = "2.1.0rc0"
 description = "A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms"
 readme = "README.md"
 maintainers = [
@@ -35,12 +35,8 @@ classifiers = [
 keywords = ["tracking", "mot", "sort", "bytetrack", "machine-learning", "deep-learning", "vision", "ML", "DL", "AI", "DETR", "YOLO", "Roboflow"]
 
 dependencies = [
-    "aiofiles>=24.1.0",
-    "aiohttp>=3.11.16",
     "numpy>=2.0.2",
     "supervision>=0.26.1",
-    "tqdm>=4.67.1",
-    "validators>=0.34.0",
     "scipy>=1.13.1",
 ]
 
@@ -53,14 +49,11 @@ dev = [
     "pre-commit>=4.2.0",
 ]
 docs = [
-    "jupyter>=1.1.1",
     "mkdocs>=1.6.1",
     "mkdocs-glightbox>=0.4.0",
-    "mkdocs-jupyter>=0.25.1",
     "mkdocs-material>=9.6.11",
     "mkdocs-minify-plugin>=0.8.0",
     "mkdocstrings-python>=1.10.9, <2.0.0", # todo: breaking changes in 2.x
-    "mkdocstrings-python>=1.16.10",
     "mike>=2.1.3",
 ]
 

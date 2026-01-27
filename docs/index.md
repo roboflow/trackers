@@ -24,7 +24,6 @@ comments: true
       <tr>
         <th>Tracker</th>
         <th>Paper</th>
-        <th>MOTA</th>
         <th>Year</th>
         <th>Status</th>
         <th>Colab</th>
@@ -34,7 +33,6 @@ comments: true
       <tr>
         <td>SORT</td>
         <td><a href="https://arxiv.org/abs/1602.00763"><img src="https://img.shields.io/badge/arXiv-1602.00763-b31b1b.svg" alt="arXiv"></a></td>
-        <td>74.6</td>
         <td>2016</td>
         <td>✅</td>
         <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
@@ -42,14 +40,13 @@ comments: true
       <tr>
         <td>ByteTrack</td>
         <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
-        <td>77.8</td>
         <td>2021</td>
         <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>      </tr>
+        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
+      </tr>
       <tr>
         <td>OC-SORT</td>
         <td><a href="https://arxiv.org/abs/2203.14360"><img src="https://img.shields.io/badge/arXiv-2203.14360-b31b1b.svg" alt="arXiv"></a></td>
-        <td>75.9</td>
         <td>2022</td>
         <td>🚧</td>
         <td>🚧</td>
@@ -57,7 +54,6 @@ comments: true
       <tr>
         <td>BoT-SORT</td>
         <td><a href="https://arxiv.org/abs/2206.14651"><img src="https://img.shields.io/badge/arXiv-2206.14651-b31b1b.svg" alt="arXiv"></a></td>
-        <td>77.8</td>
         <td>2022</td>
         <td>🚧</td>
         <td>🚧</td>
@@ -66,20 +62,18 @@ comments: true
   </table>
 </div>
 
-# Installation
+## Install
 
-You can install `trackers` in a [**Python>=3.10**](https://www.python.org/) environment.
+You can install and use `trackers` in a [**Python>=3.10**](https://www.python.org/) environment. For detailed installation instructions, including installing from source and setting up a local development environment, check out our [install](how-to/install.md) page.
 
-!!! example "Basic Installation"
+!!! example "Installation"
+    [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
+    [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
+    [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
 
     === "pip"
         ```bash
         pip install trackers
-        ```
-
-    === "poetry"
-        ```bash
-        poetry add trackers
         ```
 
     === "uv"
@@ -87,37 +81,96 @@ You can install `trackers` in a [**Python>=3.10**](https://www.python.org/) envi
         uv pip install trackers
         ```
 
-!!! example "Hardware Acceleration"
+## Benchmarks
 
-    === "CPU"
-        ```bash
-        pip install "trackers[cpu]"
-        ```
+Performance of the `trackers` on test splits from tracking datasets.
 
-    === "CUDA 11.8"
-        ```bash
-        pip install "trackers[cu118]"
-        ```
+### MOT17
 
-    === "CUDA 12.4"
-        ```bash
-        pip install "trackers[cu124]"
-        ```
+<div align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Tracker</th>
+        <th>HOTA</th>
+        <th>IDF1</th>
+        <th>MOTA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SORT</td>
+        <td>58.4</td>
+        <td>69.9</td>
+        <td>67.2</td>
+      </tr>
+      <tr>
+        <td>ByteTrack</td>
+        <td>60.1</td>
+        <td>73.2</td>
+        <td>74.1</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
-    === "CUDA 12.6"
-        ```bash
-        pip install "trackers[cu126]"
-        ```
+### SportsMOT
 
-    === "ROCm 6.1"
-        ```bash
-        pip install "trackers[rocm61]"
-        ```
+<div align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Tracker</th>
+        <th>HOTA</th>
+        <th>IDF1</th>
+        <th>MOTA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SORT</td>
+        <td>70.9</td>
+        <td>68.9</td>
+        <td>95.7</td>
+      </tr>
+      <tr>
+        <td>ByteTrack</td>
+        <td>73.0</td>
+        <td>72.5</td>
+        <td>96.4</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
-    === "ROCm 6.2.4"
-        ```bash
-        pip install "trackers[rocm624]"
-        ```
+### SoccerNet-tracking
+
+<div align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Tracker</th>
+        <th>HOTA</th>
+        <th>IDF1</th>
+        <th>MOTA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SORT</td>
+        <td>81.6</td>
+        <td>76.2</td>
+        <td>95.1</td>
+      </tr>
+      <tr>
+        <td>ByteTrack</td>
+        <td>84.0</td>
+        <td>78.1</td>
+        <td>97.8</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 # Quickstart
 
