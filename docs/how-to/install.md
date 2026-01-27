@@ -21,7 +21,7 @@ Trackers supports several installation methods. [Python 3.10](https://devguide.p
         ```bash
         uv pip install trackers
         ```
-        
+
         For uv-managed projects, add Trackers as a project dependency.
 
         ```bash
