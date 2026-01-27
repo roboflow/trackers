@@ -140,8 +140,13 @@ class OCSORTTracklet:
         bbox = convert_bbox_to_state_rep(bbox)
         for i in range(1, self.time_since_update + 1):
             # Interpolate linearly between last_observation and bbox
+<<<<<<< HEAD
             virtual_bbox = last_observation + (bbox - last_observation) * (
                 i / (self.time_since_update )
+=======
+            virtual_bbox = self.last_observation + (bbox - self.last_observation) * (
+                i / (self.time_since_update)
+>>>>>>> a02150ef67098b13d93beabb4be324d9d0213e11
             )
             virtual_bbox = convert_bbox_to_state_rep(virtual_bbox)
             self.kalman_filter.predict()
