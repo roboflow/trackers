@@ -2,8 +2,7 @@ name: Build and Publish Docs
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, develop]
   workflow_dispatch:
   release:
     types: [published]
@@ -11,7 +10,7 @@ on:
 # Ensure only one concurrent deployment
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref}}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 # Restrict permissions by default
 permissions:
@@ -30,7 +29,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🐍 Install uv and set Python 3.10
+      - name: 🐍 Install uv and set Python
         uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
         with:
           python-version: "3.10"
@@ -45,7 +44,7 @@ jobs:
           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
       - name: 🚀 Deploy Development Docs
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/develop') || github.event_name == 'workflow_dispatch'
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
         run: uv run mike deploy --push develop
