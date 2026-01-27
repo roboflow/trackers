@@ -50,33 +50,33 @@ With a modular design, Trackers lets you combine object detectors from different
     import supervision as sv
     from rfdetr import RFDETRMedium
     from trackers import ByteTrack
-    
+
     tracker = ByteTrack()
     model = RFDETRMedium()
-    
+
     box_annotator = sv.BoxAnnotator()
     label_annotator = sv.LabelAnnotator()
-    
+
     video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
     if not video_capture.isOpened():
         raise RuntimeError("Failed to open video source")
-    
+
     while True:
         success, frame_bgr = video_capture.read()
         if not success:
             break
-    
+
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         detections = model.predict(frame_rgb)
         detections = tracker.update(detections)
-    
+
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
-    
+
         cv2.imshow("RF-DETR + ByteTrack", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-    
+
     video_capture.release()
     cv2.destroyAllWindows()
     ```
@@ -88,34 +88,34 @@ With a modular design, Trackers lets you combine object detectors from different
     import supervision as sv
     from inference import get_model
     from trackers import ByteTrack
-    
+
     tracker = ByteTrack()
     model = get_model(model_id="rfdetr-medium")
-    
+
     box_annotator = sv.BoxAnnotator()
     label_annotator = sv.LabelAnnotator()
-    
+
     video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
     if not video_capture.isOpened():
         raise RuntimeError("Failed to open video source")
-    
+
     while True:
         success, frame_bgr = video_capture.read()
         if not success:
             break
-    
+
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         result = model.infer(frame_rgb)[0]
         detections = sv.Detections.from_inference(result)
         detections = tracker.update(detections)
-    
+
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
-    
+
         cv2.imshow("Inference + ByteTrack", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-    
+
     video_capture.release()
     cv2.destroyAllWindows()
     ```
@@ -127,34 +127,34 @@ With a modular design, Trackers lets you combine object detectors from different
     import supervision as sv
     from ultralytics import YOLO
     from trackers import ByteTrack
-    
+
     tracker = ByteTrack()
     model = YOLO("yolo26m.pt")
-    
+
     box_annotator = sv.BoxAnnotator()
     label_annotator = sv.LabelAnnotator()
-    
+
     video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
     if not video_capture.isOpened():
         raise RuntimeError("Failed to open video source")
-    
+
     while True:
         success, frame_bgr = video_capture.read()
         if not success:
             break
-    
+
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         result = model(frame_rgb)[0]
         detections = sv.Detections.from_ultralytics(result)
         detections = tracker.update(detections)
-    
+
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
-    
+
         cv2.imshow("Ultralytics + ByteTrack", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-    
+
     video_capture.release()
     cv2.destroyAllWindows()
     ```
@@ -167,48 +167,48 @@ With a modular design, Trackers lets you combine object detectors from different
     import supervision as sv
     from trackers import ByteTrack
     from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
-    
+
     tracker = ByteTrack()
     processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
     model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
-    
+
     box_annotator = sv.BoxAnnotator()
     label_annotator = sv.LabelAnnotator()
-    
+
     video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
     if not video_capture.isOpened():
         raise RuntimeError("Failed to open video source")
-    
+
     while True:
         success, frame_bgr = video_capture.read()
         if not success:
             break
-    
+
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         inputs = processor(images=frame_rgb, return_tensors="pt")
         with torch.no_grad():
             outputs = model(**inputs)
-    
+
         h, w = frame_bgr.shape[:2]
         results = processor.post_process_object_detection(
             outputs,
             target_sizes=torch.tensor([[h, w]]),
             threshold=0.5
         )[0]
-    
+
         detections = sv.Detections.from_transformers(
             transformers_results=results,
             id2label=model.config.id2label
         )
         detections = tracker.update(detections)
-    
+
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
-    
+
         cv2.imshow("Transformers + ByteTrack", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-    
+
     video_capture.release()
     cv2.destroyAllWindows()
     ```
