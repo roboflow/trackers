@@ -66,13 +66,17 @@ class OCSORTTracklet:
         self.number_of_successful_consecutive_updates = 1
         # Number of frames since the last update
         self.time_since_update = 0
-        self.kalman_filter_state_before_being_lost = self.kalman_filter.state  # None
+        self.save_kalman_filter_state()
+
+    def save_kalman_filter_state(self) -> None:
+        """Saves the current Kalman filter state and parameters."""
+        self.kalman_filter_state_before_being_lost = self.kalman_filter.state.copy()
         self.kalman_filter_parameters_before_being_lost = {
             "H": self.kalman_filter.H.copy(),
             "Q": self.kalman_filter.Q.copy(),
             "R": self.kalman_filter.R.copy(),
             "P": self.kalman_filter.P.copy(),
-        }  # None
+        }
 
     @classmethod
     def get_next_tracker_id(cls) -> int:
@@ -91,14 +95,7 @@ class OCSORTTracklet:
         else:
             self.kalman_filter.update(convert_bbox_to_state_rep(bbox))
             # save the last before being lost KF parameters for re-updating
-            self.kalman_filter_state_before_being_lost = self.kalman_filter.state.copy()
-            # Copying all the time might be slow, is there a better alternative?
-            self.kalman_filter_parameters_before_being_lost = {
-                "H": self.kalman_filter.H.copy(),
-                "Q": self.kalman_filter.Q.copy(),
-                "R": self.kalman_filter.R.copy(),
-                "P": self.kalman_filter.P.copy(),
-            }
+            self.save_kalman_filter_state()
         self.time_since_update = 0
         self.number_of_successful_consecutive_updates += 1
         self.previous_to_last_observation = self.last_observation
