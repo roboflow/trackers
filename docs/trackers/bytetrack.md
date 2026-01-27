@@ -12,7 +12,7 @@ comments: true
 ByteTrack presents a simple and generic association method which overcomes the limitation of only associating high confidence detections. Low score boxes are typically occluded objects, so skipping these objects from association would result in lost and fragmented tracks.
 That's why the proposed method consists of two key steps. The first step will associate the high confidence detections (subject to a threshold) with the existing tracks using Intersection over Union (IoU). The second step will associate the low confidence detections with the tracks that didn't match in the previous step using IoU. In addition to this, we added parametrized thresholds for accepting the matches only if the similarity between the tracked box and the detection is higher than the corresponding threshold. Finally, it starts new tracks with the high confidence detections that didn't match in step 1.
 
-Just like [SORT](../sort/tracker.md), this method combines the Kalman Filter as motion model and the Hungarian algorithm for calculating the associations between the predicted position of the track and the detection. This tracker also keeps the simplicity and efficiency of [SORT](../sort/tracker.md) while improving tracking capabilities for occluded objects, leveraging all detections to enhance multi-object tracking.
+Just like [SORT](sort.md), this method combines the Kalman Filter as motion model and the Hungarian algorithm for calculating the associations between the predicted position of the track and the detection. This tracker also keeps the simplicity and efficiency of [SORT](sort.md) while improving tracking capabilities for occluded objects, leveraging all detections to enhance multi-object tracking.
 
 ## Benchmarks
 
