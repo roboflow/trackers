@@ -24,7 +24,7 @@ class OCSORTTracklet:
         previous_to_last_observation (np.ndarray): The bounding box observed before the last one.
         kalman_filter_state_before_being_lost (np.ndarray): The Kalman filter state before the tracklet was lost.
         kalman_filter_parameters_before_being_lost (dict):  The Kalman filter parameters before the tracklet was lost.
-        
+
     """
 
     count_id: int = 0
@@ -140,13 +140,8 @@ class OCSORTTracklet:
         bbox = convert_bbox_to_state_rep(bbox)
         for i in range(1, self.time_since_update + 1):
             # Interpolate linearly between last_observation and bbox
-<<<<<<< HEAD
             virtual_bbox = last_observation + (bbox - last_observation) * (
                 i / (self.time_since_update )
-=======
-            virtual_bbox = self.last_observation + (bbox - self.last_observation) * (
-                i / (self.time_since_update)
->>>>>>> a02150ef67098b13d93beabb4be324d9d0213e11
             )
             virtual_bbox = convert_bbox_to_state_rep(virtual_bbox)
             self.kalman_filter.predict()
