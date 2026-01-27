@@ -6,61 +6,9 @@ comments: true
 
 <img src="assets/logo-trackers-violet.svg" alt="Trackers Logo" width="200" height="200">
 
-<br>
-
-<a href="https://badge.fury.io/py/trackers"><img src="https://badge.fury.io/py/trackers.svg" alt="version"></a> <a href="https://github.com/roboflow/trackers/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="license"></a> <a href="https://badge.fury.io/py/trackers"><img src="https://img.shields.io/pypi/pyversions/trackers" alt="python-version"></a>
-
-<br>
-
-<a href="https://colab.research.google.com/drive/1VT_FYIe3kborhWrfKKBqqfR0EjQeQNiO?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a> <a href="https://discord.gg/GbfgXGJ8Bk"><img src="https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk" alt="discord"></a>
-
 </div>
 
-`trackers` is a unified library offering clean room re-implementations of leading multi-object tracking algorithms. Its modular design allows you to easily swap trackers and integrate them with object detectors from various libraries like `inference`, `ultralytics`, or `transformers`.
-
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>Paper</th>
-        <th>Year</th>
-        <th>Status</th>
-        <th>Colab</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td><a href="https://arxiv.org/abs/1602.00763"><img src="https://img.shields.io/badge/arXiv-1602.00763-b31b1b.svg" alt="arXiv"></a></td>
-        <td>2016</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
-        <td>2021</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
-        <td>OC-SORT</td>
-        <td><a href="https://arxiv.org/abs/2203.14360"><img src="https://img.shields.io/badge/arXiv-2203.14360-b31b1b.svg" alt="arXiv"></a></td>
-        <td>2022</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
-      <tr>
-        <td>BoT-SORT</td>
-        <td><a href="https://arxiv.org/abs/2206.14651"><img src="https://img.shields.io/badge/arXiv-2206.14651-b31b1b.svg" alt="arXiv"></a></td>
-        <td>2022</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms released under the permissive Apache 2.0 license. You combine them with any detection model you already use.
 
 ## Install
 
@@ -81,98 +29,17 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
         uv pip install trackers
         ```
 
-## Benchmarks
+## Trackers
 
-Performance of the `trackers` on test splits from tracking datasets.
+Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the benchmarks page. For full results, see the [benchmarks](learn/benchmarks.md) page.
 
-### MOT17
+|   Tracker    | Trackers package class | MOT17<br>HOTA | MOT17<br>IDF1 | MOT17<br>MOTA | SportsMOT<br>HOTA | SoccerNet<br>HOTA |
+|:------------:|:----------------------:|:-------------:|:-------------:|:-------------:|:-----------------:|:-----------------:|
+|     SORT     |     `SORTTracker`      |     58.4      |     69.9      |     67.2      |       70.9        |       81.6        |
+|  ByteTrack   |   `ByteTrackTracker`   |   **60.1**    |   **73.2**    |   **74.1**    |     **73.0**      |     **84.0**      |
+|   OC-SORT    |    `OCSORTTracker`     |       —       |       —       |       —       |         —         |         —         |
 
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>HOTA</th>
-        <th>IDF1</th>
-        <th>MOTA</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td>58.4</td>
-        <td>69.9</td>
-        <td>67.2</td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td>60.1</td>
-        <td>73.2</td>
-        <td>74.1</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-### SportsMOT
-
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>HOTA</th>
-        <th>IDF1</th>
-        <th>MOTA</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td>70.9</td>
-        <td>68.9</td>
-        <td>95.7</td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td>73.0</td>
-        <td>72.5</td>
-        <td>96.4</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-### SoccerNet-tracking
-
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>HOTA</th>
-        <th>IDF1</th>
-        <th>MOTA</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td>81.6</td>
-        <td>76.2</td>
-        <td>95.1</td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td>84.0</td>
-        <td>78.1</td>
-        <td>97.8</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-# Quickstart
+## Quickstart
 
 With a modular design, `trackers` lets you combine object detectors from different libraries with the tracker of your choice. Here's how you can use `SORTTracker` with various detectors:
 

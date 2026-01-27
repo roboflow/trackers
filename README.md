@@ -1,15 +1,9 @@
 <div align="center">
     <h1 align="center">trackers</h1>
     <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/main/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
-
-[![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
-[![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
-[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/main/LICENSE.md)
-[![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
-
-[![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1VT_FYIe3kborhWrfKKBqqfR0EjQeQNiO?usp=sharing)
-[![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
 </div>
+
+Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms released under the permissive Apache 2.0 license. You combine them with any detection model you already use.
 
 ## Installation
 
@@ -32,28 +26,15 @@ pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
 
 </details>
 
-## Supported Trackers & Benchmarks
+## Trackers
 
-`trackers` gives you clean, modular re-implementations of leading MOT algorithms released under the permissive **Apache 2.0 license**.
+Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the benchmarks page.
 
-All numbers below were measured using the official **TrackEval** library across three diverse MOT evaluation datasets (MOT17, SportsMOT, SoccerNet). Table below shows only a selection of the most representative metrics. For full tables (including all metrics on every dataset), detailed dataset descriptions, metric explanations and reproducibility instructions, check out our benchmarks page.
-
-| Tracker       | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
-|---------------|------------|------------|------------|----------------|----------------|
-| SORT          | 58.4       | 69.9       | 67.2       | 70.9           | 81.6           |
-| **ByteTrack** | **60.1**   | **73.2**   | **74.1**   | **73.0**       | **84.0**       |
-| OC-SORT       | —          | —          | —          | —              | —              |
-
-<details>
-<summary>metric cheat-sheet</summary>
-
-<br>
-
-- **HOTA** – overall tracking quality (best single-number comparison across detection & association)
-- **IDF1** – identity consistency over long periods (crucial for sports analytics, trajectory analysis, re-identification)
-- **MOTA** – mainly detection coverage & basic frame-to-frame errors (less sensitive to ID switches)
-
-</details>
+|   Tracker    | Trackers package class | MOT17<br>HOTA | MOT17<br>IDF1 | MOT17<br>MOTA | SportsMOT<br>HOTA | SoccerNet<br>HOTA |
+|:------------:|:----------------------:|:-------------:|:-------------:|:-------------:|:-----------------:|:-----------------:|
+|     SORT     |     `SORTTracker`      |     58.4      |     69.9      |     67.2      |       70.9        |       81.6        |
+|  ByteTrack   |   `ByteTrackTracker`   |   **60.1**    |   **73.2**    |   **74.1**    |     **73.0**      |     **84.0**      |
+|   OC-SORT    |    `OCSORTTracker`     |       —       |       —       |       —       |         —         |         —         |
 
 ## Quickstart
 
