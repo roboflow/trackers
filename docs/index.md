@@ -62,57 +62,23 @@ comments: true
   </table>
 </div>
 
-# Installation
+## Install
 
-You can install `trackers` in a [**Python>=3.10**](https://www.python.org/) environment.
+You can install and use `trackers` in a [**Python>=3.10**](https://www.python.org/) environment. For detailed installation instructions, including installing from source and setting up a local development environment, check out our [install](how-to/install.md) page.
 
-!!! example "Basic Installation"
+!!! example "Installation"
+    [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
+    [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
+    [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
 
     === "pip"
         ```bash
         pip install trackers
         ```
 
-    === "poetry"
-        ```bash
-        poetry add trackers
-        ```
-
     === "uv"
         ```bash
         uv pip install trackers
-        ```
-
-!!! example "Hardware Acceleration"
-
-    === "CPU"
-        ```bash
-        pip install "trackers[cpu]"
-        ```
-
-    === "CUDA 11.8"
-        ```bash
-        pip install "trackers[cu118]"
-        ```
-
-    === "CUDA 12.4"
-        ```bash
-        pip install "trackers[cu124]"
-        ```
-
-    === "CUDA 12.6"
-        ```bash
-        pip install "trackers[cu126]"
-        ```
-
-    === "ROCm 6.1"
-        ```bash
-        pip install "trackers[rocm61]"
-        ```
-
-    === "ROCm 6.2.4"
-        ```bash
-        pip install "trackers[rocm624]"
         ```
 
 ## Benchmarks
