@@ -1,3 +1,9 @@
+[![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
+[![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
+[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/main/LICENSE.md)
+[![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
+[![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
+
 <div align="center">
     <h1 align="center">trackers</h1>
     <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/main/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
