@@ -49,14 +49,11 @@ dev = [
     "pre-commit>=4.2.0",
 ]
 docs = [
-#    "jupyter>=1.1.1",
     "mkdocs>=1.6.1",
     "mkdocs-glightbox>=0.4.0",
-#    "mkdocs-jupyter>=0.25.1",
     "mkdocs-material>=9.6.11",
     "mkdocs-minify-plugin>=0.8.0",
     "mkdocstrings-python>=1.10.9, <2.0.0", # todo: breaking changes in 2.x
-#    "mkdocstrings-python>=1.16.10",
     "mike>=2.1.3",
 ]
 
