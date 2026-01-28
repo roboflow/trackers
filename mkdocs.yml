@@ -46,6 +46,13 @@ extra_css:
   - stylesheets/rf.css
 
 markdown_extensions:
+   # Adds support for card grids
+  - attr_list
+  - md_in_html
+  # Enables the use of icons and emojis
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   # Code syntax highlighting with line numbers and anchors
   - pymdownx.highlight:
       # Adds anchors to line numbers
@@ -87,12 +94,16 @@ plugins:
             docstring_style: google
             # Controls the order of members (by source order in this case)
             members_order: source
-            # Controls whether to sort members alphabetically
-            sort_members: false
+
+            extra:
+              # Controls whether to sort members alphabetically
+              sort_members: false
 
 nav:
   - Home: index.md
+  - Learn:
+    - Install: learn/install.md
+    - Benchmarks: learn/benchmarks.md
   - Trackers:
-    - SORT: trackers/core/sort/tracker.md
-    - DeepSORT: trackers/core/deepsort/tracker.md
-  - ReID: trackers/core/reid/reid.md
+    - SORT: trackers/sort.md
+    - ByteTrack: trackers/bytetrack.md

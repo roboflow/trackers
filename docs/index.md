@@ -6,89 +6,23 @@ comments: true
 
 <img src="assets/logo-trackers-violet.svg" alt="Trackers Logo" width="200" height="200">
 
-<br>
-
-<a href="https://badge.fury.io/py/trackers"><img src="https://badge.fury.io/py/trackers.svg" alt="version"></a> <a href="https://github.com/roboflow/trackers/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="license"></a> <a href="https://badge.fury.io/py/trackers"><img src="https://img.shields.io/pypi/pyversions/trackers" alt="python-version"></a>
-
-<br>
-
-<a href="https://colab.research.google.com/drive/1VT_FYIe3kborhWrfKKBqqfR0EjQeQNiO?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a> <a href="https://discord.gg/GbfgXGJ8Bk"><img src="https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk" alt="discord"></a>
-
 </div>
 
-`trackers` is a unified library offering clean room re-implementations of leading multi-object tracking algorithms. Its modular design allows you to easily swap trackers and integrate them with object detectors from various libraries like `inference`, `ultralytics`, or `transformers`.
+Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms released under the permissive Apache 2.0 license. You combine them with any detection model you already use.
 
-<div align="center">
-  <table>
-    <thead>
-      <tr>
-        <th>Tracker</th>
-        <th>Paper</th>
-        <th>MOTA</th>
-        <th>Year</th>
-        <th>Status</th>
-        <th>Colab</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>SORT</td>
-        <td><a href="https://arxiv.org/abs/1602.00763"><img src="https://img.shields.io/badge/arXiv-1602.00763-b31b1b.svg" alt="arXiv"></a></td>
-        <td>74.6</td>
-        <td>2016</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
-        <td>DeepSORT</td>
-        <td><a href="https://arxiv.org/abs/1703.07402"><img src="https://img.shields.io/badge/arXiv-1703.07402-b31b1b.svg" alt="arXiv"></a></td>
-        <td>75.4</td>
-        <td>2017</td>
-        <td>✅</td>
-        <td><a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-deepsort-tracker.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="colab"></a></td>
-      </tr>
-      <tr>
-        <td>ByteTrack</td>
-        <td><a href="https://arxiv.org/abs/2110.06864"><img src="https://img.shields.io/badge/arXiv-2110.06864-b31b1b.svg" alt="arXiv"></a></td>
-        <td>77.8</td>
-        <td>2021</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
-      <tr>
-        <td>OC-SORT</td>
-        <td><a href="https://arxiv.org/abs/2203.14360"><img src="https://img.shields.io/badge/arXiv-2203.14360-b31b1b.svg" alt="arXiv"></a></td>
-        <td>75.9</td>
-        <td>2022</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
-      <tr>
-        <td>BoT-SORT</td>
-        <td><a href="https://arxiv.org/abs/2206.14651"><img src="https://img.shields.io/badge/arXiv-2206.14651-b31b1b.svg" alt="arXiv"></a></td>
-        <td>77.8</td>
-        <td>2022</td>
-        <td>🚧</td>
-        <td>🚧</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+## Install
 
-# Installation
+You can install and use `trackers` in a [**Python>=3.10**](https://www.python.org/) environment. For detailed installation instructions, including installing from source and setting up a local development environment, check out our [install](learn/install.md) page.
 
-You can install `trackers` in a [**Python>=3.9**](https://www.python.org/) environment.
-
-!!! example "Basic Installation"
+!!! example "Installation"
+    [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
+    [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
+    [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/main/LICENSE.md)
+    [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
 
     === "pip"
         ```bash
         pip install trackers
-        ```
-
-    === "poetry"
-        ```bash
-        poetry add trackers
         ```
 
     === "uv"
@@ -96,135 +30,197 @@ You can install `trackers` in a [**Python>=3.9**](https://www.python.org/) envir
         uv pip install trackers
         ```
 
-!!! example "Hardware Acceleration"
+## Tutorials
 
-    === "CPU"
-        ```bash
-        pip install "trackers[cpu]"
-        ```
+<div class="grid cards" markdown>
 
-    === "CUDA 11.8"
-        ```bash
-        pip install "trackers[cu118]"
-        ```
+-   **How to Track Objects with SORT**
 
-    === "CUDA 12.4"
-        ```bash
-        pip install "trackers[cu124]"
-        ```
+    ---
 
-    === "CUDA 12.6"
-        ```bash
-        pip install "trackers[cu126]"
-        ```
+    [![](https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/sort-sample.png)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb)
 
-    === "ROCm 6.1"
-        ```bash
-        pip install "trackers[rocm61]"
-        ```
+    End-to-end example showing how to run RF-DETR detection with the SORT tracker.
 
-    === "ROCm 6.2.4"
-        ```bash
-        pip install "trackers[rocm624]"
-        ```
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb)
 
-# Quickstart
+-   **How to Track Objects with ByteTrack**
 
-With a modular design, `trackers` lets you combine object detectors from different libraries with the tracker of your choice. Here's how you can use `SORTTracker` with various detectors:
+    ---
 
-=== "inference"
+    [![](https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/bytetrack-sample.png)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
 
-    ```python hl_lines="2 5 12"
+    End-to-end example showing how to run RF-DETR detection with the ByteTrack tracker.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
+
+</div>
+
+
+## Tracking Algorithms
+
+Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the [benchmarks](learn/benchmarks.md) page.
+
+|  Algorithm  |                Trackers API                 | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
+|:-----------:|:-------------------------------------------:|:----------:|:----------:|:----------:|:--------------:|:--------------:|
+|    SORT     |      [`SORTTracker`](trackers/sort.md)      |    58.4    |    69.9    |    67.2    |      70.9      |      81.6      |
+|  ByteTrack  | [`ByteTrackTracker`](trackers/bytetrack.md) |  **60.1**  |  **73.2**  |  **74.1**  |    **73.0**    |    **84.0**    |
+|   OC-SORT   |               `OCSORTTracker`               |     —      |     —      |     —      |       —        |       —        |
+
+## Quickstart
+
+With a modular design, Trackers lets you combine object detectors from different libraries with the tracker of your choice. Here's how you can use ByteTrack with various detectors. These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>` with your input.
+
+=== "RF-DETR"
+
+    ```python
+    import cv2
     import supervision as sv
-    from trackers import SORTTracker
+    from rfdetr import RFDETRMedium
+    from trackers import ByteTrack
+
+    tracker = ByteTrack()
+    model = RFDETRMedium()
+
+    box_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
+
+    video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
+    if not video_capture.isOpened():
+        raise RuntimeError("Failed to open video source")
+
+    while True:
+        success, frame_bgr = video_capture.read()
+        if not success:
+            break
+
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        detections = model.predict(frame_rgb)
+        detections = tracker.update(detections)
+
+        annotated_frame = box_annotator.annotate(frame_bgr, detections)
+        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+
+        cv2.imshow("RF-DETR + ByteTrack", annotated_frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    video_capture.release()
+    cv2.destroyAllWindows()
+    ```
+
+=== "Inference"
+
+    ```python
+    import cv2
+    import supervision as sv
     from inference import get_model
+    from trackers import ByteTrack
 
-    tracker = SORTTracker()
-    model = get_model(model_id="yolov11m-640")
-    annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+    tracker = ByteTrack()
+    model = get_model(model_id="rfdetr-medium")
 
-    def callback(frame, _):
-        result = model.infer(frame)[0]
+    box_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
+
+    video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
+    if not video_capture.isOpened():
+        raise RuntimeError("Failed to open video source")
+
+    while True:
+        success, frame_bgr = video_capture.read()
+        if not success:
+            break
+
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        result = model.infer(frame_rgb)[0]
         detections = sv.Detections.from_inference(result)
         detections = tracker.update(detections)
-        return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
-    sv.process_video(
-        source_path="<INPUT_VIDEO_PATH>",
-        target_path="<OUTPUT_VIDEO_PATH>",
-        callback=callback,
-    )
+        annotated_frame = box_annotator.annotate(frame_bgr, detections)
+        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+
+        cv2.imshow("Inference + ByteTrack", annotated_frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    video_capture.release()
+    cv2.destroyAllWindows()
     ```
 
-=== "rf-detr"
+=== "Ultralytics"
 
-    ```python hl_lines="2 5 11"
+    ```python
+    import cv2
     import supervision as sv
-    from trackers import SORTTracker
-    from rfdetr import RFDETRBase
-
-    tracker = SORTTracker()
-    model = RFDETRBase()
-    annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
-
-    def callback(frame, _):
-        detections = model.predict(frame)
-        detections = tracker.update(detections)
-        return annotator.annotate(frame, detections, labels=detections.tracker_id)
-
-    sv.process_video(
-        source_path="<INPUT_VIDEO_PATH>",
-        target_path="<OUTPUT_VIDEO_PATH>",
-        callback=callback,
-    )
-    ```
-
-=== "ultralytics"
-
-    ```python hl_lines="2 5 12"
-    import supervision as sv
-    from trackers import SORTTracker
     from ultralytics import YOLO
+    from trackers import ByteTrack
 
-    tracker = SORTTracker()
-    model = YOLO("yolo11m.pt")
-    annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
+    tracker = ByteTrack()
+    model = YOLO("yolo26m.pt")
 
-    def callback(frame, _):
-        result = model(frame)[0]
+    box_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
+
+    video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
+    if not video_capture.isOpened():
+        raise RuntimeError("Failed to open video source")
+
+    while True:
+        success, frame_bgr = video_capture.read()
+        if not success:
+            break
+
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        result = model(frame_rgb)[0]
         detections = sv.Detections.from_ultralytics(result)
         detections = tracker.update(detections)
-        return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
-    sv.process_video(
-        source_path="<INPUT_VIDEO_PATH>",
-        target_path="<OUTPUT_VIDEO_PATH>",
-        callback=callback,
-    )
+        annotated_frame = box_annotator.annotate(frame_bgr, detections)
+        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+
+        cv2.imshow("Ultralytics + ByteTrack", annotated_frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    video_capture.release()
+    cv2.destroyAllWindows()
     ```
 
-=== "transformers"
+=== "Transformers"
 
-    ```python hl_lines="3 6 28"
+    ```python
     import torch
+    import cv2
     import supervision as sv
-    from trackers import SORTTracker
-    from transformers import RTDetrV2ForObjectDetection, RTDetrImageProcessor
+    from trackers import ByteTrack
+    from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
 
-    tracker = SORTTracker()
+    tracker = ByteTrack()
     processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
     model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
-    annotator = sv.LabelAnnotator(text_position=sv.Position.CENTER)
 
-    def callback(frame, _):
-        inputs = processor(images=frame, return_tensors="pt")
+    box_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
+
+    video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
+    if not video_capture.isOpened():
+        raise RuntimeError("Failed to open video source")
+
+    while True:
+        success, frame_bgr = video_capture.read()
+        if not success:
+            break
+
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        inputs = processor(images=frame_rgb, return_tensors="pt")
         with torch.no_grad():
             outputs = model(**inputs)
 
-        h, w, _ = frame.shape
+        h, w = frame_bgr.shape[:2]
         results = processor.post_process_object_detection(
             outputs,
-            target_sizes=torch.tensor([(h, w)]),
+            target_sizes=torch.tensor([[h, w]]),
             threshold=0.5
         )[0]
 
@@ -232,13 +228,15 @@ With a modular design, `trackers` lets you combine object detectors from differe
             transformers_results=results,
             id2label=model.config.id2label
         )
-
         detections = tracker.update(detections)
-        return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
-    sv.process_video(
-        source_path="<INPUT_VIDEO_PATH>",
-        target_path="<OUTPUT_VIDEO_PATH>",
-        callback=callback,
-    )
+        annotated_frame = box_annotator.annotate(frame_bgr, detections)
+        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+
+        cv2.imshow("Transformers + ByteTrack", annotated_frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    video_capture.release()
+    cv2.destroyAllWindows()
     ```
