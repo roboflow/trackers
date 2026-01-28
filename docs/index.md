@@ -30,6 +30,33 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
         uv pip install trackers
         ```
 
+## Tutorials
+
+<div class="grid cards" markdown>
+
+-   **How to Track Objects with SORT**
+
+    ---
+
+    [![](https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/sort-sample.png)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb)
+
+    End-to-end example showing how to run RF-DETR detection with the SORT tracker.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb)
+
+-   **How to Track Objects with ByteTrack**
+
+    ---
+
+    [![](https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/bytetrack-sample.png)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
+
+    End-to-end example showing how to run RF-DETR detection with the ByteTrack tracker.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
+
+</div>
+
+
 ## Tracking Algorithms
 
 Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the [benchmarks](learn/benchmarks.md) page.
