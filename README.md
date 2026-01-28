@@ -52,9 +52,9 @@ With a modular design, Trackers lets you combine object detectors from different
 import cv2
 import supervision as sv
 from rfdetr import RFDETRMedium
-from trackers import ByteTrack
+from trackers import ByteTrackTracker
 
-tracker = ByteTrack()
+tracker = ByteTrackTracker()
 model = RFDETRMedium()
 
 box_annotator = sv.BoxAnnotator()
@@ -93,9 +93,9 @@ cv2.destroyAllWindows()
 import cv2
 import supervision as sv
 from inference import get_model
-from trackers import ByteTrack
+from trackers import ByteTrackTracker
 
-tracker = ByteTrack()
+tracker = ByteTrackTracker()
 model = get_model(model_id="rfdetr-medium")
 
 box_annotator = sv.BoxAnnotator()
@@ -136,9 +136,9 @@ cv2.destroyAllWindows()
 import cv2
 import supervision as sv
 from ultralytics import YOLO
-from trackers import ByteTrack
+from trackers import ByteTrackTracker
 
-tracker = ByteTrack()
+tracker = ByteTrackTracker()
 model = YOLO("yolo26m.pt")
 
 box_annotator = sv.BoxAnnotator()
@@ -180,10 +180,10 @@ cv2.destroyAllWindows()
 import torch
 import cv2
 import supervision as sv
-from trackers import ByteTrack
+from trackers import ByteTrackTracker
 from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
 
-tracker = ByteTrack()
+tracker = ByteTrackTracker()
 processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
 model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
 
