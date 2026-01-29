@@ -4,7 +4,7 @@ from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
-from trackers.utils.ocsort_utils import (
+from trackers.core.ocsort.utils import (
     add_track_id_detections,
     build_direction_consistency_matrix,
     get_iou_matrix,
@@ -17,13 +17,13 @@ class OCSORTTracker(BaseTracker):
 
     OC-SORT remains Simple, Online, and Real-Time but improves robustness during occlusion and non-linear motion.
     It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three
-    mechanisms to enhance tracking:
-        1. Observation-Centre Re-Update (ORU): runs a predict-update loop with a 'virtual trajectory'
-            depending on the last observation and new observation when a track is re-activated after being lost.
-        2. Observation-Centric Momentum (OCM): incorporate the direction consistency of tracks in the cost matrix for the association.
-        3. Observation-centric Recovery (OCR): a second-stage association step between the last observation of unmatched tracks
-            to the unmatched observations after the usual association. It attempts to recover tracks that were lost
-            due to object stopping or short-term occlusion.
+    mechanisms to enhance tracking. The first mechanism is Observation-Centre Re-Update (ORU), which runs a
+    predict-update loop with a 'virtual trajectory' depending on the last observation and new observation when
+    a track is re-activated after being lost. The second mechanism is Observation-Centric Momentum (OCM), that
+    incorporates the direction consistency of tracks in the cost matrix for the association. Finally, OC-SORT adds
+    Observation-centric Recovery (OCR), a second-stage association step between the last observation of unmatched
+    tracks to the unmatched observations after the usual association. It attempts to recover tracks that were lost
+    due to object stopping or short-term occlusion.
     Args:
         lost_track_buffer (int): Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
@@ -35,7 +35,7 @@ class OCSORTTracker(BaseTracker):
             must be tracked before it is considered a 'valid' track. Increasing
             `minimum_consecutive_frames` prevents the creation of accidental tracks
             from false detection or double detection, but risks missing shorter
-            tracks. Before the tracker is considered valid, it will be assigned
+            tracks. Before the tracklet is considered valid, it will be assigned
             `-1` as its `tracker_id`.
         minimum_iou_threshold (float): IOU threshold for associating detections to
             existing tracks.
@@ -65,7 +65,7 @@ class OCSORTTracker(BaseTracker):
         self.minimum_iou_threshold = minimum_iou_threshold
         self.direction_consistency_weight = direction_consistency_weight
         self.high_conf_det_threshold = high_conf_det_threshold
-        # Active trackers
+        # Active tracks
         self.tracks: list[OCSORTTracklet] = []
 
     def _get_associated_indices(
@@ -107,13 +107,13 @@ class OCSORTTracker(BaseTracker):
             sorted(list(unmatched_detections)),
         )
 
-    def _spawn_new_trackers(
+    def _spawn_new_tracklets(
         self,
         detections: sv.Detections,
         unmatched_detections: list[int],
     ) -> None:
         """
-        Create new trackers only for unmatched detections with confidence
+        Create new tracklets only for unmatched detections with confidence
         above threshold.
 
         Args:
@@ -129,16 +129,16 @@ class OCSORTTracker(BaseTracker):
         """Updates the tracker state with new detections.
 
         Performs Kalman filter prediction, associates detections with existing
-        trackers based on IOU, updates matched trackers, and initializes new
-        trackers for unmatched high-confidence detections.
+        tracklets based on IOU, updates matched tracklets, and initializes new
+        tracklets for unmatched high-confidence detections.
 
         Args:
             detections (sv.Detections): The latest set of object detections from a frame.
 
         Returns:
             sv.Detections: A copy of the input detections, augmented with assigned
-                `tracker_id` for each successfully tracked object. Detections not
-                associated with a track will not have a `tracker_id`.
+                `tracklet_id` for each successfully tracked object. Detections not
+                associated with a track will not have a `tracklet_id`.
         """  # noqa: E501
 
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -208,7 +208,7 @@ class OCSORTTracker(BaseTracker):
                 )
 
             self.tracks = self.activate_or_kill_tracklets()
-            self._spawn_new_trackers(
+            self._spawn_new_tracklets(
                 detections[unmatched_detections], ocr_unmatched_detections
             )
             left_detections = detections[ocr_unmatched_detections]
@@ -219,7 +219,7 @@ class OCSORTTracker(BaseTracker):
 
         else:
             self.tracks = self.activate_or_kill_tracklets()
-            self._spawn_new_trackers(detections, unmatched_detections)
+            self._spawn_new_tracklets(detections, unmatched_detections)
             left_detections = detections[unmatched_detections]
             left_detections.tracker_id = np.array(
                 [-1] * len(left_detections), dtype=int
