@@ -18,31 +18,25 @@ from trackers.utils.sort_utils import (
 
 
 class SORTTracker(BaseTracker):
-    """Implements SORT (Simple Online and Realtime Tracking).
-
-    SORT is a pragmatic approach to multiple object tracking with a focus on
-    simplicity and speed. It uses a Kalman filter for motion prediction and the
-    Hungarian algorithm or simple IOU matching for data association.
+    """Track objects using SORT algorithm with Kalman filter and IoU matching.
+    Provides simple and fast online tracking using only bounding box geometry
+    without appearance features.
 
     Args:
-        lost_track_buffer: Number of frames to buffer when a track is lost.
-            Increasing lost_track_buffer enhances occlusion handling, significantly
-            improving tracking through occlusions, but may increase the possibility
-            of ID switching for objects with similar appearance.
-        frame_rate: Frame rate of the video (frames per second).
-            Used to calculate the maximum time a track can be lost.
-        track_activation_threshold: Detection confidence threshold
-            for track activation. Only detections with confidence above this
-            threshold will create new tracks. Increasing this threshold
-            reduces false positives but may miss real objects with low confidence.
-        minimum_consecutive_frames: Number of consecutive frames that an object
-            must be tracked before it is considered a 'valid' track. Increasing
-            `minimum_consecutive_frames` prevents the creation of accidental tracks
-            from false detection or double detection, but risks missing shorter
-            tracks. Before the tracker is considered valid, it will be assigned
-            `-1` as its `tracker_id`.
-        minimum_iou_threshold: IOU threshold for associating detections to
-            existing tracks.
+        lost_track_buffer: `int` specifying number of frames to buffer when a
+            track is lost. Increasing this value enhances occlusion handling but
+            may increase ID switching for similar objects.
+        frame_rate: `float` specifying video frame rate in frames per second.
+            Used to scale the lost track buffer for consistent tracking across
+            different frame rates.
+        track_activation_threshold: `float` specifying minimum detection
+            confidence to create new tracks. Higher values reduce false
+            positives but may miss low-confidence objects.
+        minimum_consecutive_frames: `int` specifying number of consecutive
+            frames before a track is considered valid. Before reaching this
+            threshold, tracks are assigned `tracker_id` of `-1`.
+        minimum_iou_threshold: `float` specifying IoU threshold for associating
+            detections to existing tracks. Higher values require more overlap.
     """
 
     def __init__(
@@ -120,19 +114,18 @@ class SORTTracker(BaseTracker):
                 self.trackers.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
-        """Updates the tracker state with new detections.
-
-        Performs Kalman filter prediction, associates detections with existing
-        trackers based on IOU, updates matched trackers, and initializes new
-        trackers for unmatched high-confidence detections.
+        """Update tracker state with new detections and return tracked objects.
+        Performs Kalman filter prediction, IoU-based association, and initializes
+        new tracks for unmatched high-confidence detections.
 
         Args:
-            detections: The latest set of object detections from a frame.
+            detections: `sv.Detections` containing bounding boxes with shape
+                `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
+                confidence scores.
 
         Returns:
-            A copy of the input detections, augmented with assigned `tracker_id` for
-                each successfully tracked object. Detections not associated with a
-                track will not have a `tracker_id`.
+            `sv.Detections` with `tracker_id` assigned for each detection.
+                Unmatched or immature tracks have `tracker_id` of `-1`.
         """
 
         if len(self.trackers) == 0 and len(detections) == 0:
@@ -180,9 +173,8 @@ class SORTTracker(BaseTracker):
         return updated_detections
 
     def reset(self) -> None:
-        """Resets the tracker's internal state.
-
-        Clears all active tracks and resets the track ID counter.
+        """Reset tracker state by clearing all tracks and resetting ID counter.
+        Call this method when switching to a new video or scene.
         """
         self.trackers = []
         SORTKalmanBoxTracker.count_id = 0
