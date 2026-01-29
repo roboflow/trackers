@@ -20,40 +20,28 @@ from trackers.utils.sort_utils import (
 
 
 class ByteTrackTracker(BaseTracker):
-    """Implements ByteTrack.
-
-    ByteTrack is a simple, effective, and generic multi-object tracking method
-    that improves upon tracking-by-detection by associating *every* detection box
-    instead of discarding low-score ones. This makes it more robust to occlusions.
-    It uses a two-stage association process and builds on established techniques
-    like the Kalman Filter for motion prediction and the Hungarian algorithm for
-    data association.
+    """Track objects using ByteTrack algorithm with two-stage association.
+    Associates both high and low confidence detections to reduce fragmentation
+    and improve tracking through occlusions.
 
     Args:
-        lost_track_buffer: Number of frames to buffer when a track is lost.
-            Increasing lost_track_buffer enhances occlusion handling, significantly
-            improving tracking through occlusions, but may increase the possibility
-            of ID switching for objects that disappear.
-        frame_rate: Frame rate of the video (frames per second).
-            Used to calculate the maximum time a track can be lost.
-        track_activation_threshold: Detection confidence threshold
-            for track activation. Only detections with confidence above this
-            threshold will create new tracks. Increasing this threshold may
-            reduce false positives but may miss real objects with low confidence.
-        minimum_consecutive_frames: Number of consecutive frames that an object
-            must be tracked before it is considered a 'valid'/'active/ track. Increasing
-            `minimum_consecutive_frames` prevents the creation of accidental tracks
-            from false detection or double detection, but risks missing shorter
-            tracks. Before the tracker is considered valid, it will be assigned
-            `-1` as its `tracker_id`.
-        minimum_iou_threshold: IoU threshold for associating detections to existing tracks.
-            Prevents the association of lower IoU than the threshold between boxes and tracks.
-            A higher value will only associate boxes that have more overlapping area.
-        high_conf_det_threshold: threshold for assigning detections to high probability class.
-            A higher value will classify only higher confidence/probability detections as 'high probability'
-            per the ByteTrack algorithm, which are used in the first similarity step of
-            the algorithm.
-    """  # noqa: E501
+        lost_track_buffer: `int` specifying number of frames to buffer when a
+            track is lost. Increasing this value enhances occlusion handling but
+            may increase ID switching for disappearing objects.
+        frame_rate: `float` specifying video frame rate in frames per second.
+            Used to scale the lost track buffer for consistent tracking across
+            different frame rates.
+        track_activation_threshold: `float` specifying minimum detection
+            confidence to create new tracks. Higher values reduce false
+            positives but may miss low-confidence objects.
+        minimum_consecutive_frames: `int` specifying number of consecutive
+            frames before a track is considered valid. Before reaching this
+            threshold, tracks are assigned `tracker_id` of `-1`.
+        minimum_iou_threshold: `float` specifying IoU threshold for associating
+            detections to existing tracks. Higher values require more overlap.
+        high_conf_det_threshold: `float` specifying threshold for separating
+            high and low confidence detections in the two-stage association.
+    """
 
     def __init__(
         self,
@@ -104,20 +92,19 @@ class ByteTrackTracker(BaseTracker):
         self,
         detections: sv.Detections,
     ) -> sv.Detections:
-        """Updates the tracker state with new detections.
-
-        Performs Kalman Filter prediction, associates detections with existing
-        tracks based on IoU, updates matched tracks, and initializes new
-        tracks for unmatched high-confidence detections.
+        """Update tracker state with new detections and return tracked objects.
+        Performs Kalman filter prediction, two-stage association (high then low
+        confidence), and initializes new tracks for unmatched detections.
 
         Args:
-            detections: The latest set of object detections from a frame.
+            detections: `sv.Detections` containing bounding boxes with shape
+                `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
+                confidence scores.
 
         Returns:
-            A copy of the input detections, augmented with assigned `tracker_id` for
-                each successfully tracked object. Detections not associated with a
-                track will not have a `tracker_id`. The order of the detections is not
-                guaranteed to be the same as the input detections.
+            `sv.Detections` with `tracker_id` assigned for each detection.
+                Unmatched detections have `tracker_id` of `-1`. Detection order
+                may differ from input.
         """
 
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -333,9 +320,8 @@ class ByteTrackTracker(BaseTracker):
         return matched_indices, unmatched_tracks, unmatched_detections
 
     def reset(self) -> None:
-        """Resets the tracker's internal state.
-
-        Clears all active tracks and resets the track ID counter.
+        """Reset tracker state by clearing all tracks and resetting ID counter.
+        Call this method when switching to a new video or scene.
         """
         self.tracks = []
         ByteTrackKalmanBoxTracker.count_id = 0
