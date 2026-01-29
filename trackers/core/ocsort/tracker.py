@@ -139,7 +139,7 @@ class OCSORTTracker(BaseTracker):
             sv.Detections: A copy of the input detections, augmented with assigned
                 `tracklet_id` for each successfully tracked object. Detections not
                 associated with a track will not have a `tracklet_id`.
-        """  # noqa: E501
+        """
 
         if len(self.tracks) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
