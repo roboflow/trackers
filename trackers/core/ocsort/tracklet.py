@@ -1,9 +1,9 @@
 import numpy as np
 from supervision import xyxy_to_xywh
 
-from trackers.utils.bbox_conversions import (
-    convert_bbox_to_state_rep,
-    convert_state_rep_to_bbox,
+from trackers.utils.converters import (
+    xcycsr_to_xyxy,
+    xyxy_to_xcycsr,
 )
 from trackers.utils.kalman_filter import KalmanFilter
 
@@ -33,7 +33,7 @@ class OCSORTTracklet:
         self.age = 0
         # state format: (x, y, s, r, vx, vy, vs). As detailed in SORT paper, r is the aspect ratio and constant! # noqa: E501
         self.kalman_filter = KalmanFilter(
-            bbox=convert_bbox_to_state_rep(initial_bbox),
+            bbox=xyxy_to_xcycsr(initial_bbox),
             state_dim=7,
             state_transition_matrix=np.array(
                 [
@@ -93,7 +93,7 @@ class OCSORTTracklet:
         if self.is_lost():
             self.re_update(bbox)
         else:
-            self.kalman_filter.update(convert_bbox_to_state_rep(bbox))
+            self.kalman_filter.update(xyxy_to_xcycsr(bbox))
             # save the last before being lost KF parameters for re-updating
             self.save_kalman_filter_state()
         self.time_since_update = 0
@@ -114,7 +114,7 @@ class OCSORTTracklet:
 
         self.time_since_update += 1
         predicted_bbox = self.kalman_filter.get_state_bbox()
-        return convert_state_rep_to_bbox(predicted_bbox)
+        return xcycsr_to_xyxy(predicted_bbox)
 
     def is_lost(
         self,
@@ -160,4 +160,4 @@ class OCSORTTracklet:
         Returns:
             np.ndarray: The current bounding box in the form [x1, y1, x2, y2].
         """
-        return convert_state_rep_to_bbox(self.kalman_filter.get_state_bbox())
+        return xcycsr_to_xyxy(self.kalman_filter.get_state_bbox())
