@@ -9,10 +9,10 @@ class KalmanFilter:
     its position.
 
     Attributes:
-        tracker_id (int): Unique identifier for the tracker.
-        number_of_successful_updates (int): Number of times the object has been
+        tracker_id: Unique identifier for the tracker.
+        number_of_successful_updates: Number of times the object has been
             updated successfully.
-        time_since_update (int): Number of frames since the last update.
+        time_since_update: Number of frames since the last update.
         state: State vector of the bounding box.
         F: State transition matrix.
         H: Measurement matrix.
@@ -22,7 +22,7 @@ class KalmanFilter:
 
     Args:
         bbox: Initial bounding box in the form [x1, y1, x2, y2].
-        state_dim (int): Dimension of the state vector. Default is 7 using (x, y, s, r, vx, vy, vs).
+        state_dim: Dimension of the state vector. Default is 7 using (x, y, s, r, vx, vy, vs).
         state_transition_matrix: State transition matrix F. Default is identity.
     """  # noqa: E501
 
