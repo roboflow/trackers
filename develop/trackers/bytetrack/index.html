@@ -1094,13 +1094,9 @@
 
 
 
-        <p>Implements ByteTrack.</p>
-<p>ByteTrack is a simple, effective, and generic multi-object tracking method
-that improves upon tracking-by-detection by associating <em>every</em> detection box
-instead of discarding low-score ones. This makes it more robust to occlusions.
-It uses a two-stage association process and builds on established techniques
-like the Kalman Filter for motion prediction and the Hungarian algorithm for
-data association.</p>
+        <p>Track objects using ByteTrack algorithm with two-stage association.
+Associates both high and low confidence detections to reduce fragmentation
+and improve tracking through occlusions.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1123,10 +1119,9 @@ data association.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Number of frames to buffer when a track is lost.
-Increasing lost_track_buffer enhances occlusion handling, significantly
-improving tracking through occlusions, but may increase the possibility
-of ID switching for objects that disappear.</p>
+                <p><code>int</code> specifying number of frames to buffer when a
+track is lost. Increasing this value enhances occlusion handling but
+may increase ID switching for disappearing objects.</p>
               </div>
             </td>
             <td>
@@ -1142,8 +1137,9 @@ of ID switching for objects that disappear.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Frame rate of the video (frames per second).
-Used to calculate the maximum time a track can be lost.</p>
+                <p><code>float</code> specifying video frame rate in frames per second.
+Used to scale the lost track buffer for consistent tracking across
+different frame rates.</p>
               </div>
             </td>
             <td>
@@ -1159,10 +1155,9 @@ Used to calculate the maximum time a track can be lost.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Detection confidence threshold
-for track activation. Only detections with confidence above this
-threshold will create new tracks. Increasing this threshold may
-reduce false positives but may miss real objects with low confidence.</p>
+                <p><code>float</code> specifying minimum detection
+confidence to create new tracks. Higher values reduce false
+positives but may miss low-confidence objects.</p>
               </div>
             </td>
             <td>
@@ -1178,12 +1173,9 @@ reduce false positives but may miss real objects with low confidence.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Number of consecutive frames that an object
-must be tracked before it is considered a 'valid'/'active/ track. Increasing
-<code>minimum_consecutive_frames</code> prevents the creation of accidental tracks
-from false detection or double detection, but risks missing shorter
-tracks. Before the tracker is considered valid, it will be assigned
-<code>-1</code> as its <code>tracker_id</code>.</p>
+                <p><code>int</code> specifying number of consecutive
+frames before a track is considered valid. Before reaching this
+threshold, tracks are assigned <code>tracker_id</code> of <code>-1</code>.</p>
               </div>
             </td>
             <td>
@@ -1199,9 +1191,8 @@ tracks. Before the tracker is considered valid, it will be assigned
             </td>
             <td>
               <div class="doc-md-description">
-                <p>IoU threshold for associating detections to existing tracks.
-Prevents the association of lower IoU than the threshold between boxes and tracks.
-A higher value will only associate boxes that have more overlapping area.</p>
+                <p><code>float</code> specifying IoU threshold for associating
+detections to existing tracks. Higher values require more overlap.</p>
               </div>
             </td>
             <td>
@@ -1217,10 +1208,8 @@ A higher value will only associate boxes that have more overlapping area.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>threshold for assigning detections to high probability class.
-A higher value will classify only higher confidence/probability detections as 'high probability'
-per the ByteTrack algorithm, which are used in the first similarity step of
-the algorithm.</p>
+                <p><code>float</code> specifying threshold for separating
+high and low confidence detections in the two-stage association.</p>
               </div>
             </td>
             <td>
@@ -1262,10 +1251,9 @@ the algorithm.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Updates the tracker state with new detections.</p>
-<p>Performs Kalman Filter prediction, associates detections with existing
-tracks based on IoU, updates matched tracks, and initializes new
-tracks for unmatched high-confidence detections.</p>
+        <p>Update tracker state with new detections and return tracked objects.
+Performs Kalman filter prediction, two-stage association (high then low
+confidence), and initializes new tracks for unmatched detections.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1288,7 +1276,9 @@ tracks for unmatched high-confidence detections.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The latest set of object detections from a frame.</p>
+                <p><code>sv.Detections</code> containing bounding boxes with shape
+<code>(N, 4)</code> in <code>(x_min, y_min, x_max, y_max)</code> format and optional
+confidence scores.</p>
               </div>
             </td>
             <td>
@@ -1314,10 +1304,9 @@ tracks for unmatched high-confidence detections.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>A copy of the input detections, augmented with assigned <code>tracker_id</code> for
-each successfully tracked object. Detections not associated with a
-track will not have a <code>tracker_id</code>. The order of the detections is not
-guaranteed to be the same as the input detections.</p>
+                <p><code>sv.Detections</code> with <code>tracker_id</code> assigned for each detection.
+Unmatched detections have <code>tracker_id</code> of <code>-1</code>. Detection order
+may differ from input.</p>
               </div>
             </td>
           </tr>
@@ -1340,8 +1329,8 @@ guaranteed to be the same as the input detections.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Resets the tracker's internal state.</p>
-<p>Clears all active tracks and resets the track ID counter.</p>
+        <p>Reset tracker state by clearing all tracks and resetting ID counter.
+Call this method when switching to a new video or scene.</p>
 
 
     </div>
