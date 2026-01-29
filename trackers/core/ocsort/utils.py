@@ -73,7 +73,7 @@ def speed_direction_batch(dets, tracks):  # From oc sort repo
 
 
 def build_direction_consistency_matrix_batch(
-    # vectorized version from oc sort repo but adapted to our tracklet class, still needs testing and is not currently used
+    # vectorized version from oc sort repo but adapted to our tracklet class, still needs testing and is not currently used# noqa: E501
     tracklets: list[OCSORTTracklet],
     detection_boxes: np.ndarray,
 ) -> np.ndarray:
