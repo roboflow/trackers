@@ -138,7 +138,7 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "F401"]
-"test" = []
+"test/**" = ["S101"]  # Allow assert in tests
 "trackers" = []
 
 [tool.ruff.lint.mccabe]

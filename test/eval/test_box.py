@@ -6,188 +6,170 @@
 
 from __future__ import annotations
 
-from contextlib import ExitStack as DoesNotRaise
+from typing import Any
 
 import numpy as np
 import pytest
 
-from trackers.eval.box import EPS, box_ioa, box_iou
+from trackers.eval.box import EPS, BoxFormat, box_ioa, box_iou
 
 
 @pytest.mark.parametrize(
-    ("boxes1", "boxes2", "box_format", "expected_iou", "exception"),
+    ("boxes1", "boxes2", "box_format", "expected_iou"),
     [
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[0, 0, 10, 10]]),
             "xyxy",
             np.array([[1.0]]),
-            DoesNotRaise(),
         ),  # identical boxes, perfect overlap
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[20, 20, 30, 30]]),
             "xyxy",
             np.array([[0.0]]),
-            DoesNotRaise(),
         ),  # disjoint boxes, no overlap
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[5, 0, 15, 10]]),
             "xyxy",
             np.array([[1 / 3]]),
-            DoesNotRaise(),
         ),  # partial overlap, intersection=50, union=150
         (
             np.array([[0, 0, 20, 20]]),
             np.array([[5, 5, 15, 15]]),
             "xyxy",
             np.array([[0.25]]),
-            DoesNotRaise(),
         ),  # contained box, intersection=100, union=400
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[10, 0, 20, 10]]),
             "xyxy",
             np.array([[0.0]]),
-            DoesNotRaise(),
         ),  # boxes touching at edge
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[10, 10, 20, 20]]),
             "xyxy",
             np.array([[0.0]]),
-            DoesNotRaise(),
         ),  # boxes touching at corner
         (
             np.array([[0, 0, 10, 10], [20, 20, 30, 30]]),
             np.array([[0, 0, 10, 10], [5, 0, 15, 10], [100, 100, 110, 110]]),
             "xyxy",
             np.array([[1.0, 1 / 3, 0.0], [0.0, 0.0, 0.0]]),
-            DoesNotRaise(),
         ),  # multiple boxes batch
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[5, 0, 10, 10]]),
             "xywh",
             np.array([[1 / 3]]),
-            DoesNotRaise(),
         ),  # xywh format
         (
             np.empty((0, 4)),
             np.array([[0, 0, 10, 10]]),
             "xyxy",
             np.empty((0, 1)),
-            DoesNotRaise(),
         ),  # empty boxes1
         (
             np.array([[0, 0, 10, 10]]),
             np.empty((0, 4)),
             "xyxy",
             np.empty((1, 0)),
-            DoesNotRaise(),
         ),  # empty boxes2
         (
             np.empty((0, 4)),
             np.empty((0, 4)),
             "xyxy",
             np.empty((0, 0)),
-            DoesNotRaise(),
         ),  # both empty
         (
             np.array([[5, 5, 5, 5]]),
             np.array([[0, 0, 10, 10]]),
             "xyxy",
             np.array([[0.0]]),
-            DoesNotRaise(),
         ),  # zero-area box
         (
             np.array([[1e6, 1e6, 1e6 + 10, 1e6 + 10]]),
             np.array([[1e6, 1e6, 1e6 + 10, 1e6 + 10]]),
             "xyxy",
             np.array([[1.0]]),
-            DoesNotRaise(),
         ),  # large coordinates
-        (
-            np.array([[0, 0, 10, 10]]),
-            np.array([[0, 0, 10, 10]]),
-            "invalid",
-            None,
-            pytest.raises(ValueError, match="box_format must be"),
-        ),  # invalid format
     ],
 )
 def test_box_iou(
-    boxes1: np.ndarray,
-    boxes2: np.ndarray,
-    box_format: str,
-    expected_iou: np.ndarray | None,
-    exception: Exception,
+    boxes1: np.ndarray[Any, np.dtype[Any]],
+    boxes2: np.ndarray[Any, np.dtype[Any]],
+    box_format: BoxFormat,
+    expected_iou: np.ndarray[Any, np.dtype[Any]],
 ) -> None:
-    with exception:
-        result = box_iou(boxes1, boxes2, box_format=box_format)
-        assert result.shape == expected_iou.shape
-        assert np.allclose(result, expected_iou, rtol=1e-6, atol=1e-12)
+    result = box_iou(boxes1, boxes2, box_format=box_format)
+    assert result.shape == expected_iou.shape
+    assert np.allclose(result, expected_iou, rtol=1e-6, atol=1e-12)
+
+
+def test_box_iou_invalid_format() -> None:
+    boxes = np.array([[0, 0, 10, 10]])
+    with pytest.raises(ValueError, match="box_format must be"):
+        box_iou(boxes, boxes, box_format="invalid")  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
-    ("boxes1", "boxes2", "box_format", "expected_ioa", "exception"),
+    ("boxes1", "boxes2", "box_format", "expected_ioa"),
     [
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[0, 0, 10, 10]]),
             "xyxy",
             np.array([[1.0]]),
-            DoesNotRaise(),
         ),  # identical boxes
         (
             np.array([[5, 5, 15, 15]]),
             np.array([[0, 0, 20, 20]]),
             "xyxy",
             np.array([[1.0]]),
-            DoesNotRaise(),
         ),  # detection fully inside ignore region
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[5, 0, 15, 10]]),
             "xyxy",
             np.array([[0.5]]),
-            DoesNotRaise(),
         ),  # partial overlap, intersection=50, area1=100
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[20, 20, 30, 30]]),
             "xyxy",
             np.array([[0.0]]),
-            DoesNotRaise(),
         ),  # no overlap
         (
             np.array([[5, 5, 5, 5]]),
             np.array([[0, 0, 10, 10]]),
             "xyxy",
             np.array([[0.0]]),
-            DoesNotRaise(),
         ),  # zero-area box
         (
             np.array([[0, 0, 10, 10]]),
             np.array([[5, 0, 10, 10]]),
             "xywh",
             np.array([[0.5]]),
-            DoesNotRaise(),
         ),  # xywh format
     ],
 )
 def test_box_ioa(
-    boxes1: np.ndarray,
-    boxes2: np.ndarray,
-    box_format: str,
-    expected_ioa: np.ndarray | None,
-    exception: Exception,
+    boxes1: np.ndarray[Any, np.dtype[Any]],
+    boxes2: np.ndarray[Any, np.dtype[Any]],
+    box_format: BoxFormat,
+    expected_ioa: np.ndarray[Any, np.dtype[Any]],
 ) -> None:
-    with exception:
-        result = box_ioa(boxes1, boxes2, box_format=box_format)
-        assert result.shape == expected_ioa.shape
-        assert np.allclose(result, expected_ioa, rtol=1e-6, atol=1e-12)
+    result = box_ioa(boxes1, boxes2, box_format=box_format)
+    assert result.shape == expected_ioa.shape
+    assert np.allclose(result, expected_ioa, rtol=1e-6, atol=1e-12)
+
+
+def test_box_ioa_invalid_format() -> None:
+    boxes = np.array([[0, 0, 10, 10]])
+    with pytest.raises(ValueError, match="box_format must be"):
+        box_ioa(boxes, boxes, box_format="invalid")  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -231,9 +213,9 @@ def test_box_ioa(
     ],
 )
 def test_box_iou_floating_point(
-    boxes1: np.ndarray,
-    boxes2: np.ndarray,
-    expected_iou: np.ndarray,
+    boxes1: np.ndarray[Any, np.dtype[Any]],
+    boxes2: np.ndarray[Any, np.dtype[Any]],
+    expected_iou: np.ndarray[Any, np.dtype[Any]],
 ) -> None:
     result = box_iou(boxes1, boxes2, box_format="xyxy")
     assert result.shape == expected_iou.shape
