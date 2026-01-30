@@ -6,4 +6,4 @@
 
 from trackers.eval.box import box_ioa, box_iou
 
-__all__ = ["box_iou", "box_ioa"]
+__all__ = ["box_ioa", "box_iou"]
