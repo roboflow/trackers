@@ -58,6 +58,30 @@ class OCSORTTracklet:
         # self.kalman_filter.Q[4:, 4:] *= 0.01
         self.kalman_filter = KalmanFilterOCSORT(dim_x=7, dim_z=4)
 
+        # State (x,y,s,r,vx,vy,vs): constant velocity model
+        self.kalman_filter.F = np.array(
+            [
+                [1, 0, 0, 0, 1, 0, 0],
+                [0, 1, 0, 0, 0, 1, 0],
+                [0, 0, 1, 0, 0, 0, 1],
+                [0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1],
+            ],
+            dtype=np.float64,
+        )
+        # Observe (x, y, s, r) from state
+        self.kalman_filter.H = np.array(
+            [
+                [1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0],
+            ],
+            dtype=np.float64,
+        )
+
         self.kalman_filter.R[2:, 2:] *= 10.0
         self.kalman_filter.P[4:, 4:] *= (
             1000.0  # give high uncertainty to the unobservable initial velocities
