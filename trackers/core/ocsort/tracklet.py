@@ -124,7 +124,7 @@ class OCSORTTracklet:
             self.number_of_successful_consecutive_updates = 0
 
         self.time_since_update += 1
-        return xcycsr_to_xyxy(self.kalman_filter.x)
+        return xcycsr_to_xyxy(self.kalman_filter.x.reshape((4)))
 
     def is_lost(
         self,
@@ -170,4 +170,4 @@ class OCSORTTracklet:
         Returns:
             np.ndarray: The current bounding box in the form [x1, y1, x2, y2].
         """
-        return xcycsr_to_xyxy(self.kalman_filter.x)
+        return xcycsr_to_xyxy(self.kalman_filter.x.reshape((4)))
