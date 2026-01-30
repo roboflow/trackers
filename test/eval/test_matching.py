@@ -204,7 +204,7 @@ def test_match_detections_threshold_boundary() -> None:
     similarity_matrix = np.array([[0.5]])
 
     # At threshold, should NOT match (must be > threshold)
-    gt_idx, tr_idx, _, _ = match_detections(similarity_matrix, threshold=0.5)
+    gt_idx, _tr_idx, _, _ = match_detections(similarity_matrix, threshold=0.5)
     assert len(gt_idx) == 0
 
     # Just above threshold, should match
