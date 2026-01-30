@@ -54,6 +54,16 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
 
+-   **How to Track Objects with OC-SORT**
+
+    ---
+
+    [![](url-to-image)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
+
+    End-to-end example showing how to run RF-DETR detection with the OC-SORT tracker.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
+
 </div>
 
 
@@ -65,7 +75,7 @@ Trackers gives you clean, modular re-implementations of leading multi-object tra
 |:-----------:|:-------------------------------------------:|:----------:|:----------:|:----------:|:--------------:|:--------------:|
 |    SORT     |      [`SORTTracker`](trackers/sort.md)      |    58.4    |    69.9    |    67.2    |      70.9      |      81.6      |
 |  ByteTrack  | [`ByteTrackTracker`](trackers/bytetrack.md) |  **60.1**  |  **73.2**  |  **74.1**  |    **73.0**    |    **84.0**    |
-|   OC-SORT   |               `OCSORTTracker`               |     —      |     —      |     —      |       —        |       —        |
+|   OC-SORT   | [`OCSORTTracker`](trackers/ocsort.md)    |     will add them when confirmed      |     —      |     —      |       —        |      —        |
 
 ## Quickstart
 

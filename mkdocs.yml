@@ -107,3 +107,4 @@ nav:
   - Trackers:
     - SORT: trackers/sort.md
     - ByteTrack: trackers/bytetrack.md
+    - OCSORT: trackers/ocsort.md
