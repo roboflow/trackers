@@ -14,20 +14,20 @@ class ByteTrackKalmanBoxTracker:
     its position.
 
     Attributes:
-        tracker_id (int): Unique identifier for the tracker.
-        number_of_successful_updates (int): Number of times the object has been
+        tracker_id: Unique identifier for the tracker.
+        number_of_successful_updates: Number of times the object has been
             updated successfully.
-        time_since_update (int): Number of frames since the last update.
-        state (np.ndarray): State vector of the bounding box.
-        F (np.ndarray): State transition matrix.
-        H (np.ndarray): Measurement matrix.
-        Q (np.ndarray): Process noise covariance matrix.
-        R (np.ndarray): Measurement noise covariance matrix.
-        P (np.ndarray): Error covariance matrix.
-        count_id (int): Class variable to assign unique IDs to each tracker.
+        time_since_update: Number of frames since the last update.
+        state: State vector of the bounding box.
+        F: State transition matrix.
+        H: Measurement matrix.
+        Q: Process noise covariance matrix.
+        R: Measurement noise covariance matrix.
+        P: Error covariance matrix.
+        count_id: Class variable to assign unique IDs to each tracker.
 
     Args:
-        bbox (np.ndarray): Initial bounding box in the form [x1, y1, x2, y2].
+        bbox: Initial bounding box in the form [x1, y1, x2, y2].
     """
 
     count_id = 0
@@ -38,7 +38,7 @@ class ByteTrackKalmanBoxTracker:
         Class method that returns the next available tracker ID.
 
         Returns:
-            int: The next available tracker ID.
+            The next available tracker ID.
         """
         next_id = cls.count_id
         cls.count_id += 1
@@ -109,7 +109,7 @@ class ByteTrackKalmanBoxTracker:
         Updates the state with a new detected bounding box.
 
         Args:
-            bbox (np.ndarray): Detected bounding box in the form [x1, y1, x2, y2].
+            bbox: Detected bounding box in the form [x1, y1, x2, y2].
         """
         self.time_since_update = 0
         self.number_of_successful_updates += 1
@@ -134,7 +134,7 @@ class ByteTrackKalmanBoxTracker:
         Returns the current bounding box estimate from the state vector.
 
         Returns:
-            np.ndarray: The bounding box [x1, y1, x2, y2].
+            The bounding box [x1, y1, x2, y2].
         """
         return np.array(
             [
