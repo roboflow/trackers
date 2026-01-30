@@ -173,7 +173,7 @@ def test_match_detections_consistency_with_scipy(
     similarity_matrix = rng.random((num_gt, num_tracker))
 
     # Our implementation
-    gt_idx, tr_idx, unmatched_gt, unmatched_tr = match_detections(
+    gt_idx, tr_idx, _unmatched_gt, _unmatched_tr = match_detections(
         similarity_matrix, threshold=threshold
     )
 
@@ -209,7 +209,7 @@ def test_match_detections_threshold_boundary() -> None:
 
     # Just above threshold, should match
     similarity_matrix = np.array([[0.5 + 2 * EPS]])
-    gt_idx, tr_idx, _, _ = match_detections(similarity_matrix, threshold=0.5)
+    gt_idx, _tr_idx, _, _ = match_detections(similarity_matrix, threshold=0.5)
     assert len(gt_idx) == 1
 
 
