@@ -1,11 +1,12 @@
 import numpy as np
-from supervision import xyxy_to_xywh
 
+from trackers.core.ocsort.kalman_filter_ocsort import (
+    KalmanFilterNew as KalmanFilterOCSORT,
+)
 from trackers.utils.converters import (
     xcycsr_to_xyxy,
     xyxy_to_xcycsr,
 )
-from trackers.utils.kalman_filter import KalmanFilter
 
 
 class OCSORTTracklet:
@@ -32,21 +33,30 @@ class OCSORTTracklet:
     def __init__(self, initial_bbox) -> None:
         self.age = 0
         # state format: (x, y, s, r, vx, vy, vs). As detailed in SORT paper, r is the aspect ratio and constant! # noqa: E501
-        self.kalman_filter = KalmanFilter(
-            bbox=xyxy_to_xcycsr(initial_bbox),
-            state_dim=7,
-            state_transition_matrix=np.array(
-                [
-                    [1, 0, 0, 0, 1, 0, 0],
-                    [0, 1, 0, 0, 0, 1, 0],
-                    [0, 0, 1, 0, 0, 0, 1],
-                    [0, 0, 0, 1, 0, 0, 0],
-                    [0, 0, 0, 0, 1, 0, 0],
-                    [0, 0, 0, 0, 0, 1, 0],
-                    [0, 0, 0, 0, 0, 0, 1],
-                ]
-            ),
-        )
+        # self.kalman_filter = KalmanFilter(
+        #     bbox=xyxy_to_xcycsr(initial_bbox),
+        #     state_dim=7,
+        #     state_transition_matrix=np.array(
+        #         [
+        #             [1, 0, 0, 0, 1, 0, 0],
+        #             [0, 1, 0, 0, 0, 1, 0],
+        #             [0, 0, 1, 0, 0, 0, 1],
+        #             [0, 0, 0, 1, 0, 0, 0],
+        #             [0, 0, 0, 0, 1, 0, 0],
+        #             [0, 0, 0, 0, 0, 1, 0],
+        #             [0, 0, 0, 0, 0, 0, 1],
+        #         ]
+        #     ),
+        # )
+
+        # self.kalman_filter.R[2:, 2:] *= 10.0
+        # self.kalman_filter.P[4:, 4:] *= (
+        #     1000.0  # give high uncertainty to the unobservable initial velocities
+        # )
+        # self.kalman_filter.P *= 10.0
+        # self.kalman_filter.Q[-1, -1] *= 0.01
+        # self.kalman_filter.Q[4:, 4:] *= 0.01
+        self.kalman_filter = KalmanFilterOCSORT(dim_x=7, dim_z=4)
 
         self.kalman_filter.R[2:, 2:] *= 10.0
         self.kalman_filter.P[4:, 4:] *= (
@@ -55,6 +65,8 @@ class OCSORTTracklet:
         self.kalman_filter.P *= 10.0
         self.kalman_filter.Q[-1, -1] *= 0.01
         self.kalman_filter.Q[4:, 4:] *= 0.01
+
+        self.kalman_filter.x[:4] = xyxy_to_xcycsr(initial_bbox).reshape((4, 1))
         self.last_observation = initial_bbox  # None
         self.previous_to_last_observation = None  # For velocity of track
 
@@ -66,17 +78,17 @@ class OCSORTTracklet:
         self.number_of_successful_consecutive_updates = 1
         # Number of frames since the last update
         self.time_since_update = 0
-        self.save_kalman_filter_state()
+        # self.save_kalman_filter_state()
 
-    def save_kalman_filter_state(self) -> None:
-        """Saves the current Kalman filter state and parameters."""
-        self.kalman_filter_state_before_being_lost = self.kalman_filter.state.copy()
-        self.kalman_filter_parameters_before_being_lost = {
-            "H": self.kalman_filter.H.copy(),
-            "Q": self.kalman_filter.Q.copy(),
-            "R": self.kalman_filter.R.copy(),
-            "P": self.kalman_filter.P.copy(),
-        }
+    # def save_kalman_filter_state(self) -> None:
+    #     """Saves the current Kalman filter state and parameters."""
+    #     self.kalman_filter_state_before_being_lost = self.kalman_filter.state.copy()
+    #     self.kalman_filter_parameters_before_being_lost = {
+    #         "H": self.kalman_filter.H.copy(),
+    #         "Q": self.kalman_filter.Q.copy(),
+    #         "R": self.kalman_filter.R.copy(),
+    #         "P": self.kalman_filter.P.copy(),
+    #     }
 
     @classmethod
     def get_next_tracker_id(cls) -> int:
@@ -90,16 +102,15 @@ class OCSORTTracklet:
         Args:
             bbox (np.ndarray): The new bounding box in the form [x1, y1, x2, y2].
         """
-        if self.is_lost():
-            self.re_update(bbox)
-        else:
+        if bbox is not None:
             self.kalman_filter.update(xyxy_to_xcycsr(bbox))
             # save the last before being lost KF parameters for re-updating
-            self.save_kalman_filter_state()
-        self.time_since_update = 0
-        self.number_of_successful_consecutive_updates += 1
-        self.previous_to_last_observation = self.last_observation
-        self.last_observation = bbox
+            self.time_since_update = 0
+            self.number_of_successful_consecutive_updates += 1
+            self.previous_to_last_observation = self.last_observation
+            self.last_observation = bbox
+        else:
+            self.kalman_filter.update(None)
 
     def predict(self) -> np.ndarray:
         """Predicts the next bounding box position using the Kalman filter.
@@ -113,8 +124,7 @@ class OCSORTTracklet:
             self.number_of_successful_consecutive_updates = 0
 
         self.time_since_update += 1
-        predicted_bbox = self.kalman_filter.get_state_bbox()
-        return xcycsr_to_xyxy(predicted_bbox)
+        return xcycsr_to_xyxy(self.kalman_filter.x)
 
     def is_lost(
         self,
@@ -122,37 +132,37 @@ class OCSORTTracklet:
         """Determines if the tracklet is considered lost."""
         return self.time_since_update > 1
 
-    def re_update(self, bbox: np.ndarray) -> None:
-        """Re-updates the tracklet with the virtual trajectory generated out of the line that joins
-        the last_observation and the parameter bbox.
+    # def re_update(self, bbox: np.ndarray) -> None:
+    #     """Re-updates the tracklet with the virtual trajectory generated out of the line that joins
+    #     the last_observation and the parameter bbox.
 
-        Args:
-            bbox: The new bounding box in the form [x1, y1, x2, y2].
-        """  # noqa: E501
-        self.kalman_filter.state = self.kalman_filter_state_before_being_lost
-        self.kalman_filter.set_parameters(
-            **self.kalman_filter_parameters_before_being_lost
-        )
-        bbox_xywh = xyxy_to_xywh(np.array([bbox]))[0]
-        last_observation_xywh = xyxy_to_xywh(np.array([self.last_observation]))[0]
-        for i in range(1, self.time_since_update + 1):
-            # Interpolate linearly between last_observation and bbox
-            virtual_bbox_xywh = last_observation_xywh + (
-                bbox_xywh - last_observation_xywh
-            ) * (i / (self.time_since_update))
-            virtual_bbox_xysa = np.copy(virtual_bbox_xywh)
-            s = virtual_bbox_xywh[2] * virtual_bbox_xywh[3]  # w*h
-            virtual_bbox_xysa[2] = s
-            virtual_bbox_xysa[3] = (
-                virtual_bbox_xywh[2] / virtual_bbox_xywh[3]
-            )  # w/h = r
+    #     Args:
+    #         bbox: The new bounding box in the form [x1, y1, x2, y2].
+    #     """
+    #     self.kalman_filter.state = self.kalman_filter_state_before_being_lost
+    #     self.kalman_filter.set_parameters(
+    #         **self.kalman_filter_parameters_before_being_lost
+    #     )
+    #     bbox_xywh = xyxy_to_xywh(np.array([bbox]))[0]
+    #     last_observation_xywh = xyxy_to_xywh(np.array([self.last_observation]))[0]
+    #     for i in range(1, self.time_since_update + 1):
+    #         # Interpolate linearly between last_observation and bbox
+    #         virtual_bbox_xywh = last_observation_xywh + (
+    #             bbox_xywh - last_observation_xywh
+    #         ) * (i / (self.time_since_update))
+    #         virtual_bbox_xysa = np.copy(virtual_bbox_xywh)
+    #         s = virtual_bbox_xywh[2] * virtual_bbox_xywh[3]  # w*h
+    #         virtual_bbox_xysa[2] = s
+    #         virtual_bbox_xysa[3] = (
+    #             virtual_bbox_xywh[2] / virtual_bbox_xywh[3]
+    #         )  # w/h = r
 
-            self.kalman_filter.predict()
-            self.kalman_filter.update(virtual_bbox_xysa)
+    #         self.kalman_filter.predict()
+    #         self.kalman_filter.update(virtual_bbox_xysa)
 
-        self.previous_to_last_observation = self.last_observation
-        self.last_observation = bbox
-        self.time_since_update = 0
+    #     self.previous_to_last_observation = self.last_observation
+    #     self.last_observation = bbox
+    #     self.time_since_update = 0
 
     def get_state_bbox(self) -> np.ndarray:
         """Returns the current bounding box estimate from the Kalman filter.
@@ -160,4 +170,4 @@ class OCSORTTracklet:
         Returns:
             np.ndarray: The current bounding box in the form [x1, y1, x2, y2].
         """
-        return xcycsr_to_xyxy(self.kalman_filter.get_state_bbox())
+        return xcycsr_to_xyxy(self.kalman_filter.x)
