@@ -46,6 +46,13 @@ extra_css:
   - stylesheets/rf.css
 
 markdown_extensions:
+   # Adds support for card grids
+  - attr_list
+  - md_in_html
+  # Enables the use of icons and emojis
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   # Code syntax highlighting with line numbers and anchors
   - pymdownx.highlight:
       # Adds anchors to line numbers

@@ -1,3 +1,9 @@
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -9,20 +15,20 @@ class SORTKalmanBoxTracker:
     its position.
 
     Attributes:
-        tracker_id (int): Unique identifier for the tracker.
-        number_of_successful_updates (int): Number of times the object has been
+        tracker_id: Unique identifier for the tracker.
+        number_of_successful_updates: Number of times the object has been
             updated successfully.
-        time_since_update (int): Number of frames since the last update.
-        state (np.ndarray): State vector of the bounding box.
-        F (np.ndarray): State transition matrix.
-        H (np.ndarray): Measurement matrix.
-        Q (np.ndarray): Process noise covariance matrix.
-        R (np.ndarray): Measurement noise covariance matrix.
-        P (np.ndarray): Error covariance matrix.
-        count_id (int): Class variable to assign unique IDs to each tracker.
+        time_since_update: Number of frames since the last update.
+        state: State vector of the bounding box.
+        F: State transition matrix.
+        H: Measurement matrix.
+        Q: Process noise covariance matrix.
+        R: Measurement noise covariance matrix.
+        P: Error covariance matrix.
+        count_id: Class variable to assign unique IDs to each tracker.
 
     Args:
-        bbox (np.ndarray): Initial bounding box in the form [x1, y1, x2, y2].
+        bbox: Initial bounding box in the form [x1, y1, x2, y2].
     """
 
     count_id: int = 0
@@ -105,7 +111,7 @@ class SORTKalmanBoxTracker:
         Updates the state with a new detected bounding box.
 
         Args:
-            bbox (np.ndarray): Detected bounding box in the form [x1, y1, x2, y2].
+            bbox: Detected bounding box in the form [x1, y1, x2, y2].
         """
         self.time_since_update = 0
         self.number_of_successful_updates += 1
@@ -134,6 +140,6 @@ class SORTKalmanBoxTracker:
         Returns the current bounding box estimate from the state vector.
 
         Returns:
-            np.ndarray: The bounding box [x1, y1, x2, y2]
+            The bounding box [x1, y1, x2, y2].
         """
         return self.state[:4, 0].flatten().astype(np.float32)

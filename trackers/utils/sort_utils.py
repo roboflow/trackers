@@ -1,3 +1,9 @@
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 from copy import deepcopy
 from typing import List, Sequence, Set, TypeVar, Union
 
@@ -23,14 +29,14 @@ def get_alive_trackers(
     it was just updated).
 
     Args:
-        trackers (Sequence[KalmanBoxTrackerType]): List of KalmanBoxTracker objects.
-        minimum_consecutive_frames (int): Number of consecutive frames that an object
+        trackers: List of KalmanBoxTracker objects.
+        minimum_consecutive_frames: Number of consecutive frames that an object
             must be tracked before it is considered a 'valid' track.
-        maximum_frames_without_update (int): Maximum number of frames without update
+        maximum_frames_without_update: Maximum number of frames without update
             before a track is considered dead.
 
     Returns:
-        List[KalmanBoxTrackerType]: List of alive trackers.
+        List of alive trackers.
     """
     alive_trackers = []
     for tracker in trackers:
@@ -50,11 +56,12 @@ def get_iou_matrix(
     Build IOU cost matrix between detections and predicted bounding boxes
 
     Args:
-        detection_boxes (np.ndarray): Detected bounding boxes in the
+        trackers: List of KalmanBoxTracker objects.
+        detection_boxes: Detected bounding boxes in the
             form [x1, y1, x2, y2].
 
     Returns:
-        np.ndarray: IOU cost matrix.
+        IOU cost matrix.
     """
     predicted_boxes = np.array([t.get_state_bbox() for t in trackers])
     if len(predicted_boxes) == 0 and len(trackers) > 0:
@@ -82,17 +89,17 @@ def update_detections_with_track_ids(
     it is assigned an ID to the detection that just updated it.
 
     Args:
-        trackers (Sequence[SORTKalmanBoxTracker]): List of SORTKalmanBoxTracker objects.
-        detections (sv.Detections): The latest set of object detections.
-        detection_boxes (np.ndarray): Detected bounding boxes in the
+        trackers: List of SORTKalmanBoxTracker objects.
+        detections: The latest set of object detections.
+        detection_boxes: Detected bounding boxes in the
             form [x1, y1, x2, y2].
-        minimum_iou_threshold (float): IOU threshold for associating detections to
+        minimum_iou_threshold: IOU threshold for associating detections to
             existing tracks.
-        minimum_consecutive_frames (int): Number of consecutive frames that an object
+        minimum_consecutive_frames: Number of consecutive frames that an object
             must be tracked before it is considered a 'valid' track.
 
     Returns:
-        sv.Detections: A copy of the detections with `tracker_id` set
+        A copy of the detections with `tracker_id` set
             for each detection that is tracked.
     """
     # Re-run association in the same way (could also store direct mapping)
