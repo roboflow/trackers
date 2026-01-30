@@ -207,6 +207,11 @@ class OCSORTTracker(BaseTracker):
                     updated_detections,
                 )
 
+            # Update OCR-unmatched tracks with None before filtering; indices
+            # refer to current self.tracks.
+            for m in _ocr_unmatched_tracks:
+                self.tracks[unmatched_tracks[m]].update(None)
+
             self.tracks = self.activate_or_kill_tracklets()
             self._spawn_new_tracklets(
                 detections[unmatched_detections], ocr_unmatched_detections
@@ -216,8 +221,6 @@ class OCSORTTracker(BaseTracker):
                 [-1] * len(left_detections), dtype=int
             )
             updated_detections.append(left_detections)
-            for m in _ocr_unmatched_tracks:
-                self.tracks[unmatched_tracks[m]].update(None)
         else:
             self.tracks = self.activate_or_kill_tracklets()
             self._spawn_new_tracklets(detections, unmatched_detections)
