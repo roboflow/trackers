@@ -34,11 +34,13 @@ from trackers.eval.matching import EPS, match_detections
             np.array([]),
         ),  # single perfect match
         (
-            np.array([
-                [0.9, 0.1, 0.0],
-                [0.2, 0.8, 0.1],
-                [0.0, 0.1, 0.7],
-            ]),
+            np.array(
+                [
+                    [0.9, 0.1, 0.0],
+                    [0.2, 0.8, 0.1],
+                    [0.0, 0.1, 0.7],
+                ]
+            ),
             0.5,
             np.array([0, 1, 2]),
             np.array([0, 1, 2]),
@@ -46,10 +48,12 @@ from trackers.eval.matching import EPS, match_detections
             np.array([]),
         ),  # 3x3 diagonal matches
         (
-            np.array([
-                [0.9, 0.1],
-                [0.2, 0.3],
-            ]),
+            np.array(
+                [
+                    [0.9, 0.1],
+                    [0.2, 0.3],
+                ]
+            ),
             0.5,
             np.array([0]),
             np.array([0]),
@@ -57,10 +61,12 @@ from trackers.eval.matching import EPS, match_detections
             np.array([1]),
         ),  # partial match, one filtered by threshold
         (
-            np.array([
-                [0.9, 0.85],
-                [0.8, 0.95],
-            ]),
+            np.array(
+                [
+                    [0.9, 0.85],
+                    [0.8, 0.95],
+                ]
+            ),
             0.5,
             np.array([0, 1]),
             np.array([0, 1]),
@@ -92,10 +98,12 @@ from trackers.eval.matching import EPS, match_detections
             np.array([]),
         ),  # both empty
         (
-            np.array([
-                [0.3, 0.2],
-                [0.1, 0.4],
-            ]),
+            np.array(
+                [
+                    [0.3, 0.2],
+                    [0.1, 0.4],
+                ]
+            ),
             0.5,
             np.array([]),
             np.array([]),
@@ -103,10 +111,12 @@ from trackers.eval.matching import EPS, match_detections
             np.array([0, 1]),
         ),  # all filtered by threshold
         (
-            np.array([
-                [0.9, 0.1, 0.0],
-                [0.2, 0.8, 0.1],
-            ]),
+            np.array(
+                [
+                    [0.9, 0.1, 0.0],
+                    [0.2, 0.8, 0.1],
+                ]
+            ),
             0.5,
             np.array([0, 1]),
             np.array([0, 1]),
@@ -114,11 +124,13 @@ from trackers.eval.matching import EPS, match_detections
             np.array([2]),
         ),  # more predictions than GT
         (
-            np.array([
-                [0.9, 0.1],
-                [0.2, 0.8],
-                [0.1, 0.2],
-            ]),
+            np.array(
+                [
+                    [0.9, 0.1],
+                    [0.2, 0.8],
+                    [0.1, 0.2],
+                ]
+            ),
             0.5,
             np.array([0, 1]),
             np.array([0, 1]),

@@ -95,9 +95,7 @@ def match_detections(
     match_rows, match_cols = linear_sum_assignment(-similarity_matrix)
 
     # Filter matches below threshold
-    actually_matched_mask = (
-        similarity_matrix[match_rows, match_cols] > threshold + EPS
-    )
+    actually_matched_mask = similarity_matrix[match_rows, match_cols] > threshold + EPS
     matched_gt_indices = match_rows[actually_matched_mask]
     matched_tracker_indices = match_cols[actually_matched_mask]
 
