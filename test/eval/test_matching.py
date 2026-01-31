@@ -137,6 +137,175 @@ from trackers.eval.matching import EPS, match_detections
             np.array([2]),
             np.array([]),
         ),  # more GT than predictions
+        # === OFF-DIAGONAL AND NON-SEQUENTIAL MATCHES ===
+        (
+            np.array(
+                [
+                    [0.1, 0.2, 0.9],
+                    [0.8, 0.1, 0.2],
+                    [0.2, 0.7, 0.1],
+                ]
+            ),
+            0.5,
+            np.array([0, 1, 2]),
+            np.array([2, 0, 1]),
+            np.array([]),
+            np.array([]),
+        ),  # off-diagonal: GT0->TR2, GT1->TR0, GT2->TR1
+        (
+            np.array(
+                [
+                    [0.3, 0.9],
+                    [0.8, 0.2],
+                ]
+            ),
+            0.5,
+            np.array([0, 1]),
+            np.array([1, 0]),
+            np.array([]),
+            np.array([]),
+        ),  # swapped: GT0->TR1, GT1->TR0
+        (
+            np.array(
+                [
+                    [0.1, 0.2, 0.1, 0.9],
+                    [0.3, 0.2, 0.1, 0.2],
+                    [0.1, 0.8, 0.2, 0.1],
+                ]
+            ),
+            0.5,
+            np.array([0, 2]),
+            np.array([3, 1]),
+            np.array([1]),
+            np.array([0, 2]),
+        ),  # sparse: GT0->TR3, GT2->TR1, GT1 unmatched
+        (
+            np.array(
+                [
+                    [0.9, 0.1, 0.2, 0.1],
+                    [0.2, 0.3, 0.1, 0.8],
+                    [0.1, 0.7, 0.2, 0.1],
+                    [0.2, 0.1, 0.6, 0.2],
+                ]
+            ),
+            0.5,
+            np.array([0, 1, 2, 3]),
+            np.array([0, 3, 1, 2]),
+            np.array([]),
+            np.array([]),
+        ),  # mixed: GT0->TR0, GT1->TR3, GT2->TR1, GT3->TR2
+        # === VERY UNBALANCED SIZES ===
+        (
+            np.array([[0.3, 0.2, 0.1, 0.2, 0.9]]),
+            0.5,
+            np.array([0]),
+            np.array([4]),
+            np.array([]),
+            np.array([0, 1, 2, 3]),
+        ),  # 1 GT vs 5 trackers, match at last position
+        (
+            np.array(
+                [
+                    [0.2],
+                    [0.3],
+                    [0.1],
+                    [0.9],
+                    [0.4],
+                ]
+            ),
+            0.5,
+            np.array([3]),
+            np.array([0]),
+            np.array([0, 1, 2, 4]),
+            np.array([]),
+        ),  # 5 GTs vs 1 tracker, GT3 matches
+        (
+            np.array(
+                [
+                    [0.1, 0.2, 0.3, 0.2, 0.1, 0.2, 0.9, 0.1],
+                    [0.8, 0.1, 0.2, 0.1, 0.2, 0.1, 0.1, 0.2],
+                ]
+            ),
+            0.5,
+            np.array([0, 1]),
+            np.array([6, 0]),
+            np.array([]),
+            np.array([1, 2, 3, 4, 5, 7]),
+        ),  # 2 GTs vs 8 trackers: GT0->TR6, GT1->TR0
+        # === ONLY SPECIFIC POSITIONS MATCH ===
+        (
+            np.array(
+                [
+                    [0.1, 0.2, 0.3],
+                    [0.2, 0.9, 0.1],
+                    [0.3, 0.1, 0.2],
+                ]
+            ),
+            0.5,
+            np.array([1]),
+            np.array([1]),
+            np.array([0, 2]),
+            np.array([0, 2]),
+        ),  # only middle: GT1->TR1
+        (
+            np.array(
+                [
+                    [0.9, 0.1, 0.1, 0.1],
+                    [0.1, 0.2, 0.3, 0.1],
+                    [0.2, 0.1, 0.2, 0.1],
+                    [0.1, 0.1, 0.1, 0.8],
+                ]
+            ),
+            0.5,
+            np.array([0, 3]),
+            np.array([0, 3]),
+            np.array([1, 2]),
+            np.array([1, 2]),
+        ),  # first and last only: GT0->TR0, GT3->TR3
+        (
+            np.array(
+                [
+                    [0.1, 0.1, 0.1, 0.1, 0.9],
+                    [0.1, 0.1, 0.1, 0.1, 0.1],
+                    [0.1, 0.1, 0.1, 0.1, 0.1],
+                    [0.1, 0.1, 0.1, 0.1, 0.1],
+                    [0.8, 0.1, 0.1, 0.1, 0.1],
+                ]
+            ),
+            0.5,
+            np.array([0, 4]),
+            np.array([4, 0]),
+            np.array([1, 2, 3]),
+            np.array([1, 2, 3]),
+        ),  # corners only: GT0->TR4, GT4->TR0
+        # === THRESHOLD EDGE CASES ===
+        (
+            np.array(
+                [
+                    [0.51, 0.49],
+                    [0.49, 0.51],
+                ]
+            ),
+            0.5,
+            np.array([0, 1]),
+            np.array([0, 1]),
+            np.array([]),
+            np.array([]),
+        ),  # just above threshold on diagonal
+        (
+            np.array(
+                [
+                    [0.6, 0.7, 0.8],
+                    [0.9, 0.5, 0.4],
+                    [0.3, 0.85, 0.2],
+                ]
+            ),
+            0.5,
+            np.array([0, 1, 2]),
+            np.array([2, 0, 1]),
+            np.array([]),
+            np.array([]),
+        ),  # optimal beats greedy: GT0->TR2, GT1->TR0, GT2->TR1
     ],
 )
 def test_match_detections(
