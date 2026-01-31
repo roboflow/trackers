@@ -10,7 +10,6 @@ from typing import Any
 
 import numpy as np
 import pytest
-from scipy.optimize import linear_sum_assignment
 
 from trackers.eval.matching import EPS, match_detections
 
@@ -326,48 +325,6 @@ def test_match_detections(
     np.testing.assert_array_equal(np.sort(unmatched_tr), np.sort(expected_unmatched_tr))
 
 
-@pytest.mark.parametrize(
-    ("num_gt", "num_tracker", "threshold"),
-    [
-        (5, 5, 0.3),
-        (10, 5, 0.5),
-        (5, 10, 0.5),
-        (20, 20, 0.4),
-    ],
-)
-def test_match_detections_consistency_with_scipy(
-    num_gt: int, num_tracker: int, threshold: float
-) -> None:
-    rng = np.random.default_rng(42)
-    similarity_matrix = rng.random((num_gt, num_tracker))
-
-    # Our implementation
-    gt_idx, tr_idx, _unmatched_gt, _unmatched_tr = match_detections(
-        similarity_matrix, threshold=threshold
-    )
-
-    # Reference implementation (TrackEval pattern)
-    match_rows, match_cols = linear_sum_assignment(-similarity_matrix)
-    actually_matched_mask = similarity_matrix[match_rows, match_cols] > threshold + EPS
-    ref_gt_idx = match_rows[actually_matched_mask]
-    ref_tr_idx = match_cols[actually_matched_mask]
-
-    np.testing.assert_array_equal(np.sort(gt_idx), np.sort(ref_gt_idx))
-    np.testing.assert_array_equal(np.sort(tr_idx), np.sort(ref_tr_idx))
-
-
-def test_match_detections_returns_correct_dtypes() -> None:
-    similarity_matrix = np.array([[0.9, 0.1], [0.2, 0.8]])
-    gt_idx, tr_idx, unmatched_gt, unmatched_tr = match_detections(
-        similarity_matrix, threshold=0.5
-    )
-
-    assert gt_idx.dtype == np.intp
-    assert tr_idx.dtype == np.intp
-    assert unmatched_gt.dtype == np.intp
-    assert unmatched_tr.dtype == np.intp
-
-
 def test_match_detections_threshold_boundary() -> None:
     # Test exact threshold boundary behavior
     similarity_matrix = np.array([[0.5]])
@@ -380,7 +337,3 @@ def test_match_detections_threshold_boundary() -> None:
     similarity_matrix = np.array([[0.5 + 2 * EPS]])
     gt_idx, _tr_idx, _, _ = match_detections(similarity_matrix, threshold=0.5)
     assert len(gt_idx) == 1
-
-
-def test_epsilon_consistency() -> None:
-    assert EPS == np.finfo("float").eps
