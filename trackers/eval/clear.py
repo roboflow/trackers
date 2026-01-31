@@ -119,9 +119,7 @@ def compute_clear_metrics(
     num_tracker_dets = sum(len(ids) for ids in tracker_ids)
 
     # Get unique GT IDs across all frames (sorted for searchsorted)
-    all_gt_ids = (
-        np.concatenate(gt_ids) if gt_ids and num_gt_dets > 0 else np.array([])
-    )
+    all_gt_ids = np.concatenate(gt_ids) if gt_ids and num_gt_dets > 0 else np.array([])
     unique_gt_ids = np.unique(all_gt_ids)
     num_gt_ids = len(unique_gt_ids)
 
