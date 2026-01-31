@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------
 
 from trackers.eval.box import box_ioa, box_iou
+from trackers.eval.clear import compute_clear_metrics
 from trackers.eval.matching import match_detections
 
-__all__ = ["box_ioa", "box_iou", "match_detections"]
+__all__ = ["box_ioa", "box_iou", "compute_clear_metrics", "match_detections"]
