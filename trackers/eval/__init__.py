@@ -15,12 +15,12 @@ from trackers.eval.io import (
 from trackers.eval.matching import match_detections
 
 __all__ = [
+    "MOTFrameData",
+    "MOTSequenceData",
     "box_ioa",
     "box_iou",
     "compute_clear_metrics",
     "load_mot_file",
     "match_detections",
-    "MOTFrameData",
-    "MOTSequenceData",
     "prepare_mot_sequence",
 ]
