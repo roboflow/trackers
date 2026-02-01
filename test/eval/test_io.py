@@ -25,9 +25,7 @@ from trackers.eval.io import (
 def test_load_mot_file_valid(tmp_path: Path) -> None:
     """Load a valid MOT file with multiple frames."""
     content = (
-        "1,1,100,200,50,60,0.9,1\n"
-        "1,2,150,250,40,50,0.8,1\n"
-        "2,1,105,205,50,60,0.9,1\n"
+        "1,1,100,200,50,60,0.9,1\n1,2,150,250,40,50,0.8,1\n2,1,105,205,50,60,0.9,1\n"
     )
     file_path = tmp_path / "test.txt"
     file_path.write_text(content)

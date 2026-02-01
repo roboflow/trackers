@@ -66,8 +66,7 @@ def evaluate_mot_sequence(
     for metric in metrics:
         if metric not in SUPPORTED_METRICS:
             raise ValueError(
-                f"Unsupported metric: {metric}. "
-                f"Supported metrics: {SUPPORTED_METRICS}"
+                f"Unsupported metric: {metric}. Supported metrics: {SUPPORTED_METRICS}"
             )
 
     # Load data
