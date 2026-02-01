@@ -165,3 +165,6 @@ line-ending = "auto"
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["test"]
+markers = [
+    "integration: marks tests as integration tests (require external data download)",
+]
