@@ -71,47 +71,22 @@ def compute_clear_metrics(
             np.array([0, 1]),
         ]
         tracker_ids = [
-            np.array([0, 1]),
-            np.array([0, 1]),
-            np.array([0, 1]),
+            np.array([10, 20]),
+            np.array([10, 30]),
+            np.array([10, 30]),
         ]
         similarity_scores = [
-            np.array([[0.9, 0.1], [0.1, 0.9]]),
-            np.array([[0.8, 0.2], [0.2, 0.85]]),
-            np.array([[0.85, 0.15], [0.1, 0.9]]),
+            np.array([[0.9, 0.1], [0.1, 0.8]]),
+            np.array([[0.85, 0.1], [0.1, 0.75]]),
+            np.array([[0.8, 0.1], [0.1, 0.7]]),
         ]
-        result = compute_clear_metrics(
-            gt_ids, tracker_ids, similarity_scores, threshold=0.5
-        )
+        result = compute_clear_metrics(gt_ids, tracker_ids, similarity_scores)
         result["MOTA"]
-        # 1.0
-        result["MT"]
-        # 2
-        ```
-
-        ```python
-        import numpy as np
-        from trackers.eval import compute_clear_metrics
-
-        gt_ids = [
-            np.array([0, 1, 2]),
-            np.array([0, 1, 2]),
-        ]
-        tracker_ids = [
-            np.array([10, 11]),
-            np.array([10, 12]),
-        ]
-        similarity_scores = [
-            np.array([[0.8, 0.1], [0.1, 0.7], [0.0, 0.0]]),
-            np.array([[0.75, 0.1], [0.1, 0.0], [0.0, 0.65]]),
-        ]
-        result = compute_clear_metrics(
-            gt_ids, tracker_ids, similarity_scores, threshold=0.5
-        )
-        result["CLR_FN"]
-        # 2
+        # 0.833
         result["IDSW"]
         # 1
+        result["MT"]
+        # 2
         ```
     """
     # Count total detections
@@ -133,7 +108,7 @@ def compute_clear_metrics(
             "CLR_FN": num_gt_dets,
             "CLR_FP": 0,
             "IDSW": 0,
-            "MOTA": 0.0 if num_gt_dets == 0 else -num_gt_dets / max(1.0, num_gt_dets),
+            "MOTA": 0.0,
             "MOTP": 0.0,
             "MT": 0,
             "PT": 0,

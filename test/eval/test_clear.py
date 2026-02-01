@@ -41,7 +41,7 @@ from trackers.eval.clear import compute_clear_metrics
             [np.array([]), np.array([])],
             [np.empty((2, 0)), np.empty((2, 0))],
             0.5,
-            {"CLR_TP": 0, "CLR_FN": 4, "CLR_FP": 0, "IDSW": 0, "ML": 2},
+            {"CLR_TP": 0, "CLR_FN": 4, "CLR_FP": 0, "IDSW": 0, "ML": 2, "MOTA": 0.0},
         ),
         # All false positives - no GT
         (
