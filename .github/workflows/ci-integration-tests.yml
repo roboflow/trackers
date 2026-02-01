@@ -9,7 +9,7 @@ on:
 
 jobs:
   integration-tests:
-    name: CLEAR Metrics Integration Tests
+    name: TrackEval Parity Validation
     timeout-minutes: 15
     runs-on: ubuntu-latest
 

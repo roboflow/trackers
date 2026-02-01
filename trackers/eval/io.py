@@ -105,8 +105,10 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
         from trackers.eval import load_mot_file
 
         gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")
-        print(f"Loaded {len(gt_data)} frames")
-        print(f"Frame 1 has {len(gt_data[1].ids)} detections")
+        len(gt_data)
+        # 600
+        len(gt_data[1].ids)
+        # 12
         ```
     """
     path = Path(path)
@@ -117,10 +119,10 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
 
     with open(path) as f:
         # Check if file is empty
-        f.seek(0, 2)  # Seek to end
+        f.seek(0, 2)
         if f.tell() == 0:
             raise ValueError(f"MOT file is empty: {path}")
-        f.seek(0)  # Seek back to start
+        f.seek(0)
 
         # Auto-detect CSV dialect
         sample = f.readline()
@@ -130,21 +132,17 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
             dialect = csv.Sniffer().sniff(sample, delimiters=",; \t")
             dialect.skipinitialspace = True
         except csv.Error:
-            # Fall back to comma delimiter
             dialect = csv.excel
             dialect.skipinitialspace = True
 
         reader = csv.reader(f, dialect)
         for row in reader:
-            # Skip empty rows
             if not row or (len(row) == 1 and row[0].strip() == ""):
                 continue
 
-            # Remove trailing empty strings
             while row and row[-1] == "":
                 row = row[:-1]
 
-            # Validate minimum columns: frame, id, x, y, w, h (6 columns)
             if len(row) < 6:
                 raise ValueError(
                     f"Invalid MOT format in {path}: expected at least 6 columns, "
@@ -163,7 +161,6 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
     if not frame_data:
         raise ValueError(f"No valid data found in MOT file: {path}")
 
-    # Convert to MOTFrameData
     result: dict[int, MOTFrameData] = {}
     for frame, rows in frame_data.items():
         try:
@@ -219,22 +216,19 @@ def prepare_mot_sequence(
         gt = load_mot_file("data/gt/MOT17-02/gt/gt.txt")
         tracker = load_mot_file("data/trackers/MOT17-02.txt")
         data = prepare_mot_sequence(gt, tracker)
-        print(f"Sequence has {data.num_frames} frames")
-        print(f"GT has {data.num_gt_ids} unique tracks")
+        data.num_frames
+        # 600
+        data.num_gt_ids
+        # 54
         ```
     """
-    # Determine frame range
     gt_frames = set(gt_data.keys()) if gt_data else set()
     tracker_frames = set(tracker_data.keys()) if tracker_data else set()
     all_frames = gt_frames | tracker_frames
 
     if num_frames is None:
-        if all_frames:
-            num_frames = max(all_frames)
-        else:
-            num_frames = 0
+        num_frames = max(all_frames) if all_frames else 0
 
-    # Collect all unique IDs across all frames
     all_gt_ids: set[int] = set()
     all_tracker_ids: set[int] = set()
 
@@ -252,7 +246,6 @@ def prepare_mot_sequence(
         orig_id: idx for idx, orig_id in enumerate(sorted_tracker_ids)
     }
 
-    # Process each frame
     gt_ids_list: list[np.ndarray] = []
     tracker_ids_list: list[np.ndarray] = []
     similarity_scores_list: list[np.ndarray] = []

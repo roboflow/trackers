@@ -7,7 +7,7 @@
 """Integration tests comparing our metrics against TrackEval on real data.
 
 These tests download the SoccerNet MOT test dataset and verify that our
-CLEAR metrics implementation produces identical results to TrackEval.
+metrics implementation produces identical results to TrackEval.
 Numerical parity is the key requirement.
 """
 
@@ -24,88 +24,22 @@ from trackers.eval.io import load_mot_file, prepare_mot_sequence
 if TYPE_CHECKING:
     pass
 
-# List of all 49 SoccerNet sequences for parametrization
-SOCCERNET_SEQUENCES = [
-    "SNMOT-116",
-    "SNMOT-117",
-    "SNMOT-118",
-    "SNMOT-119",
-    "SNMOT-120",
-    "SNMOT-121",
-    "SNMOT-122",
-    "SNMOT-123",
-    "SNMOT-124",
-    "SNMOT-125",
-    "SNMOT-126",
-    "SNMOT-127",
-    "SNMOT-128",
-    "SNMOT-129",
-    "SNMOT-130",
-    "SNMOT-131",
-    "SNMOT-132",
-    "SNMOT-133",
-    "SNMOT-134",
-    "SNMOT-135",
-    "SNMOT-136",
-    "SNMOT-137",
-    "SNMOT-138",
-    "SNMOT-139",
-    "SNMOT-140",
-    "SNMOT-141",
-    "SNMOT-142",
-    "SNMOT-143",
-    "SNMOT-144",
-    "SNMOT-145",
-    "SNMOT-146",
-    "SNMOT-147",
-    "SNMOT-148",
-    "SNMOT-149",
-    "SNMOT-150",
-    "SNMOT-187",
-    "SNMOT-188",
-    "SNMOT-189",
-    "SNMOT-190",
-    "SNMOT-191",
-    "SNMOT-192",
-    "SNMOT-193",
-    "SNMOT-194",
-    "SNMOT-195",
-    "SNMOT-196",
-    "SNMOT-197",
-    "SNMOT-198",
-    "SNMOT-199",
-    "SNMOT-200",
-]
-
 
 @pytest.mark.integration
-@pytest.mark.parametrize("sequence_name", SOCCERNET_SEQUENCES)
 def test_clear_metrics_match_trackeval(
     sequence_name: str,
     soccernet_test_data: tuple[Path, dict[str, Any]],
 ) -> None:
-    """Verify CLEAR metrics match TrackEval for each sequence.
-
-    This test loads GT and tracker data for a sequence, runs our CLEAR
-    metrics pipeline, and compares results against TrackEval's output.
-
-    Args:
-        sequence_name: Name of the sequence (e.g., "SNMOT-116").
-        soccernet_test_data: Fixture providing data path and expected results.
-    """
+    """Verify CLEAR metrics match TrackEval for each sequence."""
     data_path, expected_results = soccernet_test_data
 
-    # Load GT and tracker data
     gt_path = data_path / "gt" / f"{sequence_name}.txt"
     tracker_path = data_path / "trackers" / f"{sequence_name}.txt"
 
     gt_data = load_mot_file(gt_path)
     tracker_data = load_mot_file(tracker_path)
-
-    # Prepare sequence data (computes IoU, remaps IDs)
     seq_data = prepare_mot_sequence(gt_data, tracker_data)
 
-    # Compute CLEAR metrics
     result = compute_clear_metrics(
         seq_data.gt_ids,
         seq_data.tracker_ids,
@@ -113,41 +47,22 @@ def test_clear_metrics_match_trackeval(
         threshold=0.5,
     )
 
-    # Get expected results from TrackEval
     expected_clear = expected_results["sequences"][sequence_name]["CLEAR"]
 
-    # Integer metrics - must match exactly
-    integer_metrics = [
-        "CLR_TP",
-        "CLR_FN",
-        "CLR_FP",
-        "IDSW",
-        "MT",
-        "PT",
-        "ML",
-        "Frag",
-    ]
+    # Integer metrics must match exactly
+    integer_metrics = ["CLR_TP", "CLR_FN", "CLR_FP", "IDSW", "MT", "PT", "ML", "Frag"]
     for metric in integer_metrics:
         assert result[metric] == expected_clear[metric], (
             f"{sequence_name}: {metric} mismatch - "
             f"got {result[metric]}, expected {expected_clear[metric]}"
         )
 
-    # Float metrics - allow small tolerance for percentage rounding
-    # TrackEval displays 5 decimal places, we use rel=1e-4 for safety
-    # Note: Our implementation outputs fractions (0-1), TrackEval outputs % (0-100)
-    float_metrics_ours = [
-        "MOTA",
-        "MOTP",
-        "MTR",
-        "PTR",
-        "MLR",
-    ]
-    for metric in float_metrics_ours:
-        # TrackEval outputs percentages (0-100), our implementation uses fractions (0-1)
-        # Convert our result to percentage for comparison
+    # Float metrics: our implementation outputs fractions (0-1),
+    # TrackEval outputs percentages (0-100)
+    float_metrics = ["MOTA", "MOTP", "MTR", "PTR", "MLR"]
+    for metric in float_metrics:
         expected_val = expected_clear[metric]
-        result_val = result[metric] * 100  # Convert fraction to percentage
+        result_val = result[metric] * 100
 
         assert result_val == pytest.approx(expected_val, rel=1e-4, abs=1e-2), (
             f"{sequence_name}: {metric} mismatch - "
