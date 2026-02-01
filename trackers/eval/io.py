@@ -154,9 +154,7 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
             try:
                 frame = int(float(row[0]))
             except ValueError as e:
-                raise ValueError(
-                    f"Invalid frame number in {path}: {row[0]}"
-                ) from e
+                raise ValueError(f"Invalid frame number in {path}: {row[0]}") from e
 
             if frame not in frame_data:
                 frame_data[frame] = []
@@ -178,8 +176,10 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
         ids = data[:, 1].astype(np.intp)
         boxes = data[:, 2:6]
         confidences = data[:, 6] if data.shape[1] > 6 else np.ones(len(data))
-        classes = data[:, 7].astype(np.intp) if data.shape[1] > 7 else np.ones(
-            len(data), dtype=np.intp
+        classes = (
+            data[:, 7].astype(np.intp)
+            if data.shape[1] > 7
+            else np.ones(len(data), dtype=np.intp)
         )
 
         result[frame] = MOTFrameData(
