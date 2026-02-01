@@ -14,9 +14,7 @@ import numpy as np
 import pytest
 
 from trackers.eval.io import (
-    MOTFrameData,
     load_mot_file,
-    prepare_mot_sequence,
 )
 
 # ============================================================================

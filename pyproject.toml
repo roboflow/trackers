@@ -40,6 +40,12 @@ dependencies = [
     "scipy>=1.13.1",
 ]
 
+[project.optional-dependencies]
+cli = ["rich>=13.0.0"]
+
+[project.scripts]
+trackers = "trackers.scripts.__main__:main"
+
 [dependency-groups]
 dev = [
     "uv>=0.4.20",
