@@ -106,6 +106,12 @@ def dancetrack_test_data() -> tuple[Path, dict[str, Any]]:
     return _get_test_data("dancetrack")
 
 
+@pytest.fixture
+def test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
+    """Fixture providing test data for the current dataset."""
+    return _get_test_data(dataset_name)
+
+
 def _get_all_test_cases() -> list[tuple[str, str]]:
     """Get all (dataset_name, sequence_name) pairs for parametrization."""
     test_cases = []

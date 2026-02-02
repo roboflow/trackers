@@ -13,7 +13,8 @@ Numerical parity is the key requirement.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -23,17 +24,15 @@ from trackers.eval.io import load_mot_file, prepare_mot_sequence
 if TYPE_CHECKING:
     pass
 
-# Import the helper function from conftest
-from test.conftest import _get_test_data
-
 
 @pytest.mark.integration
 def test_clear_metrics_match_trackeval(
     dataset_name: str,
     sequence_name: str,
+    test_data: tuple[Path, dict[str, Any]],
 ) -> None:
     """Verify CLEAR metrics match TrackEval for each sequence."""
-    data_path, expected_results = _get_test_data(dataset_name)
+    data_path, expected_results = test_data
 
     gt_path = data_path / "gt" / f"{sequence_name}.txt"
     tracker_path = data_path / "trackers" / f"{sequence_name}.txt"
