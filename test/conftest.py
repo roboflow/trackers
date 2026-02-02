@@ -114,7 +114,7 @@ def test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
 
 def _get_all_test_cases() -> list[tuple[str, str]]:
     """Get all (dataset_name, sequence_name) pairs for parametrization."""
-    test_cases = []
+    test_cases: list[tuple[str, str]] = []
     for dataset_name in DATASETS:
         try:
             _, expected = _get_test_data(dataset_name)
