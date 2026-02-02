@@ -283,8 +283,7 @@ def _print_benchmark_results_plain(results: dict[str, Any]) -> None:
 
     if "CLEAR" in aggregate:
         print(
-            f"\n{'Sequence':<20} {'MOTA':>8} {'MOTP':>8} "
-            f"{'IDs':>6} {'MT':>4} {'ML':>4}"
+            f"\n{'Sequence':<20} {'MOTA':>8} {'MOTP':>8} {'IDs':>6} {'MT':>4} {'ML':>4}"
         )
         print("-" * 60)
 
