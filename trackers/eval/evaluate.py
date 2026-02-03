@@ -430,8 +430,7 @@ def _detect_tracker_name(
 
     # Multiple found - need override
     raise ValueError(
-        f"Multiple trackers found: {trackers}. "
-        "Please specify --tracker-name."
+        f"Multiple trackers found: {trackers}. Please specify --tracker-name."
     )
 
 

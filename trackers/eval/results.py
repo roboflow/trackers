@@ -234,9 +234,7 @@ class BenchmarkResult:
             Dictionary representation.
         """
         return {
-            "sequences": {
-                name: seq.to_dict() for name, seq in self.sequences.items()
-            },
+            "sequences": {name: seq.to_dict() for name, seq in self.sequences.items()},
             "aggregate": self.aggregate.to_dict(),
         }
 
