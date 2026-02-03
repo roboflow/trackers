@@ -20,28 +20,38 @@ import pytest
 if TYPE_CHECKING:
     from typing import Any
 
-SPORTSMOT_DATA_URL = (
-    "https://storage.googleapis.com/com-roboflow-marketing/"
-    "trackers/sportsmot-mot-test-data.zip"
-)
-DANCETRACK_DATA_URL = (
-    "https://storage.googleapis.com/com-roboflow-marketing/"
-    "trackers/dancetrack-mot-test-data.zip"
-)
-CACHE_DIR = Path.home() / ".cache" / "trackers-test"
-
-# Dataset configurations: (url, cache_folder_name)
-DATASETS = {
-    "sportsmot": (SPORTSMOT_DATA_URL, "sportsmot-mot-test-data"),
-    "dancetrack": (DANCETRACK_DATA_URL, "dancetrack-mot-test-data"),
+# Test data URLs and folder names
+DATASETS: dict[str, tuple[str, str]] = {
+    "sportsmot_flat": (
+        "https://storage.googleapis.com/com-roboflow-marketing/"
+        "trackers/sportsmot-mot-test-data.zip",
+        "sportsmot-flat",
+    ),
+    "sportsmot_mot17": (
+        "https://storage.googleapis.com/com-roboflow-marketing/"
+        "trackers/sportsmot-mot-test-data-mot17.zip",
+        "sportsmot-mot17",
+    ),
+    "dancetrack_flat": (
+        "https://storage.googleapis.com/com-roboflow-marketing/"
+        "trackers/dancetrack-mot-test-data.zip",
+        "dancetrack-flat",
+    ),
+    "dancetrack_mot17": (
+        "https://storage.googleapis.com/com-roboflow-marketing/"
+        "trackers/dancetrack-mot-test-data-mot17.zip",
+        "dancetrack-mot17",
+    ),
 }
 
+CACHE_DIR = Path.home() / ".cache" / "trackers-test"
 
-def _get_test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
+
+def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:
     """Download and cache MOT test data for a given dataset.
 
     Args:
-        dataset_name: Name of the dataset ("sportsmot" or "dancetrack").
+        dataset_key: Key from DATASETS dict (e.g., "sportsmot_flat").
 
     Returns:
         Tuple of (data_path, expected_results).
@@ -49,10 +59,11 @@ def _get_test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
     Raises:
         pytest.skip: If download fails or data is unavailable.
     """
-    if dataset_name not in DATASETS:
-        pytest.skip(f"Unknown dataset: {dataset_name}")
+    if dataset_key not in DATASETS:
+        pytest.skip(f"Unknown dataset: {dataset_key}")
 
-    url, folder_name = DATASETS[dataset_name]
+    url, folder_name = DATASETS[dataset_key]
+
     cache_path = CACHE_DIR / folder_name
     zip_path = CACHE_DIR / f"{folder_name}.zip"
     expected_path = cache_path / "expected_results.json"
@@ -66,7 +77,7 @@ def _get_test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
     try:
         urllib.request.urlretrieve(url, zip_path)  # noqa: S310
     except Exception as e:
-        pytest.skip(f"Failed to download {dataset_name} test data: {e}")
+        pytest.skip(f"Failed to download {dataset_key} test data: {e}")
 
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
@@ -74,7 +85,7 @@ def _get_test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
     except Exception as e:
         if zip_path.exists():
             zip_path.unlink()
-        pytest.skip(f"Failed to extract {dataset_name} test data: {e}")
+        pytest.skip(f"Failed to extract {dataset_key} test data: {e}")
 
     if zip_path.exists():
         zip_path.unlink()
@@ -87,7 +98,7 @@ def _get_test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
         else:
             shutil.rmtree(cache_path, ignore_errors=True)
             pytest.skip(
-                f"{dataset_name} extraction failed: expected_results.json not found"
+                f"{dataset_key} extraction failed: expected_results.json not found"
             )
 
     with open(expected_path) as f:
@@ -95,42 +106,24 @@ def _get_test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
 
 
 @pytest.fixture(scope="session")
-def sportsmot_test_data() -> tuple[Path, dict[str, Any]]:
-    """Fixture providing SportsMOT test data path and expected results."""
-    return _get_test_data("sportsmot")
+def sportsmot_flat_data() -> tuple[Path, dict[str, Any]]:
+    """Fixture providing SportsMOT flat format test data."""
+    return _download_test_data("sportsmot_flat")
 
 
 @pytest.fixture(scope="session")
-def dancetrack_test_data() -> tuple[Path, dict[str, Any]]:
-    """Fixture providing DanceTrack test data path and expected results."""
-    return _get_test_data("dancetrack")
+def sportsmot_mot17_data() -> tuple[Path, dict[str, Any]]:
+    """Fixture providing SportsMOT MOT17 format test data."""
+    return _download_test_data("sportsmot_mot17")
 
 
-@pytest.fixture
-def test_data(dataset_name: str) -> tuple[Path, dict[str, Any]]:
-    """Fixture providing test data for the current dataset."""
-    return _get_test_data(dataset_name)
+@pytest.fixture(scope="session")
+def dancetrack_flat_data() -> tuple[Path, dict[str, Any]]:
+    """Fixture providing DanceTrack flat format test data."""
+    return _download_test_data("dancetrack_flat")
 
 
-def _get_all_test_cases() -> list[tuple[str, str]]:
-    """Get all (dataset_name, sequence_name) pairs for parametrization."""
-    test_cases: list[tuple[str, str]] = []
-    for dataset_name in DATASETS:
-        try:
-            _, expected = _get_test_data(dataset_name)
-            # New format: sequences are top-level keys (no "sequences" wrapper)
-            sequences = sorted(expected.keys())
-            test_cases.extend((dataset_name, seq) for seq in sequences)
-        except Exception:  # noqa: S112
-            # Skip datasets that fail to download during collection
-            continue
-    return test_cases
-
-
-def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """Dynamically parametrize tests that need dataset_name and sequence_name."""
-    has_dataset = "dataset_name" in metafunc.fixturenames
-    has_sequence = "sequence_name" in metafunc.fixturenames
-    if has_dataset and has_sequence:
-        test_cases = _get_all_test_cases()
-        metafunc.parametrize(["dataset_name", "sequence_name"], test_cases)
+@pytest.fixture(scope="session")
+def dancetrack_mot17_data() -> tuple[Path, dict[str, Any]]:
+    """Fixture providing DanceTrack MOT17 format test data."""
+    return _download_test_data("dancetrack_mot17")

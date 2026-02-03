@@ -14,10 +14,18 @@ from trackers.eval.io import (
     prepare_mot_sequence,
 )
 from trackers.eval.matching import match_detections
+from trackers.eval.results import (
+    BenchmarkResult,
+    CLEARMetrics,
+    SequenceResult,
+)
 
 __all__ = [
+    "BenchmarkResult",
+    "CLEARMetrics",
     "MOTFrameData",
     "MOTSequenceData",
+    "SequenceResult",
     "box_ioa",
     "box_iou",
     "compute_clear_metrics",
