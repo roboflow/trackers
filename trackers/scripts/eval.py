@@ -81,14 +81,14 @@ def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--metrics",
         nargs="+",
         default=["CLEAR"],
-        choices=["CLEAR", "HOTA"],
-        help="Metrics to compute. Default: CLEAR. Options: CLEAR, HOTA",
+        choices=["CLEAR", "HOTA", "Identity"],
+        help="Metrics to compute. Default: CLEAR. Options: CLEAR, HOTA, Identity",
     )
     parser.add_argument(
         "--threshold",
         type=float,
         default=0.5,
-        help="IoU threshold for CLEAR matching. Default: 0.5",
+        help="IoU threshold for CLEAR and Identity matching. Default: 0.5",
     )
     parser.add_argument(
         "--columns",
@@ -99,7 +99,8 @@ def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
             "Metric columns to display. Default: auto-selected based on metrics. "
             "CLEAR: MOTA, MOTP, MODA, CLR_Re, CLR_Pr, MTR, PTR, MLR, sMOTA, "
             "CLR_TP, CLR_FN, CLR_FP, IDSW, MT, PT, ML, Frag. "
-            "HOTA: HOTA, DetA, AssA, DetRe, DetPr, AssRe, AssPr, LocA"
+            "HOTA: HOTA, DetA, AssA, DetRe, DetPr, AssRe, AssPr, LocA. "
+            "Identity: IDF1, IDR, IDP, IDTP, IDFN, IDFP"
         ),
     )
     parser.add_argument(
