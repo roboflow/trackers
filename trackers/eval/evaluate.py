@@ -13,16 +13,18 @@ from pathlib import Path
 from typing import Any, Literal
 
 from trackers.eval.clear import compute_clear_metrics
+from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.io import load_mot_file, prepare_mot_sequence
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
+    HOTAMetrics,
     SequenceResult,
 )
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_METRICS = ["CLEAR"]
+SUPPORTED_METRICS = ["CLEAR", "HOTA"]
 
 
 @dataclass
@@ -49,13 +51,14 @@ def evaluate_mot_sequence(
     Args:
         gt_path: Path to ground truth file in MOT format.
         tracker_path: Path to tracker predictions file in MOT format.
-        metrics: List of metrics to compute. Currently supports `["CLEAR"]`.
+        metrics: List of metrics to compute. Supports `["CLEAR", "HOTA"]`.
             Defaults to `["CLEAR"]` if not specified.
-        threshold: IoU threshold for matching. Defaults to 0.5.
+        threshold: IoU threshold for CLEAR matching. Defaults to 0.5.
+            Note: HOTA computes across multiple thresholds internally.
 
     Returns:
         SequenceResult containing evaluation metrics. Access metrics via
-            `result.CLEAR.MOTA`, `result.CLEAR.IDSW`, etc.
+            `result.CLEAR.MOTA`, `result.HOTA.HOTA`, etc.
 
     Raises:
         FileNotFoundError: If ground truth or tracker file does not exist.
@@ -68,11 +71,12 @@ def evaluate_mot_sequence(
         result = evaluate_mot_sequence(
             gt_path="data/gt/MOT17-02/gt.txt",
             tracker_path="data/trackers/MOT17-02.txt",
+            metrics=["CLEAR", "HOTA"],
         )
         result.CLEAR.MOTA
         # 0.756
-        result.CLEAR.IDSW
-        # 42
+        result.HOTA.HOTA
+        # 0.612
         print(result.table())
         ```
     """
@@ -98,6 +102,7 @@ def evaluate_mot_sequence(
 
     # Compute metrics
     clear_metrics_dict: dict[str, Any] = {}
+    hota_metrics: HOTAMetrics | None = None
 
     if "CLEAR" in metrics:
         clear_metrics_dict = compute_clear_metrics(
@@ -107,10 +112,19 @@ def evaluate_mot_sequence(
             threshold=threshold,
         )
 
+    if "HOTA" in metrics:
+        hota_dict = compute_hota_metrics(
+            seq_data.gt_ids,
+            seq_data.tracker_ids,
+            seq_data.similarity_scores,
+        )
+        hota_metrics = HOTAMetrics.from_dict(hota_dict)
+
     # Build result
     return SequenceResult(
         sequence=gt_path.stem,
         CLEAR=CLEARMetrics.from_dict(clear_metrics_dict),
+        HOTA=hota_metrics,
     )
 
 
@@ -134,8 +148,9 @@ def evaluate_benchmark(
         tracker_dir: Directory containing tracker prediction files.
         seqmap: Optional path to sequence map file. If provided, only sequences
             listed in this file will be evaluated.
-        metrics: List of metrics to compute. Defaults to `["CLEAR"]`.
-        threshold: IoU threshold for matching. Defaults to 0.5.
+        metrics: List of metrics to compute. Supports `["CLEAR", "HOTA"]`.
+            Defaults to `["CLEAR"]`.
+        threshold: IoU threshold for CLEAR matching. Defaults to 0.5.
         benchmark: Override auto-detected benchmark name (e.g., "MOT17").
         split: Override auto-detected split name (e.g., "train", "val").
         tracker_name: Override auto-detected tracker name.
@@ -156,6 +171,7 @@ def evaluate_benchmark(
         result = evaluate_benchmark(
             gt_dir="data/gt/",
             tracker_dir="data/trackers/",
+            metrics=["CLEAR", "HOTA"],
         )
         print(result.table())
         ```
@@ -222,7 +238,7 @@ def evaluate_benchmark(
         if not tracker_path.exists():
             raise FileNotFoundError(f"Tracker file not found: {tracker_path}")
 
-        sequence_results[seq_name] = evaluate_mot_sequence(
+        seq_result = evaluate_mot_sequence(
             gt_path=gt_path,
             tracker_path=tracker_path,
             metrics=metrics,
@@ -231,7 +247,8 @@ def evaluate_benchmark(
         # Fix sequence name (evaluate_mot_sequence uses file stem)
         sequence_results[seq_name] = SequenceResult(
             sequence=seq_name,
-            CLEAR=sequence_results[seq_name].CLEAR,
+            CLEAR=seq_result.CLEAR,
+            HOTA=seq_result.HOTA,
         )
 
     # Compute aggregate metrics
@@ -531,6 +548,7 @@ def _aggregate_metrics(
 ) -> SequenceResult:
     """Aggregate metrics across sequences."""
     clear_agg: dict[str, Any] = {}
+    hota_agg: HOTAMetrics | None = None
 
     if "CLEAR" in metrics:
         # Sum integer metrics and MOTP_sum, then recompute ratios
@@ -577,7 +595,21 @@ def _aggregate_metrics(
             "CLR_Frames": clr_frames_total,
         }
 
+    if "HOTA" in metrics:
+        # Collect per-sequence HOTA raw results for aggregation
+        hota_seq_metrics = []
+        for seq_result in sequence_results.values():
+            if seq_result.HOTA is not None:
+                # Build dict with arrays for aggregation
+                hota_dict = seq_result.HOTA.to_dict(include_arrays=True)
+                hota_seq_metrics.append(hota_dict)
+
+        if hota_seq_metrics:
+            hota_agg_dict = aggregate_hota_metrics(hota_seq_metrics)
+            hota_agg = HOTAMetrics.from_dict(hota_agg_dict)
+
     return SequenceResult(
         sequence="COMBINED",
         CLEAR=CLEARMetrics.from_dict(clear_agg),
+        HOTA=hota_agg,
     )
