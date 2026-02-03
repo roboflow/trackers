@@ -24,22 +24,22 @@ if TYPE_CHECKING:
 DATASETS: dict[str, tuple[str, str]] = {
     "sportsmot_flat": (
         "https://storage.googleapis.com/com-roboflow-marketing/"
-        "trackers/sportsmot-mot-test-data.zip",
+        "trackers/sportsmot-flat-20260203.zip",
         "sportsmot-flat",
     ),
     "sportsmot_mot17": (
         "https://storage.googleapis.com/com-roboflow-marketing/"
-        "trackers/sportsmot-mot-test-data-mot17.zip",
+        "trackers/sportsmot-mot17-20260203.zip",
         "sportsmot-mot17",
     ),
     "dancetrack_flat": (
         "https://storage.googleapis.com/com-roboflow-marketing/"
-        "trackers/dancetrack-mot-test-data.zip",
+        "trackers/dancetrack-flat-20260203.zip",
         "dancetrack-flat",
     ),
     "dancetrack_mot17": (
         "https://storage.googleapis.com/com-roboflow-marketing/"
-        "trackers/dancetrack-mot-test-data-mot17.zip",
+        "trackers/dancetrack-mot17-20260203.zip",
         "dancetrack-mot17",
     ),
 }
