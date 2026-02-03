@@ -437,14 +437,14 @@ def _get_default_columns(has_hota: bool) -> list[str]:
         has_hota: Whether HOTA metrics are available.
 
     Returns:
-        List of default column names.
+        List of all available column names.
     """
     if has_hota:
-        # Show key metrics from both HOTA and CLEAR
-        return ["HOTA", "DetA", "AssA", "MOTA", "MOTP", "IDSW"]
+        # Show all HOTA metrics followed by all CLEAR metrics
+        return HOTA_SUMMARY_FIELDS + CLEAR_SUMMARY_FIELDS
     else:
-        # CLEAR-only defaults
-        return ["MOTA", "MOTP", "IDSW", "CLR_FP", "CLR_FN", "MT", "ML"]
+        # CLEAR-only: show all CLEAR metrics
+        return CLEAR_SUMMARY_FIELDS
 
 
 def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
