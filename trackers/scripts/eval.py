@@ -11,43 +11,9 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from trackers.eval.results import BenchmarkResult, SequenceResult
-
-# Check for optional rich dependency
-try:
-    from rich.console import Console
-    from rich.table import Table
-
-    RICH_AVAILABLE = True
-except ImportError:
-    RICH_AVAILABLE = False
-
-# TrackEval summary field order
-CLEAR_FLOAT_FIELDS = [
-    "MOTA",
-    "MOTP",
-    "MODA",
-    "CLR_Re",
-    "CLR_Pr",
-    "MTR",
-    "PTR",
-    "MLR",
-    "sMOTA",
-]
-CLEAR_INT_FIELDS = [
-    "CLR_TP",
-    "CLR_FN",
-    "CLR_FP",
-    "IDSW",
-    "MT",
-    "PT",
-    "ML",
-    "Frag",
-]
-DEFAULT_COLUMNS = CLEAR_FLOAT_FIELDS + CLEAR_INT_FIELDS
+# Default columns that fit on most terminals
+DEFAULT_COLUMNS = ["MOTA", "MOTP", "IDSW", "CLR_FP", "CLR_FN", "MT", "ML"]
 
 
 def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
@@ -133,7 +99,8 @@ def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         metavar="COL",
         help=(
-            "Metric columns to display. Default: all. "
+            "Metric columns to display. "
+            f"Default: {' '.join(DEFAULT_COLUMNS)}. "
             "Available: MOTA, MOTP, MODA, CLR_Re, CLR_Pr, MTR, PTR, MLR, "
             "sMOTA, CLR_TP, CLR_FN, CLR_FP, IDSW, MT, PT, ML, Frag"
         ),
@@ -157,15 +124,6 @@ def run_eval(args: argparse.Namespace) -> int:
         format="%(message)s",
         handlers=[logging.StreamHandler(sys.stderr)],
     )
-
-    # Check for rich and show hint if not available
-    if not RICH_AVAILABLE:
-        print(
-            "Tip: Install 'rich' for better output formatting: "
-            "pip install trackers[cli]",
-            file=sys.stderr,
-        )
-        print(file=sys.stderr)
 
     # Validate arguments
     single_mode = args.gt is not None and args.tracker is not None
@@ -199,7 +157,7 @@ def run_eval(args: argparse.Namespace) -> int:
                 metrics=args.metrics,
                 threshold=args.threshold,
             )
-            _print_single_results(seq_result, columns)
+            print(seq_result.table(columns=columns))
 
             # Save results if output specified
             if args.output:
@@ -217,7 +175,7 @@ def run_eval(args: argparse.Namespace) -> int:
                 split=args.split,
                 tracker_name=args.tracker_name,
             )
-            _print_benchmark_results(bench_result, columns)
+            print(bench_result.table(columns=columns))
 
             # Save results if output specified
             if args.output:
@@ -232,146 +190,3 @@ def run_eval(args: argparse.Namespace) -> int:
         return 1
 
     return 0
-
-
-def _format_value(value: float | int, metric: str) -> str:
-    """Format a metric value for display (TrackEval format).
-
-    Float metrics are displayed as XX.XXX (percentages without % symbol).
-    Integer metrics are displayed as-is.
-    """
-    if metric in CLEAR_FLOAT_FIELDS:
-        # Display as percentage with 3 decimal places (TrackEval format)
-        return f"{value * 100:.3f}"
-    return str(value)
-
-
-def _print_single_results(result: SequenceResult, columns: list[str]) -> None:
-    """Print results for a single sequence."""
-    if RICH_AVAILABLE:
-        _print_single_results_rich(result, columns)
-    else:
-        _print_single_results_plain(result, columns)
-
-
-def _print_single_results_rich(result: SequenceResult, columns: list[str]) -> None:
-    """Print single sequence results using rich."""
-    console = Console()
-    console.print(f"\nResults for {result.sequence}\n")
-
-    table = Table(title="CLEAR Metrics")
-    table.add_column("Metric", style="cyan")
-    table.add_column("Value", style="green", justify="right")
-
-    metrics_dict = result.CLEAR.to_dict()
-    for col in columns:
-        if col in metrics_dict:
-            value = metrics_dict[col]
-            formatted = _format_value(value, col)
-            table.add_row(col, formatted)
-
-    console.print(table)
-
-
-def _print_single_results_plain(result: SequenceResult, columns: list[str]) -> None:
-    """Print single sequence results in plain text."""
-    print(f"\nResults for {result.sequence}")
-    print("=" * 40)
-    print("\nCLEAR Metrics:")
-
-    metrics_dict = result.CLEAR.to_dict()
-    for col in columns:
-        if col in metrics_dict:
-            value = metrics_dict[col]
-            formatted = _format_value(value, col)
-            print(f"  {col}: {formatted}")
-
-
-def _print_benchmark_results(result: BenchmarkResult, columns: list[str]) -> None:
-    """Print results for benchmark evaluation."""
-    if RICH_AVAILABLE:
-        _print_benchmark_results_rich(result, columns)
-    else:
-        _print_benchmark_results_plain(result, columns)
-
-
-def _print_benchmark_results_rich(result: BenchmarkResult, columns: list[str]) -> None:
-    """Print benchmark results using rich."""
-    console = Console()
-    console.print("\nBenchmark Results\n")
-
-    table = Table(title="CLEAR Metrics by Sequence")
-    table.add_column("Sequence", style="cyan")
-
-    # Determine column widths based on max value length
-    for col in columns:
-        justify = "right"
-        table.add_column(col, justify=justify)
-
-    # Add sequence rows
-    for seq_name in sorted(result.sequences.keys()):
-        seq_result = result.sequences[seq_name]
-        metrics_dict = seq_result.CLEAR.to_dict()
-
-        row_values = [seq_name]
-        for col in columns:
-            value = metrics_dict.get(col, 0)
-            formatted = _format_value(value, col)
-            row_values.append(formatted)
-
-        table.add_row(*row_values)
-
-    # Add separator and aggregate row
-    table.add_section()
-
-    agg_dict = result.aggregate.CLEAR.to_dict()
-    agg_values = ["[bold]COMBINED[/bold]"]
-    for col in columns:
-        value = agg_dict.get(col, 0)
-        formatted = _format_value(value, col)
-        agg_values.append(f"[bold]{formatted}[/bold]")
-
-    table.add_row(*agg_values)
-
-    console.print(table)
-
-
-def _print_benchmark_results_plain(result: BenchmarkResult, columns: list[str]) -> None:
-    """Print benchmark results in plain text."""
-    print("\nBenchmark Results")
-    print("=" * 120)
-
-    # Determine column widths
-    col_widths = {"Sequence": 30}
-    for col in columns:
-        # Use max of header length and typical value length
-        col_widths[col] = max(len(col), 10)
-
-    # Print header
-    header = "Sequence".ljust(col_widths["Sequence"])
-    for col in columns:
-        header += col.rjust(col_widths[col]) + "  "
-    print(header)
-    print("-" * len(header))
-
-    # Print sequence rows
-    for seq_name in sorted(result.sequences.keys()):
-        seq_result = result.sequences[seq_name]
-        metrics_dict = seq_result.CLEAR.to_dict()
-
-        row = seq_name.ljust(col_widths["Sequence"])
-        for col in columns:
-            value = metrics_dict.get(col, 0)
-            formatted = _format_value(value, col)
-            row += formatted.rjust(col_widths[col]) + "  "
-        print(row)
-
-    # Print aggregate row
-    print("-" * len(header))
-    agg_dict = result.aggregate.CLEAR.to_dict()
-    row = "COMBINED".ljust(col_widths["Sequence"])
-    for col in columns:
-        value = agg_dict.get(col, 0)
-        formatted = _format_value(value, col)
-        row += formatted.rjust(col_widths[col]) + "  "
-    print(row)
