@@ -12,9 +12,6 @@ import logging
 import sys
 from pathlib import Path
 
-# Default columns that fit on most terminals
-DEFAULT_COLUMNS = ["MOTA", "MOTP", "IDSW", "CLR_FP", "CLR_FN", "MT", "ML"]
-
 
 def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
     """Add the eval subcommand to the argument parser."""
@@ -84,14 +81,14 @@ def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--metrics",
         nargs="+",
         default=["CLEAR"],
-        choices=["CLEAR"],
-        help="Metrics to compute. Default: CLEAR",
+        choices=["CLEAR", "HOTA"],
+        help="Metrics to compute. Default: CLEAR. Options: CLEAR, HOTA",
     )
     parser.add_argument(
         "--threshold",
         type=float,
         default=0.5,
-        help="IoU threshold for matching. Default: 0.5",
+        help="IoU threshold for CLEAR matching. Default: 0.5",
     )
     parser.add_argument(
         "--columns",
@@ -99,10 +96,10 @@ def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         metavar="COL",
         help=(
-            "Metric columns to display. "
-            f"Default: {' '.join(DEFAULT_COLUMNS)}. "
-            "Available: MOTA, MOTP, MODA, CLR_Re, CLR_Pr, MTR, PTR, MLR, "
-            "sMOTA, CLR_TP, CLR_FN, CLR_FP, IDSW, MT, PT, ML, Frag"
+            "Metric columns to display. Default: auto-selected based on metrics. "
+            "CLEAR: MOTA, MOTP, MODA, CLR_Re, CLR_Pr, MTR, PTR, MLR, sMOTA, "
+            "CLR_TP, CLR_FN, CLR_FP, IDSW, MT, PT, ML, Frag. "
+            "HOTA: HOTA, DetA, AssA, DetRe, DetPr, AssRe, AssPr, LocA"
         ),
     )
     parser.add_argument(
@@ -143,8 +140,8 @@ def run_eval(args: argparse.Namespace) -> int:
         )
         return 1
 
-    # Determine columns to display
-    columns = args.columns if args.columns else DEFAULT_COLUMNS
+    # Columns: None means auto-select based on available metrics
+    columns = args.columns
 
     # Import evaluation functions
     from trackers.eval import evaluate_benchmark, evaluate_mot_sequence

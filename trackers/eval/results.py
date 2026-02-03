@@ -14,9 +14,11 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 # TrackEval summary field order for CLEAR metrics
 CLEAR_FLOAT_FIELDS = [
@@ -41,6 +43,27 @@ CLEAR_INT_FIELDS = [
     "Frag",
 ]
 CLEAR_SUMMARY_FIELDS = CLEAR_FLOAT_FIELDS + CLEAR_INT_FIELDS
+
+# TrackEval summary field order for HOTA metrics
+HOTA_FLOAT_FIELDS = [
+    "HOTA",
+    "DetA",
+    "AssA",
+    "DetRe",
+    "DetPr",
+    "AssRe",
+    "AssPr",
+    "LocA",
+]
+HOTA_INT_FIELDS = [
+    "HOTA_TP",
+    "HOTA_FN",
+    "HOTA_FP",
+]
+HOTA_SUMMARY_FIELDS = HOTA_FLOAT_FIELDS + HOTA_INT_FIELDS
+
+# All float fields for formatting
+ALL_FLOAT_FIELDS = CLEAR_FLOAT_FIELDS + HOTA_FLOAT_FIELDS
 
 
 @dataclass
@@ -134,16 +157,120 @@ class CLEARMetrics:
 
 
 @dataclass
+class HOTAMetrics:
+    """HOTA metrics with TrackEval-compatible field names.
+
+    HOTA (Higher Order Tracking Accuracy) evaluates both detection and
+    association quality. All float metrics are stored as fractions (0-1 range).
+
+    Attributes:
+        HOTA: Higher Order Tracking Accuracy (geometric mean of DetA and AssA).
+        DetA: Detection Accuracy.
+        AssA: Association Accuracy.
+        DetRe: Detection Recall.
+        DetPr: Detection Precision.
+        AssRe: Association Recall.
+        AssPr: Association Precision.
+        LocA: Localization Accuracy.
+        HOTA_TP: True positives (summed over all alpha thresholds).
+        HOTA_FN: False negatives (summed over all alpha thresholds).
+        HOTA_FP: False positives (summed over all alpha thresholds).
+    """
+
+    HOTA: float
+    DetA: float
+    AssA: float
+    DetRe: float
+    DetPr: float
+    AssRe: float
+    AssPr: float
+    LocA: float
+    HOTA_TP: int
+    HOTA_FN: int
+    HOTA_FP: int
+    # Per-alpha arrays for aggregation (not serialized to JSON by default)
+    _arrays: dict[str, Any] = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> HOTAMetrics:
+        """Create HOTAMetrics from a dictionary.
+
+        Args:
+            data: Dictionary with metric values.
+
+        Returns:
+            HOTAMetrics instance.
+        """
+        # Extract arrays if present (for aggregation)
+        arrays = {}
+        for key in [
+            "HOTA_TP_array",
+            "HOTA_FN_array",
+            "HOTA_FP_array",
+            "AssA_array",
+            "AssRe_array",
+            "AssPr_array",
+            "LocA_array",
+        ]:
+            if key in data:
+                arrays[key] = np.array(data[key])
+
+        return cls(
+            HOTA=float(data["HOTA"]),
+            DetA=float(data["DetA"]),
+            AssA=float(data["AssA"]),
+            DetRe=float(data["DetRe"]),
+            DetPr=float(data["DetPr"]),
+            AssRe=float(data["AssRe"]),
+            AssPr=float(data["AssPr"]),
+            LocA=float(data["LocA"]),
+            HOTA_TP=int(data["HOTA_TP"]),
+            HOTA_FN=int(data["HOTA_FN"]),
+            HOTA_FP=int(data["HOTA_FP"]),
+            _arrays=arrays,
+        )
+
+    def to_dict(self, include_arrays: bool = False) -> dict[str, Any]:
+        """Convert to dictionary.
+
+        Args:
+            include_arrays: Whether to include per-alpha arrays. Defaults to False.
+
+        Returns:
+            Dictionary with metric values.
+        """
+        result = {
+            "HOTA": self.HOTA,
+            "DetA": self.DetA,
+            "AssA": self.AssA,
+            "DetRe": self.DetRe,
+            "DetPr": self.DetPr,
+            "AssRe": self.AssRe,
+            "AssPr": self.AssPr,
+            "LocA": self.LocA,
+            "HOTA_TP": self.HOTA_TP,
+            "HOTA_FN": self.HOTA_FN,
+            "HOTA_FP": self.HOTA_FP,
+        }
+        if include_arrays and self._arrays:
+            for key, arr in self._arrays.items():
+                result[key] = arr.tolist() if isinstance(arr, np.ndarray) else arr
+        return result
+
+
+@dataclass
 class SequenceResult:
     """Result for a single sequence evaluation.
 
     Attributes:
         sequence: Name of the sequence.
         CLEAR: CLEAR metrics for this sequence.
+        HOTA: HOTA metrics for this sequence (optional).
     """
 
     sequence: str
     CLEAR: CLEARMetrics
+    HOTA: HOTAMetrics | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SequenceResult:
@@ -155,9 +282,14 @@ class SequenceResult:
         Returns:
             SequenceResult instance.
         """
+        hota = None
+        if "HOTA" in data and data["HOTA"] is not None:
+            hota = HOTAMetrics.from_dict(data["HOTA"])
+
         return cls(
             sequence=data["sequence"],
             CLEAR=CLEARMetrics.from_dict(data["CLEAR"]),
+            HOTA=hota,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -166,10 +298,13 @@ class SequenceResult:
         Returns:
             Dictionary representation.
         """
-        return {
+        result: dict[str, Any] = {
             "sequence": self.sequence,
             "CLEAR": self.CLEAR.to_dict(),
         }
+        if self.HOTA is not None:
+            result["HOTA"] = self.HOTA.to_dict()
+        return result
 
     def json(self, indent: int = 2) -> str:
         """Serialize to JSON string.
@@ -186,16 +321,16 @@ class SequenceResult:
         """Format metrics as a table string.
 
         Args:
-            columns: List of metric columns to include. If None, uses all
-                summary fields in TrackEval order.
+            columns: List of metric columns to include. If None, uses default
+                columns based on available metrics.
 
         Returns:
             Formatted table string.
         """
         if columns is None:
-            columns = CLEAR_SUMMARY_FIELDS
+            columns = _get_default_columns(self.HOTA is not None)
 
-        return _format_sequence_table(self.sequence, self.CLEAR, columns)
+        return _format_sequence_table(self, columns)
 
 
 @dataclass
@@ -253,14 +388,15 @@ class BenchmarkResult:
         """Format metrics as a table string.
 
         Args:
-            columns: List of metric columns to include. If None, uses all
-                summary fields in TrackEval order.
+            columns: List of metric columns to include. If None, uses default
+                columns based on available metrics.
 
         Returns:
             Formatted table string with all sequences and aggregate.
         """
         if columns is None:
-            columns = CLEAR_SUMMARY_FIELDS
+            has_hota = self.aggregate.HOTA is not None
+            columns = _get_default_columns(has_hota)
 
         return _format_benchmark_table(self.sequences, self.aggregate, columns)
 
@@ -294,6 +430,44 @@ class BenchmarkResult:
         return cls.from_dict(data)
 
 
+def _get_default_columns(has_hota: bool) -> list[str]:
+    """Get default columns based on available metrics.
+
+    Args:
+        has_hota: Whether HOTA metrics are available.
+
+    Returns:
+        List of default column names.
+    """
+    if has_hota:
+        # Show key metrics from both HOTA and CLEAR
+        return ["HOTA", "DetA", "AssA", "MOTA", "MOTP", "IDSW"]
+    else:
+        # CLEAR-only defaults
+        return ["MOTA", "MOTP", "IDSW", "CLR_FP", "CLR_FN", "MT", "ML"]
+
+
+def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
+    """Get metric value from a SequenceResult.
+
+    Args:
+        result: The sequence result.
+        col: Column name.
+
+    Returns:
+        The metric value.
+    """
+    # Check HOTA metrics first
+    if result.HOTA is not None:
+        hota_dict = result.HOTA.to_dict()
+        if col in hota_dict:
+            return hota_dict[col]
+
+    # Fall back to CLEAR metrics
+    clear_dict = result.CLEAR.to_dict()
+    return clear_dict.get(col, 0)
+
+
 def _format_value(value: float | int, is_float: bool) -> str:
     """Format a metric value for display.
 
@@ -314,26 +488,21 @@ def _format_value(value: float | int, is_float: bool) -> str:
     return str(value)
 
 
-def _format_sequence_table(
-    sequence: str, metrics: CLEARMetrics, columns: list[str]
-) -> str:
+def _format_sequence_table(result: SequenceResult, columns: list[str]) -> str:
     """Format single sequence metrics as a table.
 
     Args:
-        sequence: Sequence name.
-        metrics: CLEAR metrics.
+        result: Sequence result.
         columns: Columns to include.
 
     Returns:
         Formatted table string.
     """
-    metrics_dict = metrics.to_dict()
-
     # Determine column widths
     col_widths = {}
     for col in columns:
-        value = metrics_dict.get(col, 0)
-        is_float = col in CLEAR_FLOAT_FIELDS
+        value = _get_metrics_dict(result, col)
+        is_float = col in ALL_FLOAT_FIELDS
         formatted = _format_value(value, is_float)
         col_widths[col] = max(len(col), len(formatted))
 
@@ -346,11 +515,11 @@ def _format_sequence_table(
     # Build row
     row_values = []
     for col in columns:
-        value = metrics_dict.get(col, 0)
-        is_float = col in CLEAR_FLOAT_FIELDS
+        value = _get_metrics_dict(result, col)
+        is_float = col in ALL_FLOAT_FIELDS
         formatted = _format_value(value, is_float)
         row_values.append(formatted.rjust(col_widths[col]))
-    row = sequence.ljust(30) + "  ".join(row_values)
+    row = result.sequence.ljust(30) + "  ".join(row_values)
 
     return f"{header}\n{separator}\n{row}"
 
@@ -370,16 +539,15 @@ def _format_benchmark_table(
     Returns:
         Formatted table string.
     """
-    # Collect all values to determine column widths
-    all_metrics = [seq.CLEAR.to_dict() for seq in sequences.values()]
-    all_metrics.append(aggregate.CLEAR.to_dict())
+    # Collect all results for column width calculation
+    all_results = [*list(sequences.values()), aggregate]
 
     col_widths = {}
     for col in columns:
         max_width = len(col)
-        for metrics_dict in all_metrics:
-            value = metrics_dict.get(col, 0)
-            is_float = col in CLEAR_FLOAT_FIELDS
+        for result in all_results:
+            value = _get_metrics_dict(result, col)
+            is_float = col in ALL_FLOAT_FIELDS
             formatted = _format_value(value, is_float)
             max_width = max(max_width, len(formatted))
         col_widths[col] = max_width
@@ -394,22 +562,20 @@ def _format_benchmark_table(
     lines = [header, separator]
     for seq_name in sorted(sequences.keys()):
         seq_result = sequences[seq_name]
-        metrics_dict = seq_result.CLEAR.to_dict()
         row_values = []
         for col in columns:
-            value = metrics_dict.get(col, 0)
-            is_float = col in CLEAR_FLOAT_FIELDS
+            value = _get_metrics_dict(seq_result, col)
+            is_float = col in ALL_FLOAT_FIELDS
             formatted = _format_value(value, is_float)
             row_values.append(formatted.rjust(col_widths[col]))
         lines.append(seq_name.ljust(30) + "  ".join(row_values))
 
     # Add aggregate row
     lines.append(separator)
-    agg_dict = aggregate.CLEAR.to_dict()
     agg_values = []
     for col in columns:
-        value = agg_dict.get(col, 0)
-        is_float = col in CLEAR_FLOAT_FIELDS
+        value = _get_metrics_dict(aggregate, col)
+        is_float = col in ALL_FLOAT_FIELDS
         formatted = _format_value(value, is_float)
         agg_values.append(formatted.rjust(col_widths[col]))
     lines.append("COMBINED".ljust(30) + "  ".join(agg_values))
