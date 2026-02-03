@@ -79,11 +79,13 @@ from trackers.eval.hota import (
             [np.array([0, 1, 2])],
             [np.array([10, 20])],  # Only 2 trackers for 3 GTs
             [
-                np.array([
-                    [0.8, 0.0],
-                    [0.0, 0.8],
-                    [0.0, 0.0],  # GT2 has no match
-                ])
+                np.array(
+                    [
+                        [0.8, 0.0],
+                        [0.0, 0.8],
+                        [0.0, 0.0],  # GT2 has no match
+                    ]
+                )
             ],
             {"HOTA_FN_min": 19, "DetRe_max": 1.0, "DetPr_max": 1.0},
         ),
@@ -147,7 +149,17 @@ def test_compute_hota_metrics_result_structure() -> None:
     )
 
     # Float summary fields
-    for field in ["HOTA", "DetA", "AssA", "DetRe", "DetPr", "AssRe", "AssPr", "LocA", "OWTA"]:
+    for field in [
+        "HOTA",
+        "DetA",
+        "AssA",
+        "DetRe",
+        "DetPr",
+        "AssRe",
+        "AssPr",
+        "LocA",
+        "OWTA",
+    ]:
         assert field in result
         assert isinstance(result[field], float)
         assert 0 <= result[field] <= 1
