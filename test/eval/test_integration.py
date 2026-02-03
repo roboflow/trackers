@@ -122,9 +122,7 @@ def test_evaluate_benchmark_dancetrack_flat(
             seq_result.CLEAR, expected_clear, f"dancetrack/{seq_name}"
         )
         expected_hota = expected_results[seq_name]["HOTA"]
-        _verify_hota_metrics(
-            seq_result.HOTA, expected_hota, f"dancetrack/{seq_name}"
-        )
+        _verify_hota_metrics(seq_result.HOTA, expected_hota, f"dancetrack/{seq_name}")
 
 
 @pytest.mark.integration
