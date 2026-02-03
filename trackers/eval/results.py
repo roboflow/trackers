@@ -230,11 +230,15 @@ class HOTAMetrics:
             _arrays=arrays,
         )
 
-    def to_dict(self, include_arrays: bool = False) -> dict[str, Any]:
+    def to_dict(
+        self, include_arrays: bool = False, arrays_as_list: bool = True
+    ) -> dict[str, Any]:
         """Convert to dictionary.
 
         Args:
             include_arrays: Whether to include per-alpha arrays. Defaults to False.
+            arrays_as_list: Whether to convert arrays to lists (for JSON).
+                Defaults to True. Set to False to keep numpy arrays (for aggregation).
 
         Returns:
             Dictionary with metric values.
@@ -254,7 +258,10 @@ class HOTAMetrics:
         }
         if include_arrays and self._arrays:
             for key, arr in self._arrays.items():
-                result[key] = arr.tolist() if isinstance(arr, np.ndarray) else arr
+                if arrays_as_list:
+                    result[key] = arr.tolist() if isinstance(arr, np.ndarray) else arr
+                else:
+                    result[key] = arr
         return result
 
 

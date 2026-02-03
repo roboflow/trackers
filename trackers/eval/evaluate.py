@@ -600,8 +600,10 @@ def _aggregate_metrics(
         hota_seq_metrics = []
         for seq_result in sequence_results.values():
             if seq_result.HOTA is not None:
-                # Build dict with arrays for aggregation
-                hota_dict = seq_result.HOTA.to_dict(include_arrays=True)
+                # Build dict with arrays for aggregation (keep as numpy arrays)
+                hota_dict = seq_result.HOTA.to_dict(
+                    include_arrays=True, arrays_as_list=False
+                )
                 hota_seq_metrics.append(hota_dict)
 
         if hota_seq_metrics:
