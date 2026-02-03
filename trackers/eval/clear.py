@@ -44,21 +44,29 @@ def compute_clear_metrics(
 
     Returns:
         Dictionary containing CLEAR metrics:
-        - `CLR_TP`: True positives (correct matches) as `int`.
-        - `CLR_FN`: False negatives (missed GTs) as `int`.
-        - `CLR_FP`: False positives (extra detections) as `int`.
-        - `IDSW`: ID switches as `int`.
         - `MOTA`: Multiple Object Tracking Accuracy as `float` in range
             `(-inf, 1]`. Computed as `(TP - FP - IDSW) / (TP + FN)`.
         - `MOTP`: Multiple Object Tracking Precision as `float` in range
             `[0, 1]`. Average similarity of matched pairs.
-        - `MT`: Mostly Tracked count (>80% tracked) as `int`.
-        - `PT`: Partially Tracked count (20-80% tracked) as `int`.
-        - `ML`: Mostly Lost count (<20% tracked) as `int`.
+        - `MODA`: Multiple Object Detection Accuracy as `float`. Computed as
+            `(TP - FP) / (TP + FN)`.
+        - `CLR_Re`: Recall as `float`. Computed as `TP / (TP + FN)`.
+        - `CLR_Pr`: Precision as `float`. Computed as `TP / (TP + FP)`.
         - `MTR`: Mostly Tracked ratio as `float`.
         - `PTR`: Partially Tracked ratio as `float`.
         - `MLR`: Mostly Lost ratio as `float`.
+        - `sMOTA`: Summed MOTA as `float`. Computed as
+            `(MOTP_sum - FP - IDSW) / (TP + FN)`.
+        - `CLR_TP`: True positives (correct matches) as `int`.
+        - `CLR_FN`: False negatives (missed GTs) as `int`.
+        - `CLR_FP`: False positives (extra detections) as `int`.
+        - `IDSW`: ID switches as `int`.
+        - `MT`: Mostly Tracked count (>80% tracked) as `int`.
+        - `PT`: Partially Tracked count (20-80% tracked) as `int`.
+        - `ML`: Mostly Lost count (<20% tracked) as `int`.
         - `Frag`: Fragmentations (track interruptions) as `int`.
+        - `MOTP_sum`: Raw MOTP sum for aggregation as `float`.
+        - `CLR_Frames`: Number of frames as `int`.
 
     Examples:
         ```python
@@ -98,41 +106,55 @@ def compute_clear_metrics(
     unique_gt_ids = np.unique(all_gt_ids)
     num_gt_ids = len(unique_gt_ids)
 
+    num_frames = len(gt_ids)
+
     # Handle edge case: no tracker detections
     if num_tracker_dets == 0:
         num_gt_ids_total = num_gt_ids
         return {
+            "MOTA": 0.0,
+            "MOTP": 0.0,
+            "MODA": 0.0,
+            "CLR_Re": 0.0,
+            "CLR_Pr": 0.0,
+            "MTR": 0.0,
+            "PTR": 0.0,
+            "MLR": 1.0 if num_gt_ids_total > 0 else 0.0,
+            "sMOTA": 0.0,
             "CLR_TP": 0,
             "CLR_FN": num_gt_dets,
             "CLR_FP": 0,
             "IDSW": 0,
-            "MOTA": 0.0,
-            "MOTP": 0.0,
             "MT": 0,
             "PT": 0,
             "ML": num_gt_ids_total,
-            "MTR": 0.0,
-            "PTR": 0.0,
-            "MLR": 1.0 if num_gt_ids_total > 0 else 0.0,
             "Frag": 0,
+            "MOTP_sum": 0.0,
+            "CLR_Frames": num_frames,
         }
 
     # Handle edge case: no GT detections
     if num_gt_dets == 0:
         return {
+            "MOTA": 0.0,
+            "MOTP": 0.0,
+            "MODA": 0.0,
+            "CLR_Re": 0.0,
+            "CLR_Pr": 0.0,
+            "MTR": 0.0,
+            "PTR": 0.0,
+            "MLR": 0.0,
+            "sMOTA": 0.0,
             "CLR_TP": 0,
             "CLR_FN": 0,
             "CLR_FP": num_tracker_dets,
             "IDSW": 0,
-            "MOTA": 0.0,
-            "MOTP": 0.0,
             "MT": 0,
             "PT": 0,
             "ML": 0,
-            "MTR": 0.0,
-            "PTR": 0.0,
-            "MLR": 0.0,
             "Frag": 0,
+            "MOTP_sum": 0.0,
+            "CLR_Frames": num_frames,
         }
 
     # Initialize counters
@@ -232,24 +254,36 @@ def compute_clear_metrics(
 
     # Compute final metrics (ref: clear.py:167-186)
     num_gt_ids_total = mt + pt + ml
+    num_gt = clr_tp + clr_fn
+
     mtr = mt / max(1.0, num_gt_ids_total)
     ptr = pt / max(1.0, num_gt_ids_total)
     mlr = ml / max(1.0, num_gt_ids_total)
-    mota = (clr_tp - clr_fp - idsw) / max(1.0, clr_tp + clr_fn)
+    clr_re = clr_tp / max(1.0, num_gt)
+    clr_pr = clr_tp / max(1.0, clr_tp + clr_fp)
+    moda = (clr_tp - clr_fp) / max(1.0, num_gt)
+    mota = (clr_tp - clr_fp - idsw) / max(1.0, num_gt)
     motp = motp_sum / max(1.0, clr_tp)
+    smota = (motp_sum - clr_fp - idsw) / max(1.0, num_gt)
 
     return {
+        "MOTA": float(mota),
+        "MOTP": float(motp),
+        "MODA": float(moda),
+        "CLR_Re": float(clr_re),
+        "CLR_Pr": float(clr_pr),
+        "MTR": float(mtr),
+        "PTR": float(ptr),
+        "MLR": float(mlr),
+        "sMOTA": float(smota),
         "CLR_TP": clr_tp,
         "CLR_FN": clr_fn,
         "CLR_FP": clr_fp,
         "IDSW": idsw,
-        "MOTA": float(mota),
-        "MOTP": float(motp),
         "MT": mt,
         "PT": pt,
         "ML": ml,
-        "MTR": float(mtr),
-        "PTR": float(ptr),
-        "MLR": float(mlr),
         "Frag": frag,
+        "MOTP_sum": float(motp_sum),
+        "CLR_Frames": num_frames,
     }
