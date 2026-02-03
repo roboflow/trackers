@@ -39,7 +39,7 @@ def test_evaluate_benchmark_sportsmot_flat(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
         seqmap=data_path / "seqmap.txt",
-        metrics=["CLEAR", "HOTA"],
+        metrics=["CLEAR", "HOTA", "Identity"],
     )
 
     # Verify all sequences are evaluated
@@ -55,6 +55,10 @@ def test_evaluate_benchmark_sportsmot_flat(
         _verify_clear_metrics(seq_result.CLEAR, expected_clear, f"sportsmot/{seq_name}")
         expected_hota = expected_results[seq_name]["HOTA"]
         _verify_hota_metrics(seq_result.HOTA, expected_hota, f"sportsmot/{seq_name}")
+        expected_identity = expected_results[seq_name]["Identity"]
+        _verify_identity_metrics(
+            seq_result.Identity, expected_identity, f"sportsmot/{seq_name}"
+        )
 
     # Verify aggregate metrics are computed correctly
     assert result.aggregate.sequence == "COMBINED"
@@ -71,7 +75,7 @@ def test_evaluate_benchmark_sportsmot_mot17(
     result = evaluate_benchmark(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
-        metrics=["CLEAR", "HOTA"],
+        metrics=["CLEAR", "HOTA", "Identity"],
     )
 
     # Verify all sequences are evaluated
@@ -91,6 +95,10 @@ def test_evaluate_benchmark_sportsmot_mot17(
         _verify_hota_metrics(
             seq_result.HOTA, expected_hota, f"sportsmot_mot17/{seq_name}"
         )
+        expected_identity = expected_results[seq_name]["Identity"]
+        _verify_identity_metrics(
+            seq_result.Identity, expected_identity, f"sportsmot_mot17/{seq_name}"
+        )
 
 
 @pytest.mark.integration
@@ -105,7 +113,7 @@ def test_evaluate_benchmark_dancetrack_flat(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
         seqmap=data_path / "seqmap.txt",
-        metrics=["CLEAR", "HOTA"],
+        metrics=["CLEAR", "HOTA", "Identity"],
     )
 
     # Verify all sequences are evaluated
@@ -123,6 +131,10 @@ def test_evaluate_benchmark_dancetrack_flat(
         )
         expected_hota = expected_results[seq_name]["HOTA"]
         _verify_hota_metrics(seq_result.HOTA, expected_hota, f"dancetrack/{seq_name}")
+        expected_identity = expected_results[seq_name]["Identity"]
+        _verify_identity_metrics(
+            seq_result.Identity, expected_identity, f"dancetrack/{seq_name}"
+        )
 
 
 @pytest.mark.integration
@@ -136,7 +148,7 @@ def test_evaluate_benchmark_dancetrack_mot17(
     result = evaluate_benchmark(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
-        metrics=["CLEAR", "HOTA"],
+        metrics=["CLEAR", "HOTA", "Identity"],
     )
 
     # Verify all sequences are evaluated
@@ -155,6 +167,10 @@ def test_evaluate_benchmark_dancetrack_mot17(
         expected_hota = expected_results[seq_name]["HOTA"]
         _verify_hota_metrics(
             seq_result.HOTA, expected_hota, f"dancetrack_mot17/{seq_name}"
+        )
+        expected_identity = expected_results[seq_name]["Identity"]
+        _verify_identity_metrics(
+            seq_result.Identity, expected_identity, f"dancetrack_mot17/{seq_name}"
         )
 
 
@@ -208,6 +224,43 @@ def _verify_hota_metrics(
         context: Context string for error messages (e.g., "sportsmot/seq1").
     """
     float_metrics = ["HOTA", "DetA", "AssA", "LocA"]
+    for metric in float_metrics:
+        if metric not in expected:
+            continue
+        computed_val = getattr(computed, metric)
+        expected_val = expected[metric]
+        assert computed_val == pytest.approx(expected_val, rel=1e-4, abs=1e-4), (
+            f"{context}: {metric} mismatch - "
+            f"got {computed_val}, expected {expected_val}"
+        )
+
+
+def _verify_identity_metrics(
+    computed: Any,
+    expected: dict[str, Any],
+    context: str,
+) -> None:
+    """Verify Identity metrics match expected values.
+
+    Args:
+        computed: IdentityMetrics object from our computation.
+        expected: Expected metrics dict from TrackEval.
+        context: Context string for error messages (e.g., "sportsmot/seq1").
+    """
+    # Integer metrics must match exactly
+    int_metrics = ["IDTP", "IDFN", "IDFP"]
+    for metric in int_metrics:
+        if metric not in expected:
+            continue
+        computed_val = getattr(computed, metric)
+        expected_val = expected[metric]
+        assert computed_val == expected_val, (
+            f"{context}: {metric} mismatch - "
+            f"got {computed_val}, expected {expected_val}"
+        )
+
+    # Float metrics with tolerance
+    float_metrics = ["IDF1", "IDR", "IDP"]
     for metric in float_metrics:
         if metric not in expected:
             continue

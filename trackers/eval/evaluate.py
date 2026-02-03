@@ -14,17 +14,19 @@ from typing import Any, Literal
 
 from trackers.eval.clear import compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
+from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
 from trackers.eval.io import load_mot_file, prepare_mot_sequence
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
     HOTAMetrics,
+    IdentityMetrics,
     SequenceResult,
 )
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_METRICS = ["CLEAR", "HOTA"]
+SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
 
 
 @dataclass
@@ -51,9 +53,9 @@ def evaluate_mot_sequence(
     Args:
         gt_path: Path to ground truth file in MOT format.
         tracker_path: Path to tracker predictions file in MOT format.
-        metrics: List of metrics to compute. Supports `["CLEAR", "HOTA"]`.
+        metrics: List of metrics to compute. Supports `["CLEAR", "HOTA", "Identity"]`.
             Defaults to `["CLEAR"]` if not specified.
-        threshold: IoU threshold for CLEAR matching. Defaults to 0.5.
+        threshold: IoU threshold for CLEAR and Identity matching. Defaults to 0.5.
             Note: HOTA computes across multiple thresholds internally.
 
     Returns:
@@ -103,6 +105,7 @@ def evaluate_mot_sequence(
     # Compute metrics
     clear_metrics_dict: dict[str, Any] = {}
     hota_metrics: HOTAMetrics | None = None
+    identity_metrics: IdentityMetrics | None = None
 
     if "CLEAR" in metrics:
         clear_metrics_dict = compute_clear_metrics(
@@ -120,11 +123,21 @@ def evaluate_mot_sequence(
         )
         hota_metrics = HOTAMetrics.from_dict(hota_dict)
 
+    if "Identity" in metrics:
+        identity_dict = compute_identity_metrics(
+            seq_data.gt_ids,
+            seq_data.tracker_ids,
+            seq_data.similarity_scores,
+            threshold=threshold,
+        )
+        identity_metrics = IdentityMetrics.from_dict(identity_dict)
+
     # Build result
     return SequenceResult(
         sequence=gt_path.stem,
         CLEAR=CLEARMetrics.from_dict(clear_metrics_dict),
         HOTA=hota_metrics,
+        Identity=identity_metrics,
     )
 
 
@@ -148,7 +161,7 @@ def evaluate_benchmark(
         tracker_dir: Directory containing tracker prediction files.
         seqmap: Optional path to sequence map file. If provided, only sequences
             listed in this file will be evaluated.
-        metrics: List of metrics to compute. Supports `["CLEAR", "HOTA"]`.
+        metrics: List of metrics to compute. Supports `["CLEAR", "HOTA", "Identity"]`.
             Defaults to `["CLEAR"]`.
         threshold: IoU threshold for CLEAR matching. Defaults to 0.5.
         benchmark: Override auto-detected benchmark name (e.g., "MOT17").
@@ -249,6 +262,7 @@ def evaluate_benchmark(
             sequence=seq_name,
             CLEAR=seq_result.CLEAR,
             HOTA=seq_result.HOTA,
+            Identity=seq_result.Identity,
         )
 
     # Compute aggregate metrics
@@ -549,6 +563,7 @@ def _aggregate_metrics(
     """Aggregate metrics across sequences."""
     clear_agg: dict[str, Any] = {}
     hota_agg: HOTAMetrics | None = None
+    identity_agg: IdentityMetrics | None = None
 
     if "CLEAR" in metrics:
         # Sum integer metrics and MOTP_sum, then recompute ratios
@@ -610,8 +625,20 @@ def _aggregate_metrics(
             hota_agg_dict = aggregate_hota_metrics(hota_seq_metrics)
             hota_agg = HOTAMetrics.from_dict(hota_agg_dict)
 
+    if "Identity" in metrics:
+        # Collect per-sequence Identity results for aggregation
+        identity_seq_metrics = []
+        for seq_result in sequence_results.values():
+            if seq_result.Identity is not None:
+                identity_seq_metrics.append(seq_result.Identity.to_dict())
+
+        if identity_seq_metrics:
+            identity_agg_dict = aggregate_identity_metrics(identity_seq_metrics)
+            identity_agg = IdentityMetrics.from_dict(identity_agg_dict)
+
     return SequenceResult(
         sequence="COMBINED",
         CLEAR=CLEARMetrics.from_dict(clear_agg),
         HOTA=hota_agg,
+        Identity=identity_agg,
     )

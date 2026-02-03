@@ -8,6 +8,7 @@ from trackers.eval.box import box_ioa, box_iou
 from trackers.eval.clear import compute_clear_metrics
 from trackers.eval.evaluate import evaluate_benchmark, evaluate_mot_sequence
 from trackers.eval.hota import compute_hota_metrics
+from trackers.eval.identity import compute_identity_metrics
 from trackers.eval.io import (
     MOTFrameData,
     MOTSequenceData,
@@ -19,6 +20,7 @@ from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
     HOTAMetrics,
+    IdentityMetrics,
     SequenceResult,
 )
 
@@ -26,6 +28,7 @@ __all__ = [
     "BenchmarkResult",
     "CLEARMetrics",
     "HOTAMetrics",
+    "IdentityMetrics",
     "MOTFrameData",
     "MOTSequenceData",
     "SequenceResult",
@@ -33,6 +36,7 @@ __all__ = [
     "box_iou",
     "compute_clear_metrics",
     "compute_hota_metrics",
+    "compute_identity_metrics",
     "evaluate_benchmark",
     "evaluate_mot_sequence",
     "load_mot_file",

@@ -62,8 +62,21 @@ HOTA_INT_FIELDS = [
 ]
 HOTA_SUMMARY_FIELDS = HOTA_FLOAT_FIELDS + HOTA_INT_FIELDS
 
+# TrackEval summary field order for Identity metrics
+IDENTITY_FLOAT_FIELDS = [
+    "IDF1",
+    "IDR",
+    "IDP",
+]
+IDENTITY_INT_FIELDS = [
+    "IDTP",
+    "IDFN",
+    "IDFP",
+]
+IDENTITY_SUMMARY_FIELDS = IDENTITY_FLOAT_FIELDS + IDENTITY_INT_FIELDS
+
 # All float fields for formatting
-ALL_FLOAT_FIELDS = CLEAR_FLOAT_FIELDS + HOTA_FLOAT_FIELDS
+ALL_FLOAT_FIELDS = CLEAR_FLOAT_FIELDS + HOTA_FLOAT_FIELDS + IDENTITY_FLOAT_FIELDS
 
 
 @dataclass
@@ -266,6 +279,57 @@ class HOTAMetrics:
 
 
 @dataclass
+class IdentityMetrics:
+    """Identity metrics with TrackEval-compatible field names.
+
+    Identity metrics measure global ID consistency by finding the optimal
+    one-to-one assignment between ground truth IDs and tracker IDs.
+
+    Attributes:
+        IDF1: ID F1 score (harmonic mean of IDR and IDP).
+        IDR: ID Recall (IDTP / (IDTP + IDFN)).
+        IDP: ID Precision (IDTP / (IDTP + IDFP)).
+        IDTP: ID True Positives.
+        IDFN: ID False Negatives.
+        IDFP: ID False Positives.
+    """
+
+    IDF1: float
+    IDR: float
+    IDP: float
+    IDTP: int
+    IDFN: int
+    IDFP: int
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> IdentityMetrics:
+        """Create IdentityMetrics from a dictionary.
+
+        Args:
+            data: Dictionary with metric values.
+
+        Returns:
+            IdentityMetrics instance.
+        """
+        return cls(
+            IDF1=float(data["IDF1"]),
+            IDR=float(data["IDR"]),
+            IDP=float(data["IDP"]),
+            IDTP=int(data["IDTP"]),
+            IDFN=int(data["IDFN"]),
+            IDFP=int(data["IDFP"]),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary.
+
+        Returns:
+            Dictionary with all metric values.
+        """
+        return dataclasses.asdict(self)
+
+
+@dataclass
 class SequenceResult:
     """Result for a single sequence evaluation.
 
@@ -273,11 +337,13 @@ class SequenceResult:
         sequence: Name of the sequence.
         CLEAR: CLEAR metrics for this sequence.
         HOTA: HOTA metrics for this sequence (optional).
+        Identity: Identity metrics for this sequence (optional).
     """
 
     sequence: str
     CLEAR: CLEARMetrics
     HOTA: HOTAMetrics | None = None
+    Identity: IdentityMetrics | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SequenceResult:
@@ -293,10 +359,15 @@ class SequenceResult:
         if "HOTA" in data and data["HOTA"] is not None:
             hota = HOTAMetrics.from_dict(data["HOTA"])
 
+        identity = None
+        if "Identity" in data and data["Identity"] is not None:
+            identity = IdentityMetrics.from_dict(data["Identity"])
+
         return cls(
             sequence=data["sequence"],
             CLEAR=CLEARMetrics.from_dict(data["CLEAR"]),
             HOTA=hota,
+            Identity=identity,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -311,6 +382,8 @@ class SequenceResult:
         }
         if self.HOTA is not None:
             result["HOTA"] = self.HOTA.to_dict()
+        if self.Identity is not None:
+            result["Identity"] = self.Identity.to_dict()
         return result
 
     def json(self, indent: int = 2) -> str:
@@ -335,7 +408,10 @@ class SequenceResult:
             Formatted table string.
         """
         if columns is None:
-            columns = _get_default_columns(self.HOTA is not None)
+            columns = _get_default_columns(
+                has_hota=self.HOTA is not None,
+                has_identity=self.Identity is not None,
+            )
 
         return _format_sequence_table(self, columns)
 
@@ -402,8 +478,10 @@ class BenchmarkResult:
             Formatted table string with all sequences and aggregate.
         """
         if columns is None:
-            has_hota = self.aggregate.HOTA is not None
-            columns = _get_default_columns(has_hota)
+            columns = _get_default_columns(
+                has_hota=self.aggregate.HOTA is not None,
+                has_identity=self.aggregate.Identity is not None,
+            )
 
         return _format_benchmark_table(self.sequences, self.aggregate, columns)
 
@@ -437,21 +515,23 @@ class BenchmarkResult:
         return cls.from_dict(data)
 
 
-def _get_default_columns(has_hota: bool) -> list[str]:
+def _get_default_columns(has_hota: bool, has_identity: bool = False) -> list[str]:
     """Get default columns based on available metrics.
 
     Args:
         has_hota: Whether HOTA metrics are available.
+        has_identity: Whether Identity metrics are available.
 
     Returns:
         List of all available column names.
     """
+    columns: list[str] = []
     if has_hota:
-        # Show all HOTA metrics followed by all CLEAR metrics
-        return HOTA_SUMMARY_FIELDS + CLEAR_SUMMARY_FIELDS
-    else:
-        # CLEAR-only: show all CLEAR metrics
-        return CLEAR_SUMMARY_FIELDS
+        columns.extend(HOTA_SUMMARY_FIELDS)
+    if has_identity:
+        columns.extend(IDENTITY_SUMMARY_FIELDS)
+    columns.extend(CLEAR_SUMMARY_FIELDS)
+    return columns
 
 
 def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
@@ -469,6 +549,12 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
         hota_dict = result.HOTA.to_dict()
         if col in hota_dict:
             return hota_dict[col]
+
+    # Check Identity metrics
+    if result.Identity is not None:
+        identity_dict = result.Identity.to_dict()
+        if col in identity_dict:
+            return identity_dict[col]
 
     # Fall back to CLEAR metrics
     clear_dict = result.CLEAR.to_dict()
