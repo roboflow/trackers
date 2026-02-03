@@ -39,6 +39,7 @@ def test_evaluate_benchmark_sportsmot_flat(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
         seqmap=data_path / "seqmap.txt",
+        metrics=["CLEAR", "HOTA"],
     )
 
     # Verify all sequences are evaluated
@@ -52,6 +53,8 @@ def test_evaluate_benchmark_sportsmot_flat(
         assert seq_name in expected_results, f"Unexpected sequence: {seq_name}"
         expected_clear = expected_results[seq_name]["CLEAR"]
         _verify_clear_metrics(seq_result.CLEAR, expected_clear, f"sportsmot/{seq_name}")
+        expected_hota = expected_results[seq_name]["HOTA"]
+        _verify_hota_metrics(seq_result.HOTA, expected_hota, f"sportsmot/{seq_name}")
 
     # Verify aggregate metrics are computed correctly
     assert result.aggregate.sequence == "COMBINED"
@@ -68,6 +71,7 @@ def test_evaluate_benchmark_sportsmot_mot17(
     result = evaluate_benchmark(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
+        metrics=["CLEAR", "HOTA"],
     )
 
     # Verify all sequences are evaluated
@@ -83,6 +87,10 @@ def test_evaluate_benchmark_sportsmot_mot17(
         _verify_clear_metrics(
             seq_result.CLEAR, expected_clear, f"sportsmot_mot17/{seq_name}"
         )
+        expected_hota = expected_results[seq_name]["HOTA"]
+        _verify_hota_metrics(
+            seq_result.HOTA, expected_hota, f"sportsmot_mot17/{seq_name}"
+        )
 
 
 @pytest.mark.integration
@@ -97,6 +105,7 @@ def test_evaluate_benchmark_dancetrack_flat(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
         seqmap=data_path / "seqmap.txt",
+        metrics=["CLEAR", "HOTA"],
     )
 
     # Verify all sequences are evaluated
@@ -112,6 +121,10 @@ def test_evaluate_benchmark_dancetrack_flat(
         _verify_clear_metrics(
             seq_result.CLEAR, expected_clear, f"dancetrack/{seq_name}"
         )
+        expected_hota = expected_results[seq_name]["HOTA"]
+        _verify_hota_metrics(
+            seq_result.HOTA, expected_hota, f"dancetrack/{seq_name}"
+        )
 
 
 @pytest.mark.integration
@@ -125,6 +138,7 @@ def test_evaluate_benchmark_dancetrack_mot17(
     result = evaluate_benchmark(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
+        metrics=["CLEAR", "HOTA"],
     )
 
     # Verify all sequences are evaluated
@@ -139,6 +153,10 @@ def test_evaluate_benchmark_dancetrack_mot17(
         expected_clear = expected_results[seq_name]["CLEAR"]
         _verify_clear_metrics(
             seq_result.CLEAR, expected_clear, f"dancetrack_mot17/{seq_name}"
+        )
+        expected_hota = expected_results[seq_name]["HOTA"]
+        _verify_hota_metrics(
+            seq_result.HOTA, expected_hota, f"dancetrack_mot17/{seq_name}"
         )
 
 
@@ -168,6 +186,30 @@ def _verify_clear_metrics(
 
     # Float metrics: both values should be fractions (0-1)
     float_metrics = ["MOTA", "MOTP"]
+    for metric in float_metrics:
+        if metric not in expected:
+            continue
+        computed_val = getattr(computed, metric)
+        expected_val = expected[metric]
+        assert computed_val == pytest.approx(expected_val, rel=1e-4, abs=1e-4), (
+            f"{context}: {metric} mismatch - "
+            f"got {computed_val}, expected {expected_val}"
+        )
+
+
+def _verify_hota_metrics(
+    computed: Any,
+    expected: dict[str, Any],
+    context: str,
+) -> None:
+    """Verify HOTA metrics match expected values.
+
+    Args:
+        computed: HOTAMetrics object from our computation.
+        expected: Expected metrics dict from TrackEval.
+        context: Context string for error messages (e.g., "sportsmot/seq1").
+    """
+    float_metrics = ["HOTA", "DetA", "AssA", "LocA"]
     for metric in float_metrics:
         if metric not in expected:
             continue
