@@ -101,17 +101,13 @@ def compute_hota_metrics(
     if num_tracker_dets == 0:
         hota_fn[:] = num_gt_dets
         loc_a[:] = 1.0
-        return _build_result(
-            hota_tp, hota_fn, hota_fp, ass_a, ass_re, ass_pr, loc_a
-        )
+        return _build_result(hota_tp, hota_fn, hota_fp, ass_a, ass_re, ass_pr, loc_a)
 
     # Handle edge case: no GT detections
     if num_gt_dets == 0:
         hota_fp[:] = num_tracker_dets
         loc_a[:] = 1.0
-        return _build_result(
-            hota_tp, hota_fn, hota_fp, ass_a, ass_re, ass_pr, loc_a
-        )
+        return _build_result(hota_tp, hota_fn, hota_fp, ass_a, ass_re, ass_pr, loc_a)
 
     # Get unique IDs
     all_gt_ids = np.concatenate(gt_ids) if gt_ids else np.array([])

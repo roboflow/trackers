@@ -125,11 +125,13 @@ class TestComputeHotaMetrics:
             gt_ids=[np.array([0, 1, 2])],
             tracker_ids=[np.array([10, 20])],  # Only 2 trackers for 3 GTs
             similarity_scores=[
-                np.array([
-                    [0.8, 0.0],
-                    [0.0, 0.8],
-                    [0.0, 0.0],  # GT2 has no match
-                ])
+                np.array(
+                    [
+                        [0.8, 0.0],
+                        [0.0, 0.8],
+                        [0.0, 0.0],  # GT2 has no match
+                    ]
+                )
             ],
         )
 
@@ -149,7 +151,17 @@ class TestComputeHotaMetrics:
         )
 
         # Float summary fields
-        for field in ["HOTA", "DetA", "AssA", "DetRe", "DetPr", "AssRe", "AssPr", "LocA", "OWTA"]:
+        for field in [
+            "HOTA",
+            "DetA",
+            "AssA",
+            "DetRe",
+            "DetPr",
+            "AssRe",
+            "AssPr",
+            "LocA",
+            "OWTA",
+        ]:
             assert field in result
             assert isinstance(result[field], float)
             assert 0 <= result[field] <= 1
