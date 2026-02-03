@@ -88,13 +88,13 @@ def compute_hota_metrics(
     num_tracker_dets = sum(len(ids) for ids in tracker_ids)
 
     # Initialize result arrays
-    hota_tp = np.zeros(num_alphas, dtype=np.float64)
-    hota_fn = np.zeros(num_alphas, dtype=np.float64)
-    hota_fp = np.zeros(num_alphas, dtype=np.float64)
-    loc_a = np.zeros(num_alphas, dtype=np.float64)
-    ass_a = np.zeros(num_alphas, dtype=np.float64)
-    ass_re = np.zeros(num_alphas, dtype=np.float64)
-    ass_pr = np.zeros(num_alphas, dtype=np.float64)
+    hota_tp: np.ndarray = np.zeros(num_alphas, dtype=np.float64)
+    hota_fn: np.ndarray = np.zeros(num_alphas, dtype=np.float64)
+    hota_fp: np.ndarray = np.zeros(num_alphas, dtype=np.float64)
+    loc_a: np.ndarray = np.zeros(num_alphas, dtype=np.float64)
+    ass_a: np.ndarray = np.zeros(num_alphas, dtype=np.float64)
+    ass_re: np.ndarray = np.zeros(num_alphas, dtype=np.float64)
+    ass_pr: np.ndarray = np.zeros(num_alphas, dtype=np.float64)
 
     # Handle edge case: no tracker detections
     if num_tracker_dets == 0:
@@ -125,9 +125,11 @@ def compute_hota_metrics(
     tracker_id_to_idx = {int(id_): idx for idx, id_ in enumerate(unique_tracker_ids)}
 
     # Variables for global association (ref: hota.py:48-50)
-    potential_matches_count = np.zeros((num_gt_ids, num_tracker_ids), dtype=np.float64)
-    gt_id_count = np.zeros((num_gt_ids, 1), dtype=np.float64)
-    tracker_id_count = np.zeros((1, num_tracker_ids), dtype=np.float64)
+    potential_matches_count: np.ndarray = np.zeros(
+        (num_gt_ids, num_tracker_ids), dtype=np.float64
+    )
+    gt_id_count: np.ndarray = np.zeros((num_gt_ids, 1), dtype=np.float64)
+    tracker_id_count: np.ndarray = np.zeros((1, num_tracker_ids), dtype=np.float64)
 
     # First pass: accumulate global track information (ref: hota.py:53-65)
     for t, (gt_ids_t, tracker_ids_t) in enumerate(zip(gt_ids, tracker_ids)):
@@ -173,7 +175,7 @@ def compute_hota_metrics(
     )
 
     # Per-alpha match counts for association metrics
-    matches_counts = [
+    matches_counts: list[np.ndarray] = [
         np.zeros((num_gt_ids, num_tracker_ids), dtype=np.float64)
         for _ in range(num_alphas)
     ]
