@@ -12,13 +12,13 @@
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://roboflow.github.io/trackers/develop/develop/learn/benchmarks/">
+        <link rel="canonical" href="https://roboflow.github.io/trackers/develop/develop/learn/evaluate/">
       
       
         <link rel="prev" href="../install/">
       
       
-        <link rel="next" href="../../trackers/sort/">
+        <link rel="next" href="../../api-trackers/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Benchmarks - Trackers</title>
+        <title>Evaluate - Trackers</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#benchmarks" class="md-skip">
+        <a href="#evaluate-trackers" class="md-skip">
           Skip to content
         </a>
       
@@ -138,7 +138,7 @@
 
             </a>
             
-              Benchmarks
+              Evaluate
             
           </span>
         </div>
@@ -308,17 +308,38 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
   
   Home
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../trackers/comparison/" class="md-tabs__link">
+          
+  
+  
+  Trackers
+
+        </a>
+      </li>
+    
   
 
       
@@ -336,7 +357,7 @@
           
   
   
-  Learn
+  Guides
 
         </a>
       </li>
@@ -352,11 +373,11 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../trackers/sort/" class="md-tabs__link">
+        <a href="../../api-trackers/" class="md-tabs__link">
           
   
   
-  Trackers
+  API Reference
 
         </a>
       </li>
@@ -414,9 +435,25 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -430,61 +467,15 @@
   
   
 
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Learn
-  
-
-    
-  </span>
-  
-  
-
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Learn
+    Home
   
 
           </label>
@@ -497,14 +488,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../install/" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Install
+    Quickstart
   
 
     
@@ -513,192 +504,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Benchmarks
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Benchmarks
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#datasets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Datasets
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Datasets">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#mot17" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MOT17
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sportsmot" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SportsMOT
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#soccernet-tracking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SoccerNet-tracking
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#metrics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metrics
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Metrics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#hota-higher-order-tracking-accuracy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        HOTA (Higher Order Tracking Accuracy)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#idf1-identification-f1-score" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        IDF1 (Identification F1 Score)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mota-multi-object-tracking-accuracy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MOTA (Multi-Object Tracking Accuracy)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reproducibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reproducibility
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -731,10 +536,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
   
@@ -752,8 +557,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -762,6 +567,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../trackers/comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -826,6 +659,341 @@
   
 
     
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluate
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quickstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quickstart
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Format
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#directory-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directory Layouts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-sequence-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Sequence Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-trackers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trackers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -853,110 +1021,54 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#datasets" class="md-nav__link">
+  <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Datasets
+        Installation
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Datasets">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#mot17" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MOT17
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sportsmot" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SportsMOT
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#soccernet-tracking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SoccerNet-tracking
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#metrics" class="md-nav__link">
+  <a href="#quickstart" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Metrics
+        Quickstart
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Metrics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#hota-higher-order-tracking-accuracy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        HOTA (Higher Order Tracking Accuracy)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#idf1-identification-f1-score" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        IDF1 (Identification F1 Score)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mota-multi-object-tracking-accuracy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MOTA (Multi-Object Tracking Accuracy)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#reproducibility" class="md-nav__link">
+  <a href="#data-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reproducibility
+        Data Format
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#directory-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directory Layouts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-sequence-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Sequence Evaluation
       
     </span>
   </a>
@@ -983,102 +1095,181 @@
   
 
 
-<h1 id="benchmarks">Benchmarks</h1>
-<p>This page presents performance results of the trackers available in the <code>trackers</code> Python package on standard multiple object tracking (MOT) benchmarks.</p>
-<p>The goal of this page is not only to report scores, but also to help you interpret them for real world projects.</p>
-<h2 id="datasets">Datasets</h2>
-<h3 id="mot17">MOT17</h3>
-<p>Classic pedestrian MOT benchmark based on MOT16 sequences but with significantly improved, higher-accuracy ground truth annotations. Contains crowded street scenes captured from static and slowly moving cameras, featuring frequent occlusions, moderate density (up to ~30–40 pedestrians), and partial camera motion in some sequences. Strong emphasis on handling short- to medium-term occlusions and re-acquiring identities after crossings or background clutter.</p>
-<table>
-<thead>
-<tr>
-<th>Tracker</th>
-<th>HOTA</th>
-<th>IDF1</th>
-<th>MOTA</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>SORT</td>
-<td>58.4</td>
-<td>69.9</td>
-<td>67.2</td>
-</tr>
-<tr>
-<td>ByteTrack</td>
-<td><strong>60.1</strong></td>
-<td><strong>73.2</strong></td>
-<td><strong>74.1</strong></td>
-</tr>
-</tbody>
-</table>
-<h3 id="sportsmot">SportsMOT</h3>
-<p>Large-scale MOT dataset targeting sports analysis, containing 240 video clips (basketball, football/soccer, volleyball) collected from professional matches (Olympics, NCAA, NBA). Characterized by fast and highly variable player motion, rapid camera panning/zooming, complex backgrounds, and players with very similar appearance (uniforms within team). Only players on the court/field are annotated (excluding referees, coaches, spectators), making it particularly challenging for association under speed and visual similarity.</p>
-<table>
-<thead>
-<tr>
-<th>Tracker</th>
-<th>HOTA</th>
-<th>IDF1</th>
-<th>MOTA</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>SORT</td>
-<td>70.9</td>
-<td>68.9</td>
-<td>95.7</td>
-</tr>
-<tr>
-<td>ByteTrack</td>
-<td><strong>73.0</strong></td>
-<td><strong>72.5</strong></td>
-<td><strong>96.4</strong></td>
-</tr>
-</tbody>
-</table>
-<h3 id="soccernet-tracking">SoccerNet-tracking</h3>
-<p>Specialized soccer MOT dataset derived from SoccerNet-tracking broadcast videos, containing 200 short 30-second clips + one full 45-minute half-time sequence. Focuses on professional soccer matches with main camera view, including players (both teams), goalkeepers, referees, and the ball; features long sequences with occlusions by players, fast directional changes, and non-linear trajectories. Particularly useful for evaluating long-term association and robustness to crowded penalty areas or midfield clusters.</p>
-<table>
-<thead>
-<tr>
-<th>Tracker</th>
-<th>HOTA</th>
-<th>IDF1</th>
-<th>MOTA</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>SORT</td>
-<td>81.6</td>
-<td>76.2</td>
-<td>95.1</td>
-</tr>
-<tr>
-<td>ByteTrack</td>
-<td><strong>84.0</strong></td>
-<td><strong>78.1</strong></td>
-<td><strong>97.8</strong></td>
-</tr>
-</tbody>
-</table>
-<h2 id="metrics">Metrics</h2>
-<h3 id="hota-higher-order-tracking-accuracy">HOTA (Higher Order Tracking Accuracy)</h3>
-<p>HOTA is a balanced tracking metric that evaluates detection quality, localization accuracy, and identity association at the same time. The score is computed over a range of IoU thresholds, from loose to strict, which helps capture both easy and hard matching cases. Detection and association scores are then combined into a single value, giving a more complete view of tracker behavior than metrics focused on one aspect only. The metric is computed after processing the full video sequence and gives limited penalty when the same object is represented by several shorter tracks instead of one continuous track.</p>
-<p>Use HOTA when you need an overall assessment of tracking quality and want to compare systems under realistic conditions where both detection errors and association errors matter.</p>
-<h3 id="idf1-identification-f1-score">IDF1 (Identification F1 Score)</h3>
-<p>IDF1 measures how well a tracker keeps the same ID for the same object over time. It matches predicted IDs to ground truth IDs across the whole video and scores identity precision and recall. The metric reacts strongly to ID switches and lost identities over long periods. Detection coverage has little effect on the score if the remaining IDs stay consistent.</p>
-<p>Use IDF1 when stable track IDs matter more than full object coverage, for example trajectory analysis, player tracking, or any logic built on long lived identities.</p>
-<h3 id="mota-multi-object-tracking-accuracy">MOTA (Multi-Object Tracking Accuracy)</h3>
-<p>MOTA sums three types of errors. Missed objects, false detections, and ID switches. The score reflects how often a tracker makes basic mistakes frame to frame. Missed detections and false positives dominate the result. The metric does not account for box accuracy and does not reflect long term identity consistency.</p>
-<p>Use MOTA when detection coverage represents the main objective and identity stability plays a secondary role.</p>
-<h2 id="reproducibility">Reproducibility</h2>
-<p>All reported numbers were obtained using the official TrackEval library. We used YOLOX detections for MOT17 (provided by the ByteTrack authors), YOLOX detections trained on SportsMOT (provided by the SportsMOT dataset authors), and dataset-provided oracle detections (perfect detections) for SoccerNet-tracking.</p>
-<p>We are currently working on releasing dedicated benchmarking utilities in the <code>trackers</code> package that will allow users to easily reproduce these exact numbers, run evaluation on custom trackers using the same protocol, and benchmark their own models on these datasets with standardized splits and settings.</p>
-<p>Stay tuned for the upcoming release of the benchmarking module.</p>
+<h1 id="evaluate-trackers">Evaluate Trackers</h1>
+<p>Measure how well your multi-object tracker performs using standard MOT metrics (CLEAR, HOTA, Identity). Get clear, reproducible scores for development, comparison, and publication.</p>
+<p><strong>What you'll learn:</strong></p>
+<ul>
+<li>Evaluate single and multi-sequence tracking results</li>
+<li>Interpret HOTA, MOTA, and IDF1 scores</li>
+<li>Prepare datasets in MOT Challenge format</li>
+</ul>
+<hr />
+<h2 id="installation">Installation</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>trackers
+</span></code></pre></div>
+<p>For alternative methods, see the <a href="../install/">Install guide</a>.</p>
+<hr />
+<h2 id="quickstart">Quickstart</h2>
+<p>Evaluate a single sequence by pointing to your ground-truth and tracker files, then view the results as a formatted table.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Python</label><label for="__tabbed_1_2">CLI</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.eval</span><span class="w"> </span><span class="kn">import</span> <span class="n">evaluate_mot_sequence</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">evaluate_mot_sequence</span><span class="p">(</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">gt_path</span><span class="o">=</span><span class="s2">&quot;data/gt/MOT17-02-FRCNN.txt&quot;</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">tracker_path</span><span class="o">=</span><span class="s2">&quot;data/trackers/MOT17-02-FRCNN.txt&quot;</span><span class="p">,</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;CLEAR&quot;</span><span class="p">,</span> <span class="s2">&quot;HOTA&quot;</span><span class="p">,</span> <span class="s2">&quot;Identity&quot;</span><span class="p">],</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;MOTA&quot;</span><span class="p">,</span> <span class="s2">&quot;HOTA&quot;</span><span class="p">,</span> <span class="s2">&quot;IDF1&quot;</span><span class="p">,</span> <span class="s2">&quot;IDSW&quot;</span><span class="p">]))</span>
+</span></code></pre></div>
+<p><strong>Output:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Sequence                        MOTA    HOTA    IDF1  IDSW
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>----------------------------------------------------------
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>MOT17-02-FRCNN                75.600  62.300  72.100    42
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>trackers<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>--gt<span class="w"> </span>data/gt/MOT17-02-FRCNN.txt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span>--tracker<span class="w"> </span>data/trackers/MOT17-02-FRCNN.txt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span>--metrics<span class="w"> </span>CLEAR<span class="w"> </span>HOTA<span class="w"> </span>Identity<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span>--columns<span class="w"> </span>MOTA<span class="w"> </span>HOTA<span class="w"> </span>IDF1<span class="w"> </span>IDSW
+</span></code></pre></div>
+<p><strong>Output:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Sequence                        MOTA    HOTA    IDF1  IDSW
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>----------------------------------------------------------
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>MOT17-02-FRCNN                75.600  62.300  72.100    42
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="data-format">Data Format</h2>
+<p>Ground truth and tracker files use MOT Challenge text format — a simple comma-separated .txt file where each line describes one detection.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>&lt;frame&gt;,&lt;id&gt;,&lt;bb_left&gt;,&lt;bb_top&gt;,&lt;bb_width&gt;,&lt;bb_height&gt;,&lt;conf&gt;,&lt;x&gt;,&lt;y&gt;,&lt;z&gt;
+</span></code></pre></div>
+<p><strong>Example:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>1,1,100,200,50,80,1,-1,-1,-1
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>1,2,300,150,60,90,1,-1,-1,-1
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>2,1,105,198,50,80,1,-1,-1,-1
+</span></code></pre></div>
+<p><strong>Fields:</strong></p>
+<ul>
+<li><code>frame</code> — Frame number (1-indexed)</li>
+<li><code>id</code> — Unique object ID per track</li>
+<li><code>bb_left</code>, <code>bb_top</code> — Top-left bounding box corner</li>
+<li><code>bb_width</code>, <code>bb_height</code> — Bounding box dimensions</li>
+<li><code>conf</code> — Confidence score (1 for ground truth)</li>
+<li><code>x</code>, <code>y</code>, <code>z</code> — 3D coordinates (-1 if unused)</li>
+</ul>
+<hr />
+<h2 id="directory-layouts">Directory Layouts</h2>
+<p>The evaluator automatically detects whether you're using a flat or MOT-style structure. It also tries to infer benchmark name, split, and tracker name from folder names.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">MOT Layout</label><label for="__tabbed_2_2">Flat Layout</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Standard MOT Challenge nested structure.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>data/
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>├── MOT17-train/
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>│   ├── MOT17-02-FRCNN/
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>│   │   └── gt/gt.txt
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>│   ├── MOT17-04-FRCNN/
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>│   │   └── gt/gt.txt
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>│   └── MOT17-05-FRCNN/
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>│       └── gt/gt.txt
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>└── trackers/
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    └── MOT17-train/
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>        └── ByteTrack/
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>            └── data/
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>                ├── MOT17-02-FRCNN.txt
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>                ├── MOT17-04-FRCNN.txt
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>                └── MOT17-05-FRCNN.txt
+</span></code></pre></div>
+<p><strong>Python</strong></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.eval</span><span class="w"> </span><span class="kn">import</span> <span class="n">evaluate_mot_sequences</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">evaluate_mot_sequences</span><span class="p">(</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">gt_dir</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">,</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">tracker_dir</span><span class="o">=</span><span class="s2">&quot;data/trackers&quot;</span><span class="p">,</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">benchmark</span><span class="o">=</span><span class="s2">&quot;MOT17&quot;</span><span class="p">,</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="n">tracker_name</span><span class="o">=</span><span class="s2">&quot;ByteTrack&quot;</span><span class="p">,</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>CLI</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>trackers<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--gt-dir<span class="w"> </span>data<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--tracker-dir<span class="w"> </span>data/trackers<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--benchmark<span class="w"> </span>MOT17<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>--split<span class="w"> </span>train<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">  </span>--tracker-name<span class="w"> </span>ByteTrack
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>One <code>.txt</code> file per sequence, placed directly in the directories.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>data/
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>├── gt/
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>│   ├── MOT17-02-FRCNN.txt
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>│   ├── MOT17-04-FRCNN.txt
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>│   └── MOT17-05-FRCNN.txt
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>└── trackers/
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    ├── MOT17-02-FRCNN.txt
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    ├── MOT17-04-FRCNN.txt
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    └── MOT17-05-FRCNN.txt
+</span></code></pre></div>
+<p><strong>Python</strong></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.eval</span><span class="w"> </span><span class="kn">import</span> <span class="n">evaluate_mot_sequences</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">evaluate_mot_sequences</span><span class="p">(</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">gt_dir</span><span class="o">=</span><span class="s2">&quot;data/gt&quot;</span><span class="p">,</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">tracker_dir</span><span class="o">=</span><span class="s2">&quot;data/trackers&quot;</span><span class="p">,</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>CLI</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>trackers<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--gt-dir<span class="w"> </span>data/gt<span class="w"> </span>--tracker-dir<span class="w"> </span>data/trackers
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="multi-sequence-evaluation">Multi-Sequence Evaluation</h2>
+<p>Run evaluation across many sequences and get both per-sequence results and a combined aggregate.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">CLI</label><label for="__tabbed_3_2">Python</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>trackers<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span>--gt-dir<span class="w"> </span>data/gt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span>--tracker-dir<span class="w"> </span>data/trackers<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span>--metrics<span class="w"> </span>CLEAR<span class="w"> </span>HOTA<span class="w"> </span>Identity<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">    </span>--columns<span class="w"> </span>MOTA<span class="w"> </span>HOTA<span class="w"> </span>IDF1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">    </span>--output<span class="w"> </span>results.json
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.eval</span><span class="w"> </span><span class="kn">import</span> <span class="n">evaluate_mot_sequences</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">evaluate_mot_sequences</span><span class="p">(</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">gt_dir</span><span class="o">=</span><span class="s2">&quot;data/gt&quot;</span><span class="p">,</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">tracker_dir</span><span class="o">=</span><span class="s2">&quot;data/trackers&quot;</span><span class="p">,</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;CLEAR&quot;</span><span class="p">,</span> <span class="s2">&quot;HOTA&quot;</span><span class="p">,</span> <span class="s2">&quot;Identity&quot;</span><span class="p">],</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="p">)</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;MOTA&quot;</span><span class="p">,</span> <span class="s2">&quot;HOTA&quot;</span><span class="p">,</span> <span class="s2">&quot;IDF1&quot;</span><span class="p">]))</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<p><strong>Output:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>Sequence                        MOTA    HOTA    IDF1
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>----------------------------------------------------
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>MOT17-02-FRCNN                75.600  62.300  72.100
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>MOT17-04-FRCNN                78.200  65.100  74.800
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>MOT17-05-FRCNN                71.300  59.800  69.200
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>----------------------------------------------------
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>COMBINED                      75.033  62.400  72.033
+</span></code></pre></div>
 
 
 
@@ -1220,6 +1411,8 @@
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/copy-code.js"></script>
       
     
   </body>
