@@ -10,7 +10,7 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
@@ -584,9 +584,7 @@ def _aggregate_metrics(
             if seq.HOTA is not None
         ]
         if hota_seq_metrics:
-            hota_agg = HOTAMetrics.from_dict(
-                aggregate_hota_metrics(hota_seq_metrics)
-            )
+            hota_agg = HOTAMetrics.from_dict(aggregate_hota_metrics(hota_seq_metrics))
 
     if "Identity" in metrics:
         identity_seq_metrics = [
