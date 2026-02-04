@@ -1,92 +1,86 @@
-# Installation
+# Install Trackers
 
-Welcome to Trackers! This guide will help you install and set up Trackers for your projects. Whether you're a developer looking to contribute or an end-user ready to start using Trackers, we've got you covered.
+Get up and running with Trackers in minutes. Choose your preferred package manager and start tracking objects in video.
 
-## Installation Methods
+**What you'll learn:**
 
-Trackers supports several installation methods. [Python 3.10](https://devguide.python.org/versions/) or higher is required. Choose the option which best fits your workflow.
+- Install Trackers with pip or uv
+- Set up a development environment
+- Troubleshoot common issues
 
-!!! example "Installation"
+---
 
-    === "pip (recommended)"
-        The easiest way to install Trackers is using `pip`. This method is recommended for most users.
+## Quickstart
 
-        ```bash
-        pip install trackers
-        ```
+=== "pip"
 
-    === "uv"
-        If you are using `uv`, you can install Trackers using the following command.
+    ```bash
+    pip install trackers
+    ```
 
-        ```bash
-        uv pip install trackers
-        ```
+=== "uv"
 
-        For uv-managed projects, add Trackers as a project dependency.
+    ```bash
+    uv pip install trackers
+    ```
 
-        ```bash
-        uv add trackers
-        ```
+    For uv-managed projects:
 
-    === "Source Archive"
-        To install the latest development version of Trackers from source without cloning the full repository, run the command below.
+    ```bash
+    uv add trackers
+    ```
 
-        ```bash
-        pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
-        ```
+=== "From Source"
 
-## Dev Environment
+    Install the latest development version:
 
-If you plan to contribute to Trackers or modify the codebase locally, set up a local development environment using the steps below. We recommend using an isolated environment to avoid dependency conflicts.
+    ```bash
+    pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
+    ```
 
-!!! example "Development Setup"
+**Verify installation:**
 
-    === "virtualenv"
-        ```bash
-        # Clone repository
-        git clone --depth 1 -b develop https://github.com/roboflow/trackers.git
-        cd trackers
+```bash
+python -c "import trackers; print(trackers.__version__)"
+```
 
-        # Create virtual environment
-        python3.10 -m venv venv
+---
 
-        # Activate environment
-        source venv/bin/activate
+## Development Setup
 
-        # Upgrade pip
-        pip install --upgrade pip
+Set up a local environment for contributing or modifying Trackers.
 
-        # Install in editable mode
-        pip install -e "."
-        ```
+=== "virtualenv"
 
-    === "uv"
-        ```bash
-        # Clone repository
-        git clone --depth 1 -b develop https://github.com/roboflow/trackers.git
-        cd trackers
+    ```bash
+    # Clone and enter repository
+    git clone --depth 1 -b develop https://github.com/roboflow/trackers.git
+    cd trackers
 
-        # Pin Python version
-        uv python pin 3.10
+    # Create and activate environment
+    python3.10 -m venv venv
+    source venv/bin/activate
 
-        # Sync environment and install dependencies
-        uv sync
+    # Install in editable mode
+    pip install --upgrade pip
+    pip install -e "."
+    ```
 
-        # Install in editable mode with extras
-        uv pip install -e . --all-extras
-        ```
+=== "uv"
 
-## Troubleshooting
+    ```bash
+    # Clone and enter repository
+    git clone --depth 1 -b develop https://github.com/roboflow/trackers.git
+    cd trackers
 
-Installation issues usually fall into a few common categories.
+    # Set up environment
+    uv python pin 3.10
+    uv sync
+    uv pip install -e . --all-extras
+    ```
 
-- **Permission Issues**. Package install fails due to missing write access to system Python paths. Fix by running `pip install --user trackers` or by using an isolated environment.
-- **Dependency Conflicts**. Errors appear after installing other Python packages. Resolve by installing Trackers inside a fresh virtual environment or a clean `uv` project.
-- **Python Version**. Installation fails or runtime errors appear when using older Python releases. Trackers requires Python 3.10 or higher.
+**Verify dev install:**
 
-If problems persist, open an issue on the [GitHub repository](https://github.com/roboflow/trackers).
-
-## See also
-
-- [Evaluate guide](evaluate.md)
-- [Evals API](../api-evals.md)
+```bash
+python -c "import trackers; print(trackers.__version__)"
+```
