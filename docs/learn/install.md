@@ -4,9 +4,11 @@ Get up and running with Trackers in minutes. Choose your preferred package manag
 
 **What you'll learn:**
 
-- Install Trackers with pip or uv
+- Install Trackers with `pip` or `uv`
 - Set up a development environment
-- Troubleshoot common issues
+
+!!! tip "Requirements"
+    Python `3.10` or higher is required.
 
 ---
 
@@ -24,7 +26,7 @@ Get up and running with Trackers in minutes. Choose your preferred package manag
     uv pip install trackers
     ```
 
-    For uv-managed projects:
+    For `uv`-managed projects:
 
     ```bash
     uv add trackers
@@ -84,37 +86,3 @@ Set up a local environment for contributing or modifying Trackers.
 ```bash
 python -c "import trackers; print(trackers.__version__)"
 ```
-
-!!! note "Requirements"
-    Python 3.10 or higher is required.
-
----
-
-<details>
-<summary><strong>Troubleshooting</strong></summary>
-
-**Permission denied**
-
-- Use `pip install --user trackers` or activate a virtual environment
-
-**Dependency conflicts**
-
-- Install in a fresh virtual environment or clean uv project
-
-**Python version errors**
-
-- Trackers requires Python 3.10+. Check with `python --version`
-
-**Still stuck?**
-
-- Open an issue on [GitHub](https://github.com/roboflow/trackers/issues)
-
-</details>
-
----
-
-## Next Steps
-
-- [Quickstart](../index.md) — Run your first tracker
-- [Evaluate](evaluate.md) — Benchmark tracking results
-- [SORT](../trackers/sort.md) / [ByteTrack](../trackers/bytetrack.md) — Tracker guides
