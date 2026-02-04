@@ -145,7 +145,7 @@ def run_eval(args: argparse.Namespace) -> int:
     columns = args.columns
 
     # Import evaluation functions
-    from trackers.eval import evaluate_benchmark, evaluate_mot_sequence
+    from trackers.eval import evaluate_mot_sequence, evaluate_mot_sequences
 
     try:
         if single_mode:
@@ -163,7 +163,7 @@ def run_eval(args: argparse.Namespace) -> int:
                 args.output.write_text(seq_result.json())
                 print(f"\nResults saved to: {args.output}")
         else:
-            bench_result = evaluate_benchmark(
+            bench_result = evaluate_mot_sequences(
                 gt_dir=args.gt_dir,
                 tracker_dir=args.tracker_dir,
                 seqmap=args.seqmap,

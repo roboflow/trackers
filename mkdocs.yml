@@ -45,6 +45,9 @@ extra_css:
   - stylesheets/style.css
   - stylesheets/rf.css
 
+extra_javascript:
+  - javascripts/copy-code.js
+
 markdown_extensions:
    # Adds support for card grids
   - attr_list
@@ -100,10 +103,18 @@ plugins:
               sort_members: false
 
 nav:
-  - Home: index.md
-  - Learn:
-    - Install: learn/install.md
-    - Benchmarks: learn/benchmarks.md
+  - Home:
+    - Quickstart: index.md
+    - CLI: cli.md
+    - Python: python.md
   - Trackers:
+    - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md
     - ByteTrack: trackers/bytetrack.md
+  - Guides:
+    - Install: learn/install.md
+    - Evaluate: learn/evaluate.md
+  - API Reference:
+    - Trackers: api-trackers.md
+    - Evals: api-evals.md
+  - Help: help.md

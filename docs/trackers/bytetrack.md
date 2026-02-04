@@ -8,9 +8,9 @@ comments: true
 
 ByteTrack builds on the same Kalman filter plus Hungarian algorithm framework as SORT but changes the data association strategy to use almost every detection box regardless of confidence score. It runs a two-stage matching: first match high-confidence detections to tracks, then match low-confidence detections to any unmatched tracks using IoU. This reduces missed tracks and fragmentation for occluded or weak detections while retaining simplicity and high frame rates. ByteTrack has set state-of-the-art results on standard MOT benchmarks with real-time performance, because it recovers valid low-score detections instead of discarding them.
 
-## Benchmarks
+## Comparison
 
-For comparisons with other trackers, plus full details on the datasets and evaluation metrics used, see the [benchmarks](../learn/benchmarks.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 |:---------:|:----:|:----:|:----:|

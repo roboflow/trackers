@@ -21,21 +21,21 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from trackers.eval import evaluate_benchmark
+from trackers.eval import evaluate_mot_sequences
 
 if TYPE_CHECKING:
     pass
 
 
 @pytest.mark.integration
-def test_evaluate_benchmark_sportsmot_flat(
+def test_evaluate_mot_sequences_sportsmot_flat(
     sportsmot_flat_data: tuple[Path, dict[str, Any]],
 ) -> None:
-    """Test evaluate_benchmark with SportsMOT flat format (auto-detected)."""
+    """Test evaluate_mot_sequences with SportsMOT flat format (auto-detected)."""
     data_path, expected_results = sportsmot_flat_data
 
     # Auto-detection should detect flat format from *.txt files
-    result = evaluate_benchmark(
+    result = evaluate_mot_sequences(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
         seqmap=data_path / "seqmap.txt",
@@ -65,14 +65,14 @@ def test_evaluate_benchmark_sportsmot_flat(
 
 
 @pytest.mark.integration
-def test_evaluate_benchmark_sportsmot_mot17(
+def test_evaluate_mot_sequences_sportsmot_mot17(
     sportsmot_mot17_data: tuple[Path, dict[str, Any]],
 ) -> None:
-    """Test evaluate_benchmark with SportsMOT MOT17 format (auto-detected)."""
+    """Test evaluate_mot_sequences with SportsMOT MOT17 format (auto-detected)."""
     data_path, expected_results = sportsmot_mot17_data
 
     # Auto-detection should detect MOT17 format, benchmark, split, and tracker
-    result = evaluate_benchmark(
+    result = evaluate_mot_sequences(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
         metrics=["CLEAR", "HOTA", "Identity"],
@@ -102,14 +102,14 @@ def test_evaluate_benchmark_sportsmot_mot17(
 
 
 @pytest.mark.integration
-def test_evaluate_benchmark_dancetrack_flat(
+def test_evaluate_mot_sequences_dancetrack_flat(
     dancetrack_flat_data: tuple[Path, dict[str, Any]],
 ) -> None:
-    """Test evaluate_benchmark with DanceTrack flat format (auto-detected)."""
+    """Test evaluate_mot_sequences with DanceTrack flat format (auto-detected)."""
     data_path, expected_results = dancetrack_flat_data
 
     # Auto-detection should detect flat format from *.txt files
-    result = evaluate_benchmark(
+    result = evaluate_mot_sequences(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
         seqmap=data_path / "seqmap.txt",
@@ -138,14 +138,14 @@ def test_evaluate_benchmark_dancetrack_flat(
 
 
 @pytest.mark.integration
-def test_evaluate_benchmark_dancetrack_mot17(
+def test_evaluate_mot_sequences_dancetrack_mot17(
     dancetrack_mot17_data: tuple[Path, dict[str, Any]],
 ) -> None:
-    """Test evaluate_benchmark with DanceTrack MOT17 format (auto-detected)."""
+    """Test evaluate_mot_sequences with DanceTrack MOT17 format (auto-detected)."""
     data_path, expected_results = dancetrack_mot17_data
 
     # Auto-detection should detect MOT17 format, benchmark, split, and tracker
-    result = evaluate_benchmark(
+    result = evaluate_mot_sequences(
         gt_dir=data_path / "gt",
         tracker_dir=data_path / "trackers",
         metrics=["CLEAR", "HOTA", "Identity"],

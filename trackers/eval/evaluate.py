@@ -45,41 +45,44 @@ def evaluate_mot_sequence(
     metrics: list[str] | None = None,
     threshold: float = 0.5,
 ) -> SequenceResult:
-    """Evaluate tracker predictions against ground truth for a single sequence.
+    """Score one tracker run against one GT sequence with TrackEval parity.
 
-    Load ground truth and tracker files in MOT Challenge format, compute
-    IoU-based similarity, and calculate the requested evaluation metrics.
+    Ingests a GT MOT file and a tracker MOT file, builds IoU matches per frame,
+    and returns a typed result with only the metric families you request.
 
     Args:
-        gt_path: Path to ground truth file in MOT format.
-        tracker_path: Path to tracker predictions file in MOT format.
-        metrics: List of metrics to compute. Supports `["CLEAR", "HOTA", "Identity"]`.
-            Defaults to `["CLEAR"]` if not specified.
-        threshold: IoU threshold for CLEAR and Identity matching. Defaults to 0.5.
-            Note: HOTA computes across multiple thresholds internally.
+        gt_path: Path to the ground-truth MOT file.
+        tracker_path: Path to the tracker MOT file.
+        metrics: Metric families to compute. Supported values are
+            `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
+        threshold: IoU threshold for `CLEAR` and `Identity` matching. Defaults
+            to `0.5`. `HOTA` evaluates across multiple thresholds internally.
 
     Returns:
-        SequenceResult containing evaluation metrics. Access metrics via
-            `result.CLEAR.MOTA`, `result.HOTA.HOTA`, etc.
+        `SequenceResult` with `CLEAR`, `HOTA`, and/or `Identity` populated based
+            on `metrics`.
 
     Raises:
-        FileNotFoundError: If ground truth or tracker file does not exist.
-        ValueError: If an unsupported metric is requested.
+        FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
+        ValueError: If an unsupported metric family is requested.
 
     Examples:
-        ```python
-        from trackers.eval import evaluate_mot_sequence
-
-        result = evaluate_mot_sequence(
-            gt_path="data/gt/MOT17-02/gt.txt",
-            tracker_path="data/trackers/MOT17-02.txt",
-            metrics=["CLEAR", "HOTA"],
-        )
-        result.CLEAR.MOTA
+        ```pycon
+        >>> from trackers.eval import evaluate_mot_sequence
+        >>>
+        >>> result = evaluate_mot_sequence(
+        ...     gt_path="data/gt/MOT17-02/gt.txt",
+        ...     tracker_path="data/trackers/MOT17-02.txt",
+        ...     metrics=["CLEAR", "HOTA", "Identity"],
+        ... )
+        >>>
+        >>> print(result.CLEAR.MOTA)
         # 0.756
-        result.HOTA.HOTA
-        # 0.612
-        print(result.table())
+        >>>
+        >>> print(result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]))
+        # Sequence                           MOTA    HOTA    IDF1  IDSW
+        # -------------------------------------------------------------
+        # MOT17-02                         75.600  62.300  72.100    42
         ```
     """
     if metrics is None:
@@ -142,7 +145,7 @@ def evaluate_mot_sequence(
     )
 
 
-def evaluate_benchmark(
+def evaluate_mot_sequences(
     gt_dir: str | Path,
     tracker_dir: str | Path,
     seqmap: str | Path | None = None,
@@ -152,52 +155,77 @@ def evaluate_benchmark(
     split: str | None = None,
     tracker_name: str | None = None,
 ) -> BenchmarkResult:
-    """Evaluate tracker on multiple sequences (benchmark evaluation).
+    """Score a set of sequences and produce per-sequence plus combined metrics.
 
-    The directory structure is auto-detected. Supports both flat format
-    (files directly in directory) and MOT Challenge format (nested structure).
+    Walks either a flat folder of MOT files or a MOT layout tree, infers format
+    details when possible, then runs the same per-sequence evaluation and
+    aggregates results into a combined row.
+
+    === "MOT layout"
+
+        ```
+        gt_dir/
+          └── {benchmark}-{split}/
+              ├── sequence1/
+              │   └── gt/gt.txt
+              └── sequence2/
+                  └── gt/gt.txt
+        tracker_dir/
+          └── {benchmark}-{split}/
+              └── {tracker_name}/data/
+                  ├── sequence1.txt
+                  └── sequence2.txt
+        ```
+
+    === "Flat layout"
+
+        ```
+        gt_dir/
+          ├── sequence1.txt
+          └── sequence2.txt
+        tracker_dir/
+          ├── sequence1.txt
+          └── sequence2.txt
+        ```
 
     Args:
-        gt_dir: Directory containing ground truth files.
-        tracker_dir: Directory containing tracker prediction files.
-        seqmap: Optional path to sequence map file. If provided, only sequences
-            listed in this file will be evaluated.
-        metrics: List of metrics to compute. Supports `["CLEAR", "HOTA", "Identity"]`.
-            Defaults to `["CLEAR"]`.
-        threshold: IoU threshold for CLEAR matching. Defaults to 0.5.
-        benchmark: Override auto-detected benchmark name (e.g., "MOT17").
-        split: Override auto-detected split name (e.g., "train", "val").
+        gt_dir: Directory with ground-truth files.
+        tracker_dir: Directory with tracker prediction files.
+        seqmap: Optional sequence map. If provided, only those sequences are
+            evaluated.
+        metrics: Metric families to compute. Supported values are
+            `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
+        threshold: IoU threshold for `CLEAR` and `Identity`. Defaults to `0.5`.
+        benchmark: Override auto-detected benchmark name (e.g., `"MOT17"`).
+        split: Override auto-detected split name (e.g., `"train"`, `"val"`).
         tracker_name: Override auto-detected tracker name.
 
     Returns:
-        BenchmarkResult containing per-sequence and aggregate metrics.
+        `BenchmarkResult` with per-sequence results and a `COMBINED` aggregate.
 
     Raises:
-        FileNotFoundError: If gt_dir or tracker_dir does not exist.
-        ValueError: If auto-detection fails with multiple options.
+        FileNotFoundError: If `gt_dir` or `tracker_dir` does not exist.
+        ValueError: If auto-detection finds multiple valid options.
 
     Examples:
-        Auto-detect everything:
+        Auto-detect layout and evaluate all sequences:
 
-        ```python
-        from trackers.eval import evaluate_benchmark
-
-        result = evaluate_benchmark(
-            gt_dir="data/gt/",
-            tracker_dir="data/trackers/",
-            metrics=["CLEAR", "HOTA"],
-        )
-        print(result.table())
-        ```
-
-        Override tracker name when multiple exist:
-
-        ```python
-        result = evaluate_benchmark(
-            gt_dir="data/gt/",
-            tracker_dir="data/trackers/",
-            tracker_name="ByteTrack",
-        )
+        ```pycon
+        >>> from trackers.eval import evaluate_mot_sequences
+        >>>
+        >>> result = evaluate_mot_sequences(
+        ...     gt_dir="data/gt/",
+        ...     tracker_dir="data/trackers/",
+        ...     metrics=["CLEAR", "HOTA", "Identity"],
+        ... )
+        >>>
+        >>> print(result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]))
+        # Sequence                           MOTA    HOTA    IDF1  IDSW
+        # -------------------------------------------------------------
+        # sequence1                        74.800  60.900  71.200    37
+        # sequence2                        76.100  63.200  72.500    45
+        # -------------------------------------------------------------
+        # COMBINED                         75.450  62.050  71.850    82
         ```
     """
     if metrics is None:

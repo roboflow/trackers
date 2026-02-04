@@ -8,9 +8,9 @@ comments: true
 
 SORT is a classic online, tracking-by-detection method that predicts object motion with a Kalman filter and matches predicted tracks to detections using the Hungarian algorithm based on Intersection over Union (IoU). The tracker uses only geometric cues from bounding boxes, without appearance features, so it runs extremely fast and scales to hundreds of frames per second on typical hardware. Detections from a strong CNN detector feed SORT, which updates each track’s state via a constant velocity motion model and prunes stale tracks. Because SORT lacks explicit re-identification or appearance cues, it can suffer identity switches and fragmented tracks under long occlusions or heavy crowding.
 
-## Benchmarks
+## Comparison
 
-For comparisons with other trackers, plus full details on the datasets and evaluation metrics used, see the [benchmarks](../learn/benchmarks.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 |:---------:|:----:|:----:|:----:|

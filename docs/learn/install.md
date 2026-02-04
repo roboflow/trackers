@@ -85,3 +85,8 @@ Installation issues usually fall into a few common categories.
 - **Python Version**. Installation fails or runtime errors appear when using older Python releases. Trackers requires Python 3.10 or higher.
 
 If problems persist, open an issue on the [GitHub repository](https://github.com/roboflow/trackers).
+
+## See also
+
+- [Evaluate guide](evaluate.md)
+- [Evals API](../api-evals.md)
