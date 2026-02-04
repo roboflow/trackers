@@ -9,16 +9,16 @@
 
 ## FAQ
 
-**Why are metrics printed as percentages?**  
+**Why are metrics printed as percentages?**
 Table output matches TrackEval formatting by printing float metrics as percentages with 3 decimal places.
 
-**Do tracker outputs need to match ground truth format?**  
+**Do tracker outputs need to match ground truth format?**
 Yes. Both ground truth and tracker predictions must be MOT Challenge text files.
 
-**What is the difference between CLEAR, HOTA, and Identity metrics?**  
+**What is the difference between CLEAR, HOTA, and Identity metrics?**
 CLEAR focuses on detection errors and ID switches, HOTA balances detection and association, and Identity focuses on global ID consistency.
 
-**Can I evaluate multiple trackers?**  
+**Can I evaluate multiple trackers?**
 Yes. Run separate evaluations or override `tracker_name` when using MOT17 layouts.
 
 ## Support and community
