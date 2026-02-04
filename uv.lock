@@ -1787,6 +1787,11 @@ dependencies = [
     { name = "supervision" },
 ]
 
+[package.optional-dependencies]
+cli = [
+    { name = "rich" },
+]
+
 [package.dev-dependencies]
 build = [
     { name = "build" },
@@ -1817,9 +1822,11 @@ mypy-types = [
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = ">=2.0.2" },
+    { name = "rich", marker = "extra == 'cli'", specifier = ">=13.0.0" },
     { name = "scipy", specifier = ">=1.13.1" },
     { name = "supervision", specifier = ">=0.26.1" },
 ]
+provides-extras = ["cli"]
 
 [package.metadata.requires-dev]
 build = [

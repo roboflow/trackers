@@ -40,6 +40,12 @@ dependencies = [
     "scipy>=1.13.1",
 ]
 
+[project.optional-dependencies]
+cli = ["rich>=13.0.0"]
+
+[project.scripts]
+trackers = "trackers.scripts.__main__:main"
+
 [dependency-groups]
 dev = [
     "uv>=0.4.20",
@@ -138,7 +144,7 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "F401"]
-"test" = []
+"test/**" = ["S101"]  # Allow assert in tests
 "trackers" = []
 
 [tool.ruff.lint.mccabe]
@@ -165,3 +171,6 @@ line-ending = "auto"
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["test"]
+markers = [
+    "integration: marks tests as integration tests (require external data download)",
+]
