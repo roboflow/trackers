@@ -170,7 +170,7 @@ The evaluator automatically detects whether you're using a flat or MOT-style str
         tracker_dir="data/trackers",
     )
     ```
-    
+
     **CLI**
 
     ```bash

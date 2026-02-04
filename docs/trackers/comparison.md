@@ -28,4 +28,3 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 |------------|------|------|------|
 | SORT       | 81.6 | 76.2 | 95.1 |
 | ByteTrack  | 84.0 | 78.1 | 97.8 |
-
