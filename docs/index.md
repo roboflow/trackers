@@ -59,7 +59,7 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 
 ## Tracking Algorithms
 
-Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the [benchmarks](learn/benchmarks.md) page.
+Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For comparisons, see the [tracker comparison](trackers/comparison.md) page.
 
 |  Algorithm  |                Trackers API                 | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
 |:-----------:|:-------------------------------------------:|:----------:|:----------:|:----------:|:--------------:|:--------------:|

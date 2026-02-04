@@ -82,35 +82,37 @@ ALL_FLOAT_FIELDS = CLEAR_FLOAT_FIELDS + HOTA_FLOAT_FIELDS + IDENTITY_FLOAT_FIELD
 
 @dataclass
 class CLEARMetrics:
-    """CLEAR metrics with TrackEval-compatible field names.
-
-    All float metrics are stored as fractions (0-1 range), not percentages.
+    """CLEAR metrics with TrackEval-compatible field names. Float metrics are stored
+    as fractions (0-1 range), not percentages. The values follow the original CLEAR
+    MOT definitions.
 
     Attributes:
-        MOTA: Multiple Object Tracking Accuracy. Primary CLEAR metric:
-            (TP - FP - IDSW) / (TP + FN). Can be negative. Range (-inf, 1].
-        MOTP: Multiple Object Tracking Precision. Average IoU of matched
-            detection pairs. Range [0, 1].
-        MODA: Multiple Object Detection Accuracy: (TP - FP) / (TP + FN).
-            Like MOTA but ignores ID switches.
-        CLR_Re: CLEAR Recall. Fraction of GT detections matched: TP / (TP + FN).
-        CLR_Pr: CLEAR Precision. Fraction of tracker detections correct:
-            TP / (TP + FP).
-        MTR: Mostly Tracked Ratio. Fraction of GT tracks tracked >80% of
+        MOTA: Multiple Object Tracking Accuracy. Penalizes false negatives,
+            false positives, and ID switches: `(TP - FP - IDSW) / (TP + FN)`.
+            Can be negative when errors exceed matches.
+        MOTP: Multiple Object Tracking Precision. Mean IoU of matched pairs.
+            Measures localization quality only.
+        MODA: Multiple Object Detection Accuracy. Like MOTA but ignores ID
+            switches: `(TP - FP) / (TP + FN)`.
+        CLR_Re: CLEAR recall. Fraction of GT detections matched:
+            `TP / (TP + FN)`.
+        CLR_Pr: CLEAR precision. Fraction of tracker detections correct:
+            `TP / (TP + FP)`.
+        MTR: Mostly tracked ratio. Fraction of GT tracks tracked for >80% of
             their lifespan.
-        PTR: Partially Tracked Ratio. Fraction tracked 20-80% of lifespan.
-        MLR: Mostly Lost Ratio. Fraction tracked <20% of lifespan.
-        sMOTA: Summed MOTA. Uses IoU sum instead of count:
-            (MOTP_sum - FP - IDSW) / (TP + FN).
+        PTR: Partially tracked ratio. Fraction of GT tracks tracked for 20-80%.
+        MLR: Mostly lost ratio. Fraction of GT tracks tracked for <20%.
+        sMOTA: Summed MOTA. Replaces TP count with IoU sum:
+            `(MOTP_sum - FP - IDSW) / (TP + FN)`.
         CLR_TP: True positives. Number of correct matches.
         CLR_FN: False negatives. Number of missed GT detections.
         CLR_FP: False positives. Number of spurious tracker detections.
-        IDSW: ID Switches. Times a GT track's matched tracker ID changes.
-        MT: Mostly Tracked count. Number of GT tracks tracked >80%.
-        PT: Partially Tracked count. Number of GT tracks tracked 20-80%.
-        ML: Mostly Lost count. Number of GT tracks tracked <20%.
-        Frag: Fragmentations. Times a tracked GT becomes untracked then
-            tracked again.
+        IDSW: ID switches. Times a GT track changes its matched tracker ID.
+        MT: Mostly tracked count. Number of GT tracks tracked >80%.
+        PT: Partially tracked count. Number of GT tracks tracked 20-80%.
+        ML: Mostly lost count. Number of GT tracks tracked <20%.
+        Frag: Fragmentations. Times a tracked GT becomes untracked then tracked
+            again.
         MOTP_sum: Raw IoU sum for aggregation across sequences.
         CLR_Frames: Number of frames evaluated.
     """
@@ -137,13 +139,13 @@ class CLEARMetrics:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CLEARMetrics:
-        """Create CLEARMetrics from a dictionary.
+        """Create `CLEARMetrics` from a dictionary.
 
         Args:
             data: Dictionary with metric values.
 
         Returns:
-            CLEARMetrics instance.
+            `CLEARMetrics` instance.
         """
         return cls(
             MOTA=float(data["MOTA"]),
@@ -168,7 +170,7 @@ class CLEARMetrics:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary.
+        """Convert to dictionary representation.
 
         Returns:
             Dictionary with all metric values.
@@ -178,32 +180,27 @@ class CLEARMetrics:
 
 @dataclass
 class HOTAMetrics:
-    """HOTA metrics with TrackEval-compatible field names.
-
-    HOTA (Higher Order Tracking Accuracy) evaluates both detection and
-    association quality. All float metrics are stored as fractions (0-1 range).
+    """HOTA metrics with TrackEval-compatible field names. HOTA evaluates both
+    detection quality and association quality. Float metrics are stored as fractions
+    (0-1 range).
 
     Attributes:
-        HOTA: Higher Order Tracking Accuracy. Geometric mean of DetA and AssA,
-            averaged over 19 IoU thresholds (0.05 to 0.95). Range [0, 1].
-        DetA: Detection Accuracy. Measures how well detections match ground
-            truth: TP / (TP + FN + FP). Range [0, 1].
-        AssA: Association Accuracy. Measures how well tracker IDs are
-            maintained over time for matched detections. Range [0, 1].
-        DetRe: Detection Recall. Fraction of GT detections matched:
-            TP / (TP + FN).
-        DetPr: Detection Precision. Fraction of tracker detections matched:
-            TP / (TP + FP).
-        AssRe: Association Recall. How well each GT ID is tracked by its
-            matched tracker ID.
-        AssPr: Association Precision. How well each tracker ID tracks its
-            matched GT ID.
-        LocA: Localization Accuracy. Average IoU of matched detection pairs.
-        OWTA: Open World Tracking Accuracy. sqrt(DetRe * AssA), useful for
-            open-world scenarios where precision is less relevant.
-        HOTA_TP: True positive count summed over all 19 alpha thresholds.
-        HOTA_FN: False negative count summed over all 19 alpha thresholds.
-        HOTA_FP: False positive count summed over all 19 alpha thresholds.
+        HOTA: Higher Order Tracking Accuracy. Geometric mean of DetA and
+            AssA, averaged over 19 IoU thresholds (0.05 to 0.95).
+        DetA: Detection accuracy: `TP / (TP + FN + FP)`.
+        AssA: Association accuracy for matched detections over time.
+        DetRe: Detection recall: `TP / (TP + FN)`.
+        DetPr: Detection precision: `TP / (TP + FP)`.
+        AssRe: Association recall. For each GT ID, measures how consistently
+            it maps to a single tracker ID across time.
+        AssPr: Association precision. For each tracker ID, measures how
+            consistently it maps to a single GT ID across time.
+        LocA: Localization accuracy. Mean IoU for matched pairs.
+        OWTA: Open World Tracking Accuracy. `sqrt(DetRe * AssA)`, useful when
+            precision is less meaningful.
+        HOTA_TP: True positive count summed over all 19 thresholds.
+        HOTA_FN: False negative count summed over all 19 thresholds.
+        HOTA_FP: False positive count summed over all 19 thresholds.
     """
 
     HOTA: float
@@ -223,13 +220,13 @@ class HOTAMetrics:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> HOTAMetrics:
-        """Create HOTAMetrics from a dictionary.
+        """Create `HOTAMetrics` from a dictionary.
 
         Args:
             data: Dictionary with metric values.
 
         Returns:
-            HOTAMetrics instance.
+            `HOTAMetrics` instance.
         """
         # Extract arrays if present (for aggregation)
         arrays = {}
@@ -264,15 +261,15 @@ class HOTAMetrics:
     def to_dict(
         self, include_arrays: bool = False, arrays_as_list: bool = True
     ) -> dict[str, Any]:
-        """Convert to dictionary.
+        """Convert to dictionary representation.
 
         Args:
-            include_arrays: Whether to include per-alpha arrays. Defaults to False.
-            arrays_as_list: Whether to convert arrays to lists (for JSON).
-                Defaults to True. Set to False to keep numpy arrays (for aggregation).
+            include_arrays: Whether to include per-alpha arrays. Defaults to `False`.
+            arrays_as_list: Whether to convert arrays to lists for JSON serialization.
+                Defaults to `True`. Set to `False` to keep numpy arrays.
 
         Returns:
-            Dictionary with metric values.
+            Dictionary with all metric values.
         """
         result = {
             "HOTA": self.HOTA,
@@ -299,24 +296,23 @@ class HOTAMetrics:
 
 @dataclass
 class IdentityMetrics:
-    """Identity metrics with TrackEval-compatible field names.
-
-    Identity metrics measure global ID consistency by finding the optimal
-    one-to-one assignment between ground truth IDs and tracker IDs.
+    """Identity metrics with TrackEval-compatible field names. Identity metrics
+    measure global ID consistency using an optimal one-to-one assignment between GT
+    and tracker IDs across the full sequence.
 
     Attributes:
-        IDF1: ID F1 Score. Harmonic mean of IDR and IDP. Primary identity
-            metric measuring global ID consistency. Range [0, 1].
-        IDR: ID Recall. IDTP / (IDTP + IDFN). Fraction of GT detections with
-            correct global ID assignment.
-        IDP: ID Precision. IDTP / (IDTP + IDFP). Fraction of tracker
+        IDF1: ID F1 score. Harmonic mean of IDR and IDP, the primary
+            identity metric.
+        IDR: ID recall. `IDTP / (IDTP + IDFN)`, fraction of GT detections
+            with correct global ID assignment.
+        IDP: ID precision. `IDTP / (IDTP + IDFP)`, fraction of tracker
             detections with correct global ID assignment.
-        IDTP: ID True Positives. Detections matched with globally consistent
+        IDTP: ID true positives. Detections matched with globally consistent
             IDs.
-        IDFN: ID False Negatives. GT detections not matched or with wrong
-            global ID.
-        IDFP: ID False Positives. Tracker detections not matched or with
+        IDFN: ID false negatives. GT detections not matched or matched to the
             wrong global ID.
+        IDFP: ID false positives. Tracker detections not matched or matched
+            to the wrong global ID.
     """
 
     IDF1: float
@@ -328,13 +324,13 @@ class IdentityMetrics:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> IdentityMetrics:
-        """Create IdentityMetrics from a dictionary.
+        """Create `IdentityMetrics` from a dictionary.
 
         Args:
             data: Dictionary with metric values.
 
         Returns:
-            IdentityMetrics instance.
+            `IdentityMetrics` instance.
         """
         return cls(
             IDF1=float(data["IDF1"]),
@@ -346,7 +342,7 @@ class IdentityMetrics:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary.
+        """Convert to dictionary representation.
 
         Returns:
             Dictionary with all metric values.
@@ -360,9 +356,10 @@ class SequenceResult:
 
     Attributes:
         sequence: Name of the sequence.
-        CLEAR: CLEAR metrics for this sequence (optional).
-        HOTA: HOTA metrics for this sequence (optional).
-        Identity: Identity metrics for this sequence (optional).
+        CLEAR: CLEAR metrics for this sequence, or `None` if not requested.
+        HOTA: HOTA metrics for this sequence, or `None` if not requested.
+        Identity: Identity metrics for this sequence, or `None` if not
+            requested.
     """
 
     sequence: str
@@ -372,13 +369,13 @@ class SequenceResult:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SequenceResult:
-        """Create SequenceResult from a dictionary.
+        """Create `SequenceResult` from a dictionary.
 
         Args:
             data: Dictionary with sequence name and metrics.
 
         Returns:
-            SequenceResult instance.
+            `SequenceResult` instance.
         """
         clear = None
         if "CLEAR" in data and data["CLEAR"] is not None:
@@ -400,10 +397,10 @@ class SequenceResult:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary.
+        """Convert to dictionary representation.
 
         Returns:
-            Dictionary representation.
+            Dictionary with all metric values.
         """
         result: dict[str, Any] = {
             "sequence": self.sequence,
@@ -420,7 +417,7 @@ class SequenceResult:
         """Serialize to JSON string.
 
         Args:
-            indent: JSON indentation level. Defaults to 2.
+            indent: Indentation level for formatting. Defaults to `2`.
 
         Returns:
             JSON string representation.
@@ -428,11 +425,11 @@ class SequenceResult:
         return json.dumps(self.to_dict(), indent=indent)
 
     def table(self, columns: list[str] | None = None) -> str:
-        """Format metrics as a table string.
+        """Format as a table string.
 
         Args:
-            columns: List of metric columns to include. If None, uses default
-                columns based on available metrics.
+            columns: Metric columns to include. If `None`, includes all available
+                metrics.
 
         Returns:
             Formatted table string.
@@ -449,11 +446,11 @@ class SequenceResult:
 
 @dataclass
 class BenchmarkResult:
-    """Result for benchmark (multi-sequence) evaluation.
+    """Result for multi-sequence evaluation.
 
     Attributes:
         sequences: Dictionary mapping sequence names to their results.
-        aggregate: Aggregated metrics across all sequences.
+        aggregate: Combined metrics across all sequences.
     """
 
     sequences: dict[str, SequenceResult]
@@ -461,13 +458,13 @@ class BenchmarkResult:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BenchmarkResult:
-        """Create BenchmarkResult from a dictionary.
+        """Create `BenchmarkResult` from a dictionary.
 
         Args:
             data: Dictionary with sequences and aggregate results.
 
         Returns:
-            BenchmarkResult instance.
+            `BenchmarkResult` instance.
         """
         sequences = {
             name: SequenceResult.from_dict(seq_data)
@@ -477,10 +474,10 @@ class BenchmarkResult:
         return cls(sequences=sequences, aggregate=aggregate)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary.
+        """Convert to dictionary representation.
 
         Returns:
-            Dictionary representation.
+            Dictionary with all metric values.
         """
         return {
             "sequences": {name: seq.to_dict() for name, seq in self.sequences.items()},
@@ -491,7 +488,7 @@ class BenchmarkResult:
         """Serialize to JSON string.
 
         Args:
-            indent: JSON indentation level. Defaults to 2.
+            indent: Indentation level for formatting. Defaults to `2`.
 
         Returns:
             JSON string representation.
@@ -499,14 +496,14 @@ class BenchmarkResult:
         return json.dumps(self.to_dict(), indent=indent)
 
     def table(self, columns: list[str] | None = None) -> str:
-        """Format metrics as a table string.
+        """Format as a table string.
 
         Args:
-            columns: List of metric columns to include. If None, uses default
-                columns based on available metrics.
+            columns: Metric columns to include. If `None`, includes all available
+                metrics.
 
         Returns:
-            Formatted table string with all sequences and aggregate.
+            Formatted table string.
         """
         if columns is None:
             columns = _get_available_columns(
@@ -518,10 +515,10 @@ class BenchmarkResult:
         return _format_benchmark_table(self.sequences, self.aggregate, columns)
 
     def save(self, path: str | Path) -> None:
-        """Save results to a JSON file.
+        """Save to a JSON file.
 
         Args:
-            path: Path to save the JSON file.
+            path: Destination file path.
         """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -529,13 +526,13 @@ class BenchmarkResult:
 
     @classmethod
     def load(cls, path: str | Path) -> BenchmarkResult:
-        """Load results from a JSON file.
+        """Load from a JSON file.
 
         Args:
-            path: Path to the JSON file.
+            path: Source file path.
 
         Returns:
-            BenchmarkResult instance.
+            `BenchmarkResult` instance.
 
         Raises:
             FileNotFoundError: If the file does not exist.
