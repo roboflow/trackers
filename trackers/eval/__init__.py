@@ -15,7 +15,6 @@ from trackers.eval.io import (
     load_mot_file,
     prepare_mot_sequence,
 )
-from trackers.eval.matching import match_detections
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
@@ -43,6 +42,5 @@ __all__ = [
     "evaluate_benchmark",
     "evaluate_mot_sequence",
     "load_mot_file",
-    "match_detections",
     "prepare_mot_sequence",
 ]
