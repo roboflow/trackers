@@ -1,6 +1,6 @@
 [project]
 name = "trackers"
-version = "2.1.0"
+version = "2.2.0rc0"
 description = "A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms"
 readme = "README.md"
 maintainers = [
