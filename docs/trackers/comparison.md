@@ -1,9 +1,6 @@
 # Tracker Comparison
 
-This page compares Trackers implementations on common MOT benchmarks using `trackers.eval` with TrackEval-compatible metrics. Use these numbers for relative comparisons; absolute scores can shift with different detector quality, data splits, or evaluation settings.
-
-!!! note
-    We will provide hosted benchmark datasets through our API in a future release. For now, download datasets locally and evaluate with the same protocol for apples-to-apples comparisons.
+This page shows head-to-head performance of SORT and ByteTrack on standard MOT benchmarks.
 
 ## MOT17
 
@@ -32,13 +29,3 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 | SORT       | 81.6 | 76.2 | 95.1 |
 | ByteTrack  | 84.0 | 78.1 | 97.8 |
 
-## DanceTrack
-
-Fast-moving, overlapping targets with frequent motion changes. Tests association robustness under rapid motion.
-
-| Tracker    | HOTA | IDF1 | MOTA |
-|------------|------|------|------|
-| SORT       | N/A  | N/A  | N/A  |
-| ByteTrack  | N/A  | N/A  | N/A  |
-
-See also: [Evaluate guide](../learn/evaluate.md)
