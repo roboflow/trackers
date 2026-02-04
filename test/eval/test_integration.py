@@ -7,8 +7,11 @@
 """Integration tests comparing our metrics against TrackEval on real data.
 
 These tests download SportsMOT and DanceTrack test datasets and verify that our
-metrics implementation produces identical results to TrackEval.
+benchmark evaluation produces identical results to TrackEval.
 Numerical parity is the key requirement.
+
+Tests use auto-detection - no explicit format/benchmark/split/tracker_name
+parameters are passed, verifying the smart detection logic works correctly.
 """
 
 from __future__ import annotations
@@ -18,56 +21,159 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from trackers.eval.clear import compute_clear_metrics
-from trackers.eval.io import load_mot_file, prepare_mot_sequence
+from trackers.eval import evaluate_benchmark
 
 if TYPE_CHECKING:
     pass
 
 
 @pytest.mark.integration
-def test_clear_metrics_match_trackeval(
-    dataset_name: str,
-    sequence_name: str,
-    test_data: tuple[Path, dict[str, Any]],
+def test_evaluate_benchmark_sportsmot_flat(
+    sportsmot_flat_data: tuple[Path, dict[str, Any]],
 ) -> None:
-    """Verify CLEAR metrics match TrackEval for each sequence."""
-    data_path, expected_results = test_data
+    """Test evaluate_benchmark with SportsMOT flat format (auto-detected)."""
+    data_path, expected_results = sportsmot_flat_data
 
-    gt_path = data_path / "gt" / f"{sequence_name}.txt"
-    tracker_path = data_path / "trackers" / f"{sequence_name}.txt"
-
-    gt_data = load_mot_file(gt_path)
-    tracker_data = load_mot_file(tracker_path)
-    seq_data = prepare_mot_sequence(gt_data, tracker_data)
-
-    result = compute_clear_metrics(
-        seq_data.gt_ids,
-        seq_data.tracker_ids,
-        seq_data.similarity_scores,
-        threshold=0.5,
+    # Auto-detection should detect flat format from *.txt files
+    result = evaluate_benchmark(
+        gt_dir=data_path / "gt",
+        tracker_dir=data_path / "trackers",
+        seqmap=data_path / "seqmap.txt",
     )
 
-    # New format: sequences are top-level keys (no "sequences" wrapper)
-    expected_clear = expected_results[sequence_name]["CLEAR"]
+    # Verify all sequences are evaluated
+    assert len(result.sequences) == len(expected_results), (
+        f"Sequence count mismatch: got {len(result.sequences)}, "
+        f"expected {len(expected_results)}"
+    )
 
+    # Verify each sequence matches expected results
+    for seq_name, seq_result in result.sequences.items():
+        assert seq_name in expected_results, f"Unexpected sequence: {seq_name}"
+        expected_clear = expected_results[seq_name]["CLEAR"]
+        _verify_clear_metrics(seq_result.CLEAR, expected_clear, f"sportsmot/{seq_name}")
+
+    # Verify aggregate metrics are computed correctly
+    assert result.aggregate.sequence == "COMBINED"
+
+
+@pytest.mark.integration
+def test_evaluate_benchmark_sportsmot_mot17(
+    sportsmot_mot17_data: tuple[Path, dict[str, Any]],
+) -> None:
+    """Test evaluate_benchmark with SportsMOT MOT17 format (auto-detected)."""
+    data_path, expected_results = sportsmot_mot17_data
+
+    # Auto-detection should detect MOT17 format, benchmark, split, and tracker
+    result = evaluate_benchmark(
+        gt_dir=data_path / "gt",
+        tracker_dir=data_path / "trackers",
+    )
+
+    # Verify all sequences are evaluated
+    assert len(result.sequences) == len(expected_results), (
+        f"Sequence count mismatch: got {len(result.sequences)}, "
+        f"expected {len(expected_results)}"
+    )
+
+    # Verify each sequence matches expected results
+    for seq_name, seq_result in result.sequences.items():
+        assert seq_name in expected_results, f"Unexpected sequence: {seq_name}"
+        expected_clear = expected_results[seq_name]["CLEAR"]
+        _verify_clear_metrics(
+            seq_result.CLEAR, expected_clear, f"sportsmot_mot17/{seq_name}"
+        )
+
+
+@pytest.mark.integration
+def test_evaluate_benchmark_dancetrack_flat(
+    dancetrack_flat_data: tuple[Path, dict[str, Any]],
+) -> None:
+    """Test evaluate_benchmark with DanceTrack flat format (auto-detected)."""
+    data_path, expected_results = dancetrack_flat_data
+
+    # Auto-detection should detect flat format from *.txt files
+    result = evaluate_benchmark(
+        gt_dir=data_path / "gt",
+        tracker_dir=data_path / "trackers",
+        seqmap=data_path / "seqmap.txt",
+    )
+
+    # Verify all sequences are evaluated
+    assert len(result.sequences) == len(expected_results), (
+        f"Sequence count mismatch: got {len(result.sequences)}, "
+        f"expected {len(expected_results)}"
+    )
+
+    # Verify each sequence matches expected results
+    for seq_name, seq_result in result.sequences.items():
+        assert seq_name in expected_results, f"Unexpected sequence: {seq_name}"
+        expected_clear = expected_results[seq_name]["CLEAR"]
+        _verify_clear_metrics(
+            seq_result.CLEAR, expected_clear, f"dancetrack/{seq_name}"
+        )
+
+
+@pytest.mark.integration
+def test_evaluate_benchmark_dancetrack_mot17(
+    dancetrack_mot17_data: tuple[Path, dict[str, Any]],
+) -> None:
+    """Test evaluate_benchmark with DanceTrack MOT17 format (auto-detected)."""
+    data_path, expected_results = dancetrack_mot17_data
+
+    # Auto-detection should detect MOT17 format, benchmark, split, and tracker
+    result = evaluate_benchmark(
+        gt_dir=data_path / "gt",
+        tracker_dir=data_path / "trackers",
+    )
+
+    # Verify all sequences are evaluated
+    assert len(result.sequences) == len(expected_results), (
+        f"Sequence count mismatch: got {len(result.sequences)}, "
+        f"expected {len(expected_results)}"
+    )
+
+    # Verify each sequence matches expected results
+    for seq_name, seq_result in result.sequences.items():
+        assert seq_name in expected_results, f"Unexpected sequence: {seq_name}"
+        expected_clear = expected_results[seq_name]["CLEAR"]
+        _verify_clear_metrics(
+            seq_result.CLEAR, expected_clear, f"dancetrack_mot17/{seq_name}"
+        )
+
+
+def _verify_clear_metrics(
+    computed: Any,
+    expected: dict[str, Any],
+    context: str,
+) -> None:
+    """Verify CLEAR metrics match expected values.
+
+    Args:
+        computed: CLEARMetrics object from our computation.
+        expected: Expected metrics dict from TrackEval.
+        context: Context string for error messages (e.g., "sportsmot/seq1").
+    """
     # Integer metrics must match exactly
     integer_metrics = ["CLR_TP", "CLR_FN", "CLR_FP", "IDSW", "MT", "PT", "ML", "Frag"]
     for metric in integer_metrics:
-        if metric not in expected_clear:
+        if metric not in expected:
             continue
-        assert result[metric] == expected_clear[metric], (
-            f"{dataset_name}/{sequence_name}: {metric} mismatch - "
-            f"got {result[metric]}, expected {expected_clear[metric]}"
+        computed_val = getattr(computed, metric)
+        expected_val = expected[metric]
+        assert computed_val == expected_val, (
+            f"{context}: {metric} mismatch - "
+            f"got {computed_val}, expected {expected_val}"
         )
 
-    # Float metrics: both our implementation and expected results are fractions (0-1)
+    # Float metrics: both values should be fractions (0-1)
     float_metrics = ["MOTA", "MOTP"]
     for metric in float_metrics:
-        expected_val = expected_clear[metric]
-        result_val = result[metric]
-
-        assert result_val == pytest.approx(expected_val, rel=1e-4, abs=1e-4), (
-            f"{dataset_name}/{sequence_name}: {metric} mismatch - "
-            f"got {result_val}, expected {expected_val}"
+        if metric not in expected:
+            continue
+        computed_val = getattr(computed, metric)
+        expected_val = expected[metric]
+        assert computed_val == pytest.approx(expected_val, rel=1e-4, abs=1e-4), (
+            f"{context}: {metric} mismatch - "
+            f"got {computed_val}, expected {expected_val}"
         )
