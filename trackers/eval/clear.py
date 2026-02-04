@@ -17,8 +17,7 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-# Epsilon for floating point comparisons - must match TrackEval exactly
-EPS = np.finfo("float").eps
+from trackers.eval.constants import EPS
 
 
 def compute_clear_metrics(
@@ -286,4 +285,85 @@ def compute_clear_metrics(
         "Frag": frag,
         "MOTP_sum": float(motp_sum),
         "CLR_Frames": num_frames,
+    }
+
+
+def aggregate_clear_metrics(
+    sequence_metrics: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Aggregate CLEAR metrics across multiple sequences.
+
+    Sums integer fields and MOTP_sum, then recomputes derived ratios
+    from the totals. Matches TrackEval's combine_sequences method
+    (ref: trackeval/metrics/clear.py:131-137).
+
+    Args:
+        sequence_metrics: List of CLEAR metric dictionaries from individual
+            sequences, as returned by `compute_clear_metrics`.
+
+    Returns:
+        Aggregated CLEAR metrics dictionary.
+    """
+    if not sequence_metrics:
+        return {
+            "MOTA": 0.0,
+            "MOTP": 0.0,
+            "MODA": 0.0,
+            "CLR_Re": 0.0,
+            "CLR_Pr": 0.0,
+            "MTR": 0.0,
+            "PTR": 0.0,
+            "MLR": 0.0,
+            "sMOTA": 0.0,
+            "CLR_TP": 0,
+            "CLR_FN": 0,
+            "CLR_FP": 0,
+            "IDSW": 0,
+            "MT": 0,
+            "PT": 0,
+            "ML": 0,
+            "Frag": 0,
+            "MOTP_sum": 0.0,
+            "CLR_Frames": 0,
+        }
+
+    # Sum integer fields (ref: clear.py:134-135)
+    int_keys = ["CLR_TP", "CLR_FN", "CLR_FP", "IDSW", "MT", "PT", "ML", "Frag"]
+    totals: dict[str, int] = {k: 0 for k in int_keys}
+    motp_sum_total = 0.0
+    clr_frames_total = 0
+
+    for m in sequence_metrics:
+        for k in int_keys:
+            totals[k] += m[k]
+        motp_sum_total += m["MOTP_sum"]
+        clr_frames_total += m["CLR_Frames"]
+
+    # Recompute derived ratios (ref: clear.py:136, _compute_final_fields)
+    num_gt = totals["CLR_TP"] + totals["CLR_FN"]
+    num_ids = totals["MT"] + totals["PT"] + totals["ML"]
+
+    mota = (totals["CLR_TP"] - totals["CLR_FP"] - totals["IDSW"]) / max(1.0, num_gt)
+    motp = motp_sum_total / max(1.0, totals["CLR_TP"])
+    moda = (totals["CLR_TP"] - totals["CLR_FP"]) / max(1.0, num_gt)
+    clr_re = totals["CLR_TP"] / max(1.0, num_gt)
+    clr_pr = totals["CLR_TP"] / max(1.0, totals["CLR_TP"] + totals["CLR_FP"])
+    mtr = totals["MT"] / max(1.0, num_ids)
+    ptr = totals["PT"] / max(1.0, num_ids)
+    mlr = totals["ML"] / max(1.0, num_ids)
+    smota = (motp_sum_total - totals["CLR_FP"] - totals["IDSW"]) / max(1.0, num_gt)
+
+    return {
+        "MOTA": float(mota),
+        "MOTP": float(motp),
+        "MODA": float(moda),
+        "CLR_Re": float(clr_re),
+        "CLR_Pr": float(clr_pr),
+        "MTR": float(mtr),
+        "PTR": float(ptr),
+        "MLR": float(mlr),
+        "sMOTA": float(smota),
+        **totals,
+        "MOTP_sum": motp_sum_total,
+        "CLR_Frames": clr_frames_total,
     }

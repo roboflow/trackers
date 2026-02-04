@@ -17,8 +17,7 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-# Epsilon for floating point comparisons - must match TrackEval exactly
-EPS = np.finfo("float").eps
+from trackers.eval.constants import EPS
 
 # Alpha thresholds for HOTA evaluation (IoU thresholds)
 # TrackEval uses np.arange(0.05, 0.99, 0.05) which gives 19 values

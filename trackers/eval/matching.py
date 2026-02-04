@@ -13,8 +13,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-# Epsilon for floating point comparisons - must match TrackEval exactly
-EPS = np.finfo("float").eps
+from trackers.eval.constants import EPS
 
 
 def match_detections(

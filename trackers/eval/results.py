@@ -54,6 +54,7 @@ HOTA_FLOAT_FIELDS = [
     "AssRe",
     "AssPr",
     "LocA",
+    "OWTA",
 ]
 HOTA_INT_FIELDS = [
     "HOTA_TP",
@@ -84,28 +85,34 @@ class CLEARMetrics:
     """CLEAR metrics with TrackEval-compatible field names.
 
     All float metrics are stored as fractions (0-1 range), not percentages.
-    Use `to_percentage()` for display formatting.
 
     Attributes:
-        MOTA: Multiple Object Tracking Accuracy.
-        MOTP: Multiple Object Tracking Precision.
-        MODA: Multiple Object Detection Accuracy.
-        CLR_Re: Recall (TP / (TP + FN)).
-        CLR_Pr: Precision (TP / (TP + FP)).
-        MTR: Mostly Tracked ratio.
-        PTR: Partially Tracked ratio.
-        MLR: Mostly Lost ratio.
-        sMOTA: Summed MOTA.
-        CLR_TP: True positives.
-        CLR_FN: False negatives.
-        CLR_FP: False positives.
-        IDSW: ID switches.
-        MT: Mostly Tracked count.
-        PT: Partially Tracked count.
-        ML: Mostly Lost count.
-        Frag: Fragmentations.
-        MOTP_sum: Raw MOTP sum for aggregation.
-        CLR_Frames: Number of frames.
+        MOTA: Multiple Object Tracking Accuracy. Primary CLEAR metric:
+            (TP - FP - IDSW) / (TP + FN). Can be negative. Range (-inf, 1].
+        MOTP: Multiple Object Tracking Precision. Average IoU of matched
+            detection pairs. Range [0, 1].
+        MODA: Multiple Object Detection Accuracy: (TP - FP) / (TP + FN).
+            Like MOTA but ignores ID switches.
+        CLR_Re: CLEAR Recall. Fraction of GT detections matched: TP / (TP + FN).
+        CLR_Pr: CLEAR Precision. Fraction of tracker detections correct:
+            TP / (TP + FP).
+        MTR: Mostly Tracked Ratio. Fraction of GT tracks tracked >80% of
+            their lifespan.
+        PTR: Partially Tracked Ratio. Fraction tracked 20-80% of lifespan.
+        MLR: Mostly Lost Ratio. Fraction tracked <20% of lifespan.
+        sMOTA: Summed MOTA. Uses IoU sum instead of count:
+            (MOTP_sum - FP - IDSW) / (TP + FN).
+        CLR_TP: True positives. Number of correct matches.
+        CLR_FN: False negatives. Number of missed GT detections.
+        CLR_FP: False positives. Number of spurious tracker detections.
+        IDSW: ID Switches. Times a GT track's matched tracker ID changes.
+        MT: Mostly Tracked count. Number of GT tracks tracked >80%.
+        PT: Partially Tracked count. Number of GT tracks tracked 20-80%.
+        ML: Mostly Lost count. Number of GT tracks tracked <20%.
+        Frag: Fragmentations. Times a tracked GT becomes untracked then
+            tracked again.
+        MOTP_sum: Raw IoU sum for aggregation across sequences.
+        CLR_Frames: Number of frames evaluated.
     """
 
     MOTA: float
@@ -177,17 +184,26 @@ class HOTAMetrics:
     association quality. All float metrics are stored as fractions (0-1 range).
 
     Attributes:
-        HOTA: Higher Order Tracking Accuracy (geometric mean of DetA and AssA).
-        DetA: Detection Accuracy.
-        AssA: Association Accuracy.
-        DetRe: Detection Recall.
-        DetPr: Detection Precision.
-        AssRe: Association Recall.
-        AssPr: Association Precision.
-        LocA: Localization Accuracy.
-        HOTA_TP: True positives (summed over all alpha thresholds).
-        HOTA_FN: False negatives (summed over all alpha thresholds).
-        HOTA_FP: False positives (summed over all alpha thresholds).
+        HOTA: Higher Order Tracking Accuracy. Geometric mean of DetA and AssA,
+            averaged over 19 IoU thresholds (0.05 to 0.95). Range [0, 1].
+        DetA: Detection Accuracy. Measures how well detections match ground
+            truth: TP / (TP + FN + FP). Range [0, 1].
+        AssA: Association Accuracy. Measures how well tracker IDs are
+            maintained over time for matched detections. Range [0, 1].
+        DetRe: Detection Recall. Fraction of GT detections matched:
+            TP / (TP + FN).
+        DetPr: Detection Precision. Fraction of tracker detections matched:
+            TP / (TP + FP).
+        AssRe: Association Recall. How well each GT ID is tracked by its
+            matched tracker ID.
+        AssPr: Association Precision. How well each tracker ID tracks its
+            matched GT ID.
+        LocA: Localization Accuracy. Average IoU of matched detection pairs.
+        OWTA: Open World Tracking Accuracy. sqrt(DetRe * AssA), useful for
+            open-world scenarios where precision is less relevant.
+        HOTA_TP: True positive count summed over all 19 alpha thresholds.
+        HOTA_FN: False negative count summed over all 19 alpha thresholds.
+        HOTA_FP: False positive count summed over all 19 alpha thresholds.
     """
 
     HOTA: float
@@ -198,6 +214,7 @@ class HOTAMetrics:
     AssRe: float
     AssPr: float
     LocA: float
+    OWTA: float
     HOTA_TP: int
     HOTA_FN: int
     HOTA_FP: int
@@ -237,6 +254,7 @@ class HOTAMetrics:
             AssRe=float(data["AssRe"]),
             AssPr=float(data["AssPr"]),
             LocA=float(data["LocA"]),
+            OWTA=float(data["OWTA"]),
             HOTA_TP=int(data["HOTA_TP"]),
             HOTA_FN=int(data["HOTA_FN"]),
             HOTA_FP=int(data["HOTA_FP"]),
@@ -265,6 +283,7 @@ class HOTAMetrics:
             "AssRe": self.AssRe,
             "AssPr": self.AssPr,
             "LocA": self.LocA,
+            "OWTA": self.OWTA,
             "HOTA_TP": self.HOTA_TP,
             "HOTA_FN": self.HOTA_FN,
             "HOTA_FP": self.HOTA_FP,
@@ -286,12 +305,18 @@ class IdentityMetrics:
     one-to-one assignment between ground truth IDs and tracker IDs.
 
     Attributes:
-        IDF1: ID F1 score (harmonic mean of IDR and IDP).
-        IDR: ID Recall (IDTP / (IDTP + IDFN)).
-        IDP: ID Precision (IDTP / (IDTP + IDFP)).
-        IDTP: ID True Positives.
-        IDFN: ID False Negatives.
-        IDFP: ID False Positives.
+        IDF1: ID F1 Score. Harmonic mean of IDR and IDP. Primary identity
+            metric measuring global ID consistency. Range [0, 1].
+        IDR: ID Recall. IDTP / (IDTP + IDFN). Fraction of GT detections with
+            correct global ID assignment.
+        IDP: ID Precision. IDTP / (IDTP + IDFP). Fraction of tracker
+            detections with correct global ID assignment.
+        IDTP: ID True Positives. Detections matched with globally consistent
+            IDs.
+        IDFN: ID False Negatives. GT detections not matched or with wrong
+            global ID.
+        IDFP: ID False Positives. Tracker detections not matched or with
+            wrong global ID.
     """
 
     IDF1: float
@@ -335,13 +360,13 @@ class SequenceResult:
 
     Attributes:
         sequence: Name of the sequence.
-        CLEAR: CLEAR metrics for this sequence.
+        CLEAR: CLEAR metrics for this sequence (optional).
         HOTA: HOTA metrics for this sequence (optional).
         Identity: Identity metrics for this sequence (optional).
     """
 
     sequence: str
-    CLEAR: CLEARMetrics
+    CLEAR: CLEARMetrics | None = None
     HOTA: HOTAMetrics | None = None
     Identity: IdentityMetrics | None = None
 
@@ -355,6 +380,10 @@ class SequenceResult:
         Returns:
             SequenceResult instance.
         """
+        clear = None
+        if "CLEAR" in data and data["CLEAR"] is not None:
+            clear = CLEARMetrics.from_dict(data["CLEAR"])
+
         hota = None
         if "HOTA" in data and data["HOTA"] is not None:
             hota = HOTAMetrics.from_dict(data["HOTA"])
@@ -365,7 +394,7 @@ class SequenceResult:
 
         return cls(
             sequence=data["sequence"],
-            CLEAR=CLEARMetrics.from_dict(data["CLEAR"]),
+            CLEAR=clear,
             HOTA=hota,
             Identity=identity,
         )
@@ -378,8 +407,9 @@ class SequenceResult:
         """
         result: dict[str, Any] = {
             "sequence": self.sequence,
-            "CLEAR": self.CLEAR.to_dict(),
         }
+        if self.CLEAR is not None:
+            result["CLEAR"] = self.CLEAR.to_dict()
         if self.HOTA is not None:
             result["HOTA"] = self.HOTA.to_dict()
         if self.Identity is not None:
@@ -408,7 +438,8 @@ class SequenceResult:
             Formatted table string.
         """
         if columns is None:
-            columns = _get_default_columns(
+            columns = _get_available_columns(
+                has_clear=self.CLEAR is not None,
                 has_hota=self.HOTA is not None,
                 has_identity=self.Identity is not None,
             )
@@ -478,7 +509,8 @@ class BenchmarkResult:
             Formatted table string with all sequences and aggregate.
         """
         if columns is None:
-            columns = _get_default_columns(
+            columns = _get_available_columns(
+                has_clear=self.aggregate.CLEAR is not None,
                 has_hota=self.aggregate.HOTA is not None,
                 has_identity=self.aggregate.Identity is not None,
             )
@@ -515,22 +547,28 @@ class BenchmarkResult:
         return cls.from_dict(data)
 
 
-def _get_default_columns(has_hota: bool, has_identity: bool = False) -> list[str]:
-    """Get default columns based on available metrics.
+def _get_available_columns(
+    has_clear: bool = False, has_hota: bool = False, has_identity: bool = False
+) -> list[str]:
+    """Get column names for the metrics that were computed.
+
+    Returns all summary fields for each metric type that is available.
 
     Args:
+        has_clear: Whether CLEAR metrics are available.
         has_hota: Whether HOTA metrics are available.
         has_identity: Whether Identity metrics are available.
 
     Returns:
-        List of all available column names.
+        List of column names for available metrics.
     """
     columns: list[str] = []
+    if has_clear:
+        columns.extend(CLEAR_SUMMARY_FIELDS)
     if has_hota:
         columns.extend(HOTA_SUMMARY_FIELDS)
     if has_identity:
         columns.extend(IDENTITY_SUMMARY_FIELDS)
-    columns.extend(CLEAR_SUMMARY_FIELDS)
     return columns
 
 
@@ -544,7 +582,13 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
     Returns:
         The metric value.
     """
-    # Check HOTA metrics first
+    # Check CLEAR metrics
+    if result.CLEAR is not None:
+        clear_dict = result.CLEAR.to_dict()
+        if col in clear_dict:
+            return clear_dict[col]
+
+    # Check HOTA metrics
     if result.HOTA is not None:
         hota_dict = result.HOTA.to_dict()
         if col in hota_dict:
@@ -556,9 +600,7 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
         if col in identity_dict:
             return identity_dict[col]
 
-    # Fall back to CLEAR metrics
-    clear_dict = result.CLEAR.to_dict()
-    return clear_dict.get(col, 0)
+    return 0
 
 
 def _format_value(value: float | int, is_float: bool) -> str:

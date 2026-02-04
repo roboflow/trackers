@@ -15,8 +15,7 @@ from typing import Literal
 
 import numpy as np
 
-# Epsilon for floating point comparisons - must match TrackEval exactly
-EPS = np.finfo("float").eps
+from trackers.eval.constants import EPS
 
 BoxFormat = Literal["xyxy", "xywh"]
 
