@@ -135,7 +135,3 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
     video_capture.release()
     cv2.destroyAllWindows()
     ```
-
-## API
-
-::: trackers.core.sort.tracker.SORTTracker

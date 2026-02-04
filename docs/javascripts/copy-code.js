@@ -1,5 +1,5 @@
 (() => {
-  const PROMPT_REGEX = /^(>>> |\.\.\. )/;
+  const PROMPT_REGEX = /^(>>>|\.\.\.) ?/;
 
   const normalizeLines = (text) =>
     text

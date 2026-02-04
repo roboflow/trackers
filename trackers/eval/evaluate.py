@@ -45,10 +45,16 @@ def evaluate_mot_sequence(
     metrics: list[str] | None = None,
     threshold: float = 0.5,
 ) -> SequenceResult:
-    """Score one tracker run against one GT sequence with TrackEval parity.
+    """Evaluate a single multi-object tracking result against ground truth. Computes
+    standard multi-object tracking metrics (CLEAR MOT, HOTA, Identity) for one sequence
+    by matching predicted tracks to ground-truth tracks using per-frame IoU
+    (Intersection over Union).
 
-    Ingests a GT MOT file and a tracker MOT file, builds IoU matches per frame,
-    and returns a typed result with only the metric families you request.
+    !!! tip "TrackEval parity"
+
+        This evaluation code is intentionally designed to match the core matching logic
+        and metric calculations of
+        [TrackEval](https://github.com/JonathonLuiten/TrackEval).
 
     Args:
         gt_path: Path to the ground-truth MOT file.
@@ -69,16 +75,16 @@ def evaluate_mot_sequence(
     Examples:
         ```pycon
         >>> from trackers.eval import evaluate_mot_sequence
-        >>>
+
         >>> result = evaluate_mot_sequence(
         ...     gt_path="data/gt/MOT17-02/gt.txt",
         ...     tracker_path="data/trackers/MOT17-02.txt",
         ...     metrics=["CLEAR", "HOTA", "Identity"],
         ... )
-        >>>
+
         >>> print(result.CLEAR.MOTA)
         # 0.756
-        >>>
+
         >>> print(result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]))
         # Sequence                           MOTA    HOTA    IDF1  IDSW
         # -------------------------------------------------------------
@@ -155,38 +161,58 @@ def evaluate_mot_sequences(
     split: str | None = None,
     tracker_name: str | None = None,
 ) -> BenchmarkResult:
-    """Score a set of sequences and produce per-sequence plus combined metrics.
+    """Evaluate multiple multi-object tracking results against ground truth. Computes
+    standard multi-object tracking metrics (CLEAR MOT, HOTA, Identity) across one or
+    more sequences by matching predicted tracks to ground-truth tracks using
+    per-frame IoU (Intersection over Union). Returns both per-sequence and aggregated
+    (combined) results.
 
-    Walks either a flat folder of MOT files or a MOT layout tree, infers format
-    details when possible, then runs the same per-sequence evaluation and
-    aggregates results into a combined row.
+    !!! tip "TrackEval parity"
 
-    === "MOT layout"
+        This evaluation code is intentionally designed to match the core matching logic
+        and metric calculations of
+        [TrackEval](https://github.com/JonathonLuiten/TrackEval).
 
-        ```
-        gt_dir/
-          └── {benchmark}-{split}/
-              ├── sequence1/
-              │   └── gt/gt.txt
-              └── sequence2/
-                  └── gt/gt.txt
-        tracker_dir/
-          └── {benchmark}-{split}/
-              └── {tracker_name}/data/
-                  ├── sequence1.txt
-                  └── sequence2.txt
-        ```
+    !!! tip "Supported dataset layouts"
 
-    === "Flat layout"
+        === "MOT layout"
 
-        ```
-        gt_dir/
-          ├── sequence1.txt
-          └── sequence2.txt
-        tracker_dir/
-          ├── sequence1.txt
-          └── sequence2.txt
-        ```
+            ```
+            gt_dir/
+            └── MOT17-train/
+                ├── MOT17-02-FRCNN/
+                │   └── gt/gt.txt
+                ├── MOT17-04-FRCNN/
+                │   └── gt/gt.txt
+                ├── MOT17-05-FRCNN/
+                │   └── gt/gt.txt
+                └── ...
+
+            tracker_dir/
+            └── MOT17-train/
+                └── ByteTrack/
+                    └── data/
+                        ├── MOT17-02-FRCNN.txt
+                        ├── MOT17-04-FRCNN.txt
+                        ├── MOT17-05-FRCNN.txt
+                        └── ...
+            ```
+
+        === "Flat layout"
+
+            ```
+            gt_dir/
+            ├── MOT17-02.txt
+            ├── MOT17-04.txt
+            ├── MOT17-05.txt
+            └── ...
+
+            tracker_dir/
+            ├── MOT17-02.txt
+            ├── MOT17-04.txt
+            ├── MOT17-05.txt
+            └── ...
+            ```
 
     Args:
         gt_dir: Directory with ground-truth files.
@@ -212,13 +238,13 @@ def evaluate_mot_sequences(
 
         ```pycon
         >>> from trackers.eval import evaluate_mot_sequences
-        >>>
+
         >>> result = evaluate_mot_sequences(
         ...     gt_dir="data/gt/",
         ...     tracker_dir="data/trackers/",
         ...     metrics=["CLEAR", "HOTA", "Identity"],
         ... )
-        >>>
+
         >>> print(result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]))
         # Sequence                           MOTA    HOTA    IDF1  IDSW
         # -------------------------------------------------------------

@@ -105,8 +105,6 @@ plugins:
 nav:
   - Home:
     - Quickstart: index.md
-    - CLI: cli.md
-    - Python: python.md
   - Trackers:
     - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md

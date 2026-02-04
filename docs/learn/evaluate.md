@@ -85,7 +85,7 @@ For full setup options, see the [Install guide](install.md).
 !!! note
     Float metrics are stored as fractions (0 to 1) but displayed as percentages in tables.
 
-See also: [Evals API](../api-evals.md), [CLI](../cli.md)
+See also: [Evals API](../api-evals.md)
 
 ## Supported metrics
 
@@ -362,4 +362,4 @@ python -m trackers.scripts eval \
   --output results.json
 ```
 
-See also: [CLI](../cli.md), [Supported metrics](#supported-metrics)
+See also: [Supported metrics](#supported-metrics)
