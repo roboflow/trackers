@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           if [ -d test ] && [ "$(find test -type f \( -name 'test_*.py' -o -name '*_test.py' \) | wc -l)" -gt 0 ]; then
-            uv run pytest
+            uv run pytest -m "not integration"
           else
             echo "No tests found. Skipping pytest."
           fi
