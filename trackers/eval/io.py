@@ -101,16 +101,15 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
         ValueError: If the file is empty or has invalid format.
 
     Examples:
-        ```python
         >>> from trackers.eval import load_mot_file  # doctest: +SKIP
-
+        >>>
         >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
+        >>>
         >>> len(gt_data)  # doctest: +SKIP
         600
+        >>>
         >>> len(gt_data[1].ids)  # doctest: +SKIP
         12
-        >>>
-        ```
     """
     path = Path(path)
     if not path.exists():
@@ -211,18 +210,17 @@ def prepare_mot_sequence(
         `MOTSequenceData` containing prepared data ready for metric evaluation.
 
     Examples:
-        ```python
         >>> from trackers.eval import load_mot_file, prepare_mot_sequence  # doctest: +SKIP
-
-        >>> gt = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
-        >>> tracker = load_mot_file("data/trackers/MOT17-02.txt")  # doctest: +SKIP
-        >>> data = prepare_mot_sequence(gt, tracker)  # doctest: +SKIP
+        >>>
+        >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
+        >>> tracker_data = load_mot_file("data/trackers/MOT17-02.txt")  # doctest: +SKIP
+        >>> data = prepare_mot_sequence(gt_data, tracker_data)  # doctest: +SKIP
+        >>>
         >>> data.num_frames  # doctest: +SKIP
         600
+        >>>
         >>> data.num_gt_ids  # doctest: +SKIP
         54
-        >>>
-        ```
     """
     gt_frames = set(gt_data.keys()) if gt_data else set()
     tracker_frames = set(tracker_data.keys()) if tracker_data else set()

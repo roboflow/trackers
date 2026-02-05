@@ -68,10 +68,9 @@ def compute_clear_metrics(
         - `CLR_Frames`: Number of frames as `int`.
 
     Examples:
-        ```python
         >>> import numpy as np
         >>> from trackers.eval import compute_clear_metrics
-
+        >>>
         >>> gt_ids = [
         ...     np.array([0, 1]),
         ...     np.array([0, 1]),
@@ -87,15 +86,16 @@ def compute_clear_metrics(
         ...     np.array([[0.85, 0.1], [0.1, 0.75]]),
         ...     np.array([[0.8, 0.1], [0.1, 0.7]]),
         ... ]
+        >>>
         >>> result = compute_clear_metrics(gt_ids, tracker_ids, similarity_scores)
         >>> result["MOTA"]  # doctest: +ELLIPSIS
         0.833...
+        >>>
         >>> result["IDSW"]
         1
+        >>>
         >>> result["MT"]
         2
-        >>>
-        ```
     """
     # Count total detections
     num_gt_dets = sum(len(ids) for ids in gt_ids)
