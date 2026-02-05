@@ -7,6 +7,9 @@ repo_url: https://github.com/roboflow/trackers
 edit_uri: https://github.com/roboflow/trackers/tree/main/docs
 copyright: Roboflow 2025. All rights reserved.
 
+hooks:
+  - docs/hooks/doctest_filter.py
+
 extra:
   social:
     - icon: fontawesome/brands/github
