@@ -117,6 +117,8 @@ def add_track_id_detections(
     track: OCSORTTracklet,
     detection: sv.Detections,
     updated_detections: list[sv.Detections],
+    minimum_consecutive_frames: int,
+    frame_count: int,
 ) -> sv.Detections:
     """
     The function prepares the updated Detections with track IDs.
@@ -127,6 +129,8 @@ def add_track_id_detections(
         detections: The latest set of object detections.
         tracklets: List of OCSORTTracklet objects.
         updated_detections: List of detections in which we add detections with assigned track IDs.
+        minimum_consecutive_frames: The number of consecutive frames required for a track to be considered "mature".
+        frame_count: The current frame count in the tracking process.    
     Returns:
         sv.Detections: A copy of the detections with `tracker_id` set
             for each detection that is tracked.
@@ -134,7 +138,15 @@ def add_track_id_detections(
     new_det = deepcopy(detection)
     # Add cast to clarify type for mypy
     new_det = cast(sv.Detections, new_det)  # ADDED cast
-    new_det.tracker_id = np.array([track.tracker_id])
+    is_mature = (
+                    track.number_of_successful_consecutive_updates
+                    >= minimum_consecutive_frames
+                )
+    
+    if (frame_count >= minimum_consecutive_frames and  is_mature) or frame_count < minimum_consecutive_frames:
+        new_det.tracker_id = np.array([track.tracker_id])
+    else:
+        new_det.tracker_id = np.array([-1], dtype=int)
     updated_detections.append(new_det)
 
 

@@ -67,7 +67,7 @@ class OCSORTTracker(BaseTracker):
         self.high_conf_det_threshold = high_conf_det_threshold
         # Active tracks
         self.tracks: list[OCSORTTracklet] = []
-
+        self.frame_count = 0
     def _get_associated_indices(
         self,
         iou_matrix: np.ndarray,
@@ -176,7 +176,8 @@ class OCSORTTracker(BaseTracker):
         for row, col in matched_indices:
             self.tracks[row].update(detection_boxes[col])
             add_track_id_detections(
-                self.tracks[row], detections[col : col + 1], updated_detections
+                self.tracks[row], detections[col : col + 1], updated_detections, 
+                self.minimum_consecutive_frames, self.frame_count
             )
 
         # Run 2nd Chance Association (OCR)
@@ -205,6 +206,8 @@ class OCSORTTracker(BaseTracker):
                     self.tracks[track_idx],
                     detections[det_idx : det_idx + 1],
                     updated_detections,
+                    self.minimum_consecutive_frames,
+                    self.frame_count,
                 )
 
             # Update OCR-unmatched tracks with None before filtering; indices
@@ -236,6 +239,7 @@ class OCSORTTracker(BaseTracker):
         final_updated_detections = sv.Detections.merge(updated_detections)
         if len(final_updated_detections) == 0:
             final_updated_detections.tracker_id = np.array([], dtype=int)
+        frame_count += 1
         return final_updated_detections
 
     def reset(self) -> None:
@@ -244,6 +248,7 @@ class OCSORTTracker(BaseTracker):
         Clears all active tracks and resets the track ID counter.
         """
         self.tracks = []
+        self.frame_count = 0
         OCSORTTracklet.count_id = 0
 
     def activate_or_kill_tracklets(self):
@@ -263,7 +268,9 @@ class OCSORTTracker(BaseTracker):
             # is_active = tracklet.time_since_update == 0
             if tracklet.time_since_update <= self.maximum_frames_without_update:
                 alive_tracklets.append(tracklet)
-
-            if is_mature and tracklet.tracker_id == -1:
+            if self.frame_count < self.minimum_consecutive_frames:
                 tracklet.tracker_id = OCSORTTracklet.get_next_tracker_id()
+            else: 
+                if is_mature and tracklet.tracker_id == -1:
+                    tracklet.tracker_id = OCSORTTracklet.get_next_tracker_id()
         return alive_tracklets
