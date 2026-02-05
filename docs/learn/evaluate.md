@@ -137,11 +137,11 @@ The evaluator automatically detects whether you're using a flat or MOT-style str
 
     ```bash
     trackers eval \
-      --gt-dir data \
-      --tracker-dir data/trackers \
-      --benchmark MOT17 \
-      --split train \
-      --tracker-name ByteTrack
+        --gt-dir data \
+        --tracker-dir data/trackers \
+        --benchmark MOT17 \
+        --split train \
+        --tracker-name ByteTrack
     ```
 
 === "Flat Layout"

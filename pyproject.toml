@@ -174,3 +174,7 @@ testpaths = ["test"]
 markers = [
     "integration: marks tests as integration tests (require external data download)",
 ]
+
+[tool.codespell]
+skip = "*.pth"
+ignore-words-list = "mot"

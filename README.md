@@ -38,11 +38,11 @@ pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
 
 Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For comparisons, see the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) page.
 
-|   Algorithm   |                              Trackers API                                       | MOT17 HOTA | MOT17 IDF1  | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
-|:-------------:|:-------------------------------------------------------------------------------:|:----------:|:-----------:|:----------:|:--------------:|:--------------:|
-|     SORT      |      [`SORTTracker`](https://trackers.roboflow.com/develop/trackers/sort/)      |    58.4    |    69.9     |    67.2    |      70.9      |      81.6      |
-|   ByteTrack   | [`ByteTrackTracker`](https://trackers.roboflow.com/develop/trackers/bytetrack/) |  **60.1**  |  **73.2**   |  **74.1**  |    **73.0**    |    **84.0**    |
-|    OC-SORT    |                                 `OCSORTTracker`                                 |     —      |      —      |     —      |       —        |       —        |
+| Algorithm |                                  Trackers API                                   | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
+| :-------: | :-----------------------------------------------------------------------------: | :--------: | :--------: | :--------: | :------------: | :------------: |
+|   SORT    |      [`SORTTracker`](https://trackers.roboflow.com/develop/trackers/sort/)      |    58.4    |    69.9    |    67.2    |      70.9      |      81.6      |
+| ByteTrack | [`ByteTrackTracker`](https://trackers.roboflow.com/develop/trackers/bytetrack/) |  **60.1**  |  **73.2**  |  **74.1**  |    **73.0**    |    **84.0**    |
+|  OC-SORT  |                                 `OCSORTTracker`                                 |     —      |     —      |     —      |       —        |       —        |
 
 ## Quickstart
 
@@ -74,7 +74,11 @@ while True:
     detections = tracker.update(detections)
 
     annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+    annotated_frame = label_annotator.annotate(
+        annotated_frame,
+        detections,
+        labels=detections.tracker_id,
+    )
 
     cv2.imshow("RF-DETR + ByteTrack", annotated_frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -116,7 +120,11 @@ while True:
     detections = tracker.update(detections)
 
     annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+    annotated_frame = label_annotator.annotate(
+        annotated_frame,
+        detections,
+        labels=detections.tracker_id,
+    )
 
     cv2.imshow("Inference + ByteTrack", annotated_frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -125,6 +133,7 @@ while True:
 video_capture.release()
 cv2.destroyAllWindows()
 ```
+
 </details>
 
 <details>
@@ -159,7 +168,11 @@ while True:
     detections = tracker.update(detections)
 
     annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+    annotated_frame = label_annotator.annotate(
+        annotated_frame,
+        detections,
+        labels=detections.tracker_id,
+    )
 
     cv2.imshow("Ultralytics + ByteTrack", annotated_frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -206,19 +219,20 @@ while True:
 
     h, w = frame_bgr.shape[:2]
     results = processor.post_process_object_detection(
-        outputs,
-        target_sizes=torch.tensor([[h, w]]),
-        threshold=0.5
+        outputs, target_sizes=torch.tensor([[h, w]]), threshold=0.5
     )[0]
 
     detections = sv.Detections.from_transformers(
-        transformers_results=results,
-        id2label=model.config.id2label
+        transformers_results=results, id2label=model.config.id2label
     )
     detections = tracker.update(detections)
 
     annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+    annotated_frame = label_annotator.annotate(
+        annotated_frame,
+        detections,
+        labels=detections.tracker_id,
+    )
 
     cv2.imshow("Transformers + ByteTrack", annotated_frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
