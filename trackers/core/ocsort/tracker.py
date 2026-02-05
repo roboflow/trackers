@@ -239,7 +239,7 @@ class OCSORTTracker(BaseTracker):
         final_updated_detections = sv.Detections.merge(updated_detections)
         if len(final_updated_detections) == 0:
             final_updated_detections.tracker_id = np.array([], dtype=int)
-        frame_count += 1
+        self.frame_count += 1
         return final_updated_detections
 
     def reset(self) -> None:
