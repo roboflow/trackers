@@ -73,22 +73,23 @@ def evaluate_mot_sequence(
         ValueError: If an unsupported metric family is requested.
 
     Examples:
-        ```pycon
-        >>> from trackers.eval import evaluate_mot_sequence
+        ```python
+        >>> from trackers.eval import evaluate_mot_sequence  # doctest: +SKIP
 
-        >>> result = evaluate_mot_sequence(
+        >>> result = evaluate_mot_sequence(  # doctest: +SKIP
         ...     gt_path="data/gt/MOT17-02/gt.txt",
         ...     tracker_path="data/trackers/MOT17-02.txt",
         ...     metrics=["CLEAR", "HOTA", "Identity"],
         ... )
 
-        >>> print(result.CLEAR.MOTA)
-        # 0.756
+        >>> print(result.CLEAR.MOTA)  # doctest: +SKIP
+        0.756
 
-        >>> print(result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]))
-        # Sequence                           MOTA    HOTA    IDF1  IDSW
-        # -------------------------------------------------------------
-        # MOT17-02                         75.600  62.300  72.100    42
+        >>> print(result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]))  # doctest: +SKIP
+        Sequence                           MOTA    HOTA    IDF1  IDSW
+        -------------------------------------------------------------
+        MOT17-02                         75.600  62.300  72.100    42
+        >>>
         ```
     """
     if metrics is None:
@@ -236,22 +237,23 @@ def evaluate_mot_sequences(
     Examples:
         Auto-detect layout and evaluate all sequences:
 
-        ```pycon
-        >>> from trackers.eval import evaluate_mot_sequences
+        ```python
+        >>> from trackers.eval import evaluate_mot_sequences  # doctest: +SKIP
 
-        >>> result = evaluate_mot_sequences(
+        >>> result = evaluate_mot_sequences(  # doctest: +SKIP
         ...     gt_dir="data/gt/",
         ...     tracker_dir="data/trackers/",
         ...     metrics=["CLEAR", "HOTA", "Identity"],
         ... )
 
-        >>> print(result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]))
-        # Sequence                           MOTA    HOTA    IDF1  IDSW
-        # -------------------------------------------------------------
-        # sequence1                        74.800  60.900  71.200    37
-        # sequence2                        76.100  63.200  72.500    45
-        # -------------------------------------------------------------
-        # COMBINED                         75.450  62.050  71.850    82
+        >>> print(result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]))  # doctest: +SKIP
+        Sequence                           MOTA    HOTA    IDF1  IDSW
+        -------------------------------------------------------------
+        sequence1                        74.800  60.900  71.200    37
+        sequence2                        76.100  63.200  72.500    45
+        -------------------------------------------------------------
+        COMBINED                         75.450  62.050  71.850    82
+        >>>
         ```
     """
     if metrics is None:

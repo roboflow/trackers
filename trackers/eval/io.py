@@ -102,13 +102,14 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
 
     Examples:
         ```python
-        from trackers.eval import load_mot_file
+        >>> from trackers.eval import load_mot_file  # doctest: +SKIP
 
-        gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")
-        len(gt_data)
-        # 600
-        len(gt_data[1].ids)
-        # 12
+        >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
+        >>> len(gt_data)  # doctest: +SKIP
+        600
+        >>> len(gt_data[1].ids)  # doctest: +SKIP
+        12
+        >>>
         ```
     """
     path = Path(path)
@@ -211,15 +212,16 @@ def prepare_mot_sequence(
 
     Examples:
         ```python
-        from trackers.eval import load_mot_file, prepare_mot_sequence
+        >>> from trackers.eval import load_mot_file, prepare_mot_sequence  # doctest: +SKIP
 
-        gt = load_mot_file("data/gt/MOT17-02/gt/gt.txt")
-        tracker = load_mot_file("data/trackers/MOT17-02.txt")
-        data = prepare_mot_sequence(gt, tracker)
-        data.num_frames
-        # 600
-        data.num_gt_ids
-        # 54
+        >>> gt = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
+        >>> tracker = load_mot_file("data/trackers/MOT17-02.txt")  # doctest: +SKIP
+        >>> data = prepare_mot_sequence(gt, tracker)  # doctest: +SKIP
+        >>> data.num_frames  # doctest: +SKIP
+        600
+        >>> data.num_gt_ids  # doctest: +SKIP
+        54
+        >>>
         ```
     """
     gt_frames = set(gt_data.keys()) if gt_data else set()
