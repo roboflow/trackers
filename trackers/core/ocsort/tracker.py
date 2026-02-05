@@ -268,9 +268,7 @@ class OCSORTTracker(BaseTracker):
             # is_active = tracklet.time_since_update == 0
             if tracklet.time_since_update <= self.maximum_frames_without_update:
                 alive_tracklets.append(tracklet)
-            if self.frame_count < self.minimum_consecutive_frames:
+
+            if is_mature and tracklet.tracker_id == -1:
                 tracklet.tracker_id = OCSORTTracklet.get_next_tracker_id()
-            else: 
-                if is_mature and tracklet.tracker_id == -1:
-                    tracklet.tracker_id = OCSORTTracklet.get_next_tracker_id()
         return alive_tracklets
