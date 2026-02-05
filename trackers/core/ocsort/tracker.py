@@ -216,12 +216,16 @@ class OCSORTTracker(BaseTracker):
             self._spawn_new_tracklets(
                 detections[unmatched_detections], ocr_unmatched_detections
             )
-            left_detections = detections[ocr_unmatched_detections]
+            left_detections = detections[unmatched_detections][
+                ocr_unmatched_detections
+            ]
             left_detections.tracker_id = np.array(
                 [-1] * len(left_detections), dtype=int
             )
             updated_detections.append(left_detections)
         else:
+            for track_idx in unmatched_tracks:
+                self.tracks[track_idx].update(None)
             self.tracks = self.activate_or_kill_tracklets()
             self._spawn_new_tracklets(detections, unmatched_detections)
             left_detections = detections[unmatched_detections]
