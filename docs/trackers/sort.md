@@ -13,7 +13,7 @@ SORT is a classic online, tracking-by-detection method that predicts object moti
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
-|:---------:|:----:|:----:|:----:|
+| :-------: | :--: | :--: | :--: |
 |   MOT17   | 58.4 | 69.9 | 67.2 |
 | SportsMOT | 70.9 | 68.9 | 95.7 |
 | SoccerNet | 81.6 | 76.2 | 95.1 |
@@ -50,7 +50,11 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("RF-DETR + SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -88,7 +92,11 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("RF-DETR + SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -126,7 +134,11 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("RF-DETR + SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):

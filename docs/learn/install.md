@@ -8,6 +8,7 @@ Get up and running with Trackers in minutes. Choose your preferred package manag
 - Set up a development environment
 
 !!! tip "Requirements"
+
     Python `3.10` or higher is required.
 
 ---

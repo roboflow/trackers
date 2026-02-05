@@ -15,17 +15,20 @@ Trackers gives you clean, modular re-implementations of leading multi-object tra
 You can install and use `trackers` in a [**Python>=3.10**](https://www.python.org/) environment. For detailed installation instructions, including installing from source and setting up a local development environment, check out our [install](learn/install.md) page.
 
 !!! example "Installation"
+
     [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
     [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
     [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/main/LICENSE.md)
     [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
 
     === "pip"
+
         ```bash
         pip install trackers
         ```
 
     === "uv"
+
         ```bash
         uv pip install trackers
         ```
@@ -34,7 +37,7 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 
 <div class="grid cards" markdown>
 
--   **How to Track Objects with SORT**
+- **How to Track Objects with SORT**
 
     ---
 
@@ -44,7 +47,7 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb)
 
--   **How to Track Objects with ByteTrack**
+- **How to Track Objects with ByteTrack**
 
     ---
 
@@ -56,16 +59,15 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 
 </div>
 
-
 ## Tracking Algorithms
 
 Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For comparisons, see the [tracker comparison](trackers/comparison.md) page.
 
-|  Algorithm  |                Trackers API                 | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
-|:-----------:|:-------------------------------------------:|:----------:|:----------:|:----------:|:--------------:|:--------------:|
-|    SORT     |      [`SORTTracker`](trackers/sort.md)      |    58.4    |    69.9    |    67.2    |      70.9      |      81.6      |
-|  ByteTrack  | [`ByteTrackTracker`](trackers/bytetrack.md) |  **60.1**  |  **73.2**  |  **74.1**  |    **73.0**    |    **84.0**    |
-|   OC-SORT   |               `OCSORTTracker`               |     —      |     —      |     —      |       —        |       —        |
+| Algorithm |                Trackers API                 | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
+| :-------: | :-----------------------------------------: | :--------: | :--------: | :--------: | :------------: | :------------: |
+|   SORT    |      [`SORTTracker`](trackers/sort.md)      |    58.4    |    69.9    |    67.2    |      70.9      |      81.6      |
+| ByteTrack | [`ByteTrackTracker`](trackers/bytetrack.md) |  **60.1**  |  **73.2**  |  **74.1**  |    **73.0**    |    **84.0**    |
+|  OC-SORT  |               `OCSORTTracker`               |     —      |     —      |     —      |       —        |       —        |
 
 ## Quickstart
 
@@ -99,7 +101,11 @@ With a modular design, Trackers lets you combine object detectors from different
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("RF-DETR + ByteTrack", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -138,7 +144,11 @@ With a modular design, Trackers lets you combine object detectors from different
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("Inference + ByteTrack", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -177,7 +187,11 @@ With a modular design, Trackers lets you combine object detectors from different
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("Ultralytics + ByteTrack", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -219,19 +233,20 @@ With a modular design, Trackers lets you combine object detectors from different
 
         h, w = frame_bgr.shape[:2]
         results = processor.post_process_object_detection(
-            outputs,
-            target_sizes=torch.tensor([[h, w]]),
-            threshold=0.5
+            outputs, target_sizes=torch.tensor([[h, w]]), threshold=0.5
         )[0]
 
         detections = sv.Detections.from_transformers(
-            transformers_results=results,
-            id2label=model.config.id2label
+            transformers_results=results, id2label=model.config.id2label
         )
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("Transformers + ByteTrack", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
