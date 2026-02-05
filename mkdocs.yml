@@ -8,6 +8,8 @@ edit_uri: https://github.com/roboflow/trackers/tree/main/docs
 copyright: Roboflow 2025. All rights reserved.
 
 extra:
+  version:
+    provider: mike
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/roboflow
