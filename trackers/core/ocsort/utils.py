@@ -50,7 +50,11 @@ def build_direction_consistency_matrix(
 
             # Compute cosine similarity
             cos_sim = np.dot(tracklet_speed, association_speed)
-            direction_consistency_matrix[t, d] = cos_sim
+            cos_sim = np.clip(cos_sim, -1.0, 1.0)
+            # Apply the same transformation as original
+            angle = np.arccos(cos_sim)
+            direction_consistency_matrix[t, d] = (np.pi / 2.0 - np.abs(angle)) / np.pi
+            #direction_consistency_matrix[t, d] = cos_sim
 
     return direction_consistency_matrix
 
