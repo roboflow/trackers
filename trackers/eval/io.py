@@ -221,7 +221,7 @@ def prepare_mot_sequence(
         >>>
         >>> data.num_gt_ids  # doctest: +SKIP
         54
-    """
+    """  # noqa: E501
     gt_frames = set(gt_data.keys()) if gt_data else set()
     tracker_frames = set(tracker_data.keys()) if tracker_data else set()
     all_frames = gt_frames | tracker_frames

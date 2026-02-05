@@ -5,11 +5,12 @@ Thank you for your interest in contributing to the Trackers library! Your helpâ€
 ## Table of Contents
 
 1. [How to Contribute](#how-to-contribute)
-2. [CLA Signing](#cla-signing)
-3. [Clean Room Requirements](#clean-room-requirements)
-4. [Google-Style Docstrings and Type Hints](#google-style-docstrings-and-type-hints)
-5. [Reporting Bugs](#reporting-bugs)
-6. [License](#license)
+2. [Running Tests](#running-tests)
+3. [CLA Signing](#cla-signing)
+4. [Clean Room Requirements](#clean-room-requirements)
+5. [Google-Style Docstrings and Type Hints](#google-style-docstrings-and-type-hints)
+6. [Reporting Bugs](#reporting-bugs)
+7. [License](#license)
 
 ## How to Contribute
 
@@ -38,6 +39,38 @@ Contributions come in many forms: improving features, fixing bugs, suggesting id
 6. [Open a Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request): Submit your pull request against the main development branch. Please detail your changes and link any related issues.
 
 Before merging, check that all tests pass and that your changes adhere to our development and documentation standards.
+
+## Running Tests
+
+Install development dependencies:
+
+```bash
+uv sync --group dev
+```
+
+1. **Unit Tests**: Run the standard test suite:
+
+    ```bash
+    uv run pytest
+    ```
+
+2. **Doctests**: Run only doctests from docstrings:
+
+    ```bash
+    uv run pytest --doctest-modules trackers/ --ignore=test/
+    ```
+
+3. **Integration Tests**: Integration tests validate that our evaluation metrics match TrackEval's results on real MOT datasets. Run integration tests (requires downloading ~50MB of test data):
+
+    ```bash
+    uv run pytest -m integration
+    ```
+
+4. **All Tests**: Run all tests including integration:
+
+    ```bash
+    uv run pytest -m ""
+    ```
 
 ## CLA Signing
 
