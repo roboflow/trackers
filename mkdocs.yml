@@ -11,6 +11,8 @@ hooks:
   - docs/hooks/doctest_filter.py
 
 extra:
+  version:
+    provider: mike
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/roboflow
