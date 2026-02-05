@@ -65,20 +65,34 @@ def compute_hota_metrics(
             `AssA_array`, `AssRe_array`, `AssPr_array`, `LocA_array`.
 
     Examples:
-        ```python
-        import numpy as np
-        from trackers.eval import compute_hota_metrics
-
-        gt_ids = [np.array([0, 1]), np.array([0, 1])]
-        tracker_ids = [np.array([10, 20]), np.array([10, 20])]
-        similarity_scores = [
-            np.array([[0.9, 0.1], [0.1, 0.8]]),
-            np.array([[0.85, 0.1], [0.1, 0.75]]),
-        ]
-        result = compute_hota_metrics(gt_ids, tracker_ids, similarity_scores)
-        result["HOTA"]
-        # ~0.85
-        ```
+        >>> import numpy as np
+        >>> from trackers.eval import compute_hota_metrics
+        >>>
+        >>> gt_ids = [
+        ...     np.array([0, 1]),
+        ...     np.array([0, 1]),
+        ...     np.array([0, 1]),
+        ... ]
+        >>> tracker_ids = [
+        ...     np.array([10, 20]),
+        ...     np.array([10, 30]),
+        ...     np.array([10, 30]),
+        ... ]
+        >>> similarity_scores = [
+        ...     np.array([[0.9, 0.1], [0.1, 0.8]]),
+        ...     np.array([[0.85, 0.1], [0.1, 0.75]]),
+        ...     np.array([[0.8, 0.1], [0.1, 0.7]]),
+        ... ]
+        >>>
+        >>> result = compute_hota_metrics(gt_ids, tracker_ids, similarity_scores)
+        >>> result["HOTA"]  # doctest: +ELLIPSIS
+        0.745...
+        >>>
+        >>> result["DetA"]  # doctest: +ELLIPSIS
+        0.816...
+        >>>
+        >>> result["AssA"]  # doctest: +ELLIPSIS
+        0.691...
     """
     num_alphas = len(ALPHA_THRESHOLDS)
 

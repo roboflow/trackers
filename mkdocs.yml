@@ -7,6 +7,9 @@ repo_url: https://github.com/roboflow/trackers
 edit_uri: https://github.com/roboflow/trackers/tree/main/docs
 copyright: Roboflow 2025. All rights reserved.
 
+hooks:
+  - docs/hooks/doctest_filter.py
+
 extra:
   social:
     - icon: fontawesome/brands/github
@@ -46,7 +49,7 @@ extra_css:
   - stylesheets/rf.css
 
 extra_javascript:
-  - javascripts/copy-code.js
+  - javascripts/pycon_copy.js
 
 markdown_extensions:
    # Adds support for card grids

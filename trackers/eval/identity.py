@@ -50,20 +50,31 @@ def compute_identity_metrics(
             - IDFP: ID False Positives
 
     Examples:
-        ```python
-        import numpy as np
-        from trackers.eval.identity import compute_identity_metrics
-
-        gt_ids = [np.array([0, 1]), np.array([0, 1])]
-        tracker_ids = [np.array([10, 20]), np.array([10, 20])]
-        similarity = [
-            np.array([[0.8, 0.0], [0.0, 0.8]]),
-            np.array([[0.8, 0.0], [0.0, 0.8]]),
-        ]
-        result = compute_identity_metrics(gt_ids, tracker_ids, similarity)
-        result["IDF1"]
-        # 1.0
-        ```
+        >>> import numpy as np
+        >>> from trackers.eval.identity import compute_identity_metrics
+        >>>
+        >>> gt_ids = [
+        ...     np.array([0, 1]),
+        ...     np.array([0, 1]),
+        ...     np.array([0, 1]),
+        ... ]
+        >>> tracker_ids = [
+        ...     np.array([10, 20]),
+        ...     np.array([10, 30]),
+        ...     np.array([10, 30]),
+        ... ]
+        >>> similarity_scores = [
+        ...     np.array([[0.9, 0.1], [0.1, 0.8]]),
+        ...     np.array([[0.85, 0.1], [0.1, 0.75]]),
+        ...     np.array([[0.8, 0.1], [0.1, 0.7]]),
+        ... ]
+        >>>
+        >>> result = compute_identity_metrics(gt_ids, tracker_ids, similarity_scores)
+        >>> result["IDF1"]  # doctest: +ELLIPSIS
+        0.833...
+        >>>
+        >>> result["IDTP"]
+        5
     """
     # Count total detections
     num_gt_dets = sum(len(ids) for ids in gt_ids)
@@ -197,17 +208,6 @@ def aggregate_identity_metrics(
 
     Returns:
         Aggregated Identity metrics dictionary.
-
-    Examples:
-        ```python
-        from trackers.eval.identity import aggregate_identity_metrics
-
-        seq1 = {"IDTP": 100, "IDFN": 10, "IDFP": 5, "IDF1": 0.93, ...}
-        seq2 = {"IDTP": 200, "IDFN": 20, "IDFP": 10, "IDF1": 0.93, ...}
-        agg = aggregate_identity_metrics([seq1, seq2])
-        agg["IDTP"]
-        # 300
-        ```
     """
     if not sequence_metrics:
         return {
