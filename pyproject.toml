@@ -171,6 +171,11 @@ line-ending = "auto"
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["test"]
+addopts = [
+  "--doctest-modules",
+  "--color=yes",
+]
+doctest_optionflags = "ELLIPSIS NORMALIZE_WHITESPACE"
 markers = [
     "integration: marks tests as integration tests (require external data download)",
 ]

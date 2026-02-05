@@ -60,40 +60,23 @@ def box_iou(
         ValueError: If box_format is not `"xyxy"` or `"xywh"`.
 
     Examples:
-        ```python
-        import numpy as np
-        from trackers.eval import box_iou
-
-        boxes1 = np.array([
-            [0,   0, 10, 10],
-            [20, 20, 30, 30],
-            [5,   5, 15, 15],
-        ])
-        boxes2 = np.array([
-            [5,   5, 15, 15],
-            [0,   0, 10, 10],
-        ])
-        box_iou(boxes1, boxes2, box_format="xyxy")
-        # array([[0.14285714, 1.        ],
-        #        [0.        , 0.        ],
-        #        [1.        , 0.14285714]])
-        ```
-
-        ```python
-        import numpy as np
-        from trackers.eval import box_iou
-
-        boxes1 = np.array([
-            [0,  0, 10, 10],
-            [10, 0, 10, 10],
-        ])
-        boxes2 = np.array([
-            [5, 0, 10, 10],
-        ])
-        box_iou(boxes1, boxes2, box_format="xywh")
-        # array([[0.33333333],
-        #        [0.33333333]])
-        ```
+        >>> import numpy as np
+        >>> from trackers.eval import box_iou
+        >>>
+        >>> boxes1 = np.array([
+        ...     [0,   0, 10, 10],
+        ...     [20, 20, 30, 30],
+        ...     [5,   5, 15, 15],
+        ... ])
+        >>> boxes2 = np.array([
+        ...     [5,   5, 15, 15],
+        ...     [0,   0, 10, 10],
+        ... ])
+        >>>
+        >>> box_iou(boxes1, boxes2, box_format="xyxy")
+        array([[0.14285714, 1.        ],
+               [0.        , 0.        ],
+               [1.        , 0.14285714]])
     """
     return _calculate_box_ious(boxes1, boxes2, box_format=box_format, do_ioa=False)
 
@@ -123,38 +106,21 @@ def box_ioa(
         ValueError: If box_format is not `"xyxy"` or `"xywh"`.
 
     Examples:
-        ```python
-        import numpy as np
-        from trackers.eval import box_ioa
-
-        boxes1 = np.array([
-            [5,  5, 15, 15],
-            [0,  0, 10, 10],
-        ])
-        boxes2 = np.array([
-            [0,  0, 20, 20],
-            [5,  0, 15, 10],
-        ])
-        box_ioa(boxes1, boxes2, box_format="xyxy")
-        # array([[1. , 0.5],
-        #        [1. , 0.5]])
-        ```
-
-        ```python
-        import numpy as np
-        from trackers.eval import box_ioa
-
-        boxes1 = np.array([
-            [0,  0, 10, 10],
-            [10, 0, 10, 10],
-        ])
-        boxes2 = np.array([
-            [5, 0, 10, 10],
-        ])
-        box_ioa(boxes1, boxes2, box_format="xywh")
-        # array([[0.5],
-        #        [0.5]])
-        ```
+        >>> import numpy as np
+        >>> from trackers.eval import box_ioa
+        >>>
+        >>> boxes1 = np.array([
+        ...     [5,  5, 15, 15],
+        ...     [0,  0, 10, 10],
+        ... ])
+        >>> boxes2 = np.array([
+        ...     [0,  0, 20, 20],
+        ...     [5,  0, 15, 10],
+        ... ])
+        >>>
+        >>> box_ioa(boxes1, boxes2, box_format="xyxy")
+        array([[1. , 0.5],
+               [1. , 0.5]])
     """
     return _calculate_box_ious(boxes1, boxes2, box_format=box_format, do_ioa=True)
 
