@@ -142,13 +142,15 @@ def add_track_id_detections(
                     track.number_of_successful_consecutive_updates
                     >= minimum_consecutive_frames
                 )
-    if frame_count < minimum_consecutive_frames and track.time_since_update == 0:
-        track.tracker_id = OCSORTTracklet.get_next_tracker_id()
-
-    if (frame_count >= minimum_consecutive_frames and  is_mature) :
-        new_det.tracker_id = np.array([track.tracker_id])
-    else:
-        new_det.tracker_id = np.array([-1], dtype=int)
+    if frame_count < minimum_consecutive_frames :
+        if track.time_since_update == 0:
+            track.tracker_id = OCSORTTracklet.get_next_tracker_id()
+            new_det.tracker_id = np.array([track.tracker_id])
+    else:    
+        if is_mature :
+            new_det.tracker_id = np.array([track.tracker_id])
+        else:
+            new_det.tracker_id = np.array([-1], dtype=int)
     updated_detections.append(new_det)
 
 
