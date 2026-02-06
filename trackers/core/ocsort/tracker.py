@@ -6,7 +6,7 @@ from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.ocsort.utils import (
     add_track_id_detections,
-    build_direction_consistency_matrix,
+    build_direction_consistency_matrix_batch,
     get_iou_matrix,
     get_iou_matrix_between_boxes,
 )
@@ -162,7 +162,7 @@ class OCSORTTracker(BaseTracker):
         # Build IOU cost matrix between detections and predicted bounding boxes
         iou_matrix = get_iou_matrix(self.tracks, detection_boxes)
 
-        direction_consistency_matrix = build_direction_consistency_matrix(
+        direction_consistency_matrix = build_direction_consistency_matrix_batch(
             self.tracks, detection_boxes
         )
         direction_consistency_matrix *= detections.confidence[np.newaxis, :]

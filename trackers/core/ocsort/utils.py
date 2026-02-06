@@ -77,40 +77,56 @@ def speed_direction_batch(dets, tracks):  # From oc sort repo
 
 
 def build_direction_consistency_matrix_batch(
-    # vectorized version from oc sort repo but adapted to our tracklet class, still needs testing and is not currently used# noqa: E501
+    # vectorized version from oc sort repo but adapted to our tracklet class
     tracklets: list[OCSORTTracklet],
     detection_boxes: np.ndarray,
 ) -> np.ndarray:
+    n_tracklets = len(tracklets)
+    n_detections = detection_boxes.shape[0] if len(detection_boxes) > 0 else 0
+    
+    if n_tracklets == 0 or n_detections == 0:
+        return np.zeros((n_tracklets, n_detections), dtype=np.float32)
+    
+    # Compute tracklet velocities (from previous_to_last -> last_observation)
     velocities = np.array(
         [
             speed_direction(
                 tracklet.previous_to_last_observation, tracklet.last_observation
             )
             if tracklet.previous_to_last_observation is not None
-            else (0, 0)
+            else np.array([0.0, 0.0])
             for tracklet in tracklets
         ]
-    )
-    Y, X = speed_direction_batch(detection_boxes, tracklets)  # these will break
-    inertia_Y, inertia_X = velocities[:, 0], velocities[:, 1]
-    inertia_Y = np.repeat(inertia_Y[:, np.newaxis], Y.shape[1], axis=1)
-    inertia_X = np.repeat(inertia_X[:, np.newaxis], X.shape[1], axis=1)
-    diff_angle_cos = inertia_X * X + inertia_Y * Y
-    diff_angle_cos = np.clip(diff_angle_cos, a_min=-1, a_max=1)
+    )  # shape: (n_tracklets, 2) where each row is [dy, dx]
+    
+    # Get last observations as array for batch direction computation
+    last_obs = np.array([tracklet.last_observation for tracklet in tracklets])
+    
+    # Compute association directions (from last_observation -> detection) in batch
+    # speed_direction_batch expects (dets, tracks) and returns (dy, dx) each of shape (n_tracks, n_dets)
+    Y, X = speed_direction_batch(detection_boxes, last_obs)  # (n_tracklets, n_detections)
+    
+    # Expand velocities for broadcasting
+    inertia_Y = velocities[:, 0:1]  # (n_tracklets, 1)
+    inertia_X = velocities[:, 1:2]  # (n_tracklets, 1)
+    
+    # Compute cosine similarity (dot product of normalized vectors)
+    diff_angle_cos = inertia_X * X + inertia_Y * Y  # (n_tracklets, n_detections)
+    diff_angle_cos = np.clip(diff_angle_cos, -1.0, 1.0)
+    
+    # Apply same transformation as non-batch version
     diff_angle = np.arccos(diff_angle_cos)
-    diff_angle = (np.pi / 2.0 - np.abs(diff_angle)) / np.pi
+    angle_diff_cost = (np.pi / 2.0 - np.abs(diff_angle)) / np.pi
 
-    valid_mask = np.ones(len(tracklets))
-    # valid_mask[np.where(previous_obs[:,4]<0)] = 0
-    previous_to_last_observation_is_none = np.array(
-        [tracklet.previous_to_last_observation is None for tracklet in tracklets]
-    )
-    valid_mask[previous_to_last_observation_is_none] = 0
-    valid_mask = np.repeat(valid_mask[:, np.newaxis], X.shape[1], axis=1)
+    # Mask out tracklets without previous observation
+    valid_mask = np.array(
+        [tracklet.previous_to_last_observation is not None for tracklet in tracklets],
+        dtype=np.float32
+    )[:, np.newaxis]  # (n_tracklets, 1)
+    
+    angle_diff_cost = valid_mask * angle_diff_cost
 
-    angle_diff_cost = valid_mask * diff_angle
-    angle_diff_cost = angle_diff_cost.T  # check if this transpose is needed
-    return angle_diff_cost
+    return angle_diff_cost.astype(np.float32)
 
 
 def add_track_id_detections(
