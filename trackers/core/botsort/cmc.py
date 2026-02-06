@@ -6,12 +6,12 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from typing import Optional
 
-import copy
-import numpy as np
 import cv2
+import numpy as np
 
 
 @dataclass
@@ -48,7 +48,9 @@ class CMC:
         self._prev_kps = None
         self._prev_desc = None
 
-    def estimate(self, frame_bgr: np.ndarray, dets_xyxy: Optional[np.ndarray] = None) -> np.ndarray:
+    def estimate(
+        self, frame_bgr: np.ndarray, dets_xyxy: Optional[np.ndarray] = None
+    ) -> np.ndarray:
         if frame_bgr is None:
             return np.eye(2, 3, dtype=np.float32)
 
@@ -105,7 +107,9 @@ class CMC:
             self._prev_desc = copy.copy(desc)
             return H_aff
 
-        max_spatial = self.cfg.max_spatial_distance_frac * np.array([W, H], dtype=np.float32)
+        max_spatial = self.cfg.max_spatial_distance_frac * np.array(
+            [W, H], dtype=np.float32
+        )
 
         prev_pts = []
         curr_pts = []
@@ -173,7 +177,9 @@ class CMC:
         A8[0:4, 0:4] = A4
         A8[4:8, 4:8] = A4
 
-        trans4 = np.array([t[0, 0], t[1, 0], t[0, 0], t[1, 0]], dtype=np.float32).reshape(4, 1)
+        trans4 = np.array(
+            [t[0, 0], t[1, 0], t[0, 0], t[1, 0]], dtype=np.float32
+        ).reshape(4, 1)
 
         for trk in tracks:
             trk.state = (A8 @ trk.state).astype(np.float32)

@@ -12,12 +12,13 @@ import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
+from trackers.core.botsort.cmc import CMC, CMCConfig
 from trackers.core.botsort.kalman_box_tracker import BoTSORTKalmanBoxTracker
 from trackers.utils.sort_utils import (
     get_alive_trackers,
     get_iou_matrix,
 )
-from trackers.core.botsort.cmc import CMC, CMCConfig
+
 
 class BoTSORTTracker(BaseTracker):
     def __init__(
@@ -28,8 +29,7 @@ class BoTSORTTracker(BaseTracker):
         minimum_consecutive_frames: int = 2,
         minimum_iou_threshold: float = 0.1,
         high_conf_det_threshold: float = 0.6,
-        enable_cmc: bool = True
-
+        enable_cmc: bool = True,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -94,7 +94,9 @@ class BoTSORTTracker(BaseTracker):
 
         # CMC (ORB) apply to all predicted tracks before association
         if self.enable_cmc and self.cmc is not None and frame is not None:
-            mask_boxes = high_prob_detections.xyxy if len(high_prob_detections) > 0 else None
+            mask_boxes = (
+                high_prob_detections.xyxy if len(high_prob_detections) > 0 else None
+            )
             H = self.cmc.estimate(frame, mask_boxes)
             self.cmc.apply_to_tracks(self.tracks, H)
 

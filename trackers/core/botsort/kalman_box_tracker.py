@@ -6,6 +6,7 @@
 
 import numpy as np
 
+
 class BoTSORTKalmanBoxTracker:
     """
     The `BoTSORTKalmanBoxTracker` class represents the internals of a single
