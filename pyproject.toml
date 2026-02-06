@@ -41,7 +41,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cli = ["rich>=13.0.0"]
+cli = ["rich>=13.0.0", "opencv-python>=4.8.0"]
+inference = ["inference-models==0.18.6rc8"]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"
