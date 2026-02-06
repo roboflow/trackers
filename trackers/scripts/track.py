@@ -553,9 +553,7 @@ def _write_mot_frame(f, frame_idx: int, detections: sv.Detections) -> None:
         h = y2 - y1
 
         track_id = (
-            int(detections.tracker_id[i])
-            if detections.tracker_id is not None
-            else -1
+            int(detections.tracker_id[i]) if detections.tracker_id is not None else -1
         )
         conf = (
             float(detections.confidence[i])

@@ -59,12 +59,17 @@ class TestAddTrackSubparser:
         add_track_subparser(subparsers)
 
         with pytest.raises(SystemExit):
-            parser.parse_args([
-                "track",
-                "--source", "test.mp4",
-                "--model", "rfdetr-large",
-                "--detections", "det.txt",
-            ])
+            parser.parse_args(
+                [
+                    "track",
+                    "--source",
+                    "test.mp4",
+                    "--model",
+                    "rfdetr-large",
+                    "--detections",
+                    "det.txt",
+                ]
+            )
 
     def test_tracker_choice(self) -> None:
         parser = argparse.ArgumentParser()
@@ -79,16 +84,19 @@ class TestAddTrackSubparser:
         subparsers = parser.add_subparsers()
         add_track_subparser(subparsers)
 
-        args = parser.parse_args([
-            "track",
-            "--source", "test.mp4",
-            "--display",
-            "--show-labels",
-            "--show-ids",
-            "--show-confidence",
-            "--show-trajectories",
-            "--show-masks",
-        ])
+        args = parser.parse_args(
+            [
+                "track",
+                "--source",
+                "test.mp4",
+                "--display",
+                "--show-labels",
+                "--show-ids",
+                "--show-confidence",
+                "--show-trajectories",
+                "--show-masks",
+            ]
+        )
 
         assert args.display is True
         assert args.show_labels is True
@@ -110,13 +118,18 @@ class TestAddTrackSubparser:
         subparsers = parser.add_subparsers()
         add_track_subparser(subparsers)
 
-        args = parser.parse_args([
-            "track",
-            "--source", "test.mp4",
-            "-o", "out.mp4",
-            "--mot-output", "results.txt",
-            "--overwrite",
-        ])
+        args = parser.parse_args(
+            [
+                "track",
+                "--source",
+                "test.mp4",
+                "-o",
+                "out.mp4",
+                "--mot-output",
+                "results.txt",
+                "--overwrite",
+            ]
+        )
 
         assert args.output == Path("out.mp4")
         assert args.mot_output == Path("results.txt")
@@ -127,11 +140,15 @@ class TestAddTrackSubparser:
         subparsers = parser.add_subparsers()
         add_track_subparser(subparsers)
 
-        args = parser.parse_args([
-            "track",
-            "--source", "test.mp4",
-            "--model.confidence", "0.7",
-        ])
+        args = parser.parse_args(
+            [
+                "track",
+                "--source",
+                "test.mp4",
+                "--model.confidence",
+                "0.7",
+            ]
+        )
 
         assert args.model_confidence == 0.7
 
@@ -184,8 +201,13 @@ class TestCreateTracker:
 
         args = argparse.Namespace(tracker="bytetrack")
         # Add tracker params that might be present
-        for param in ["lost_track_buffer", "frame_rate", "track_activation_threshold",
-                      "minimum_consecutive_frames", "minimum_iou_threshold"]:
+        for param in [
+            "lost_track_buffer",
+            "frame_rate",
+            "track_activation_threshold",
+            "minimum_consecutive_frames",
+            "minimum_iou_threshold",
+        ]:
             setattr(args, f"tracker_{param}", None)
 
         tracker = _create_tracker(args)
@@ -195,8 +217,13 @@ class TestCreateTracker:
         from trackers import SORTTracker
 
         args = argparse.Namespace(tracker="sort")
-        for param in ["lost_track_buffer", "frame_rate", "track_activation_threshold",
-                      "minimum_consecutive_frames", "minimum_iou_threshold"]:
+        for param in [
+            "lost_track_buffer",
+            "frame_rate",
+            "track_activation_threshold",
+            "minimum_consecutive_frames",
+            "minimum_iou_threshold",
+        ]:
             setattr(args, f"tracker_{param}", None)
 
         tracker = _create_tracker(args)
@@ -214,8 +241,11 @@ class TestCreateTracker:
             tracker_lost_track_buffer=60,
             tracker_frame_rate=60.0,
         )
-        for param in ["track_activation_threshold", "minimum_consecutive_frames",
-                      "minimum_iou_threshold"]:
+        for param in [
+            "track_activation_threshold",
+            "minimum_consecutive_frames",
+            "minimum_iou_threshold",
+        ]:
             setattr(args, f"tracker_{param}", None)
 
         tracker = _create_tracker(args)
@@ -244,7 +274,7 @@ class TestGetFrameDetections:
         # Check xyxy conversion
         np.testing.assert_array_almost_equal(
             result.xyxy,
-            np.array([[100, 100, 150, 180], [200, 150, 260, 240]])  # xyxy
+            np.array([[100, 100, 150, 180], [200, 150, 260, 240]]),  # xyxy
         )
 
     def test_returns_empty_for_missing_frame(self) -> None:
