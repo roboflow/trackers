@@ -526,10 +526,22 @@ def _generate_from_directory(directory: Path) -> Iterator[tuple[int, np.ndarray]
             yield idx, frame
 
 
-COLOR_PALETTE = sv.ColorPalette.from_hex([
-    "#ffff00", "#ff9b00", "#ff8080", "#ff66b2", "#ff66ff", "#b266ff",
-    "#9999ff", "#3399ff", "#66ffff", "#33ff99", "#66ff66", "#99ff00",
-])
+COLOR_PALETTE = sv.ColorPalette.from_hex(
+    [
+        "#ffff00",
+        "#ff9b00",
+        "#ff8080",
+        "#ff66b2",
+        "#ff66ff",
+        "#b266ff",
+        "#9999ff",
+        "#3399ff",
+        "#66ffff",
+        "#33ff99",
+        "#66ff66",
+        "#99ff00",
+    ]
+)
 
 
 def _create_annotators(
@@ -545,16 +557,20 @@ def _create_annotators(
     label_annotator: sv.LabelAnnotator | None = None
 
     if args.show_boxes:
-        annotators.append(sv.BoxAnnotator(
-            color=COLOR_PALETTE,
-            color_lookup=sv.ColorLookup.TRACK,
-        ))
+        annotators.append(
+            sv.BoxAnnotator(
+                color=COLOR_PALETTE,
+                color_lookup=sv.ColorLookup.TRACK,
+            )
+        )
 
     if args.show_masks:
-        annotators.append(sv.MaskAnnotator(
-            color=COLOR_PALETTE,
-            color_lookup=sv.ColorLookup.TRACK,
-        ))
+        annotators.append(
+            sv.MaskAnnotator(
+                color=COLOR_PALETTE,
+                color_lookup=sv.ColorLookup.TRACK,
+            )
+        )
 
     if args.show_labels or args.show_ids or args.show_confidence:
         label_annotator = sv.LabelAnnotator(
