@@ -13,13 +13,16 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, ClassVar, Union, get_args, get_origin
 
-import numpy as np
 import supervision as sv
 
 
 @dataclass
 class ParameterInfo:
-    """Definition of a tracker parameter."""
+    """Holds metadata for a single tracker parameter.
+
+    Stores the type, default value, and description extracted from the
+    tracker's __init__ signature and docstring.
+    """
 
     param_type: type
     default_value: Any
@@ -28,7 +31,11 @@ class ParameterInfo:
 
 @dataclass
 class TrackerInfo:
-    """Metadata about a registered tracker."""
+    """Holds a tracker class and its extracted parameter metadata.
+
+    Used by the CLI to discover available trackers and their configurable
+    options without instantiating them.
+    """
 
     tracker_class: type[BaseTracker]
     parameters: dict[str, ParameterInfo]
@@ -42,20 +49,17 @@ _PARAM_START_PATTERN = re.compile(
 
 
 def _parse_docstring_arguments(docstring: str) -> dict[str, str]:
-    """Parse Google-style docstring Args section.
+    """Extract parameter-to-description mapping from Google-style Args section.
 
-    Handles various formats:
-        param: description
-        param (type): description
-        param (type, optional): description
-        `param`: description
-        param.sub: dotted parameter names
+    Supports multiple formats including `param: desc`, `param (type): desc`,
+    and multi-line descriptions with proper continuation handling.
 
     Args:
-        docstring: The docstring to parse.
+        docstring: Raw docstring text to parse.
 
     Returns:
-        Dict mapping parameter names to their descriptions.
+        Mapping of parameter names to their description strings.
+        Empty dict if no Args section found.
     """
     if not docstring:
         return {}
@@ -118,16 +122,18 @@ def _parse_docstring_arguments(docstring: str) -> dict[str, str]:
 
 
 def _normalize_type(annotation: Any, default: Any) -> Any:
-    """Convert complex type annotations to simple types for CLI/config.
+    """Unwrap Optional/Union/generics to base type for CLI argument parsing.
 
-    Handles Optional[T], T | None, List[T], etc. and extracts the base type.
+    Converts complex annotations like Optional[int], list[str], or int | None
+    to their base types (int, list, int) suitable for argparse type conversion.
 
     Args:
-        annotation: The type annotation to normalize.
-        default: The default value (used for fallback type inference).
+        annotation: Type annotation to simplify.
+        default: Default value used for fallback type inference when
+            annotation is Any or cannot be resolved.
 
     Returns:
-        A simple type suitable for CLI argument parsing, or Any if unknown.
+        Simplified type (e.g., int, str, list) or Any if unresolvable.
     """
     origin = get_origin(annotation)
     args = get_args(annotation)
@@ -157,13 +163,17 @@ def _normalize_type(annotation: Any, default: Any) -> Any:
 
 
 def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
-    """Extract parameters from a class's __init__ signature and docstring.
+    """Introspect __init__ signature and docstring to build parameter metadata.
+
+    Combines type hints, default values, and docstring descriptions into a
+    structured format. Falls back to class docstring if __init__ has none.
 
     Args:
-        cls: The class to extract parameters from.
+        cls: Class whose __init__ to analyze.
 
     Returns:
-        Dict mapping parameter names to ParameterInfo objects.
+        Mapping of parameter names to ParameterInfo objects.
+        Excludes 'self' parameter.
     """
     sig = inspect.signature(cls.__init__)  # type: ignore[misc]
 
@@ -207,29 +217,21 @@ def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
 
 
 class BaseTracker(ABC):
-    """Base class for all trackers with auto-registration.
+    """Abstract tracker with auto-registration via tracker_id class variable.
 
-    Subclasses that define a `tracker_id` class variable will be automatically
-    registered and discoverable via `BaseTracker.get_info()` and
-    `BaseTracker.available()`.
-
-    Example:
-        class MyTracker(BaseTracker):
-            tracker_id = "mytracker"
-
-            def __init__(self, param1: int = 10) -> None:
-                '''
-                Args:
-                    param1: Description of param1.
-                '''
-                self.param1 = param1
+    Subclasses that define `tracker_id` are automatically registered and
+    become discoverable. Parameter metadata is extracted from __init__ for
+    CLI integration.
     """
 
     _registry: ClassVar[dict[str, TrackerInfo]] = {}
     tracker_id: ClassVar[str | None] = None
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
-        """Auto-register subclasses that define tracker_id."""
+        """Register subclass in the tracker registry if it defines tracker_id.
+
+        Extracts parameter metadata from __init__ at class definition time.
+        """
         super().__init_subclass__(**kwargs)
 
         tracker_id = getattr(cls, "tracker_id", None)
@@ -240,70 +242,52 @@ class BaseTracker(ABC):
             )
 
     @classmethod
-    def get_info(cls, tracker_id: str) -> TrackerInfo:
-        """Get tracker info by ID.
+    def _lookup_tracker(cls, name: str) -> TrackerInfo | None:
+        """Look up registered tracker by name.
+
+        Internal method used by CLI for tracker discovery and instantiation.
 
         Args:
-            tracker_id: The tracker identifier (e.g., "bytetrack", "sort").
+            name: Tracker identifier (e.g., "bytetrack", "sort").
 
         Returns:
-            TrackerInfo containing the tracker class and its parameters.
-
-        Raises:
-            ValueError: If tracker_id is not found in the registry.
+            TrackerInfo containing class and parameters if found,
+            None otherwise.
         """
-        if tracker_id not in cls._registry:
-            available = ", ".join(sorted(cls._registry))
-            raise ValueError(
-                f"Unknown tracker ID: {tracker_id!r}\nAvailable trackers: {available}"
-            )
-        return cls._registry[tracker_id]
+        return cls._registry.get(name)
 
     @classmethod
-    def available(cls) -> list[str]:
-        """List available tracker IDs.
+    def _registered_trackers(cls) -> list[str]:
+        """List all registered tracker names.
+
+        Internal method used by CLI for help text and argument validation.
 
         Returns:
-            List of registered tracker identifiers.
+            Alphabetically sorted list of tracker identifiers.
         """
         return sorted(cls._registry.keys())
 
     @abstractmethod
     def update(self, detections: sv.Detections) -> sv.Detections:
-        """Update tracker with new detections and return tracked objects.
+        """Process new detections and assign track IDs.
+
+        Matches incoming detections to existing tracks, creates new tracks
+        for unmatched detections, and handles track lifecycle management.
 
         Args:
-            detections (sv.Detections): New detections for the current frame
-                (xyxy, class_id, confidence, etc.).
+            detections: Current frame detections with xyxy, confidence, class_id.
 
         Returns:
-            sv.Detections: The input detections enriched with tracker_id attribute.
+            Same detections enriched with tracker_id attribute for each box.
         """
         pass
 
     @abstractmethod
     def reset(self) -> None:
-        """Reset tracker state."""
-        pass
+        """Clear all internal tracking state.
 
-
-class BaseTrackerWithFeatures(ABC):
-    """Base class for trackers that require image features (e.g., ReID)."""
-
-    @abstractmethod
-    def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
-        """Update tracker with detections and frame image.
-
-        Args:
-            detections: New detections for the current frame.
-            frame: The current video frame.
-
-        Returns:
-            Detections with tracker_id assigned.
+        Call between videos or when tracking should restart from scratch.
         """
         pass
 
-    @abstractmethod
-    def reset(self) -> None:
-        """Reset tracker state."""
-        pass
+

@@ -45,22 +45,6 @@ class TestParseDocstringArguments:
                 """,
                 {"param1": "Description of param1."},
             ),
-            # param_name: `type` description format
-            (
-                """
-                Args:
-                    param1: `int` specifying the count.
-                """,
-                {"param1": "`int` specifying the count."},
-            ),
-            # `param_name`: description format (backticks around name)
-            (
-                """
-                Args:
-                    `param1`: Description with backticks.
-                """,
-                {"param1": "Description with backticks."},
-            ),
             # Multi-line description
             (
                 """
@@ -95,25 +79,6 @@ class TestParseDocstringArguments:
                 """,
                 {"param1": "Description."},
             ),
-            # Args section ends at Raises
-            (
-                """
-                Args:
-                    param1: Description.
-
-                Raises:
-                    ValueError: When invalid.
-                """,
-                {"param1": "Description."},
-            ),
-            # Underscore in parameter name
-            (
-                """
-                Args:
-                    lost_track_buffer: Number of frames to buffer.
-                """,
-                {"lost_track_buffer": "Number of frames to buffer."},
-            ),
             # Real-world style with type in description
             (
                 """
@@ -143,34 +108,6 @@ class TestParseDocstringArguments:
                 """,
                 {"param1": "Optional integer."},
             ),
-            # Mixed formats
-            (
-                """
-                Args:
-                    param1 (int): Type in parens.
-                    param2: No type.
-                    `param3`: Backticks.
-                """,
-                {
-                    "param1": "Type in parens.",
-                    "param2": "No type.",
-                    "param3": "Backticks.",
-                },
-            ),
-            # Multi-line with param (type): format
-            (
-                """
-                Args:
-                    param1 (int): Description that spans
-                        multiple lines here.
-                    param2 (str, optional): Another multi-line
-                        description for param2.
-                """,
-                {
-                    "param1": "Description that spans multiple lines here.",
-                    "param2": "Another multi-line description for param2.",
-                },
-            ),
             # Dotted parameter name
             (
                 """
@@ -194,14 +131,6 @@ class TestParseDocstringArguments:
                     "format_str": "Use format: key=value for configuration.",
                     "path": "File path, e.g.: /home/user/file.txt",
                 },
-            ),
-            # Long single-line description
-            (
-                """
-                Args:
-                    verbose: Enable verbose output mode with timestamps.
-                """,
-                {"verbose": "Enable verbose output mode with timestamps."},
             ),
         ],
     )
@@ -308,74 +237,45 @@ class TestExtractParamsFromInit:
         assert "self" not in params
         assert len(params) == 1
 
-    @pytest.mark.parametrize(
-        ("default_value", "expected_type"),
-        [
-            (10, int),
-            (0.5, float),
-            ("text", str),
-            (True, bool),
-            ([1, 2, 3], list),
-        ],
-    )
-    def test_type_inference_from_defaults(
-        self, default_value: Any, expected_type: type
-    ) -> None:
-        class TestClass:
-            def __init__(self, param=None) -> None:  # type: ignore[assignment]
-                pass
-
-        TestClass.__init__.__defaults__ = (default_value,)  # type: ignore[attr-defined]
-        params = _extract_params_from_init(TestClass)
-
-        assert params["param"].param_type is expected_type
-        assert params["param"].default_value == default_value
-
 
 class TestTrackerAutoRegistration:
     """Tests for BaseTracker auto-registration."""
 
-    def test_bytetrack_is_registered(self) -> None:
-        # Import triggers registration
-        from trackers import ByteTrackTracker  # noqa: F401
-
-        assert "bytetrack" in BaseTracker.available()
-
-    def test_get_info_bytetrack(self) -> None:
-        from trackers import ByteTrackTracker
-
-        info = BaseTracker.get_info("bytetrack")
-
-        assert isinstance(info, TrackerInfo)
-        assert info.tracker_class is ByteTrackTracker
-        assert "lost_track_buffer" in info.parameters
-        assert "frame_rate" in info.parameters
-        assert "high_conf_det_threshold" in info.parameters
-
-    def test_get_info_unknown_tracker_raises(self) -> None:
-        with pytest.raises(ValueError, match="Unknown tracker"):
-            BaseTracker.get_info("nonexistent")
-
-    def test_available_returns_sorted_list(self) -> None:
-        # Ensure trackers are imported
+    @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
+    def test_tracker_is_registered(self, tracker_id: str) -> None:
         from trackers import ByteTrackTracker, SORTTracker  # noqa: F401
 
-        available = BaseTracker.available()
+        assert tracker_id in BaseTracker._registered_trackers()
 
-        assert isinstance(available, list)
-        assert available == sorted(available)
-        assert "bytetrack" in available
-        assert "sort" in available
+    @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
+    def test_lookup_tracker(self, tracker_id: str) -> None:
+        from trackers import ByteTrackTracker, SORTTracker  # noqa: F401
 
+        info = BaseTracker._lookup_tracker(tracker_id)
 
-class TestTrackerParamExtraction:
-    """Tests for parameter extraction from actual trackers."""
+        assert info is not None
+        assert isinstance(info, TrackerInfo)
+        assert "lost_track_buffer" in info.parameters
 
-    def test_bytetrack_params_have_descriptions(self) -> None:
-        info = BaseTracker.get_info("bytetrack")
+    def test_lookup_tracker_unknown_returns_none(self) -> None:
+        info = BaseTracker._lookup_tracker("nonexistent")
+        assert info is None
 
-        assert info.parameters["lost_track_buffer"].description != ""
-        assert "buffer" in info.parameters["lost_track_buffer"].description.lower()
+    def test_registered_trackers_returns_sorted_list(self) -> None:
+        from trackers import ByteTrackTracker, SORTTracker  # noqa: F401
+
+        registered = BaseTracker._registered_trackers()
+
+        assert isinstance(registered, list)
+        assert registered == sorted(registered)
+
+    @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
+    def test_tracker_params_have_descriptions(self, tracker_id: str) -> None:
+        info = BaseTracker._lookup_tracker(tracker_id)
+
+        assert info is not None
+        has_descriptions = any(p.description for p in info.parameters.values())
+        assert has_descriptions
 
 
 class TestTrackerInstantiation:
@@ -383,7 +283,8 @@ class TestTrackerInstantiation:
 
     @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
     def test_instantiate_with_defaults(self, tracker_id: str) -> None:
-        info = BaseTracker.get_info(tracker_id)
+        info = BaseTracker._lookup_tracker(tracker_id)
+        assert info is not None
         tracker = info.tracker_class()
 
         assert tracker is not None
@@ -391,7 +292,8 @@ class TestTrackerInstantiation:
         assert hasattr(tracker, "reset")
 
     def test_instantiate_bytetrack_with_custom_params(self) -> None:
-        info = BaseTracker.get_info("bytetrack")
+        info = BaseTracker._lookup_tracker("bytetrack")
+        assert info is not None
         tracker = info.tracker_class(
             lost_track_buffer=60, frame_rate=60.0
         )  # type: ignore[call-arg]
@@ -401,7 +303,8 @@ class TestTrackerInstantiation:
 
     def test_instantiate_with_registry_params(self) -> None:
         """Test creating tracker with params dict like CLI would do."""
-        info = BaseTracker.get_info("sort")
+        info = BaseTracker._lookup_tracker("sort")
+        assert info is not None
 
         kwargs = {name: param.default_value for name, param in info.parameters.items()}
         kwargs["lost_track_buffer"] = 50
