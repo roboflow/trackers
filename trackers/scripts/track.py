@@ -73,17 +73,18 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Detection confidence threshold. Default: 0.5",
     )
     model_group.add_argument(
-        "--device",
+        "--model.device",
         type=str,
         default="auto",
+        dest="model_device",
         metavar="DEVICE",
         help="Device: auto, cpu, cuda, cuda:0, mps. Default: auto",
     )
     model_group.add_argument(
-        "--api-key",
+        "--model.api_key",
         type=str,
         default=None,
-        dest="api_key",
+        dest="model_api_key",
         metavar="KEY",
         help="Roboflow API key for custom models.",
     )
@@ -226,7 +227,12 @@ def _add_tracker_params(group: argparse._ArgumentGroup) -> None:
 def run_track(args: argparse.Namespace) -> int:
     """Execute the track command."""
     # Validate output paths
-    _validate_output_paths(args)
+    if args.output:
+        _check_output_writable(
+            _resolve_video_output_path(args.output), overwrite=args.overwrite
+        )
+    if args.mot_output:
+        _check_output_writable(args.mot_output, overwrite=args.overwrite)
 
     # Parse class filter
     class_filter = None
@@ -257,7 +263,10 @@ def run_track(args: argparse.Namespace) -> int:
     annotators, label_annotator = _create_annotators(args)
     trace_annotator = None
     if args.show_trajectories:
-        trace_annotator = sv.TraceAnnotator()
+        trace_annotator = sv.TraceAnnotator(
+            color=COLOR_PALETTE,
+            color_lookup=sv.ColorLookup.TRACK,
+        )
 
     try:
         if args.mot_output:
@@ -268,8 +277,8 @@ def run_track(args: argparse.Namespace) -> int:
             # Get detections
             if model is not None:
                 detections = _run_model_inference(model, frame, args.model_confidence)
-            elif detections_data is not None:
-                detections = _get_frame_detections(detections_data, frame_idx)
+            elif detections_data is not None and frame_idx in detections_data:
+                detections = _mot_frame_to_detections(detections_data[frame_idx])
             else:
                 detections = sv.Detections.empty()
 
@@ -293,8 +302,15 @@ def run_track(args: argparse.Namespace) -> int:
                 for annotator in annotators:
                     annotated = annotator.annotate(annotated, tracked)
                 if label_annotator is not None:
-                    labels = _generate_labels(tracked, class_names, args)
-                    annotated = label_annotator.annotate(annotated, tracked, labels)
+                    labeled = tracked[tracked.tracker_id != -1]
+                    labels = _generate_labels(
+                        labeled,
+                        class_names,
+                        show_ids=args.show_ids,
+                        show_labels=args.show_labels,
+                        show_confidence=args.show_confidence,
+                    )
+                    annotated = label_annotator.annotate(annotated, labeled, labels)
 
                 # Setup video writer on first frame
                 if args.output and video_writer is None:
@@ -321,20 +337,47 @@ def run_track(args: argparse.Namespace) -> int:
     return 0
 
 
-def _validate_output_paths(args: argparse.Namespace) -> None:
-    """Check if output files exist and raise error if --overwrite not set."""
-    paths_to_check = []
+def _resolve_video_output_path(path: Path) -> Path:
+    """Resolve video output path, handling directories.
 
-    if args.output:
-        paths_to_check.append(("--output", args.output))
-    if args.mot_output:
-        paths_to_check.append(("--mot-output", args.mot_output))
+    If path is an existing directory, generates 'output.mp4' inside it.
+    If path has no extension, adds '.mp4'.
+    """
+    if path.is_dir():
+        return path / "output.mp4"
+    if not path.suffix:
+        return path.with_suffix(".mp4")
+    return path
 
-    for arg_name, path in paths_to_check:
-        if path.exists() and not args.overwrite:
-            raise FileExistsError(
-                f"Output file '{path}' already exists. Use --overwrite to replace."
-            )
+
+def _check_output_writable(path: Path, *, overwrite: bool = False) -> None:
+    """Raise FileExistsError if path exists and overwrite is False.
+
+    Args:
+        path: Path to check.
+        overwrite: If True, allow overwriting existing files.
+
+    Raises:
+        FileExistsError: If path exists and overwrite is False.
+    """
+    if path.exists() and not overwrite:
+        raise FileExistsError(
+            f"Output file '{path}' already exists. Use --overwrite to replace."
+        )
+
+
+def _detect_device() -> str:
+    """Auto-detect the best available device."""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return "cuda"
+        if torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+    return "cpu"
 
 
 def _create_model(args: argparse.Namespace):
@@ -344,16 +387,16 @@ def _create_model(args: argparse.Namespace):
     except ImportError as e:
         print(
             "Error: inference-models is required for model-based detection.\n"
-            "Install with: pip install 'trackers[inference]'",
+            "Install with: pip install 'trackers[detection]'",
             file=sys.stderr,
         )
         raise SystemExit(1) from e
 
-    device = None if args.device == "auto" else args.device
+    device = _detect_device() if args.model_device == "auto" else args.model_device
 
     model = AutoModel.from_pretrained(
         args.model,
-        api_key=args.api_key,
+        api_key=args.model_api_key,
         device=device,
     )
     return model
@@ -401,22 +444,17 @@ def _load_mot_detections(path: Path) -> dict[int, "MOTFrameData"]:
     return load_mot_file(path)
 
 
-def _get_frame_detections(
-    detections_data: dict[int, "MOTFrameData"], frame_idx: int
-) -> sv.Detections:
-    """Convert MOTFrameData to sv.Detections for a specific frame."""
-    if frame_idx not in detections_data:
-        return sv.Detections.empty()
+def _mot_frame_to_detections(frame_data: "MOTFrameData") -> sv.Detections:
+    """Convert MOTFrameData to sv.Detections.
 
-    frame_data = detections_data[frame_idx]
+    Args:
+        frame_data: MOT frame data containing boxes in xywh format.
 
-    # Convert xywh to xyxy
-    boxes = frame_data.boxes.copy()
-    boxes[:, 2] = boxes[:, 0] + boxes[:, 2]  # x2 = x + w
-    boxes[:, 3] = boxes[:, 1] + boxes[:, 3]  # y2 = y + h
-
+    Returns:
+        Detections object with boxes converted to xyxy format.
+    """
     return sv.Detections(
-        xyxy=boxes,
+        xyxy=sv.xywh_to_xyxy(frame_data.boxes),
         confidence=frame_data.confidences,
         class_id=frame_data.classes.astype(int),
     )
@@ -488,6 +526,12 @@ def _generate_from_directory(directory: Path) -> Iterator[tuple[int, np.ndarray]
             yield idx, frame
 
 
+COLOR_PALETTE = sv.ColorPalette.from_hex([
+    "#ffff00", "#ff9b00", "#ff8080", "#ff66b2", "#ff66ff", "#b266ff",
+    "#9999ff", "#3399ff", "#66ffff", "#33ff99", "#66ff66", "#99ff00",
+])
+
+
 def _create_annotators(
     args: argparse.Namespace,
 ) -> tuple[list, sv.LabelAnnotator | None]:
@@ -501,13 +545,24 @@ def _create_annotators(
     label_annotator: sv.LabelAnnotator | None = None
 
     if args.show_boxes:
-        annotators.append(sv.BoxAnnotator())
+        annotators.append(sv.BoxAnnotator(
+            color=COLOR_PALETTE,
+            color_lookup=sv.ColorLookup.TRACK,
+        ))
 
     if args.show_masks:
-        annotators.append(sv.MaskAnnotator())
+        annotators.append(sv.MaskAnnotator(
+            color=COLOR_PALETTE,
+            color_lookup=sv.ColorLookup.TRACK,
+        ))
 
     if args.show_labels or args.show_ids or args.show_confidence:
-        label_annotator = sv.LabelAnnotator(text_position=sv.Position.TOP_LEFT)
+        label_annotator = sv.LabelAnnotator(
+            color=COLOR_PALETTE,
+            text_color=sv.Color.BLACK,
+            text_position=sv.Position.TOP_LEFT,
+            color_lookup=sv.ColorLookup.TRACK,
+        )
 
     return annotators, label_annotator
 
@@ -515,25 +570,39 @@ def _create_annotators(
 def _generate_labels(
     detections: sv.Detections,
     class_names: list[str],
-    args: argparse.Namespace,
+    *,
+    show_ids: bool = False,
+    show_labels: bool = False,
+    show_confidence: bool = False,
 ) -> list[str]:
-    """Generate label strings for each detection based on args."""
+    """Generate label strings for each detection.
+
+    Args:
+        detections: Detections to generate labels for.
+        class_names: List of class names for lookup.
+        show_ids: Include tracker IDs in labels.
+        show_labels: Include class names in labels.
+        show_confidence: Include confidence scores in labels.
+
+    Returns:
+        List of label strings, one per detection.
+    """
     labels = []
 
     for i in range(len(detections)):
         parts = []
 
-        if args.show_ids and detections.tracker_id is not None:
+        if show_ids and detections.tracker_id is not None:
             parts.append(f"#{int(detections.tracker_id[i])}")
 
-        if args.show_labels and detections.class_id is not None:
+        if show_labels and detections.class_id is not None:
             class_id = int(detections.class_id[i])
             if class_names and 0 <= class_id < len(class_names):
                 parts.append(class_names[class_id])
             else:
                 parts.append(str(class_id))
 
-        if args.show_confidence and detections.confidence is not None:
+        if show_confidence and detections.confidence is not None:
             parts.append(f"{detections.confidence[i]:.2f}")
 
         labels.append(" ".join(parts))
@@ -571,12 +640,13 @@ def _create_video_writer(output_path: Path, frame: np.ndarray):
     """Create OpenCV VideoWriter for output."""
     import cv2
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    resolved = _resolve_video_output_path(output_path)
+    resolved.parent.mkdir(parents=True, exist_ok=True)
 
     h, w = frame.shape[:2]
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
 
-    return cv2.VideoWriter(str(output_path), fourcc, 30.0, (w, h))
+    return cv2.VideoWriter(str(resolved), fourcc, 30.0, (w, h))
 
 
 def _show_frame(frame: np.ndarray) -> None:

@@ -16,11 +16,11 @@ import pytest
 import supervision as sv
 
 from trackers.scripts.track import (
+    _check_output_writable,
     _create_annotators,
     _create_tracker,
     _generate_labels,
-    _get_frame_detections,
-    _validate_output_paths,
+    _mot_frame_to_detections,
     _write_mot_frame,
     add_track_subparser,
     create_frame_generator,
@@ -48,7 +48,7 @@ class TestAddTrackSubparser:
 
         assert args.model == "rfdetr-nano"
         assert args.model_confidence == 0.5
-        assert args.device == "auto"
+        assert args.model_device == "auto"
         assert args.tracker == "bytetrack"
         assert args.show_boxes is True
         assert args.display is False
@@ -153,44 +153,24 @@ class TestAddTrackSubparser:
         assert args.model_confidence == 0.7
 
 
-class TestValidateOutputPaths:
-    """Tests for _validate_output_paths function."""
+class TestCheckOutputWritable:
+    """Tests for _check_output_writable function."""
 
-    def test_raises_when_output_exists(self, tmp_path: Path) -> None:
+    def test_raises_when_path_exists(self, tmp_path: Path) -> None:
         existing_file = tmp_path / "existing.mp4"
         existing_file.touch()
 
-        args = argparse.Namespace(
-            output=existing_file,
-            mot_output=None,
-            overwrite=False,
-        )
-
         with pytest.raises(FileExistsError, match="already exists"):
-            _validate_output_paths(args)
+            _check_output_writable(existing_file)
 
     def test_allows_overwrite(self, tmp_path: Path) -> None:
         existing_file = tmp_path / "existing.mp4"
         existing_file.touch()
 
-        args = argparse.Namespace(
-            output=existing_file,
-            mot_output=None,
-            overwrite=True,
-        )
-
-        # Should not raise
-        _validate_output_paths(args)
+        _check_output_writable(existing_file, overwrite=True)
 
     def test_allows_nonexistent_path(self, tmp_path: Path) -> None:
-        args = argparse.Namespace(
-            output=tmp_path / "new.mp4",
-            mot_output=None,
-            overwrite=False,
-        )
-
-        # Should not raise
-        _validate_output_paths(args)
+        _check_output_writable(tmp_path / "new.mp4")
 
 
 class TestCreateTracker:
@@ -253,33 +233,28 @@ class TestCreateTracker:
         assert tracker.maximum_frames_without_update == 120  # type: ignore[attr-defined]
 
 
-class TestGetFrameDetections:
-    """Tests for _get_frame_detections function."""
+class TestMotFrameToDetections:
+    """Tests for _mot_frame_to_detections function."""
 
     def test_converts_mot_to_detections(self) -> None:
         from trackers.eval.io import MOTFrameData
 
-        # Create mock MOT data with xywh format
         frame_data = MOTFrameData(
             ids=np.array([1, 2]),
             boxes=np.array([[100, 100, 50, 80], [200, 150, 60, 90]]),  # xywh
             confidences=np.array([0.9, 0.8]),
             classes=np.array([0, 1]),
         )
-        detections_data = {1: frame_data}
 
-        result = _get_frame_detections(detections_data, 1)
+        result = _mot_frame_to_detections(frame_data)
 
         assert len(result) == 2
-        # Check xyxy conversion
         np.testing.assert_array_almost_equal(
             result.xyxy,
             np.array([[100, 100, 150, 180], [200, 150, 260, 240]]),  # xyxy
         )
-
-    def test_returns_empty_for_missing_frame(self) -> None:
-        result = _get_frame_detections({}, 99)
-        assert len(result) == 0
+        np.testing.assert_array_almost_equal(result.confidence, [0.9, 0.8])
+        np.testing.assert_array_equal(result.class_id, [0, 1])
 
 
 class TestWriteMotFrame:
@@ -363,14 +338,8 @@ class TestGenerateLabels:
             xyxy=np.array([[0, 0, 10, 10], [20, 20, 30, 30]]),
             class_id=np.array([0, 1]),
         )
-        class_names = ["person", "car"]
-        args = argparse.Namespace(
-            show_labels=True,
-            show_ids=False,
-            show_confidence=False,
-        )
 
-        labels = _generate_labels(detections, class_names, args)
+        labels = _generate_labels(detections, ["person", "car"], show_labels=True)
 
         assert labels == ["person", "car"]
 
@@ -379,14 +348,8 @@ class TestGenerateLabels:
             xyxy=np.array([[0, 0, 10, 10]]),
             class_id=np.array([5]),
         )
-        class_names = ["person", "car"]  # No index 5
-        args = argparse.Namespace(
-            show_labels=True,
-            show_ids=False,
-            show_confidence=False,
-        )
 
-        labels = _generate_labels(detections, class_names, args)
+        labels = _generate_labels(detections, ["person", "car"], show_labels=True)
 
         assert labels == ["5"]
 
@@ -395,13 +358,8 @@ class TestGenerateLabels:
             xyxy=np.array([[0, 0, 10, 10]]),
             tracker_id=np.array([42]),
         )
-        args = argparse.Namespace(
-            show_labels=False,
-            show_ids=True,
-            show_confidence=False,
-        )
 
-        labels = _generate_labels(detections, [], args)
+        labels = _generate_labels(detections, [], show_ids=True)
 
         assert labels == ["#42"]
 
@@ -412,14 +370,14 @@ class TestGenerateLabels:
             confidence=np.array([0.95]),
             tracker_id=np.array([1]),
         )
-        class_names = ["person"]
-        args = argparse.Namespace(
-            show_labels=True,
+
+        labels = _generate_labels(
+            detections,
+            ["person"],
             show_ids=True,
+            show_labels=True,
             show_confidence=True,
         )
-
-        labels = _generate_labels(detections, class_names, args)
 
         assert labels == ["#1 person 0.95"]
 

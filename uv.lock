@@ -3850,9 +3850,8 @@ dependencies = [
 [package.optional-dependencies]
 cli = [
     { name = "opencv-python" },
-    { name = "rich" },
 ]
-inference = [
+detection = [
     { name = "inference-models" },
 ]
 
@@ -3885,14 +3884,13 @@ mypy-types = [
 
 [package.metadata]
 requires-dist = [
-    { name = "inference-models", marker = "extra == 'inference'", specifier = "==0.18.6rc8" },
+    { name = "inference-models", marker = "extra == 'detection'", specifier = "==0.18.6rc8" },
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "opencv-python", marker = "extra == 'cli'", specifier = ">=4.8.0" },
-    { name = "rich", marker = "extra == 'cli'", specifier = ">=13.0.0" },
     { name = "scipy", specifier = ">=1.13.1" },
     { name = "supervision", specifier = ">=0.26.1" },
 ]
-provides-extras = ["cli", "inference"]
+provides-extras = ["cli", "detection"]
 
 [package.metadata.requires-dev]
 build = [
