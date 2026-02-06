@@ -39,6 +39,8 @@ class SORTTracker(BaseTracker):
             detections to existing tracks. Higher values require more overlap.
     """
 
+    tracker_id = "sort"
+
     def __init__(
         self,
         lost_track_buffer: int = 30,

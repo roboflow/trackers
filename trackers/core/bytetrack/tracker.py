@@ -43,6 +43,8 @@ class ByteTrackTracker(BaseTracker):
             high and low confidence detections in the two-stage association.
     """
 
+    tracker_id = "bytetrack"
+
     def __init__(
         self,
         lost_track_buffer: int = 30,
