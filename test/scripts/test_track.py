@@ -320,7 +320,7 @@ class TestCreateAnnotators:
             show_confidence=False,
         )
 
-        annotators, label_annotator = _create_annotators(args)
+        _annotators, label_annotator = _create_annotators(args)
         assert label_annotator is not None
         assert isinstance(label_annotator, sv.LabelAnnotator)
 
