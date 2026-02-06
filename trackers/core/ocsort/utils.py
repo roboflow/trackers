@@ -16,7 +16,16 @@ import supervision as sv
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 
 
-def speed_direction(bbox1, bbox2):  # from oc sort repo
+def speed_direction(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
+    """Compute normalized direction vector between two bounding box centers.
+
+    Args:
+        bbox1: First bounding box in the form [x1, y1, x2, y2].
+        bbox2: Second bounding box in the form [x1, y1, x2, y2].
+
+    Returns:
+        np.ndarray: Normalized direction vector [dy, dx] from bbox1 to bbox2.
+    """
     cx1, cy1 = (bbox1[0] + bbox1[2]) / 2.0, (bbox1[1] + bbox1[3]) / 2.0
     cx2, cy2 = (bbox2[0] + bbox2[2]) / 2.0, (bbox2[1] + bbox2[3]) / 2.0
     speed = np.array([cy2 - cy1, cx2 - cx1])
@@ -25,10 +34,22 @@ def speed_direction(bbox1, bbox2):  # from oc sort repo
 
 
 def build_direction_consistency_matrix(
-    # could we try to vectorize this? yes, lets compare both methods later
     tracklets: list[OCSORTTracklet],
     detection_boxes: np.ndarray,
 ) -> np.ndarray:
+    """Build direction consistency cost matrix (OCM) between tracklet velocities
+    and detection associations.
+
+    This is the non-batch version kept for reference. Use
+    `build_direction_consistency_matrix_batch` for production.
+
+    Args:
+        tracklets: List of OCSORTTracklet objects.
+        detection_boxes: Detection bounding boxes [x1, y1, x2, y2].
+
+    Returns:
+        np.ndarray: Direction consistency cost matrix (n_tracklets, n_detections).
+    """
     n_tracklets = len(tracklets)
     n_detections = detection_boxes.shape[0]
     direction_consistency_matrix = np.zeros(
@@ -36,9 +57,8 @@ def build_direction_consistency_matrix(
     )
 
     for t, tracklet in enumerate(tracklets):
-        if tracklet.previous_to_last_observation is None:  # if there is no previous box
+        if tracklet.previous_to_last_observation is None:
             continue
-        # In case the track is lost we use the last known box
         last_observation = tracklet.last_observation
         tracklet_speed = speed_direction(
             tracklet.previous_to_last_observation, last_observation
@@ -48,23 +68,27 @@ def build_direction_consistency_matrix(
             detection_box = detection_boxes[d]
             association_speed = speed_direction(last_observation, detection_box)
 
-            # Compute cosine similarity
             cos_sim = np.dot(tracklet_speed, association_speed)
             cos_sim = np.clip(cos_sim, -1.0, 1.0)
-            # Apply the same transformation as original
             angle = np.arccos(cos_sim)
             direction_consistency_matrix[t, d] = (np.pi / 2.0 - np.abs(angle)) / np.pi
-            #direction_consistency_matrix[t, d] = cos_sim
 
     return direction_consistency_matrix
 
 
-def speed_direction_batch(dets, tracks):  # From oc sort repo
-    """Function for calculating direction between detections and tracks in a batch way.
+def speed_direction_batch(
+    dets: np.ndarray, tracks: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute normalized direction vectors from tracks to detections in batch.
 
     Args:
-        dets: Detected bounding boxes in the form [x1, y1, x2, y2].
-        tracks: Tracked bounding boxes in the form [x1, y1, x2, y2]."""
+        dets: Detection bounding boxes [x1, y1, x2, y2], shape (n_dets, 4).
+        tracks: Track bounding boxes [x1, y1, x2, y2], shape (n_tracks, 4).
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: (dy, dx) direction vectors,
+            each of shape (n_tracks, n_dets).
+    """
     tracks = tracks[..., np.newaxis]
     CX1, CY1 = (dets[:, 0] + dets[:, 2]) / 2.0, (dets[:, 1] + dets[:, 3]) / 2.0
     CX2, CY2 = (tracks[:, 0] + tracks[:, 2]) / 2.0, (tracks[:, 1] + tracks[:, 3]) / 2.0
@@ -73,20 +97,31 @@ def speed_direction_batch(dets, tracks):  # From oc sort repo
     norm = np.sqrt(dx**2 + dy**2) + 1e-6
     dx = dx / norm
     dy = dy / norm
-    return dy, dx  # size: num_track x num_det
+    return dy, dx
 
 
 def build_direction_consistency_matrix_batch(
-    # vectorized version from oc sort repo but adapted to our tracklet class
     tracklets: list[OCSORTTracklet],
     detection_boxes: np.ndarray,
 ) -> np.ndarray:
+    """Build direction consistency cost matrix (OCM) in batch - vectorized version.
+
+    Computes similarity between tracklet velocity vectors and potential
+    association directions. Used in OC-SORT for motion-aware association.
+
+    Args:
+        tracklets: List of OCSORTTracklet objects.
+        detection_boxes: Detection bounding boxes [x1, y1, x2, y2].
+
+    Returns:
+        np.ndarray: Direction consistency cost matrix (n_tracklets, n_detections).
+    """
     n_tracklets = len(tracklets)
     n_detections = detection_boxes.shape[0] if len(detection_boxes) > 0 else 0
-    
+
     if n_tracklets == 0 or n_detections == 0:
         return np.zeros((n_tracklets, n_detections), dtype=np.float32)
-    
+
     # Compute tracklet velocities (from previous_to_last -> last_observation)
     velocities = np.array(
         [
@@ -98,22 +133,24 @@ def build_direction_consistency_matrix_batch(
             for tracklet in tracklets
         ]
     )  # shape: (n_tracklets, 2) where each row is [dy, dx]
-    
+
     # Get last observations as array for batch direction computation
     last_obs = np.array([tracklet.last_observation for tracklet in tracklets])
-    
+
     # Compute association directions (from last_observation -> detection) in batch
     # speed_direction_batch expects (dets, tracks) and returns (dy, dx) each of shape (n_tracks, n_dets)
-    Y, X = speed_direction_batch(detection_boxes, last_obs)  # (n_tracklets, n_detections)
-    
+    Y, X = speed_direction_batch(
+        detection_boxes, last_obs
+    )  # (n_tracklets, n_detections)
+
     # Expand velocities for broadcasting
     inertia_Y = velocities[:, 0:1]  # (n_tracklets, 1)
     inertia_X = velocities[:, 1:2]  # (n_tracklets, 1)
-    
+
     # Compute cosine similarity (dot product of normalized vectors)
     diff_angle_cos = inertia_X * X + inertia_Y * Y  # (n_tracklets, n_detections)
     diff_angle_cos = np.clip(diff_angle_cos, -1.0, 1.0)
-    
+
     # Apply same transformation as non-batch version
     diff_angle = np.arccos(diff_angle_cos)
     angle_diff_cost = (np.pi / 2.0 - np.abs(diff_angle)) / np.pi
@@ -121,9 +158,9 @@ def build_direction_consistency_matrix_batch(
     # Mask out tracklets without previous observation
     valid_mask = np.array(
         [tracklet.previous_to_last_observation is not None for tracklet in tracklets],
-        dtype=np.float32
+        dtype=np.float32,
     )[:, np.newaxis]  # (n_tracklets, 1)
-    
+
     angle_diff_cost = valid_mask * angle_diff_cost
 
     return angle_diff_cost.astype(np.float32)
@@ -134,30 +171,28 @@ def add_track_id_detections(
     detection: sv.Detections,
     updated_detections: list[sv.Detections],
     minimum_consecutive_frames: int,
-    frame_count: int
-) -> sv.Detections:
-    """
-    The function prepares the updated Detections with track IDs.
-    If a tracker is "mature" (>= `minimum_consecutive_frames`) or recently updated,
-    it is assigned an ID to the detection that just updated it.
+    frame_count: int,
+) -> None:
+    """Assign track ID to detection and add to updated_detections list.
+
+    Handles ID assignment based on track maturity:
+    - Early frames (frame_count < minimum_consecutive_frames): Assign ID if
+      track was just updated and doesn't have an ID yet.
+    - Later frames: Assign ID only if track is mature (has enough consecutive
+      updates). Immature tracks get tracker_id = -1.
 
     Args:
-        detections: The latest set of object detections.
-        tracklets: List of OCSORTTracklet objects.
-        updated_detections: List of detections in which we add detections with assigned track IDs.
-        minimum_consecutive_frames: The number of consecutive frames required for a track to be considered "mature".
-        frame_count: The current frame count in the tracking process.    
-    Returns:
-        sv.Detections: A copy of the detections with `tracker_id` set
-            for each detection that is tracked.
-    """  # noqa: E501
+        track: The tracklet being processed.
+        detection: The detection to assign an ID to.
+        updated_detections: List to append the updated detection to.
+        minimum_consecutive_frames: Frames required for track maturity.
+        frame_count: Current frame number in tracking process.
+    """
     new_det = deepcopy(detection)
-    # Add cast to clarify type for mypy
-    new_det = cast(sv.Detections, new_det)  # ADDED cast
+    new_det = cast(sv.Detections, new_det)
     is_mature = (
-                    track.number_of_successful_consecutive_updates
-                    >= minimum_consecutive_frames
-                )
+        track.number_of_successful_consecutive_updates >= minimum_consecutive_frames
+    )
     if frame_count < minimum_consecutive_frames:
         if track.time_since_update == 0:
             if track.tracker_id == -1:
@@ -178,19 +213,17 @@ def add_track_id_detections(
 def get_iou_matrix(
     trackers: Sequence[OCSORTTracklet], detection_boxes: np.ndarray
 ) -> np.ndarray:
-    """
-    Build IOU cost matrix between detections and predicted bounding boxes
+    """Build IOU cost matrix between trackers and detections.
 
     Args:
-        detection_boxes: Detected bounding boxes in the
-            form [x1, y1, x2, y2].
+        trackers: Sequence of OCSORTTracklet objects.
+        detection_boxes: Detection bounding boxes [x1, y1, x2, y2].
 
     Returns:
-        np.ndarray: IOU cost matrix.
+        np.ndarray: IOU matrix of shape (n_trackers, n_detections).
     """
     predicted_boxes = np.array([t.get_state_bbox() for t in trackers])
     if len(predicted_boxes) == 0 and len(trackers) > 0:
-        # Handle case where get_state_bbox might return empty array
         predicted_boxes = np.zeros((len(trackers), 4), dtype=np.float32)
 
     if len(trackers) > 0 and len(detection_boxes) > 0:
@@ -204,20 +237,16 @@ def get_iou_matrix(
 def get_iou_matrix_between_boxes(
     last_observations: np.ndarray, detection_boxes: np.ndarray
 ) -> np.ndarray:
-    """
-    Build IOU cost matrix between detections and predicted bounding boxes
+    """Build IOU cost matrix between two sets of bounding boxes.
 
     Args:
-        last_observations: Last observed bounding boxes of tracks in the
-            form [x1, y1, x2, y2].
-        detection_boxes: Detected bounding boxes in the
-            form [x1, y1, x2, y2].
+        last_observations: First set of boxes [x1, y1, x2, y2].
+        detection_boxes: Second set of boxes [x1, y1, x2, y2].
 
     Returns:
-        np.ndarray: IOU cost matrix.
+        np.ndarray: IOU matrix of shape (n_observations, n_detections).
     """
     if len(last_observations) == 0 and len(last_observations) > 0:
-        # Handle case where get_state_bbox might return empty array
         last_observations = np.zeros((len(last_observations), 4), dtype=np.float32)
 
     if len(last_observations) > 0 and len(detection_boxes) > 0:
