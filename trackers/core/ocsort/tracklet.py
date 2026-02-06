@@ -1,64 +1,46 @@
+from copy import deepcopy
+
 import numpy as np
 
-from trackers.core.ocsort.kalman_filter_ocsort import (
-    KalmanFilterNew as KalmanFilterOCSORT,
-)
 from trackers.utils.converters import (
     xcycsr_to_xyxy,
     xyxy_to_xcycsr,
 )
+from trackers.utils.kalman_filter import KalmanFilter
 
 
 class OCSORTTracklet:
-    """
-    The `OCSORTTracklet` class represents the internals of a single
-    tracked object (bounding box), with a Kalman filter to predict and update
-    its position.
+    """Tracklet for OC-SORT tracker with ORU (Observation-centric Re-Update).
+
+    Manages a single tracked object with Kalman filter state estimation.
+    Implements OC-SORT specific features:
+    - Freeze/unfreeze for saving state before track is lost
+    - Virtual trajectory generation (ORU) for recovering lost tracks
+
     Attributes:
         age: Age of the tracklet in frames.
-        kalman_filter: The Kalman filter instance for this tracklet.
-        tracker_id: Unique identifier for the tracker.
-        state_transition_matrix: State transition matrix for the Kalman filter. (referred as F)
-        number_of_successful_consecutive_updates: Number of times the object has been
-            updated successfully in a row.
-        time_since_update: Number of frames since the last update.
-        last_observation: The last observed bounding box.
-        previous_to_last_observation: The bounding box observed before the last one.
-        kalman_filter_state_before_being_lost: The Kalman filter state before the tracklet was lost.
-        kalman_filter_parameters_before_being_lost:  The Kalman filter parameters before the tracklet was lost.
-    """  # noqa: E501
+        kalman_filter: The Kalman filter instance for state estimation.
+        tracker_id: Unique identifier (-1 until track is mature).
+        number_of_successful_consecutive_updates: Consecutive successful updates.
+        time_since_update: Frames since last observation.
+        last_observation: Last observed bounding box [x1, y1, x2, y2].
+        previous_to_last_observation: Second-to-last observation for velocity.
+    """
 
     count_id: int = 0
 
-    def __init__(self, initial_bbox) -> None:
+    def __init__(self, initial_bbox: np.ndarray) -> None:
+        """Initialize tracklet with first detection.
+
+        Args:
+            initial_bbox: Initial bounding box [x1, y1, x2, y2].
+        """
         self.age = 0
-        # state format: (x, y, s, r, vx, vy, vs). As detailed in SORT paper, r is the aspect ratio and constant! # noqa: E501
-        # self.kalman_filter = KalmanFilter(
-        #     bbox=xyxy_to_xcycsr(initial_bbox),
-        #     state_dim=7,
-        #     state_transition_matrix=np.array(
-        #         [
-        #             [1, 0, 0, 0, 1, 0, 0],
-        #             [0, 1, 0, 0, 0, 1, 0],
-        #             [0, 0, 1, 0, 0, 0, 1],
-        #             [0, 0, 0, 1, 0, 0, 0],
-        #             [0, 0, 0, 0, 1, 0, 0],
-        #             [0, 0, 0, 0, 0, 1, 0],
-        #             [0, 0, 0, 0, 0, 0, 1],
-        #         ]
-        #     ),
-        # )
 
-        # self.kalman_filter.R[2:, 2:] *= 10.0
-        # self.kalman_filter.P[4:, 4:] *= (
-        #     1000.0  # give high uncertainty to the unobservable initial velocities
-        # )
-        # self.kalman_filter.P *= 10.0
-        # self.kalman_filter.Q[-1, -1] *= 0.01
-        # self.kalman_filter.Q[4:, 4:] *= 0.01
-        self.kalman_filter = KalmanFilterOCSORT(dim_x=7, dim_z=4)
+        # Initialize Kalman filter: state (x, y, s, r, vx, vy, vs)
+        self.kalman_filter = KalmanFilter(dim_x=7, dim_z=4)
 
-        # State (x,y,s,r,vx,vy,vs): constant velocity model
+        # State transition: constant velocity model
         self.kalman_filter.F = np.array(
             [
                 [1, 0, 0, 0, 1, 0, 0],
@@ -71,7 +53,8 @@ class OCSORTTracklet:
             ],
             dtype=np.float64,
         )
-        # Observe (x, y, s, r) from state
+
+        # Measurement function: observe (x, y, s, r) from state
         self.kalman_filter.H = np.array(
             [
                 [1, 0, 0, 0, 0, 0, 0],
@@ -82,116 +65,148 @@ class OCSORTTracklet:
             dtype=np.float64,
         )
 
+        # Noise tuning (from OC-SORT paper)
         self.kalman_filter.R[2:, 2:] *= 10.0
-        self.kalman_filter.P[4:, 4:] *= (
-            1000.0  # give high uncertainty to the unobservable initial velocities
-        )
+        self.kalman_filter.P[4:, 4:] *= 1000.0  # high uncertainty for velocities
         self.kalman_filter.P *= 10.0
         self.kalman_filter.Q[-1, -1] *= 0.01
         self.kalman_filter.Q[4:, 4:] *= 0.01
 
+        # Initialize state with first observation
         self.kalman_filter.x[:4] = xyxy_to_xcycsr(initial_bbox).reshape((4, 1))
-        self.last_observation = initial_bbox  # None
-        self.previous_to_last_observation = None  # For velocity of track
 
-        # Will be assigned a real ID when the track is considered mature
+        # Observation history for ORU
+        self.last_observation = initial_bbox
+        self.previous_to_last_observation: np.ndarray | None = None
+
+        # Track ID (-1 until mature)
         self.tracker_id = -1
 
-        # Number of hits indicates how many times the object has been
-        # updated successfully
+        # Tracking counters
         self.number_of_successful_consecutive_updates = 1
-        # Number of frames since the last update
         self.time_since_update = 0
-        # self.save_kalman_filter_state()
 
-    # def save_kalman_filter_state(self) -> None:
-    #     """Saves the current Kalman filter state and parameters."""
-    #     self.kalman_filter_state_before_being_lost = self.kalman_filter.state.copy()
-    #     self.kalman_filter_parameters_before_being_lost = {
-    #         "H": self.kalman_filter.H.copy(),
-    #         "Q": self.kalman_filter.Q.copy(),
-    #         "R": self.kalman_filter.R.copy(),
-    #         "P": self.kalman_filter.P.copy(),
-    #     }
+        # ORU: saved state for freeze/unfreeze
+        self._frozen_state: dict | None = None
+        self._observed = True
 
     @classmethod
     def get_next_tracker_id(cls) -> int:
+        """Get next available tracker ID."""
         next_id = cls.count_id
         cls.count_id += 1
         return next_id
 
-    def update(self, bbox: np.ndarray) -> None:
-        """Updates the tracklet with a new bounding box observation.
+    def _freeze(self) -> None:
+        """Save Kalman filter state before track is lost (ORU mechanism)."""
+        self._frozen_state = self.kalman_filter.get_state()
+
+    def _unfreeze(self, new_bbox: np.ndarray) -> None:
+        """Restore state and apply virtual trajectory (ORU mechanism).
+
+        Generates linear interpolation between last observation and new
+        detection, then re-updates the Kalman filter through this virtual
+        trajectory.
 
         Args:
-            bbox (np.ndarray): The new bounding box in the form [x1, y1, x2, y2].
+            new_bbox: New observation bounding box [x1, y1, x2, y2].
+        """
+        if self._frozen_state is None:
+            return
+
+        # Restore to frozen state
+        self.kalman_filter.set_state(self._frozen_state)
+
+        # Convert to (x, y, s, r) format
+        last_xcycsr = xyxy_to_xcycsr(self.last_observation)
+        new_xcycsr = xyxy_to_xcycsr(new_bbox)
+
+        # Convert s, r back to w, h for interpolation
+        x1, y1, s1, r1 = last_xcycsr
+        w1 = np.sqrt(s1 * r1)
+        h1 = np.sqrt(s1 / r1)
+
+        x2, y2, s2, r2 = new_xcycsr
+        w2 = np.sqrt(s2 * r2)
+        h2 = np.sqrt(s2 / r2)
+
+        # Linear interpolation through missed frames
+        time_gap = self.time_since_update
+        dx = (x2 - x1) / time_gap
+        dy = (y2 - y1) / time_gap
+        dw = (w2 - w1) / time_gap
+        dh = (h2 - h1) / time_gap
+
+        for i in range(1, time_gap + 1):
+            # Interpolate position and size
+            x = x1 + i * dx
+            y = y1 + i * dy
+            w = w1 + i * dw
+            h = h1 + i * dh
+
+            # Convert back to (x, y, s, r)
+            s = w * h
+            r = w / h
+            virtual_obs = np.array([x, y, s, r]).reshape((4, 1))
+
+            # Re-update through virtual trajectory
+            if i < time_gap:
+                self.kalman_filter.predict()
+            self.kalman_filter.update(virtual_obs)
+
+        self._frozen_state = None
+
+    def update(self, bbox: np.ndarray | None) -> None:
+        """Update tracklet with new observation.
+
+        Handles ORU: if track was lost and now observed again,
+        generates virtual trajectory to smooth the transition.
+
+        Args:
+            bbox: Bounding box [x1, y1, x2, y2] or None for no observation.
         """
         if bbox is not None:
-            self.kalman_filter.update(xyxy_to_xcycsr(bbox))
-            # save the last before being lost KF parameters for re-updating
+            # Check if we need to unfreeze (was lost, now observed)
+            if not self._observed and self._frozen_state is not None:
+                self._unfreeze(bbox)
+            else:
+                self.kalman_filter.update(xyxy_to_xcycsr(bbox))
+
+            self._observed = True
             self.time_since_update = 0
             self.number_of_successful_consecutive_updates += 1
             self.previous_to_last_observation = self.last_observation
             self.last_observation = bbox
         else:
+            # No observation - freeze state if this is first miss
+            if self._observed:
+                self._freeze()
+            self._observed = False
             self.kalman_filter.update(None)
 
     def predict(self) -> np.ndarray:
-        """Predicts the next bounding box position using the Kalman filter.
+        """Predict next bounding box position.
 
         Returns:
-            np.ndarray: The predicted bounding box in the form [x1, y1, x2, y2].
+            Predicted bounding box [x1, y1, x2, y2].
         """
         self.kalman_filter.predict()
         self.age += 1
+
         if self.time_since_update > 0:
             self.number_of_successful_consecutive_updates = 0
 
         self.time_since_update += 1
-        return xcycsr_to_xyxy(self.kalman_filter.x[:4].reshape((4)))
+        return xcycsr_to_xyxy(self.kalman_filter.x[:4].reshape((4,)))
 
-    def is_lost(
-        self,
-    ) -> bool:
-        """Determines if the tracklet is considered lost."""
+    def is_lost(self) -> bool:
+        """Check if tracklet is considered lost."""
         return self.time_since_update > 1
 
-    # def re_update(self, bbox: np.ndarray) -> None:
-    #     """Re-updates the tracklet with the virtual trajectory generated out of the line that joins
-    #     the last_observation and the parameter bbox.
-
-    #     Args:
-    #         bbox: The new bounding box in the form [x1, y1, x2, y2].
-    #     """
-    #     self.kalman_filter.state = self.kalman_filter_state_before_being_lost
-    #     self.kalman_filter.set_parameters(
-    #         **self.kalman_filter_parameters_before_being_lost
-    #     )
-    #     bbox_xywh = xyxy_to_xywh(np.array([bbox]))[0]
-    #     last_observation_xywh = xyxy_to_xywh(np.array([self.last_observation]))[0]
-    #     for i in range(1, self.time_since_update + 1):
-    #         # Interpolate linearly between last_observation and bbox
-    #         virtual_bbox_xywh = last_observation_xywh + (
-    #             bbox_xywh - last_observation_xywh
-    #         ) * (i / (self.time_since_update))
-    #         virtual_bbox_xysa = np.copy(virtual_bbox_xywh)
-    #         s = virtual_bbox_xywh[2] * virtual_bbox_xywh[3]  # w*h
-    #         virtual_bbox_xysa[2] = s
-    #         virtual_bbox_xysa[3] = (
-    #             virtual_bbox_xywh[2] / virtual_bbox_xywh[3]
-    #         )  # w/h = r
-
-    #         self.kalman_filter.predict()
-    #         self.kalman_filter.update(virtual_bbox_xysa)
-
-    #     self.previous_to_last_observation = self.last_observation
-    #     self.last_observation = bbox
-    #     self.time_since_update = 0
-
     def get_state_bbox(self) -> np.ndarray:
-        """Returns the current bounding box estimate from the Kalman filter.
+        """Get current bounding box estimate from Kalman filter.
 
         Returns:
-            np.ndarray: The current bounding box in the form [x1, y1, x2, y2].
+            Current bounding box estimate [x1, y1, x2, y2].
         """
-        return xcycsr_to_xyxy(self.kalman_filter.x[:4].reshape((4)))
+        return xcycsr_to_xyxy(self.kalman_filter.x[:4].reshape((4,)))

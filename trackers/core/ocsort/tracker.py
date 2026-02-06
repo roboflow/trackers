@@ -68,6 +68,7 @@ class OCSORTTracker(BaseTracker):
         # Active tracks
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
+
     def _get_associated_indices(
         self,
         iou_matrix: np.ndarray,
@@ -176,8 +177,11 @@ class OCSORTTracker(BaseTracker):
         for row, col in matched_indices:
             self.tracks[row].update(detection_boxes[col])
             add_track_id_detections(
-                self.tracks[row], detections[col : col + 1], updated_detections, 
-                self.minimum_consecutive_frames, self.frame_count
+                self.tracks[row],
+                detections[col : col + 1],
+                updated_detections,
+                self.minimum_consecutive_frames,
+                self.frame_count,
             )
 
         # Run 2nd Chance Association (OCR)
@@ -219,9 +223,7 @@ class OCSORTTracker(BaseTracker):
             self._spawn_new_tracklets(
                 detections[unmatched_detections], ocr_unmatched_detections
             )
-            left_detections = detections[unmatched_detections][
-                ocr_unmatched_detections
-            ]
+            left_detections = detections[unmatched_detections][ocr_unmatched_detections]
             left_detections.tracker_id = np.array(
                 [-1] * len(left_detections), dtype=int
             )
