@@ -39,35 +39,7 @@ def frames_from_source(
         ValueError: Source cannot be opened or directory contains no supported images.
         OSError: Image file exists but cannot be decoded / read.
         RuntimeError: Capture read failure after successful open.
-
-    Examples:
-        >>> from trackers import frames_from_source
-        >>> import cv2
-        >>>
-        >>> # Video file
-        >>> for frame_id, frame in frames_from_source("video.mp4"):  # doctest: +SKIP
-        ...     cv2.imshow("frame", frame)
-        ...     if cv2.waitKey(1) & 0xFF == ord("q"):
-        ...         break
-        >>>
-        >>> # Webcam
-        >>> for frame_id, frame in frames_from_source(0):  # doctest: +SKIP
-        ...     cv2.imshow("frame", frame)
-        ...     if cv2.waitKey(1) & 0xFF == ord("q"):
-        ...         break
-        >>>
-        >>> # Network stream
-        >>> for frame_id, frame in frames_from_source("rtsp://192.168.1.100:554/stream1"):  # doctest: +SKIP
-        ...     cv2.imshow("frame", frame)
-        ...     if cv2.waitKey(1) & 0xFF == ord("q"):
-        ...         break
-        >>>
-        >>> # MOT17-style image sequence
-        >>> for frame_id, frame in frames_from_source("MOT17/train/MOT17-02-FRCNN/img1"):  # doctest: +SKIP
-        ...     cv2.imshow("frame", frame)
-        ...     if cv2.waitKey(1) & 0xFF == ord("q"):
-        ...         break
-    """  # noqa: E501
+    """
     if isinstance(source, (str, Path)) and Path(source).is_dir():
         yield from _iter_image_folder_frames(Path(source))
     else:
@@ -117,25 +89,41 @@ def _iter_image_folder_frames(
 class _VideoOutput:
     """Context manager for lazy video file writing."""
 
-    def __init__(self, path: Path | None):
+    def __init__(self, path: Path | None, *, fps: float = 30.0):
         self.path = path
+        self.fps = fps
         self._writer: cv2.VideoWriter | None = None
 
-    def write(self, frame: np.ndarray) -> None:
-        """Write a frame to the video file. Initializes writer on first call."""
-        if self.path is None:
-            return
-        if self._writer is None:
-            self._writer = self._create_writer(frame, self.path)
-        self._writer.write(frame)
+    def write(self, frame: np.ndarray) -> bool:
+        """Write a frame to the video file. Initializes writer on first call.
 
-    def _create_writer(self, frame: np.ndarray, path: Path) -> cv2.VideoWriter:
-        resolved = _resolve_video_output_path(path)
+        Returns:
+            True if write succeeded or path is None, False on failure.
+        """
+        if self.path is None:
+            return True
+        if self._writer is None:
+            self._writer = self._create_writer(frame)
+            if self._writer is None:
+                return False
+        self._writer.write(frame)
+        return True
+
+    def _create_writer(self, frame: np.ndarray) -> cv2.VideoWriter | None:
+        if self.path is None:
+            return None
+
+        resolved = _resolve_video_output_path(self.path)
         resolved.parent.mkdir(parents=True, exist_ok=True)
 
         h, w = frame.shape[:2]
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
-        return cv2.VideoWriter(str(resolved), fourcc, 30.0, (w, h))
+        writer = cv2.VideoWriter(str(resolved), fourcc, self.fps, (w, h))
+
+        if not writer.isOpened():
+            raise OSError(f"Failed to open video writer for '{resolved}'")
+
+        return writer
 
     def __enter__(self):
         return self
@@ -146,25 +134,32 @@ class _VideoOutput:
 
 
 class _DisplayWindow:
-    """Context manager for OpenCV display window."""
+    """Context manager for OpenCV display window with resizable output."""
 
     def __init__(self, window_name: str = "Tracking"):
         self.window_name = window_name
         self._quit_requested = False
+        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
 
-    def show(self, frame: np.ndarray) -> None:
-        """Display a frame and check for quit key."""
+    def show(self, frame: np.ndarray) -> bool:
+        """Display a frame and check for quit key (q or ESC).
+
+        Returns:
+            True if quit was requested, False otherwise.
+        """
         cv2.imshow(self.window_name, frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord("q") or key == 27:
             self._quit_requested = True
+        return self._quit_requested
 
     @property
     def quit_requested(self) -> bool:
-        """Return True if user pressed 'q' to quit."""
+        """Return True if user pressed quit key."""
         return self._quit_requested
 
     def __enter__(self):
         return self
 
     def __exit__(self, *_):
-        cv2.destroyAllWindows()
+        cv2.destroyWindow(self.window_name)
