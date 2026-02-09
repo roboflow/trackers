@@ -289,5 +289,3 @@ class BaseTracker(ABC):
         Call between videos or when tracking should restart from scratch.
         """
         pass
-
-

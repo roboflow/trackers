@@ -119,7 +119,7 @@ class VideoOutput:
 
     def __init__(self, path: Path | None):
         self.path = path
-        self._writer = None
+        self._writer: cv2.VideoWriter | None = None
 
     def write(self, frame: np.ndarray) -> None:
         """Write a frame to the video file. Initializes writer on first call."""
@@ -129,7 +129,7 @@ class VideoOutput:
             self._writer = self._create_writer(frame, self.path)
         self._writer.write(frame)
 
-    def _create_writer(self, frame: np.ndarray, path: Path):
+    def _create_writer(self, frame: np.ndarray, path: Path) -> cv2.VideoWriter:
         resolved = resolve_video_output_path(path)
         resolved.parent.mkdir(parents=True, exist_ok=True)
 
