@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+"""MOT Challenge format I/O utilities."""
+
 from __future__ import annotations
 
 import csv
@@ -11,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import supervision as sv
 
 from trackers.eval.box import box_iou
 
@@ -34,6 +37,14 @@ class MOTFrameData:
     boxes: np.ndarray
     confidences: np.ndarray
     classes: np.ndarray
+
+    def _to_detections(self) -> sv.Detections:
+        """Convert to sv.Detections with boxes in xyxy format."""
+        return sv.Detections(
+            xyxy=sv.xywh_to_xyxy(self.boxes),
+            confidence=self.confidences,
+            class_id=self.classes.astype(int),
+        )
 
 
 @dataclass
@@ -101,7 +112,7 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
         ValueError: If the file is empty or has invalid format.
 
     Examples:
-        >>> from trackers.eval import load_mot_file  # doctest: +SKIP
+        >>> from trackers.io import load_mot_file  # doctest: +SKIP
         >>>
         >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
         >>>
@@ -210,7 +221,8 @@ def prepare_mot_sequence(
         `MOTSequenceData` containing prepared data ready for metric evaluation.
 
     Examples:
-        >>> from trackers.eval import load_mot_file, prepare_mot_sequence  # doctest: +SKIP
+        >>> from trackers.io import load_mot_file  # doctest: +SKIP
+        >>> from trackers.io import prepare_mot_sequence  # doctest: +SKIP
         >>>
         >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
         >>> tracker_data = load_mot_file("data/trackers/MOT17-02.txt")  # doctest: +SKIP
@@ -221,7 +233,7 @@ def prepare_mot_sequence(
         >>>
         >>> data.num_gt_ids  # doctest: +SKIP
         54
-    """  # noqa: E501
+    """
     gt_frames = set(gt_data.keys()) if gt_data else set()
     tracker_frames = set(tracker_data.keys()) if tracker_data else set()
     all_frames = gt_frames | tracker_frames
@@ -301,3 +313,46 @@ def prepare_mot_sequence(
         gt_id_mapping=gt_id_mapping,
         tracker_id_mapping=tracker_id_mapping,
     )
+
+
+class MOTOutput:
+    """Context manager for MOT format file writing."""
+
+    def __init__(self, path: Path | None):
+        self.path = path
+        self._file = None
+
+    def write(self, frame_idx: int, detections: sv.Detections) -> None:
+        """Write detections for a frame in MOT format."""
+        if self._file is None or len(detections) == 0:
+            return
+
+        for i in range(len(detections)):
+            x1, y1, x2, y2 = detections.xyxy[i]
+            w, h = x2 - x1, y2 - y1
+
+            track_id = (
+                int(detections.tracker_id[i])
+                if detections.tracker_id is not None
+                else -1
+            )
+            conf = (
+                float(detections.confidence[i])
+                if detections.confidence is not None
+                else -1.0
+            )
+
+            self._file.write(
+                f"{frame_idx},{track_id},{x1:.2f},{y1:.2f},{w:.2f},{h:.2f},"
+                f"{conf:.4f},-1,-1,-1\n"
+            )
+
+    def __enter__(self):
+        if self.path is not None:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self._file = open(self.path, "w")
+        return self
+
+    def __exit__(self, *_):
+        if self._file is not None:
+            self._file.close()

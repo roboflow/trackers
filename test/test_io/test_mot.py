@@ -13,13 +13,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from trackers.eval.io import (
-    load_mot_file,
-)
-
-# ============================================================================
-# load_mot_file tests
-# ============================================================================
+from trackers.io import load_mot_file
 
 
 def test_load_mot_file_valid(tmp_path: Path) -> None:

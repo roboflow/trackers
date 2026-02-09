@@ -11,16 +11,34 @@ from __future__ import annotations
 
 import argparse
 import sys
+from contextlib import nullcontext
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterator
 
 import numpy as np
 import supervision as sv
 
+from trackers import best_device, frames_from_source
 from trackers.core.base import BaseTracker
+from trackers.io import (
+    DisplayWindow,
+    MOTOutput,
+    VideoOutput,
+    load_mot_file,
+    resolve_video_output_path,
+    validate_output_path,
+)
 
-if TYPE_CHECKING:
-    from trackers.eval.io import MOTFrameData
+# Defaults
+DEFAULT_MODEL = "rfdetr-nano"
+DEFAULT_TRACKER = "bytetrack"
+DEFAULT_CONFIDENCE = 0.5
+DEFAULT_DEVICE = "auto"
+
+# Visualization
+COLOR_PALETTE = sv.ColorPalette.from_hex([
+    "#ffff00", "#ff9b00", "#ff8080", "#ff66b2", "#ff66ff", "#b266ff",
+    "#9999ff", "#3399ff", "#66ffff", "#33ff99", "#66ff66", "#99ff00",
+])
 
 
 def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
@@ -44,15 +62,15 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
 
     # Detection options (mutually exclusive)
     detection_group = parser.add_argument_group("detection")
-    det_mutex = detection_group.add_mutually_exclusive_group()
+    det_mutex = detection_group.add_mutually_exclusive_group(required=True)
     det_mutex.add_argument(
         "--model",
         type=str,
-        default="rfdetr-nano",
+        default=DEFAULT_MODEL,
         metavar="ID",
         help=(
             "Model ID for detection. Pretrained: rfdetr-nano, rfdetr-base, etc. "
-            "Custom: workspace/project/version. Default: rfdetr-nano"
+            f"Custom: workspace/project/version. Default: {DEFAULT_MODEL}"
         ),
     )
     det_mutex.add_argument(
@@ -67,18 +85,18 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
     model_group.add_argument(
         "--model.confidence",
         type=float,
-        default=0.5,
+        default=DEFAULT_CONFIDENCE,
         dest="model_confidence",
         metavar="FLOAT",
-        help="Detection confidence threshold. Default: 0.5",
+        help=f"Detection confidence threshold. Default: {DEFAULT_CONFIDENCE}",
     )
     model_group.add_argument(
         "--model.device",
         type=str,
-        default="auto",
+        default=DEFAULT_DEVICE,
         dest="model_device",
         metavar="DEVICE",
-        help="Device: auto, cpu, cuda, cuda:0, mps. Default: auto",
+        help=f"Device: auto, cpu, cuda, cuda:0, mps. Default: {DEFAULT_DEVICE}",
     )
     model_group.add_argument(
         "--model.api_key",
@@ -105,10 +123,10 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
     tracker_group.add_argument(
         "--tracker",
         type=str,
-        default="bytetrack",
-        choices=available_trackers if available_trackers else ["bytetrack", "sort"],
+        default=DEFAULT_TRACKER,
+        choices=available_trackers if available_trackers else [DEFAULT_TRACKER, "sort"],
         metavar="ID",
-        help="Tracking algorithm. Default: bytetrack",
+        help=f"Tracking algorithm. Default: {DEFAULT_TRACKER}",
     )
 
     # Add dynamic tracker parameters
@@ -228,11 +246,11 @@ def run_track(args: argparse.Namespace) -> int:
     """Execute the track command."""
     # Validate output paths
     if args.output:
-        _check_output_writable(
-            _resolve_video_output_path(args.output), overwrite=args.overwrite
+        validate_output_path(
+            resolve_video_output_path(args.output), overwrite=args.overwrite
         )
     if args.mot_output:
-        _check_output_writable(args.mot_output, overwrite=args.overwrite)
+        validate_output_path(args.mot_output, overwrite=args.overwrite)
 
     # Parse class filter
     class_filter = None
@@ -242,25 +260,32 @@ def run_track(args: argparse.Namespace) -> int:
     # Create detection source
     if args.detections:
         model = None
-        detections_data = _load_mot_detections(args.detections)
+        detections_data = load_mot_file(args.detections)
         class_names: list[str] = []
     else:
-        model = _create_model(args)
+        model = _init_model(
+            args.model,
+            device=args.model_device,
+            api_key=args.model_api_key,
+        )
         detections_data = None
         class_names = getattr(model, "class_names", [])
 
     # Create tracker
-    tracker = _create_tracker(args)
+    tracker_params = _extract_tracker_params(args.tracker, args)
+    tracker = _init_tracker(args.tracker, **tracker_params)
 
     # Create frame generator
-    frame_gen = create_frame_generator(args.source)
-
-    # Setup output writers
-    video_writer = None
-    mot_file = None
+    frame_gen = frames_from_source(args.source)
 
     # Setup annotators
-    annotators, label_annotator = _create_annotators(args)
+    annotators, label_annotator = _init_annotators(
+        show_boxes=args.show_boxes,
+        show_masks=args.show_masks,
+        show_labels=args.show_labels,
+        show_ids=args.show_ids,
+        show_confidence=args.show_confidence,
+    )
     trace_annotator = None
     if args.show_trajectories:
         trace_annotator = sv.TraceAnnotator(
@@ -268,120 +293,83 @@ def run_track(args: argparse.Namespace) -> int:
             color_lookup=sv.ColorLookup.TRACK,
         )
 
+    display_ctx = DisplayWindow() if args.display else nullcontext()
+
     try:
-        if args.mot_output:
-            args.mot_output.parent.mkdir(parents=True, exist_ok=True)
-            mot_file = open(args.mot_output, "w")
-
-        for frame_idx, frame in frame_gen:
-            # Get detections
-            if model is not None:
-                detections = _run_model_inference(model, frame, args.model_confidence)
-            elif detections_data is not None and frame_idx in detections_data:
-                detections = _mot_frame_to_detections(detections_data[frame_idx])
-            else:
-                detections = sv.Detections.empty()
-
-            # Filter by class
-            if class_filter is not None and len(detections) > 0:
-                mask = np.isin(detections.class_id, class_filter)
-                detections = detections[mask]  # type: ignore[assignment]
-
-            # Run tracker
-            tracked = tracker.update(detections)
-
-            # Write MOT output
-            if mot_file is not None:
-                _write_mot_frame(mot_file, frame_idx, tracked)
-
-            # Annotate frame
-            if args.display or args.output:
-                annotated = frame.copy()
-                if trace_annotator is not None:
-                    annotated = trace_annotator.annotate(annotated, tracked)
-                for annotator in annotators:
-                    annotated = annotator.annotate(annotated, tracked)
-                if label_annotator is not None:
-                    labeled = tracked[tracked.tracker_id != -1]
-                    labels = _generate_labels(
-                        labeled,
-                        class_names,
-                        show_ids=args.show_ids,
-                        show_labels=args.show_labels,
-                        show_confidence=args.show_confidence,
+        with (
+            VideoOutput(args.output) as video,
+            MOTOutput(args.mot_output) as mot,
+            display_ctx as display,
+        ):
+            for frame_idx, frame in frame_gen:
+                # Get detections
+                if model is not None:
+                    detections = _run_model(
+                        model, frame, args.model_confidence
                     )
-                    annotated = label_annotator.annotate(annotated, labeled, labels)
+                elif detections_data is not None and frame_idx in detections_data:
+                    detections = detections_data[frame_idx]._to_detections()
+                else:
+                    detections = sv.Detections.empty()
 
-                # Setup video writer on first frame
-                if args.output and video_writer is None:
-                    video_writer = _create_video_writer(args.output, frame)
+                # Filter by class
+                if class_filter is not None and len(detections) > 0:
+                    mask = np.isin(detections.class_id, class_filter)
+                    detections = detections[mask]  # type: ignore[assignment]
 
-                if video_writer is not None:
-                    video_writer.write(annotated)
+                # Run tracker
+                tracked = tracker.update(detections)
 
-                if args.display:
-                    _show_frame(annotated)
-                    if _check_quit():
-                        break
+                # Write MOT output
+                mot.write(frame_idx, tracked)
+
+                # Annotate and display/save frame
+                if args.display or args.output:
+                    annotated = frame.copy()
+                    if trace_annotator is not None:
+                        annotated = trace_annotator.annotate(annotated, tracked)
+                    for annotator in annotators:
+                        annotated = annotator.annotate(annotated, tracked)
+                    if label_annotator is not None:
+                        labeled = tracked[tracked.tracker_id != -1]
+                        labels = _format_labels(
+                            labeled,
+                            class_names,
+                            show_ids=args.show_ids,
+                            show_labels=args.show_labels,
+                            show_confidence=args.show_confidence,
+                        )
+                        annotated = label_annotator.annotate(annotated, labeled, labels)
+
+                    video.write(annotated)
+
+                    if display is not None:
+                        display.show(annotated)
+                        if display.quit_requested:
+                            break
 
     except KeyboardInterrupt:
         print("\nInterrupted by user.")
-    finally:
-        if mot_file is not None:
-            mot_file.close()
-        if video_writer is not None:
-            video_writer.release()
-        if args.display:
-            _close_display()
 
     return 0
 
 
-def _resolve_video_output_path(path: Path) -> Path:
-    """Resolve video output path, handling directories.
-
-    If path is an existing directory, generates 'output.mp4' inside it.
-    If path has no extension, adds '.mp4'.
-    """
-    if path.is_dir():
-        return path / "output.mp4"
-    if not path.suffix:
-        return path.with_suffix(".mp4")
-    return path
-
-
-def _check_output_writable(path: Path, *, overwrite: bool = False) -> None:
-    """Raise FileExistsError if path exists and overwrite is False.
+def _init_model(
+    model_id: str,
+    *,
+    device: str = DEFAULT_DEVICE,
+    api_key: str | None = None,
+):
+    """Load detection model via inference-models.
 
     Args:
-        path: Path to check.
-        overwrite: If True, allow overwriting existing files.
+        model_id: Model identifier (e.g., 'rfdetr-nano' or 'workspace/project/version').
+        device: Device to load model on ('auto', 'cpu', 'cuda', 'mps').
+        api_key: Roboflow API key for custom models.
 
-    Raises:
-        FileExistsError: If path exists and overwrite is False.
+    Returns:
+        Loaded model instance.
     """
-    if path.exists() and not overwrite:
-        raise FileExistsError(
-            f"Output file '{path}' already exists. Use --overwrite to replace."
-        )
-
-
-def _detect_device() -> str:
-    """Auto-detect the best available device."""
-    try:
-        import torch
-
-        if torch.cuda.is_available():
-            return "cuda"
-        if torch.backends.mps.is_available():
-            return "mps"
-    except ImportError:
-        pass
-    return "cpu"
-
-
-def _create_model(args: argparse.Namespace):
-    """Load detection model via inference-models."""
     try:
         from inference_models import AutoModel
     except ImportError as e:
@@ -392,17 +380,16 @@ def _create_model(args: argparse.Namespace):
         )
         raise SystemExit(1) from e
 
-    device = _detect_device() if args.model_device == "auto" else args.model_device
+    resolved_device = best_device() if device == DEFAULT_DEVICE else device
 
-    model = AutoModel.from_pretrained(
-        args.model,
-        api_key=args.model_api_key,
-        device=device,
+    return AutoModel.from_pretrained(
+        model_id,
+        api_key=api_key,
+        device=resolved_device,
     )
-    return model
 
 
-def _run_model_inference(model, frame: np.ndarray, confidence: float) -> sv.Detections:
+def _run_model(model, frame: np.ndarray, confidence: float) -> sv.Detections:
     """Run model inference and return sv.Detections."""
     predictions = model(frame)
     if not predictions:
@@ -418,124 +405,68 @@ def _run_model_inference(model, frame: np.ndarray, confidence: float) -> sv.Dete
     return detections
 
 
-def _create_tracker(args: argparse.Namespace) -> BaseTracker:
-    """Create tracker instance from registry with CLI parameters."""
-    info = BaseTracker._lookup_tracker(args.tracker)
-    if info is None:
-        available = ", ".join(BaseTracker._registered_trackers())
-        raise ValueError(f"Unknown tracker: '{args.tracker}'. Available: {available}")
+def _extract_tracker_params(
+    tracker_id: str, args: argparse.Namespace
+) -> dict[str, object]:
+    """Extract tracker parameters from CLI args.
 
-    # Build kwargs from CLI args
-    kwargs = {}
+    Args:
+        tracker_id: Registered tracker name.
+        args: Parsed CLI arguments.
+
+    Returns:
+        Dictionary of tracker parameters with non-None values.
+    """
+    info = BaseTracker._lookup_tracker(tracker_id)
+    if info is None:
+        return {}
+
+    params = {}
     for param_name in info.parameters:
         dest_name = f"tracker_{param_name}"
         if hasattr(args, dest_name):
             value = getattr(args, dest_name)
             if value is not None:
-                kwargs[param_name] = value
+                params[param_name] = value
+    return params
+
+
+def _init_tracker(tracker_id: str, **kwargs) -> BaseTracker:
+    """Create tracker instance from registry.
+
+    Args:
+        tracker_id: Registered tracker name (e.g., 'bytetrack', 'sort').
+        **kwargs: Tracker-specific parameters.
+
+    Returns:
+        Initialized tracker instance.
+
+    Raises:
+        ValueError: If tracker_id is not registered.
+    """
+    info = BaseTracker._lookup_tracker(tracker_id)
+    if info is None:
+        available = ", ".join(BaseTracker._registered_trackers())
+        raise ValueError(f"Unknown tracker: '{tracker_id}'. Available: {available}")
 
     return info.tracker_class(**kwargs)
 
 
-def _load_mot_detections(path: Path) -> dict[int, "MOTFrameData"]:
-    """Load pre-computed detections from MOT format file."""
-    from trackers.eval.io import load_mot_file
-
-    return load_mot_file(path)
-
-
-def _mot_frame_to_detections(frame_data: "MOTFrameData") -> sv.Detections:
-    """Convert MOTFrameData to sv.Detections.
-
-    Args:
-        frame_data: MOT frame data containing boxes in xywh format.
-
-    Returns:
-        Detections object with boxes converted to xyxy format.
-    """
-    return sv.Detections(
-        xyxy=sv.xywh_to_xyxy(frame_data.boxes),
-        confidence=frame_data.confidences,
-        class_id=frame_data.classes.astype(int),
-    )
-
-
-def create_frame_generator(source: str) -> Iterator[tuple[int, np.ndarray]]:
-    """Create frame generator from video, webcam, stream, or image directory.
-
-    Args:
-        source: Video file path, webcam index (as string), RTSP URL,
-            or directory containing images.
-
-    Yields:
-        Tuple of (frame_index, frame) where frame_index is 1-based.
-    """
-    try:
-        import cv2
-    except ImportError as e:
-        print(
-            "Error: opencv-python is required for video processing.\n"
-            "Install with: pip install 'trackers[cli]'",
-            file=sys.stderr,
-        )
-        raise SystemExit(1) from e
-
-    source_path = Path(source)
-
-    # Check if it's a directory of images
-    if source_path.is_dir():
-        yield from _generate_from_directory(source_path)
-        return
-
-    # Try to parse as webcam index
-    video_source: str | int = int(source) if source.isdigit() else source
-
-    # Open video capture
-    cap = cv2.VideoCapture(video_source)
-    if not cap.isOpened():
-        raise ValueError(f"Cannot open video source: {source}")
-
-    try:
-        frame_idx = 0
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frame_idx += 1
-            yield frame_idx, frame
-    finally:
-        cap.release()
-
-
-def _generate_from_directory(directory: Path) -> Iterator[tuple[int, np.ndarray]]:
-    """Generate frames from a directory of images."""
-    import cv2
-
-    # Find image files and sort them
-    extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
-    image_files = sorted(
-        f for f in directory.iterdir() if f.suffix.lower() in extensions
-    )
-
-    if not image_files:
-        raise ValueError(f"No image files found in directory: {directory}")
-
-    for idx, img_path in enumerate(image_files, start=1):
-        frame = cv2.imread(str(img_path))
-        if frame is not None:
-            yield idx, frame
-
-
-COLOR_PALETTE = sv.ColorPalette.from_hex([
-    "#ffff00", "#ff9b00", "#ff8080", "#ff66b2", "#ff66ff", "#b266ff",
-    "#9999ff", "#3399ff", "#66ffff", "#33ff99", "#66ff66", "#99ff00",
-])
-
-
-def _create_annotators(
-    args: argparse.Namespace,
+def _init_annotators(
+    show_boxes: bool = False,
+    show_masks: bool = False,
+    show_labels: bool = False,
+    show_ids: bool = False,
+    show_confidence: bool = False,
 ) -> tuple[list, sv.LabelAnnotator | None]:
-    """Create list of supervision annotators based on args.
+    """Initialize supervision annotators based on display options.
+
+    Args:
+        show_boxes: Create BoxAnnotator.
+        show_masks: Create MaskAnnotator.
+        show_labels: Include class labels (triggers LabelAnnotator).
+        show_ids: Include track IDs (triggers LabelAnnotator).
+        show_confidence: Include confidence scores (triggers LabelAnnotator).
 
     Returns:
         Tuple of (annotators list, label_annotator or None).
@@ -544,19 +475,19 @@ def _create_annotators(
     annotators: list = []
     label_annotator: sv.LabelAnnotator | None = None
 
-    if args.show_boxes:
+    if show_boxes:
         annotators.append(sv.BoxAnnotator(
             color=COLOR_PALETTE,
             color_lookup=sv.ColorLookup.TRACK,
         ))
 
-    if args.show_masks:
+    if show_masks:
         annotators.append(sv.MaskAnnotator(
             color=COLOR_PALETTE,
             color_lookup=sv.ColorLookup.TRACK,
         ))
 
-    if args.show_labels or args.show_ids or args.show_confidence:
+    if show_labels or show_ids or show_confidence:
         label_annotator = sv.LabelAnnotator(
             color=COLOR_PALETTE,
             text_color=sv.Color.BLACK,
@@ -567,7 +498,7 @@ def _create_annotators(
     return annotators, label_annotator
 
 
-def _generate_labels(
+def _format_labels(
     detections: sv.Detections,
     class_names: list[str],
     *,
@@ -608,63 +539,3 @@ def _generate_labels(
         labels.append(" ".join(parts))
 
     return labels
-
-
-def _write_mot_frame(f, frame_idx: int, detections: sv.Detections) -> None:
-    """Write detections for a frame in MOT format."""
-    if len(detections) == 0:
-        return
-
-    for i in range(len(detections)):
-        # MOT format: frame, id, bb_left, bb_top, bb_width, bb_height, conf, x, y, z
-        x1, y1, x2, y2 = detections.xyxy[i]
-        w = x2 - x1
-        h = y2 - y1
-
-        track_id = (
-            int(detections.tracker_id[i]) if detections.tracker_id is not None else -1
-        )
-        conf = (
-            float(detections.confidence[i])
-            if detections.confidence is not None
-            else -1.0
-        )
-
-        f.write(
-            f"{frame_idx},{track_id},{x1:.2f},{y1:.2f},{w:.2f},{h:.2f},{conf:.4f},"
-            f"-1,-1,-1\n"
-        )
-
-
-def _create_video_writer(output_path: Path, frame: np.ndarray):
-    """Create OpenCV VideoWriter for output."""
-    import cv2
-
-    resolved = _resolve_video_output_path(output_path)
-    resolved.parent.mkdir(parents=True, exist_ok=True)
-
-    h, w = frame.shape[:2]
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
-
-    return cv2.VideoWriter(str(resolved), fourcc, 30.0, (w, h))
-
-
-def _show_frame(frame: np.ndarray) -> None:
-    """Display frame in window."""
-    import cv2
-
-    cv2.imshow("Tracking", frame)
-
-
-def _check_quit() -> bool:
-    """Check if user pressed 'q' to quit."""
-    import cv2
-
-    return cv2.waitKey(1) & 0xFF == ord("q")
-
-
-def _close_display() -> None:
-    """Close display window."""
-    import cv2
-
-    cv2.destroyAllWindows()

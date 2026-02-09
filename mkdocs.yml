@@ -118,5 +118,7 @@ nav:
     - Install: learn/install.md
     - Evaluate: learn/evaluate.md
   - API Reference:
-    - Trackers: api-trackers.md
-    - Evals: api-evals.md
+    - Trackers: api/trackers.md
+    - Evals: api/evals.md
+    - I/O: api/io.md
+    - Utils: api/utils.md

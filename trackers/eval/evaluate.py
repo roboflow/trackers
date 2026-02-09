@@ -15,7 +15,6 @@ from typing import Literal
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
-from trackers.eval.io import load_mot_file, prepare_mot_sequence
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
@@ -23,6 +22,7 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
+from trackers.io.mot import load_mot_file, prepare_mot_sequence
 
 logger = logging.getLogger(__name__)
 
