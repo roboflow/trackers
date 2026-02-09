@@ -40,8 +40,8 @@ def build_direction_consistency_matrix(
     """Build direction consistency cost matrix (OCM) between tracklet velocities
     and detection associations.
 
-    This is the non-batch version kept for reference. Use
-    `build_direction_consistency_matrix_batch` for production.
+    Note: This is the non-batch version kept for reference, interpretability and testing
+    purposes. Use `build_direction_consistency_matrix_batch` for production.
 
     Args:
         tracklets: List of OCSORTTracklet objects.
@@ -132,7 +132,7 @@ def build_direction_consistency_matrix_batch(
             else np.array([0.0, 0.0])
             for tracklet in tracklets
         ]
-    )  # shape: (n_tracklets, 2) where each row is [dy, dx]
+    )
 
     # Get last observations as array for batch direction computation
     last_obs = np.array([tracklet.last_observation for tracklet in tracklets])
@@ -147,10 +147,9 @@ def build_direction_consistency_matrix_batch(
     inertia_X = velocities[:, 1:2]  # (n_tracklets, 1)
 
     # Compute cosine similarity (dot product of normalized vectors)
-    diff_angle_cos = inertia_X * X + inertia_Y * Y  # (n_tracklets, n_detections)
+    diff_angle_cos = inertia_X * X + inertia_Y * Y
     diff_angle_cos = np.clip(diff_angle_cos, -1.0, 1.0)
 
-    # Apply same transformation as non-batch version
     diff_angle = np.arccos(diff_angle_cos)
     angle_diff_cost = (np.pi / 2.0 - np.abs(diff_angle)) / np.pi
 

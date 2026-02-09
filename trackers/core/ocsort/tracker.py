@@ -18,7 +18,7 @@ class OCSORTTracker(BaseTracker):
     OC-SORT remains Simple, Online, and Real-Time but improves robustness during occlusion and non-linear motion.
     It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three
     mechanisms to enhance tracking. The first mechanism is Observation-Centre Re-Update (ORU), which runs a
-    predict-update loop with a 'virtual trajectory' depending on the last observation and new observation when
+    predict-update loop with a 'virtual trajectory' in order to have less noisy Kalman Filter parameters once
     a track is re-activated after being lost. The second mechanism is Observation-Centric Momentum (OCM), that
     incorporates the direction consistency of tracks in the cost matrix for the association. Finally, OC-SORT adds
     Observation-centric Recovery (OCR), a second-stage association step between the last observation of unmatched
@@ -52,7 +52,7 @@ class OCSORTTracker(BaseTracker):
         self,
         lost_track_buffer: int = 30,
         frame_rate: float = 30.0,
-        minimum_consecutive_frames: int = 3,  # should change this for min_hits?
+        minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
         direction_consistency_weight: float = 0.2,
         high_conf_det_threshold: float = 0.6,
@@ -65,7 +65,7 @@ class OCSORTTracker(BaseTracker):
         self.minimum_iou_threshold = minimum_iou_threshold
         self.direction_consistency_weight = direction_consistency_weight
         self.high_conf_det_threshold = high_conf_det_threshold
-        # Active tracks
+
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
 
@@ -214,8 +214,7 @@ class OCSORTTracker(BaseTracker):
                     self.frame_count,
                 )
 
-            # Update OCR-unmatched tracks with None before filtering; indices
-            # refer to current self.tracks.
+            # Update OCR-unmatched tracks with None before filtering (marks as lost for re-update) #noqa: E501
             for m in _ocr_unmatched_tracks:
                 self.tracks[unmatched_tracks[m]].update(None)
 
@@ -267,7 +266,6 @@ class OCSORTTracker(BaseTracker):
                 tracklet.number_of_successful_consecutive_updates
                 >= self.minimum_consecutive_frames
             )
-            # is_active = tracklet.time_since_update == 0
             if tracklet.time_since_update <= self.maximum_frames_without_update:
                 alive_tracklets.append(tracklet)
 

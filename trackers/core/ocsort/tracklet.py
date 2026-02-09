@@ -52,7 +52,7 @@ class OCSORTTracklet:
     def __init__(
         self,
         initial_bbox: np.ndarray,
-        state_repr: StateRepresentation = StateRepresentation.XYXY,
+        state_repr: StateRepresentation = StateRepresentation.XCYCSR,
     ) -> None:
         """Initialize tracklet with first detection.
 
@@ -73,7 +73,8 @@ class OCSORTTracklet:
         self.last_observation = initial_bbox
         self.previous_to_last_observation: np.ndarray | None = None
 
-        # Track ID (-1 until mature)
+        # Track ID can be initialized before mature in oc-sort
+        # it is assigned if the frame number is less than minimum_consecutive_frames
         self.tracker_id = -1
 
         # Tracking counters
@@ -93,7 +94,6 @@ class OCSORTTracklet:
         self.kalman_filter = KalmanFilter(dim_x=7, dim_z=4)
 
         # State transition: constant velocity model
-        # fmt: off
         self.kalman_filter.F = np.array(
             [
                 [1, 0, 0, 0, 1, 0, 0],
@@ -106,7 +106,6 @@ class OCSORTTracklet:
             ],
             dtype=np.float64,
         )
-        # fmt: on
 
         # Measurement function: observe (x, y, s, r) from state
         self.kalman_filter.H = np.eye(4, 7, dtype=np.float64)
@@ -130,7 +129,6 @@ class OCSORTTracklet:
         self.kalman_filter = KalmanFilter(dim_x=8, dim_z=4)
 
         # State transition: constant velocity model for all coordinates
-        # fmt: off
         self.kalman_filter.F = np.array(
             [
                 [1, 0, 0, 0, 1, 0, 0, 0],  # x1 += vx1
@@ -144,7 +142,6 @@ class OCSORTTracklet:
             ],
             dtype=np.float64,
         )
-        # fmt: on
 
         # Measurement function: observe (x1, y1, x2, y2) from state
         self.kalman_filter.H = np.eye(4, 8, dtype=np.float64)
