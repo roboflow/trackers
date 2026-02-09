@@ -6,14 +6,17 @@
 
 from __future__ import annotations
 
-import torch
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import torch
 
 
-def _best_device() -> "torch.device":
+def _best_device() -> torch.device:
     """Return the best available PyTorch compute device, preferring acceleration.
 
     Returns:
-        torch.device: The selected device (``cuda``, ``mps``, or ``cpu``).
+        The selected device (``cuda``, ``mps``, or ``cpu``).
 
     Raises:
         ImportError: If PyTorch is not installed.
