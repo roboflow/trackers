@@ -42,7 +42,7 @@ Trackers gives you clean, modular re-implementations of leading multi-object tra
 |:-------------:|:-------------------------------------------------------------------------------:|:----------:|:-----------:|:----------:|:--------------:|:--------------:|
 |     SORT      |      [`SORTTracker`](https://trackers.roboflow.com/develop/trackers/sort/)      |    58.4    |    69.9     |    67.2    |      70.9      |      81.6      |
 |   ByteTrack   | [`ByteTrackTracker`](https://trackers.roboflow.com/develop/trackers/bytetrack/) |  **60.1**  |  **73.2**   |  **74.1**  |    **73.0**    |    **84.0**    |
-|    OC-SORT    |                                 `OCSORTTracker`                                 |     —      |      —      |     —      |       —        |       —        |
+|    OC-SORT    |                                 `OCSORTTracker`                                 |     —      |      —      |     —      |      71.5        |       78.6        |
 
 ## Quickstart
 

@@ -17,9 +17,9 @@ For comparisons with other trackers, plus full details on the datasets and evalu
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 |:---------:|:----:|:----:|:----:|
-|   MOT17   | 59.1 | 71.8 | 76.6 |
-| SportsMOT | 69.9 | 69.2 | 95.0 |
-| SoccerNet | 77.8 | 72.1 | 93.9 |
+|   MOT17   | ---- | ---- | ---- |
+| SportsMOT | 71.5 | 71.2 | 95.2 |
+| SoccerNet | 78.6 | 72.7 | 94.5 |
 
 ## Run on video, webcam, or RTSP stream
 
