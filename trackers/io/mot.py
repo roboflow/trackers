@@ -38,13 +38,13 @@ class MOTFrameData:
     confidences: np.ndarray
     classes: np.ndarray
 
-    def _to_detections(self) -> sv.Detections:
-        """Convert to sv.Detections with boxes in xyxy format."""
-        return sv.Detections(
-            xyxy=sv.xywh_to_xyxy(self.boxes),
-            confidence=self.confidences,
-            class_id=self.classes.astype(int),
-        )
+
+def _mot_frame_to_detections(frame_data: MOTFrameData) -> sv.Detections:
+    return sv.Detections(
+        xyxy=sv.xywh_to_xyxy(frame_data.boxes),
+        confidence=frame_data.confidences,
+        class_id=frame_data.classes.astype(int),
+    )
 
 
 @dataclass

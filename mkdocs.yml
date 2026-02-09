@@ -121,4 +121,3 @@ nav:
     - Trackers: api/trackers.md
     - Evals: api/evals.md
     - I/O: api/io.md
-    - Utils: api/utils.md

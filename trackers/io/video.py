@@ -126,11 +126,11 @@ class VideoOutput:
         if self.path is None:
             return
         if self._writer is None:
-            self._writer = self._create_writer(frame)
+            self._writer = self._create_writer(frame, self.path)
         self._writer.write(frame)
 
-    def _create_writer(self, frame: np.ndarray):
-        resolved = resolve_video_output_path(self.path)
+    def _create_writer(self, frame: np.ndarray, path: Path):
+        resolved = resolve_video_output_path(path)
         resolved.parent.mkdir(parents=True, exist_ok=True)
 
         h, w = frame.shape[:2]

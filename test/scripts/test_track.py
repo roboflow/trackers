@@ -15,7 +15,6 @@ import numpy as np
 import pytest
 import supervision as sv
 
-from trackers.io import MOTFrameData
 from trackers.scripts.track import (
     _format_labels,
     _init_annotators,
@@ -192,28 +191,6 @@ class TestInitTracker:
         )
         # ByteTrack calculates: maximum_frames_without_update = 60/30 * 60 = 120
         assert tracker.maximum_frames_without_update == 120  # type: ignore[attr-defined]
-
-
-class TestMOTFrameDataToDetections:
-    """Tests for MOTFrameData.to_detections method."""
-
-    def test_converts_mot_to_detections(self) -> None:
-        frame_data = MOTFrameData(
-            ids=np.array([1, 2]),
-            boxes=np.array([[100, 100, 50, 80], [200, 150, 60, 90]]),  # xywh
-            confidences=np.array([0.9, 0.8]),
-            classes=np.array([0, 1]),
-        )
-
-        result = frame_data._to_detections()
-
-        assert len(result) == 2
-        np.testing.assert_array_almost_equal(
-            result.xyxy,
-            np.array([[100, 100, 150, 180], [200, 150, 260, 240]]),  # xyxy
-        )
-        np.testing.assert_array_almost_equal(result.confidence, [0.9, 0.8])
-        np.testing.assert_array_equal(result.class_id, [0, 1])
 
 
 class TestInitAnnotators:

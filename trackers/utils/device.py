@@ -9,13 +9,17 @@ from __future__ import annotations
 import torch
 
 
-def best_device() -> torch.device:
-    """Auto-detect the best available compute device.
+def _best_device() -> "torch.device":
+    """Return the best available PyTorch compute device, preferring acceleration.
 
     Returns:
-        torch.device: 'cuda' if NVIDIA GPU available, 'mps' if Apple Silicon,
-        otherwise 'cpu'.
+        torch.device: The selected device (``cuda``, ``mps``, or ``cpu``).
+
+    Raises:
+        ImportError: If PyTorch is not installed.
     """
+    import torch
+
     if torch.cuda.is_available():
         return torch.device("cuda")
     if torch.backends.mps.is_built() and torch.backends.mps.is_available():

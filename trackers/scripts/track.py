@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import supervision as sv
 
-from trackers import best_device, frames_from_source
+from trackers import frames_from_source
 from trackers.core.base import BaseTracker
 from trackers.io import (
     DisplayWindow,
@@ -27,6 +27,8 @@ from trackers.io import (
     resolve_video_output_path,
     validate_output_path,
 )
+from trackers.io.mot import _mot_frame_to_detections
+from trackers.utils.device import _best_device
 
 # Defaults
 DEFAULT_MODEL = "rfdetr-nano"
@@ -318,7 +320,7 @@ def run_track(args: argparse.Namespace) -> int:
                 if model is not None:
                     detections = _run_model(model, frame, args.model_confidence)
                 elif detections_data is not None and frame_idx in detections_data:
-                    detections = detections_data[frame_idx]._to_detections()
+                    detections = _mot_frame_to_detections(detections_data[frame_idx])
                 else:
                     detections = sv.Detections.empty()
 
@@ -390,7 +392,7 @@ def _init_model(
         )
         raise SystemExit(1) from e
 
-    resolved_device = best_device() if device == DEFAULT_DEVICE else device
+    resolved_device = _best_device() if device == DEFAULT_DEVICE else device
 
     return AutoModel.from_pretrained(
         model_id,
