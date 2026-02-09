@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Tests for tracker auto-registration and parameter extraction."""
-
 from typing import Any, Optional, Union
 
 import pytest
@@ -20,8 +18,6 @@ from trackers.core.base import (
 
 
 class TestParseDocstringArguments:
-    """Tests for _parse_docstring_arguments function."""
-
     @pytest.mark.parametrize(
         ("docstring", "expected"),
         [
@@ -140,8 +136,6 @@ class TestParseDocstringArguments:
 
 
 class TestNormalizeType:
-    """Tests for _normalize_type function."""
-
     @pytest.mark.parametrize(
         ("annotation", "default", "expected"),
         [
@@ -176,8 +170,6 @@ class TestNormalizeType:
 
 
 class TestExtractParamsFromInit:
-    """Tests for _extract_params_from_init function."""
-
     def test_extract_params_with_defaults(self) -> None:
         class TestClass:
             def __init__(
@@ -239,8 +231,6 @@ class TestExtractParamsFromInit:
 
 
 class TestTrackerAutoRegistration:
-    """Tests for BaseTracker auto-registration."""
-
     @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
     def test_tracker_is_registered(self, tracker_id: str) -> None:
         from trackers import ByteTrackTracker, SORTTracker  # noqa: F401
@@ -279,8 +269,6 @@ class TestTrackerAutoRegistration:
 
 
 class TestTrackerInstantiation:
-    """Tests for instantiating trackers via registry."""
-
     @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
     def test_instantiate_with_defaults(self, tracker_id: str) -> None:
         info = BaseTracker._lookup_tracker(tracker_id)

@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Tests for video utilities."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -118,8 +116,6 @@ def directory_with_corrupted_image(tmp_path: Path) -> Path:
 
 
 class TestFramesFromSourceVideo:
-    """Tests for frames_from_source with video files."""
-
     def test_reads_video_frames_in_order(self, video_factory) -> None:
         num_frames = 5
         video_path = video_factory(n_frames=num_frames)
@@ -153,8 +149,6 @@ class TestFramesFromSourceVideo:
 
 
 class TestFramesFromSourceImageDirectory:
-    """Tests for frames_from_source with image directories."""
-
     def test_reads_images_in_alphabetical_order(self, image_directory_factory) -> None:
         num_frames = 7
         directory = image_directory_factory(
@@ -199,8 +193,6 @@ class TestFramesFromSourceImageDirectory:
 
 
 class TestFramesFromSourceErrors:
-    """Tests for frames_from_source error handling."""
-
     def test_empty_directory_raises_value_error(self, empty_directory) -> None:
         with pytest.raises(ValueError, match="No supported image files"):
             list(frames_from_source(empty_directory))

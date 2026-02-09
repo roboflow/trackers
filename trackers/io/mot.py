@@ -48,7 +48,7 @@ def _mot_frame_to_detections(frame_data: MOTFrameData) -> sv.Detections:
 
 
 @dataclass
-class MOTSequenceData:
+class _MOTSequenceData:
     """Prepared sequence data ready for metric evaluation.
 
     This dataclass contains all data needed by CLEAR, HOTA, and Identity
@@ -112,7 +112,7 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
         ValueError: If the file is empty or has invalid format.
 
     Examples:
-        >>> from trackers.io import load_mot_file  # doctest: +SKIP
+        >>> from trackers import load_mot_file  # doctest: +SKIP
         >>>
         >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
         >>>
@@ -200,11 +200,11 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
     return result
 
 
-def prepare_mot_sequence(
+def _prepare_mot_sequence(
     gt_data: dict[int, MOTFrameData],
     tracker_data: dict[int, MOTFrameData],
     num_frames: int | None = None,
-) -> MOTSequenceData:
+) -> _MOTSequenceData:
     """Prepare GT and tracker data for metric evaluation.
 
     Compute IoU similarity matrices between GT and tracker detections for each
@@ -218,21 +218,7 @@ def prepare_mot_sequence(
             auto-detected from the maximum frame number in the data.
 
     Returns:
-        `MOTSequenceData` containing prepared data ready for metric evaluation.
-
-    Examples:
-        >>> from trackers.io import load_mot_file  # doctest: +SKIP
-        >>> from trackers.io import prepare_mot_sequence  # doctest: +SKIP
-        >>>
-        >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
-        >>> tracker_data = load_mot_file("data/trackers/MOT17-02.txt")  # doctest: +SKIP
-        >>> data = prepare_mot_sequence(gt_data, tracker_data)  # doctest: +SKIP
-        >>>
-        >>> data.num_frames  # doctest: +SKIP
-        600
-        >>>
-        >>> data.num_gt_ids  # doctest: +SKIP
-        54
+        `_MOTSequenceData` containing prepared data ready for metric evaluation.
     """
     gt_frames = set(gt_data.keys()) if gt_data else set()
     tracker_frames = set(tracker_data.keys()) if tracker_data else set()
@@ -301,7 +287,7 @@ def prepare_mot_sequence(
         tracker_ids_list.append(tracker_ids_remapped)
         similarity_scores_list.append(similarity)
 
-    return MOTSequenceData(
+    return _MOTSequenceData(
         gt_ids=gt_ids_list,
         tracker_ids=tracker_ids_list,
         similarity_scores=similarity_scores_list,

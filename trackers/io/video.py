@@ -15,7 +15,7 @@ from typing import Union
 import cv2
 import numpy as np
 
-from trackers.io.paths import resolve_video_output_path
+from trackers.io.paths import _resolve_video_output_path
 
 IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"})
 
@@ -114,7 +114,7 @@ def _iter_image_folder_frames(
         yield frame_id, frame
 
 
-class VideoOutput:
+class _VideoOutput:
     """Context manager for lazy video file writing."""
 
     def __init__(self, path: Path | None):
@@ -130,7 +130,7 @@ class VideoOutput:
         self._writer.write(frame)
 
     def _create_writer(self, frame: np.ndarray, path: Path) -> cv2.VideoWriter:
-        resolved = resolve_video_output_path(path)
+        resolved = _resolve_video_output_path(path)
         resolved.parent.mkdir(parents=True, exist_ok=True)
 
         h, w = frame.shape[:2]
@@ -145,7 +145,7 @@ class VideoOutput:
             self._writer.release()
 
 
-class DisplayWindow:
+class _DisplayWindow:
     """Context manager for OpenCV display window."""
 
     def __init__(self, window_name: str = "Tracking"):

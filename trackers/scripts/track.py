@@ -17,17 +17,11 @@ from pathlib import Path
 import numpy as np
 import supervision as sv
 
-from trackers import frames_from_source
+from trackers import MOTOutput, frames_from_source, load_mot_file
 from trackers.core.base import BaseTracker
-from trackers.io import (
-    DisplayWindow,
-    MOTOutput,
-    VideoOutput,
-    load_mot_file,
-    resolve_video_output_path,
-    validate_output_path,
-)
 from trackers.io.mot import _mot_frame_to_detections
+from trackers.io.paths import _resolve_video_output_path, _validate_output_path
+from trackers.io.video import _DisplayWindow, _VideoOutput
 from trackers.utils.device import _best_device
 
 # Defaults
@@ -260,11 +254,11 @@ def run_track(args: argparse.Namespace) -> int:
     """Execute the track command."""
     # Validate output paths
     if args.output:
-        validate_output_path(
-            resolve_video_output_path(args.output), overwrite=args.overwrite
+        _validate_output_path(
+            _resolve_video_output_path(args.output), overwrite=args.overwrite
         )
     if args.mot_output:
-        validate_output_path(args.mot_output, overwrite=args.overwrite)
+        _validate_output_path(args.mot_output, overwrite=args.overwrite)
 
     # Parse class filter
     class_filter = None
@@ -307,11 +301,11 @@ def run_track(args: argparse.Namespace) -> int:
             color_lookup=sv.ColorLookup.TRACK,
         )
 
-    display_ctx = DisplayWindow() if args.display else nullcontext()
+    display_ctx = _DisplayWindow() if args.display else nullcontext()
 
     try:
         with (
-            VideoOutput(args.output) as video,
+            _VideoOutput(args.output) as video,
             MOTOutput(args.mot_output) as mot,
             display_ctx as display,
         ):

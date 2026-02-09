@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Tests for MOT file I/O functions."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from trackers.io import load_mot_file
+from trackers import load_mot_file
 
 
 def test_load_mot_file_valid(tmp_path: Path) -> None:

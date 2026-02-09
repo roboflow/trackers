@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Tests for the track command."""
-
 from __future__ import annotations
 
 import numpy as np
@@ -19,8 +17,6 @@ from trackers.scripts.track import (
 
 
 class TestInitAnnotators:
-    """Tests for _init_annotators function."""
-
     @pytest.mark.parametrize(
         "flags,expected_types,has_label_annotator",
         [
@@ -65,8 +61,6 @@ class TestInitAnnotators:
 
 
 class TestFormatLabels:
-    """Tests for _format_labels function."""
-
     @pytest.mark.parametrize(
         "detections_kwargs,class_names,label_flags,expected",
         [

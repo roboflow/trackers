@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def resolve_video_output_path(path: Path) -> Path:
+def _resolve_video_output_path(path: Path) -> Path:
     """Resolve video output path, handling directories.
 
     If path is an existing directory, generates 'output.mp4' inside it.
@@ -24,7 +24,7 @@ def resolve_video_output_path(path: Path) -> Path:
     return path
 
 
-def validate_output_path(path: Path, *, overwrite: bool = False) -> None:
+def _validate_output_path(path: Path, *, overwrite: bool = False) -> None:
     """Validate output path and create parent directories if needed.
 
     Args:
