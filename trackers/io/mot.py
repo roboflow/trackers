@@ -19,7 +19,7 @@ from trackers.eval.box import box_iou
 
 
 @dataclass
-class MOTFrameData:
+class _MOTFrameData:
     """Detection data for a single frame from a MOT format file.
 
     Attributes:
@@ -39,7 +39,7 @@ class MOTFrameData:
     classes: np.ndarray
 
 
-def _mot_frame_to_detections(frame_data: MOTFrameData) -> sv.Detections:
+def _mot_frame_to_detections(frame_data: _MOTFrameData) -> sv.Detections:
     return sv.Detections(
         xyxy=sv.xywh_to_xyxy(frame_data.boxes),
         confidence=frame_data.confidences,
@@ -93,7 +93,7 @@ class _MOTSequenceData:
     tracker_id_mapping: dict[int, int]
 
 
-def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
+def _load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
     """Load a MOT Challenge format file.
 
     Parse a text file in the standard MOT format where each line represents
@@ -105,7 +105,7 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
 
     Returns:
         Dictionary mapping frame numbers (1-based, as in the file) to
-        `MOTFrameData` containing all detections for that frame.
+        `_MOTFrameData` containing all detections for that frame.
 
     Raises:
         FileNotFoundError: If the file does not exist.
@@ -172,7 +172,7 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
     if not frame_data:
         raise ValueError(f"No valid data found in MOT file: {path}")
 
-    result: dict[int, MOTFrameData] = {}
+    result: dict[int, _MOTFrameData] = {}
     for frame, rows in frame_data.items():
         try:
             data = np.array(rows, dtype=np.float64)
@@ -190,7 +190,7 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
             else np.ones(len(data), dtype=np.intp)
         )
 
-        result[frame] = MOTFrameData(
+        result[frame] = _MOTFrameData(
             ids=ids,
             boxes=boxes,
             confidences=confidences,
@@ -201,8 +201,8 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
 
 
 def _prepare_mot_sequence(
-    gt_data: dict[int, MOTFrameData],
-    tracker_data: dict[int, MOTFrameData],
+    gt_data: dict[int, _MOTFrameData],
+    tracker_data: dict[int, _MOTFrameData],
     num_frames: int | None = None,
 ) -> _MOTSequenceData:
     """Prepare GT and tracker data for metric evaluation.
@@ -301,7 +301,7 @@ def _prepare_mot_sequence(
     )
 
 
-class MOTOutput:
+class _MOTOutput:
     """Context manager for MOT format file writing."""
 
     def __init__(self, path: Path | None):

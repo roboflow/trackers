@@ -22,7 +22,7 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
-from trackers.io.mot import _prepare_mot_sequence, load_mot_file
+from trackers.io.mot import _load_mot_file, _prepare_mot_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +103,8 @@ def evaluate_mot_sequence(
     tracker_path = Path(tracker_path)
 
     # Load data
-    gt_data = load_mot_file(gt_path)
-    tracker_data = load_mot_file(tracker_path)
+    gt_data = _load_mot_file(gt_path)
+    tracker_data = _load_mot_file(tracker_path)
 
     # Prepare sequence (compute IoU, remap IDs)
     seq_data = _prepare_mot_sequence(gt_data, tracker_data)
