@@ -35,10 +35,22 @@ DEFAULT_CONFIDENCE = 0.5
 DEFAULT_DEVICE = "auto"
 
 # Visualization
-COLOR_PALETTE = sv.ColorPalette.from_hex([
-    "#ffff00", "#ff9b00", "#ff8080", "#ff66b2", "#ff66ff", "#b266ff",
-    "#9999ff", "#3399ff", "#66ffff", "#33ff99", "#66ff66", "#99ff00",
-])
+COLOR_PALETTE = sv.ColorPalette.from_hex(
+    [
+        "#ffff00",
+        "#ff9b00",
+        "#ff8080",
+        "#ff66b2",
+        "#ff66ff",
+        "#b266ff",
+        "#9999ff",
+        "#3399ff",
+        "#66ffff",
+        "#33ff99",
+        "#66ff66",
+        "#99ff00",
+    ]
+)
 
 
 def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
@@ -304,9 +316,7 @@ def run_track(args: argparse.Namespace) -> int:
             for frame_idx, frame in frame_gen:
                 # Get detections
                 if model is not None:
-                    detections = _run_model(
-                        model, frame, args.model_confidence
-                    )
+                    detections = _run_model(model, frame, args.model_confidence)
                 elif detections_data is not None and frame_idx in detections_data:
                     detections = detections_data[frame_idx]._to_detections()
                 else:
@@ -476,16 +486,20 @@ def _init_annotators(
     label_annotator: sv.LabelAnnotator | None = None
 
     if show_boxes:
-        annotators.append(sv.BoxAnnotator(
-            color=COLOR_PALETTE,
-            color_lookup=sv.ColorLookup.TRACK,
-        ))
+        annotators.append(
+            sv.BoxAnnotator(
+                color=COLOR_PALETTE,
+                color_lookup=sv.ColorLookup.TRACK,
+            )
+        )
 
     if show_masks:
-        annotators.append(sv.MaskAnnotator(
-            color=COLOR_PALETTE,
-            color_lookup=sv.ColorLookup.TRACK,
-        ))
+        annotators.append(
+            sv.MaskAnnotator(
+                color=COLOR_PALETTE,
+                color_lookup=sv.ColorLookup.TRACK,
+            )
+        )
 
     if show_labels or show_ids or show_confidence:
         label_annotator = sv.LabelAnnotator(

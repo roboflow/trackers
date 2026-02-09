@@ -23,6 +23,7 @@ def __getattr__(name: str):
     """Lazy imports for evaluate functions to avoid circular imports."""
     if name in ("evaluate_mot_sequence", "evaluate_mot_sequences"):
         from trackers.eval import evaluate as _evaluate
+
         return getattr(_evaluate, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

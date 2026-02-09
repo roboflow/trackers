@@ -21,7 +21,7 @@ IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"})
 
 
 def frames_from_source(
-    source: Union[str, Path, int]
+    source: Union[str, Path, int],
 ) -> Iterator[tuple[int, np.ndarray]]:
     """Yield numbered BGR frames from video files, webcams, network streams, or image
     directories.
@@ -101,8 +101,7 @@ def _iter_image_folder_frames(
     extensions: frozenset[str] = IMAGE_EXTENSIONS,
 ) -> Iterator[tuple[int, np.ndarray]]:
     images = sorted(
-        p for p in folder.iterdir()
-        if p.is_file() and p.suffix.lower() in extensions
+        p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in extensions
     )
 
     if not images:

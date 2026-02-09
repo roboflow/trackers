@@ -51,6 +51,7 @@ def expected_frame_value(index: int) -> int:
 @pytest.fixture
 def video_factory(tmp_path: Path) -> Callable[[int], Path]:
     """Factory for creating test videos with specified number of frames."""
+
     def _create(n_frames: int) -> Path:
         video_path = tmp_path / f"video_{n_frames}_frames.mp4"
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
@@ -68,6 +69,7 @@ def video_factory(tmp_path: Path) -> Callable[[int], Path]:
 @pytest.fixture
 def image_directory_factory(tmp_path: Path) -> Callable[[int, str], Path]:
     """Factory for creating image directories with specified number of frames."""
+
     def _create(n_frames: int, filename_pattern: str = "{:04d}.png") -> Path:
         directory = tmp_path / f"imgdir_{n_frames}_frames"
         directory.mkdir(exist_ok=True)

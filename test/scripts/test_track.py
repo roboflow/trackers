@@ -32,9 +32,9 @@ class TestAddTrackSubparser:
         subparsers = parser.add_subparsers()
         add_track_subparser(subparsers)
 
-        args = parser.parse_args([
-            "track", "--source", "test.mp4", "--model", "rfdetr-nano"
-        ])
+        args = parser.parse_args(
+            ["track", "--source", "test.mp4", "--model", "rfdetr-nano"]
+        )
 
         assert args.model == "rfdetr-nano"
         assert args.model_confidence == 0.5
@@ -66,10 +66,17 @@ class TestAddTrackSubparser:
         subparsers = parser.add_subparsers()
         add_track_subparser(subparsers)
 
-        args = parser.parse_args([
-            "track", "--source", "test.mp4", "--model", "rfdetr-nano",
-            "--tracker", "sort",
-        ])
+        args = parser.parse_args(
+            [
+                "track",
+                "--source",
+                "test.mp4",
+                "--model",
+                "rfdetr-nano",
+                "--tracker",
+                "sort",
+            ]
+        )
         assert args.tracker == "sort"
 
     def test_visualization_options(self) -> None:
@@ -105,9 +112,9 @@ class TestAddTrackSubparser:
         subparsers = parser.add_subparsers()
         add_track_subparser(subparsers)
 
-        args = parser.parse_args([
-            "track", "--source", "test.mp4", "--model", "rfdetr-nano", "--no-boxes"
-        ])
+        args = parser.parse_args(
+            ["track", "--source", "test.mp4", "--model", "rfdetr-nano", "--no-boxes"]
+        )
         assert args.show_boxes is False
 
     def test_output_paths(self) -> None:
@@ -157,10 +164,13 @@ class TestAddTrackSubparser:
 class TestInitTracker:
     """Tests for _init_tracker function."""
 
-    @pytest.mark.parametrize("tracker_name,tracker_class_name", [
-        ("bytetrack", "ByteTrackTracker"),
-        ("sort", "SORTTracker"),
-    ])
+    @pytest.mark.parametrize(
+        "tracker_name,tracker_class_name",
+        [
+            ("bytetrack", "ByteTrackTracker"),
+            ("sort", "SORTTracker"),
+        ],
+    )
     def test_creates_registered_tracker(
         self, tracker_name: str, tracker_class_name: str
     ) -> None:
