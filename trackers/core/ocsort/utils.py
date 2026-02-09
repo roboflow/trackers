@@ -138,7 +138,6 @@ def build_direction_consistency_matrix_batch(
     last_obs = np.array([tracklet.last_observation for tracklet in tracklets])
 
     # Compute association directions (from last_observation -> detection) in batch
-    # speed_direction_batch expects (dets, tracks) and returns (dy, dx) each of shape (n_tracks, n_dets)
     Y, X = speed_direction_batch(
         detection_boxes, last_obs
     )  # (n_tracklets, n_detections)
