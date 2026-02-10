@@ -70,7 +70,7 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
 
     # Detection options (mutually exclusive)
     detection_group = parser.add_argument_group("detection")
-    det_mutex = detection_group.add_mutually_exclusive_group(required=True)
+    det_mutex = detection_group.add_mutually_exclusive_group(required=False)
     det_mutex.add_argument(
         "--model",
         type=str,
@@ -199,8 +199,15 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
     vis_group.add_argument(
         "--show-ids",
         action="store_true",
+        default=True,
         dest="show_ids",
-        help="Show track IDs.",
+        help="Show track IDs. Default: True",
+    )
+    vis_group.add_argument(
+        "--no-ids",
+        action="store_false",
+        dest="show_ids",
+        help="Disable track IDs.",
     )
     vis_group.add_argument(
         "--show-confidence",

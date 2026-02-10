@@ -1,10 +1,10 @@
-# Install Trackers
+# Install `trackers`
 
-Get up and running with Trackers in minutes. Choose your preferred package manager and start tracking objects in video.
+Get up and running with `trackers` in minutes. Choose your preferred package manager and start tracking objects in video.
 
 **What you'll learn:**
 
-- Install Trackers with `pip` or `uv`
+- Install `trackers` with `pip` or `uv`
 - Set up a development environment
 
 !!! tip "Requirements"
@@ -51,7 +51,7 @@ python -c "import trackers; print(trackers.__version__)"
 
 ## Development Setup
 
-Set up a local environment for contributing or modifying Trackers.
+Set up a local environment for contributing or modifying `trackers`.
 
 === "virtualenv"
 

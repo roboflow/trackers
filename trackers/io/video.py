@@ -49,6 +49,9 @@ def frames_from_source(
 def _iter_capture_frames(
     src: Union[str, int, Path],
 ) -> Iterator[tuple[int, np.ndarray]]:
+    # Convert numeric strings to int for webcam indices
+    if isinstance(src, str) and src.isdigit():
+        src = int(src)
     cap = cv2.VideoCapture(str(src) if isinstance(src, Path) else src)
     if not cap.isOpened():
         raise ValueError(f"Cannot open video/capture source: {src!r}")

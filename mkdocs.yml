@@ -116,6 +116,7 @@ nav:
     - ByteTrack: trackers/bytetrack.md
   - Guides:
     - Install: learn/install.md
+    - Track: learn/track.md
     - Evaluate: learn/evaluate.md
   - API Reference:
     - Trackers: api/trackers.md
