@@ -483,4 +483,3 @@ Save tracking results as annotated video files or display them in real time.
     cap.release()
     out.release()
     ```
-
