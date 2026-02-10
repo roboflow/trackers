@@ -206,21 +206,36 @@ class OCSORTTracklet:
         self._frozen_state = None
 
     def _unfreeze_xcycsr(self, new_bbox: np.ndarray, time_gap: int) -> None:
-        """ORU interpolation for XCYCSR representation.
+        """ORU interpolation for XCYCSR representation."""
+        # Convert to (x, y, s, r) format
+        last_xcycsr = xyxy_to_xcycsr(self.last_observation)
+        new_xcycsr = xyxy_to_xcycsr(new_bbox)
 
-        Interpolates in XYXY space for more natural motion, then converts
-        to XCYCSR for Kalman filter update.
-        """
-        last_xyxy = self.last_observation
-        new_xyxy = new_bbox
+        # Convert s, r back to w, h for interpolation
+        x1, y1, s1, r1 = last_xcycsr
+        w1 = np.sqrt(s1 * r1)
+        h1 = np.sqrt(s1 / r1)
 
-        # Linear interpolation in XYXY space
-        delta = (new_xyxy - last_xyxy) / time_gap
+        x2, y2, s2, r2 = new_xcycsr
+        w2 = np.sqrt(s2 * r2)
+        h2 = np.sqrt(s2 / r2)
+
+        # Linear interpolation deltas
+        dx = (x2 - x1) / time_gap
+        dy = (y2 - y1) / time_gap
+        dw = (w2 - w1) / time_gap
+        dh = (h2 - h1) / time_gap
 
         for i in range(1, time_gap + 1):
-            virtual_xyxy = last_xyxy + i * delta
-            # Convert to XCYCSR for Kalman filter
-            virtual_obs = xyxy_to_xcycsr(virtual_xyxy).reshape((4, 1))
+            x = x1 + i * dx
+            y = y1 + i * dy
+            w = w1 + i * dw
+            h = h1 + i * dh
+
+            # Convert back to (x, y, s, r)
+            s = w * h
+            r = w / h
+            virtual_obs = np.array([x, y, s, r]).reshape((4, 1))
 
             if i < time_gap:
                 self.kalman_filter.predict()
