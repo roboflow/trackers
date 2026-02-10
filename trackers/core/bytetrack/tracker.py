@@ -12,8 +12,8 @@ import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
-from trackers.utils.sort_utils import (
+from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
+from trackers.core.sort.utils import (
     get_alive_trackers,
     get_iou_matrix,
 )
@@ -42,6 +42,8 @@ class ByteTrackTracker(BaseTracker):
         high_conf_det_threshold: `float` specifying threshold for separating
             high and low confidence detections in the two-stage association.
     """
+
+    tracker_id = "bytetrack"
 
     def __init__(
         self,
