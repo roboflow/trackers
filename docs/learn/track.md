@@ -484,29 +484,3 @@ Save tracking results as annotated video files or display them in real time.
     out.release()
     ```
 
----
-
-## Integration
-
-`trackers` works with any detection or segmentation library. Convert model output to `supervision` format and pass it to the tracker.
-
-```python
-import cv2
-
-import supervision as sv
-from ultralytics import YOLO
-from trackers import ByteTrackTracker
-
-model = YOLO("yolo11n.pt")
-tracker = ByteTrackTracker()
-
-cap = cv2.VideoCapture("source.mp4")
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
-
-    result = model(frame)[0]
-    detections = sv.Detections.from_ultralytics(result)
-    detections = tracker.update(detections)
-```
