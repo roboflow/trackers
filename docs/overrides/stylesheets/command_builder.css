@@ -417,15 +417,15 @@
     grid-template-columns: 1fr;
     gap: 0.25rem;
   }
-  
+
   .cb-equals {
     display: none;
   }
-  
+
   .cb-label::after {
     content: " =";
   }
-  
+
   .cb-text-input,
   .cb-num-input {
     max-width: 100%;
@@ -434,7 +434,7 @@
   .cb-value-wrap--text {
     width: 100%;
   }
-  
+
   .cb-checkboxes {
     grid-template-columns: repeat(2, minmax(12ch, 1fr));
   }
