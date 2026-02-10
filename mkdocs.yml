@@ -49,9 +49,12 @@ theme:
 extra_css:
   - stylesheets/style.css
   - stylesheets/rf.css
+  - stylesheets/command_builder.css
 
 extra_javascript:
   - javascripts/pycon_copy.js
+  - javascripts/cli_builder_framework.js
+  - javascripts/command_builder.js
 
 markdown_extensions:
    # Adds support for card grids

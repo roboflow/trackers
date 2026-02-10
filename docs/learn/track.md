@@ -9,6 +9,10 @@ Combine object detection with multi-object tracking to follow objects through vi
 - Visualize results with bounding boxes, IDs, and trajectories
 - Build custom tracking pipelines in Python
 
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
+</video>
+
 ---
 
 ## Install
@@ -63,6 +67,14 @@ Read frames from video files, webcams, RTSP streams, or image directories. Each 
         detections = sv.Detections.from_inference(result)
         detections = tracker.update(detections)
     ```
+
+---
+
+## CLI Command Builder
+
+Generate a production-ready `trackers track` command in seconds. Use interactive controls to tune core settings without memorizing flags.
+
+<div id="command-builder-widget"></div>
 
 ---
 
