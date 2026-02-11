@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+"""MOT Challenge format I/O utilities."""
+
 from __future__ import annotations
 
 import csv
@@ -11,12 +13,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import supervision as sv
 
 from trackers.eval.box import box_iou
 
 
 @dataclass
-class MOTFrameData:
+class _MOTFrameData:
     """Detection data for a single frame from a MOT format file.
 
     Attributes:
@@ -36,8 +39,16 @@ class MOTFrameData:
     classes: np.ndarray
 
 
+def _mot_frame_to_detections(frame_data: _MOTFrameData) -> sv.Detections:
+    return sv.Detections(
+        xyxy=sv.xywh_to_xyxy(frame_data.boxes),
+        confidence=frame_data.confidences,
+        class_id=frame_data.classes.astype(int),
+    )
+
+
 @dataclass
-class MOTSequenceData:
+class _MOTSequenceData:
     """Prepared sequence data ready for metric evaluation.
 
     This dataclass contains all data needed by CLEAR, HOTA, and Identity
@@ -82,7 +93,7 @@ class MOTSequenceData:
     tracker_id_mapping: dict[int, int]
 
 
-def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
+def _load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
     """Load a MOT Challenge format file.
 
     Parse a text file in the standard MOT format where each line represents
@@ -94,14 +105,14 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
 
     Returns:
         Dictionary mapping frame numbers (1-based, as in the file) to
-        `MOTFrameData` containing all detections for that frame.
+        `_MOTFrameData` containing all detections for that frame.
 
     Raises:
         FileNotFoundError: If the file does not exist.
         ValueError: If the file is empty or has invalid format.
 
     Examples:
-        >>> from trackers.eval import load_mot_file  # doctest: +SKIP
+        >>> from trackers import load_mot_file  # doctest: +SKIP
         >>>
         >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
         >>>
@@ -161,7 +172,7 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
     if not frame_data:
         raise ValueError(f"No valid data found in MOT file: {path}")
 
-    result: dict[int, MOTFrameData] = {}
+    result: dict[int, _MOTFrameData] = {}
     for frame, rows in frame_data.items():
         try:
             data = np.array(rows, dtype=np.float64)
@@ -179,7 +190,7 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
             else np.ones(len(data), dtype=np.intp)
         )
 
-        result[frame] = MOTFrameData(
+        result[frame] = _MOTFrameData(
             ids=ids,
             boxes=boxes,
             confidences=confidences,
@@ -189,11 +200,11 @@ def load_mot_file(path: str | Path) -> dict[int, MOTFrameData]:
     return result
 
 
-def prepare_mot_sequence(
-    gt_data: dict[int, MOTFrameData],
-    tracker_data: dict[int, MOTFrameData],
+def _prepare_mot_sequence(
+    gt_data: dict[int, _MOTFrameData],
+    tracker_data: dict[int, _MOTFrameData],
     num_frames: int | None = None,
-) -> MOTSequenceData:
+) -> _MOTSequenceData:
     """Prepare GT and tracker data for metric evaluation.
 
     Compute IoU similarity matrices between GT and tracker detections for each
@@ -207,21 +218,8 @@ def prepare_mot_sequence(
             auto-detected from the maximum frame number in the data.
 
     Returns:
-        `MOTSequenceData` containing prepared data ready for metric evaluation.
-
-    Examples:
-        >>> from trackers.eval import load_mot_file, prepare_mot_sequence  # doctest: +SKIP
-        >>>
-        >>> gt_data = load_mot_file("data/gt/MOT17-02/gt/gt.txt")  # doctest: +SKIP
-        >>> tracker_data = load_mot_file("data/trackers/MOT17-02.txt")  # doctest: +SKIP
-        >>> data = prepare_mot_sequence(gt_data, tracker_data)  # doctest: +SKIP
-        >>>
-        >>> data.num_frames  # doctest: +SKIP
-        600
-        >>>
-        >>> data.num_gt_ids  # doctest: +SKIP
-        54
-    """  # noqa: E501
+        `_MOTSequenceData` containing prepared data ready for metric evaluation.
+    """
     gt_frames = set(gt_data.keys()) if gt_data else set()
     tracker_frames = set(tracker_data.keys()) if tracker_data else set()
     all_frames = gt_frames | tracker_frames
@@ -289,7 +287,7 @@ def prepare_mot_sequence(
         tracker_ids_list.append(tracker_ids_remapped)
         similarity_scores_list.append(similarity)
 
-    return MOTSequenceData(
+    return _MOTSequenceData(
         gt_ids=gt_ids_list,
         tracker_ids=tracker_ids_list,
         similarity_scores=similarity_scores_list,
@@ -301,3 +299,46 @@ def prepare_mot_sequence(
         gt_id_mapping=gt_id_mapping,
         tracker_id_mapping=tracker_id_mapping,
     )
+
+
+class _MOTOutput:
+    """Context manager for MOT format file writing."""
+
+    def __init__(self, path: Path | None):
+        self.path = path
+        self._file = None
+
+    def write(self, frame_idx: int, detections: sv.Detections) -> None:
+        """Write detections for a frame in MOT format."""
+        if self._file is None or len(detections) == 0:
+            return
+
+        for i in range(len(detections)):
+            x1, y1, x2, y2 = detections.xyxy[i]
+            w, h = x2 - x1, y2 - y1
+
+            track_id = (
+                int(detections.tracker_id[i])
+                if detections.tracker_id is not None
+                else -1
+            )
+            conf = (
+                float(detections.confidence[i])
+                if detections.confidence is not None
+                else -1.0
+            )
+
+            self._file.write(
+                f"{frame_idx},{track_id},{x1:.2f},{y1:.2f},{w:.2f},{h:.2f},"
+                f"{conf:.4f},-1,-1,-1\n"
+            )
+
+    def __enter__(self):
+        if self.path is not None:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self._file = open(self.path, "w")
+        return self
+
+    def __exit__(self, *_):
+        if self._file is not None:
+            self._file.close()

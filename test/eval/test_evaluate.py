@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Tests for high-level evaluation functions."""
-
 from __future__ import annotations
 
 from pathlib import Path

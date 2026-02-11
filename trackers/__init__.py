@@ -6,5 +6,10 @@
 
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.sort.tracker import SORTTracker
+from trackers.io.video import frames_from_source
 
-__all__ = ["ByteTrackTracker", "SORTTracker"]
+__all__ = [
+    "ByteTrackTracker",
+    "SORTTracker",
+    "frames_from_source",
+]
