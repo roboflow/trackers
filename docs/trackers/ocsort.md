@@ -16,7 +16,7 @@ due to object stopping or short-term occlusion.
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
-|:---------:|:----:|:----:|:----:|
+| :-------: | :--: | :--: | :--: |
 |   MOT17   | 61.9 | 76.1 | 76.7 |
 | SportsMOT | 71.5 | 71.2 | 95.2 |
 | SoccerNet | 78.6 | 72.7 | 94.5 |
@@ -53,7 +53,9 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame, detections, labels=detections.tracker_id
+        )
 
         cv2.imshow("RF-DETR + OC-SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -91,7 +93,9 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame, detections, labels=detections.tracker_id
+        )
 
         cv2.imshow("RF-DETR + OC-SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -129,7 +133,9 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame, detections, labels=detections.tracker_id
+        )
 
         cv2.imshow("RF-DETR + OC-SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
