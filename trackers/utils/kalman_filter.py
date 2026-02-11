@@ -1,4 +1,4 @@
-from copy import deepcopy
+from __future__ import annotations
 
 import numpy as np
 from numpy.typing import NDArray
@@ -23,14 +23,6 @@ class KalmanFilter:
         P_prior: Prior covariance (after predict, before update).
         x_post: Posterior state estimate (after update).
         P_post: Posterior covariance (after update).
-
-    Example:
-        >>> kf = KalmanFilter(dim_x=4, dim_z=2)
-        >>> kf.x = np.array([[0], [0], [0], [0]])  # initial state
-        >>> kf.F = np.eye(4)  # state transition
-        >>> kf.H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])  # measurement
-        >>> kf.predict()
-        >>> kf.update(np.array([[1], [2]]))
     """
 
     def __init__(self, dim_x: int, dim_z: int) -> None:
