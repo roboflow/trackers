@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Roboflow. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
-# Copied from OC-SORT https://github.com/noahcao/OC_SORT/
+# Modified and adapted from OC-SORT https://github.com/noahcao/OC_SORT/
 # Licensed under the MIT License [see LICENSE for details]
 # ------------------------------------------------------------------------
 
@@ -16,7 +16,7 @@ import supervision as sv
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 
 
-def speed_direction(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
+def _speed_direction(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
     """Compute normalized direction vector between two bounding box centers.
 
     Args:
@@ -33,7 +33,7 @@ def speed_direction(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
     return speed / norm
 
 
-def build_direction_consistency_matrix(
+def _build_direction_consistency_matrix(
     tracklets: list[OCSORTTracklet],
     detection_boxes: np.ndarray,
 ) -> np.ndarray:
@@ -60,13 +60,13 @@ def build_direction_consistency_matrix(
         if tracklet.previous_to_last_observation is None:
             continue
         last_observation = tracklet.last_observation
-        tracklet_speed = speed_direction(
+        tracklet_speed = _speed_direction(
             tracklet.previous_to_last_observation, last_observation
         )
 
         for d in range(n_detections):
             detection_box = detection_boxes[d]
-            association_speed = speed_direction(last_observation, detection_box)
+            association_speed = _speed_direction(last_observation, detection_box)
 
             cos_sim = np.dot(tracklet_speed, association_speed)
             cos_sim = np.clip(cos_sim, -1.0, 1.0)
@@ -76,7 +76,7 @@ def build_direction_consistency_matrix(
     return direction_consistency_matrix
 
 
-def speed_direction_batch(
+def _speed_direction_batch(
     dets: np.ndarray, tracks: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """Compute normalized direction vectors from tracks to detections in batch.
@@ -125,7 +125,7 @@ def build_direction_consistency_matrix_batch(
     # Compute tracklet velocities (from previous_to_last -> last_observation)
     velocities = np.array(
         [
-            speed_direction(
+            _speed_direction(
                 tracklet.previous_to_last_observation, tracklet.last_observation
             )
             if tracklet.previous_to_last_observation is not None
@@ -138,7 +138,7 @@ def build_direction_consistency_matrix_batch(
     last_obs = np.array([tracklet.last_observation for tracklet in tracklets])
 
     # Compute association directions (from last_observation -> detection) in batch
-    Y, X = speed_direction_batch(
+    Y, X = _speed_direction_batch(
         detection_boxes, last_obs
     )  # (n_tracklets, n_detections)
 
