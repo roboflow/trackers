@@ -10,8 +10,8 @@ from typing import List, Sequence, Set, TypeVar, Union
 import numpy as np
 import supervision as sv
 
-from trackers.core.bytetrack.kalman_box_tracker import ByteTrackKalmanBoxTracker
-from trackers.core.sort.kalman_box_tracker import SORTKalmanBoxTracker
+from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
+from trackers.core.sort.kalman import SORTKalmanBoxTracker
 
 KalmanBoxTrackerType = TypeVar(
     "KalmanBoxTrackerType", bound=Union[SORTKalmanBoxTracker, ByteTrackKalmanBoxTracker]
