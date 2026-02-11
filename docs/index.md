@@ -76,8 +76,8 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 | Algorithm | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
 | :-------: | :--------: | :--------: | :--------: | :------------: | :------------: |
 |   SORT    |    58.4    |    69.9    |    67.2    |      70.9      |      81.6      |
-| ByteTrack |  **60.1**  |  **73.2**  |  **74.1**  |    **73.0**    |    **84.0**    |
-|  OC-SORT  |     —      |     —      |     —      |       —        |       —        |
+| ByteTrack |  60.1  |  73.2  | *74.1  |    **73.0**    |    **84.0**    |
+|  OC-SORT  |   **61.9**    |   **76.1**      |    **76.7**    |      71.5       |       78.6        |
 | BoT-SORT  |     —      |     —      |     —      |       —        |       —        |
 |  McByte   |     —      |     —      |     —      |       —        |       —        |
 

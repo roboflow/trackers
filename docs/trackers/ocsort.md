@@ -11,13 +11,13 @@ It recognizes limitations from SORT and the linear motion assumption of the Kalm
 mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
 due to object stopping or short-term occlusion.
 
-## Benchmarks
+## Comparison
 
-For comparisons with other trackers, plus full details on the datasets and evaluation metrics used, see the [benchmarks](../learn/benchmarks.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 |:---------:|:----:|:----:|:----:|
-|   MOT17   | ---- | ---- | ---- |
+|   MOT17   | 61.9 | 76.1 | 76.7 |
 | SportsMOT | 71.5 | 71.2 | 95.2 |
 | SoccerNet | 78.6 | 72.7 | 94.5 |
 
@@ -138,8 +138,3 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
     video_capture.release()
     cv2.destroyAllWindows()
     ```
-
-
-## API
-
-::: trackers.core.ocsort.tracker.OCSORTTracker

@@ -10,6 +10,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 | :-------: | :--: | :--: | :--: |
 |   SORT    | 58.4 | 69.9 | 67.2 |
 | ByteTrack | 60.1 | 73.2 | 74.1 |
+|  OC-SORT  | 61.9 | 76.1 | 76.7 |
 
 ## SportsMOT
 
@@ -19,6 +20,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 | :-------: | :--: | :--: | :--: |
 |   SORT    | 70.9 | 68.9 | 95.7 |
 | ByteTrack | 73.0 | 72.5 | 96.4 |
+| OC-SORT | 71.5 | 71.2 | 95.2 |
 
 ## SoccerNet-tracking
 
@@ -28,3 +30,4 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 | :-------: | :--: | :--: | :--: |
 |   SORT    | 81.6 | 76.2 | 95.1 |
 | ByteTrack | 84.0 | 78.1 | 97.8 |
+| OC-SORT | 78.6 | 72.7 | 94.5 |
