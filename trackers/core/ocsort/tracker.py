@@ -88,8 +88,12 @@ class OCSORTTracker(BaseTracker):
             direction_consistency_matrix: Direction of the tracklet consistency cost matrix.
 
         Returns:
-            tuple[list[tuple[int, int]], list[int], list[int]]: Matched indices,
-                unmatched tracks, unmatched detections.
+            matched_indices: List of (track_index, detection_index) tuples for
+                successful associations that meet the IOU threshold.
+            unmatched_tracks: list of track indices that were not matched
+                to any detection.
+            unmatched_detections: list of detection indices that were not
+                matched to any track.
         """  # noqa: E501
         matched_indices = []
         n_tracks, n_detections = iou_matrix.shape
@@ -110,8 +114,8 @@ class OCSORTTracker(BaseTracker):
 
         return (
             matched_indices,
-            sorted(list(unmatched_tracks)),
-            sorted(list(unmatched_detections)),
+            list(unmatched_tracks),
+            list(unmatched_detections),
         )
 
     def _spawn_new_tracklets(
@@ -143,7 +147,7 @@ class OCSORTTracker(BaseTracker):
             detections: The latest set of object detections from a frame.
 
         Returns:
-            sv.Detections: A copy of the input detections, augmented with assigned
+            updated_detections: A copy of the input detections, augmented with assigned
                 `tracklet_id` for each successfully tracked object. Detections not
                 associated with a track will not have a `tracklet_id`.
         """
