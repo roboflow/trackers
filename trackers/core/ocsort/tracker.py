@@ -47,7 +47,7 @@ class OCSORTTracker(BaseTracker):
             existing tracks.
         direction_consistency_weight: Weight for inertia term in association cost. Higher values give more importance
             to the angle difference between the motion direction and the association direction.
-        high_conf_detect_threshold: Confidence threshold to consider a detection as high confidence. If a detection has
+        high_conf_det_threshold: Confidence threshold to consider a detection as high confidence. If a detection has
             confidence lower than this threshold, it will not be considered for association.
 
     """  # noqa: E501
@@ -61,7 +61,7 @@ class OCSORTTracker(BaseTracker):
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
         direction_consistency_weight: float = 0.2,
-        high_conf_detect_threshold: float = 0.6,
+        high_conf_det_threshold: float = 0.6,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -70,7 +70,7 @@ class OCSORTTracker(BaseTracker):
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.direction_consistency_weight = direction_consistency_weight
-        self.high_conf_detect_threshold = high_conf_detect_threshold
+        self.high_conf_det_threshold = high_conf_det_threshold
 
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
@@ -152,9 +152,7 @@ class OCSORTTracker(BaseTracker):
             detections.tracker_id = np.array([], dtype=int)
             return detections
 
-        detections = detections[
-            detections.confidence >= self.high_conf_detect_threshold
-        ]
+        detections = detections[detections.confidence >= self.high_conf_det_threshold]
 
         updated_detections: list[
             sv.Detections
