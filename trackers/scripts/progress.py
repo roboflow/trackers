@@ -161,15 +161,13 @@ class _TrackingProgress:
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: object,
-    ) -> bool:
+    ) -> None:
         if self._live is not None:
             self._live.__exit__(None, None, None)
 
         icon, suffix = self._resolve_final_state(exc_type)
         final = self._build_line(icon, show_eta=False, suffix=suffix)
         self._console.print(final)
-
-        return False  # never suppress exceptions
 
     @property
     def _is_bounded(self) -> bool:
