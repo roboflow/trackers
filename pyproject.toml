@@ -1,6 +1,6 @@
 [project]
 name = "trackers"
-version = "2.1.0"
+version = "2.2.0rc0"
 description = "A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms"
 readme = "README.md"
 maintainers = [
@@ -38,7 +38,14 @@ dependencies = [
     "numpy>=2.0.2",
     "supervision>=0.26.1",
     "scipy>=1.13.1",
+    "opencv-python>=4.8.0"
 ]
+
+[project.optional-dependencies]
+detection = ["inference-models==0.18.6rc8"]
+
+[project.scripts]
+trackers = "trackers.scripts.__main__:main"
 
 [dependency-groups]
 dev = [
@@ -138,7 +145,7 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "F401"]
-"test" = []
+"test/**" = ["S101"]  # Allow assert in tests
 "trackers" = []
 
 [tool.ruff.lint.mccabe]
@@ -165,3 +172,15 @@ line-ending = "auto"
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["test"]
+addopts = [
+  "--doctest-modules",
+  "--color=yes",
+]
+doctest_optionflags = "ELLIPSIS NORMALIZE_WHITESPACE"
+markers = [
+    "integration: marks tests as integration tests (require external data download)",
+]
+
+[tool.codespell]
+skip = "*.pth"
+ignore-words-list = "mot"

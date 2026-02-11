@@ -2,16 +2,20 @@ name: Docs/Build and Publish
 
 on:
   push:
-    branches:
-      - develop
+    branches: [main, develop]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or tag to deploy'
+        required: false
+        default: 'main'
   release:
     types: [published]
 
 # Ensure only one concurrent deployment
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref}}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 # Restrict permissions by default
 permissions:
@@ -29,9 +33,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: 🐍 Install uv and set Python
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
         with:
           python-version: "3.10"
           activate-environment: true
@@ -45,11 +50,20 @@ jobs:
           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
       - name: 🚀 Deploy Development Docs
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/develop') || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/develop')
+        env:
+          MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
+        run: uv run mike deploy --push develop
+
+      - name: 🚀 Deploy Custom Ref Docs
+        if: github.event_name == 'workflow_dispatch'
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          uv run mike deploy --push develop
+          REF_NAME="${{ github.event.inputs.ref }}"
+          # If it's a full ref like refs/heads/branch or refs/tags/tag, extract the name
+          CLEAN_REF=$(echo "$REF_NAME" | sed 's|^refs/[^/]*/||')
+          uv run mike deploy --push $CLEAN_REF
 
       - name: 🚀 Deploy Release Docs
         if: github.event_name == 'release' && github.event.action == 'published'
@@ -58,3 +72,4 @@ jobs:
         run: |
           latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
           uv run mike deploy --push --update-aliases $latest_tag latest
+          uv run mike set-default --push latest
