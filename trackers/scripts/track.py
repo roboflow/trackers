@@ -22,6 +22,7 @@ from trackers.core.base import BaseTracker
 from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DisplayWindow, _VideoOutput
+from trackers.scripts.progress import _classify_source, _TrackingProgress
 from trackers.utils.device import _best_device
 
 # Defaults
@@ -293,6 +294,8 @@ def run_track(args: argparse.Namespace) -> int:
     # Create frame generator
     frame_gen = frames_from_source(args.source)
 
+    source_info = _classify_source(args.source)
+
     # Setup annotators
     annotators, label_annotator = _init_annotators(
         show_boxes=args.show_boxes,
@@ -315,7 +318,9 @@ def run_track(args: argparse.Namespace) -> int:
             _VideoOutput(args.output) as video,
             _MOTOutput(args.mot_output) as mot,
             display_ctx as display,
+            _TrackingProgress(source_info) as progress,
         ):
+            interrupted = False
             for frame_idx, frame in frame_gen:
                 # Get detections
                 if model is not None:
@@ -335,6 +340,8 @@ def run_track(args: argparse.Namespace) -> int:
 
                 # Write MOT output
                 mot.write(frame_idx, tracked)
+
+                progress.update()
 
                 # Annotate and display/save frame
                 if args.display or args.output:
@@ -359,10 +366,13 @@ def run_track(args: argparse.Namespace) -> int:
                     if display is not None:
                         display.show(annotated)
                         if display.quit_requested:
+                            interrupted = True
                             break
 
+            progress.complete(interrupted=interrupted)
+
     except KeyboardInterrupt:
-        print("\nInterrupted by user.")
+        pass  # progress.__exit__ already printed the final line
 
     return 0
 
