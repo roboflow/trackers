@@ -8,19 +8,19 @@ comments: true
 
 SORT is a classic online, tracking-by-detection method that predicts object motion with a Kalman filter and matches predicted tracks to detections using the Hungarian algorithm based on Intersection over Union (IoU). The tracker uses only geometric cues from bounding boxes, without appearance features, so it runs extremely fast and scales to hundreds of frames per second on typical hardware. Detections from a strong CNN detector feed SORT, which updates each track’s state via a constant velocity motion model and prunes stale tracks. Because SORT lacks explicit re-identification or appearance cues, it can suffer identity switches and fragmented tracks under long occlusions or heavy crowding.
 
-## Benchmarks
+## Comparison
 
-For comparisons with other trackers, plus full details on the datasets and evaluation metrics used, see the [benchmarks](../learn/benchmarks.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
-|:---------:|:----:|:----:|:----:|
+| :-------: | :--: | :--: | :--: |
 |   MOT17   | 58.4 | 69.9 | 67.2 |
 | SportsMOT | 70.9 | 68.9 | 95.7 |
 | SoccerNet | 81.6 | 76.2 | 95.1 |
 
 ## Run on video, webcam, or RTSP stream
 
-These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.
+These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.
 
 === "Video"
 
@@ -50,7 +50,11 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("RF-DETR + SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -88,7 +92,11 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("RF-DETR + SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -126,7 +134,11 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
 
         cv2.imshow("RF-DETR + SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -135,7 +147,3 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
     video_capture.release()
     cv2.destroyAllWindows()
     ```
-
-## API
-
-::: trackers.core.sort.tracker.SORTTracker

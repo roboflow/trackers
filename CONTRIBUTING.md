@@ -5,36 +5,72 @@ Thank you for your interest in contributing to the Trackers library! Your help�
 ## Table of Contents
 
 1. [How to Contribute](#how-to-contribute)
-2. [CLA Signing](#cla-signing)
-3. [Clean Room Requirements](#clean-room-requirements)
-4. [Google-Style Docstrings and Type Hints](#google-style-docstrings-and-type-hints)
-5. [Reporting Bugs](#reporting-bugs)
-6. [License](#license)
+2. [Running Tests](#running-tests)
+3. [CLA Signing](#cla-signing)
+4. [Clean Room Requirements](#clean-room-requirements)
+5. [Google-Style Docstrings and Type Hints](#google-style-docstrings-and-type-hints)
+6. [Reporting Bugs](#reporting-bugs)
+7. [License](#license)
 
 ## How to Contribute
 
 Contributions come in many forms: improving features, fixing bugs, suggesting ideas, improving documentation, or adding new tracking methods. Here’s a high-level overview to get you started:
 
 1. [Fork the Repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo): Click the “Fork” button on our GitHub page to create your own copy.
+
 2. [Clone Locally](https://docs.github.com/en/enterprise-server@3.11/repositories/creating-and-managing-repositories/cloning-a-repository): Download your fork to your local development environment.
+
 3. [Create a Branch](https://docs.github.com/en/desktop/making-changes-in-a-branch/managing-branches-in-github-desktop): Use a descriptive name to create a new branch:
 
-   ```bash
-   git checkout -b feature/your-descriptive-name
-   ```
+    ```bash
+    git checkout -b feature/your-descriptive-name
+    ```
 
 4. Develop Your Changes: Make your updates, ensuring your commit messages clearly describe your modifications.
+
 5. [Commit and Push](https://docs.github.com/en/desktop/making-changes-in-a-branch/committing-and-reviewing-changes-to-your-project-in-github-desktop): Run:
 
-   ```bash
-   git add .
-   git commit -m "A brief description of your changes"
-   git push -u origin your-descriptive-name
-   ```
+    ```bash
+    git add .
+    git commit -m "A brief description of your changes"
+    git push -u origin your-descriptive-name
+    ```
 
 6. [Open a Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request): Submit your pull request against the main development branch. Please detail your changes and link any related issues.
 
 Before merging, check that all tests pass and that your changes adhere to our development and documentation standards.
+
+## Running Tests
+
+Install development dependencies:
+
+```bash
+uv sync --group dev
+```
+
+1. **Unit Tests**: Run the standard test suite:
+
+    ```bash
+    uv run pytest
+    ```
+
+2. **Doctests**: Run only doctests from docstrings:
+
+    ```bash
+    uv run pytest --doctest-modules trackers/ --ignore=test/
+    ```
+
+3. **Integration Tests**: Integration tests validate that our evaluation metrics match TrackEval's results on real MOT datasets. Run integration tests (requires downloading ~50MB of test data):
+
+    ```bash
+    uv run pytest -m integration
+    ```
+
+4. **All Tests**: Run all tests including integration:
+
+    ```bash
+    uv run pytest -m ""
+    ```
 
 ## CLA Signing
 

@@ -1,17 +1,33 @@
-th, td {
-  border: 1px solid var(--md-typeset-table-color);
+/* Full-width tables */
+.md-typeset__scrollwrap {
+  margin: 0;
+  overflow-x: auto;
 }
 
 .md-typeset__table {
+  display: block;
+  width: 100%;
   line-height: 1.5;
 }
 
-.md-typeset__table table:not([class]) {
-  font-size: 0.6rem;
+.md-typeset table:not([class]) {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
+}
+
+/* Table cell styling */
+th, td {
+  border: 1px solid var(--md-typeset-table-color);
+  word-wrap: break-word;
 }
 
 .md-typeset__table table:not([class]) td,
 .md-typeset__table table:not([class]) th {
   padding: 10px;
+}
+
+.md-typeset__table table:not([class]) {
+  font-size: 0.6rem;
 }

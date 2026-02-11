@@ -9,7 +9,7 @@
     <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/main/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
 </div>
 
-Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms released under the permissive Apache 2.0 license. You combine them with any detection model you already use.
+`trackers` gives you clean, modular re-implementations of leading multi-object tracking algorithms released under the permissive Apache 2.0 license. You combine them with any detection model you already use.
 
 https://github.com/user-attachments/assets/eef9b00a-cfe4-40f7-a495-954550e3ef1f
 
@@ -34,60 +34,51 @@ pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
 
 </details>
 
-## Tracking Algorithms
-
-Trackers gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360) support is coming soon. For full results, see the [benchmarks](https://trackers.roboflow.com/develop/learn/benchmarks/) page.
-
-|   Algorithm   |                              Trackers API                                       | MOT17 HOTA | MOT17 IDF1  | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
-|:-------------:|:-------------------------------------------------------------------------------:|:----------:|:-----------:|:----------:|:--------------:|:--------------:|
-|     SORT      |      [`SORTTracker`](https://trackers.roboflow.com/develop/trackers/sort/)      |    58.4    |    69.9     |    67.2    |      70.9      |      81.6      |
-|   ByteTrack   | [`ByteTrackTracker`](https://trackers.roboflow.com/develop/trackers/bytetrack/) |  **60.1**  |  **73.2**   |  **74.1**  |    **73.0**    |    **84.0**    |
-|    OC-SORT    |                                 `OCSORTTracker`                                 |     —      |      —      |     —      |       —        |       —        |
-
 ## Quickstart
 
-With a modular design, Trackers lets you combine object detectors from different libraries with the tracker of your choice. Here's how you can use ByteTrack with various detectors. These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>` with your input.
+Use the `trackers` CLI to quickly test how our tracking algorithms perform on your videos and streams. This feature is experimental; see the [CLI documentation](https://roboflow.github.io/trackers/learn/track/) for details.
+
+```bash
+trackers track --source source.mp4 --output output.mp4 --model rfdetr-nano --tracker bytetrack
+```
+
+## Tracking Algorithms
+
+`trackers` gives you clean, modular re-implementations of leading multi-object tracking algorithms. The package currently supports [SORT](https://arxiv.org/abs/1602.00763) and [ByteTrack](https://arxiv.org/abs/2110.06864). [OC-SORT](https://arxiv.org/abs/2203.14360), [BoT-SORT](https://arxiv.org/abs/2206.14651), and [McByte](https://arxiv.org/abs/2506.01373) support is coming soon. For comparisons, see the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) page.
+
+| Algorithm | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
+| :-------: | :--------: | :--------: | :--------: | :------------: | :------------: |
+|   SORT    |    58.4    |    69.9    |    67.2    |      70.9      |      81.6      |
+| ByteTrack |  **60.1**  |  **73.2**  |  **74.1**  |    **73.0**    |    **84.0**    |
+|  OC-SORT  |     —      |     —      |     —      |       —        |       —        |
+| BoT-SORT  |     —      |     —      |     —      |       —        |       —        |
+|  McByte   |     —      |     —      |     —      |       —        |       —        |
+
+## Integration
+
+With a modular design, `trackers` lets you combine object detectors from different libraries with the tracker of your choice.
 
 ```python
 import cv2
-import supervision as sv
-from rfdetr import RFDETRMedium
+from rfdetr import RFDETRNano
 from trackers import ByteTrackTracker
 
+model = RFDETRNano()
 tracker = ByteTrackTracker()
-model = RFDETRMedium()
 
-box_annotator = sv.BoxAnnotator()
-label_annotator = sv.LabelAnnotator()
-
-video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
-if not video_capture.isOpened():
-    raise RuntimeError("Failed to open video source")
-
+cap = cv2.VideoCapture("source.mp4")
 while True:
-    success, frame_bgr = video_capture.read()
-    if not success:
+    ret, frame = cap.read()
+    if not ret:
         break
 
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     detections = model.predict(frame_rgb)
     detections = tracker.update(detections)
-
-    annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
-
-    cv2.imshow("RF-DETR + ByteTrack", annotated_frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-video_capture.release()
-cv2.destroyAllWindows()
 ```
 
 <details>
 <summary>run with Inference</summary>
-
-<br>
 
 ```python
 import cv2
@@ -95,42 +86,24 @@ import supervision as sv
 from inference import get_model
 from trackers import ByteTrackTracker
 
+model = get_model(model_id="rfdetr-nano")
 tracker = ByteTrackTracker()
-model = get_model(model_id="rfdetr-medium")
 
-box_annotator = sv.BoxAnnotator()
-label_annotator = sv.LabelAnnotator()
-
-video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
-if not video_capture.isOpened():
-    raise RuntimeError("Failed to open video source")
-
+cap = cv2.VideoCapture("source.mp4")
 while True:
-    success, frame_bgr = video_capture.read()
-    if not success:
+    ret, frame = cap.read()
+    if not ret:
         break
 
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-    result = model.infer(frame_rgb)[0]
+    result = model.infer(frame)[0]
     detections = sv.Detections.from_inference(result)
     detections = tracker.update(detections)
-
-    annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
-
-    cv2.imshow("Inference + ByteTrack", annotated_frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-video_capture.release()
-cv2.destroyAllWindows()
 ```
+
 </details>
 
 <details>
 <summary>run with Ultralytics</summary>
-
-<br>
 
 ```python
 import cv2
@@ -138,94 +111,18 @@ import supervision as sv
 from ultralytics import YOLO
 from trackers import ByteTrackTracker
 
+model = YOLO("yolo11n.pt")
 tracker = ByteTrackTracker()
-model = YOLO("yolo26m.pt")
 
-box_annotator = sv.BoxAnnotator()
-label_annotator = sv.LabelAnnotator()
-
-video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
-if not video_capture.isOpened():
-    raise RuntimeError("Failed to open video source")
-
+cap = cv2.VideoCapture("source.mp4")
 while True:
-    success, frame_bgr = video_capture.read()
-    if not success:
+    ret, frame = cap.read()
+    if not ret:
         break
 
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-    result = model(frame_rgb)[0]
+    result = model(frame)[0]
     detections = sv.Detections.from_ultralytics(result)
     detections = tracker.update(detections)
-
-    annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
-
-    cv2.imshow("Ultralytics + ByteTrack", annotated_frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-video_capture.release()
-cv2.destroyAllWindows()
-```
-
-</details>
-
-<details>
-<summary>run with Transformers</summary>
-
-<br>
-
-```python
-import torch
-import cv2
-import supervision as sv
-from trackers import ByteTrackTracker
-from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
-
-tracker = ByteTrackTracker()
-processor = RTDetrImageProcessor.from_pretrained("PekingU/rtdetr_v2_r18vd")
-model = RTDetrV2ForObjectDetection.from_pretrained("PekingU/rtdetr_v2_r18vd")
-
-box_annotator = sv.BoxAnnotator()
-label_annotator = sv.LabelAnnotator()
-
-video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
-if not video_capture.isOpened():
-    raise RuntimeError("Failed to open video source")
-
-while True:
-    success, frame_bgr = video_capture.read()
-    if not success:
-        break
-
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-    inputs = processor(images=frame_rgb, return_tensors="pt")
-    with torch.no_grad():
-        outputs = model(**inputs)
-
-    h, w = frame_bgr.shape[:2]
-    results = processor.post_process_object_detection(
-        outputs,
-        target_sizes=torch.tensor([[h, w]]),
-        threshold=0.5
-    )[0]
-
-    detections = sv.Detections.from_transformers(
-        transformers_results=results,
-        id2label=model.config.id2label
-    )
-    detections = tracker.update(detections)
-
-    annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
-
-    cv2.imshow("Transformers + ByteTrack", annotated_frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-video_capture.release()
-cv2.destroyAllWindows()
 ```
 
 </details>
