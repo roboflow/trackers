@@ -57,24 +57,6 @@ def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
         metavar="PATH",
         help="Sequence map file listing sequences to evaluate.",
     )
-    bench_group.add_argument(
-        "--benchmark",
-        type=str,
-        metavar="NAME",
-        help="Override auto-detected benchmark name (e.g., MOT17, SportsMOT).",
-    )
-    bench_group.add_argument(
-        "--split",
-        type=str,
-        metavar="NAME",
-        help="Override auto-detected split name (e.g., train, val, test).",
-    )
-    bench_group.add_argument(
-        "--tracker-name",
-        type=str,
-        metavar="NAME",
-        help="Override auto-detected tracker name.",
-    )
 
     # Common options
     parser.add_argument(
@@ -169,9 +151,6 @@ def run_eval(args: argparse.Namespace) -> int:
                 seqmap=args.seqmap,
                 metrics=args.metrics,
                 threshold=args.threshold,
-                benchmark=args.benchmark,
-                split=args.split,
-                tracker_name=args.tracker_name,
             )
             print(bench_result.table(columns=columns))
 
