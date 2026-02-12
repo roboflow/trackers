@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from copy import deepcopy
+
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
@@ -153,8 +155,9 @@ class OCSORTTracker(BaseTracker):
         """
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            detections.tracker_id = np.array([], dtype=int)
-            return detections
+            result = deepcopy(detections)
+            result.tracker_id = np.array([], dtype=int)
+            return result
 
         detections = detections[detections.confidence >= self.high_conf_det_threshold]
 
