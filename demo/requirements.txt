@@ -1,0 +1,4 @@
+gradio
+opencv-python-headless
+ffmpeg-python
+trackers[detection]@git+https://github.com/roboflow/trackers.git
