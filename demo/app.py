@@ -239,8 +239,8 @@ with gr.Blocks(title="Trackers") as demo:
             output_video = gr.Video(label="Tracked Video")
 
     gr.Examples(
-        fn=track,
         examples=VIDEO_EXAMPLES,
+        cache_examples=False,
         inputs=[
             input_video,
             model_dropdown,
