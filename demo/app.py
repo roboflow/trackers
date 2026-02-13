@@ -166,80 +166,89 @@ def track(
     return final_output
 
 
+confidence_slider = gr.Slider(
+    minimum=0.0,
+    maximum=1.0,
+    value=0.5,
+    step=0.05,
+    label="Detection Confidence",
+)
+lost_track_buffer_slider = gr.Slider(
+    minimum=1,
+    maximum=120,
+    value=30,
+    step=1,
+    label="Lost Track Buffer (frames)",
+)
+track_activation_slider = gr.Slider(
+    minimum=0.0,
+    maximum=1.0,
+    value=0.7,
+    step=0.05,
+    label="Track Activation Threshold",
+)
+min_consecutive_slider = gr.Slider(
+    minimum=1,
+    maximum=10,
+    value=2,
+    step=1,
+    label="Minimum Consecutive Frames",
+)
+min_iou_slider = gr.Slider(
+    minimum=0.0,
+    maximum=1.0,
+    value=0.1,
+    step=0.05,
+    label="Minimum IoU Threshold",
+)
+high_conf_slider = gr.Slider(
+    minimum=0.0,
+    maximum=1.0,
+    value=0.6,
+    step=0.05,
+    label="High Confidence Detection Threshold (ByteTrack only)",
+)
+
 with gr.Blocks(title="Trackers") as demo:
     gr.Markdown(
-        "# Roboflow Trackers\n"
-        "Upload a video, pick a detection model and tracker, then download "
-        "the tracked result. Videos are limited to 30 seconds.\n\n"
-        "Powered by [roboflow/trackers]"
-        "(https://github.com/roboflow/trackers)."
+        """# Trackers \n
+        \n<a href="https://github.com/roboflow/trackers">
+        <img src="https://badges.aleen42.com/src/github.svg" alt="GitHub" style="display:inline-block;">
+        </a>
+        \n Upload a video, pick a detection model and tracker, then download the tracked result. Videos are limited to 30 seconds."""  # noqa: E501
     )
 
     with gr.Row():
-        with gr.Column():
-            input_video = gr.Video(label="Input Video")
-            model_dropdown = gr.Dropdown(
-                choices=MODELS,
-                value="rfdetr-nano",
-                label="Detection Model",
-            )
-            tracker_dropdown = gr.Dropdown(
-                choices=TRACKERS,
-                value="bytetrack",
-                label="Tracker",
-            )
+        input_video = gr.Video(label="Input Video")
+        output_video = gr.Video(label="Tracked Video")
 
-            with gr.Accordion("Advanced Parameters", open=False):
-                confidence_slider = gr.Slider(
-                    minimum=0.0,
-                    maximum=1.0,
-                    value=0.5,
-                    step=0.05,
-                    label="Detection Confidence",
-                )
-                lost_track_buffer_slider = gr.Slider(
-                    minimum=1,
-                    maximum=120,
-                    value=30,
-                    step=1,
-                    label="Lost Track Buffer (frames)",
-                )
-                track_activation_slider = gr.Slider(
-                    minimum=0.0,
-                    maximum=1.0,
-                    value=0.7,
-                    step=0.05,
-                    label="Track Activation Threshold",
-                )
-                min_consecutive_slider = gr.Slider(
-                    minimum=1,
-                    maximum=10,
-                    value=2,
-                    step=1,
-                    label="Minimum Consecutive Frames",
-                )
-                min_iou_slider = gr.Slider(
-                    minimum=0.0,
-                    maximum=1.0,
-                    value=0.1,
-                    step=0.05,
-                    label="Minimum IoU Threshold",
-                )
-                high_conf_slider = gr.Slider(
-                    minimum=0.0,
-                    maximum=1.0,
-                    value=0.6,
-                    step=0.05,
-                    label="High Confidence Detection Threshold (ByteTrack only)",
-                )
+    with gr.Row():
+        model_dropdown = gr.Dropdown(
+            choices=MODELS,
+            value="rfdetr-nano",
+            label="Detection Model",
+            scale=3,
+        )
+        tracker_dropdown = gr.Dropdown(
+            choices=TRACKERS,
+            value="bytetrack",
+            label="Tracker",
+            scale=2,
+        )
+        track_btn = gr.Button(value="Track", variant="primary", scale=1)
 
-            track_btn = gr.Button("Track", variant="primary")
-
-        with gr.Column():
-            output_video = gr.Video(label="Tracked Video")
+    with gr.Accordion("Configuration", open=False):
+        confidence_slider.render()
+        lost_track_buffer_slider.render()
+        track_activation_slider.render()
+        min_consecutive_slider.render()
+        min_iou_slider.render()
+        high_conf_slider.render()
 
     gr.Examples(
+        fn=track,
         examples=VIDEO_EXAMPLES,
+        run_on_click=True,
         cache_examples=False,
         inputs=[
             input_video,
@@ -271,5 +280,4 @@ with gr.Blocks(title="Trackers") as demo:
         outputs=output_video,
     )
 
-if __name__ == "__main__":
-    demo.launch()
+demo.launch(debug=True, show_error=True, max_threads=1)
