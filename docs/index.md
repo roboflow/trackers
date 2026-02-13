@@ -57,6 +57,16 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
 
+- **How to Track Objects with OC-SORT**
+
+    ---
+
+    [![](url-to-image)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
+
+    End-to-end example showing how to run RF-DETR detection with the OC-SORT tracker.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
+
 </div>
 
 ## Tracking Algorithms
@@ -66,8 +76,8 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 | Algorithm | MOT17 HOTA | MOT17 IDF1 | MOT17 MOTA | SportsMOT HOTA | SoccerNet HOTA |
 | :-------: | :--------: | :--------: | :--------: | :------------: | :------------: |
 |   SORT    |    58.4    |    69.9    |    67.2    |      70.9      |      81.6      |
-| ByteTrack |  **60.1**  |  **73.2**  |  **74.1**  |    **73.0**    |    **84.0**    |
-|  OC-SORT  |     —      |     —      |     —      |       —        |       —        |
+| ByteTrack |    60.1    |    73.2    |   \*74.1   |    **73.0**    |    **84.0**    |
+|  OC-SORT  |  **61.9**  |  **76.1**  |  **76.7**  |      71.5      |      78.6      |
 | BoT-SORT  |     —      |     —      |     —      |       —        |       —        |
 |  McByte   |     —      |     —      |     —      |       —        |       —        |
 

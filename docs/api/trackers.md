@@ -7,3 +7,7 @@
 ## ByteTrack
 
 ::: trackers.core.bytetrack.tracker.ByteTrackTracker
+
+## OC-SORT
+
+::: trackers.core.ocsort.tracker.OCSORTTracker

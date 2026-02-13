@@ -117,6 +117,7 @@ nav:
     - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md
     - ByteTrack: trackers/bytetrack.md
+    - OC-SORT: trackers/ocsort.md
   - Guides:
     - Install: learn/install.md
     - Track: learn/track.md
