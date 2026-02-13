@@ -27,7 +27,7 @@ TRACKERS = ["bytetrack", "sort"]
 VIDEO_EXAMPLES = [
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-1.mp4",
-        "rfdetr-small",
+        "rfdetr-nano",
         "bytetrack",
         0.2,
         30,
@@ -49,6 +49,28 @@ VIDEO_EXAMPLES = [
     ],
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/cars-1280x720-1.mp4",
+        "rfdetr-small",
+        "bytetrack",
+        0.2,
+        30,
+        0.3,
+        2,
+        0.1,
+        0.6,
+    ],
+    [
+        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/jets-1280x720-1.mp4",
+        "rfdetr-small",
+        "bytetrack",
+        0.2,
+        30,
+        0.3,
+        2,
+        0.1,
+        0.6,
+    ],
+    [
+        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/jets-1280x720-2.mp4",
         "rfdetr-small",
         "bytetrack",
         0.2,
@@ -84,6 +106,11 @@ def track(
     minimum_consecutive_frames: int,
     minimum_iou_threshold: float,
     high_conf_det_threshold: float,
+    show_ids: bool = True,
+    show_labels: bool = False,
+    show_confidence: bool = False,
+    show_trajectories: bool = False,
+    show_masks: bool = False,
 ) -> str:
     """Run tracking on the uploaded video and return the output path."""
     if video_path is None:
@@ -126,7 +153,15 @@ def track(
     if tracker == "bytetrack":
         cmd += ["--tracker.high_conf_det_threshold", str(high_conf_det_threshold)]
 
-    if model.startswith("rfdetr-seg"):
+    if show_ids:
+        cmd += ["--show-ids"]
+    if show_labels:
+        cmd += ["--show-labels"]
+    if show_confidence:
+        cmd += ["--show-confidence"]
+    if show_trajectories:
+        cmd += ["--show-trajectories"]
+    if show_masks or model.startswith("rfdetr-seg"):
         cmd += ["--show-masks"]
 
     result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
@@ -207,6 +242,13 @@ with gr.Blocks(title="Trackers") as demo:
         )
         track_btn = gr.Button(value="Track", variant="primary", scale=1)
 
+    with gr.Row():
+        show_ids_checkbox = gr.Checkbox(value=True, label="Show IDs")
+        show_labels_checkbox = gr.Checkbox(value=False, label="Show Labels")
+        show_confidence_checkbox = gr.Checkbox(value=False, label="Show Confidence")
+        show_trajectories_checkbox = gr.Checkbox(value=False, label="Show Trajectories")
+        show_masks_checkbox = gr.Checkbox(value=False, label="Show Masks")
+
     with gr.Accordion("Configuration", open=False):
         confidence_slider.render()
         lost_track_buffer_slider.render()
@@ -216,9 +258,7 @@ with gr.Blocks(title="Trackers") as demo:
         high_conf_slider.render()
 
     gr.Examples(
-        fn=track,
         examples=VIDEO_EXAMPLES,
-        run_on_click=True,
         cache_examples=False,
         inputs=[
             input_video,
@@ -246,6 +286,11 @@ with gr.Blocks(title="Trackers") as demo:
             min_consecutive_slider,
             min_iou_slider,
             high_conf_slider,
+            show_ids_checkbox,
+            show_labels_checkbox,
+            show_confidence_checkbox,
+            show_trajectories_checkbox,
+            show_masks_checkbox,
         ],
         outputs=output_video,
     )
