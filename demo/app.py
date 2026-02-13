@@ -24,6 +24,53 @@ MODELS = [
 
 TRACKERS = ["bytetrack", "sort"]
 
+VIDEO_EXAMPLES = [
+    [
+        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-1.mp4",
+        "rfdetr-nano",
+        "bytetrack",
+        0.5,
+        30,
+        0.7,
+        2,
+        0.1,
+        0.6,
+    ],
+    [
+        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-2.mp4",
+        "rfdetr-small",
+        "sort",
+        0.4,
+        30,
+        0.25,
+        3,
+        0.3,
+        0.6,
+    ],
+    [
+        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/football-1280x720-1.mp4",
+        "rfdetr-medium",
+        "bytetrack",
+        0.3,
+        45,
+        0.6,
+        2,
+        0.15,
+        0.5,
+    ],
+    [
+        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/cars-1280x720-1.mp4",
+        "rfdetr-nano",
+        "bytetrack",
+        0.5,
+        30,
+        0.7,
+        2,
+        0.1,
+        0.6,
+    ],
+]
+
 
 def _get_video_duration(path: str) -> float:
     """Return video duration in seconds using OpenCV."""
@@ -190,6 +237,23 @@ with gr.Blocks(title="Trackers") as demo:
 
         with gr.Column():
             output_video = gr.Video(label="Tracked Video")
+
+    gr.Examples(
+        fn=track,
+        examples=VIDEO_EXAMPLES,
+        inputs=[
+            input_video,
+            model_dropdown,
+            tracker_dropdown,
+            confidence_slider,
+            lost_track_buffer_slider,
+            track_activation_slider,
+            min_consecutive_slider,
+            min_iou_slider,
+            high_conf_slider,
+        ],
+        outputs=output_video,
+    )
 
     track_btn.click(
         fn=track,
