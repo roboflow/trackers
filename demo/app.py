@@ -27,11 +27,11 @@ TRACKERS = ["bytetrack", "sort"]
 VIDEO_EXAMPLES = [
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-1.mp4",
-        "rfdetr-nano",
+        "rfdetr-small",
         "bytetrack",
-        0.5,
+        0.2,
         30,
-        0.7,
+        0.3,
         2,
         0.1,
         0.6,
@@ -40,31 +40,20 @@ VIDEO_EXAMPLES = [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-2.mp4",
         "rfdetr-small",
         "sort",
-        0.4,
+        0.2,
         30,
-        0.25,
+        0.3,
         3,
         0.3,
         0.6,
     ],
     [
-        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/football-1280x720-1.mp4",
-        "rfdetr-medium",
-        "bytetrack",
-        0.3,
-        45,
-        0.6,
-        2,
-        0.15,
-        0.5,
-    ],
-    [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/cars-1280x720-1.mp4",
-        "rfdetr-nano",
+        "rfdetr-small",
         "bytetrack",
-        0.5,
+        0.2,
         30,
-        0.7,
+        0.3,
         2,
         0.1,
         0.6,
@@ -108,8 +97,7 @@ def track(
         )
 
     tmp_dir = tempfile.mkdtemp()
-    raw_output = str(Path(tmp_dir) / "raw_output.mp4")
-    final_output = str(Path(tmp_dir) / "output.mp4")
+    output_path = str(Path(tmp_dir) / "output.mp4")
 
     cmd = [
         "trackers",
@@ -117,7 +105,7 @@ def track(
         "--source",
         video_path,
         "--output",
-        raw_output,
+        output_path,
         "--overwrite",
         "--model",
         model,
@@ -145,31 +133,13 @@ def track(
     if result.returncode != 0:
         raise gr.Error(f"Tracking failed:\n{result.stderr[-500:]}")
 
-    # Convert mp4v → H.264 for browser playback
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-i",
-        raw_output,
-        "-c:v",
-        "libx264",
-        "-preset",
-        "fast",
-        "-crf",
-        "23",
-        "-y",
-        final_output,
-    ]
-    ff_result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)  # noqa: S603
-    if ff_result.returncode != 0:
-        return raw_output
-
-    return final_output
+    return output_path
 
 
 confidence_slider = gr.Slider(
     minimum=0.0,
     maximum=1.0,
-    value=0.5,
+    value=0.2,
     step=0.05,
     label="Detection Confidence",
 )
@@ -183,7 +153,7 @@ lost_track_buffer_slider = gr.Slider(
 track_activation_slider = gr.Slider(
     minimum=0.0,
     maximum=1.0,
-    value=0.7,
+    value=0.3,
     step=0.05,
     label="Track Activation Threshold",
 )
@@ -225,7 +195,7 @@ with gr.Blocks(title="Trackers") as demo:
     with gr.Row():
         model_dropdown = gr.Dropdown(
             choices=MODELS,
-            value="rfdetr-nano",
+            value="rfdetr-small",
             label="Detection Model",
             scale=3,
         )
