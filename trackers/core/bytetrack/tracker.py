@@ -110,8 +110,9 @@ class ByteTrackTracker(BaseTracker):
         """
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            detections.tracker_id = np.array([], dtype=int)
-            return detections
+            result = deepcopy(detections)
+            result.tracker_id = np.array([], dtype=int)
+            return result
         updated_detections: list[
             sv.Detections
         ] = []  # List for returning the updated detections with its new assigned track id # noqa: E501
@@ -119,8 +120,7 @@ class ByteTrackTracker(BaseTracker):
         # Predict new locations for existing tracks
         for tracker in self.tracks:
             tracker.predict()
-        # Assign a default tracker_id with the correct shape
-        detections.tracker_id = -np.ones(len(detections))
+
         # Split into high confidence boxes and lower based on self.high_conf_det_threshold # noqa: E501
         high_prob_detections, low_prob_detections = (
             self._get_high_and_low_probability_detections(detections)
