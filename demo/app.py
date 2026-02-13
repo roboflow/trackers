@@ -280,4 +280,5 @@ with gr.Blocks(title="Trackers") as demo:
         outputs=output_video,
     )
 
-demo.launch(debug=True, show_error=True, max_threads=1)
+if __name__ == "__main__":
+    demo.launch()
