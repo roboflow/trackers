@@ -47,6 +47,28 @@ COCO_NAME_TO_ID = {
 
 VIDEO_EXAMPLES = [
     [
+        "insert-tennis-video-link",  # TODO
+        "rfdetr-nano",
+        "bytetrack",
+        0.2,
+        30,
+        0.3,
+        2,
+        0.1,
+        0.6,
+    ],
+    [
+        "insert-animal-video-link",  # TODO
+        "rfdetr-nano",
+        "bytetrack",
+        0.2,
+        30,
+        0.3,
+        2,
+        0.1,
+        0.6,
+    ],
+    [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-1.mp4",
         "rfdetr-nano",
         "bytetrack",
