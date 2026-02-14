@@ -36,7 +36,7 @@ pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
 
 ## Quickstart
 
-Use the `trackers` CLI to quickly test how our tracking algorithms perform on your videos and streams. This feature is experimental; see the [CLI documentation](https://roboflow.github.io/trackers/learn/track/) for details.
+Use the `trackers` CLI to quickly test how our tracking algorithms perform on your videos and streams. This feature is experimental; see the [CLI documentation](https://trackers.roboflow.com/develop/learn/track) for details.
 
 ```bash
 trackers track --source source.mp4 --output output.mp4 --model rfdetr-nano --tracker bytetrack
