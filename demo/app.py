@@ -24,6 +24,27 @@ MODELS = [
 
 TRACKERS = ["bytetrack", "sort"]
 
+
+COCO_NAME_TO_ID = {
+    "person": 1,
+    "bicycle": 2,
+    "car": 3,
+    "motorcycle": 4,
+    "airplane": 5,
+    "bus": 6,
+    "truck": 8,
+    "boat": 9,
+    "bird": 16,
+    "cat": 17,
+    "dog": 18,
+    "horse": 19,
+    "sports ball": 37,
+    "skateboard": 41,
+    "backpack": 27,
+    "tennis racket": 43,
+}
+
+
 VIDEO_EXAMPLES = [
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-1.mp4",
@@ -106,6 +127,7 @@ def track(
     minimum_consecutive_frames: int,
     minimum_iou_threshold: float,
     high_conf_det_threshold: float,
+    selected_classes: list[str] | None,
     show_ids: bool = True,
     show_labels: bool = False,
     show_confidence: bool = False,
@@ -150,9 +172,15 @@ def track(
         str(minimum_iou_threshold),
     ]
 
+    # ByteTrack extra param
     if tracker == "bytetrack":
         cmd += ["--tracker.high_conf_det_threshold", str(high_conf_det_threshold)]
 
+    if selected_classes:
+        class_ids = [str(COCO_NAME_TO_ID[c]) for c in selected_classes]
+        cmd += ["--classes", ",".join(class_ids)]
+
+    # Visualization flags
     if show_ids:
         cmd += ["--show-ids"]
     if show_labels:
@@ -214,13 +242,17 @@ high_conf_slider = gr.Slider(
     label="High Confidence Detection Threshold (ByteTrack only)",
 )
 
+class_selector = gr.CheckboxGroup(
+    choices=list(COCO_NAME_TO_ID.keys()),
+    label="Filter Classes (optional)",
+)
+
+
 with gr.Blocks(title="Trackers") as demo:
     gr.Markdown(
-        """# Trackers \n
-        \n<a href="https://github.com/roboflow/trackers">
-        <img src="https://badges.aleen42.com/src/github.svg" alt="GitHub" style="display:inline-block;">
-        </a>
-        \n Upload a video, pick a detection model and tracker, then download the tracked result. Videos are limited to 30 seconds."""  # noqa: E501
+        """# Trackers
+Upload a video, pick a detection model and tracker, optionally filter classes, then download the tracked result.
+Videos are limited to 30 seconds."""  # noqa: E501
     )
 
     with gr.Row():
@@ -256,6 +288,7 @@ with gr.Blocks(title="Trackers") as demo:
         min_consecutive_slider.render()
         min_iou_slider.render()
         high_conf_slider.render()
+        class_selector.render()
 
     gr.Examples(
         examples=VIDEO_EXAMPLES,
@@ -286,6 +319,7 @@ with gr.Blocks(title="Trackers") as demo:
             min_consecutive_slider,
             min_iou_slider,
             high_conf_slider,
+            class_selector,
             show_ids_checkbox,
             show_labels_checkbox,
             show_confidence_checkbox,
@@ -295,5 +329,4 @@ with gr.Blocks(title="Trackers") as demo:
         outputs=output_video,
     )
 
-if __name__ == "__main__":
-    demo.launch()
+demo.launch(debug=False, show_error=True, max_threads=1)
