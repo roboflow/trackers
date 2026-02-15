@@ -24,8 +24,7 @@ MODELS = [
 
 TRACKERS = ["bytetrack", "sort"]
 
-
-COCO_NAME_TO_ID = {
+COCO_CLASSES = {
     "person": 1,
     "bicycle": 2,
     "car": 3,
@@ -33,95 +32,41 @@ COCO_NAME_TO_ID = {
     "airplane": 5,
     "bus": 6,
     "truck": 8,
-    "boat": 9,
-    "bird": 16,
     "cat": 17,
     "dog": 18,
-    "horse": 19,
     "sports ball": 37,
-    "skateboard": 41,
-    "backpack": 27,
-    "tennis racket": 43,
 }
-
 
 VIDEO_EXAMPLES = [
     [
-        "insert-tennis-video-link",  # TODO
-        "rfdetr-nano",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        2,
-        0.1,
-        0.6,
-    ],
-    [
-        "insert-animal-video-link",  # TODO
-        "rfdetr-nano",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        2,
-        0.1,
-        0.6,
-    ],
-    [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-1.mp4",
-        "rfdetr-nano",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        2,
-        0.1,
-        0.6,
+        "rfdetr-small", "bytetrack",
+        0.2, 30, 0.3, 3, 0.1, 0.6,
+        [], True, True, False, False, True, False,
     ],
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-2.mp4",
-        "rfdetr-small",
-        "sort",
-        0.2,
-        30,
-        0.3,
-        3,
-        0.3,
-        0.6,
+        "rfdetr-small", "sort",
+        0.2, 30, 0.3, 3, 0.3, 0.6,
+        [], True, True, False, False, True, False,
     ],
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/cars-1280x720-1.mp4",
-        "rfdetr-small",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        2,
-        0.1,
-        0.6,
+        "rfdetr-small", "bytetrack",
+        0.2, 30, 0.3, 3, 0.1, 0.6,
+        ["car"], True, True, False, True, False, False,
     ],
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/jets-1280x720-1.mp4",
-        "rfdetr-small",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        2,
-        0.1,
-        0.6,
+        "rfdetr-small", "bytetrack",
+        0.2, 30, 0.3, 3, 0.1, 0.6,
+        [], True, True, False, False, True, False,
     ],
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/jets-1280x720-2.mp4",
-        "rfdetr-small",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        2,
-        0.1,
-        0.6,
+        "rfdetr-seg-small", "bytetrack",
+        0.2, 30, 0.3, 3, 0.1, 0.6,
+        [], True, True, False, False, False, False,
     ],
 ]
 
@@ -149,7 +94,8 @@ def track(
     minimum_consecutive_frames: int,
     minimum_iou_threshold: float,
     high_conf_det_threshold: float,
-    selected_classes: list[str] | None,
+    classes: list[str] | None = None,
+    show_boxes: bool = True,
     show_ids: bool = True,
     show_labels: bool = False,
     show_confidence: bool = False,
@@ -198,11 +144,15 @@ def track(
     if tracker == "bytetrack":
         cmd += ["--tracker.high_conf_det_threshold", str(high_conf_det_threshold)]
 
-    if selected_classes:
-        class_ids = [str(COCO_NAME_TO_ID[c]) for c in selected_classes]
-        cmd += ["--classes", ",".join(class_ids)]
+    if classes:
+        class_ids = [str(COCO_CLASSES[c]) for c in classes if c in COCO_CLASSES]
+        if class_ids:
+            cmd += ["--classes", ",".join(class_ids)]
 
-    # Visualization flags
+    if show_boxes:
+        cmd += ["--show-boxes"]
+    else:
+        cmd += ["--no-boxes"]
     if show_ids:
         cmd += ["--show-ids"]
     if show_labels:
@@ -211,7 +161,7 @@ def track(
         cmd += ["--show-confidence"]
     if show_trajectories:
         cmd += ["--show-trajectories"]
-    if show_masks or model.startswith("rfdetr-seg"):
+    if show_masks:
         cmd += ["--show-masks"]
 
     result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
@@ -221,100 +171,125 @@ def track(
     return output_path
 
 
-confidence_slider = gr.Slider(
-    minimum=0.0,
-    maximum=1.0,
-    value=0.2,
-    step=0.05,
-    label="Detection Confidence",
-)
-lost_track_buffer_slider = gr.Slider(
-    minimum=1,
-    maximum=120,
-    value=30,
-    step=1,
-    label="Lost Track Buffer (frames)",
-)
-track_activation_slider = gr.Slider(
-    minimum=0.0,
-    maximum=1.0,
-    value=0.3,
-    step=0.05,
-    label="Track Activation Threshold",
-)
-min_consecutive_slider = gr.Slider(
-    minimum=1,
-    maximum=10,
-    value=2,
-    step=1,
-    label="Minimum Consecutive Frames",
-)
-min_iou_slider = gr.Slider(
-    minimum=0.0,
-    maximum=1.0,
-    value=0.1,
-    step=0.05,
-    label="Minimum IoU Threshold",
-)
-high_conf_slider = gr.Slider(
-    minimum=0.0,
-    maximum=1.0,
-    value=0.6,
-    step=0.05,
-    label="High Confidence Detection Threshold (ByteTrack only)",
-)
-
-class_selector = gr.CheckboxGroup(
-    choices=list(COCO_NAME_TO_ID.keys()),
-    label="Filter Classes (optional)",
-)
-
-
-with gr.Blocks(title="Trackers") as demo:
+with gr.Blocks(title="Trackers Playground 🔥") as demo:
     gr.Markdown(
-        """# Trackers
-Upload a video, pick a detection model and tracker, optionally filter classes, then download the tracked result.
-Videos are limited to 30 seconds."""  # noqa: E501
+        "# Trackers Playground 🔥\n\n"
+        "Upload a video, detect COCO objects with "
+        "[RF-DETR](https://github.com/roboflow-ai/rf-detr) and track them with "
+        "[Trackers](https://github.com/roboflow/trackers)."
     )
 
     with gr.Row():
         input_video = gr.Video(label="Input Video")
         output_video = gr.Video(label="Tracked Video")
 
+    track_btn = gr.Button(value="Track", variant="primary")
+
     with gr.Row():
         model_dropdown = gr.Dropdown(
             choices=MODELS,
             value="rfdetr-small",
             label="Detection Model",
-            scale=3,
         )
         tracker_dropdown = gr.Dropdown(
             choices=TRACKERS,
             value="bytetrack",
             label="Tracker",
-            scale=2,
         )
-        track_btn = gr.Button(value="Track", variant="primary", scale=1)
-
-    with gr.Row():
-        show_ids_checkbox = gr.Checkbox(value=True, label="Show IDs")
-        show_labels_checkbox = gr.Checkbox(value=False, label="Show Labels")
-        show_confidence_checkbox = gr.Checkbox(value=False, label="Show Confidence")
-        show_trajectories_checkbox = gr.Checkbox(value=False, label="Show Trajectories")
-        show_masks_checkbox = gr.Checkbox(value=False, label="Show Masks")
 
     with gr.Accordion("Configuration", open=False):
-        confidence_slider.render()
-        lost_track_buffer_slider.render()
-        track_activation_slider.render()
-        min_consecutive_slider.render()
-        min_iou_slider.render()
-        high_conf_slider.render()
-        class_selector.render()
+        with gr.Row():
+            with gr.Column():
+                gr.Markdown("### Model")
+                confidence_slider = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.2,
+                    step=0.05,
+                    label="Detection Confidence",
+                    info="Minimum score for a detection to be kept.",
+                )
+                class_filter = gr.CheckboxGroup(
+                    choices=list(COCO_CLASSES.keys()),
+                    value=[],
+                    label="Filter Classes",
+                    info="Only track selected classes. None selected means all.",
+                )
+
+            with gr.Column():
+                gr.Markdown("### Tracker")
+                lost_track_buffer_slider = gr.Slider(
+                    minimum=1,
+                    maximum=120,
+                    value=30,
+                    step=1,
+                    label="Lost Track Buffer",
+                    info="Frames to keep a lost track before removing it.",
+                )
+                track_activation_slider = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.3,
+                    step=0.05,
+                    label="Track Activation Threshold",
+                    info="Minimum score for a track to be activated.",
+                )
+                min_consecutive_slider = gr.Slider(
+                    minimum=1,
+                    maximum=10,
+                    value=2,
+                    step=1,
+                    label="Minimum Consecutive Frames",
+                    info="Detections needed before a track is confirmed.",
+                )
+                min_iou_slider = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.1,
+                    step=0.05,
+                    label="Minimum IoU Threshold",
+                    info="Overlap required to match a detection to a track.",
+                )
+                high_conf_slider = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.6,
+                    step=0.05,
+                    label="High Confidence Detection Threshold",
+                    info="Detections above this are matched first (ByteTrack only).",
+                )
+
+            with gr.Column():
+                gr.Markdown("### Visualization")
+                show_boxes_checkbox = gr.Checkbox(
+                    value=True, label="Show Boxes",
+                    info="Draw bounding boxes around detections.",
+                )
+                show_ids_checkbox = gr.Checkbox(
+                    value=True, label="Show IDs",
+                    info="Display track ID for each object.",
+                )
+                show_labels_checkbox = gr.Checkbox(
+                    value=False, label="Show Labels",
+                    info="Display class name for each detection.",
+                )
+                show_confidence_checkbox = gr.Checkbox(
+                    value=False, label="Show Confidence",
+                    info="Display detection confidence score.",
+                )
+                show_trajectories_checkbox = gr.Checkbox(
+                    value=False, label="Show Trajectories",
+                    info="Draw motion path for each tracked object.",
+                )
+                show_masks_checkbox = gr.Checkbox(
+                    value=False, label="Show Masks",
+                    info="Draw segmentation masks (seg models only).",
+                )
 
     gr.Examples(
         examples=VIDEO_EXAMPLES,
-        cache_examples=False,
+        fn=track,
+        cache_examples=True,
         inputs=[
             input_video,
             model_dropdown,
@@ -325,6 +300,13 @@ Videos are limited to 30 seconds."""  # noqa: E501
             min_consecutive_slider,
             min_iou_slider,
             high_conf_slider,
+            class_filter,
+            show_boxes_checkbox,
+            show_ids_checkbox,
+            show_labels_checkbox,
+            show_confidence_checkbox,
+            show_trajectories_checkbox,
+            show_masks_checkbox,
         ],
         outputs=output_video,
     )
@@ -341,7 +323,8 @@ Videos are limited to 30 seconds."""  # noqa: E501
             min_consecutive_slider,
             min_iou_slider,
             high_conf_slider,
-            class_selector,
+            class_filter,
+            show_boxes_checkbox,
             show_ids_checkbox,
             show_labels_checkbox,
             show_confidence_checkbox,
@@ -351,4 +334,5 @@ Videos are limited to 30 seconds."""  # noqa: E501
         outputs=output_video,
     )
 
-demo.launch(debug=False, show_error=True, max_threads=1)
+if __name__ == "__main__":
+    demo.launch()
