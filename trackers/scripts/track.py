@@ -19,7 +19,7 @@ from trackers import frames_from_source
 from trackers.core.base import BaseTracker
 from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
-from trackers.io.video import _DisplayWindow, _VideoOutput
+from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
 from trackers.scripts.progress import _classify_source, _TrackingProgress
 from trackers.utils.device import _best_device
 
@@ -311,7 +311,10 @@ def run_track(args: argparse.Namespace) -> int:
 
     try:
         with (
-            _VideoOutput(args.output) as video,
+            _VideoOutput(
+                args.output,
+                fps=source_info.fps or _DEFAULT_OUTPUT_FPS,
+            ) as video,
             _MOTOutput(args.mot_output) as mot,
             display_ctx as display,
             _TrackingProgress(source_info) as progress,
