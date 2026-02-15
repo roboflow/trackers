@@ -1373,7 +1373,7 @@
 <div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>trackers track --source source.mp4 --model rfdetr-medium \
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    --model.confidence 0.3 \
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    --model.device cuda \
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    --classes 0,2
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    --classes person,car
 </span></code></pre></div>
 <p><table>
   <colgroup>
@@ -1406,7 +1406,7 @@
     </tr>
     <tr>
       <td><code>--classes</code></td>
-      <td>Comma-separated class IDs to track. Example: <code>0</code> for persons, <code>0,2</code> for persons and cars.</td>
+      <td>Comma-separated class names or IDs to track. Example: <code>person,car</code> or <code>0,2</code>.</td>
       <td>all</td>
     </tr>
     <tr>
