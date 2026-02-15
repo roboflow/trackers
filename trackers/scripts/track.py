@@ -121,7 +121,7 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
         type=str,
         default=None,
         metavar="NAMES_OR_IDS",
-        help="Filter by class names or IDs (comma-separated, e.g., person,car or 0,1,2).",
+        help="Filter by class names or IDs (comma-separated, e.g., person,car).",
     )
 
     # Tracker options

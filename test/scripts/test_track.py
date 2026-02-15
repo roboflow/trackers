@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 import pytest
 import supervision as sv
@@ -122,7 +124,7 @@ class TestFormatLabels:
 
 
 class TestResolveClassFilter:
-    CLASS_NAMES = ["person", "bicycle", "car", "motorcycle", "airplane"]
+    CLASS_NAMES: ClassVar[list[str]] = ["person", "bicycle", "car", "motorcycle", "airplane"]
 
     @pytest.mark.parametrize(
         "classes_arg,expected",
