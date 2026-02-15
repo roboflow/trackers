@@ -124,7 +124,13 @@ class TestFormatLabels:
 
 
 class TestResolveClassFilter:
-    CLASS_NAMES: ClassVar[list[str]] = ["person", "bicycle", "car", "motorcycle", "airplane"]
+    CLASS_NAMES: ClassVar[list[str]] = [
+        "person",
+        "bicycle",
+        "car",
+        "motorcycle",
+        "airplane",
+    ]
 
     @pytest.mark.parametrize(
         "classes_arg,expected",
