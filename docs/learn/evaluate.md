@@ -95,28 +95,25 @@ Ground truth and tracker files use MOT Challenge text format — a simple comma-
 
 ## Directory Layouts
 
-The evaluator automatically detects whether you're using a flat or MOT-style structure. It also tries to infer benchmark name, split, and tracker name from folder names.
+The evaluator automatically detects whether you're using a flat or MOT-style structure. Both `gt_dir` and `tracker_dir` should point directly at the parent directory of the sequences.
 
 === "MOT Layout"
 
-    Standard MOT Challenge nested structure.
+    Standard MOT Challenge nested structure. Point `gt_dir` at the directory that directly contains the sequence folders, and `tracker_dir` at the directory containing the `{seq}.txt` files.
 
     ```
-    data/
-    ├── MOT17-train/
-    │   ├── MOT17-02-FRCNN/
-    │   │   └── gt/gt.txt
-    │   ├── MOT17-04-FRCNN/
-    │   │   └── gt/gt.txt
-    │   └── MOT17-05-FRCNN/
-    │       └── gt/gt.txt
-    └── trackers/
-        └── MOT17-train/
-            └── ByteTrack/
-                └── data/
-                    ├── MOT17-02-FRCNN.txt
-                    ├── MOT17-04-FRCNN.txt
-                    └── MOT17-05-FRCNN.txt
+    gt/
+    ├── MOT17-02-FRCNN/
+    │   └── gt/gt.txt
+    ├── MOT17-04-FRCNN/
+    │   └── gt/gt.txt
+    └── MOT17-05-FRCNN/
+        └── gt/gt.txt
+
+    trackers/
+    ├── MOT17-02-FRCNN.txt
+    ├── MOT17-04-FRCNN.txt
+    └── MOT17-05-FRCNN.txt
     ```
 
     **Python**
@@ -125,23 +122,15 @@ The evaluator automatically detects whether you're using a flat or MOT-style str
     from trackers.eval import evaluate_mot_sequences
 
     result = evaluate_mot_sequences(
-        gt_dir="data",
-        tracker_dir="data/trackers",
-        benchmark="MOT17",
-        split="train",
-        tracker_name="ByteTrack",
+        gt_dir="gt",
+        tracker_dir="trackers",
     )
     ```
 
     **CLI**
 
     ```bash
-    trackers eval \
-        --gt-dir data \
-        --tracker-dir data/trackers \
-        --benchmark MOT17 \
-        --split train \
-        --tracker-name ByteTrack
+    trackers eval --gt-dir gt --tracker-dir trackers
     ```
 
 === "Flat Layout"
@@ -149,15 +138,15 @@ The evaluator automatically detects whether you're using a flat or MOT-style str
     One `.txt` file per sequence, placed directly in the directories.
 
     ```
-    data/
-    ├── gt/
-    │   ├── MOT17-02-FRCNN.txt
-    │   ├── MOT17-04-FRCNN.txt
-    │   └── MOT17-05-FRCNN.txt
-    └── trackers/
-        ├── MOT17-02-FRCNN.txt
-        ├── MOT17-04-FRCNN.txt
-        └── MOT17-05-FRCNN.txt
+    gt/
+    ├── MOT17-02-FRCNN.txt
+    ├── MOT17-04-FRCNN.txt
+    └── MOT17-05-FRCNN.txt
+
+    trackers/
+    ├── MOT17-02-FRCNN.txt
+    ├── MOT17-04-FRCNN.txt
+    └── MOT17-05-FRCNN.txt
     ```
 
     **Python**
@@ -166,15 +155,15 @@ The evaluator automatically detects whether you're using a flat or MOT-style str
     from trackers.eval import evaluate_mot_sequences
 
     result = evaluate_mot_sequences(
-        gt_dir="data/gt",
-        tracker_dir="data/trackers",
+        gt_dir="gt",
+        tracker_dir="trackers",
     )
     ```
 
     **CLI**
 
     ```bash
-    trackers eval --gt-dir data/gt --tracker-dir data/trackers
+    trackers eval --gt-dir gt --tracker-dir trackers
     ```
 
 ---

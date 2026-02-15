@@ -9,9 +9,6 @@
 These tests download SportsMOT and DanceTrack test datasets and verify that our
 benchmark evaluation produces identical results to TrackEval.
 Numerical parity is the key requirement.
-
-Tests use auto-detection - no explicit format/benchmark/split/tracker_name
-parameters are passed, verifying the smart detection logic works correctly.
 """
 
 from __future__ import annotations
@@ -71,10 +68,12 @@ def test_evaluate_mot_sequences_sportsmot_mot17(
     """Test evaluate_mot_sequences with SportsMOT MOT17 format (auto-detected)."""
     data_path, expected_results = sportsmot_mot17_data
 
-    # Auto-detection should detect MOT17 format, benchmark, split, and tracker
+    # Point directly at the split-level directories
+    gt_dir, tracker_dir = _resolve_mot17_dirs(data_path)
+
     result = evaluate_mot_sequences(
-        gt_dir=data_path / "gt",
-        tracker_dir=data_path / "trackers",
+        gt_dir=gt_dir,
+        tracker_dir=tracker_dir,
         metrics=["CLEAR", "HOTA", "Identity"],
     )
 
@@ -144,10 +143,12 @@ def test_evaluate_mot_sequences_dancetrack_mot17(
     """Test evaluate_mot_sequences with DanceTrack MOT17 format (auto-detected)."""
     data_path, expected_results = dancetrack_mot17_data
 
-    # Auto-detection should detect MOT17 format, benchmark, split, and tracker
+    # Point directly at the split-level directories
+    gt_dir, tracker_dir = _resolve_mot17_dirs(data_path)
+
     result = evaluate_mot_sequences(
-        gt_dir=data_path / "gt",
-        tracker_dir=data_path / "trackers",
+        gt_dir=gt_dir,
+        tracker_dir=tracker_dir,
         metrics=["CLEAR", "HOTA", "Identity"],
     )
 
@@ -172,6 +173,35 @@ def test_evaluate_mot_sequences_dancetrack_mot17(
         _verify_identity_metrics(
             seq_result.Identity, expected_identity, f"dancetrack_mot17/{seq_name}"
         )
+
+
+def _resolve_mot17_dirs(data_path: Path) -> tuple[Path, Path]:
+    """Resolve gt_dir and tracker_dir for MOT17 layout test data.
+
+    The MOT17 test data has structure:
+        data_path/gt/{Benchmark}-{split}/{seq}/gt/gt.txt
+        data_path/trackers/{Benchmark}-{split}/{tracker}/data/{seq}.txt
+
+    This function discovers the split directory and tracker data directory
+    so tests can pass them directly.
+    """
+    gt_root = data_path / "gt"
+    tracker_root = data_path / "trackers"
+
+    # Find the single {Benchmark}-{split} directory under gt/
+    gt_splits = [d for d in gt_root.iterdir() if d.is_dir()]
+    assert len(gt_splits) == 1, f"Expected one split dir in {gt_root}, got {gt_splits}"
+    gt_dir = gt_splits[0]
+
+    # Find the matching tracker data directory
+    tracker_split = tracker_root / gt_splits[0].name
+    tracker_names = [d for d in tracker_split.iterdir() if d.is_dir()]
+    assert len(tracker_names) == 1, (
+        f"Expected one tracker dir in {tracker_split}, got {tracker_names}"
+    )
+    tracker_dir = tracker_names[0] / "data"
+
+    return gt_dir, tracker_dir
 
 
 def _verify_clear_metrics(
