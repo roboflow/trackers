@@ -24,18 +24,18 @@ MODELS = [
 
 TRACKERS = ["bytetrack", "sort"]
 
-COCO_CLASSES = {
-    "person": 1,
-    "bicycle": 2,
-    "car": 3,
-    "motorcycle": 4,
-    "airplane": 5,
-    "bus": 6,
-    "truck": 8,
-    "cat": 17,
-    "dog": 18,
-    "sports ball": 37,
-}
+COCO_CLASSES = [
+    "person",
+    "bicycle",
+    "car",
+    "motorcycle",
+    "airplane",
+    "bus",
+    "truck",
+    "cat",
+    "dog",
+    "sports ball",
+]
 
 VIDEO_EXAMPLES = [
     [
@@ -58,7 +58,7 @@ VIDEO_EXAMPLES = [
     ],
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-2.mp4",
-        "rfdetr-small",
+        "rfdetr-seg-small",
         "sort",
         0.2,
         30,
@@ -72,7 +72,7 @@ VIDEO_EXAMPLES = [
         False,
         False,
         True,
-        False,
+        True,
     ],
     [
         "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/cars-1280x720-1.mp4",
@@ -107,7 +107,7 @@ VIDEO_EXAMPLES = [
         True,
         False,
         False,
-        True,
+        False,
         False,
     ],
     [
@@ -125,7 +125,25 @@ VIDEO_EXAMPLES = [
         True,
         False,
         False,
+        True,
         False,
+    ],
+    [
+        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/vehicles-1280x720.mp4",
+        "rfdetr-small",
+        "bytetrack",
+        0.2,
+        30,
+        0.3,
+        3,
+        0.1,
+        0.6,
+        [],
+        True,
+        True,
+        True,
+        False,
+        True,
         False,
     ],
 ]
@@ -205,9 +223,7 @@ def track(
         cmd += ["--tracker.high_conf_det_threshold", str(high_conf_det_threshold)]
 
     if classes:
-        class_ids = [str(COCO_CLASSES[c]) for c in classes if c in COCO_CLASSES]
-        if class_ids:
-            cmd += ["--classes", ",".join(class_ids)]
+        cmd += ["--classes", ",".join(classes)]
 
     if show_boxes:
         cmd += ["--show-boxes"]
@@ -270,7 +286,7 @@ with gr.Blocks(title="Trackers Playground 🔥") as demo:
                     info="Minimum score for a detection to be kept.",
                 )
                 class_filter = gr.CheckboxGroup(
-                    choices=list(COCO_CLASSES.keys()),
+                    choices=COCO_CLASSES,
                     value=[],
                     label="Filter Classes",
                     info="Only track selected classes. None selected means all.",

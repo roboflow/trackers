@@ -1,8 +1,8 @@
 ---
 title: Roboflow Trackers
-emoji: 🎯
+emoji: 🔥
 colorFrom: purple
-colorTo: blue
+colorTo: green
 sdk: gradio
 sdk_version: 6.3.0
 app_file: app.py
