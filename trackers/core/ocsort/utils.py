@@ -7,6 +7,8 @@
 # Licensed under the MIT License [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from __future__ import annotations
+
 from copy import deepcopy
 from typing import Sequence, cast
 
@@ -14,6 +16,33 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.ocsort.tracklet import OCSORTTracklet
+
+
+def k_previous_obs(
+    observations: dict[int, np.ndarray], cur_age: int, delta_t: int
+) -> np.ndarray | None:
+    """Get observation from delta_t steps ago from the observations dict.
+
+    Looks back up to delta_t timesteps. Falls back to the most recent
+    observation if none found in the lookback window.
+
+    Args:
+        observations: Dict mapping age to observed bbox.
+        cur_age: Current age of the tracklet.
+        delta_t: Number of timesteps to look back.
+
+    Returns:
+        The observation from delta_t steps ago, or the most recent one,
+        or None if no observations exist.
+    """
+    if len(observations) == 0:
+        return None
+    for i in range(delta_t):
+        dt = delta_t - i
+        if cur_age - dt in observations:
+            return observations[cur_age - dt]
+    max_age = max(observations.keys())
+    return observations[max_age]
 
 
 def _speed_direction(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
@@ -43,6 +72,10 @@ def _build_direction_consistency_matrix(
     Note: This is the non-batch version kept for reference, interpretability and testing
     purposes. Use `build_direction_consistency_matrix_batch` for production.
 
+    Uses tracklet.velocity (computed with delta_t lookback) and k_previous_obs
+    as the reference point for association direction, matching the original
+    OC-SORT implementation.
+
     Args:
         tracklets: List of OCSORTTracklet objects.
         detection_boxes: Detection bounding boxes [x1, y1, x2, y2].
@@ -57,16 +90,18 @@ def _build_direction_consistency_matrix(
     )
 
     for t, tracklet in enumerate(tracklets):
-        if tracklet.previous_to_last_observation is None:
+        if tracklet.velocity is None:
             continue
-        last_observation = tracklet.last_observation
-        tracklet_speed = _speed_direction(
-            tracklet.previous_to_last_observation, last_observation
-        )
+
+        k_obs = tracklet.get_k_previous_obs()
+        if k_obs is None:
+            continue
+
+        tracklet_speed = tracklet.velocity
 
         for d in range(n_detections):
             detection_box = detection_boxes[d]
-            association_speed = _speed_direction(last_observation, detection_box)
+            association_speed = _speed_direction(k_obs, detection_box)
 
             cos_sim = np.dot(tracklet_speed, association_speed)
             cos_sim = np.clip(cos_sim, -1.0, 1.0)
@@ -106,8 +141,9 @@ def build_direction_consistency_matrix_batch(
 ) -> np.ndarray:
     """Build direction consistency cost matrix (OCM) in batch - vectorized version.
 
-    Computes similarity between tracklet velocity vectors and potential
-    association directions. Used in OC-SORT for motion-aware association.
+    Computes similarity between tracklet velocity vectors (computed with delta_t
+    lookback) and potential association directions from k-previous observations.
+    Used in OC-SORT for motion-aware association.
 
     Args:
         tracklets: List of OCSORTTracklet objects.
@@ -122,24 +158,26 @@ def build_direction_consistency_matrix_batch(
     if n_tracklets == 0 or n_detections == 0:
         return np.zeros((n_tracklets, n_detections), dtype=np.float32)
 
-    # Compute tracklet velocities (from previous_to_last -> last_observation)
+    # Use precomputed velocities from tracklets (computed with delta_t lookback)
     velocities = np.array(
         [
-            _speed_direction(
-                tracklet.previous_to_last_observation, tracklet.last_observation
-            )
-            if tracklet.previous_to_last_observation is not None
-            else np.array([0.0, 0.0])
+            tracklet.velocity if tracklet.velocity is not None else np.array([0.0, 0.0])
             for tracklet in tracklets
         ]
     )
 
-    # Get last observations as array for batch direction computation
-    last_obs = np.array([tracklet.last_observation for tracklet in tracklets])
+    # Get k-previous observations as reference for association direction
+    k_obs_list = [tracklet.get_k_previous_obs() for tracklet in tracklets]
+    k_observations = np.array(
+        [
+            obs if obs is not None else tracklet.last_observation
+            for obs, tracklet in zip(k_obs_list, tracklets)
+        ]
+    )
 
-    # Compute association directions (from last_observation -> detection) in batch
+    # Compute association directions (from k_observations -> detection) in batch
     Y, X = _speed_direction_batch(
-        detection_boxes, last_obs
+        detection_boxes, k_observations
     )  # (n_tracklets, n_detections)
 
     # Expand velocities for broadcasting
@@ -153,9 +191,9 @@ def build_direction_consistency_matrix_batch(
     diff_angle = np.arccos(diff_angle_cos)
     angle_diff_cost = (np.pi / 2.0 - np.abs(diff_angle)) / np.pi
 
-    # Mask out tracklets without previous observation
+    # Mask out tracklets without velocity (no previous observation)
     valid_mask = np.array(
-        [tracklet.previous_to_last_observation is not None for tracklet in tracklets],
+        [tracklet.velocity is not None for tracklet in tracklets],
         dtype=np.float32,
     )[:, np.newaxis]  # (n_tracklets, 1)
 

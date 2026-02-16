@@ -51,6 +51,10 @@ class OCSORTTracker(BaseTracker):
             to the angle difference between the motion direction and the association direction.
         high_conf_det_threshold: Confidence threshold to consider a detection as high confidence. If a detection has
             confidence lower than this threshold, it will not be considered for association.
+        delta_t: Number of timesteps back to look for velocity/direction estimation.
+            Higher values use observations further in the past to compute motion
+            direction, providing more stable velocity estimates during occlusion.
+            Default is 3 (matching the original OC-SORT paper).
 
     """  # noqa: E501
 
@@ -64,6 +68,7 @@ class OCSORTTracker(BaseTracker):
         minimum_iou_threshold: float = 0.3,
         direction_consistency_weight: float = 0.2,
         high_conf_det_threshold: float = 0.6,
+        delta_t: int = 3,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -73,6 +78,7 @@ class OCSORTTracker(BaseTracker):
         self.minimum_iou_threshold = minimum_iou_threshold
         self.direction_consistency_weight = direction_consistency_weight
         self.high_conf_det_threshold = high_conf_det_threshold
+        self.delta_t = delta_t
 
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
@@ -135,7 +141,9 @@ class OCSORTTracker(BaseTracker):
                 form [x1, y1, x2, y2].
         """
         for detection_idx in unmatched_detections:
-            new_tracker = OCSORTTracklet(detections.xyxy[detection_idx])
+            new_tracker = OCSORTTracklet(
+                detections.xyxy[detection_idx], delta_t=self.delta_t
+            )
             self.tracks.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:

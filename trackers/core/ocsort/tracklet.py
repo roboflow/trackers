@@ -50,6 +50,9 @@ class OCSORTTracklet:
         time_since_update: Frames since last observation.
         last_observation: Last observed bounding box [x1, y1, x2, y2].
         previous_to_last_observation: Second-to-last observation for velocity.
+        observations: Dict mapping age to observed bbox for delta_t lookback.
+        velocity: Normalized direction vector computed with delta_t lookback.
+        delta_t: Number of timesteps back to look for velocity estimation.
         state_repr: The state representation being used.
     """
 
@@ -59,12 +62,16 @@ class OCSORTTracklet:
         self,
         initial_bbox: np.ndarray,
         state_repr: StateRepresentation = StateRepresentation.XCYCSR,
+        delta_t: int = 3,
     ) -> None:
         """Initialize tracklet with first detection.
 
         Args:
             initial_bbox: Initial bounding box [x1, y1, x2, y2].
             state_repr: State representation to use (XCYCSR or XYXY).
+            delta_t: Number of timesteps back to look for velocity estimation.
+                Higher values use observations further in the past to estimate
+                motion direction, providing more stable velocity estimates.
         """
         self.age = 0
         self.state_repr = state_repr
@@ -75,9 +82,12 @@ class OCSORTTracklet:
         else:
             self._init_xyxy_filter(initial_bbox)
 
-        # Observation history for ORU
+        # Observation history for ORU and delta_t
+        self.delta_t = delta_t
         self.last_observation = initial_bbox
         self.previous_to_last_observation: np.ndarray | None = None
+        self.observations: dict[int, np.ndarray] = {0: initial_bbox}
+        self.velocity: np.ndarray | None = None
 
         # Track ID can be initialized before mature in oc-sort
         # it is assigned if the frame number is less than minimum_consecutive_frames
@@ -262,16 +272,58 @@ class OCSORTTracklet:
                 self.kalman_filter.predict()
             self.kalman_filter.update(virtual_obs)
 
+    def get_k_previous_obs(self) -> np.ndarray | None:
+        """Get observation from delta_t steps ago.
+
+        Looks back up to delta_t timesteps in the observation history.
+        Falls back to the most recent observation if none found in the window.
+
+        Returns:
+            The observation from delta_t steps ago, or most recent if not found,
+            or None if no observations exist.
+        """
+        if len(self.observations) == 0:
+            return None
+        for i in range(self.delta_t):
+            dt = self.delta_t - i
+            if self.age - dt in self.observations:
+                return self.observations[self.age - dt]
+        max_age = max(self.observations.keys())
+        return self.observations[max_age]
+
+    @staticmethod
+    def _compute_velocity(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
+        """Compute normalized direction vector between two bounding box centers.
+
+        Args:
+            bbox1: First bounding box [x1, y1, x2, y2].
+            bbox2: Second bounding box [x1, y1, x2, y2].
+
+        Returns:
+            Normalized direction vector [dy, dx].
+        """
+        cx1, cy1 = (bbox1[0] + bbox1[2]) / 2.0, (bbox1[1] + bbox1[3]) / 2.0
+        cx2, cy2 = (bbox2[0] + bbox2[2]) / 2.0, (bbox2[1] + bbox2[3]) / 2.0
+        speed = np.array([cy2 - cy1, cx2 - cx1])
+        norm = np.sqrt((cy2 - cy1) ** 2 + (cx2 - cx1) ** 2) + 1e-6
+        return speed / norm
+
     def update(self, bbox: np.ndarray | None) -> None:
         """Update tracklet with new observation.
 
         Handles ORU: if track was lost and now observed again,
         generates virtual trajectory to smooth the transition.
+        Computes velocity using observation from delta_t steps ago.
 
         Args:
             bbox: Bounding box [x1, y1, x2, y2] or None for no observation.
         """
         if bbox is not None:
+            # Compute velocity using k_previous_obs (delta_t lookback)
+            previous_box = self.get_k_previous_obs()
+            if previous_box is not None:
+                self.velocity = self._compute_velocity(previous_box, bbox)
+
             # Check if we need to unfreeze (was lost, now observed)
             if not self._observed and self._frozen_state is not None:
                 self._unfreeze(bbox)
@@ -284,6 +336,7 @@ class OCSORTTracklet:
             self.number_of_successful_consecutive_updates += 1
             self.previous_to_last_observation = self.last_observation
             self.last_observation = bbox
+            self.observations[self.age] = bbox
         else:
             # No observation - freeze state if this is first miss
             if self._observed:
