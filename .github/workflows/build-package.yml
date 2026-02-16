@@ -26,7 +26,7 @@ jobs:
 
       - name: 🏗️ Build source and wheel distributions
         run: |
-          uv sync --group build
+          uv sync --frozen --group build
           uv build
           uv run twine check --strict dist/*
 

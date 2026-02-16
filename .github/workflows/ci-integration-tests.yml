@@ -24,7 +24,7 @@ jobs:
           activate-environment: true
 
       - name: 🚀 Install Packages
-        run: uv sync --group dev
+        run: uv sync --frozen --group dev
 
       - name: 🧪 Run Integration Tests
         run: uv run pytest -m integration -v --tb=short

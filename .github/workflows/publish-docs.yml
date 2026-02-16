@@ -42,7 +42,7 @@ jobs:
           activate-environment: true
 
       - name: 🏗️ Install dependencies
-        run: uv sync --group docs
+        run: uv sync --frozen --group docs
 
       - name: ⚙️ Configure git for github-actions
         run: |
