@@ -185,7 +185,22 @@ class MotionAwareTraceAnnotator:
 
             world_points = np.array(trajectory, dtype=np.float32)
             frame_points = coord_transform.abs_to_rel(world_points)
-            points: np.ndarray = frame_points.astype(np.int32)
+
+            # Filter out points outside the frame bounds
+            height, width = scene.shape[:2]
+            valid_mask = (
+                (frame_points[:, 0] >= 0)
+                & (frame_points[:, 0] < width)
+                & (frame_points[:, 1] >= 0)
+                & (frame_points[:, 1] < height)
+                & np.isfinite(frame_points[:, 0])
+                & np.isfinite(frame_points[:, 1])
+            )
+
+            if np.sum(valid_mask) < 2:
+                continue
+
+            points: np.ndarray = frame_points[valid_mask].astype(np.int32)
 
             scene = cv2.polylines(
                 scene,
