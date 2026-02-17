@@ -86,7 +86,7 @@ class OCSORTTracklet:
         self.delta_t = delta_t
         self.last_observation = initial_bbox
         self.previous_to_last_observation: np.ndarray | None = None
-        self.observations: dict[int, np.ndarray] = {0: initial_bbox}
+        self.observations: dict[int, np.ndarray] = {}
         self.velocity: np.ndarray | None = None
 
         # Track ID can be initialized before mature in oc-sort
@@ -319,7 +319,9 @@ class OCSORTTracklet:
             bbox: Bounding box [x1, y1, x2, y2] or None for no observation.
         """
         if bbox is not None:
-            # Compute velocity using k_previous_obs (delta_t lookback)
+            # Compute velocity only after the track has been observed at least once
+            # (matches original OC-SORT: velocity is None until 2nd match)
+
             previous_box = self.get_k_previous_obs()
             if previous_box is not None:
                 self.velocity = self._compute_velocity(previous_box, bbox)
@@ -350,6 +352,11 @@ class OCSORTTracklet:
         Returns:
             Predicted bounding box [x1, y1, x2, y2].
         """
+        # If predicted scale would go negative, zero out scale velocity
+        if self.state_repr == StateRepresentation.XCYCSR:
+            if (self.kalman_filter.x[6] + self.kalman_filter.x[2]) <= 0:
+                self.kalman_filter.x[6] *= 0.0
+
         self.kalman_filter.predict()
         self.age += 1
 
