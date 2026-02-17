@@ -2,6 +2,7 @@
 
 import zipfile
 from pathlib import Path
+
 import requests
 from tqdm import tqdm
 
@@ -15,12 +16,15 @@ def download_with_progress(url: str, dst: Path):
 
     total = int(response.headers.get("content-length", 0))
 
-    with open(tmp, "wb") as f, tqdm(
-        total=total,
-        unit="B",
-        unit_scale=True,
-        desc=dst.name,
-    ) as pbar:
+    with (
+        open(tmp, "wb") as f,
+        tqdm(
+            total=total,
+            unit="B",
+            unit_scale=True,
+            desc=dst.name,
+        ) as pbar,
+    ):
         for chunk in response.iter_content(chunk_size=8192):
             if chunk:
                 f.write(chunk)

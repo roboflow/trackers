@@ -1,8 +1,7 @@
 # trackers/datasets/manifest.py
 
 BASE_MOT17 = (
-    "https://storage.googleapis.com/com-roboflow-marketing/"
-    "trackers/datasets/mot17-v1"
+    "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/mot17-v1"
 )
 
 DATASETS = {
