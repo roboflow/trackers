@@ -185,7 +185,7 @@ class MotionAwareTraceAnnotator:
 
             world_points = np.array(trajectory, dtype=np.float32)
             frame_points = coord_transform.abs_to_rel(world_points)
-            points = frame_points.astype(np.int32)
+            points: np.ndarray = frame_points.astype(np.int32)
 
             scene = cv2.polylines(
                 scene,
