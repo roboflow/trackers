@@ -65,7 +65,6 @@ def run_download(args) -> int:
     ds = DATASETS[dataset]
     splits = [args.split] if args.split else list(ds["splits"].keys())
 
-
     for split in splits:
         if split not in ds["splits"]:
             sys.exit(f"Invalid split '{split}' for dataset '{dataset}'")
