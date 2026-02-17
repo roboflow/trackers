@@ -94,7 +94,7 @@ class OCSORTTracklet:
         self.tracker_id = -1
 
         # Tracking counters
-        self.number_of_successful_consecutive_updates = 1
+        self.number_of_successful_consecutive_updates = 0
         self.time_since_update = 0
 
         # ORU: saved state for freeze/unfreeze
@@ -222,7 +222,13 @@ class OCSORTTracklet:
         self._frozen_state = None
 
     def _unfreeze_xcycsr(self, new_bbox: np.ndarray, time_gap: int) -> None:
-        """ORU interpolation for XCYCSR representation."""
+        """ORU interpolation for XCYCSR representation.
+
+        Generates time_gap predict+update cycles with virtual observations
+        interpolated from the last observation to the new bbox. The interpolation
+        factors go from 0 to (time_gap-1)/time_gap. The caller is responsible
+        for the final real update at factor 1.0.
+        """
         # Convert to (x, y, s, r) format
         last_xcycsr = xyxy_to_xcycsr(self.last_observation)
         new_xcycsr = xyxy_to_xcycsr(new_bbox)
@@ -242,35 +248,39 @@ class OCSORTTracklet:
         dw = (w2 - w1) / time_gap
         dh = (h2 - h1) / time_gap
 
-        for i in range(1, time_gap + 1):
-            x = x1 + i * dx
-            y = y1 + i * dy
-            w = w1 + i * dw
-            h = h1 + i * dh
+        for i in range(time_gap):
+            x = x1 + (i + 1) * dx
+            y = y1 + (i + 1) * dy
+            w = w1 + (i + 1) * dw
+            h = h1 + (i + 1) * dh
 
             # Convert back to (x, y, s, r)
             s = w * h
             r = w / h
             virtual_obs = np.array([x, y, s, r]).reshape((4, 1))
 
-            if i < time_gap:
-                self.kalman_filter.predict()
             self.kalman_filter.update(virtual_obs)
+            if i < time_gap - 1:
+                self.kalman_filter.predict()
 
     def _unfreeze_xyxy(self, new_bbox: np.ndarray, time_gap: int) -> None:
-        """ORU interpolation for XYXY representation."""
+        """ORU interpolation for XYXY representation.
+
+        Same pattern as XCYCSR: time_gap predict+update cycles with factors
+        0 to (time_gap-1)/time_gap. Caller does the final real update.
+        """
         last_xyxy = self.last_observation
         new_xyxy = new_bbox
 
         # Linear interpolation deltas for each coordinate
         delta = (new_xyxy - last_xyxy) / time_gap
 
-        for i in range(1, time_gap + 1):
-            virtual_obs = (last_xyxy + i * delta).reshape((4, 1))
+        for i in range(time_gap):
+            virtual_obs = (last_xyxy + (i + 1) * delta).reshape((4, 1))
 
-            if i < time_gap:
-                self.kalman_filter.predict()
             self.kalman_filter.update(virtual_obs)
+            if i < time_gap - 1:
+                self.kalman_filter.predict()
 
     def get_k_previous_obs(self) -> np.ndarray | None:
         """Get observation from delta_t steps ago.
@@ -329,9 +339,12 @@ class OCSORTTracklet:
             # Check if we need to unfreeze (was lost, now observed)
             if not self._observed and self._frozen_state is not None:
                 self._unfreeze(bbox)
-            else:
-                measurement = self._bbox_to_measurement(bbox)
-                self.kalman_filter.update(measurement)
+
+            # Update KF with the real observation
+            # (after ORU this is the final update at the correct time step;
+            #  without ORU this is the normal measurement update)
+            measurement = self._bbox_to_measurement(bbox)
+            self.kalman_filter.update(measurement)
 
             self._observed = True
             self.time_since_update = 0
