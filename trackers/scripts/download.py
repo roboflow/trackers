@@ -63,7 +63,8 @@ def run_download(args) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     ds = DATASETS[dataset]
-    splits = [args.split] if args.split else ds["splits"].keys()
+    splits = [args.split] if args.split else list(ds["splits"].keys())
+
 
     for split in splits:
         if split not in ds["splits"]:

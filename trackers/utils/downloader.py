@@ -11,7 +11,7 @@ def download_with_progress(url: str, dst: Path):
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp = dst.with_suffix(".tmp")
 
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=30)
     response.raise_for_status()
 
     total = int(response.headers.get("content-length", 0))
