@@ -12,7 +12,7 @@ from trackers.motion.estimator import MotionEstimator
 from trackers.motion.transformation import (
     CoordinatesTransformation,
     HomographyTransformation,
-    IdentityTransformation
+    IdentityTransformation,
 )
 
 __all__ = [
