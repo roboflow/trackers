@@ -126,8 +126,15 @@ class HomographyTransformation(CoordinatesTransformation):
         transformed = homogeneous_points @ matrix.T
 
         # Normalize: (x', y', w') -> (x'/w', y'/w')
+        # Points with w <= 0 or very small w are numerically unstable
+        # (they map through infinity in projective space)
         homogeneous_scale = transformed[:, 2:3]
-        homogeneous_scale = np.where(homogeneous_scale == 0, 1e-7, homogeneous_scale)
+        min_scale = 1e-4
+        homogeneous_scale = np.where(
+            np.abs(homogeneous_scale) < min_scale,
+            np.sign(homogeneous_scale + 1e-10) * min_scale,
+            homogeneous_scale,
+        )
         return transformed[:, :2] / homogeneous_scale
 
     def abs_to_rel(self, points: np.ndarray) -> np.ndarray:
