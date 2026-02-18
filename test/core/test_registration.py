@@ -4,7 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import Any, Optional, Union
+import inspect
+from typing import Any, ClassVar, Optional, Union
 
 import pytest
 
@@ -266,6 +267,102 @@ class TestTrackerAutoRegistration:
         assert info is not None
         has_descriptions = any(p.description for p in info.parameters.values())
         assert has_descriptions
+
+
+class TestSearchSpaceValidation:
+    """Tests for search_space ClassVar validation in __init_subclass__."""
+
+    def test_bytetrack_has_search_space(self) -> None:
+        from trackers import ByteTrackTracker
+
+        assert hasattr(ByteTrackTracker, "search_space")
+        space = ByteTrackTracker.search_space
+        assert "lost_track_buffer" in space
+        assert "high_conf_det_threshold" in space
+        assert "frame_rate" not in space
+
+    def test_sort_has_search_space(self) -> None:
+        from trackers import SORTTracker
+
+        assert hasattr(SORTTracker, "search_space")
+        space = SORTTracker.search_space
+        assert "lost_track_buffer" in space
+        assert "minimum_iou_threshold" in space
+
+    def test_search_space_keys_match_init_params(self) -> None:
+        """ByteTrack and SORT search_space keys are valid __init__ parameters."""
+        from trackers import ByteTrackTracker, SORTTracker
+
+        for tracker_cls in (ByteTrackTracker, SORTTracker):
+            init_params = set(inspect.signature(tracker_cls.__init__).parameters) - {
+                "self"
+            }
+            for key in tracker_cls.search_space:
+                assert key in init_params, (
+                    f"{tracker_cls.__name__}.search_space has invalid key: {key}"
+                )
+
+    def test_search_space_invalid_key_raises_value_error(self) -> None:
+        """A tracker with search_space key not in __init__ raises ValueError."""
+
+        with pytest.raises(ValueError, match=r"search_space key .* is not a parameter"):
+
+            class BadTracker(BaseTracker):
+                tracker_id = "bad"
+                search_space: ClassVar[dict[str, dict]] = {
+                    "nonexistent_param": {
+                        "type": "uniform",
+                        "range": [0, 1],
+                    }
+                }
+
+                def __init__(self) -> None:
+                    pass
+
+                def update(self, detections: Any) -> Any:
+                    return detections
+
+                def reset(self) -> None:
+                    pass
+
+    def test_tracker_without_search_space_works(self) -> None:
+        """Trackers without search_space are still valid."""
+
+        class MinimalTracker(BaseTracker):
+            tracker_id = "minimal"
+
+            def __init__(self) -> None:
+                pass
+
+            def update(self, detections: Any) -> Any:
+                return detections
+
+            def reset(self) -> None:
+                pass
+
+        assert (
+            not hasattr(MinimalTracker, "search_space")
+            or getattr(MinimalTracker, "search_space", None) is None
+        )
+        assert "minimal" in BaseTracker._registered_trackers()
+
+    def test_tracker_with_empty_search_space_works(self) -> None:
+        """Trackers with empty search_space skip validation."""
+
+        class EmptySpaceTracker(BaseTracker):
+            tracker_id = "empty_space"
+            search_space: ClassVar[dict[str, dict]] = {}
+
+            def __init__(self, x: int = 1) -> None:
+                pass
+
+            def update(self, detections: Any) -> Any:
+                return detections
+
+            def reset(self) -> None:
+                pass
+
+        assert "empty_space" in BaseTracker._registered_trackers()
 
 
 class TestTrackerInstantiation:
