@@ -1,2 +1,2 @@
-gradio>=6.3.0,<6.4.0
+gradio>=6.3.0,<6.7.0
 trackers[detection]@git+https://github.com/roboflow/trackers.git
