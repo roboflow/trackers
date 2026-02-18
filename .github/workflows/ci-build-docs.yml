@@ -2,7 +2,7 @@ name: Docs Test WorkFlow 📚
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, 'release/*']
 
 # Restrict permissions by default
 permissions:

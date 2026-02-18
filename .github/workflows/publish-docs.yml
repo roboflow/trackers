@@ -2,7 +2,7 @@ name: Docs/Build and Publish
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, 'release/*']
   workflow_dispatch:
     inputs:
       ref:
@@ -50,10 +50,10 @@ jobs:
           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
       - name: 🚀 Deploy Development Docs
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/develop')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
-        run: uv run mike deploy --push develop
+        run: uv run mike deploy --push preview
 
       - name: 🚀 Deploy Custom Ref Docs
         if: github.event_name == 'workflow_dispatch'
