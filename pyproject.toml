@@ -1,6 +1,6 @@
 [project]
 name = "trackers"
-version = "2.2.0rc0"
+version = "2.2.0rc1"
 description = "A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms"
 readme = "README.md"
 maintainers = [
@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-detection = ["inference-models==0.18.6rc8"]
+detection = ["inference-models==0.18.6rc14"]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"
