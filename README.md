@@ -10,6 +10,7 @@
 [![hf space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/Roboflow/Trackers)
 [![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
 [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
+
 </div>
 
 ## Try It
@@ -103,13 +104,13 @@ COMBINED                      75.033  62.400  72.033    73
 
 Clean, modular implementations of leading trackers. See the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) for detailed benchmarks.
 
-| Algorithm | MOT17 | SportsMOT | SoccerNet |
-| :-------: | :---: | :-------: | :-------: |
-| [SORT](https://arxiv.org/abs/1602.00763) | 58.4 | 70.9 | 81.6 |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) | **60.1** | **73.0** | **84.0** |
-| [OC-SORT](https://arxiv.org/abs/2203.14360) | — | — | — |
-| [BoT-SORT](https://arxiv.org/abs/2206.14651) | — | — | — |
-| [McByte](https://arxiv.org/abs/2506.01373) | — | — | — |
+|                   Algorithm                   |  MOT17   | SportsMOT | SoccerNet |
+| :-------------------------------------------: | :------: | :-------: | :-------: |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |   58.4   |   70.9    |   81.6    |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) | **60.1** | **73.0**  | **84.0**  |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |    —     |     —     |     —     |
+| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |    —     |     —     |     —     |
+|  [McByte](https://arxiv.org/abs/2506.01373)   |    —     |     —     |     —     |
 
 ## Contributing
 
