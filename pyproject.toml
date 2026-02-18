@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-detection = ["inference-models==0.18.6rc14"]
+detection = ["inference-models==0.18.6rc17"]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"
