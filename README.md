@@ -1,7 +1,7 @@
 <div align="center">
     <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/main/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
     <h1>trackers</h1>
-    <p>Multi-object tracking. One pip install. Any detector.</p>
+    <p>Plug-and-play multi-object tracking for any detection model.</p>
 
 [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
 [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
@@ -12,9 +12,7 @@
 [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
 </div>
 
-https://github.com/user-attachments/assets/eef9b00a-cfe4-40f7-a495-954550e3ef1f
-
-## Try It Now
+## Try It
 
 No install needed. Try trackers in your browser with our [Hugging Face Playground](https://huggingface.co/spaces/roboflow/trackers).
 
@@ -32,6 +30,8 @@ pip install git+https://github.com/roboflow/trackers.git
 ```
 
 </details>
+
+https://github.com/user-attachments/assets/eef9b00a-cfe4-40f7-a495-954550e3ef1f
 
 ## Track from CLI
 
