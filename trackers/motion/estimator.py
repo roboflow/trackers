@@ -105,8 +105,8 @@ class MotionEstimator:
 
         Returns:
             `CoordinatesTransformation` for converting between absolute and
-            relative coordinates. Returns `IdentityTransformation` for the
-            first frame or if motion estimation fails.
+                relative coordinates. Returns `IdentityTransformation` for the
+                first frame or if motion estimation fails.
         """
         if len(frame.shape) == 3:
             grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

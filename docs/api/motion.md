@@ -4,6 +4,10 @@
 
 ::: trackers.motion.estimator.MotionEstimator
 
+## MotionAwareTraceAnnotator
+
+::: trackers.annotators.trace.MotionAwareTraceAnnotator
+
 ## CoordinatesTransformation
 
 ::: trackers.motion.transformation.CoordinatesTransformation
