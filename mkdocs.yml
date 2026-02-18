@@ -7,7 +7,12 @@ repo_url: https://github.com/roboflow/trackers
 edit_uri: https://github.com/roboflow/trackers/tree/main/docs
 copyright: Roboflow 2025. All rights reserved.
 
+hooks:
+  - docs/hooks/doctest_filter.py
+
 extra:
+  version:
+    provider: mike
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/roboflow
@@ -44,6 +49,12 @@ theme:
 extra_css:
   - stylesheets/style.css
   - stylesheets/rf.css
+  - stylesheets/command_builder.css
+
+extra_javascript:
+  - javascripts/pycon_copy.js
+  - javascripts/cli_builder_framework.js
+  - javascripts/command_builder.js
 
 markdown_extensions:
    # Adds support for card grids
@@ -100,10 +111,18 @@ plugins:
               sort_members: false
 
 nav:
-  - Home: index.md
-  - Learn:
-    - Install: learn/install.md
-    - Benchmarks: learn/benchmarks.md
+  - Home:
+    - Quickstart: index.md
   - Trackers:
+    - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md
     - ByteTrack: trackers/bytetrack.md
+  - Guides:
+    - Install: learn/install.md
+    - Track: learn/track.md
+    - Evaluate: learn/evaluate.md
+  - API Reference:
+    - Trackers: api/trackers.md
+    - Motion: api/motion.md
+    - Evals: api/evals.md
+    - I/O: api/io.md

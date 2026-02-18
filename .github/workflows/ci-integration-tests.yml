@@ -1,0 +1,30 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    paths:
+      - 'trackers/eval/**'
+      - 'test/eval/**'
+      - 'test/conftest.py'
+
+jobs:
+  integration-tests:
+    name: TrackEval Parity Validation
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: 🐍 Install uv and set Python version
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        with:
+          python-version: "3.12"
+          activate-environment: true
+
+      - name: 🚀 Install Packages
+        run: uv sync --frozen --group dev
+
+      - name: 🧪 Run Integration Tests
+        run: uv run pytest -m integration -v --tb=short
