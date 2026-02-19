@@ -2,7 +2,7 @@ name: Docs/Build and Publish
 
 on:
   push:
-    branches: ['release/stable', 'release/*', develop]
+    branches: ['release/*', 'develop']
   workflow_dispatch:
     inputs:
       ref:
