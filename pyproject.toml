@@ -185,3 +185,17 @@ markers = [
 [tool.codespell]
 skip = "*.pth"
 ignore-words-list = "mot"
+
+[tool.mypy]
+python_version = "3.10"
+plugins = ["numpy.typing.mypy_plugin"]
+
+[[tool.mypy.overrides]]
+module = [
+    "requests",
+    "torch",
+    "torchvision",
+    "torchvision.transforms",
+    "firerequests",
+]
+ignore_missing_imports = true
