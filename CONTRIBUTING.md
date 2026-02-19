@@ -47,7 +47,7 @@ Before merging, check that all tests pass and that your changes adhere to our de
 We use a structured branching model to manage development and releases:
 
 | Branch           | Purpose                                                                     |
-|------------------|-----------------------------------------------------------------------------|
+| ---------------- | --------------------------------------------------------------------------- |
 | `develop`        | Default branch for ongoing development. All feature PRs target this branch. |
 | `release/stable` | Always reflects the latest stable release.                                  |
 | `release/X.Y.Z`  | Short-lived branches for preparing bugfix releases.                         |
