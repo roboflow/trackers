@@ -1,11 +1,11 @@
 <div align="center">
-    <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/main/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
+    <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/release/stable/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
     <h1>trackers</h1>
     <p>Plug-and-play multi-object tracking for any detection model.</p>
 
 [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
 [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
-[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/main/LICENSE.md)
+[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE.md)
 [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
 [![hf space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/Roboflow/Trackers)
 [![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
@@ -114,8 +114,8 @@ Clean, modular implementations of leading trackers. See the [tracker comparison]
 
 ## Contributing
 
-We welcome contributions. Read our [contributor guidelines](https://github.com/roboflow/trackers/blob/main/CONTRIBUTING.md) to get started.
+We welcome contributions. Read our [contributor guidelines](https://github.com/roboflow/trackers/blob/release/stable/CONTRIBUTING.md) to get started.
 
 ## License
 
-The code is released under the [Apache 2.0 license](https://github.com/roboflow/trackers/blob/main/LICENSE).
+The code is released under the [Apache 2.0 license](https://github.com/roboflow/trackers/blob/release/stable/LICENSE).

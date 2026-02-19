@@ -2,13 +2,13 @@ name: Docs/Build and Publish
 
 on:
   push:
-    branches: [main, develop]
+    branches: ['release/stable', 'release/*', develop]
   workflow_dispatch:
     inputs:
       ref:
         description: 'Branch or tag to deploy'
         required: false
-        default: 'main'
+        default: 'release/stable'
   release:
     types: [published]
 

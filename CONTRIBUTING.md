@@ -5,12 +5,14 @@ Thank you for your interest in contributing to the Trackers library! Your helpâ€
 ## Table of Contents
 
 1. [How to Contribute](#how-to-contribute)
-2. [Running Tests](#running-tests)
-3. [CLA Signing](#cla-signing)
-4. [Clean Room Requirements](#clean-room-requirements)
-5. [Google-Style Docstrings and Type Hints](#google-style-docstrings-and-type-hints)
-6. [Reporting Bugs](#reporting-bugs)
-7. [License](#license)
+2. [Branching Strategy](#branching-strategy)
+3. [Releasing](#releasing)
+4. [Running Tests](#running-tests)
+5. [CLA Signing](#cla-signing)
+6. [Clean Room Requirements](#clean-room-requirements)
+7. [Google-Style Docstrings and Type Hints](#google-style-docstrings-and-type-hints)
+8. [Reporting Bugs](#reporting-bugs)
+9. [License](#license)
 
 ## How to Contribute
 
@@ -36,9 +38,56 @@ Contributions come in many forms: improving features, fixing bugs, suggesting id
     git push -u origin your-descriptive-name
     ```
 
-6. [Open a Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request): Submit your pull request against the main development branch. Please detail your changes and link any related issues.
+6. [Open a Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request): Submit your pull request targeting the `develop` branch. Please detail your changes and link any related issues.
 
 Before merging, check that all tests pass and that your changes adhere to our development and documentation standards.
+
+## Branching Strategy
+
+We use a structured branching model to manage development and releases:
+
+| Branch           | Purpose                                                                     |
+|------------------|-----------------------------------------------------------------------------|
+| `develop`        | Default branch for ongoing development. All feature PRs target this branch. |
+| `release/stable` | Always reflects the latest stable release.                                  |
+| `release/X.Y.Z`  | Short-lived branches for preparing bugfix releases.                         |
+
+## Releasing
+
+**Feature Releases (e.g., 2.3.0)**
+
+When ready to release a new feature version:
+
+1. Ensure `develop` is stable and all CI passes
+
+2. Hard reset `release/stable` to `develop` HEAD:
+
+    ```bash
+    git checkout release/stable
+    git reset --hard origin/develop
+    git push --force origin release/stable
+    ```
+
+3. Tag the release and push
+
+**Bugfix Releases (e.g., 2.2.1)**
+
+When releasing a patch with only specific fixes:
+
+1. Create a release branch from `release/stable`:
+
+    ```bash
+    git checkout release/stable
+    git checkout -b release/2.2.1
+    ```
+
+2. Cherry-pick the specific fix commits from `develop`
+
+3. Open a PR from `release/2.2.1` to `release/stable`
+
+4. Use **rebase merge** (not squash) to preserve individual commits
+
+5. Tag the release and delete the temporary branch
 
 ## Running Tests
 
