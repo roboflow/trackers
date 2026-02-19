@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 class ByteTrackKalmanBoxTracker:
@@ -31,6 +32,12 @@ class ByteTrackKalmanBoxTracker:
     """
 
     count_id = 0
+    state: NDArray[np.float32]
+    F: NDArray[np.float32]
+    H: NDArray[np.float32]
+    Q: NDArray[np.float32]
+    R: NDArray[np.float32]
+    P: NDArray[np.float32]
 
     @classmethod
     def get_next_tracker_id(cls) -> int:
@@ -97,9 +104,9 @@ class ByteTrackKalmanBoxTracker:
         Predict the next state of the bounding box (applies the state transition).
         """
         # Predict state
-        self.state = self.F @ self.state
+        self.state = (self.F @ self.state).astype(np.float32)
         # Predict error covariance
-        self.P = self.F @ self.P @ self.F.T + self.Q
+        self.P = (self.F @ self.P @ self.F.T + self.Q).astype(np.float32)
 
         # Increase time since update
         self.time_since_update += 1
@@ -116,18 +123,18 @@ class ByteTrackKalmanBoxTracker:
 
         # Kalman Gain
         S = self.H @ self.P @ self.H.T + self.R
-        K = self.P @ self.H.T @ np.linalg.inv(S)
+        K = (self.P @ self.H.T @ np.linalg.inv(S)).astype(np.float32)
 
         # Residual
-        measurement = bbox.reshape((4, 1))
+        measurement = bbox.reshape((4, 1)).astype(np.float32)
         y = measurement - self.H @ self.state
 
         # Update state
-        self.state = self.state + K @ y
+        self.state = (self.state + K @ y).astype(np.float32)
 
         # Update covariance
         identity_matrix = np.eye(8, dtype=np.float32)
-        self.P = (identity_matrix - K @ self.H) @ self.P
+        self.P = ((identity_matrix - K @ self.H) @ self.P).astype(np.float32)
 
     def get_state_bbox(self) -> np.ndarray:
         """
