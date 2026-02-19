@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -82,13 +81,13 @@ class MotionAwareTraceAnnotator:
 
     def __init__(
         self,
-        color: Union[Color, ColorPalette, None] = None,
-        position: Optional[Position] = None,
+        color: Color | ColorPalette | None = None,
+        position: Position | None = None,
         trace_length: int = 30,
         thickness: int = 2,
-        color_lookup: Optional[ColorLookup] = None,
+        color_lookup: ColorLookup | None = None,
     ) -> None:
-        self.color: Union[Color, ColorPalette] = (
+        self.color: Color | ColorPalette = (
             color if color is not None else ColorPalette.DEFAULT
         )
         self.position: Position = position if position is not None else Position.CENTER
@@ -98,7 +97,7 @@ class MotionAwareTraceAnnotator:
             color_lookup if color_lookup is not None else ColorLookup.TRACK
         )
 
-        self._trajectories: Dict[int, List[Tuple[float, float]]] = defaultdict(list)
+        self._trajectories: dict[int, list[tuple[float, float]]] = defaultdict(list)
 
     def _get_anchor_points(self, detections: sv.Detections) -> np.ndarray:
         """Extract anchor points from detections based on position setting.
@@ -115,8 +114,8 @@ class MotionAwareTraceAnnotator:
         self,
         scene: np.ndarray,
         detections: sv.Detections,
-        custom_color_lookup: Optional[np.ndarray] = None,
-        coord_transform: Optional[CoordinatesTransformation] = None,
+        custom_color_lookup: np.ndarray | None = None,
+        coord_transform: CoordinatesTransformation | None = None,
     ) -> np.ndarray:
         """Draw motion-compensated trace paths on the scene.
 
