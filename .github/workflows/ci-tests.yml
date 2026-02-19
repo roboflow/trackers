@@ -2,7 +2,7 @@ name: Pytest/Test Workflow
 
 on:
   pull_request:
-    branches: [main, 'release/*']
+    branches: [main, develop]
 
 jobs:
   run-tests:
