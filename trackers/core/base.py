@@ -231,8 +231,23 @@ class BaseTracker(ABC):
         """Register subclass in the tracker registry if it defines tracker_id.
 
         Extracts parameter metadata from __init__ at class definition time.
+        Validates search_space (if present) against __init__ parameters.
         """
         super().__init_subclass__(**kwargs)
+
+        # Validate search_space keys match __init__ parameters (search_space optional)
+        search_space = getattr(cls, "search_space", None)
+        if search_space is not None and len(search_space) > 0:
+            init_params = {
+                n for n in inspect.signature(cls.__init__).parameters if n != "self"
+            }
+            for key in search_space:
+                if key not in init_params:
+                    raise ValueError(
+                        f"{cls.__name__}: search_space key {key!r} is not a "
+                        f"parameter of __init__. "
+                        f"Valid parameters: {sorted(init_params)}"
+                    )
 
         tracker_id = getattr(cls, "tracker_id", None)
         if tracker_id is not None:
