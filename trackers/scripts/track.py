@@ -48,7 +48,7 @@ COLOR_PALETTE = sv.ColorPalette.from_hex(
 
 def track(
     source: str,
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     detections: Path | None = None,
     model_confidence: float = DEFAULT_CONFIDENCE,
     model_device: str = DEFAULT_DEVICE,
@@ -72,7 +72,8 @@ def track(
     Args:
         source: Video file, webcam index (0), RTSP URL, or image directory.
         model: Model ID for detection. Pretrained: rfdetr-nano, rfdetr-base, etc.
-            Custom: workspace/project/version.
+            Custom: workspace/project/version. Defaults to rfdetr-nano when
+            --detections is not provided.
         detections: Load pre-computed detections from MOT format file.
         model_confidence: Detection confidence threshold.
         model_device: Device: auto, cpu, cuda, cuda:0, mps.
@@ -91,6 +92,12 @@ def track(
         show_confidence: Show confidence scores.
         show_trajectories: Draw track trajectories.
     """
+    if detections is not None and model is not None:
+        raise ValueError(
+            "Arguments --model and --detections are mutually exclusive. "
+            "Provide only one."
+        )
+
     # Validate output paths
     if output:
         _validate_output_path(_resolve_video_output_path(output), overwrite=overwrite)
@@ -103,8 +110,9 @@ def track(
         detections_data = _load_mot_file(detections)
         class_names: list[str] = []
     else:
+        model_id = model or DEFAULT_MODEL
         model_obj = _init_model(
-            model,
+            model_id,
             device=model_device,
             api_key=model_api_key,
         )

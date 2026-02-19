@@ -16,12 +16,11 @@ def main() -> None:
         stacklevel=2,
     )
 
-    from jsonargparse import auto_cli, set_parsing_settings
+    from jsonargparse import auto_cli
 
     from trackers.scripts.eval import evaluate
     from trackers.scripts.track import track
 
-    set_parsing_settings(parse_optionals_as_positionals=True)
     auto_cli([track, evaluate], as_positional=False)
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -206,39 +207,32 @@ def track(
         model,
         "--tracker",
         tracker,
-        "--model.confidence",
+        "--model_confidence",
         str(confidence),
-        "--tracker.lost_track_buffer",
-        str(lost_track_buffer),
-        "--tracker.track_activation_threshold",
-        str(track_activation_threshold),
-        "--tracker.minimum_consecutive_frames",
-        str(minimum_consecutive_frames),
-        "--tracker.minimum_iou_threshold",
-        str(minimum_iou_threshold),
     ]
+
+    tracker_params: dict[str, float | int] = {
+        "lost_track_buffer": lost_track_buffer,
+        "track_activation_threshold": track_activation_threshold,
+        "minimum_consecutive_frames": minimum_consecutive_frames,
+        "minimum_iou_threshold": minimum_iou_threshold,
+    }
 
     # ByteTrack extra param
     if tracker == "bytetrack":
-        cmd += ["--tracker.high_conf_det_threshold", str(high_conf_det_threshold)]
+        tracker_params["high_conf_det_threshold"] = high_conf_det_threshold
+
+    cmd += ["--tracker_params", json.dumps(tracker_params, separators=(",", ":"))]
 
     if classes:
         cmd += ["--classes", ",".join(classes)]
 
-    if show_boxes:
-        cmd += ["--show-boxes"]
-    else:
-        cmd += ["--no-boxes"]
-    if show_ids:
-        cmd += ["--show-ids"]
-    if show_labels:
-        cmd += ["--show-labels"]
-    if show_confidence:
-        cmd += ["--show-confidence"]
-    if show_trajectories:
-        cmd += ["--show-trajectories"]
-    if show_masks:
-        cmd += ["--show-masks"]
+    cmd += ["--show_boxes", str(show_boxes).lower()]
+    cmd += ["--show_ids", str(show_ids).lower()]
+    cmd += ["--show_labels", str(show_labels).lower()]
+    cmd += ["--show_confidence", str(show_confidence).lower()]
+    cmd += ["--show_trajectories", str(show_trajectories).lower()]
+    cmd += ["--show_masks", str(show_masks).lower()]
 
     result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
     if result.returncode != 0:
