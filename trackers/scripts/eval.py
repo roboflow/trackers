@@ -5,99 +5,40 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from __future__ import annotations
-
-import argparse
 import logging
 import sys
 from pathlib import Path
 
 
-def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
-    """Add the eval subcommand to the argument parser."""
-    parser = subparsers.add_parser(
-        "eval",
-        help="Evaluate tracker predictions against ground truth.",
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+def evaluate(
+    gt: Path | None = None,
+    tracker: Path | None = None,
+    gt_dir: Path | None = None,
+    tracker_dir: Path | None = None,
+    seqmap: Path | None = None,
+    metrics: list[str] | None = None,
+    threshold: float = 0.5,
+    columns: list[str] | None = None,
+    output: Path | None = None,
+) -> int:
+    """Evaluate tracker predictions against ground truth.
 
-    # Single sequence mode
-    single_group = parser.add_argument_group("single sequence evaluation")
-    single_group.add_argument(
-        "--gt",
-        type=Path,
-        metavar="PATH",
-        help="Path to ground truth file (MOT format).",
-    )
-    single_group.add_argument(
-        "--tracker",
-        type=Path,
-        metavar="PATH",
-        help="Path to tracker predictions file (MOT format).",
-    )
-
-    # Benchmark mode
-    bench_group = parser.add_argument_group("benchmark evaluation")
-    bench_group.add_argument(
-        "--gt-dir",
-        type=Path,
-        metavar="DIR",
-        help="Directory containing ground truth files.",
-    )
-    bench_group.add_argument(
-        "--tracker-dir",
-        type=Path,
-        metavar="DIR",
-        help="Directory containing tracker prediction files.",
-    )
-    bench_group.add_argument(
-        "--seqmap",
-        type=Path,
-        metavar="PATH",
-        help="Sequence map file listing sequences to evaluate.",
-    )
-
-    # Common options
-    parser.add_argument(
-        "--metrics",
-        nargs="+",
-        default=["CLEAR"],
-        choices=["CLEAR", "HOTA", "Identity"],
-        help="Metrics to compute. Default: CLEAR. Options: CLEAR, HOTA, Identity",
-    )
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=0.5,
-        help="IoU threshold for CLEAR and Identity matching. Default: 0.5",
-    )
-    parser.add_argument(
-        "--columns",
-        nargs="+",
-        default=None,
-        metavar="COL",
-        help=(
-            "Metric columns to display. Default: auto-selected based on metrics. "
-            "CLEAR: MOTA, MOTP, MODA, CLR_Re, CLR_Pr, MTR, PTR, MLR, sMOTA, "
-            "CLR_TP, CLR_FN, CLR_FP, IDSW, MT, PT, ML, Frag. "
-            "HOTA: HOTA, DetA, AssA, DetRe, DetPr, AssRe, AssPr, LocA. "
-            "Identity: IDF1, IDR, IDP, IDTP, IDFN, IDFP"
-        ),
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        type=Path,
-        metavar="PATH",
-        help="Output file for results (JSON format).",
-    )
-
-    parser.set_defaults(func=run_eval)
-
-
-def run_eval(args: argparse.Namespace) -> int:
-    """Execute the eval command."""
+    Args:
+        gt: Path to ground truth file (MOT format).
+        tracker: Path to tracker predictions file (MOT format).
+        gt_dir: Directory containing ground truth files.
+        tracker_dir: Directory containing tracker prediction files.
+        seqmap: Sequence map file listing sequences to evaluate.
+        metrics: Metrics to compute. Options: CLEAR, HOTA, Identity.
+            Default: CLEAR.
+        threshold: IoU threshold for CLEAR and Identity matching.
+        columns: Metric columns to display. Default: auto-selected based on
+            metrics. CLEAR: MOTA, MOTP, MODA, CLR_Re, CLR_Pr, MTR, PTR, MLR,
+            sMOTA, CLR_TP, CLR_FN, CLR_FP, IDSW, MT, PT, ML, Frag. HOTA:
+            HOTA, DetA, AssA, DetRe, DetPr, AssRe, AssPr, LocA. Identity:
+            IDF1, IDR, IDP, IDTP, IDFN, IDFP.
+        output: Output file for results (JSON format).
+    """
     # Configure logging to show detection info
     logging.basicConfig(
         level=logging.INFO,
@@ -105,13 +46,16 @@ def run_eval(args: argparse.Namespace) -> int:
         handlers=[logging.StreamHandler(sys.stderr)],
     )
 
+    if metrics is None:
+        metrics = ["CLEAR"]
+
     # Validate arguments
-    single_mode = args.gt is not None and args.tracker is not None
-    benchmark_mode = args.gt_dir is not None and args.tracker_dir is not None
+    single_mode = gt is not None and tracker is not None
+    benchmark_mode = gt_dir is not None and tracker_dir is not None
 
     if not single_mode and not benchmark_mode:
         print(
-            "Error: Must specify either --gt/--tracker or --gt-dir/--tracker-dir",
+            "Error: Must specify either --gt/--tracker or --gt_dir/--tracker_dir",
             file=sys.stderr,
         )
         return 1
@@ -123,41 +67,35 @@ def run_eval(args: argparse.Namespace) -> int:
         )
         return 1
 
-    # Columns: None means auto-select based on available metrics
-    columns = args.columns
-
     # Import evaluation functions
     from trackers.eval import evaluate_mot_sequence, evaluate_mot_sequences
 
     try:
         if single_mode:
             seq_result = evaluate_mot_sequence(
-                gt_path=args.gt,
-                tracker_path=args.tracker,
-                metrics=args.metrics,
-                threshold=args.threshold,
+                gt_path=gt, tracker_path=tracker, metrics=metrics, threshold=threshold
             )
             print(seq_result.table(columns=columns))
 
             # Save results if output specified
-            if args.output:
-                args.output.parent.mkdir(parents=True, exist_ok=True)
-                args.output.write_text(seq_result.json())
-                print(f"\nResults saved to: {args.output}")
+            if output:
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text(seq_result.json())
+                print(f"\nResults saved to: {output}")
         else:
             bench_result = evaluate_mot_sequences(
-                gt_dir=args.gt_dir,
-                tracker_dir=args.tracker_dir,
-                seqmap=args.seqmap,
-                metrics=args.metrics,
-                threshold=args.threshold,
+                gt_dir=gt_dir,
+                tracker_dir=tracker_dir,
+                seqmap=seqmap,
+                metrics=metrics,
+                threshold=threshold,
             )
             print(bench_result.table(columns=columns))
 
             # Save results if output specified
-            if args.output:
-                bench_result.save(args.output)
-                print(f"\nResults saved to: {args.output}")
+            if output:
+                bench_result.save(output)
+                print(f"\nResults saved to: {output}")
 
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
