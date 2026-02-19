@@ -39,7 +39,8 @@ dependencies = [
     "supervision>=0.26.1",
     "scipy>=1.13.1",
     "opencv-python>=4.8.0",
-    "rich>=13.0.0"
+    "rich>=13.0.0",
+    "jsonargparse[signatures]>=4.18.0",
 ]
 
 [project.optional-dependencies]

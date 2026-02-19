@@ -5,12 +5,10 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from __future__ import annotations
-
-import argparse
 import sys
 from contextlib import nullcontext
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import supervision as sv
@@ -48,294 +46,126 @@ COLOR_PALETTE = sv.ColorPalette.from_hex(
 )
 
 
-def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
-    """Add the track subcommand to the argument parser."""
-    parser = subparsers.add_parser(
-        "track",
-        help="Track objects in video using detection and tracking.",
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+def track(
+    source: str,
+    model: str = DEFAULT_MODEL,
+    detections: Path | None = None,
+    model_confidence: float = DEFAULT_CONFIDENCE,
+    model_device: str = DEFAULT_DEVICE,
+    model_api_key: str | None = None,
+    classes: str | None = None,
+    tracker: str = DEFAULT_TRACKER,
+    tracker_params: dict[str, Any] | None = None,
+    output: Path | None = None,
+    mot_output: Path | None = None,
+    overwrite: bool = False,
+    display: bool = False,
+    show_boxes: bool = True,
+    show_masks: bool = False,
+    show_labels: bool = False,
+    show_ids: bool = True,
+    show_confidence: bool = False,
+    show_trajectories: bool = False,
+) -> int:
+    """Track objects in video using detection and tracking.
 
-    # Source options
-    source_group = parser.add_argument_group("source")
-    source_group.add_argument(
-        "--source",
-        type=str,
-        required=True,
-        metavar="PATH",
-        help="Video file, webcam index (0), RTSP URL, or image directory.",
-    )
-
-    # Detection options (mutually exclusive)
-    detection_group = parser.add_argument_group("detection")
-    det_mutex = detection_group.add_mutually_exclusive_group(required=False)
-    det_mutex.add_argument(
-        "--model",
-        type=str,
-        default=DEFAULT_MODEL,
-        metavar="ID",
-        help=(
-            "Model ID for detection. Pretrained: rfdetr-nano, rfdetr-base, etc. "
-            f"Custom: workspace/project/version. Default: {DEFAULT_MODEL}"
-        ),
-    )
-    det_mutex.add_argument(
-        "--detections",
-        type=Path,
-        metavar="PATH",
-        help="Load pre-computed detections from MOT format file.",
-    )
-
-    # Model options
-    model_group = parser.add_argument_group("model options")
-    model_group.add_argument(
-        "--model.confidence",
-        type=float,
-        default=DEFAULT_CONFIDENCE,
-        dest="model_confidence",
-        metavar="FLOAT",
-        help=f"Detection confidence threshold. Default: {DEFAULT_CONFIDENCE}",
-    )
-    model_group.add_argument(
-        "--model.device",
-        type=str,
-        default=DEFAULT_DEVICE,
-        dest="model_device",
-        metavar="DEVICE",
-        help=f"Device: auto, cpu, cuda, cuda:0, mps. Default: {DEFAULT_DEVICE}",
-    )
-    model_group.add_argument(
-        "--model.api_key",
-        type=str,
-        default=None,
-        dest="model_api_key",
-        metavar="KEY",
-        help="Roboflow API key for custom models.",
-    )
-
-    # Filtering options
-    filter_group = parser.add_argument_group("filtering")
-    filter_group.add_argument(
-        "--classes",
-        type=str,
-        default=None,
-        metavar="NAMES_OR_IDS",
-        help="Filter by class names or IDs (comma-separated, e.g., person,car).",
-    )
-
-    # Tracker options
-    tracker_group = parser.add_argument_group("tracker options")
-    available_trackers = BaseTracker._registered_trackers()
-    tracker_group.add_argument(
-        "--tracker",
-        type=str,
-        default=DEFAULT_TRACKER,
-        choices=available_trackers if available_trackers else [DEFAULT_TRACKER, "sort"],
-        metavar="ID",
-        help=f"Tracking algorithm. Default: {DEFAULT_TRACKER}",
-    )
-
-    # Add dynamic tracker parameters
-    _add_tracker_params(tracker_group)
-
-    # Output options
-    output_group = parser.add_argument_group("output")
-    output_group.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        default=None,
-        metavar="PATH",
-        help="Output video file path.",
-    )
-    output_group.add_argument(
-        "--mot-output",
-        type=Path,
-        default=None,
-        dest="mot_output",
-        metavar="PATH",
-        help="Output MOT format file path.",
-    )
-    output_group.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Overwrite existing output files.",
-    )
-
-    # Visualization options
-    vis_group = parser.add_argument_group("visualization")
-    vis_group.add_argument(
-        "--display",
-        action="store_true",
-        help="Show preview window.",
-    )
-    vis_group.add_argument(
-        "--show-boxes",
-        action="store_true",
-        default=True,
-        dest="show_boxes",
-        help="Draw bounding boxes. Default: True",
-    )
-    vis_group.add_argument(
-        "--no-boxes",
-        action="store_false",
-        dest="show_boxes",
-        help="Disable bounding boxes.",
-    )
-    vis_group.add_argument(
-        "--show-masks",
-        action="store_true",
-        dest="show_masks",
-        help="Draw segmentation masks (seg models only).",
-    )
-    vis_group.add_argument(
-        "--show-labels",
-        action="store_true",
-        dest="show_labels",
-        help="Show class labels.",
-    )
-    vis_group.add_argument(
-        "--show-ids",
-        action="store_true",
-        default=True,
-        dest="show_ids",
-        help="Show track IDs. Default: True",
-    )
-    vis_group.add_argument(
-        "--no-ids",
-        action="store_false",
-        dest="show_ids",
-        help="Disable track IDs.",
-    )
-    vis_group.add_argument(
-        "--show-confidence",
-        action="store_true",
-        dest="show_confidence",
-        help="Show confidence scores.",
-    )
-    vis_group.add_argument(
-        "--show-trajectories",
-        action="store_true",
-        dest="show_trajectories",
-        help="Draw track trajectories.",
-    )
-
-    parser.set_defaults(func=run_track)
-
-
-def _add_tracker_params(group: argparse._ArgumentGroup) -> None:
-    """Add tracker-specific parameters from registry to argument group."""
-    for tracker_id in BaseTracker._registered_trackers():
-        info = BaseTracker._lookup_tracker(tracker_id)
-        if info is None:
-            continue
-
-        for param_name, param_info in info.parameters.items():
-            arg_name = f"--tracker.{param_name}"
-            dest_name = f"tracker_{param_name}"
-
-            kwargs: dict = {
-                "dest": dest_name,
-                "default": param_info.default_value,
-                "help": f"{param_info.description} Default: {param_info.default_value}",
-            }
-
-            if param_info.param_type is bool:
-                kwargs["action"] = (
-                    "store_false" if param_info.default_value else "store_true"
-                )
-            else:
-                kwargs["type"] = param_info.param_type
-                kwargs["metavar"] = param_info.param_type.__name__.upper()
-
-            try:
-                group.add_argument(arg_name, **kwargs)
-            except argparse.ArgumentError:
-                # Parameter already added by another tracker
-                pass
-
-
-def run_track(args: argparse.Namespace) -> int:
-    """Execute the track command."""
+    Args:
+        source: Video file, webcam index (0), RTSP URL, or image directory.
+        model: Model ID for detection. Pretrained: rfdetr-nano, rfdetr-base, etc.
+            Custom: workspace/project/version.
+        detections: Load pre-computed detections from MOT format file.
+        model_confidence: Detection confidence threshold.
+        model_device: Device: auto, cpu, cuda, cuda:0, mps.
+        model_api_key: Roboflow API key for custom models.
+        classes: Filter by class names or IDs (comma-separated, e.g., person,car).
+        tracker: Tracking algorithm.
+        tracker_params: Tracker-specific parameters as key-value pairs.
+        output: Output video file path.
+        mot_output: Output MOT format file path.
+        overwrite: Overwrite existing output files.
+        display: Show preview window.
+        show_boxes: Draw bounding boxes.
+        show_masks: Draw segmentation masks (seg models only).
+        show_labels: Show class labels.
+        show_ids: Show track IDs.
+        show_confidence: Show confidence scores.
+        show_trajectories: Draw track trajectories.
+    """
     # Validate output paths
-    if args.output:
-        _validate_output_path(
-            _resolve_video_output_path(args.output), overwrite=args.overwrite
-        )
-    if args.mot_output:
-        _validate_output_path(args.mot_output, overwrite=args.overwrite)
+    if output:
+        _validate_output_path(_resolve_video_output_path(output), overwrite=overwrite)
+    if mot_output:
+        _validate_output_path(mot_output, overwrite=overwrite)
 
     # Create detection source
-    if args.detections:
-        model = None
-        detections_data = _load_mot_file(args.detections)
+    if detections is not None:
+        model_obj = None
+        detections_data = _load_mot_file(detections)
         class_names: list[str] = []
     else:
-        model = _init_model(
-            args.model,
-            device=args.model_device,
-            api_key=args.model_api_key,
+        model_obj = _init_model(
+            model,
+            device=model_device,
+            api_key=model_api_key,
         )
         detections_data = None
-        class_names = getattr(model, "class_names", [])
+        class_names = getattr(model_obj, "class_names", [])
 
     # Resolve class filter (names and/or integer IDs)
-    class_filter = _resolve_class_filter(args.classes, class_names)
+    class_filter = _resolve_class_filter(classes, class_names)
 
     # Create tracker
-    tracker_params = _extract_tracker_params(args.tracker, args)
-    tracker = _init_tracker(args.tracker, **tracker_params)
+    tracker_obj = _init_tracker(tracker, **(tracker_params or {}))
 
     # Create frame generator
-    frame_gen = frames_from_source(args.source)
+    frame_gen = frames_from_source(source)
 
-    source_info = _classify_source(args.source)
+    source_info = _classify_source(source)
 
     # Setup annotators
     annotators, label_annotator = _init_annotators(
-        show_boxes=args.show_boxes,
-        show_masks=args.show_masks,
-        show_labels=args.show_labels,
-        show_ids=args.show_ids,
-        show_confidence=args.show_confidence,
+        show_boxes=show_boxes,
+        show_masks=show_masks,
+        show_labels=show_labels,
+        show_ids=show_ids,
+        show_confidence=show_confidence,
     )
     trace_annotator = None
-    if args.show_trajectories:
+    if show_trajectories:
         trace_annotator = sv.TraceAnnotator(
             color=COLOR_PALETTE,
             color_lookup=sv.ColorLookup.TRACK,
         )
 
-    display_ctx = _DisplayWindow() if args.display else nullcontext()
+    display_ctx = _DisplayWindow() if display else nullcontext()
 
     try:
         with (
             _VideoOutput(
-                args.output,
+                output,
                 fps=source_info.fps or _DEFAULT_OUTPUT_FPS,
             ) as video,
-            _MOTOutput(args.mot_output) as mot,
-            display_ctx as display,
+            _MOTOutput(mot_output) as mot,
+            display_ctx as display_win,
             _TrackingProgress(source_info) as progress,
         ):
             interrupted = False
             for frame_idx, frame in frame_gen:
                 # Get detections
-                if model is not None:
-                    detections = _run_model(model, frame, args.model_confidence)
+                if model_obj is not None:
+                    dets = _run_model(model_obj, frame, model_confidence)
                 elif detections_data is not None and frame_idx in detections_data:
-                    detections = _mot_frame_to_detections(detections_data[frame_idx])
+                    dets = _mot_frame_to_detections(detections_data[frame_idx])
                 else:
-                    detections = sv.Detections.empty()
+                    dets = sv.Detections.empty()
 
                 # Filter by class
-                if class_filter is not None and len(detections) > 0:
-                    mask = np.isin(detections.class_id, class_filter)
-                    detections = detections[mask]  # type: ignore[assignment]
+                if class_filter is not None and len(dets) > 0:
+                    mask = np.isin(dets.class_id, class_filter)
+                    dets = dets[mask]  # type: ignore[assignment]
 
                 # Run tracker
-                tracked = tracker.update(detections)
+                tracked = tracker_obj.update(dets)
 
                 # Write MOT output
                 mot.write(frame_idx, tracked)
@@ -343,7 +173,7 @@ def run_track(args: argparse.Namespace) -> int:
                 progress.update()
 
                 # Annotate and display/save frame
-                if args.display or args.output:
+                if display or output:
                     annotated = frame.copy()
                     if trace_annotator is not None:
                         annotated = trace_annotator.annotate(annotated, tracked)
@@ -354,17 +184,17 @@ def run_track(args: argparse.Namespace) -> int:
                         labels = _format_labels(
                             labeled,
                             class_names,
-                            show_ids=args.show_ids,
-                            show_labels=args.show_labels,
-                            show_confidence=args.show_confidence,
+                            show_ids=show_ids,
+                            show_labels=show_labels,
+                            show_confidence=show_confidence,
                         )
                         annotated = label_annotator.annotate(annotated, labeled, labels)
 
                     video.write(annotated)
 
-                    if display is not None:
-                        display.show(annotated)
-                        if display.quit_requested:
+                    if display_win is not None:
+                        display_win.show(annotated)
+                        if display_win.quit_requested:
                             interrupted = True
                             break
 
@@ -465,32 +295,6 @@ def _run_model(model, frame: np.ndarray, confidence: float) -> sv.Detections:
         detections = detections[mask]
 
     return detections
-
-
-def _extract_tracker_params(
-    tracker_id: str, args: argparse.Namespace
-) -> dict[str, object]:
-    """Extract tracker parameters from CLI args.
-
-    Args:
-        tracker_id: Registered tracker name.
-        args: Parsed CLI arguments.
-
-    Returns:
-        Dictionary of tracker parameters with non-None values.
-    """
-    info = BaseTracker._lookup_tracker(tracker_id)
-    if info is None:
-        return {}
-
-    params = {}
-    for param_name in info.parameters:
-        dest_name = f"tracker_{param_name}"
-        if hasattr(args, dest_name):
-            value = getattr(args, dest_name)
-            if value is not None:
-                params[param_name] = value
-    return params
 
 
 def _init_tracker(tracker_id: str, **kwargs) -> BaseTracker:

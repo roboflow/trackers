@@ -5,62 +5,25 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from __future__ import annotations
-
-import argparse
-import sys
 import warnings
 
 
-def main() -> int:
+def main() -> None:
     """Main entry point for the trackers CLI."""
-    # Beta warning
     warnings.warn(
         "The trackers CLI is in beta. APIs may change in future releases.",
         UserWarning,
         stacklevel=2,
     )
 
-    parser = argparse.ArgumentParser(
-        prog="trackers",
-        description="Command-line tools for multi-object tracking.",
-        epilog="For more information, visit: https://github.com/roboflow/trackers",
-    )
-    parser.add_argument(
-        "--version",
-        action="store_true",
-        help="Show version and exit.",
-    )
+    from jsonargparse import auto_cli, set_parsing_settings
 
-    subparsers = parser.add_subparsers(
-        dest="command",
-        title="commands",
-        description="Available commands:",
-    )
+    from trackers.scripts.eval import evaluate
+    from trackers.scripts.track import track
 
-    # Import and register subcommands
-    from trackers.scripts.eval import add_eval_subparser
-    from trackers.scripts.track import add_track_subparser
-
-    add_eval_subparser(subparsers)
-    add_track_subparser(subparsers)
-
-    # Parse arguments
-    args = parser.parse_args()
-
-    if args.version:
-        from importlib.metadata import version
-
-        print(f"trackers {version('trackers')}")
-        return 0
-
-    if args.command is None:
-        parser.print_help()
-        return 0
-
-    # Execute the command
-    return args.func(args)
+    set_parsing_settings(parse_optionals_as_positionals=True)
+    auto_cli([track, evaluate], as_positional=False)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
