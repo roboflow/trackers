@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Union
 
 import cv2
 import numpy as np
@@ -20,7 +19,7 @@ _DEFAULT_OUTPUT_FPS = 30.0
 
 
 def frames_from_source(
-    source: Union[str, Path, int],
+    source: str | Path | int,
 ) -> Iterator[tuple[int, np.ndarray]]:
     """Yield numbered BGR frames from video files, webcams, network streams, or image
     directories.
@@ -46,7 +45,7 @@ def frames_from_source(
 
 
 def _iter_capture_frames(
-    src: Union[str, int, Path],
+    src: str | int | Path,
 ) -> Iterator[tuple[int, np.ndarray]]:
     # Convert numeric strings to int for webcam indices
     if isinstance(src, str) and src.isdigit():
