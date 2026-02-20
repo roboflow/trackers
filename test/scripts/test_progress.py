@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from io import StringIO
 from pathlib import Path
-from typing import Callable
 from unittest.mock import MagicMock, patch
 
 import cv2
