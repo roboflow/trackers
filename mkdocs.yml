@@ -124,5 +124,6 @@ nav:
     - Evaluate: learn/evaluate.md
   - API Reference:
     - Trackers: api/trackers.md
+    - Motion: api/motion.md
     - Evals: api/evals.md
     - I/O: api/io.md

@@ -6,14 +6,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import cv2
 import numpy as np
 import pytest
 
 from trackers import frames_from_source
+from trackers.io.video import _DEFAULT_OUTPUT_FPS, _VideoOutput
 
 FRAME_WIDTH = 96
 FRAME_HEIGHT = 96
@@ -208,3 +209,31 @@ class TestFramesFromSourceErrors:
     ) -> None:
         with pytest.raises(OSError, match="Failed to read image"):
             list(frames_from_source(directory_with_corrupted_image))
+
+
+class TestVideoOutputFPS:
+    def test_uses_source_fps_when_provided(self, tmp_path: Path) -> None:
+        output_path = tmp_path / "out.mp4"
+        frame = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
+
+        with _VideoOutput(output_path, fps=24.0) as video:
+            video.write(frame)
+
+        cap = cv2.VideoCapture(str(output_path))
+        assert cap.isOpened()
+        actual_fps = cap.get(cv2.CAP_PROP_FPS)
+        cap.release()
+        assert actual_fps == pytest.approx(24.0, abs=0.1)
+
+    def test_falls_back_to_default_fps(self, tmp_path: Path) -> None:
+        output_path = tmp_path / "out.mp4"
+        frame = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
+
+        with _VideoOutput(output_path) as video:
+            video.write(frame)
+
+        cap = cv2.VideoCapture(str(output_path))
+        assert cap.isOpened()
+        actual_fps = cap.get(cv2.CAP_PROP_FPS)
+        cap.release()
+        assert actual_fps == pytest.approx(_DEFAULT_OUTPUT_FPS, abs=0.1)
