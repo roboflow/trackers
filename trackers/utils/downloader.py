@@ -20,7 +20,7 @@ def _verify_md5(file_path: Path, expected_md5: str) -> None:
 
     Deletes the file and raises RuntimeError if the checksum does not match.
     """
-    hash_md5 = hashlib.md5()
+    hash_md5 = hashlib.md5(usedforsecurity=False)
 
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):

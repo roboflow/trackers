@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Dict, List
 
 from trackers.datasets.manifest import DATASETS
 from trackers.utils.downloader import download_file, extract_zip
@@ -71,13 +70,13 @@ def run_download(args) -> int:
 
     # Parse splits
     if args.split:
-        splits: List[str] = [s.strip() for s in args.split.split(",")]
+        splits: list[str] = [s.strip() for s in args.split.split(",")]
     else:
         splits = list(ds["splits"].keys())
 
     # Parse content
     if args.content:
-        requested_content: List[str] = [c.strip() for c in args.content.split(",")]
+        requested_content: list[str] = [c.strip() for c in args.content.split(",")]
     else:
         requested_content = []
 
@@ -85,11 +84,11 @@ def run_download(args) -> int:
         if split not in ds["splits"]:
             sys.exit(f"Invalid split '{split}' for dataset '{dataset}'")
 
-        available_content: Dict[str, dict] = ds["splits"][split]
+        available_content: dict[str, dict] = ds["splits"][split]
 
         # Resolve which content to download
         if requested_content:
-            selected_content: Dict[str, dict] = {}
+            selected_content: dict[str, dict] = {}
             for c in requested_content:
                 if c not in available_content:
                     sys.exit(
