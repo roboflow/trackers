@@ -6,6 +6,7 @@
 
 from trackers.annotators.trace import MotionAwareTraceAnnotator
 from trackers.core.bytetrack.tracker import ByteTrackTracker
+from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
 from trackers.io.video import frames_from_source
 from trackers.motion.estimator import MotionEstimator
