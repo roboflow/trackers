@@ -1,6 +1,6 @@
 [project]
 name = "trackers"
-version = "2.2.0rc1"
+version = "2.2.0"
 description = "A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms"
 readme = "README.md"
 maintainers = [
@@ -129,6 +129,7 @@ select = [
     "W",   # pycodestyle warnings (https://docs.astral.sh/ruff/rules/#warning-w)
     "RUF", # Ruff-specific rules (https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf)
     "S",   # security rules (https://docs.astral.sh/ruff/rules/#flake8-bandit-s)
+    "UP",  # pyupgrade rules (https://docs.astral.sh/ruff/rules/#pyupgrade-up)
 ]
 ignore = []
 unfixable = []
@@ -185,3 +186,17 @@ markers = [
 [tool.codespell]
 skip = "*.pth"
 ignore-words-list = "mot"
+
+[tool.mypy]
+python_version = "3.10"
+plugins = ["numpy.typing.mypy_plugin"]
+
+[[tool.mypy.overrides]]
+module = [
+    "requests",
+    "torch",
+    "torchvision",
+    "torchvision.transforms",
+    "firerequests",
+]
+ignore_missing_imports = true

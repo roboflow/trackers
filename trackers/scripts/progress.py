@@ -11,7 +11,7 @@ import itertools
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal
 
 import cv2
 from rich.console import Console
@@ -43,7 +43,7 @@ class _SourceInfo:
     fps: float | None = None
 
 
-def _classify_source(source: Union[str, Path, int]) -> _SourceInfo:
+def _classify_source(source: str | Path | int) -> _SourceInfo:
     """Classify a frame source and extract metadata.
 
     The function inspects *source* without consuming any frames so it can be

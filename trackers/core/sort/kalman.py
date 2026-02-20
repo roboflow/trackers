@@ -117,7 +117,9 @@ class SORTKalmanBoxTracker:
         self.number_of_successful_updates += 1
 
         # Kalman Gain
-        S: NDArray[np.float32] = self.H @ self.P @ self.H.T + self.R
+        S: NDArray[np.float32] = (self.H @ self.P @ self.H.T + self.R).astype(
+            np.float32
+        )
         K: NDArray[np.float32] = (self.P @ self.H.T @ np.linalg.inv(S)).astype(
             np.float32
         )
