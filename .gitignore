@@ -173,3 +173,6 @@ data/
 logs/
 runs/
 wandb/
+
+.vscode/
+datasets/

@@ -39,11 +39,13 @@ def main() -> int:
     )
 
     # Import and register subcommands
+    from trackers.scripts.download import add_download_subparser
     from trackers.scripts.eval import add_eval_subparser
     from trackers.scripts.track import add_track_subparser
 
     add_eval_subparser(subparsers)
     add_track_subparser(subparsers)
+    add_download_subparser(subparsers)
 
     # Parse arguments
     args = parser.parse_args()
