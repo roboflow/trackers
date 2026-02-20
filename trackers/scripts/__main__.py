@@ -39,7 +39,6 @@ def main() -> int:
     )
 
     # Import and register subcommands
-    # download subcommand
     from trackers.scripts.download import add_download_subparser
     from trackers.scripts.eval import add_eval_subparser
     from trackers.scripts.track import add_track_subparser

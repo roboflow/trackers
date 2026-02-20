@@ -1,20 +1,25 @@
-# trackers/scripts/download.py
+#!/usr/bin/env python
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow.
+# Licensed under the Apache License, Version 2.0
+# ------------------------------------------------------------------------
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
-from trackers.io.datasets import DATASETS
-from trackers.utils.downloader import download_with_progress, extract_zip
+from trackers.datasets.manifest import DATASETS
+from trackers.utils.downloader import download_file, extract_zip
 
 
 def add_download_subparser(subparsers):
     parser = subparsers.add_parser(
         "download",
         help="Download benchmark tracking datasets.",
-        description="Download tracking datasets from the trackers bucket",
+        description="Download tracking datasets from the official trackers bucket.",
     )
 
     parser.add_argument(
@@ -25,17 +30,17 @@ def add_download_subparser(subparsers):
     parser.add_argument(
         "dataset",
         nargs="?",
-        help="Dataset name (e.g. mot17, sportsmot). Warning : only MOT is suppported",
+        help="Dataset name (e.g. mot17). Warning: only MOT17 is supported currently.",
     )
     parser.add_argument(
         "--split",
-        choices=["train", "val", "test"],
-        help="Dataset split to download.",
+        help="List of splits to download (e.g. train,val,test). "
+        "If omitted, all available splits are downloaded.",
     )
     parser.add_argument(
-        "--annotations-only",
-        action="store_true",
-        help="Download only ground-truth annotations.",
+        "--content",
+        help="List of content to download: annotations,frames,detections. "
+        "If omitted, all available content is downloaded.",
     )
     parser.add_argument(
         "-o",
@@ -63,32 +68,57 @@ def run_download(args) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     ds = DATASETS[dataset]
-    splits = [args.split] if args.split else list(ds["splits"].keys())
 
+    # Parse splits
+    if args.split:
+        splits: List[str] = [s.strip() for s in args.split.split(",")]
+    else:
+        splits = list(ds["splits"].keys())
+
+    # Parse content
+    if args.content:
+        requested_content: List[str] = [c.strip() for c in args.content.split(",")]
+    else:
+        requested_content = []
 
     for split in splits:
         if split not in ds["splits"]:
             sys.exit(f"Invalid split '{split}' for dataset '{dataset}'")
 
-        contents: Dict[str, str] = ds["splits"][split]
+        available_content: Dict[str, dict] = ds["splits"][split]
 
-        if args.annotations_only:
-            if "annotations" not in contents:
-                print(f"[skip] {dataset}:{split} has no annotations")
+        # Resolve which content to download
+        if requested_content:
+            selected_content: Dict[str, dict] = {}
+            for c in requested_content:
+                if c not in available_content:
+                    sys.exit(
+                        f"Error: content '{c}' is not available for split '{split}' "
+                        f"in dataset '{dataset}'"
+                    )
+                selected_content[c] = available_content[c]
+        else:
+            selected_content = available_content
+
+        for kind, item in selected_content.items():
+            url = item["url"]
+            md5 = item.get("md5")
+
+            # marker file = source of truth
+            marker = output_dir / f".{dataset}-{split}-{kind}.complete"
+            if marker.exists():
+                print(f"[skip] {dataset}:{split}:{kind} already downloaded")
                 continue
-            contents = {"annotations": contents["annotations"]}
 
-        for kind, url in contents.items():
             zip_name = url.split("/")[-1]
             zip_path = output_dir / zip_name
 
-            if zip_path.exists():
-                print(f"[skip] {zip_name} already exists")
-                continue
-
             print(f"[download] {dataset}:{split}:{kind}")
-            download_with_progress(url, zip_path)
+            download_file(url, zip_path, md5=md5)
             extract_zip(zip_path, output_dir)
+
+            # mark completion only after successful extraction
+            marker.touch()
 
     return 0
 
