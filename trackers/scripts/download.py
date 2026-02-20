@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Dict
 
 from trackers.io.datasets import DATASETS
 from trackers.utils.downloader import download_with_progress, extract_zip
@@ -69,7 +68,7 @@ def run_download(args) -> int:
         if split not in ds["splits"]:
             sys.exit(f"Invalid split '{split}' for dataset '{dataset}'")
 
-        contents: Dict[str, str] = ds["splits"][split]
+        contents: dict[str, str] = ds["splits"][split]
 
         if args.annotations_only:
             if "annotations" not in contents:
