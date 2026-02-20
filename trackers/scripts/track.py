@@ -123,6 +123,14 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
         metavar="NAMES_OR_IDS",
         help="Filter by class names or IDs (comma-separated, e.g., person,car).",
     )
+    filter_group.add_argument(
+        "--track-ids",
+        type=str,
+        default=None,
+        dest="track_ids",
+        metavar="IDS",
+        help="Filter output by track IDs (comma-separated, e.g., 1,3,5).",
+    )
 
     # Tracker options
     tracker_group = parser.add_argument_group("tracker options")
@@ -283,6 +291,8 @@ def run_track(args: argparse.Namespace) -> int:
     # Resolve class filter (names and/or integer IDs)
     class_filter = _resolve_class_filter(args.classes, class_names)
 
+    track_id_filter = _resolve_track_id_filter(args.track_ids)
+
     # Create tracker
     tracker_params = _extract_tracker_params(args.tracker, args)
     tracker = _init_tracker(args.tracker, **tracker_params)
@@ -337,6 +347,12 @@ def run_track(args: argparse.Namespace) -> int:
                 # Run tracker
                 tracked = tracker.update(detections)
 
+                # Filter by track ID
+                if track_id_filter is not None and len(tracked) > 0:
+                    if tracked.tracker_id is not None:
+                        mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
+                        tracked = tracked[mask]
+
                 # Write MOT output
                 mot.write(frame_idx, tracked)
 
@@ -374,6 +390,32 @@ def run_track(args: argparse.Namespace) -> int:
         pass  # progress.__exit__ already printed the final line
 
     return 0
+
+
+def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
+    """Resolve a comma-separated `--track-ids` value to a list of integer IDs.
+
+    Args:
+        track_ids_arg: Raw `--track-ids` string (e.g. `"1,3,5"`). ``None``
+            means no filter.
+
+    Returns:
+        List of integer track IDs, or `None` when no valid filter remains.
+    """
+    if not track_ids_arg:
+        return None
+
+    track_ids: list[int] = []
+    for token in track_ids_arg.split(","):
+        token = token.strip()
+        try:
+            track_ids.append(int(token))
+        except ValueError:
+            print(
+                f"Warning: '{token}' is not a valid track ID, skipping.",
+                file=sys.stderr,
+            )
+    return track_ids if track_ids else None
 
 
 def _resolve_class_filter(
