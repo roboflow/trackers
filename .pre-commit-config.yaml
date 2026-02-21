@@ -28,7 +28,6 @@ repos:
       - id: ruff-check
         args: [--fix]
       - id: ruff-format
-        types_or: [python, pyi, jupyter]
 
   - repo: https://github.com/executablebooks/mdformat
     rev: 1.0.0
@@ -52,3 +51,14 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: [numpy,types-aiofiles]
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.6
+    hooks:
+      - id: insert-license
+        files: \.py$
+        args:
+          - --license-filepath
+          - .github/LICENSE_HEADER.txt
+          - --comment-style
+          - "#"
