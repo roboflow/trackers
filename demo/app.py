@@ -1,3 +1,9 @@
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Gradio app for the trackers library — run object tracking on uploaded videos."""
 
 from __future__ import annotations
