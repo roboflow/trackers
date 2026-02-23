@@ -48,18 +48,20 @@ class OCSORTTracker(BaseTracker):
             `-1` as its `tracker_id`.
         minimum_iou_threshold: IOU threshold for associating detections to
             existing tracks.
-        direction_consistency_weight: Weight for inertia term in association cost. Higher values give more importance
-            to the angle difference between the motion direction and the association direction.
-        high_conf_det_threshold: Confidence threshold to consider a detection as high confidence. If a detection has
-            confidence lower than this threshold, it will not be considered for association.
+        direction_consistency_weight: Weight for inertia term in association cost.
+            Higher values give more importance to the angle difference between the
+            motion direction and the association direction.
+        high_conf_det_threshold: Confidence threshold to consider a detection as high
+            confidence. If a detection has confidence lower than this threshold, it
+            will not be considered for association.
         delta_t: Number of timesteps back to look for velocity/direction estimation.
             Higher values use observations further in the past to compute motion
             direction, providing more stable velocity estimates during occlusion.
             Default is 3 (matching the original OC-SORT paper).
 
-    """  # noqa: E501
+    """
 
-    count_id: int = 0
+    tracker_id = "ocsort"
 
     def __init__(
         self,

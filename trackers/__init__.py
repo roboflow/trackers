@@ -23,6 +23,7 @@ __all__ = [
     "IdentityTransformation",
     "MotionAwareTraceAnnotator",
     "MotionEstimator",
+    "OCSORTTracker",
     "SORTTracker",
     "frames_from_source",
 ]
