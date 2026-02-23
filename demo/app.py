@@ -8,13 +8,13 @@
 
 from __future__ import annotations
 
-import json
-import subprocess
 import tempfile
 from pathlib import Path
 
 import cv2
 import gradio as gr
+
+from trackers.scripts.track import track as run_track
 
 MAX_DURATION_SECONDS = 30
 
@@ -44,115 +44,67 @@ COCO_CLASSES = [
     "sports ball",
 ]
 
+_BASE_URL = (
+    "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples"
+)
+
+
+def _example(
+    video: str,
+    *,
+    model: str = "rfdetr-small",
+    tracker: str = "bytetrack",
+    confidence: float = 0.2,
+    lost_track_buffer: int = 30,
+    track_activation_threshold: float = 0.3,
+    minimum_consecutive_frames: int = 3,
+    minimum_iou_threshold: float = 0.1,
+    high_conf_det_threshold: float = 0.6,
+    classes: list[str] | None = None,
+    show_boxes: bool = True,
+    show_ids: bool = True,
+    show_labels: bool = False,
+    show_confidence: bool = False,
+    show_trajectories: bool = False,
+    show_masks: bool = False,
+) -> list:
+    """Build a gr.Examples row, keeping param names in sync with track()."""
+    return [
+        f"{_BASE_URL}/{video}",
+        model,
+        tracker,
+        confidence,
+        lost_track_buffer,
+        track_activation_threshold,
+        minimum_consecutive_frames,
+        minimum_iou_threshold,
+        high_conf_det_threshold,
+        classes or [],
+        show_boxes,
+        show_ids,
+        show_labels,
+        show_confidence,
+        show_trajectories,
+        show_masks,
+    ]
+
+
+# A safer way to handle parameters since it not just positional maps to track() inputs,
+# but also makes it clear what each value means when looking at the examples list
 VIDEO_EXAMPLES = [
-    [
-        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-1.mp4",
-        "rfdetr-small",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        3,
-        0.1,
-        0.6,
-        [],
-        True,
-        True,
-        False,
-        False,
-        True,
-        False,
-    ],
-    [
-        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/bikes-1280x720-2.mp4",
-        "rfdetr-seg-small",
-        "sort",
-        0.2,
-        30,
-        0.3,
-        3,
-        0.3,
-        0.6,
-        [],
-        True,
-        True,
-        False,
-        False,
-        True,
-        True,
-    ],
-    [
-        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/cars-1280x720-1.mp4",
-        "rfdetr-small",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        3,
-        0.1,
-        0.6,
-        ["car"],
-        True,
-        True,
-        False,
-        True,
-        False,
-        False,
-    ],
-    [
-        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/jets-1280x720-1.mp4",
-        "rfdetr-small",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        3,
-        0.1,
-        0.6,
-        [],
-        True,
-        True,
-        False,
-        False,
-        False,
-        False,
-    ],
-    [
-        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/jets-1280x720-2.mp4",
-        "rfdetr-seg-small",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        3,
-        0.1,
-        0.6,
-        [],
-        True,
-        True,
-        False,
-        False,
-        True,
-        False,
-    ],
-    [
-        "https://storage.googleapis.com/com-roboflow-marketing/supervision/video-examples/vehicles-1280x720.mp4",
-        "rfdetr-small",
-        "bytetrack",
-        0.2,
-        30,
-        0.3,
-        3,
-        0.1,
-        0.6,
-        [],
-        True,
-        True,
-        True,
-        False,
-        True,
-        False,
-    ],
+    _example("bikes-1280x720-1.mp4", show_trajectories=True),
+    _example(
+        "bikes-1280x720-2.mp4",
+        model="rfdetr-seg-small",
+        tracker="sort",
+        minimum_iou_threshold=0.3,
+        show_trajectories=True,
+        show_masks=True,
+    ),
+    _example("cars-1280x720-1.mp4", classes=["car"], show_confidence=True),
+    _example("jets-1280x720-1.mp4"),
+    _example("jets-1280x720-2.mp4", model="rfdetr-seg-small", show_trajectories=True),
+    _example("vehicles-1280x720.mp4", show_labels=True, show_trajectories=True),
 ]
 
 
@@ -199,23 +151,7 @@ def track(
         )
 
     tmp_dir = tempfile.mkdtemp()
-    output_path = str(Path(tmp_dir) / "output.mp4")
-
-    cmd = [
-        "trackers",
-        "track",
-        "--source",
-        video_path,
-        "--output",
-        output_path,
-        "--overwrite",
-        "--model",
-        model,
-        "--tracker",
-        tracker,
-        "--model_confidence",
-        str(confidence),
-    ]
+    output_path = Path(tmp_dir) / "output.mp4"
 
     tracker_params: dict[str, float | int] = {
         "lost_track_buffer": lost_track_buffer,
@@ -228,23 +164,27 @@ def track(
     if tracker == "bytetrack":
         tracker_params["high_conf_det_threshold"] = high_conf_det_threshold
 
-    cmd += ["--tracker_params", json.dumps(tracker_params, separators=(",", ":"))]
+    try:
+        run_track(
+            source=video_path,
+            model=model,
+            model_confidence=confidence,
+            classes=",".join(classes) if classes else None,
+            tracker=tracker,
+            tracker_params=tracker_params,
+            output=output_path,
+            overwrite=True,
+            show_boxes=show_boxes,
+            show_ids=show_ids,
+            show_labels=show_labels,
+            show_confidence=show_confidence,
+            show_trajectories=show_trajectories,
+            show_masks=show_masks,
+        )
+    except Exception as e:
+        raise gr.Error(f"Tracking failed: {e}") from e
 
-    if classes:
-        cmd += ["--classes", ",".join(classes)]
-
-    cmd += ["--show_boxes", str(show_boxes).lower()]
-    cmd += ["--show_ids", str(show_ids).lower()]
-    cmd += ["--show_labels", str(show_labels).lower()]
-    cmd += ["--show_confidence", str(show_confidence).lower()]
-    cmd += ["--show_trajectories", str(show_trajectories).lower()]
-    cmd += ["--show_masks", str(show_masks).lower()]
-
-    result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
-    if result.returncode != 0:
-        raise gr.Error(f"Tracking failed:\n{result.stderr[-500:]}")
-
-    return output_path
+    return str(output_path)
 
 
 with gr.Blocks(title="Trackers Playground 🔥") as demo:
