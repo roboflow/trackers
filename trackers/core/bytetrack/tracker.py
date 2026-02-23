@@ -46,11 +46,11 @@ class ByteTrackTracker(BaseTracker):
     tracker_id = "bytetrack"
 
     search_space: ClassVar[dict[str, dict]] = {
-        "lost_track_buffer": {"type": "randint", "range": [10, 61]},
-        "track_activation_threshold": {"type": "uniform", "range": [0.5, 0.9]},
-        "minimum_iou_threshold": {"type": "uniform", "range": [0.05, 0.5]},
+        "lost_track_buffer": {"type": "randint", "range": [10, 91]},
+        "track_activation_threshold": {"type": "uniform", "range": [0.1, 0.9]},
+        "minimum_iou_threshold": {"type": "uniform", "range": [0.05, 0.7]},
         "high_conf_det_threshold": {"type": "uniform", "range": [0.3, 0.8]},
-        "minimum_consecutive_frames": {"type": "randint", "range": [1, 5]},
+        "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
     }
 
     def __init__(

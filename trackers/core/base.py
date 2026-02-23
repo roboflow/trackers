@@ -222,10 +222,17 @@ class BaseTracker(ABC):
     Subclasses that define `tracker_id` are automatically registered and
     become discoverable. Parameter metadata is extracted from __init__ for
     CLI integration.
+    Attributes:
+        tracker_id: Unique identifier for the tracker. Subclasses must define
+            this to be registered.
+        search_space: Hyperparameter search space for tuning. Each key must
+            match an `__init__` parameter. Values are dicts with `type`
+            (`"randint"` or `"uniform"`) and `range` (`[low, high]`).
     """
 
     _registry: ClassVar[dict[str, TrackerInfo]] = {}
     tracker_id: ClassVar[str | None] = None
+    search_space: ClassVar[dict[str, dict] | None] = None
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.
