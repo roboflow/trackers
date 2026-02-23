@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -16,6 +17,7 @@ from trackers.scripts.track import (
     _format_labels,
     _init_annotators,
     _resolve_class_filter,
+    track,
 )
 
 
@@ -163,3 +165,13 @@ class TestResolveClassFilter:
         result = _resolve_class_filter("unicorn,dragon", self.CLASS_NAMES)
         assert result is None
         assert "unicorn" in capsys.readouterr().err
+
+
+class TestTrackCliValidation:
+    def test_model_and_detections_are_mutually_exclusive(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            track(
+                source="0",
+                model="rfdetr-nano",
+                detections=tmp_path / "detections.txt",
+            )
