@@ -206,7 +206,7 @@ def track(
         "track",
         f"--source={video_path}",
         f"--output={output_path}",
-        f"--overwrite=true",
+        "--overwrite=true",
         f"--model={model}",
         f"--tracker={tracker}",
         f"--model_confidence={confidence}",
