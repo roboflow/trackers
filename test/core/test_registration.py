@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 
@@ -144,16 +144,16 @@ class TestNormalizeType:
             (str, None, str),
             (float, None, float),
             # Optional types
-            (Optional[int], None, int),
-            (Optional[str], None, str),
+            (int | None, None, int),
+            (str | None, None, str),
             # Union with None
-            (Union[int, None], None, int),
-            (Union[str, None], None, str),
+            (int | None, None, int),
+            (str | None, None, str),
             # List and dict
             (list[int], None, list),
             (dict[str, int], None, dict),
             # Nested optional list
-            (Optional[list[int]], None, list),
+            (list[int] | None, None, list),
             # Tuple types
             (tuple[int, ...], None, tuple),
             (tuple[int, str], None, tuple),

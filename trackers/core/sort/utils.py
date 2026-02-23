@@ -4,8 +4,9 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from collections.abc import Sequence
 from copy import deepcopy
-from typing import List, Sequence, Set, TypeVar, Union
+from typing import TypeVar
 
 import numpy as np
 import supervision as sv
@@ -14,7 +15,7 @@ from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
 from trackers.core.sort.kalman import SORTKalmanBoxTracker
 
 KalmanBoxTrackerType = TypeVar(
-    "KalmanBoxTrackerType", bound=Union[SORTKalmanBoxTracker, ByteTrackKalmanBoxTracker]
+    "KalmanBoxTrackerType", bound=SORTKalmanBoxTracker | ByteTrackKalmanBoxTracker
 )
 
 
@@ -22,7 +23,7 @@ def get_alive_trackers(
     trackers: Sequence[KalmanBoxTrackerType],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
-) -> List[KalmanBoxTrackerType]:
+) -> list[KalmanBoxTrackerType]:
     """
     Remove dead or immature lost tracklets and get alive trackers
     that are within `maximum_frames_without_update` AND (it's mature OR
@@ -123,8 +124,8 @@ def update_detections_with_track_ids(
         key=lambda x: iou_matrix_final[x[0], x[1]],
         reverse=True,
     )
-    used_rows: Set[int] = set()
-    used_cols: Set[int] = set()
+    used_rows: set[int] = set()
+    used_cols: set[int] = set()
     for row, col in sorted_pairs:
         # Double check index is in range
         if row < len(trackers):
