@@ -37,7 +37,7 @@ class BaseKalmanFilter(ABC):
     Wraps a :class:`KalmanFilter` and provides a unified interface for
     bounding-box tracking regardless of the internal state encoding.
     Subclasses configure the filter dimensions, matrices, noise, and
-    handle conversions between ``[x1, y1, x2, y2]`` bboxes and the
+    handle conversions between `[x1, y1, x2, y2]` bboxes and the
     internal state/measurement vectors.
 
     Attributes:
@@ -48,7 +48,7 @@ class BaseKalmanFilter(ABC):
         """Initialise the filter with the first detection.
 
         Args:
-            initial_bbox: First detection ``[x1, y1, x2, y2]``.
+            initial_bbox: First detection `[x1, y1, x2, y2]`.
         """
         self.kf: KalmanFilter = self._create_filter(initial_bbox)
 
@@ -57,7 +57,7 @@ class BaseKalmanFilter(ABC):
         """Create and configure a Kalman filter for *initial_bbox*.
 
         Args:
-            initial_bbox: First detection ``[x1, y1, x2, y2]``.
+            initial_bbox: First detection `[x1, y1, x2, y2]`.
 
         Returns:
             A fully configured :class:`KalmanFilter`.
@@ -65,10 +65,10 @@ class BaseKalmanFilter(ABC):
 
     @abstractmethod
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
-        """Convert an ``[x1, y1, x2, y2]`` bbox to a measurement vector.
+        """Convert an `[x1, y1, x2, y2]` bbox to a measurement vector.
 
         Args:
-            bbox: Bounding box ``[x1, y1, x2, y2]``.
+            bbox: Bounding box `[x1, y1, x2, y2]`.
 
         Returns:
             Measurement vector suitable for :meth:`KalmanFilter.update`.
@@ -76,10 +76,10 @@ class BaseKalmanFilter(ABC):
 
     @abstractmethod
     def state_to_bbox(self) -> np.ndarray:
-        """Extract an ``[x1, y1, x2, y2]`` bbox from the current filter state.
+        """Extract an `[x1, y1, x2, y2]` bbox from the current filter state.
 
         Returns:
-            Bounding box ``[x1, y1, x2, y2]``.
+            Bounding box `[x1, y1, x2, y2]`.
         """
 
     @abstractmethod
@@ -99,7 +99,7 @@ class BaseKalmanFilter(ABC):
         """Update the filter with a new observation.
 
         Args:
-            bbox: Bounding box ``[x1, y1, x2, y2]`` or ``None`` when no
+            bbox: Bounding box `[x1, y1, x2, y2]` or `None` when no
                 observation is available.
         """
         if bbox is not None:
@@ -125,7 +125,7 @@ class BaseKalmanFilter(ABC):
 
 
 class XCYCSRKalmanFilter(BaseKalmanFilter):
-    """Center-based Kalman filter: ``[x_c, y_c, scale, ratio, vx, vy, vs]``.
+    """Center-based Kalman filter: `[x_c, y_c, scale, ratio, vx, vy, vs]`.
 
     7 state dimensions, 4 measurement dimensions.
     Aspect ratio is treated as constant (no velocity term).
@@ -177,7 +177,7 @@ class XCYCSRKalmanFilter(BaseKalmanFilter):
 
 
 class XYXYKalmanFilter(BaseKalmanFilter):
-    """Corner-based Kalman filter: ``[x1, y1, x2, y2, vx1, vy1, vx2, vy2]``.
+    """Corner-based Kalman filter: `[x1, y1, x2, y2, vx1, vy1, vx2, vy2]`.
 
     8 state dimensions, 4 measurement dimensions.
     All four coordinates carry their own velocity term.
@@ -243,8 +243,8 @@ def create_kalman_filter(
     """Create a Kalman filter for the given state representation.
 
     Args:
-        state_repr: The desired representation (``"xcycsr"`` or ``"xyxy"``).
-        initial_bbox: First detection ``[x1, y1, x2, y2]``.
+        state_repr: The desired representation (`"xcycsr"` or `"xyxy"`).
+        initial_bbox: First detection `[x1, y1, x2, y2]`.
 
     Returns:
         An initialised :class:`BaseKalmanFilter` wrapping a configured
