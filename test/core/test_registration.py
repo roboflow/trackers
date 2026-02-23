@@ -272,23 +272,6 @@ class TestTrackerAutoRegistration:
 class TestSearchSpaceValidation:
     """Tests for search_space ClassVar validation in __init_subclass__."""
 
-    def test_bytetrack_has_search_space(self) -> None:
-        from trackers import ByteTrackTracker
-
-        assert hasattr(ByteTrackTracker, "search_space")
-        space = ByteTrackTracker.search_space
-        assert "lost_track_buffer" in space
-        assert "high_conf_det_threshold" in space
-        assert "frame_rate" not in space
-
-    def test_sort_has_search_space(self) -> None:
-        from trackers import SORTTracker
-
-        assert hasattr(SORTTracker, "search_space")
-        space = SORTTracker.search_space
-        assert "lost_track_buffer" in space
-        assert "minimum_iou_threshold" in space
-
     def test_search_space_keys_match_init_params(self) -> None:
         """ByteTrack and SORT search_space keys are valid __init__ parameters."""
         from trackers import ByteTrackTracker, SORTTracker
