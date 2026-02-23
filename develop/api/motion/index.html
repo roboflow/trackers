@@ -1615,6 +1615,7 @@
     <div class="doc doc-contents first">
 
 
+
         <p>Estimates camera motion between consecutive video frames.</p>
 <p>Uses sparse optical flow (Lucas-Kanade) to track feature points and computes
 the geometric transformation between frames. Accumulates transformations to
@@ -1751,7 +1752,9 @@ Default: 3.0.</p>
 
 
 
-  <div class="doc doc-children">
+
+<div class="doc doc-children">
+
 
 
 
@@ -1879,6 +1882,7 @@ world coordinate system to the current frame.</p>
 
 
     <div class="doc doc-contents first">
+
 
 
         <p>Draws object trajectories with camera motion compensation.</p>
@@ -2033,7 +2037,9 @@ Options are <code>INDEX</code>, <code>CLASS</code>, <code>TRACK</code>. Defaults
 
 
 
-  <div class="doc doc-children">
+
+<div class="doc doc-children">
+
 
 
 
@@ -2284,6 +2290,7 @@ If None, uses identity transformation (no motion compensation).</p>
               Bases: <code><span title="abc.ABC">ABC</span></code></p>
 
 
+
         <p>Abstract base class for coordinate transformations.</p>
 <p>Subclasses implement specific transformation types that convert points between
 absolute (world) and relative (frame) coordinates.</p>
@@ -2297,7 +2304,9 @@ absolute (world) and relative (frame) coordinates.</p>
 
 
 
-  <div class="doc doc-children">
+
+<div class="doc doc-children">
+
 
 
 
@@ -2506,6 +2515,7 @@ in relative/frame space.</p>
               Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.motion.transformation.CoordinatesTransformation&lt;/code&gt;" href="#trackers.motion.transformation.CoordinatesTransformation">CoordinatesTransformation</a></code></p>
 
 
+
         <p>No-op transformation where absolute and relative coordinates are identical.</p>
 <p>Used for the first frame (before any camera motion is detected) or when
 motion estimation fails.</p>
@@ -2519,7 +2529,9 @@ motion estimation fails.</p>
 
 
 
-  <div class="doc doc-children">
+
+<div class="doc doc-children">
+
 
 
 
@@ -2588,6 +2600,7 @@ motion estimation fails.</p>
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
               Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.motion.transformation.CoordinatesTransformation&lt;/code&gt;" href="#trackers.motion.transformation.CoordinatesTransformation">CoordinatesTransformation</a></code></p>
+
 
 
         <p>Full perspective transformation using a 3x3 homography matrix.</p>
@@ -2680,7 +2693,9 @@ coordinates.</p>
 
 
 
-  <div class="doc doc-children">
+
+<div class="doc doc-children">
+
 
 
 
