@@ -4,15 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Kalman filter state representations for bounding box tracking.
-
-Provides pluggable state representations that define how bounding boxes are
-encoded into a Kalman filter state vector. Each representation handles:
-- Filter creation with appropriate dimensions and noise tuning
-- Converting an ``[x1, y1, x2, y2]`` bbox to a measurement vector
-- Converting the state vector back to an ``[x1, y1, x2, y2]`` bbox
-"""
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -98,10 +89,6 @@ class BaseKalmanFilter(ABC):
         Called before :meth:`predict` to ensure physical plausibility
         (e.g. non-negative scale). Modifies the filter state in-place.
         """
-
-    # ------------------------------------------------------------------
-    # Delegated KalmanFilter operations
-    # ------------------------------------------------------------------
 
     def predict(self) -> None:
         """Run the Kalman filter prediction step."""
