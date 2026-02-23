@@ -204,17 +204,12 @@ def track(
     cmd = [
         "trackers",
         "track",
-        "--source",
-        video_path,
-        "--output",
-        output_path,
-        "--overwrite",
-        "--model",
-        model,
-        "--tracker",
-        tracker,
-        "--model_confidence",
-        str(confidence),
+        f"--source={video_path}",
+        f"--output={output_path}",
+        f"--overwrite=true",
+        f"--model={model}",
+        f"--tracker={tracker}",
+        f"--model_confidence={confidence}",
     ]
 
     tracker_params: dict[str, float | int] = {
