@@ -9,11 +9,13 @@ from __future__ import annotations
 import numpy as np
 
 from trackers.utils.converters import (
-    xcycsr_to_xyxy,
     xyxy_to_xcycsr,
 )
-from trackers.utils.kalman_filter import KalmanFilter
-from trackers.utils.state_representations import BaseStateRepresentation, XCYCSRStateRepresentation
+from trackers.utils.state_representations import (
+    BaseKalmanFilter,
+    XCYCSRKalmanFilter,
+)
+
 
 class OCSORTTracklet:
     """Tracklet for OC-SORT tracker with ORU (Observation-centric Re-Update).
@@ -26,7 +28,7 @@ class OCSORTTracklet:
 
     Attributes:
         age: Age of the tracklet in frames.
-        kalman_filter: The Kalman filter instance for state estimation.
+        kalman_filter: The Kalman filter wrapping the state representation.
         tracker_id: Unique identifier (-1 until track is mature).
         number_of_successful_consecutive_updates: Consecutive successful updates.
         time_since_update: Frames since last observation.
@@ -35,7 +37,6 @@ class OCSORTTracklet:
         observations: Dict mapping age to observed bbox for delta_t lookback.
         velocity: Normalized direction vector computed with delta_t lookback.
         delta_t: Number of timesteps back to look for velocity estimation.
-        state_repr: The state representation being used.
     """
 
     count_id: int = 0
@@ -43,24 +44,24 @@ class OCSORTTracklet:
     def __init__(
         self,
         initial_bbox: np.ndarray,
-        state_repr: BaseStateRepresentation = XCYCSRStateRepresentation,
+        kalman_filter_class: type[BaseKalmanFilter] = XCYCSRKalmanFilter,
         delta_t: int = 3,
     ) -> None:
         """Initialize tracklet with first detection.
 
         Args:
             initial_bbox: Initial bounding box [x1, y1, x2, y2].
-            state_repr: State representation to use (XCYCSR or XYXY).
+            kalman_filter_class: Kalman filter class to use. Instantiated
+                with *initial_bbox*. Defaults to
+                :class:`XCYCSRKalmanFilter`.
             delta_t: Number of timesteps back to look for velocity estimation.
                 Higher values use observations further in the past to estimate
                 motion direction, providing more stable velocity estimates.
         """
         self.age = 0
-        self.state_repr = state_repr
 
-        # Initialize Kalman filter based on state representation
-        self.kalman_filter = self.state_repr.create_filter(initial_bbox)
-
+        # Initialize Kalman filter (wraps raw KalmanFilter + state repr)
+        self.kalman_filter: BaseKalmanFilter = kalman_filter_class(initial_bbox)
 
         # Observation history for ORU and delta_t
         self.delta_t = delta_t
@@ -110,7 +111,7 @@ class OCSORTTracklet:
 
         time_gap = self.time_since_update
         # this is oc-sort specific
-        if isinstance(self.state_repr, XCYCSRStateRepresentation):
+        if isinstance(self.kalman_filter, XCYCSRKalmanFilter):
             self._unfreeze_xcycsr(new_bbox, time_gap)
         else:
             self._unfreeze_xyxy(new_bbox, time_gap)
@@ -155,9 +156,9 @@ class OCSORTTracklet:
             r = w / h
             virtual_obs = np.array([x, y, s, r]).reshape((4, 1))
 
-            self.kalman_filter.update(virtual_obs)
+            self.kalman_filter.kf.update(virtual_obs)
             if i < time_gap - 1:
-                self.kalman_filter.predict()
+                self.kalman_filter.kf.predict()
 
     def _unfreeze_xyxy(self, new_bbox: np.ndarray, time_gap: int) -> None:
         """ORU interpolation for XYXY representation.
@@ -174,9 +175,9 @@ class OCSORTTracklet:
         for i in range(time_gap):
             virtual_obs = (last_xyxy + (i + 1) * delta).reshape((4, 1))
 
-            self.kalman_filter.update(virtual_obs)
+            self.kalman_filter.kf.update(virtual_obs)
             if i < time_gap - 1:
-                self.kalman_filter.predict()
+                self.kalman_filter.kf.predict()
 
     def get_k_previous_obs(self) -> np.ndarray | None:
         """Get observation from delta_t steps ago.
@@ -239,8 +240,7 @@ class OCSORTTracklet:
             # Update KF with the real observation
             # (after ORU this is the final update at the correct time step;
             #  without ORU this is the normal measurement update)
-            measurement = self.state_repr.bbox_to_measurement(bbox)
-            self.kalman_filter.update(measurement)
+            self.kalman_filter.update(bbox)
 
             self._observed = True
             self.time_since_update = 0
@@ -261,9 +261,6 @@ class OCSORTTracklet:
         Returns:
             Predicted bounding box [x1, y1, x2, y2].
         """
-        # If predicted scale would go negative, zero out scale velocity
-        self.state_repr.clamp_velocity(self.kalman_filter)
-
         self.kalman_filter.predict()
         self.age += 1
 
@@ -271,7 +268,7 @@ class OCSORTTracklet:
             self.number_of_successful_consecutive_updates = 0
 
         self.time_since_update += 1
-        return self.state_repr.state_to_bbox(self.kalman_filter)
+        return self.kalman_filter.state_to_bbox()
 
     def is_lost(self) -> bool:
         """Check if tracklet is considered lost."""
@@ -283,4 +280,4 @@ class OCSORTTracklet:
         Returns:
             Current bounding box estimate [x1, y1, x2, y2].
         """
-        return self.state_repr.state_to_bbox(self.kalman_filter)
+        return self.kalman_filter.state_to_bbox()

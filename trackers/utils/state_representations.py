@@ -40,16 +40,30 @@ class StateRepresentation(Enum):
     XYXY = "xyxy"
 
 
-class BaseStateRepresentation(ABC):
-    """Abstract base for Kalman filter state representations.
+class BaseKalmanFilter(ABC):
+    """Abstract Kalman filter with a specific bounding box state representation.
 
-    Subclasses define how bounding boxes map to/from a Kalman filter state
-    vector, and how the filter matrices (F, H, R, P, Q) are configured.
+    Wraps a :class:`KalmanFilter` and provides a unified interface for
+    bounding-box tracking regardless of the internal state encoding.
+    Subclasses configure the filter dimensions, matrices, noise, and
+    handle conversions between ``[x1, y1, x2, y2]`` bboxes and the
+    internal state/measurement vectors.
+
+    Attributes:
+        kf: The underlying Kalman filter instance.
     """
 
+    def __init__(self, initial_bbox: np.ndarray) -> None:
+        """Initialise the filter with the first detection.
+
+        Args:
+            initial_bbox: First detection ``[x1, y1, x2, y2]``.
+        """
+        self.kf: KalmanFilter = self._create_filter(initial_bbox)
+
     @abstractmethod
-    def create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
-        """Create and initialise a Kalman filter for *initial_bbox*.
+    def _create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
+        """Create and configure a Kalman filter for *initial_bbox*.
 
         Args:
             initial_bbox: First detection ``[x1, y1, x2, y2]``.
@@ -70,37 +84,68 @@ class BaseStateRepresentation(ABC):
         """
 
     @abstractmethod
-    def state_to_bbox(self, kf: KalmanFilter) -> np.ndarray:
-        """Extract an ``[x1, y1, x2, y2]`` bbox from the filter state.
-
-        Args:
-            kf: The Kalman filter instance.
+    def state_to_bbox(self) -> np.ndarray:
+        """Extract an ``[x1, y1, x2, y2]`` bbox from the current filter state.
 
         Returns:
             Bounding box ``[x1, y1, x2, y2]``.
         """
 
     @abstractmethod
-    def clamp_velocity(self, kf: KalmanFilter) -> None:
+    def clamp_velocity(self) -> None:
         """Clamp velocity components to prevent degenerate predictions.
 
-        Called before :meth:`KalmanFilter.predict` to ensure physical
-        plausibility (e.g. non-negative scale).
-
-        Args:
-            kf: The Kalman filter instance (modified in-place).
+        Called before :meth:`predict` to ensure physical plausibility
+        (e.g. non-negative scale). Modifies the filter state in-place.
         """
 
+    # ------------------------------------------------------------------
+    # Delegated KalmanFilter operations
+    # ------------------------------------------------------------------
 
-class XCYCSRStateRepresentation(BaseStateRepresentation):
-    """Center-based state: ``[x_c, y_c, scale, ratio, vx, vy, vs]``.
+    def predict(self) -> None:
+        """Run the Kalman filter prediction step."""
+        self.clamp_velocity()
+        self.kf.predict()
+
+    def update(self, bbox: np.ndarray | None) -> None:
+        """Update the filter with a new observation.
+
+        Args:
+            bbox: Bounding box ``[x1, y1, x2, y2]`` or ``None`` when no
+                observation is available.
+        """
+        if bbox is not None:
+            self.kf.update(self.bbox_to_measurement(bbox))
+        else:
+            self.kf.update(None)
+
+    def get_state(self) -> dict:
+        """Snapshot the filter state for later restoration (e.g. ORU freeze).
+
+        Returns:
+            Opaque state dictionary.
+        """
+        return self.kf.get_state()
+
+    def set_state(self, state: dict) -> None:
+        """Restore a previously saved filter state.
+
+        Args:
+            state: Dictionary from :meth:`get_state`.
+        """
+        self.kf.set_state(state)
+
+
+class XCYCSRKalmanFilter(BaseKalmanFilter):
+    """Center-based Kalman filter: ``[x_c, y_c, scale, ratio, vx, vy, vs]``.
 
     7 state dimensions, 4 measurement dimensions.
     Aspect ratio is treated as constant (no velocity term).
     Matches the representation used in the original SORT and OC-SORT papers.
     """
 
-    def create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
+    def _create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
         kf = KalmanFilter(dim_x=7, dim_z=4)
 
         # State transition: constant velocity model
@@ -135,23 +180,23 @@ class XCYCSRStateRepresentation(BaseStateRepresentation):
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
         return xyxy_to_xcycsr(bbox)
 
-    def state_to_bbox(self, kf: KalmanFilter) -> np.ndarray:
-        return xcycsr_to_xyxy(kf.x[:4].reshape((4,)))
+    def state_to_bbox(self) -> np.ndarray:
+        return xcycsr_to_xyxy(self.kf.x[:4].reshape((4,)))
 
-    def clamp_velocity(self, kf: KalmanFilter) -> None:
+    def clamp_velocity(self) -> None:
         # If predicted scale would go negative, zero out scale velocity
-        if (kf.x[6] + kf.x[2]) <= 0:
-            kf.x[6] *= 0.0
+        if (self.kf.x[6] + self.kf.x[2]) <= 0:
+            self.kf.x[6] *= 0.0
 
 
-class XYXYStateRepresentation(BaseStateRepresentation):
-    """Corner-based state: ``[x1, y1, x2, y2, vx1, vy1, vx2, vy2]``.
+class XYXYKalmanFilter(BaseKalmanFilter):
+    """Corner-based Kalman filter: ``[x1, y1, x2, y2, vx1, vy1, vx2, vy2]``.
 
     8 state dimensions, 4 measurement dimensions.
     All four coordinates carry their own velocity term.
     """
 
-    def create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
+    def _create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
         kf = KalmanFilter(dim_x=8, dim_z=4)
 
         # State transition: constant velocity for all coordinates
@@ -186,10 +231,10 @@ class XYXYStateRepresentation(BaseStateRepresentation):
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
         return bbox
 
-    def state_to_bbox(self, kf: KalmanFilter) -> np.ndarray:
-        return kf.x[:4].reshape((4,))
+    def state_to_bbox(self) -> np.ndarray:
+        return self.kf.x[:4].reshape((4,))
 
-    def clamp_velocity(self, kf: KalmanFilter) -> None:
+    def clamp_velocity(self) -> None:
         # No clamping needed for XYXY representation
         pass
 
@@ -198,22 +243,25 @@ class XYXYStateRepresentation(BaseStateRepresentation):
 # Factory helper
 # ---------------------------------------------------------------------------
 
-_REPR_MAP: dict[str, type[BaseStateRepresentation]] = {
-    'xcycsr': XCYCSRStateRepresentation,
-    'xyxy': XYXYStateRepresentation,
+_REPR_MAP: dict[str, type[BaseKalmanFilter]] = {
+    "xcycsr": XCYCSRKalmanFilter,
+    "xyxy": XYXYKalmanFilter,
 }
 
 
-def get_state_representation(
+def create_kalman_filter(
     state_repr: str,
-) -> BaseStateRepresentation:
-    """Return a :class:`BaseStateRepresentation` instance for *state_repr*.
+    initial_bbox: np.ndarray,
+) -> BaseKalmanFilter:
+    """Create a Kalman filter for the given state representation.
 
     Args:
-        state_repr (str): The desired representation enum value.
+        state_repr: The desired representation (``"xcycsr"`` or ``"xyxy"``).
+        initial_bbox: First detection ``[x1, y1, x2, y2]``.
 
     Returns:
-        An instance of the matching state representation class.
+        An initialised :class:`BaseKalmanFilter` wrapping a configured
+        Kalman filter.
 
     Raises:
         ValueError: If *state_repr* is not recognised.
@@ -224,4 +272,4 @@ def get_state_representation(
             f"Unknown state representation: {state_repr!r}. "
             f"Available: {list(_REPR_MAP.keys())}"
         )
-    return cls()
+    return cls(initial_bbox)

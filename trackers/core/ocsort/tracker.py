@@ -18,7 +18,7 @@ from trackers.core.ocsort.utils import (
     get_iou_matrix,
     get_iou_matrix_between_boxes,
 )
-from trackers.utils.state_representations import XCYCSRStateRepresentation
+from trackers.utils.state_representations import XCYCSRKalmanFilter
 
 
 class OCSORTTracker(BaseTracker):
@@ -80,10 +80,11 @@ class OCSORTTracker(BaseTracker):
         self.direction_consistency_weight = direction_consistency_weight
         self.high_conf_det_threshold = high_conf_det_threshold
         self.delta_t = delta_t
-        
+
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
-        self.state_representation = XCYCSRStateRepresentation()
+        self.kalman_filter_class = XCYCSRKalmanFilter
+
     def _get_associated_indices(
         self,
         iou_matrix: np.ndarray,
@@ -143,7 +144,9 @@ class OCSORTTracker(BaseTracker):
         """
         for detection_idx in unmatched_detections:
             new_tracker = OCSORTTracklet(
-                detections.xyxy[detection_idx], delta_t=self.delta_t, state_representation=self.state_representation
+                detections.xyxy[detection_idx],
+                delta_t=self.delta_t,
+                kalman_filter_class=self.kalman_filter_class,
             )
             self.tracks.append(new_tracker)
 
