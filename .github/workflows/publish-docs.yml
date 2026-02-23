@@ -2,13 +2,13 @@ name: Docs/Build and Publish
 
 on:
   push:
-    branches: [main, develop]
+    branches: ['release/*', 'develop']
   workflow_dispatch:
     inputs:
       ref:
         description: 'Branch or tag to deploy'
         required: false
-        default: 'main'
+        default: 'release/stable'
   release:
     types: [published]
 
@@ -42,7 +42,7 @@ jobs:
           activate-environment: true
 
       - name: 🏗️ Install dependencies
-        run: uv pip install -r pyproject.toml --group docs
+        run: uv sync --frozen --group docs
 
       - name: ⚙️ Configure git for github-actions
         run: |

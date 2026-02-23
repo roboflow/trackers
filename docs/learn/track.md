@@ -176,7 +176,7 @@ Trackers don't detect objects—they link detections across frames. A detection 
     trackers track --source source.mp4 --model rfdetr-medium \
         --model.confidence 0.3 \
         --model.device cuda \
-        --classes 0,2
+        --classes person,car
     ```
 
     <table>
@@ -210,7 +210,7 @@ Trackers don't detect objects—they link detections across frames. A detection 
         </tr>
         <tr>
           <td><code>--classes</code></td>
-          <td>Comma-separated class IDs to track. Example: <code>0</code> for persons, <code>0,2</code> for persons and cars.</td>
+          <td>Comma-separated class names or IDs to track. Example: <code>person,car</code> or <code>0,2</code>.</td>
           <td>all</td>
         </tr>
         <tr>

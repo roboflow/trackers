@@ -9,8 +9,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from copy import deepcopy
-from typing import Sequence, cast
+from typing import cast
 
 import numpy as np
 import supervision as sv

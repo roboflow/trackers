@@ -7,8 +7,6 @@
 from __future__ import annotations
 
 import logging
-import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -27,16 +25,6 @@ from trackers.io.mot import _load_mot_file, _prepare_mot_sequence
 logger = logging.getLogger(__name__)
 
 SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
-
-
-@dataclass
-class _DetectionResult:
-    """Result of auto-detection."""
-
-    format: Literal["flat", "mot17"]
-    benchmark: str | None = None
-    split: str | None = None
-    tracker_name: str | None = None
 
 
 def evaluate_mot_sequence(
@@ -155,9 +143,6 @@ def evaluate_mot_sequences(
     seqmap: str | Path | None = None,
     metrics: list[str] | None = None,
     threshold: float = 0.5,
-    benchmark: str | None = None,
-    split: str | None = None,
-    tracker_name: str | None = None,
 ) -> BenchmarkResult:
     """Evaluate multiple multi-object tracking results against ground truth. Computes
     standard multi-object tracking metrics (CLEAR MOT, HOTA, Identity) across one or
@@ -173,27 +158,24 @@ def evaluate_mot_sequences(
 
     !!! tip "Supported dataset layouts"
 
+        Both `gt_dir` and `tracker_dir` should point directly at the parent directory
+        of the sequences. The evaluator auto-detects which layout you're using.
+
         === "MOT layout"
 
             ```
             gt_dir/
-            └── MOT17-train/
-                ├── MOT17-02-FRCNN/
-                │   └── gt/gt.txt
-                ├── MOT17-04-FRCNN/
-                │   └── gt/gt.txt
-                ├── MOT17-05-FRCNN/
-                │   └── gt/gt.txt
-                └── ...
+            ├── MOT17-02-FRCNN/
+            │   └── gt/gt.txt
+            ├── MOT17-04-FRCNN/
+            │   └── gt/gt.txt
+            └── MOT17-05-FRCNN/
+                └── gt/gt.txt
 
             tracker_dir/
-            └── MOT17-train/
-                └── ByteTrack/
-                    └── data/
-                        ├── MOT17-02-FRCNN.txt
-                        ├── MOT17-04-FRCNN.txt
-                        ├── MOT17-05-FRCNN.txt
-                        └── ...
+            ├── MOT17-02-FRCNN.txt
+            ├── MOT17-04-FRCNN.txt
+            └── MOT17-05-FRCNN.txt
             ```
 
         === "Flat layout"
@@ -213,23 +195,22 @@ def evaluate_mot_sequences(
             ```
 
     Args:
-        gt_dir: Directory with ground-truth files.
-        tracker_dir: Directory with tracker prediction files.
+        gt_dir: Directory containing ground-truth data. Should be the direct
+            parent of the sequence folders (MOT layout) or sequence files
+            (flat layout).
+        tracker_dir: Directory containing tracker prediction files (`{seq}.txt`).
         seqmap: Optional sequence map. If provided, only those sequences are
             evaluated.
         metrics: Metric families to compute. Supported values are
             `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
         threshold: IoU threshold for `CLEAR` and `Identity`. Defaults to `0.5`.
-        benchmark: Override auto-detected benchmark name (e.g., `"MOT17"`).
-        split: Override auto-detected split name (e.g., `"train"`, `"val"`).
-        tracker_name: Override auto-detected tracker name.
 
     Returns:
         `BenchmarkResult` with per-sequence results and a `COMBINED` aggregate.
 
     Raises:
         FileNotFoundError: If `gt_dir` or `tracker_dir` does not exist.
-        ValueError: If auto-detection finds multiple valid options.
+        ValueError: If no sequences are found.
 
     Examples:
         Auto-detect layout and evaluate all sequences:
@@ -261,22 +242,15 @@ def evaluate_mot_sequences(
     if not tracker_dir.exists():
         raise FileNotFoundError(f"Tracker directory not found: {tracker_dir}")
 
-    # Smart auto-detection
-    detection = _auto_detect(
-        gt_dir=gt_dir,
-        tracker_dir=tracker_dir,
-        benchmark_override=benchmark,
-        split_override=split,
-        tracker_name_override=tracker_name,
-    )
+    # Detect directory format
+    data_format = _detect_format(gt_dir)
+    logger.info("Detected format: %s", data_format)
 
     # Get sequence list
     if seqmap is not None:
         sequences = _parse_seqmap(seqmap)
     else:
-        sequences = _discover_sequences(
-            gt_dir, detection.format, detection.benchmark, detection.split
-        )
+        sequences = _discover_sequences(gt_dir, data_format)
 
     if not sequences:
         raise ValueError(f"No sequences found in {gt_dir}")
@@ -291,10 +265,7 @@ def evaluate_mot_sequences(
             gt_dir=gt_dir,
             tracker_dir=tracker_dir,
             seq_name=seq_name,
-            data_format=detection.format,
-            benchmark=detection.benchmark,
-            split=detection.split,
-            tracker_name=detection.tracker_name,
+            data_format=data_format,
         )
 
         if not gt_path.exists():
@@ -325,210 +296,39 @@ def evaluate_mot_sequences(
     )
 
 
-def _auto_detect(
-    gt_dir: Path,
-    tracker_dir: Path,
-    benchmark_override: str | None,
-    split_override: str | None,
-    tracker_name_override: str | None,
-) -> _DetectionResult:
-    """Auto-detect format, benchmark, split, and tracker name.
-
-    Uses overrides if provided, otherwise detects from directory structure.
-    Logs what was detected for transparency.
-    """
-    # First, detect format
-    data_format = _detect_format(gt_dir)
-    logger.info("Detected format: %s", data_format)
-
-    if data_format == "flat":
-        return _DetectionResult(format="flat")
-
-    # MOT17 format - detect benchmark and split
-    benchmark, split = _detect_benchmark_split(
-        gt_dir, benchmark_override, split_override
-    )
-    logger.info("Detected benchmark: %s, split: %s", benchmark, split)
-
-    # Detect tracker name
-    tracker_name = _detect_tracker_name(
-        tracker_dir, benchmark, split, tracker_name_override
-    )
-    logger.info("Detected tracker: %s", tracker_name)
-
-    return _DetectionResult(
-        format="mot17",
-        benchmark=benchmark,
-        split=split,
-        tracker_name=tracker_name,
-    )
-
-
-def _detect_format(gt_dir: Path) -> Literal["flat", "mot17"]:
+def _detect_format(gt_dir: Path) -> Literal["flat", "mot"]:
     """Auto-detect directory format.
 
     Args:
-        gt_dir: Ground truth directory.
+        gt_dir: Ground truth directory (direct parent of sequences).
 
     Returns:
-        "flat" if .txt files exist in gt_dir, "mot17" otherwise.
+        "flat" if .txt files exist in gt_dir, "mot" if sequence
+        subdirectories with gt/gt.txt exist.
     """
     # Check for flat format (*.txt files directly in gt_dir)
     txt_files = list(gt_dir.glob("*.txt"))
     if txt_files:
         return "flat"
 
-    # Check for MOT17 format (*/*/gt/gt.txt pattern)
-    mot17_files = list(gt_dir.glob("*/*/gt/gt.txt"))
-    if mot17_files:
-        return "mot17"
+    # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir)
+    mot_files = list(gt_dir.glob("*/gt/gt.txt"))
+    if mot_files:
+        return "mot"
 
     # Default to flat
     return "flat"
 
 
-def _detect_benchmark_split(
-    gt_dir: Path,
-    benchmark_override: str | None,
-    split_override: str | None,
-) -> tuple[str, str]:
-    """Detect benchmark and split from directory structure.
-
-    Looks for directories matching {Benchmark}-{split} pattern.
-    If only one is found, uses it. If multiple, requires override.
-
-    Args:
-        gt_dir: Ground truth directory.
-        benchmark_override: User-provided benchmark name.
-        split_override: User-provided split name.
-
-    Returns:
-        Tuple of (benchmark, split).
-
-    Raises:
-        ValueError: If detection is ambiguous and no override provided.
-    """
-    # Find all {benchmark}-{split} directories that contain sequences
-    benchmark_splits: list[tuple[str, str]] = []
-
-    for subdir in gt_dir.iterdir():
-        if not subdir.is_dir():
-            continue
-
-        # Check if this directory contains sequence folders with gt/gt.txt
-        has_sequences = any(subdir.glob("*/gt/gt.txt"))
-        if not has_sequences:
-            continue
-
-        # Parse {benchmark}-{split} pattern
-        match = re.match(r"^(.+)-(\w+)$", subdir.name)
-        if match:
-            benchmark_splits.append((match.group(1), match.group(2)))
-
-    if not benchmark_splits:
-        raise ValueError(
-            f"No benchmark directories found in {gt_dir}. "
-            "Expected directories like 'MOT17-train' or 'SportsMOT-val'."
-        )
-
-    # If overrides provided, validate and use them
-    if benchmark_override is not None and split_override is not None:
-        expected_dir = gt_dir / f"{benchmark_override}-{split_override}"
-        if not expected_dir.exists():
-            available = [f"{b}-{s}" for b, s in benchmark_splits]
-            raise ValueError(
-                f"Directory '{benchmark_override}-{split_override}' not found. "
-                f"Available: {available}"
-            )
-        return benchmark_override, split_override
-
-    # If only one benchmark-split found, use it
-    if len(benchmark_splits) == 1:
-        return benchmark_splits[0]
-
-    # Multiple found - need override
-    available = [f"{b}-{s}" for b, s in benchmark_splits]
-    raise ValueError(
-        f"Multiple benchmarks found: {available}. "
-        "Please specify --benchmark and --split."
-    )
-
-
-def _detect_tracker_name(
-    tracker_dir: Path,
-    benchmark: str,
-    split: str,
-    tracker_name_override: str | None,
-) -> str:
-    """Detect tracker name from directory structure.
-
-    Looks for tracker directories in {tracker_dir}/{benchmark}-{split}/.
-    If only one is found, uses it. If multiple, requires override.
-
-    Args:
-        tracker_dir: Tracker directory.
-        benchmark: Benchmark name.
-        split: Split name.
-        tracker_name_override: User-provided tracker name.
-
-    Returns:
-        Tracker name.
-
-    Raises:
-        ValueError: If detection is ambiguous and no override provided.
-    """
-    split_dir = tracker_dir / f"{benchmark}-{split}"
-
-    if not split_dir.exists():
-        raise ValueError(
-            f"Tracker directory not found: {split_dir}. "
-            f"Expected structure: {tracker_dir}/{benchmark}-{split}/<tracker>/data/"
-        )
-
-    # Find tracker directories (those containing a 'data' subfolder)
-    trackers: list[str] = []
-    for subdir in split_dir.iterdir():
-        if subdir.is_dir() and (subdir / "data").is_dir():
-            trackers.append(subdir.name)
-
-    if not trackers:
-        raise ValueError(
-            f"No tracker directories found in {split_dir}. "
-            "Expected structure: <tracker>/data/<sequence>.txt"
-        )
-
-    # If override provided, validate and use it
-    if tracker_name_override is not None:
-        if tracker_name_override not in trackers:
-            raise ValueError(
-                f"Tracker '{tracker_name_override}' not found. "
-                f"Available trackers: {trackers}"
-            )
-        return tracker_name_override
-
-    # If only one tracker found, use it
-    if len(trackers) == 1:
-        return trackers[0]
-
-    # Multiple found - need override
-    raise ValueError(
-        f"Multiple trackers found: {trackers}. Please specify --tracker-name."
-    )
-
-
 def _discover_sequences(
     gt_dir: Path,
-    data_format: Literal["flat", "mot17"],
-    benchmark: str | None,
-    split: str | None,
+    data_format: Literal["flat", "mot"],
 ) -> list[str]:
     """Discover sequence names from directory structure.
 
     Args:
-        gt_dir: Ground truth directory.
+        gt_dir: Ground truth directory (direct parent of sequences).
         data_format: Directory format.
-        benchmark: Benchmark name (for MOT17).
-        split: Split name (for MOT17).
 
     Returns:
         List of sequence names.
@@ -538,13 +338,10 @@ def _discover_sequences(
             p.stem for p in gt_dir.glob("*.txt") if not p.name.startswith(".")
         )
     else:
-        # MOT17 format: gt/{benchmark}-{split}/{seq}/gt/gt.txt
-        split_dir = gt_dir / f"{benchmark}-{split}"
-        if not split_dir.exists():
-            return []
+        # MOT format: gt_dir/{seq}/gt/gt.txt
         return sorted(
             p.parent.parent.name
-            for p in split_dir.glob("*/gt/gt.txt")
+            for p in gt_dir.glob("*/gt/gt.txt")
             if not p.name.startswith(".")
         )
 
@@ -553,38 +350,27 @@ def _get_paths(
     gt_dir: Path,
     tracker_dir: Path,
     seq_name: str,
-    data_format: Literal["flat", "mot17"],
-    benchmark: str | None,
-    split: str | None,
-    tracker_name: str | None,
+    data_format: Literal["flat", "mot"],
 ) -> tuple[Path, Path]:
     """Get GT and tracker file paths for a sequence.
 
     Args:
-        gt_dir: Ground truth directory.
-        tracker_dir: Tracker directory.
+        gt_dir: Ground truth directory (direct parent of sequences).
+        tracker_dir: Tracker directory (contains {seq}.txt files).
         seq_name: Sequence name.
         data_format: Directory format.
-        benchmark: Benchmark name (for MOT17).
-        split: Split name (for MOT17).
-        tracker_name: Tracker name (for MOT17).
 
     Returns:
         Tuple of (gt_path, tracker_path).
     """
     if data_format == "flat":
         gt_path = gt_dir / f"{seq_name}.txt"
-        tracker_path = tracker_dir / f"{seq_name}.txt"
     else:
-        # MOT17 format - these are validated by _auto_detect
-        # Type narrowing for mypy
-        if benchmark is None or split is None or tracker_name is None:
-            raise ValueError("MOT17 format requires benchmark, split, and tracker_name")
-        split_name = f"{benchmark}-{split}"
-        gt_path = gt_dir / split_name / seq_name / "gt" / "gt.txt"
-        tracker_path = (
-            tracker_dir / split_name / tracker_name / "data" / f"{seq_name}.txt"
-        )
+        # MOT format: gt_dir/{seq}/gt/gt.txt
+        gt_path = gt_dir / seq_name / "gt" / "gt.txt"
+
+    # Tracker files are always flat: tracker_dir/{seq}.txt
+    tracker_path = tracker_dir / f"{seq_name}.txt"
 
     return gt_path, tracker_path
 

@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function isValidClasses(value) {
-    return /^[\d,\s]*$/.test(value);
+    return /^[\w,\s]*$/.test(value);
   }
 
   // Generate command from state
@@ -148,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function () {
         errors.push("Confidence must be between 0.05 and 1");
       }
       if (state.classes && !isValidClasses(state.classes)) {
-        errors.push("Classes must contain only numbers, commas, and spaces");
+        errors.push("Classes must contain only names, numbers, commas, and spaces");
       }
     }
 
@@ -184,7 +184,7 @@ document.addEventListener("DOMContentLoaded", function () {
     getValidationErrors,
     inputSanitizers: {
       classes(value) {
-        return value.replace(/[^\d,\s]/g, "");
+        return value.replace(/[^\w,\s]/g, "");
       },
     },
     onInputChange({ key, value, isCommit, builder: instance }) {
@@ -278,7 +278,7 @@ document.addEventListener("DOMContentLoaded", function () {
         )
       );
       modelOptionsContent.appendChild(
-        createTextInputRow("classes", "0, 2", "classes", state.classes, "cb-row--anchor-3")
+        createTextInputRow("classes", "person, car", "classes", state.classes, "cb-row--anchor-3")
       );
       code.appendChild(modelOptionsContent);
 
