@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import cv2
 import numpy as np
 
@@ -89,8 +87,8 @@ class MotionEstimator:
             ),
         )
 
-        self._previous_grayscale: Optional[np.ndarray] = None
-        self._previous_features: Optional[np.ndarray] = None
+        self._previous_grayscale: np.ndarray | None = None
+        self._previous_features: np.ndarray | None = None
         self._accumulated_homography: np.ndarray = np.eye(3, dtype=np.float64)
 
     def update(self, frame: np.ndarray) -> CoordinatesTransformation:
@@ -160,7 +158,7 @@ class MotionEstimator:
 
         return transform
 
-    def _find_features(self, grayscale: np.ndarray) -> Optional[np.ndarray]:
+    def _find_features(self, grayscale: np.ndarray) -> np.ndarray | None:
         """Detect good features to track in the grayscale image.
 
         Args:
@@ -180,7 +178,7 @@ class MotionEstimator:
 
     def _estimate_homography(
         self, previous_points: np.ndarray, current_points: np.ndarray
-    ) -> Optional[CoordinatesTransformation]:
+    ) -> CoordinatesTransformation | None:
         """Estimate homography transformation between point sets.
 
         Args:
