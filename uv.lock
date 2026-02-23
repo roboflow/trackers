@@ -889,7 +889,7 @@ wheels = [
 
 [[package]]
 name = "inference-models"
-version = "0.18.6rc14"
+version = "0.19.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "accelerate" },
@@ -923,9 +923,9 @@ dependencies = [
     { name = "torchvision" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/68/1ccb247ab007c4e9e65c3d93dc9463e237932c40a4f4ec8f80662f555a6a/inference_models-0.18.6rc14.tar.gz", hash = "sha256:2c9755f42899841664a41912147ec0f12e7a0ed88a59f1db0aba9ae497cc8a8c", size = 1639858, upload-time = "2026-02-13T13:47:41.814Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/78/2203d10e97d85f304d62e8e48819d506eb12f98cbbd8199de4329ab21d3f/inference_models-0.19.0.tar.gz", hash = "sha256:e2d6e5268e57fffa720f13a2726f1c9c5afd8a31cbcf1d2455af1e3f48f9e6f1", size = 1640364, upload-time = "2026-02-20T11:22:07.482Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/fc/d6b0c97b20c9b6ad1c318da2546576f714954905f7331a72354e74965be4/inference_models-0.18.6rc14-py3-none-any.whl", hash = "sha256:a868ddbbe8fdf650fa2849608109323fa6f325be33396845b18a186314034160", size = 1795803, upload-time = "2026-02-13T13:47:37.394Z" },
+    { url = "https://files.pythonhosted.org/packages/22/33/1e964746594d30f3b44af6db7351176b31b9fb8e04a0672d2f6161af444d/inference_models-0.19.0-py3-none-any.whl", hash = "sha256:02f5ac81bb05e233fbf09924a90586d6bd81654912296f537880ac95f3f7babd", size = 1802320, upload-time = "2026-02-20T11:22:04.718Z" },
 ]
 
 [[package]]
@@ -3844,7 +3844,7 @@ wheels = [
 
 [[package]]
 name = "trackers"
-version = "2.2.0rc1"
+version = "2.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
@@ -3888,7 +3888,7 @@ mypy-types = [
 
 [package.metadata]
 requires-dist = [
-    { name = "inference-models", marker = "extra == 'detection'", specifier = "==0.18.6rc14" },
+    { name = "inference-models", marker = "extra == 'detection'", specifier = "==0.19.0" },
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "opencv-python", specifier = ">=4.8.0" },
     { name = "rich", specifier = ">=13.0.0" },
