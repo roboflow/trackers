@@ -84,12 +84,11 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 === "CLI"
 
-    Select a tracker with `--tracker` and tune its behavior with `--tracker.*` arguments.
+    Select a tracker with `--tracker` and tune its behavior with `--tracker_params` JSON.
 
     ```text
     trackers track --source source.mp4 --tracker bytetrack \
-        --tracker.lost_track_buffer 60 \
-        --tracker.minimum_consecutive_frames 5
+        --tracker_params '{"lost_track_buffer": 60, "minimum_consecutive_frames": 5}'
     ```
 
     <table>
@@ -112,24 +111,9 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
           <td><code>bytetrack</code></td>
         </tr>
         <tr>
-          <td><code>--tracker.lost_track_buffer</code></td>
-          <td>Frames to retain a track without detections. Higher values improve occlusion handling but risk ID drift.</td>
-          <td><code>30</code></td>
-        </tr>
-        <tr>
-          <td><code>--tracker.track_activation_threshold</code></td>
-          <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives.</td>
-          <td><code>0.25</code></td>
-        </tr>
-        <tr>
-          <td><code>--tracker.minimum_consecutive_frames</code></td>
-          <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
-          <td><code>3</code></td>
-        </tr>
-        <tr>
-          <td><code>--tracker.minimum_iou_threshold</code></td>
-          <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
-          <td><code>0.3</code></td>
+          <td><code>--tracker_params</code></td>
+          <td>JSON object with tracker constructor arguments. Example keys: <code>lost_track_buffer</code>, <code>track_activation_threshold</code>, <code>minimum_consecutive_frames</code>, <code>minimum_iou_threshold</code>. For ByteTrack, you can also pass <code>high_conf_det_threshold</code>.</td>
+          <td><code>{}</code></td>
         </tr>
       </tbody>
     </table>
@@ -170,12 +154,12 @@ Trackers don't detect objects—they link detections across frames. A detection 
 
 === "CLI"
 
-    Configure detection with `--model.*` arguments. Filter by confidence and class before tracking.
+    Configure detection with model arguments. Filter by confidence and class before tracking.
 
     ```text
     trackers track --source source.mp4 --model rfdetr-medium \
-        --model.confidence 0.3 \
-        --model.device cuda \
+        --model_confidence 0.3 \
+        --model_device cuda \
         --classes person,car
     ```
 
@@ -199,12 +183,12 @@ Trackers don't detect objects—they link detections across frames. A detection 
           <td><code>rfdetr-nano</code></td>
         </tr>
         <tr>
-          <td><code>--model.confidence</code></td>
+          <td><code>--model_confidence</code></td>
           <td>Minimum confidence threshold. Lower values increase recall but may add noise.</td>
           <td><code>0.5</code></td>
         </tr>
         <tr>
-          <td><code>--model.device</code></td>
+          <td><code>--model_device</code></td>
           <td>Compute device. Options: <code>auto</code>, <code>cpu</code>, <code>cuda</code>, <code>cuda:0</code>, <code>mps</code>.</td>
           <td><code>auto</code></td>
         </tr>
@@ -214,7 +198,7 @@ Trackers don't detect objects—they link detections across frames. A detection 
           <td>all</td>
         </tr>
         <tr>
-          <td><code>--model.api_key</code></td>
+          <td><code>--model_api_key</code></td>
           <td>Roboflow API key for custom hosted models.</td>
           <td>none</td>
         </tr>
