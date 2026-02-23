@@ -228,7 +228,7 @@ def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
     """Resolve a comma-separated `--track-ids` value to a list of integer IDs.
 
     Args:
-        track_ids_arg: Raw `--track-ids` string (e.g. `"1,3,5"`). ``None``
+        track_ids_arg: Raw `--track-ids` string (e.g. `"1,3,5"`). `None`
             means no filter.
 
     Returns:
