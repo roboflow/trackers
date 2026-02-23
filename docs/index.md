@@ -18,7 +18,7 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
 
     [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
     [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
-    [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/main/LICENSE.md)
+    [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE.md)
     [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
 
     === "pip"

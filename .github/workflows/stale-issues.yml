@@ -1,0 +1,30 @@
+name: Mark Stale Issues
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  stale:
+    name: Mark Stale Issues
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🕰️ Mark stale issues
+        uses: actions/stale@v9
+        with:
+          days-before-stale: 28
+          days-before-close: -1
+          stale-issue-label: stale
+          remove-stale-when-updated: true
+          operations-per-run: 200
+          stale-issue-message: >
+            This issue has not had activity in 28 days.
+            If this is still relevant, please add context or a minimal
+            reproducible example. Inactive issues are deprioritized over time.
+          exempt-issue-labels: "pinned"
+          stale-pr-message: ""
+          days-before-pr-stale: -1
