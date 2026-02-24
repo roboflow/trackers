@@ -237,7 +237,7 @@ class XYXYKalmanFilter(BaseKalmanFilter):
 # Factory helper
 # ---------------------------------------------------------------------------
 
-_REPR_MAP: dict[str, type[BaseKalmanFilter]] = {
+_REPR_MAP: dict[StateRepresentation, type[BaseKalmanFilter]] = {
     StateRepresentation.XCYCSR: XCYCSRKalmanFilter,
     StateRepresentation.XYXY: XYXYKalmanFilter,
 }

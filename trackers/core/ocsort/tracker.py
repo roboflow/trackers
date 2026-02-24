@@ -142,7 +142,7 @@ class OCSORTTracker(BaseTracker):
         new tracklets from unmatched detections after association.
 
         Args:
-            detections: The detections that will start new tracklets with its coordinates.
+            detections: The detections that will start new tracklets.
         """
         for xyxy in detections.xyxy:
             new_tracker = OCSORTTracklet(
