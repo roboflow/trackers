@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -162,6 +163,7 @@ VIDEO_EXAMPLES = [
         0.1,
         0.6,
         [],
+        "",
         True,
         True,
         False,
@@ -180,6 +182,7 @@ VIDEO_EXAMPLES = [
         0.3,
         0.6,
         [],
+        "",
         True,
         True,
         False,
@@ -198,6 +201,7 @@ VIDEO_EXAMPLES = [
         0.1,
         0.6,
         ["car"],
+        "",
         True,
         True,
         False,
@@ -216,6 +220,7 @@ VIDEO_EXAMPLES = [
         0.1,
         0.6,
         [],
+        "",
         True,
         True,
         False,
@@ -234,6 +239,7 @@ VIDEO_EXAMPLES = [
         0.1,
         0.6,
         [],
+        "",
         True,
         True,
         False,
@@ -252,6 +258,7 @@ VIDEO_EXAMPLES = [
         0.1,
         0.6,
         [],
+        "",
         True,
         True,
         True,
@@ -291,6 +298,32 @@ def _resolve_class_filter(
     return class_filter if class_filter else None
 
 
+def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
+    """Resolve a comma-separated `--track-ids` value to a list of integer IDs.
+
+    Args:
+        track_ids_arg: Raw `--track-ids` string (e.g. `"1,3,5"`). `None`
+            means no filter.
+
+    Returns:
+        List of integer track IDs, or `None` when no valid filter remains.
+    """
+    if not track_ids_arg:
+        return None
+
+    track_ids: list[int] = []
+    for token in track_ids_arg.split(","):
+        token = token.strip()
+        try:
+            track_ids.append(int(token))
+        except ValueError:
+            print(
+                f"Warning: '{token}' is not a valid track ID, skipping.",
+                file=sys.stderr,
+            )
+    return track_ids if track_ids else None
+
+
 def track(
     video_path: str,
     model_id: str,
@@ -302,6 +335,7 @@ def track(
     minimum_iou_threshold: float,
     high_conf_det_threshold: float,
     classes: list[str] | None = None,
+    track_ids: str = "",
     show_boxes: bool = True,
     show_ids: bool = True,
     show_labels: bool = False,
@@ -325,6 +359,8 @@ def track(
     class_names = getattr(detection_model, "class_names", [])
 
     class_filter = _resolve_class_filter(classes, class_names)
+
+    track_id_filter = _resolve_track_id_filter(track_ids)
 
     tracker: ByteTrackTracker | SORTTracker
     if tracker_type == "bytetrack":
@@ -385,6 +421,11 @@ def track(
 
             tracked = tracker.update(detections)
 
+            # Filter by track ID
+            if track_id_filter is not None and len(tracked) > 0:
+                if tracked.tracker_id is not None:
+                    mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
+                    tracked = tracked[mask]
             annotated = frame.copy()
             if trace_annotator is not None:
                 annotated = trace_annotator.annotate(annotated, tracked)
@@ -449,6 +490,16 @@ with gr.Blocks(title="Trackers Playground 🔥") as demo:
                     value=[],
                     label="Filter Classes",
                     info="Only track selected classes. None selected means all.",
+                )
+                track_id_filter = gr.Textbox(
+                    value="",
+                    label="Filter Track IDs",
+                    info=(
+                        "Only display tracks with specific track IDs "
+                        "(comma-separated, e.g. 1,3,5). "
+                        "Leave empty for all."
+                    ),
+                    placeholder="e.g. 1,3,5",
                 )
 
             with gr.Column():
@@ -565,6 +616,7 @@ with gr.Blocks(title="Trackers Playground 🔥") as demo:
             min_iou_slider,
             high_conf_slider,
             class_filter,
+            track_id_filter,
             show_boxes_checkbox,
             show_ids_checkbox,
             show_labels_checkbox,
