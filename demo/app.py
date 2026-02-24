@@ -326,6 +326,7 @@ def track(
 
     class_filter = _resolve_class_filter(classes, class_names)
 
+    tracker: ByteTrackTracker | SORTTracker
     if tracker_type == "bytetrack":
         tracker = ByteTrackTracker(
             lost_track_buffer=lost_track_buffer,
