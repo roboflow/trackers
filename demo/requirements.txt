@@ -1,2 +1,3 @@
 gradio>=6.3.0,<6.4.0
-trackers[detection]@git+https://github.com/roboflow/trackers.git
+inference-models==0.18.6rc14
+trackers==2.2.0rc1

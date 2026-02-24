@@ -8,13 +8,19 @@
 
 from __future__ import annotations
 
-import json
-import subprocess
+import os
 import tempfile
 from pathlib import Path
 
 import cv2
 import gradio as gr
+import numpy as np
+import supervision as sv
+import torch
+from tqdm import tqdm
+from inference_models import AutoModel
+
+from trackers import ByteTrackTracker, SORTTracker, frames_from_source
 
 MAX_DURATION_SECONDS = 30
 
@@ -43,6 +49,108 @@ COCO_CLASSES = [
     "dog",
     "sports ball",
 ]
+
+# Device and model pre-loading
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+print(f"Loading {len(MODELS)} models on {DEVICE}...")
+LOADED_MODELS = {}
+for model_id in MODELS:
+    print(f"  Loading {model_id}...")
+    LOADED_MODELS[model_id] = AutoModel.from_pretrained(model_id, device=DEVICE)
+print("All models loaded.")
+
+# Visualization
+COLOR_PALETTE = sv.ColorPalette.from_hex(
+    [
+        "#ffff00",
+        "#ff9b00",
+        "#ff8080",
+        "#ff66b2",
+        "#ff66ff",
+        "#b266ff",
+        "#9999ff",
+        "#3399ff",
+        "#66ffff",
+        "#33ff99",
+        "#66ff66",
+        "#99ff00",
+    ]
+)
+
+RESULTS_DIR = "results"
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+
+def _init_annotators(
+    show_boxes: bool = False,
+    show_masks: bool = False,
+    show_labels: bool = False,
+    show_ids: bool = False,
+    show_confidence: bool = False,
+) -> tuple[list, sv.LabelAnnotator | None]:
+    """Initialize supervision annotators based on display options."""
+    annotators: list = []
+    label_annotator: sv.LabelAnnotator | None = None
+
+    if show_masks:
+        annotators.append(
+            sv.MaskAnnotator(
+                color=COLOR_PALETTE,
+                color_lookup=sv.ColorLookup.TRACK,
+            )
+        )
+
+    if show_boxes:
+        annotators.append(
+            sv.BoxAnnotator(
+                color=COLOR_PALETTE,
+                color_lookup=sv.ColorLookup.TRACK,
+            )
+        )
+
+    if show_labels or show_ids or show_confidence:
+        label_annotator = sv.LabelAnnotator(
+            color=COLOR_PALETTE,
+            text_color=sv.Color.BLACK,
+            text_position=sv.Position.TOP_LEFT,
+            color_lookup=sv.ColorLookup.TRACK,
+        )
+
+    return annotators, label_annotator
+
+
+def _format_labels(
+    detections: sv.Detections,
+    class_names: list[str],
+    *,
+    show_ids: bool = False,
+    show_labels: bool = False,
+    show_confidence: bool = False,
+) -> list[str]:
+    """Generate label strings for each detection."""
+    labels = []
+
+    for i in range(len(detections)):
+        parts = []
+
+        if show_ids and detections.tracker_id is not None:
+            parts.append(f"#{int(detections.tracker_id[i])}")
+
+        if show_labels and detections.class_id is not None:
+            class_id = int(detections.class_id[i])
+            if class_names and 0 <= class_id < len(class_names):
+                parts.append(class_names[class_id])
+            else:
+                parts.append(str(class_id))
+
+        if show_confidence and detections.confidence is not None:
+            parts.append(f"{detections.confidence[i]:.2f}")
+
+        labels.append(" ".join(parts))
+
+    return labels
+
 
 VIDEO_EXAMPLES = [
     [
@@ -156,23 +264,39 @@ VIDEO_EXAMPLES = [
 ]
 
 
-def _get_video_duration(path: str) -> float:
-    """Return video duration in seconds using OpenCV."""
+def _get_video_info(path: str) -> tuple[float, int]:
+    """Return video duration in seconds and frame count using OpenCV."""
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
         raise gr.Error("Could not open the uploaded video.")
     fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.release()
     if fps <= 0:
         raise gr.Error("Could not determine video frame rate.")
-    return frame_count / fps
+    return frame_count / fps, frame_count
+
+
+def _resolve_class_filter(
+    classes: list[str] | None,
+    class_names: list[str],
+) -> list[int] | None:
+    """Resolve class names to integer IDs."""
+    if not classes:
+        return None
+
+    name_to_id = {name: i for i, name in enumerate(class_names)}
+    class_filter: list[int] = []
+    for name in classes:
+        if name in name_to_id:
+            class_filter.append(name_to_id[name])
+    return class_filter if class_filter else None
 
 
 def track(
     video_path: str,
-    model: str,
-    tracker: str,
+    model_id: str,
+    tracker_type: str,
     confidence: float,
     lost_track_buffer: int,
     track_activation_threshold: float,
@@ -186,63 +310,109 @@ def track(
     show_confidence: bool = False,
     show_trajectories: bool = False,
     show_masks: bool = False,
+    progress=gr.Progress(track_tqdm=True),
 ) -> str:
     """Run tracking on the uploaded video and return the output path."""
     if video_path is None:
         raise gr.Error("Please upload a video.")
 
-    duration = _get_video_duration(video_path)
+    duration, total_frames = _get_video_info(video_path)
     if duration > MAX_DURATION_SECONDS:
         raise gr.Error(
             f"Video is {duration:.1f}s long. "
             f"Maximum allowed duration is {MAX_DURATION_SECONDS}s."
         )
 
+    # Get pre-loaded model
+    detection_model = LOADED_MODELS[model_id]
+    class_names = getattr(detection_model, "class_names", [])
+
+    # Resolve class filter
+    class_filter = _resolve_class_filter(classes, class_names)
+
+    # Create tracker instance and reset ID counter
+    if tracker_type == "bytetrack":
+        tracker = ByteTrackTracker(
+            lost_track_buffer=lost_track_buffer,
+            track_activation_threshold=track_activation_threshold,
+            minimum_consecutive_frames=minimum_consecutive_frames,
+            minimum_iou_threshold=minimum_iou_threshold,
+            high_conf_det_threshold=high_conf_det_threshold,
+        )
+    else:
+        tracker = SORTTracker(
+            lost_track_buffer=lost_track_buffer,
+            track_activation_threshold=track_activation_threshold,
+            minimum_consecutive_frames=minimum_consecutive_frames,
+            minimum_iou_threshold=minimum_iou_threshold,
+        )
+    tracker.reset()
+
+    # Setup annotators
+    annotators, label_annotator = _init_annotators(
+        show_boxes=show_boxes,
+        show_masks=show_masks,
+        show_labels=show_labels,
+        show_ids=show_ids,
+        show_confidence=show_confidence,
+    )
+    trace_annotator = None
+    if show_trajectories:
+        trace_annotator = sv.TraceAnnotator(
+            color=COLOR_PALETTE,
+            color_lookup=sv.ColorLookup.TRACK,
+        )
+
+    # Setup output
     tmp_dir = tempfile.mkdtemp()
     output_path = str(Path(tmp_dir) / "output.mp4")
 
-    cmd = [
-        "trackers",
-        "track",
-        "--source",
-        video_path,
-        "--output",
-        output_path,
-        "--overwrite",
-        "--model",
-        model,
-        "--tracker",
-        tracker,
-        "--model_confidence",
-        str(confidence),
-    ]
+    # Get video info for output
+    video_info = sv.VideoInfo.from_video_path(video_path)
 
-    tracker_params: dict[str, float | int] = {
-        "lost_track_buffer": lost_track_buffer,
-        "track_activation_threshold": track_activation_threshold,
-        "minimum_consecutive_frames": minimum_consecutive_frames,
-        "minimum_iou_threshold": minimum_iou_threshold,
-    }
+    # Process video with progress bar
+    frame_gen = frames_from_source(video_path)
 
-    # ByteTrack extra param
-    if tracker == "bytetrack":
-        tracker_params["high_conf_det_threshold"] = high_conf_det_threshold
+    with sv.VideoSink(output_path, video_info=video_info) as sink:
+        for frame_idx, frame in tqdm(frame_gen, total=total_frames, desc="Processing video..."):
+            # Run detection
+            predictions = detection_model(frame)
+            if predictions:
+                detections = predictions[0].to_supervision()
 
-    cmd += ["--tracker_params", json.dumps(tracker_params, separators=(",", ":"))]
+                # Filter by confidence
+                if len(detections) > 0 and detections.confidence is not None:
+                    mask = detections.confidence >= confidence
+                    detections = detections[mask]
 
-    if classes:
-        cmd += ["--classes", ",".join(classes)]
+                # Filter by class
+                if class_filter is not None and len(detections) > 0:
+                    mask = np.isin(detections.class_id, class_filter)
+                    detections = detections[mask]
+            else:
+                detections = sv.Detections.empty()
 
-    cmd += ["--show_boxes", str(show_boxes).lower()]
-    cmd += ["--show_ids", str(show_ids).lower()]
-    cmd += ["--show_labels", str(show_labels).lower()]
-    cmd += ["--show_confidence", str(show_confidence).lower()]
-    cmd += ["--show_trajectories", str(show_trajectories).lower()]
-    cmd += ["--show_masks", str(show_masks).lower()]
+            # Run tracker
+            tracked = tracker.update(detections)
 
-    result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
-    if result.returncode != 0:
-        raise gr.Error(f"Tracking failed:\n{result.stderr[-500:]}")
+            # Annotate frame
+            annotated = frame.copy()
+            if trace_annotator is not None:
+                annotated = trace_annotator.annotate(annotated, tracked)
+            for annotator in annotators:
+                annotated = annotator.annotate(annotated, tracked)
+            if label_annotator is not None:
+                labeled = tracked[tracked.tracker_id != -1]
+                labels = _format_labels(
+                    labeled,
+                    class_names,
+                    show_ids=show_ids,
+                    show_labels=show_labels,
+                    show_confidence=show_confidence,
+                )
+                annotated = label_annotator.annotate(annotated, labeled, labels=labels)
+
+            sink.write_frame(annotated)
 
     return output_path
 
