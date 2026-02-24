@@ -245,7 +245,7 @@ class OCSORTTracker(BaseTracker):
             for m in _ocr_unmatched_tracks:
                 self.tracks[unmatched_tracks[m]].update(None)
 
-            self.tracks = self._activate_or_kill_tracklets()
+            self.tracks = self._kill_tracklets()
             remaining_detections = detections[unmatched_detections][
                 ocr_unmatched_detections
             ]
@@ -258,7 +258,7 @@ class OCSORTTracker(BaseTracker):
         else:
             for track_idx in unmatched_tracks:
                 self.tracks[track_idx].update(None)
-            self.tracks = self._activate_or_kill_tracklets()
+            self.tracks = self._kill_tracklets()
             remaining_detections = detections[unmatched_detections]
 
             self._spawn_new_tracklets(remaining_detections)
@@ -281,20 +281,16 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         OCSORTTracklet.count_id = 0
 
-    def _activate_or_kill_tracklets(self):
-        """Activates or kills tracklets based on their status.
+    def _kill_tracklets(self):
+        """Kills tracklets that have been lost for too long.
 
-        This method checks each tracklet's status and either activates it
-        (assigning a tracker ID) if it meets the criteria for being a valid
-        track, or kills it (removing it from active tracking) if it has been
+        This method checks each tracklet's status and either keeps it
+        active if it meets the criteria for being a valid track,
+        or kills it (removing it from active tracking) if it has been
         lost for too long.
         """
         alive_tracklets = []
         for tracklet in self.tracks:
-            is_mature = (
-                tracklet.number_of_successful_consecutive_updates
-                >= self.minimum_consecutive_frames
-            )
             if tracklet.time_since_update <= self.maximum_frames_without_update:
                 alive_tracklets.append(tracklet)
 
