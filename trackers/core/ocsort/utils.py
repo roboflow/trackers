@@ -19,33 +19,6 @@ import supervision as sv
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 
 
-def k_previous_obs(
-    observations: dict[int, np.ndarray], cur_age: int, delta_t: int
-) -> np.ndarray | None:
-    """Get observation from delta_t steps ago from the observations dict.
-
-    Looks back up to delta_t timesteps. Falls back to the most recent
-    observation if none found in the lookback window.
-
-    Args:
-        observations: Dict mapping age to observed bbox.
-        cur_age: Current age of the tracklet.
-        delta_t: Number of timesteps to look back.
-
-    Returns:
-        The observation from delta_t steps ago, or the most recent one,
-        or None if no observations exist.
-    """
-    if len(observations) == 0:
-        return None
-    for i in range(delta_t):
-        dt = delta_t - i
-        if cur_age - dt in observations:
-            return observations[cur_age - dt]
-    max_age = max(observations.keys())
-    return observations[max_age]
-
-
 def _speed_direction(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
     """Compute normalized direction vector between two bounding box centers.
 
@@ -203,7 +176,7 @@ def build_direction_consistency_matrix_batch(
     return angle_diff_cost.astype(np.float32)
 
 
-def add_track_id_detections(
+def add_track_id_to_detections(
     track: OCSORTTracklet,
     detection: sv.Detections,
     updated_detections: list[sv.Detections],

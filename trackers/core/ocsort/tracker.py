@@ -13,10 +13,9 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.ocsort.utils import (
-    add_track_id_detections,
+    add_track_id_to_detections,
     build_direction_consistency_matrix_batch,
     get_iou_matrix,
-    get_iou_matrix_between_boxes,
 )
 from trackers.utils.state_representations import XCYCSRKalmanFilter
 
@@ -93,7 +92,7 @@ class OCSORTTracker(BaseTracker):
         direction_consistency_matrix: np.ndarray,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
-        Associate detections to tracks based on IOU
+        Associate detections to tracks based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
@@ -133,20 +132,17 @@ class OCSORTTracker(BaseTracker):
     def _spawn_new_tracklets(
         self,
         detections: sv.Detections,
-        unmatched_detections: list[int],
     ) -> None:
         """
-        Create new tracklets only for unmatched detections with confidence
-        above threshold.
+        Create new tracklets only for passed detections. It is used for activating
+        new tracklets from unmatched detections after association.
 
         Args:
-            detections: The latest set of object detections.
-            detection_boxes: Detected bounding boxes in the
-                form [x1, y1, x2, y2].
+            detections: The detections that will start new tracklets with its coordinates.
         """
-        for detection_idx in unmatched_detections:
+        for xyxy in detections.xyxy:
             new_tracker = OCSORTTracklet(
-                detections.xyxy[detection_idx],
+                xyxy,
                 delta_t=self.delta_t,
                 kalman_filter_class=self.kalman_filter_class,
             )
@@ -203,7 +199,7 @@ class OCSORTTracker(BaseTracker):
         # Update matched trackers with assigned detections
         for row, col in matched_indices:
             self.tracks[row].update(detection_boxes[col])
-            add_track_id_detections(
+            add_track_id_to_detections(
                 self.tracks[row],
                 detections[col : col + 1],
                 updated_detections,
@@ -218,7 +214,7 @@ class OCSORTTracker(BaseTracker):
                 [self.tracks[t_id].last_observation for t_id in unmatched_tracks]
             )
 
-            ocr_iou_matrix = get_iou_matrix_between_boxes(
+            ocr_iou_matrix = sv.box_iou_batch(
                 last_observation_of_tracks, detection_boxes[unmatched_detections]
             )
 
@@ -233,7 +229,7 @@ class OCSORTTracker(BaseTracker):
                 track_idx = unmatched_tracks[ocr_row]
                 det_idx = unmatched_detections[ocr_col]
                 self.tracks[track_idx].update(detection_boxes[det_idx])
-                add_track_id_detections(
+                add_track_id_to_detections(
                     self.tracks[track_idx],
                     detections[det_idx : det_idx + 1],
                     updated_detections,
@@ -245,25 +241,27 @@ class OCSORTTracker(BaseTracker):
             for m in _ocr_unmatched_tracks:
                 self.tracks[unmatched_tracks[m]].update(None)
 
-            self.tracks = self.activate_or_kill_tracklets()
-            self._spawn_new_tracklets(
-                detections[unmatched_detections], ocr_unmatched_detections
+            self.tracks = self._activate_or_kill_tracklets()
+            remaining_detections = detections[unmatched_detections][
+                ocr_unmatched_detections
+            ]
+
+            self._spawn_new_tracklets(remaining_detections)
+            remaining_detections.tracker_id = np.array(
+                [-1] * len(remaining_detections), dtype=int
             )
-            left_detections = detections[unmatched_detections][ocr_unmatched_detections]
-            left_detections.tracker_id = np.array(
-                [-1] * len(left_detections), dtype=int
-            )
-            updated_detections.append(left_detections)
+            updated_detections.append(remaining_detections)
         else:
             for track_idx in unmatched_tracks:
                 self.tracks[track_idx].update(None)
-            self.tracks = self.activate_or_kill_tracklets()
-            self._spawn_new_tracklets(detections, unmatched_detections)
-            left_detections = detections[unmatched_detections]
-            left_detections.tracker_id = np.array(
-                [-1] * len(left_detections), dtype=int
+            self.tracks = self._activate_or_kill_tracklets()
+            remaining_detections = detections[unmatched_detections]
+
+            self._spawn_new_tracklets(remaining_detections)
+            remaining_detections.tracker_id = np.array(
+                [-1] * len(remaining_detections), dtype=int
             )
-            updated_detections.append(left_detections)
+            updated_detections.append(remaining_detections)
         final_updated_detections = sv.Detections.merge(updated_detections)
         if len(final_updated_detections) == 0:
             final_updated_detections.tracker_id = np.array([], dtype=int)
@@ -279,7 +277,7 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         OCSORTTracklet.count_id = 0
 
-    def activate_or_kill_tracklets(self):
+    def _activate_or_kill_tracklets(self):
         """Activates or kills tracklets based on their status.
 
         This method checks each tracklet's status and either activates it

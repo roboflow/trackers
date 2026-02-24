@@ -270,10 +270,6 @@ class OCSORTTracklet:
         self.time_since_update += 1
         return self.kalman_filter.state_to_bbox()
 
-    def is_lost(self) -> bool:
-        """Check if tracklet is considered lost."""
-        return self.time_since_update > 1
-
     def get_state_bbox(self) -> np.ndarray:
         """Get current bounding box estimate from Kalman filter.
 

@@ -44,20 +44,20 @@ class BaseKalmanFilter(ABC):
         kf: The underlying Kalman filter instance.
     """
 
-    def __init__(self, initial_bbox: np.ndarray) -> None:
+    def __init__(self, bbox: np.ndarray) -> None:
         """Initialise the filter with the first detection.
 
         Args:
-            initial_bbox: First detection `[x1, y1, x2, y2]`.
+            bbox: First detection `[x1, y1, x2, y2]`.
         """
-        self.kf: KalmanFilter = self._create_filter(initial_bbox)
+        self.kf: KalmanFilter = self._create_filter(bbox)
 
     @abstractmethod
-    def _create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
-        """Create and configure a Kalman filter for *initial_bbox*.
+    def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
+        """Create and configure a Kalman filter for *bbox*.
 
         Args:
-            initial_bbox: First detection `[x1, y1, x2, y2]`.
+            bbox: First detection `[x1, y1, x2, y2]`.
 
         Returns:
             A fully configured :class:`KalmanFilter`.
@@ -132,7 +132,7 @@ class XCYCSRKalmanFilter(BaseKalmanFilter):
     Matches the representation used in the original SORT and OC-SORT papers.
     """
 
-    def _create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
+    def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
         kf = KalmanFilter(dim_x=7, dim_z=4)
 
         # State transition: constant velocity model
@@ -160,7 +160,7 @@ class XCYCSRKalmanFilter(BaseKalmanFilter):
         kf.Q[4:, 4:] *= 0.01
 
         # Initialise state with first observation
-        kf.x[:4] = xyxy_to_xcycsr(initial_bbox).reshape((4, 1))
+        kf.x[:4] = xyxy_to_xcycsr(bbox).reshape((4, 1))
 
         return kf
 
@@ -173,7 +173,7 @@ class XCYCSRKalmanFilter(BaseKalmanFilter):
     def clamp_velocity(self) -> None:
         # If predicted scale would go negative, zero out scale velocity
         if (self.kf.x[6] + self.kf.x[2]) <= 0:
-            self.kf.x[6] *= 0.0
+            self.kf.x[6] = 0.0
 
 
 class XYXYKalmanFilter(BaseKalmanFilter):
@@ -183,7 +183,7 @@ class XYXYKalmanFilter(BaseKalmanFilter):
     All four coordinates carry their own velocity term.
     """
 
-    def _create_filter(self, initial_bbox: np.ndarray) -> KalmanFilter:
+    def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
         kf = KalmanFilter(dim_x=8, dim_z=4)
 
         # State transition: constant velocity for all coordinates
@@ -211,7 +211,7 @@ class XYXYKalmanFilter(BaseKalmanFilter):
         kf.Q[4:, 4:] *= 0.01
 
         # Initialise state with first observation (direct XYXY)
-        kf.x[:4] = initial_bbox.reshape((4, 1))
+        kf.x[:4] = bbox.reshape((4, 1))
 
         return kf
 
@@ -231,20 +231,20 @@ class XYXYKalmanFilter(BaseKalmanFilter):
 # ---------------------------------------------------------------------------
 
 _REPR_MAP: dict[str, type[BaseKalmanFilter]] = {
-    "xcycsr": XCYCSRKalmanFilter,
-    "xyxy": XYXYKalmanFilter,
+    StateRepresentation.XCYCSR: XCYCSRKalmanFilter,
+    StateRepresentation.XYXY: XYXYKalmanFilter,
 }
 
 
 def create_kalman_filter(
-    state_repr: str,
-    initial_bbox: np.ndarray,
+    state_repr: StateRepresentation,
+    bbox: np.ndarray,
 ) -> BaseKalmanFilter:
     """Create a Kalman filter for the given state representation.
 
     Args:
-        state_repr: The desired representation (`"xcycsr"` or `"xyxy"`).
-        initial_bbox: First detection `[x1, y1, x2, y2]`.
+        state_repr: The desired representation. Ex: StateRepresentation.XCYCSR
+        bbox: First detection `[x1, y1, x2, y2]`.
 
     Returns:
         An initialised :class:`BaseKalmanFilter` wrapping a configured
@@ -253,10 +253,10 @@ def create_kalman_filter(
     Raises:
         ValueError: If *state_repr* is not recognised.
     """
-    cls = _REPR_MAP.get(state_repr)
+    cls = _REPR_MAP.get(state_repr, None)
     if cls is None:
         raise ValueError(
             f"Unknown state representation: {state_repr!r}. "
             f"Available: {list(_REPR_MAP.keys())}"
         )
-    return cls(initial_bbox)
+    return cls(bbox)
