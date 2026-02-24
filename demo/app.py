@@ -50,7 +50,6 @@ COCO_CLASSES = [
     "sports ball",
 ]
 
-# Device and model pre-loading
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 print(f"Loading {len(MODELS)} models on {DEVICE}...")
@@ -60,7 +59,6 @@ for model_id in MODELS:
     LOADED_MODELS[model_id] = AutoModel.from_pretrained(model_id, device=DEVICE)
 print("All models loaded.")
 
-# Visualization
 COLOR_PALETTE = sv.ColorPalette.from_hex(
     [
         "#ffff00",
@@ -323,14 +321,11 @@ def track(
             f"Maximum allowed duration is {MAX_DURATION_SECONDS}s."
         )
 
-    # Get pre-loaded model
     detection_model = LOADED_MODELS[model_id]
     class_names = getattr(detection_model, "class_names", [])
 
-    # Resolve class filter
     class_filter = _resolve_class_filter(classes, class_names)
 
-    # Create tracker instance and reset ID counter
     if tracker_type == "bytetrack":
         tracker = ByteTrackTracker(
             lost_track_buffer=lost_track_buffer,
@@ -348,7 +343,6 @@ def track(
         )
     tracker.reset()
 
-    # Setup annotators
     annotators, label_annotator = _init_annotators(
         show_boxes=show_boxes,
         show_masks=show_masks,
@@ -363,39 +357,31 @@ def track(
             color_lookup=sv.ColorLookup.TRACK,
         )
 
-    # Setup output
     tmp_dir = tempfile.mkdtemp()
     output_path = str(Path(tmp_dir) / "output.mp4")
 
-    # Get video info for output
     video_info = sv.VideoInfo.from_video_path(video_path)
 
-    # Process video with progress bar
     frame_gen = frames_from_source(video_path)
 
     with sv.VideoSink(output_path, video_info=video_info) as sink:
         for frame_idx, frame in tqdm(frame_gen, total=total_frames, desc="Processing video..."):
-            # Run detection
             predictions = detection_model(frame)
             if predictions:
                 detections = predictions[0].to_supervision()
 
-                # Filter by confidence
                 if len(detections) > 0 and detections.confidence is not None:
                     mask = detections.confidence >= confidence
                     detections = detections[mask]
 
-                # Filter by class
                 if class_filter is not None and len(detections) > 0:
                     mask = np.isin(detections.class_id, class_filter)
                     detections = detections[mask]
             else:
                 detections = sv.Detections.empty()
 
-            # Run tracker
             tracked = tracker.update(detections)
 
-            # Annotate frame
             annotated = frame.copy()
             if trace_annotator is not None:
                 annotated = trace_annotator.annotate(annotated, tracked)
