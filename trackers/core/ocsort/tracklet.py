@@ -12,8 +12,8 @@ from trackers.utils.converters import (
     xyxy_to_xcycsr,
 )
 from trackers.utils.state_representations import (
-    BaseKalmanFilter,
-    XCYCSRKalmanFilter,
+    BaseStateEstimator,
+    XCYCSRStateEstimator,
 )
 
 
@@ -43,7 +43,7 @@ class OCSORTTracklet:
     def __init__(
         self,
         initial_bbox: np.ndarray,
-        kalman_filter_class: type[BaseKalmanFilter] = XCYCSRKalmanFilter,
+        state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
         delta_t: int = 3,
     ) -> None:
         """Initialize tracklet with first detection.
@@ -59,8 +59,8 @@ class OCSORTTracklet:
         """
         self.age = 0
 
-        # Initialize Kalman filter (wraps raw KalmanFilter + state repr)
-        self.kalman_filter: BaseKalmanFilter = kalman_filter_class(initial_bbox)
+        # Initialize state estimator (wraps KalmanFilter + state repr)
+        self.kalman_filter: BaseStateEstimator = state_estimator_class(initial_bbox)
 
         # Observation history for ORU and delta_t
         self.delta_t = delta_t
@@ -110,7 +110,7 @@ class OCSORTTracklet:
 
         time_gap = self.time_since_update
         # this is oc-sort specific
-        if isinstance(self.kalman_filter, XCYCSRKalmanFilter):
+        if isinstance(self.kalman_filter, XCYCSRStateEstimator):
             self._unfreeze_xcycsr(new_bbox, time_gap)
         else:
             self._unfreeze_xyxy(new_bbox, time_gap)

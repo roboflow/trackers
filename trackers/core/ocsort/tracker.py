@@ -17,7 +17,7 @@ from trackers.core.ocsort.utils import (
     build_direction_consistency_matrix_batch,
     get_iou_matrix,
 )
-from trackers.utils.state_representations import XCYCSRKalmanFilter
+from trackers.utils.state_representations import XCYCSRStateEstimator
 
 
 class OCSORTTracker(BaseTracker):
@@ -88,7 +88,7 @@ class OCSORTTracker(BaseTracker):
 
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
-        self.kalman_filter_class = XCYCSRKalmanFilter
+        self.state_estimator_class = XCYCSRStateEstimator
 
     def _get_associated_indices(
         self,
@@ -148,7 +148,7 @@ class OCSORTTracker(BaseTracker):
             new_tracker = OCSORTTracklet(
                 xyxy,
                 delta_t=self.delta_t,
-                kalman_filter_class=self.kalman_filter_class,
+                state_estimator_class=self.state_estimator_class,
             )
             self.tracks.append(new_tracker)
 

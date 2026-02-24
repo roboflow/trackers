@@ -34,7 +34,7 @@ class StateRepresentation(Enum):
     XYXY = "xyxy"
 
 
-class BaseKalmanFilter(ABC):
+class BaseStateEstimator(ABC):
     """Abstract Kalman filter with a specific bounding box state representation.
 
     Wraps a `KalmanFilter` and provides a unified interface for
@@ -127,7 +127,7 @@ class BaseKalmanFilter(ABC):
         self.kf.set_state(state)
 
 
-class XCYCSRKalmanFilter(BaseKalmanFilter):
+class XCYCSRStateEstimator(BaseStateEstimator):
     """Center-based Kalman filter with 7 state dimensions and 4 measurements.
 
     State vector contains `x_center`, `y_center` (box center), `scale` (area),
@@ -181,7 +181,7 @@ class XCYCSRKalmanFilter(BaseKalmanFilter):
             self.kf.x[6] = 0.0
 
 
-class XYXYKalmanFilter(BaseKalmanFilter):
+class XYXYStateEstimator(BaseStateEstimator):
     """Corner-based Kalman filter with 8 state dimensions and 4 measurements.
 
     State vector contains `x1`, `y1` (top-left corner), `x2`, `y2` (bottom-right
@@ -237,25 +237,25 @@ class XYXYKalmanFilter(BaseKalmanFilter):
 # Factory helper
 # ---------------------------------------------------------------------------
 
-_REPR_MAP: dict[StateRepresentation, type[BaseKalmanFilter]] = {
-    StateRepresentation.XCYCSR: XCYCSRKalmanFilter,
-    StateRepresentation.XYXY: XYXYKalmanFilter,
+_REPR_MAP: dict[StateRepresentation, type[BaseStateEstimator]] = {
+    StateRepresentation.XCYCSR: XCYCSRStateEstimator,
+    StateRepresentation.XYXY: XYXYStateEstimator,
 }
 
 
-def create_kalman_filter(
+def create_state_estimator(
     state_repr: StateRepresentation,
     bbox: np.ndarray,
-) -> BaseKalmanFilter:
-    """Create a Kalman filter for the given state representation.
+) -> BaseStateEstimator:
+    """Create a state estimator for the given state representation.
 
     Args:
         state_repr: The desired representation. Ex: StateRepresentation.XCYCSR
         bbox: First detection `[x1, y1, x2, y2]`.
 
     Returns:
-        An initialised `BaseKalmanFilter` wrapping a configured
-        Kalman filter.
+        An initialised `BaseStateEstimator` wrapping a configured
+        estimator.
 
     Raises:
         ValueError: If *state_repr* is not recognised.
