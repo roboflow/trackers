@@ -50,8 +50,8 @@ def _speed_direction(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
     """Compute normalized direction vector between two bounding box centers.
 
     Args:
-        bbox1: First bounding box in the form [x1, y1, x2, y2].
-        bbox2: Second bounding box in the form [x1, y1, x2, y2].
+        bbox1: First bounding box in the form `[x1, y1, x2, y2]`.
+        bbox2: Second bounding box in the form `[x1, y1, x2, y2]`.
 
     Returns:
         np.ndarray: Normalized direction vector [dy, dx] from bbox1 to bbox2.
@@ -79,7 +79,7 @@ def _build_direction_consistency_matrix(
 
     Args:
         tracklets: List of OCSORTTracklet objects.
-        detection_boxes: Detection bounding boxes [x1, y1, x2, y2].
+        detection_boxes: Detection bounding boxes `[x1, y1, x2, y2]`.
 
     Returns:
         np.ndarray: Direction consistency cost matrix (n_tracklets, n_detections).
@@ -118,8 +118,8 @@ def _speed_direction_batch(
     """Compute normalized direction vectors from tracks to detections in batch.
 
     Args:
-        dets: Detection bounding boxes [x1, y1, x2, y2], shape (n_dets, 4).
-        tracks: Track bounding boxes [x1, y1, x2, y2], shape (n_tracks, 4).
+        dets: Detection bounding boxes `[x1, y1, x2, y2]`, shape (n_dets, 4).
+        tracks: Track bounding boxes `[x1, y1, x2, y2]`, shape (n_tracks, 4).
 
     Returns:
         tuple[np.ndarray, np.ndarray]: (dy, dx) direction vectors,
@@ -148,7 +148,7 @@ def build_direction_consistency_matrix_batch(
 
     Args:
         tracklets: List of OCSORTTracklet objects.
-        detection_boxes: Detection bounding boxes [x1, y1, x2, y2].
+        detection_boxes: Detection bounding boxes `[x1, y1, x2, y2]`.
 
     Returns:
         np.ndarray: Direction consistency cost matrix (n_tracklets, n_detections).
@@ -212,11 +212,11 @@ def add_track_id_detections(
 ) -> None:
     """Assign track ID to detection and add to updated_detections list.
 
-    Handles ID assignment based on track maturity:
-    - Early frames (frame_count < minimum_consecutive_frames): Assign ID if
-      track was just updated and doesn't have an ID yet.
-    - Later frames: Assign ID only if track is mature (has enough consecutive
-      updates). Immature tracks get tracker_id = -1.
+    Handles ID assignment based on track maturity. In early frames
+    (`frame_count < minimum_consecutive_frames`), assigns ID if track was just
+    updated and doesn't have an ID yet. In later frames, assigns ID only if
+    track is mature (has enough consecutive updates). Immature tracks get
+    `tracker_id = -1`.
 
     Args:
         track: The tracklet being processed.
@@ -254,7 +254,7 @@ def get_iou_matrix(
 
     Args:
         trackers: Sequence of OCSORTTracklet objects.
-        detection_boxes: Detection bounding boxes [x1, y1, x2, y2].
+        detection_boxes: Detection bounding boxes `[x1, y1, x2, y2]`.
 
     Returns:
         np.ndarray: IOU matrix of shape (n_trackers, n_detections).
@@ -277,8 +277,8 @@ def get_iou_matrix_between_boxes(
     """Build IOU cost matrix between two sets of bounding boxes.
 
     Args:
-        last_observations: First set of boxes [x1, y1, x2, y2].
-        detection_boxes: Second set of boxes [x1, y1, x2, y2].
+        last_observations: First set of boxes `[x1, y1, x2, y2]`.
+        detection_boxes: Second set of boxes `[x1, y1, x2, y2]`.
 
     Returns:
         np.ndarray: IOU matrix of shape (n_observations, n_detections).

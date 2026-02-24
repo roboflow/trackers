@@ -21,10 +21,9 @@ class OCSORTTracklet:
     """Tracklet for OC-SORT tracker with ORU (Observation-centric Re-Update).
 
     Manages a single tracked object with Kalman filter state estimation.
-    Implements OC-SORT specific features:
-    - Freeze/unfreeze for saving state before track is lost
-    - Virtual trajectory generation (ORU) for recovering lost tracks
-    - Configurable state representation (XCYCSR or XYXY)
+    Implements OC-SORT specific features: freeze/unfreeze for saving state
+    before track is lost, virtual trajectory generation (ORU) for recovering
+    lost tracks, and configurable state representation (XCYCSR or XYXY).
 
     Attributes:
         age: Age of the tracklet in frames.
@@ -32,7 +31,7 @@ class OCSORTTracklet:
         tracker_id: Unique identifier (-1 until track is mature).
         number_of_successful_consecutive_updates: Consecutive successful updates.
         time_since_update: Frames since last observation.
-        last_observation: Last observed bounding box [x1, y1, x2, y2].
+        last_observation: Last observed bounding box `[x1, y1, x2, y2]`.
         previous_to_last_observation: Second-to-last observation for velocity.
         observations: Dict mapping age to observed bbox for delta_t lookback.
         velocity: Normalized direction vector computed with delta_t lookback.
@@ -50,10 +49,10 @@ class OCSORTTracklet:
         """Initialize tracklet with first detection.
 
         Args:
-            initial_bbox: Initial bounding box [x1, y1, x2, y2].
+            initial_bbox: Initial bounding box `[x1, y1, x2, y2]`.
             kalman_filter_class: Kalman filter class to use. Instantiated
                 with *initial_bbox*. Defaults to
-                :class:`XCYCSRKalmanFilter`.
+                `XCYCSRKalmanFilter`.
             delta_t: Number of timesteps back to look for velocity estimation.
                 Higher values use observations further in the past to estimate
                 motion direction, providing more stable velocity estimates.
@@ -101,7 +100,7 @@ class OCSORTTracklet:
         trajectory.
 
         Args:
-            new_bbox: New observation bounding box [x1, y1, x2, y2].
+            new_bbox: New observation bounding box `[x1, y1, x2, y2]`.
         """
         if self._frozen_state is None:
             return
@@ -203,8 +202,8 @@ class OCSORTTracklet:
         """Compute normalized direction vector between two bounding box centers.
 
         Args:
-            bbox1: First bounding box [x1, y1, x2, y2].
-            bbox2: Second bounding box [x1, y1, x2, y2].
+            bbox1: First bounding box `[x1, y1, x2, y2]`.
+            bbox2: Second bounding box `[x1, y1, x2, y2]`.
 
         Returns:
             Normalized direction vector [dy, dx].
@@ -223,7 +222,7 @@ class OCSORTTracklet:
         Computes velocity using observation from delta_t steps ago.
 
         Args:
-            bbox: Bounding box [x1, y1, x2, y2] or None for no observation.
+            bbox: Bounding box `[x1, y1, x2, y2]` or None for no observation.
         """
         if bbox is not None:
             # Compute velocity only after the track has been observed at least once
@@ -259,7 +258,7 @@ class OCSORTTracklet:
         """Predict next bounding box position.
 
         Returns:
-            Predicted bounding box [x1, y1, x2, y2].
+            Predicted bounding box `[x1, y1, x2, y2]`.
         """
         self.kalman_filter.predict()
         self.age += 1
@@ -278,6 +277,6 @@ class OCSORTTracklet:
         """Get current bounding box estimate from Kalman filter.
 
         Returns:
-            Current bounding box estimate [x1, y1, x2, y2].
+            Current bounding box estimate `[x1, y1, x2, y2]`.
         """
         return self.kalman_filter.state_to_bbox()

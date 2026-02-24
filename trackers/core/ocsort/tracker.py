@@ -146,7 +146,7 @@ class OCSORTTracker(BaseTracker):
         Args:
             detections: The latest set of object detections.
             detection_boxes: Detected bounding boxes in the
-                form [x1, y1, x2, y2].
+                form `[x1, y1, x2, y2]`.
         """
         for detection_idx in unmatched_detections:
             new_tracker = OCSORTTracklet(
