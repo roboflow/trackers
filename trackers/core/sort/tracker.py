@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from typing import ClassVar
+
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
@@ -54,6 +56,13 @@ class SORTTracker(BaseTracker):
     """
 
     tracker_id = "sort"
+
+    search_space: ClassVar[dict[str, dict]] = {
+        "lost_track_buffer": {"type": "randint", "range": [10, 91]},
+        "track_activation_threshold": {"type": "uniform", "range": [0.1, 0.9]},
+        "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
+        "minimum_iou_threshold": {"type": "uniform", "range": [0.05, 0.7]},
+    }
 
     def __init__(
         self,
