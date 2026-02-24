@@ -15,6 +15,7 @@ from trackers.motion.transformation import (
     HomographyTransformation,
     IdentityTransformation,
 )
+from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr
 
 __all__ = [
     "ByteTrackTracker",
@@ -26,4 +27,6 @@ __all__ = [
     "OCSORTTracker",
     "SORTTracker",
     "frames_from_source",
+    "xcycsr_to_xyxy",
+    "xyxy_to_xcycsr",
 ]

@@ -18,13 +18,16 @@ from trackers.utils.kalman_filter import KalmanFilter
 class StateRepresentation(Enum):
     """Kalman filter state representation for bounding boxes.
 
-    XCYCSR: Center-based (x_center, y_center, scale, aspect_ratio, vx, vy, vs)
-        - 7 state variables, aspect ratio is constant (no velocity)
-        - Used in original SORT/OC-SORT papers
-
-    XYXY: Corner-based (x1, y1, x2, y2, vx1, vy1, vx2, vy2)
-        - 8 state variables, all coordinates have velocities
-        - More direct representation, potentially better for non-rigid objects
+    Attributes:
+        XCYCSR: Center-based representation with 7 state variables:
+            `x_center`, `y_center` (box center), `scale` (area), `aspect_ratio`
+            (width/height), and velocities `vx`, `vy`, `vs`. Aspect ratio is
+            treated as constant (no velocity term). Used in original SORT and
+            OC-SORT papers.
+        XYXY: Corner-based representation with 8 state variables:
+            `x1`, `y1` (top-left corner), `x2`, `y2` (bottom-right corner),
+            and velocities `vx1`, `vy1`, `vx2`, `vy2` for each coordinate.
+            More direct representation, potentially better for non-rigid objects.
     """
 
     XCYCSR = "xcycsr"
@@ -34,7 +37,7 @@ class StateRepresentation(Enum):
 class BaseKalmanFilter(ABC):
     """Abstract Kalman filter with a specific bounding box state representation.
 
-    Wraps a :class:`KalmanFilter` and provides a unified interface for
+    Wraps a `KalmanFilter` and provides a unified interface for
     bounding-box tracking regardless of the internal state encoding.
     Subclasses configure the filter dimensions, matrices, noise, and
     handle conversions between `[x1, y1, x2, y2]` bboxes and the
@@ -60,7 +63,7 @@ class BaseKalmanFilter(ABC):
             bbox: First detection `[x1, y1, x2, y2]`.
 
         Returns:
-            A fully configured :class:`KalmanFilter`.
+            A fully configured `KalmanFilter`.
         """
 
     @abstractmethod
@@ -71,7 +74,7 @@ class BaseKalmanFilter(ABC):
             bbox: Bounding box `[x1, y1, x2, y2]`.
 
         Returns:
-            Measurement vector suitable for :meth:`KalmanFilter.update`.
+            Measurement vector suitable for `KalmanFilter.update`.
         """
 
     @abstractmethod
@@ -86,7 +89,7 @@ class BaseKalmanFilter(ABC):
     def clamp_velocity(self) -> None:
         """Clamp velocity components to prevent degenerate predictions.
 
-        Called before :meth:`predict` to ensure physical plausibility
+        Called before `predict` to ensure physical plausibility
         (e.g. non-negative scale). Modifies the filter state in-place.
         """
 
@@ -119,17 +122,19 @@ class BaseKalmanFilter(ABC):
         """Restore a previously saved filter state.
 
         Args:
-            state: Dictionary from :meth:`get_state`.
+            state: Dictionary from `get_state`.
         """
         self.kf.set_state(state)
 
 
 class XCYCSRKalmanFilter(BaseKalmanFilter):
-    """Center-based Kalman filter: `[x_c, y_c, scale, ratio, vx, vy, vs]`.
+    """Center-based Kalman filter with 7 state dimensions and 4 measurements.
 
-    7 state dimensions, 4 measurement dimensions.
-    Aspect ratio is treated as constant (no velocity term).
-    Matches the representation used in the original SORT and OC-SORT papers.
+    State vector contains `x_center`, `y_center` (box center), `scale` (area),
+    `aspect_ratio` (width/height), and velocities `vx`, `vy`, `vs`. Aspect ratio
+    is treated as constant (no velocity term), which works well for rigid objects
+    that maintain their shape. Matches the representation used in the original
+    SORT and OC-SORT papers.
     """
 
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
@@ -177,10 +182,12 @@ class XCYCSRKalmanFilter(BaseKalmanFilter):
 
 
 class XYXYKalmanFilter(BaseKalmanFilter):
-    """Corner-based Kalman filter: `[x1, y1, x2, y2, vx1, vy1, vx2, vy2]`.
+    """Corner-based Kalman filter with 8 state dimensions and 4 measurements.
 
-    8 state dimensions, 4 measurement dimensions.
-    All four coordinates carry their own velocity term.
+    State vector contains `x1`, `y1` (top-left corner), `x2`, `y2` (bottom-right
+    corner), and independent velocities `vx1`, `vy1`, `vx2`, `vy2` for each
+    coordinate. This allows the box shape to change over time, which may be
+    better suited for non-rigid or deformable objects.
     """
 
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
@@ -247,7 +254,7 @@ def create_kalman_filter(
         bbox: First detection `[x1, y1, x2, y2]`.
 
     Returns:
-        An initialised :class:`BaseKalmanFilter` wrapping a configured
+        An initialised `BaseKalmanFilter` wrapping a configured
         Kalman filter.
 
     Raises:

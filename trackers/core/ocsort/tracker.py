@@ -23,15 +23,19 @@ from trackers.utils.state_representations import XCYCSRKalmanFilter
 class OCSORTTracker(BaseTracker):
     """Implements OC-SORT (Observation Centric Simple Online and Realtime Tracking).
 
-    OC-SORT remains Simple, Online, and Real-Time but improves robustness during occlusion and non-linear motion.
-    It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three
-    mechanisms to enhance tracking. The first mechanism is Observation-Centre Re-Update (ORU), which runs a
-    predict-update loop with a 'virtual trajectory' in order to have less noisy Kalman Filter parameters once
-    a track is re-activated after being lost. The second mechanism is Observation-Centric Momentum (OCM), that
-    incorporates the direction consistency of tracks in the cost matrix for the association. Finally, OC-SORT adds
-    Observation-centric Recovery (OCR), a second-stage association step between the last observation of unmatched
-    tracks to the unmatched observations after the usual association. It attempts to recover tracks that were lost
-    due to object stopping or short-term occlusion.
+    OC-SORT remains Simple, Online, and Real-Time but improves robustness during
+    occlusion and non-linear motion. It recognizes limitations from SORT and the
+    linear motion assumption of the Kalman filter, and adds three mechanisms to
+    enhance tracking. The first mechanism is Observation-Centre Re-Update (ORU),
+    which runs a predict-update loop with a 'virtual trajectory' in order to have
+    less noisy Kalman Filter parameters once a track is re-activated after being
+    lost. The second mechanism is Observation-Centric Momentum (OCM), that
+    incorporates the direction consistency of tracks in the cost matrix for the
+    association. Finally, OC-SORT adds Observation-centric Recovery (OCR), a
+    second-stage association step between the last observation of unmatched tracks
+    to the unmatched observations after the usual association. It attempts to
+    recover tracks that were lost due to object stopping or short-term occlusion.
+
     Args:
         lost_track_buffer: Number of frames to buffer when a track is lost.
             Increasing lost_track_buffer enhances occlusion handling, significantly
