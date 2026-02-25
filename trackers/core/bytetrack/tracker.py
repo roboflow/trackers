@@ -20,9 +20,24 @@ from trackers.core.sort.utils import (
 
 
 class ByteTrackTracker(BaseTracker):
-    """Track objects using ByteTrack algorithm with two-stage association.
-    Associates both high and low confidence detections to reduce fragmentation
-    and improve tracking through occlusions.
+    """ByteTrack operates online by processing all detector outputs, categorizing them
+    by confidence thresholds to enable a two-stage association process. High-score boxes
+    are initially linked to tracklets via Kalman filter predictions and IoU-based
+    Hungarian matching, optionally enhanced with appearance features. Low-score boxes
+    follow in a secondary matching phase using pure motion similarity to revive occluded
+    tracks. Tracks without matches are kept briefly for potential re-association,
+    preventing premature termination. This inclusive approach addresses common pitfalls
+    in detection filtering, establishing ByteTrack as a flexible enhancer for existing
+    tracking frameworks.
+
+    ByteTrack excels in dense environments, where its low-score recovery mechanism
+    minimizes missed detections and enhances overall trajectory completeness. It
+    consistently improves performance across diverse datasets, demonstrating robustness
+    and generalization. The tracker's speed remains competitive, facilitating
+    integration into production pipelines. On the downside, it is highly dependent on
+    detector quality, with performance drops in noisy or low-resolution inputs.
+    Additionally, the motion-only secondary association may lead to erroneous matches
+    in scenes with similar moving objects.
 
     Args:
         lost_track_buffer: `int` specifying number of frames to buffer when a

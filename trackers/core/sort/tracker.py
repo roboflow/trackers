@@ -18,9 +18,24 @@ from trackers.core.sort.utils import (
 
 
 class SORTTracker(BaseTracker):
-    """Track objects using SORT algorithm with Kalman filter and IoU matching.
-    Provides simple and fast online tracking using only bounding box geometry
-    without appearance features.
+    """In SORT, object tracking begins with high-confidence detections fed into a
+    Kalman filter framework assuming uniform motion for state prediction across frames.
+    Association occurs via IoU-based costs in the Hungarian algorithm, enforcing a
+    threshold to filter weak matches and initialize new identities. Tracks persist only
+    with consistent associations, terminating quickly to avoid erroneous propagation.
+    This detection-driven approach underscores the importance of upstream detector
+    performance in achieving competitive multi-object tracking results. Over time, SORT
+    has become a cornerstone for evaluating motion-based improvements in the field.
+
+    SORT's standout strength is its real-time capability, processing hundreds of frames
+    per second while maintaining accuracy comparable to more complex offline methods. It
+    performs well in controlled environments with reliable detections, minimizing
+    computational demands. However, without mechanisms for re-identification, it incurs
+    frequent identity switches during object reappearances post-occlusion. The linear
+    motion assumption limits effectiveness in non-linear paths, such as those in sports
+    or wildlife tracking. Ultimately, SORT's efficiency is offset by its sensitivity to
+    environmental complexities, necessitating hybrid extensions for broader
+    applicability.
 
     Args:
         lost_track_buffer: `int` specifying number of frames to buffer when a
