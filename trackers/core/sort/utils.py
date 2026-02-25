@@ -13,7 +13,7 @@ import supervision as sv
 from trackers.utils.base_tracklet import BaseTracklet
 
 def get_alive_tracklets(
-    trackers: Sequence[BaseTracklet],
+    tracklets: Sequence[BaseTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
 ) -> list[BaseTracklet]:
@@ -23,24 +23,24 @@ def get_alive_tracklets(
     it was just updated).
 
     Args:
-        trackers: List of KalmanBoxTracker objects.
+        tracklets: List of KalmanBoxTracker objects.
         minimum_consecutive_frames: Number of consecutive frames that an object
             must be tracked before it is considered a 'valid' track.
         maximum_frames_without_update: Maximum number of frames without update
             before a track is considered dead.
 
     Returns:
-        List of alive trackers.
+        List of alive tracklets.
     """
-    alive_trackers = []
-    for tracker in trackers:
-        is_mature = tracker.number_of_successful_consecutive_updates >= minimum_consecutive_frames
-        is_active = tracker.time_since_update == 0
-        if tracker.time_since_update < maximum_frames_without_update and (
+    alive_tracklets = []
+    for tracklet in tracklets:
+        is_mature = tracklet.number_of_successful_consecutive_updates >= minimum_consecutive_frames
+        is_active = tracklet.time_since_update == 0
+        if tracklet.time_since_update < maximum_frames_without_update and (
             is_mature or is_active
         ):
-            alive_trackers.append(tracker)
-    return alive_trackers
+            alive_tracklets.append(tracklet)
+    return alive_tracklets
 
 
 def get_iou_matrix(

@@ -14,7 +14,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
 from trackers.core.sort.utils import (
-    get_alive_trackers,
+    get_alive_tracklets,
     get_iou_matrix,
 )
 
@@ -76,7 +76,7 @@ class ByteTrackTracker(BaseTracker):
         for row, col in matched_indices:
             t = tracks[row]
             t.update(det_bboxes[col])
-            # If tracker is mature but still has ID -1, assign a new ID
+            # If track is mature but still has ID -1, assign a new ID
             if (
                 t.number_of_successful_updates >= self.minimum_consecutive_frames
                 and t.tracker_id == -1
@@ -94,7 +94,7 @@ class ByteTrackTracker(BaseTracker):
         self,
         detections: sv.Detections,
     ) -> sv.Detections:
-        """Update tracker state with new detections and return tracked objects.
+        """Update tracks state with new detections and return tracked objects.
         Performs Kalman filter prediction, two-stage association (high then low
         confidence), and initializes new tracks for unmatched detections.
 
@@ -118,8 +118,8 @@ class ByteTrackTracker(BaseTracker):
         ] = []  # List for returning the updated detections with its new assigned track id # noqa: E501
 
         # Predict new locations for existing tracks
-        for tracker in self.tracks:
-            tracker.predict()
+        for track in self.tracks:
+            track.predict()
 
         # Split into high confidence boxes and lower based on self.high_conf_det_threshold # noqa: E501
         high_prob_detections, low_prob_detections = (
@@ -164,7 +164,7 @@ class ByteTrackTracker(BaseTracker):
             new_det.tracker_id = np.array([-1])
             updated_detections.append(new_det)
 
-        self._spawn_new_trackers(
+        self._spawn_new_tracks(
             high_prob_detections,
             high_prob_detections.xyxy,
             unmatched_high_prob_detections,
@@ -172,8 +172,8 @@ class ByteTrackTracker(BaseTracker):
         )
 
         # Kill lost tracks
-        self.tracks = get_alive_trackers(
-            trackers=self.tracks,
+        self.tracks = get_alive_tracklets(
+            self.tracks
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
         )
@@ -248,7 +248,7 @@ class ByteTrackTracker(BaseTracker):
 
         return matched_indices, unmatched_tracks, unmatched_detections
 
-    def _spawn_new_trackers(
+    def _spawn_new_tracks(
         self,
         detections: sv.Detections,
         detection_boxes: np.ndarray,
@@ -256,7 +256,7 @@ class ByteTrackTracker(BaseTracker):
         updated_detections: list[sv.Detections],
     ):
         """
-        Create new trackers for unmatched detections and
+        Create new tracks for unmatched detections and
             append detections to updated_detections detections.
 
         Args:
@@ -278,10 +278,10 @@ class ByteTrackTracker(BaseTracker):
                 if confidence_score >= self.track_activation_threshold:
                     # Original logic for high confidence detection
 
-                    new_tracker = ByteTrackKalmanBoxTracker(
+                    new_track = ByteTrackKalmanBoxTracker(
                         bbox=detection_boxes[detection_idx]
                     )
-                    self.tracks.append(new_tracker)
+                    self.tracks.append(new_track)
 
                     new_det = deepcopy(detections[detection_idx : detection_idx + 1])
                     new_det = cast(sv.Detections, new_det)  # Cast added previously
