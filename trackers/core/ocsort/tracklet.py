@@ -15,9 +15,9 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
 )
+from trackers.utils.base_tracklet import BaseTracklet
 
-
-class OCSORTTracklet:
+class OCSORTTracklet(BaseTracklet):
     """Tracklet for OC-SORT tracker with ORU (Observation-centric Re-Update).
 
     Manages a single tracked object with Kalman filter state estimation.
@@ -57,11 +57,9 @@ class OCSORTTracklet:
                 Higher values use observations further in the past to estimate
                 motion direction, providing more stable velocity estimates.
         """
-        self.age = 0
 
         # Initialize state estimator (wraps KalmanFilter + state repr)
-        self.kalman_filter: BaseStateEstimator = state_estimator_class(initial_bbox)
-
+        super().__init__(initial_bbox, state_estimator_class)
         # Observation history for ORU and delta_t
         self.delta_t = delta_t
         self.last_observation = initial_bbox
@@ -69,24 +67,9 @@ class OCSORTTracklet:
         self.observations: dict[int, np.ndarray] = {}
         self.velocity: np.ndarray | None = None
 
-        # Track ID can be initialized before mature in oc-sort
-        # it is assigned if the frame number is less than minimum_consecutive_frames
-        self.tracker_id = -1
-
-        # Tracking counters
-        self.number_of_successful_consecutive_updates = 0
-        self.time_since_update = 0
-
         # ORU: saved state for freeze/unfreeze
         self._frozen_state: dict | None = None
         self._observed = True
-
-    @classmethod
-    def get_next_tracker_id(cls) -> int:
-        """Get next available tracker ID."""
-        next_id = cls.count_id
-        cls.count_id += 1
-        return next_id
 
     def _freeze(self) -> None:
         """Save Kalman filter state before track is lost (ORU mechanism)."""
