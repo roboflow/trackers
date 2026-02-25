@@ -60,7 +60,6 @@ class OCSORTTracker(BaseTracker):
         delta_t: Number of timesteps back to look for velocity/direction estimation.
             Higher values use observations further in the past to compute motion
             direction, providing more stable velocity estimates during occlusion.
-            Default is 3 (matching the original OC-SORT paper).
 
     """
 
@@ -153,19 +152,19 @@ class OCSORTTracker(BaseTracker):
             self.tracks.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
-        """Updates the tracker state with new detections.
-
-        Performs Kalman filter prediction, associates detections with existing
-        tracklets based on IOU, updates matched tracklets, and initializes new
-        tracklets for unmatched high-confidence detections.
+        """Update tracker state with new detections and return tracked objects.
+        Performs Kalman filter prediction, two-stage association using direction
+        consistency and last-observation recovery, and initializes new tracks
+        for unmatched high-confidence detections.
 
         Args:
-            detections: The latest set of object detections from a frame.
+            detections: `sv.Detections` containing bounding boxes with shape
+                `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
+                confidence scores.
 
         Returns:
-            updated_detections: A copy of the input detections, augmented with assigned
-                `tracklet_id` for each successfully tracked object. Detections not
-                associated with a track will not have a `tracklet_id`.
+            `sv.Detections` with `tracker_id` assigned for each detection.
+                Unmatched or immature tracks have `tracker_id` of `-1`.
         """
 
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -245,7 +244,7 @@ class OCSORTTracker(BaseTracker):
             for m in _ocr_unmatched_tracks:
                 self.tracks[unmatched_tracks[m]].update(None)
 
-            self.tracks = self._kill_tracklets()
+            self.tracks = self._prune_expired_tracklets()
             remaining_detections = detections[unmatched_detections][
                 ocr_unmatched_detections
             ]
@@ -258,7 +257,7 @@ class OCSORTTracker(BaseTracker):
         else:
             for track_idx in unmatched_tracks:
                 self.tracks[track_idx].update(None)
-            self.tracks = self._kill_tracklets()
+            self.tracks = self._prune_expired_tracklets()
             remaining_detections = detections[unmatched_detections]
 
             self._spawn_new_tracklets(remaining_detections)
@@ -273,25 +272,21 @@ class OCSORTTracker(BaseTracker):
         return final_updated_detections
 
     def reset(self) -> None:
-        """Resets the tracker's internal state.
-
-        Clears all active tracks and resets the track ID counter.
+        """Reset tracker state by clearing all tracks and resetting ID counter.
+        Call this method when switching to a new video or scene.
         """
         self.tracks = []
         self.frame_count = 0
         OCSORTTracklet.count_id = 0
 
-    def _kill_tracklets(self):
-        """Kills tracklets that have been lost for too long.
+    def _prune_expired_tracklets(self) -> list[OCSORTTracklet]:
+        """Remove tracklets that have been lost for too long.
 
-        This method checks each tracklet's status and either keeps it
-        active if it meets the criteria for being a valid track,
-        or kills it (removing it from active tracking) if it has been
-        lost for too long.
+        Returns:
+            List of tracklets that are still active.
         """
-        alive_tracklets = []
-        for tracklet in self.tracks:
-            if tracklet.time_since_update <= self.maximum_frames_without_update:
-                alive_tracklets.append(tracklet)
-
-        return alive_tracklets
+        return [
+            tracklet
+            for tracklet in self.tracks
+            if tracklet.time_since_update <= self.maximum_frames_without_update
+        ]
