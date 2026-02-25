@@ -18,73 +18,6 @@ import supervision as sv
 
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 
-
-def _speed_direction(bbox1: np.ndarray, bbox2: np.ndarray) -> np.ndarray:
-    """Compute normalized direction vector between two bounding box centers.
-
-    Args:
-        bbox1: First bounding box in the form `[x1, y1, x2, y2]`.
-        bbox2: Second bounding box in the form `[x1, y1, x2, y2]`.
-
-    Returns:
-        np.ndarray: Normalized direction vector [dy, dx] from bbox1 to bbox2.
-    """
-    cx1, cy1 = (bbox1[0] + bbox1[2]) / 2.0, (bbox1[1] + bbox1[3]) / 2.0
-    cx2, cy2 = (bbox2[0] + bbox2[2]) / 2.0, (bbox2[1] + bbox2[3]) / 2.0
-    speed = np.array([cy2 - cy1, cx2 - cx1])
-    norm = np.sqrt((cy2 - cy1) ** 2 + (cx2 - cx1) ** 2) + 1e-6
-    return speed / norm
-
-
-def _build_direction_consistency_matrix(
-    tracklets: list[OCSORTTracklet],
-    detection_boxes: np.ndarray,
-) -> np.ndarray:
-    """Build direction consistency cost matrix (OCM) between tracklet velocities
-    and detection associations.
-
-    Note: This is the non-batch version kept for reference, interpretability and testing
-    purposes. Use `build_direction_consistency_matrix_batch` for production.
-
-    Uses tracklet.velocity (computed with delta_t lookback) and k_previous_obs
-    as the reference point for association direction, matching the original
-    OC-SORT implementation.
-
-    Args:
-        tracklets: List of OCSORTTracklet objects.
-        detection_boxes: Detection bounding boxes `[x1, y1, x2, y2]`.
-
-    Returns:
-        np.ndarray: Direction consistency cost matrix (n_tracklets, n_detections).
-    """
-    n_tracklets = len(tracklets)
-    n_detections = detection_boxes.shape[0]
-    direction_consistency_matrix = np.zeros(
-        (n_tracklets, n_detections), dtype=np.float32
-    )
-
-    for t, tracklet in enumerate(tracklets):
-        if tracklet.velocity is None:
-            continue
-
-        k_obs = tracklet.get_k_previous_obs()
-        if k_obs is None:
-            continue
-
-        tracklet_speed = tracklet.velocity
-
-        for d in range(n_detections):
-            detection_box = detection_boxes[d]
-            association_speed = _speed_direction(k_obs, detection_box)
-
-            cos_sim = np.dot(tracklet_speed, association_speed)
-            cos_sim = np.clip(cos_sim, -1.0, 1.0)
-            angle = np.arccos(cos_sim)
-            direction_consistency_matrix[t, d] = (np.pi / 2.0 - np.abs(angle)) / np.pi
-
-    return direction_consistency_matrix
-
-
 def _speed_direction_batch(
     dets: np.ndarray, tracks: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -221,24 +154,24 @@ def add_track_id_to_detections(
 
 
 def get_iou_matrix(
-    trackers: Sequence[OCSORTTracklet], detection_boxes: np.ndarray
+    tracks: Sequence[OCSORTTracklet], detection_boxes: np.ndarray
 ) -> np.ndarray:
-    """Build IOU cost matrix between trackers and detections.
+    """Build IOU cost matrix between tracks and detections.
 
     Args:
-        trackers: Sequence of OCSORTTracklet objects.
+        tracks: Sequence of OCSORTTracklet objects.
         detection_boxes: Detection bounding boxes `[x1, y1, x2, y2]`.
 
     Returns:
-        np.ndarray: IOU matrix of shape (n_trackers, n_detections).
+        np.ndarray: IOU matrix of shape (n_tracks, n_detections).
     """
-    predicted_boxes = np.array([t.get_state_bbox() for t in trackers])
-    if len(predicted_boxes) == 0 and len(trackers) > 0:
-        predicted_boxes = np.zeros((len(trackers), 4), dtype=np.float32)
+    predicted_boxes = np.array([t.get_state_bbox() for t in tracks])
+    if len(predicted_boxes) == 0 and len(tracks) > 0:
+        predicted_boxes = np.zeros((len(tracks), 4), dtype=np.float32)
 
-    if len(trackers) > 0 and len(detection_boxes) > 0:
+    if len(tracks) > 0 and len(detection_boxes) > 0:
         iou_matrix = sv.box_iou_batch(predicted_boxes, detection_boxes)
     else:
-        iou_matrix = np.zeros((len(trackers), len(detection_boxes)), dtype=np.float32)
+        iou_matrix = np.zeros((len(tracks), len(detection_boxes)), dtype=np.float32)
 
     return iou_matrix
