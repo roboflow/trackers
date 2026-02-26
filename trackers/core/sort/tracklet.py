@@ -1,9 +1,17 @@
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
+import numpy as np
+
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
 )
-import numpy as np
-from trackers.utils.base_tracklet import BaseTracklet
+
 
 class SORTTracklet(BaseTracklet):
     count_id: int = 0
@@ -35,4 +43,3 @@ class SORTTracklet(BaseTracklet):
     def get_state_bbox(self) -> np.ndarray:
         """Get current bounding box estimate from the filter/state."""
         return self.kalman_filter.state_to_bbox()
-

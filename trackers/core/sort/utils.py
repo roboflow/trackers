@@ -12,6 +12,7 @@ import supervision as sv
 
 from trackers.utils.base_tracklet import BaseTracklet
 
+
 def get_alive_tracklets(
     tracklets: Sequence[BaseTracklet],
     minimum_consecutive_frames: int,
@@ -34,7 +35,10 @@ def get_alive_tracklets(
     """
     alive_tracklets = []
     for tracklet in tracklets:
-        is_mature = tracklet.number_of_successful_consecutive_updates >= minimum_consecutive_frames
+        is_mature = (
+            tracklet.number_of_successful_consecutive_updates
+            >= minimum_consecutive_frames
+        )
         is_active = tracklet.time_since_update == 0
         if tracklet.time_since_update < maximum_frames_without_update and (
             is_mature or is_active
@@ -131,9 +135,7 @@ def update_detections_with_track_ids(
                 ):
                     # If tracker is mature but still has ID -1, assign a new ID
                     if tracker_obj.tracker_id == -1:
-                        tracker_obj.tracker_id = (
-                            type(tracker_obj).get_next_tracker_id()
-                        )
+                        tracker_obj.tracker_id = type(tracker_obj).get_next_tracker_id()
                     final_tracker_ids[int(col)] = tracker_obj.tracker_id
                 used_rows.add(int(row))
                 used_cols.add(int(col))

@@ -5,16 +5,23 @@
 # ------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
+
 import numpy as np
+
 from trackers.utils.state_representations import BaseStateEstimator
+
+
 class BaseTracklet(ABC):
     """
     Abstract base class for all tracker-specific tracklets.
     Provides common interface and attributes for tracklet management.
     """
+
     count_id: int = 0
 
-    def __init__(self, bbox: np.ndarray, state_estimator_class: type[BaseStateEstimator] ) -> None:
+    def __init__(
+        self, bbox: np.ndarray, state_estimator_class: type[BaseStateEstimator]
+    ) -> None:
         self.age = 0
         self.kalman_filter: BaseStateEstimator = state_estimator_class(bbox)
 

@@ -9,12 +9,12 @@ import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
+from trackers.core.sort.tracklet import SORTTracklet
 from trackers.core.sort.utils import (
     get_alive_tracklets,
     get_iou_matrix,
     update_detections_with_track_ids,
 )
-from trackers.core.sort.tracklet import SORTTracklet
 
 
 class SORTTracker(BaseTracker):
@@ -127,8 +127,9 @@ class SORTTracker(BaseTracker):
                 or detections.confidence[detection_idx]
                 >= self.track_activation_threshold
             ):
-                new_tracker = SORTTracklet(detection_boxes[detection_idx],
-                                           )
+                new_tracker = SORTTracklet(
+                    detection_boxes[detection_idx],
+                )
                 self.trackers.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
@@ -163,8 +164,8 @@ class SORTTracker(BaseTracker):
         iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
 
         # Associate detections to trackers based on IOU
-        matched_indices, unmatched_trackers, unmatched_detections = self._get_associated_indices(
-            iou_matrix, detection_boxes
+        matched_indices, unmatched_trackers, unmatched_detections = (
+            self._get_associated_indices(iou_matrix, detection_boxes)
         )
 
         # Update matched trackers with assigned detections
