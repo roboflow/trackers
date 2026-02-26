@@ -676,6 +676,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#dancetrack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DanceTrack
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1149,6 +1160,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#dancetrack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DanceTrack
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1171,8 +1193,12 @@
 
 <h1 id="tracker-comparison">Tracker Comparison</h1>
 <p>This page shows head-to-head performance of SORT and ByteTrack on standard MOT benchmarks.</p>
-<h2 id="mot17">MOT17</h2>
+<h2 id="mot17"><a href="https://arxiv.org/abs/1603.00831">MOT17</a></h2>
 <p>Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests re-identification and identity stability.</p>
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/MOT17_MOT17-04-DPM-1280x720.mp4" type="video/mp4">
+</video>
+
 <table>
 <thead>
 <tr>
@@ -1197,14 +1223,18 @@
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
-<td style="text-align: center;">61.9</td>
-<td style="text-align: center;">76.1</td>
-<td style="text-align: center;">76.7</td>
+<td style="text-align: center;"><strong>61.9</strong></td>
+<td style="text-align: center;"><strong>76.1</strong></td>
+<td style="text-align: center;"><strong>76.7</strong></td>
 </tr>
 </tbody>
 </table>
-<h2 id="sportsmot">SportsMOT</h2>
+<h2 id="sportsmot"><a href="https://arxiv.org/abs/2304.05170">SportsMOT</a></h2>
 <p>Sports broadcast tracking with fast motion, camera pans, and similar-looking targets. Tests association under speed and appearance ambiguity.</p>
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SportsMOT_v_-6Os86HzwCs_c001-1280x720.mp4" type="video/mp4">
+</video>
+
 <table>
 <thead>
 <tr>
@@ -1223,9 +1253,9 @@
 </tr>
 <tr>
 <td style="text-align: center;">ByteTrack</td>
-<td style="text-align: center;">73.0</td>
-<td style="text-align: center;">72.5</td>
-<td style="text-align: center;">96.4</td>
+<td style="text-align: center;"><strong>73.0</strong></td>
+<td style="text-align: center;"><strong>72.5</strong></td>
+<td style="text-align: center;"><strong>96.4</strong></td>
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
@@ -1235,8 +1265,12 @@
 </tr>
 </tbody>
 </table>
-<h2 id="soccernet-tracking">SoccerNet-tracking</h2>
+<h2 id="soccernet-tracking"><a href="https://arxiv.org/abs/2204.06918">SoccerNet-tracking</a></h2>
 <p>Long sequences with dense interactions and partial occlusions. Tests long-term ID consistency.</p>
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SoccerNet-tracking_SNMOT-060-1280x720.mp4" type="video/mp4">
+</video>
+
 <table>
 <thead>
 <tr>
@@ -1255,9 +1289,9 @@
 </tr>
 <tr>
 <td style="text-align: center;">ByteTrack</td>
-<td style="text-align: center;">84.0</td>
-<td style="text-align: center;">78.1</td>
-<td style="text-align: center;">97.8</td>
+<td style="text-align: center;"><strong>84.0</strong></td>
+<td style="text-align: center;"><strong>78.1</strong></td>
+<td style="text-align: center;"><strong>97.8</strong></td>
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
@@ -1267,6 +1301,16 @@
 </tr>
 </tbody>
 </table>
+<h2 id="dancetrack"><a href="https://arxiv.org/abs/2111.14690">DanceTrack</a></h2>
+<p>Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.</p>
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/DanceTrack_dancetrack0052-1280x720.mp4" type="video/mp4">
+</video>
+
+<div class="admonition tip">
+<p class="admonition-title">Stay Tuned</p>
+<p>We're actively benchmarking trackers on DanceTrack. Results will be added here shortly.</p>
+</div>
 
 
 
