@@ -658,6 +658,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../trackers/ocsort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OC-SORT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1029,6 +1057,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#oc-sort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OC-SORT
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.core.ocsort.tracker.OCSORTTracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;OCSORTTracker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" OCSORTTracker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.ocsort.tracker.OCSORTTracker.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.ocsort.tracker.OCSORTTracker.reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;reset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.utils.converters.xyxy_to_xcycsr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;xyxy_to_xcycsr
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.utils.converters.xcycsr_to_xyxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;xcycsr_to_xyxy
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1255,6 +1366,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#oc-sort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OC-SORT
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.core.ocsort.tracker.OCSORTTracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;OCSORTTracker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" OCSORTTracker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.ocsort.tracker.OCSORTTracker.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.ocsort.tracker.OCSORTTracker.reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;reset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.utils.converters.xyxy_to_xcycsr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;xyxy_to_xcycsr
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.utils.converters.xcycsr_to_xyxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;xcycsr_to_xyxy
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1296,9 +1490,23 @@
 
 
 
-        <p>Track objects using SORT algorithm with Kalman filter and IoU matching.
-Provides simple and fast online tracking using only bounding box geometry
-without appearance features.</p>
+        <p>In SORT, object tracking begins with high-confidence detections fed into a
+Kalman filter framework assuming uniform motion for state prediction across frames.
+Association occurs via IoU-based costs in the Hungarian algorithm, enforcing a
+threshold to filter weak matches and initialize new identities. Tracks persist only
+with consistent associations, terminating quickly to avoid erroneous propagation.
+This detection-driven approach underscores the importance of upstream detector
+performance in achieving competitive multi-object tracking results. Over time, SORT
+has become a cornerstone for evaluating motion-based improvements in the field.</p>
+<p>SORT's standout strength is its real-time capability, processing hundreds of frames
+per second while maintaining accuracy comparable to more complex offline methods. It
+performs well in controlled environments with reliable detections, minimizing
+computational demands. However, without mechanisms for re-identification, it incurs
+frequent identity switches during object reappearances post-occlusion. The linear
+motion assumption limits effectiveness in non-linear paths, such as those in sports
+or wildlife tracking. Ultimately, SORT's efficiency is offset by its sensitivity to
+environmental complexities, necessitating hybrid extensions for broader
+applicability.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1547,9 +1755,23 @@ Call this method when switching to a new video or scene.</p>
 
 
 
-        <p>Track objects using ByteTrack algorithm with two-stage association.
-Associates both high and low confidence detections to reduce fragmentation
-and improve tracking through occlusions.</p>
+        <p>ByteTrack operates online by processing all detector outputs, categorizing them
+by confidence thresholds to enable a two-stage association process. High-score boxes
+are initially linked to tracklets via Kalman filter predictions and IoU-based
+Hungarian matching, optionally enhanced with appearance features. Low-score boxes
+follow in a secondary matching phase using pure motion similarity to revive occluded
+tracks. Tracks without matches are kept briefly for potential re-association,
+preventing premature termination. This inclusive approach addresses common pitfalls
+in detection filtering, establishing ByteTrack as a flexible enhancer for existing
+tracking frameworks.</p>
+<p>ByteTrack excels in dense environments, where its low-score recovery mechanism
+minimizes missed detections and enhances overall trajectory completeness. It
+consistently improves performance across diverse datasets, demonstrating robustness
+and generalization. The tracker's speed remains competitive, facilitating
+integration into production pipelines. On the downside, it is highly dependent on
+detector quality, with performance drops in noisy or low-resolution inputs.
+Additionally, the motion-only secondary association may lead to erroneous matches
+in scenes with similar moving objects.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1793,6 +2015,491 @@ Call this method when switching to a new video or scene.</p>
 
 
   </div>
+
+    </div>
+
+</div><h2 id="oc-sort">OC-SORT</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="trackers.core.ocsort.tracker.OCSORTTracker" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>trackers.core.ocsort.tracker.OCSORTTracker</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="trackers.core.base.BaseTracker">BaseTracker</span></code></p>
+
+
+
+        <p>OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm,
+using detections to correct Kalman filter errors accumulated during occlusions. It
+introduces Observation-Centric Re-Update to generate virtual trajectories for
+parameter refinement upon track reactivation. Association incorporates
+Observation-Centric Momentum, blending IoU with direction consistency from
+historical observations. Short-term recoveries are aided by heuristics linking
+unmatched tracks to prior detections. This rethinking prioritizes real measurements
+over estimations, making OC-SORT particularly adept at handling real-world tracking
+challenges.</p>
+<p>OC-SORT's primary strength is its robustness to non-linear motions and occlusions,
+outperforming baselines on datasets with erratic movements like DanceTrack. It
+maintains extreme efficiency, processing over 700 frames per second on CPUs for
+scalable deployments. The tracker excels in crowded scenes, reducing identity
+switches through momentum-based associations. However, lacking appearance features,
+it can confuse similar objects in overlapping paths. Its linear motion core still
+imposes limits in extreme velocity variations, requiring careful parameter
+selection.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>lost_track_buffer</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>int</code> specifying number of frames to buffer when a
+track is lost. Increasing this value enhances occlusion handling but
+may increase ID switching for similar objects.</p>
+              </div>
+            </td>
+            <td>
+                  <code>30</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame_rate</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>float</code> specifying video frame rate in frames per second.
+Used to scale the lost track buffer for consistent tracking across
+different frame rates.</p>
+              </div>
+            </td>
+            <td>
+                  <code>30.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_consecutive_frames</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>int</code> specifying number of consecutive
+frames before a track is considered valid. Before reaching this
+threshold, tracks are assigned <code>tracker_id</code> of <code>-1</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_iou_threshold</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>float</code> specifying IoU threshold for associating
+detections to existing tracks. Higher values require more overlap.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>direction_consistency_weight</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>float</code> specifying weight for direction
+consistency in the association cost. Higher values prioritize angle
+alignment between motion and association direction.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.2</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>high_conf_det_threshold</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>float</code> specifying threshold for high confidence
+detections. Lower confidence detections are excluded from association.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.6</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>delta_t</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>int</code> specifying number of past frames to use for velocity
+estimation. Higher values provide more stable direction estimates
+during occlusion.</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.core.ocsort.tracker.OCSORTTracker.update" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Update tracker state with new detections and return tracked objects.
+Performs Kalman filter prediction, two-stage association using direction
+consistency and last-observation recovery, and initializes new tracks
+for unmatched high-confidence detections.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>detections</code>
+            </td>
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>sv.Detections</code> containing bounding boxes with shape
+<code>(N, 4)</code> in <code>(x_min, y_min, x_max, y_max)</code> format and optional
+confidence scores.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>sv.Detections</code> with <code>tracker_id</code> assigned for each detection.
+Unmatched or immature tracks have <code>tracker_id</code> of <code>-1</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.core.ocsort.tracker.OCSORTTracker.reset" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">reset</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Reset tracker state by clearing all tracks and resetting ID counter.
+Call this method when switching to a new video or scene.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="utilities">Utilities</h2>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="trackers.utils.converters.xyxy_to_xcycsr" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">trackers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">converters</span><span class="o">.</span><span class="n">xyxy_to_xcycsr</span><span class="p">(</span><span class="n">xyxy</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Convert bounding boxes from corner to center-scale-ratio format.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xyxy</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bounding boxes <code>[x_min, y_min, x_max, y_max]</code> with shape <code>(4,)</code>
+for a single box or <code>(N, 4)</code> for multiple boxes.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bounding boxes <code>[x_center, y_center, scale, aspect_ratio]</code> with same
+shape as input, where <code>scale</code> is area (<code>width * height</code>) and
+<code>aspect_ratio</code> is <code>width / height</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">xyxy_to_xcycsr</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gp">&gt;&gt;&gt;</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">boxes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="gp">... </span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span>   <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="gp">... </span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span>   <span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="gp">... </span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span>   <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="gp">... </span><span class="p">])</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="gp">&gt;&gt;&gt;</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">xyxy_to_xcycsr</span><span class="p">(</span><span class="n">boxes</span><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="go">array([[  5.        ,   5.        , 100.        ,   0.9999999 ],</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="go">       [ 10.        ,   5.        , 200.        ,   1.9999998 ],</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="go">       [  5.        ,  10.        , 200.        ,   0.49999998]])</span>
+</span></code></pre></div>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="trackers.utils.converters.xcycsr_to_xyxy" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">trackers</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">converters</span><span class="o">.</span><span class="n">xcycsr_to_xyxy</span><span class="p">(</span><span class="n">xcycsr</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Convert bounding boxes from center-scale-ratio to corner format.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xcycsr</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bounding boxes <code>[x_center, y_center, scale, aspect_ratio]</code> with
+shape <code>(4,)</code> for a single box or <code>(N, 4)</code> for multiple boxes,
+where <code>scale</code> is area and <code>aspect_ratio</code> is <code>width / height</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bounding boxes <code>[x_min, y_min, x_max, y_max]</code> with same shape as input.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">xcycsr_to_xyxy</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gp">&gt;&gt;&gt;</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">boxes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="gp">... </span>    <span class="p">[</span>  <span class="mf">5.</span><span class="p">,</span>   <span class="mf">5.</span><span class="p">,</span> <span class="mf">100.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">],</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="gp">... </span>    <span class="p">[</span> <span class="mf">10.</span><span class="p">,</span>   <span class="mf">5.</span><span class="p">,</span> <span class="mf">200.</span><span class="p">,</span> <span class="mf">2.</span><span class="p">],</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="gp">... </span>    <span class="p">[</span>  <span class="mf">5.</span><span class="p">,</span>  <span class="mf">10.</span><span class="p">,</span> <span class="mf">200.</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="gp">... </span><span class="p">])</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="gp">&gt;&gt;&gt;</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">xcycsr_to_xyxy</span><span class="p">(</span><span class="n">boxes</span><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="go">array([[ 0.,  0., 10., 10.],</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="go">       [ 0.,  0., 20., 10.],</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="go">       [ 0.,  0., 10., 20.]])</span>
+</span></code></pre></div>
+
 
     </div>
 

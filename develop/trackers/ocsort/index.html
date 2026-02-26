@@ -12,13 +12,13 @@
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://roboflow.github.io/trackers/develop/develop/trackers/bytetrack/">
+        <link rel="canonical" href="https://roboflow.github.io/trackers/develop/develop/trackers/ocsort/">
       
       
-        <link rel="prev" href="../sort/">
+        <link rel="prev" href="../bytetrack/">
       
       
-        <link rel="next" href="../ocsort/">
+        <link rel="next" href="../../learn/install/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>ByteTrack - Trackers</title>
+        <title>OC-SORT - Trackers</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#bytetrack" class="md-skip">
+        <a href="#oc-sort" class="md-skip">
           Skip to content
         </a>
       
@@ -144,7 +144,7 @@
 
             </a>
             
-              ByteTrack
+              OC-SORT
             
           </span>
         </div>
@@ -637,6 +637,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../bytetrack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ByteTrack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -656,7 +684,7 @@
   <span class="md-ellipsis">
     
   
-    ByteTrack
+    OC-SORT
   
 
     
@@ -674,7 +702,7 @@
   <span class="md-ellipsis">
     
   
-    ByteTrack
+    OC-SORT
   
 
     
@@ -736,34 +764,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ocsort/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    OC-SORT
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1169,9 +1169,12 @@
   
 
 
-<h1 id="bytetrack">ByteTrack</h1>
+<h1 id="oc-sort">OC-SORT</h1>
 <h2 id="overview">Overview</h2>
-<p>ByteTrack builds on the same Kalman filter plus Hungarian algorithm framework as SORT but changes the data association strategy to use almost every detection box regardless of confidence score. It runs a two-stage matching: first match high-confidence detections to tracks, then match low-confidence detections to any unmatched tracks using IoU. This reduces missed tracks and fragmentation for occluded or weak detections while retaining simplicity and high frame rates. ByteTrack has set state-of-the-art results on standard MOT benchmarks with real-time performance, because it recovers valid low-score detections instead of discarding them.</p>
+<p>OC-SORT remains Simple, Online, and Real-Time like (<a href="../sort/tracker.md">SORT</a>) but improves robustness during occlusion and non-linear motion.
+It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These
+mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
+due to object stopping or short-term occlusion.</p>
 <h2 id="comparison">Comparison</h2>
 <p>For comparisons with other trackers, plus dataset context and evaluation details, see the <a href="../comparison/">tracker comparison</a> page.</p>
 <table>
@@ -1186,35 +1189,35 @@
 <tbody>
 <tr>
 <td style="text-align: center;">MOT17</td>
-<td style="text-align: center;">60.1</td>
-<td style="text-align: center;">73.2</td>
-<td style="text-align: center;">74.1</td>
+<td style="text-align: center;">61.9</td>
+<td style="text-align: center;">76.1</td>
+<td style="text-align: center;">76.7</td>
 </tr>
 <tr>
 <td style="text-align: center;">SportsMOT</td>
-<td style="text-align: center;">73.0</td>
-<td style="text-align: center;">72.5</td>
-<td style="text-align: center;">96.4</td>
+<td style="text-align: center;">71.5</td>
+<td style="text-align: center;">71.2</td>
+<td style="text-align: center;">95.2</td>
 </tr>
 <tr>
 <td style="text-align: center;">SoccerNet</td>
-<td style="text-align: center;">84.0</td>
-<td style="text-align: center;">78.1</td>
-<td style="text-align: center;">97.8</td>
+<td style="text-align: center;">78.6</td>
+<td style="text-align: center;">72.7</td>
+<td style="text-align: center;">94.5</td>
 </tr>
 </tbody>
 </table>
 <h2 id="run-on-video-webcam-or-rtsp-stream">Run on video, webcam, or RTSP stream</h2>
-<p>These examples use <code>opencv-python</code> for decoding and display. Replace <code>&lt;SOURCE_VIDEO_PATH&gt;</code>, <code>&lt;WEBCAM_INDEX&gt;</code>, and <code>&lt;RTSP_STREAM_URL&gt;</code> with your inputs. <code>&lt;WEBCAM_INDEX&gt;</code> is usually 0 for the default camera.</p>
+<p>These examples use OpenCV for decoding and display. Replace <code>&lt;SOURCE_VIDEO_PATH&gt;</code>, <code>&lt;WEBCAM_INDEX&gt;</code>, and <code>&lt;RTSP_STREAM_URL&gt;</code> with your inputs. <code>&lt;WEBCAM_INDEX&gt;</code> is usually 0 for the default camera.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Video</label><label for="__tabbed_1_2">Webcam</label><label for="__tabbed_1_3">RTSP</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rfdetr</span><span class="w"> </span><span class="kn">import</span> <span class="n">RFDETRMedium</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">OCSORTTracker</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">()</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">OCSORTTracker</span><span class="p">()</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RFDETRMedium</span><span class="p">()</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">box_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">BoxAnnotator</span><span class="p">()</span>
@@ -1235,26 +1238,24 @@
 </span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">box_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">detections</span><span class="p">)</span>
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">label_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        <span class="n">annotated_frame</span><span class="p">,</span>
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>        <span class="n">detections</span><span class="p">,</span>
-</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>        <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span><span class="p">,</span>
-</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="p">)</span>
-</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
-</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + ByteTrack&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
-</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
-</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        <span class="k">break</span>
-</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>
-</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
-</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        <span class="n">annotated_frame</span><span class="p">,</span> <span class="n">detections</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    <span class="p">)</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + OC-SORT&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>        <span class="k">break</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rfdetr</span><span class="w"> </span><span class="kn">import</span> <span class="n">RFDETRMedium</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">OCSORTTracker</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">()</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">OCSORTTracker</span><span class="p">()</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RFDETRMedium</span><span class="p">()</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">box_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">BoxAnnotator</span><span class="p">()</span>
@@ -1275,26 +1276,24 @@
 </span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>
 </span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">box_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">detections</span><span class="p">)</span>
 </span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">label_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
-</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>        <span class="n">annotated_frame</span><span class="p">,</span>
-</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>        <span class="n">detections</span><span class="p">,</span>
-</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>        <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span><span class="p">,</span>
-</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>    <span class="p">)</span>
-</span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>
-</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + ByteTrack&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
-</span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
-</span><span id="__span-1-34"><a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>        <span class="k">break</span>
-</span><span id="__span-1-35"><a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>
-</span><span id="__span-1-36"><a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
-</span><span id="__span-1-37"><a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>        <span class="n">annotated_frame</span><span class="p">,</span> <span class="n">detections</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span>
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="p">)</span>
+</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>
+</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + OC-SORT&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
+</span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
+</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>        <span class="k">break</span>
+</span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>
+</span><span id="__span-1-34"><a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</span><span id="__span-1-35"><a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rfdetr</span><span class="w"> </span><span class="kn">import</span> <span class="n">RFDETRMedium</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">OCSORTTracker</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">()</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">OCSORTTracker</span><span class="p">()</span>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RFDETRMedium</span><span class="p">()</span>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">box_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">BoxAnnotator</span><span class="p">()</span>
@@ -1315,17 +1314,15 @@
 </span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
 </span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">box_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">detections</span><span class="p">)</span>
 </span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">label_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
-</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>        <span class="n">annotated_frame</span><span class="p">,</span>
-</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>        <span class="n">detections</span><span class="p">,</span>
-</span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>        <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span><span class="p">,</span>
-</span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    <span class="p">)</span>
-</span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>
-</span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + ByteTrack&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
-</span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
-</span><span id="__span-2-34"><a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>        <span class="k">break</span>
-</span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>
-</span><span id="__span-2-36"><a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
-</span><span id="__span-2-37"><a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
+</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>        <span class="n">annotated_frame</span><span class="p">,</span> <span class="n">detections</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span>
+</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    <span class="p">)</span>
+</span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+</span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + OC-SORT&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
+</span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
+</span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>        <span class="k">break</span>
+</span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
+</span><span id="__span-2-34"><a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
 </span></code></pre></div>
 </div>
 </div>
