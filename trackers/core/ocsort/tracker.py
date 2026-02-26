@@ -13,55 +13,52 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.ocsort.utils import (
-    add_track_id_to_detections,
-    build_direction_consistency_matrix_batch,
-    get_iou_matrix,
+    _build_direction_consistency_matrix_batch,
+    _get_iou_matrix,
 )
 from trackers.utils.state_representations import XCYCSRStateEstimator
 
 
 class OCSORTTracker(BaseTracker):
-    """Implements OC-SORT (Observation Centric Simple Online and Realtime Tracking).
+    """OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm,
+    using detections to correct Kalman filter errors accumulated during occlusions. It
+    introduces Observation-Centric Re-Update to generate virtual trajectories for
+    parameter refinement upon track reactivation. Association incorporates
+    Observation-Centric Momentum, blending IoU with direction consistency from
+    historical observations. Short-term recoveries are aided by heuristics linking
+    unmatched tracks to prior detections. This rethinking prioritizes real measurements
+    over estimations, making OC-SORT particularly adept at handling real-world tracking
+    challenges.
 
-    OC-SORT remains Simple, Online, and Real-Time but improves robustness during
-    occlusion and non-linear motion. It recognizes limitations from SORT and the
-    linear motion assumption of the Kalman filter, and adds three mechanisms to
-    enhance tracking. The first mechanism is Observation-Centre Re-Update (ORU),
-    which runs a predict-update loop with a 'virtual trajectory' in order to have
-    less noisy Kalman Filter parameters once a track is re-activated after being
-    lost. The second mechanism is Observation-Centric Momentum (OCM), that
-    incorporates the direction consistency of tracks in the cost matrix for the
-    association. Finally, OC-SORT adds Observation-centric Recovery (OCR), a
-    second-stage association step between the last observation of unmatched tracks
-    to the unmatched observations after the usual association. It attempts to
-    recover tracks that were lost due to object stopping or short-term occlusion.
+    OC-SORT's primary strength is its robustness to non-linear motions and occlusions,
+    outperforming baselines on datasets with erratic movements like DanceTrack. It
+    maintains extreme efficiency, processing over 700 frames per second on CPUs for
+    scalable deployments. The tracker excels in crowded scenes, reducing identity
+    switches through momentum-based associations. However, lacking appearance features,
+    it can confuse similar objects in overlapping paths. Its linear motion core still
+    imposes limits in extreme velocity variations, requiring careful parameter
+    selection.
 
     Args:
-        lost_track_buffer: Number of frames to buffer when a track is lost.
-            Increasing lost_track_buffer enhances occlusion handling, significantly
-            improving tracking through occlusions, but may increase the possibility
-            of ID switching for objects with similar appearance.
-        frame_rate: Frame rate of the video (frames per second).
-            Used to calculate the maximum time a track can be lost.
-        minimum_consecutive_frames: Number of consecutive frames that an object
-            must be tracked before it is considered a 'valid' track. Increasing
-            `minimum_consecutive_frames` prevents the creation of accidental tracks
-            from false detection or double detection, but risks missing shorter
-            tracks. Before the tracklet is considered valid, it will be assigned
-            `-1` as its `tracker_id`.
-        minimum_iou_threshold: IOU threshold for associating detections to
-            existing tracks.
-        direction_consistency_weight: Weight for inertia term in association cost.
-            Higher values give more importance to the angle difference between the
-            motion direction and the association direction.
-        high_conf_det_threshold: Confidence threshold to consider a detection as high
-            confidence. If a detection has confidence lower than this threshold, it
-            will not be considered for association.
-        delta_t: Number of timesteps back to look for velocity/direction estimation.
-            Higher values use observations further in the past to compute motion
-            direction, providing more stable velocity estimates during occlusion.
-            Default is 3 (matching the original OC-SORT paper).
-
+        lost_track_buffer: `int` specifying number of frames to buffer when a
+            track is lost. Increasing this value enhances occlusion handling but
+            may increase ID switching for similar objects.
+        frame_rate: `float` specifying video frame rate in frames per second.
+            Used to scale the lost track buffer for consistent tracking across
+            different frame rates.
+        minimum_consecutive_frames: `int` specifying number of consecutive
+            frames before a track is considered valid. Before reaching this
+            threshold, tracks are assigned `tracker_id` of `-1`.
+        minimum_iou_threshold: `float` specifying IoU threshold for associating
+            detections to existing tracks. Higher values require more overlap.
+        direction_consistency_weight: `float` specifying weight for direction
+            consistency in the association cost. Higher values prioritize angle
+            alignment between motion and association direction.
+        high_conf_det_threshold: `float` specifying threshold for high confidence
+            detections. Lower confidence detections are excluded from association.
+        delta_t: `int` specifying number of past frames to use for velocity
+            estimation. Higher values provide more stable direction estimates
+            during occlusion.
     """
 
     tracker_id = "ocsort"
@@ -153,19 +150,19 @@ class OCSORTTracker(BaseTracker):
             self.tracks.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
-        """Updates the tracker state with new detections.
-
-        Performs Kalman filter prediction, associates detections with existing
-        tracklets based on IOU, updates matched tracklets, and initializes new
-        tracklets for unmatched high-confidence detections.
+        """Update tracker state with new detections and return tracked objects.
+        Performs Kalman filter prediction, two-stage association using direction
+        consistency and last-observation recovery, and initializes new tracks
+        for unmatched high-confidence detections.
 
         Args:
-            detections: The latest set of object detections from a frame.
+            detections: `sv.Detections` containing bounding boxes with shape
+                `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
+                confidence scores.
 
         Returns:
-            updated_detections: A copy of the input detections, augmented with assigned
-                `tracklet_id` for each successfully tracked object. Detections not
-                associated with a track will not have a `tracklet_id`.
+            `sv.Detections` with `tracker_id` assigned for each detection.
+                Unmatched or immature tracks have `tracker_id` of `-1`.
         """
 
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -181,7 +178,7 @@ class OCSORTTracker(BaseTracker):
         ] = []  # List for returning the updated detections
         # Convert detections to a (N x 4) array (x1, y1, x2, y2)
         detection_boxes = (
-            copied_detections.xyxy if len(copied_detections) > 0 else np.array([]).reshape(0, 4)
+            detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
         )
 
         # Predict new locations for existing tracks KF
@@ -189,12 +186,14 @@ class OCSORTTracker(BaseTracker):
             tracker.predict()
 
         # Build IOU cost matrix between detections and predicted bounding boxes
-        iou_matrix = get_iou_matrix(self.tracks, detection_boxes)
+        predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
 
-        direction_consistency_matrix = build_direction_consistency_matrix_batch(
-            self.tracks, detection_boxes
+        iou_matrix = _get_iou_matrix(predicted_boxes, detection_boxes)
+
+        # Compute direction consistency matrix
+        direction_consistency_matrix = self._compute_direction_consistency_matrix(
+            detection_boxes, detections
         )
-        direction_consistency_matrix *= detections.confidence[np.newaxis, :]
 
         # 1st Association of detections to tracks (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = (
@@ -204,8 +203,7 @@ class OCSORTTracker(BaseTracker):
         # Update matched trackers with assigned detections
         for row, col in matched_indices:
             self.tracks[row].update(detection_boxes[col])
-            add_track_id_to_detections(
-                self.tracks[row],
+            self.tracks[row].add_track_id_to_detections(
                 copied_detections[col : col + 1],
                 updated_detections,
                 self.minimum_consecutive_frames,
@@ -234,8 +232,8 @@ class OCSORTTracker(BaseTracker):
                 track_idx = unmatched_tracks[ocr_row]
                 det_idx = unmatched_detections[ocr_col]
                 self.tracks[track_idx].update(detection_boxes[det_idx])
-                add_track_id_to_detections(
-                    self.tracks[track_idx],
+
+                self.tracks[track_idx].add_track_id_to_detections(
                     copied_detections[det_idx : det_idx + 1],
                     updated_detections,
                     self.minimum_consecutive_frames,
@@ -246,8 +244,8 @@ class OCSORTTracker(BaseTracker):
             for m in _ocr_unmatched_tracks:
                 self.tracks[unmatched_tracks[m]].update(None)
 
-            self.tracks = self._kill_tracklets()
-            remaining_detections = detections[unmatched_detections][
+            self.tracks = self._prune_expired_tracklets()
+            remaining_detections = copied_detections[unmatched_detections][
                 ocr_unmatched_detections
             ]
 
@@ -259,8 +257,8 @@ class OCSORTTracker(BaseTracker):
         else:
             for track_idx in unmatched_tracks:
                 self.tracks[track_idx].update(None)
-            self.tracks = self._kill_tracklets()
-            remaining_detections = detections[unmatched_detections]
+            self.tracks = self._prune_expired_tracklets()
+            remaining_detections = copied_detections[unmatched_detections]
 
             self._spawn_new_tracklets(remaining_detections)
             remaining_detections.tracker_id = np.array(
@@ -274,25 +272,53 @@ class OCSORTTracker(BaseTracker):
         return final_updated_detections
 
     def reset(self) -> None:
-        """Resets the tracker's internal state.
-
-        Clears all active tracks and resets the track ID counter.
+        """Reset tracker state by clearing all tracks and resetting ID counter.
+        Call this method when switching to a new video or scene.
         """
         self.tracks = []
         self.frame_count = 0
         OCSORTTracklet.count_id = 0
 
-    def _kill_tracklets(self):
-        """Kills tracklets that have been lost for too long.
+    def _prune_expired_tracklets(self) -> list[OCSORTTracklet]:
+        """Remove tracklets that have been lost for too long.
 
-        This method checks each tracklet's status and either keeps it
-        active if it meets the criteria for being a valid track,
-        or kills it (removing it from active tracking) if it has been
-        lost for too long.
+        Returns:
+            List of tracklets that are still active.
         """
-        alive_tracklets = []
-        for tracklet in self.tracks:
-            if tracklet.time_since_update <= self.maximum_frames_without_update:
-                alive_tracklets.append(tracklet)
+        return [
+            tracklet
+            for tracklet in self.tracks
+            if tracklet.time_since_update <= self.maximum_frames_without_update
+        ]
 
-        return alive_tracklets
+    def _compute_direction_consistency_matrix(
+        self, detection_boxes: np.ndarray, detections: sv.Detections
+    ) -> np.ndarray:
+        """Extract arrays and compute the direction consistency matrix for association,
+        including confidence scaling."""
+        tracklet_velocities = np.array(
+            [
+                t.velocity if t.velocity is not None else np.array([0.0, 0.0])
+                for t in self.tracks
+            ]
+        )
+        reference_boxes = np.array(
+            [
+                t.get_k_previous_obs()
+                if t.get_k_previous_obs() is not None
+                else t.last_observation
+                for t in self.tracks
+            ]
+        )
+        velocity_mask = np.array(
+            [t.velocity is not None for t in self.tracks],
+            dtype=np.float32,
+        )[:, np.newaxis]
+        matrix = _build_direction_consistency_matrix_batch(
+            tracklet_velocities=tracklet_velocities,
+            reference_boxes=reference_boxes,
+            detection_boxes=detection_boxes,
+            velocity_mask=velocity_mask,
+        )
+        matrix *= detections.confidence[np.newaxis, :]
+        return matrix
