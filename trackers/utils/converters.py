@@ -44,6 +44,7 @@ def xyxy_to_xcycsr(xyxy: np.ndarray) -> np.ndarray:
             w / (h + 1e-6),
         ])
 
+    # Batch path — pre-allocated array avoids np.stack overhead
     w = xyxy[:, 2] - xyxy[:, 0]
     h = xyxy[:, 3] - xyxy[:, 1]
     result = np.empty((xyxy.shape[0], 4), dtype=np.float64)
@@ -83,8 +84,7 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
     if xcycsr.ndim == 1:
         w = np.sqrt(xcycsr[2] * xcycsr[3])
         h = xcycsr[2] / w
-        hw = w * 0.5
-        hh = h * 0.5
+        hw, hh = w * 0.5, h * 0.5
         return np.array([
             xcycsr[0] - hw,
             xcycsr[1] - hh,
@@ -92,6 +92,7 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
             xcycsr[1] + hh,
         ])
 
+    # Batch path — pre-allocated array avoids np.stack overhead
     w = np.sqrt(xcycsr[:, 2] * xcycsr[:, 3])
     h = xcycsr[:, 2] / w
     result = np.empty((xcycsr.shape[0], 4), dtype=xcycsr.dtype)

@@ -4,9 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from copy import deepcopy
-from typing import cast
-
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
@@ -79,32 +76,6 @@ class ByteTrackTracker(BaseTracker):
         self.high_conf_det_threshold = high_conf_det_threshold
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
 
-    def _update_detections(
-        self,
-        tracks: list[ByteTrackKalmanBoxTracker],
-        detections: sv.Detections,
-        updated_detections: list[sv.Detections],
-        matched_indices: list[tuple[int, int]],
-    ) -> list[sv.Detections]:
-        # Update matched tracks with assigned detections.
-        det_bboxes = detections.xyxy
-        for row, col in matched_indices:
-            t = tracks[row]
-            t.update(det_bboxes[col])
-            # If tracker is mature but still has ID -1, assign a new ID
-            if (
-                t.number_of_successful_updates >= self.minimum_consecutive_frames
-                and t.tracker_id == -1
-            ):  # Check maturity before assigning ID
-                t.tracker_id = ByteTrackKalmanBoxTracker.get_next_tracker_id()
-
-            new_det = deepcopy(detections[col : col + 1])
-            # Add cast to clarify type for mypy
-            new_det = cast(sv.Detections, new_det)  # ADDED cast
-            new_det.tracker_id = np.array([t.tracker_id])
-            updated_detections.append(new_det)
-        return updated_detections
-
     def update(
         self,
         detections: sv.Detections,
@@ -123,109 +94,94 @@ class ByteTrackTracker(BaseTracker):
                 Unmatched detections have `tracker_id` of `-1`. Detection order
                 may differ from input.
         """
-
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = deepcopy(detections)
+            result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
             return result
-        updated_detections: list[
-            sv.Detections
-        ] = []  # List for returning the updated detections with its new assigned track id # noqa: E501
 
-        # Predict new locations for existing tracks
+        out_det_indices: list[int] = []
+        out_tracker_ids: list[int] = []
+
         for tracker in self.tracks:
             tracker.predict()
 
-        # Split into high confidence boxes and lower based on self.high_conf_det_threshold # noqa: E501
-        high_prob_detections, low_prob_detections = (
-            self._get_high_and_low_probability_detections(detections)
+        detection_boxes = detections.xyxy
+        confidences = (
+            detections.confidence
+            if detections.confidence is not None
+            else np.zeros(len(detections))
         )
 
-        # Step 1: first association, with high confidence boxes
-        matched_indices, unmatched_tracks, unmatched_high_prob_detections = (
-            self._similarity_step(
-                high_prob_detections,
-                self.tracks,
-            )
+        # Split indices by confidence threshold (no sv.Detections slicing)
+        high_mask = confidences >= self.high_conf_det_threshold
+        high_indices = np.where(high_mask)[0]
+        low_indices = np.where(~high_mask)[0]
+        high_boxes = detection_boxes[high_indices]
+        low_boxes = detection_boxes[low_indices]
+
+        # Step 1: associate high-confidence detections to all tracks
+        iou_matrix = get_iou_matrix(self.tracks, high_boxes)
+        matched, unmatched_tracks, unmatched_high = self._get_associated_indices(
+            iou_matrix, self.minimum_iou_threshold
         )
 
-        # Update matched tracks with high-confidence detections
-        self._update_detections(
-            self.tracks,
-            high_prob_detections,
-            updated_detections,
-            matched_indices,
-        )
+        for row, col in matched:
+            track = self.tracks[row]
+            track.update(high_boxes[col])
+            if (
+                track.number_of_successful_updates >= self.minimum_consecutive_frames
+                and track.tracker_id == -1
+            ):
+                track.tracker_id = ByteTrackKalmanBoxTracker.get_next_tracker_id()
+            out_det_indices.append(int(high_indices[col]))
+            out_tracker_ids.append(track.tracker_id)
 
         remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
 
-        # Step 2: associate Low Probability detections with remaining tracks
-        matched_indices, unmatched_tracks, unmatched_detections = self._similarity_step(
-            low_prob_detections, remaining_tracks
+        # Step 2: associate low-confidence detections to remaining tracks
+        iou_matrix = get_iou_matrix(remaining_tracks, low_boxes)
+        matched, _, unmatched_low = self._get_associated_indices(
+            iou_matrix, self.minimum_iou_threshold
         )
 
-        # Update matched tracks with low-confidence detections
-        self._update_detections(
-            remaining_tracks,
-            low_prob_detections,
-            updated_detections,
-            matched_indices,
-        )
+        for row, col in matched:
+            track = remaining_tracks[row]
+            track.update(low_boxes[col])
+            if (
+                track.number_of_successful_updates >= self.minimum_consecutive_frames
+                and track.tracker_id == -1
+            ):
+                track.tracker_id = ByteTrackKalmanBoxTracker.get_next_tracker_id()
+            out_det_indices.append(int(low_indices[col]))
+            out_tracker_ids.append(track.tracker_id)
 
-        # Add unmatched low prob predictions to updated predictions
-        for det_index in unmatched_detections:
-            new_det = deepcopy(low_prob_detections[det_index : det_index + 1])
+        # Unmatched low-confidence detections
+        for det_local_idx in unmatched_low:
+            out_det_indices.append(int(low_indices[det_local_idx]))
+            out_tracker_ids.append(-1)
 
-            new_det.tracker_id = np.array([-1])
-            updated_detections.append(new_det)
-
+        # Spawn new tracks from unmatched high-confidence detections
         self._spawn_new_trackers(
-            high_prob_detections,
-            high_prob_detections.xyxy,
-            unmatched_high_prob_detections,
-            updated_detections,
+            detection_boxes, confidences, unmatched_high, high_indices,
+            out_det_indices, out_tracker_ids,
         )
 
-        # Kill lost tracks
         self.tracks = get_alive_trackers(
             trackers=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
         )
-        final_updated_detections: sv.Detections = sv.Detections.merge(
-            updated_detections
-        )
-        if len(final_updated_detections) == 0:
-            final_updated_detections.tracker_id = np.array([], dtype=int)
-        return final_updated_detections
 
-    def _get_high_and_low_probability_detections(
-        self, detections: sv.Detections
-    ) -> tuple[sv.Detections, sv.Detections]:
-        """
-        Splits the input detections into high-confidence and low-confidence sets
-        based on the `self.high_conf_det_threshold`.
+        # Build final sv.Detections from original by indexing
+        if not out_det_indices:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
 
-        Args:
-            detections: The input detections with confidence scores.
-
-        Returns:
-            A tuple containing two `sv.Detections objects`: the first for
-                high-confidence detections `(confidence >= threshold)` and the second
-                for low-confidence detections `(confidence < threshold)`.
-        """
-        # Check if confidence scores exist before comparing
-        if detections.confidence is not None:
-            # Perform element-wise comparison if confidence is a NumPy array
-            condition = detections.confidence >= self.high_conf_det_threshold
-        else:
-            # If no confidence scores, no detections meet the threshold
-            # Create a boolean array of False with the same length as detections
-            condition = np.zeros(len(detections), dtype=bool)
-
-        high_confidence = detections[condition]
-        low_confidence = detections[np.logical_not(condition)]
-        return high_confidence, low_confidence
+        idx = np.array(out_det_indices)
+        result = detections[idx]
+        result.tracker_id = np.array(out_tracker_ids, dtype=int)
+        return result
 
     def _get_associated_indices(
         self,
@@ -265,76 +221,22 @@ class ByteTrackTracker(BaseTracker):
 
     def _spawn_new_trackers(
         self,
-        detections: sv.Detections,
         detection_boxes: np.ndarray,
-        unmatched_detections: set[int],
-        updated_detections: list[sv.Detections],
-    ):
-        """
-        Create new trackers for unmatched detections and
-            append detections to updated_detections detections.
-
-        Args:
-            detections: Current detections.
-            detection_boxes: Bounding boxes for detections.
-            unmatched_detections: Indices of unmatched detections.
-            updated_detections: List with all the detections
-
-        """
-        for detection_idx in unmatched_detections:
-            # Check for detections.confidence existence and index bounds
-            if detections.confidence is not None and detection_idx < len(
-                detections.confidence
-            ):
-                # Assign to a temporary variable with explicit type hint
-                confidence_score: float = float(detections.confidence[detection_idx])
-
-                # Use the temporary variable in the comparison
-                if confidence_score >= self.track_activation_threshold:
-                    # Original logic for high confidence detection
-
-                    new_tracker = ByteTrackKalmanBoxTracker(
-                        bbox=detection_boxes[detection_idx]
-                    )
-                    self.tracks.append(new_tracker)
-
-                    new_det = deepcopy(detections[detection_idx : detection_idx + 1])
-                    new_det = cast(sv.Detections, new_det)  # Cast added previously
-                    new_det.tracker_id = np.array([-1])
-                    updated_detections.append(new_det)
-            else:
-                pass  # Do nothing, the detection remains unmatched
-
-    def _similarity_step(
-        self,
-        detections: sv.Detections,
-        tracks: list[ByteTrackKalmanBoxTracker],
-    ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-        """Measures similarity based on IoU between tracks and detections and returns the matches
-            and unmatched tracks/detections. Is used for step 1 and 2 of the BYTE algorithm.
-
-        Args:
-            detections: The set of object detections.
-            tracks: The list of tracks that will be matched to the detections.
-
-        Returns:
-            A tuple containing:
-                - matched_indices: A list of (tracker_idx, detection_idx) pairs.
-                - unmatched_tracks_indices: A set of indices for tracks that
-                  were not matched.
-                - unmatched_detections_indices: A set of indices for detections
-                  that were not matched.
-        """  # noqa: E501
-        # Build IoU cost matrix between detections and predicted bounding boxes
-        similarity_matrix = get_iou_matrix(tracks, detections.xyxy)
-        thresh = self.minimum_iou_threshold
-
-        # Associate detections to tracks based on the higher value of the
-        # similarity matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
-        matched_indices, unmatched_tracks, unmatched_detections = (
-            self._get_associated_indices(similarity_matrix, thresh)
-        )
-        return matched_indices, unmatched_tracks, unmatched_detections
+        confidences: np.ndarray,
+        unmatched_high_local: set[int],
+        high_indices: np.ndarray,
+        out_det_indices: list[int],
+        out_tracker_ids: list[int],
+    ) -> None:
+        for det_local_idx in unmatched_high_local:
+            global_idx = int(high_indices[det_local_idx])
+            conf = float(confidences[global_idx])
+            if conf >= self.track_activation_threshold:
+                self.tracks.append(
+                    ByteTrackKalmanBoxTracker(bbox=detection_boxes[global_idx])
+                )
+                out_det_indices.append(global_idx)
+                out_tracker_ids.append(-1)
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.

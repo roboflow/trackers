@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from copy import deepcopy
-
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
@@ -130,24 +128,20 @@ class OCSORTTracker(BaseTracker):
             list(unmatched_detections),
         )
 
-    def _spawn_new_tracklets(
-        self,
-        detections: sv.Detections,
-    ) -> None:
-        """
-        Create new tracklets only for passed detections. It is used for activating
-        new tracklets from unmatched detections after association.
+    def _spawn_new_tracklets(self, boxes: np.ndarray) -> None:
+        """Create new tracklets from bounding boxes.
 
         Args:
-            detections: The detections that will start new tracklets.
+            boxes: Bounding boxes `(N, 4)` in xyxy format.
         """
-        for xyxy in detections.xyxy:
-            new_tracker = OCSORTTracklet(
-                xyxy,
-                delta_t=self.delta_t,
-                state_estimator_class=self.state_estimator_class,
+        for xyxy in boxes:
+            self.tracks.append(
+                OCSORTTracklet(
+                    xyxy,
+                    delta_t=self.delta_t,
+                    state_estimator_class=self.state_estimator_class,
+                )
             )
-            self.tracks.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
@@ -164,111 +158,106 @@ class OCSORTTracker(BaseTracker):
             `sv.Detections` with `tracker_id` assigned for each detection.
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
-
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = deepcopy(detections)
+            result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
             return result
 
         detections = detections[detections.confidence >= self.high_conf_det_threshold]
 
-        updated_detections: list[
-            sv.Detections
-        ] = []  # List for returning the updated detections
-        # Convert detections to a (N x 4) array (x1, y1, x2, y2)
         detection_boxes = (
-            detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
+            detections.xyxy if len(detections) > 0 else np.empty((0, 4))
+        )
+        confidences = (
+            detections.confidence
+            if detections.confidence is not None
+            else np.ones(len(detections))
         )
 
-        # Predict new locations for existing tracks KF
+        # Collect (detection_index, tracker_id) pairs; assembled into
+        # the output sv.Detections once at the end.
+        out_det_indices: list[int] = []
+        out_tracker_ids: list[int] = []
+
         for tracker in self.tracks:
             tracker.predict()
 
-        # Build IOU cost matrix between detections and predicted bounding boxes
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
-
         iou_matrix = _get_iou_matrix(predicted_boxes, detection_boxes)
 
-        # Compute direction consistency matrix
         direction_consistency_matrix = self._compute_direction_consistency_matrix(
-            detection_boxes, detections
+            detection_boxes, confidences
         )
 
-        # 1st Association of detections to tracks (OCM)
+        # 1st association (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = (
             self._get_associated_indices(iou_matrix, direction_consistency_matrix)
         )
 
-        # Update matched trackers with assigned detections
         for row, col in matched_indices:
             self.tracks[row].update(detection_boxes[col])
-            self.tracks[row].add_track_id_to_detections(
-                detections[col : col + 1],
-                updated_detections,
-                self.minimum_consecutive_frames,
-                self.frame_count,
+            tid = self.tracks[row].resolve_tracker_id(
+                self.minimum_consecutive_frames, self.frame_count
             )
+            out_det_indices.append(col)
+            out_tracker_ids.append(tid)
 
-        # Run 2nd Chance Association (OCR)
-        # between the last observation of unmatched tracks to the unmatched observations #noqa: E501
+        # 2nd chance association (OCR)
         if len(unmatched_detections) > 0 and len(unmatched_tracks) > 0:
             last_observation_of_tracks = np.array(
-                [self.tracks[t_id].last_observation for t_id in unmatched_tracks]
+                [self.tracks[t].last_observation for t in unmatched_tracks]
             )
-
             ocr_iou_matrix = sv.box_iou_batch(
-                last_observation_of_tracks, detection_boxes[unmatched_detections]
+                last_observation_of_tracks,
+                detection_boxes[unmatched_detections],
             )
-
-            ocr_matched_indices, _ocr_unmatched_tracks, ocr_unmatched_detections = (
+            ocr_matched, ocr_unmatched_tracks, ocr_unmatched_dets = (
                 self._get_associated_indices(
-                    ocr_iou_matrix,
-                    np.zeros_like(ocr_iou_matrix),
+                    ocr_iou_matrix, np.zeros_like(ocr_iou_matrix)
                 )
             )
 
-            for ocr_row, ocr_col in ocr_matched_indices:
+            for ocr_row, ocr_col in ocr_matched:
                 track_idx = unmatched_tracks[ocr_row]
                 det_idx = unmatched_detections[ocr_col]
                 self.tracks[track_idx].update(detection_boxes[det_idx])
-
-                self.tracks[track_idx].add_track_id_to_detections(
-                    detections[det_idx : det_idx + 1],
-                    updated_detections,
-                    self.minimum_consecutive_frames,
-                    self.frame_count,
+                tid = self.tracks[track_idx].resolve_tracker_id(
+                    self.minimum_consecutive_frames, self.frame_count
                 )
+                out_det_indices.append(det_idx)
+                out_tracker_ids.append(tid)
 
-            # Update OCR-unmatched tracks with None before filtering (marks as lost for re-update) #noqa: E501
-            for m in _ocr_unmatched_tracks:
+            for m in ocr_unmatched_tracks:
                 self.tracks[unmatched_tracks[m]].update(None)
 
             self.tracks = self._prune_expired_tracklets()
-            remaining_detections = detections[unmatched_detections][
-                ocr_unmatched_detections
-            ]
 
-            self._spawn_new_tracklets(remaining_detections)
-            remaining_detections.tracker_id = np.array(
-                [-1] * len(remaining_detections), dtype=int
-            )
-            updated_detections.append(remaining_detections)
+            remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
+            self._spawn_new_tracklets(detection_boxes[remaining_indices])
+            for det_idx in remaining_indices:
+                out_det_indices.append(det_idx)
+                out_tracker_ids.append(-1)
         else:
             for track_idx in unmatched_tracks:
                 self.tracks[track_idx].update(None)
             self.tracks = self._prune_expired_tracklets()
-            remaining_detections = detections[unmatched_detections]
 
-            self._spawn_new_tracklets(remaining_detections)
-            remaining_detections.tracker_id = np.array(
-                [-1] * len(remaining_detections), dtype=int
-            )
-            updated_detections.append(remaining_detections)
-        final_updated_detections = sv.Detections.merge(updated_detections)
-        if len(final_updated_detections) == 0:
-            final_updated_detections.tracker_id = np.array([], dtype=int)
+            self._spawn_new_tracklets(detection_boxes[unmatched_detections])
+            for det_idx in unmatched_detections:
+                out_det_indices.append(det_idx)
+                out_tracker_ids.append(-1)
+
+        # Build output — single index into the filtered detections preserves
+        # all metadata (confidence, class_id, mask, data dict).
+        if out_det_indices:
+            result = detections[out_det_indices]
+            result.tracker_id = np.array(out_tracker_ids, dtype=int)
+        else:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+
         self.frame_count += 1
-        return final_updated_detections
+        return result
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
@@ -291,9 +280,9 @@ class OCSORTTracker(BaseTracker):
         ]
 
     def _compute_direction_consistency_matrix(
-        self, detection_boxes: np.ndarray, detections: sv.Detections
+        self, detection_boxes: np.ndarray, confidences: np.ndarray
     ) -> np.ndarray:
-        """Extract arrays and compute the direction consistency matrix for association,
+        """Compute the direction consistency matrix for association,
         including confidence scaling."""
         tracklet_velocities = np.array(
             [
@@ -319,5 +308,5 @@ class OCSORTTracker(BaseTracker):
             detection_boxes=detection_boxes,
             velocity_mask=velocity_mask,
         )
-        matrix *= detections.confidence[np.newaxis, :]
+        matrix *= confidences[np.newaxis, :]
         return matrix

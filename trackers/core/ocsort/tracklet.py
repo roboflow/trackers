@@ -6,11 +6,7 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
-from typing import cast
-
 import numpy as np
-import supervision as sv
 
 from trackers.utils.converters import (
     xyxy_to_xcycsr,
@@ -281,29 +277,23 @@ class OCSORTTracklet:
         """
         return self.kalman_filter.state_to_bbox()
 
-    def add_track_id_to_detections(
+    def resolve_tracker_id(
         self,
-        detection: sv.Detections,
-        updated_detections: list[sv.Detections],
         minimum_consecutive_frames: int,
         frame_count: int,
-    ) -> None:
-        """Assign track ID to detection and add to updated_detections list.
+    ) -> int:
+        """Resolve the tracker ID for the current tracklet state.
 
-        Handles ID assignment based on track maturity. In early frames
-        (`frame_count < minimum_consecutive_frames`), assigns ID if track was just
-        updated and doesn't have an ID yet. In later frames, assigns ID only if
-        track is mature (has enough consecutive updates). Immature tracks get
-        `tracker_id = -1`.
+        Assigns a new unique ID if the tracklet is mature but hasn't been
+        assigned one yet. Returns -1 for immature tracklets.
 
         Args:
-            detection: The detection to assign an ID to.
-            updated_detections: List to append the updated detection to.
             minimum_consecutive_frames: Frames required for track maturity.
             frame_count: Current frame number in tracking process.
+
+        Returns:
+            Integer tracker ID, or -1 for immature tracks.
         """
-        new_det = deepcopy(detection)
-        new_det = cast(sv.Detections, new_det)
         is_mature = (
             self.number_of_successful_consecutive_updates >= minimum_consecutive_frames
         )
@@ -311,14 +301,10 @@ class OCSORTTracklet:
             if self.time_since_update == 0:
                 if self.tracker_id == -1:
                     self.tracker_id = OCSORTTracklet.get_next_tracker_id()
-
-                new_det.tracker_id = np.array([self.tracker_id])
+                return self.tracker_id
         else:
             if is_mature:
-                # Assign ID now if track just became mature
                 if self.tracker_id == -1:
                     self.tracker_id = OCSORTTracklet.get_next_tracker_id()
-                new_det.tracker_id = np.array([self.tracker_id])
-            else:
-                new_det.tracker_id = np.array([-1], dtype=int)
-        updated_detections.append(new_det)
+                return self.tracker_id
+        return -1

@@ -13,7 +13,6 @@ from trackers.core.sort.kalman import SORTKalmanBoxTracker
 from trackers.core.sort.utils import (
     get_alive_trackers,
     get_iou_matrix,
-    update_detections_with_track_ids,
 )
 
 
@@ -108,27 +107,19 @@ class SORTTracker(BaseTracker):
 
     def _spawn_new_trackers(
         self,
-        detections: sv.Detections,
+        confidences: np.ndarray | None,
         detection_boxes: np.ndarray,
         unmatched_detections: set[int],
     ) -> None:
-        """
-        Create new trackers only for unmatched detections with confidence
-        above threshold.
-
-        Args:
-            detections: The latest set of object detections.
-            detection_boxes: Detected bounding boxes in the form [x1, y1, x2, y2].
-        """
         for detection_idx in unmatched_detections:
             if (
-                detections.confidence is None
-                or detection_idx >= len(detections.confidence)
-                or detections.confidence[detection_idx]
-                >= self.track_activation_threshold
+                confidences is None
+                or detection_idx >= len(confidences)
+                or confidences[detection_idx] >= self.track_activation_threshold
             ):
-                new_tracker = SORTKalmanBoxTracker(detection_boxes[detection_idx])
-                self.trackers.append(new_tracker)
+                self.trackers.append(
+                    SORTKalmanBoxTracker(detection_boxes[detection_idx])
+                )
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
@@ -144,50 +135,51 @@ class SORTTracker(BaseTracker):
             `sv.Detections` with `tracker_id` assigned for each detection.
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
-
         if len(self.trackers) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
             return detections
 
-        # Convert detections to a (N x 4) array (x1, y1, x2, y2)
         detection_boxes = (
             detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
         )
 
-        # Predict new locations for existing trackers
         for tracker in self.trackers:
             tracker.predict()
 
-        # Build IOU cost matrix between detections and predicted bounding boxes
         iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
-
-        # Associate detections to trackers based on IOU
         matched_indices, _, unmatched_detections = self._get_associated_indices(
             iou_matrix, detection_boxes
         )
 
-        # Update matched trackers with assigned detections
+        # Update matched trackers and record the det_idx -> tracker mapping
+        matched_tracker_for_det: dict[int, SORTKalmanBoxTracker] = {}
         for row, col in matched_indices:
             self.trackers[row].update(detection_boxes[col])
+            matched_tracker_for_det[col] = self.trackers[row]
 
-        self._spawn_new_trackers(detections, detection_boxes, unmatched_detections)
+        self._spawn_new_trackers(
+            detections.confidence, detection_boxes, unmatched_detections
+        )
 
-        # Remove dead trackers
         self.trackers = get_alive_trackers(
             self.trackers,
             self.minimum_consecutive_frames,
             self.maximum_frames_without_update,
         )
 
-        updated_detections = update_detections_with_track_ids(
-            self.trackers,
-            detections,
-            detection_boxes,
-            self.minimum_iou_threshold,
-            self.minimum_consecutive_frames,
-        )
+        # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
+        tracker_ids = np.full(len(detection_boxes), -1, dtype=int)
+        for det_idx, tracker in matched_tracker_for_det.items():
+            if (
+                tracker.number_of_successful_updates
+                >= self.minimum_consecutive_frames
+            ):
+                if tracker.tracker_id == -1:
+                    tracker.tracker_id = SORTKalmanBoxTracker.get_next_tracker_id()
+                tracker_ids[det_idx] = tracker.tracker_id
 
-        return updated_detections
+        detections.tracker_id = tracker_ids
+        return detections
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
