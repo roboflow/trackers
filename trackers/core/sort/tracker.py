@@ -9,7 +9,6 @@ import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.sort.kalman import SORTKalmanBoxTracker
 from trackers.core.sort.utils import (
     get_alive_tracklets,
     get_iou_matrix,

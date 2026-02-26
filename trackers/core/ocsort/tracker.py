@@ -174,13 +174,14 @@ class OCSORTTracker(BaseTracker):
             return result
 
         detections = detections[detections.confidence >= self.high_conf_det_threshold]
+        copied_detections = deepcopy(detections)
 
         updated_detections: list[
             sv.Detections
         ] = []  # List for returning the updated detections
         # Convert detections to a (N x 4) array (x1, y1, x2, y2)
         detection_boxes = (
-            detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
+            copied_detections.xyxy if len(copied_detections) > 0 else np.array([]).reshape(0, 4)
         )
 
         # Predict new locations for existing tracks KF
@@ -205,7 +206,7 @@ class OCSORTTracker(BaseTracker):
             self.tracks[row].update(detection_boxes[col])
             add_track_id_to_detections(
                 self.tracks[row],
-                detections[col : col + 1],
+                copied_detections[col : col + 1],
                 updated_detections,
                 self.minimum_consecutive_frames,
                 self.frame_count,
@@ -235,7 +236,7 @@ class OCSORTTracker(BaseTracker):
                 self.tracks[track_idx].update(detection_boxes[det_idx])
                 add_track_id_to_detections(
                     self.tracks[track_idx],
-                    detections[det_idx : det_idx + 1],
+                    copied_detections[det_idx : det_idx + 1],
                     updated_detections,
                     self.minimum_consecutive_frames,
                     self.frame_count,

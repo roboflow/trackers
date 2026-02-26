@@ -173,7 +173,7 @@ class ByteTrackTracker(BaseTracker):
 
         # Kill lost tracks
         self.tracks = get_alive_tracklets(
-            self.tracks
+            self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
         )

@@ -193,13 +193,11 @@ def add_track_id_to_detections(
 
     Args:
         track: The tracklet being processed.
-        detection: The detection to assign an ID to.
+        detection: The detection to assign an ID to. It will be modified.
         updated_detections: List to append the updated detection to.
         minimum_consecutive_frames: Frames required for track maturity.
         frame_count: Current frame number in tracking process.
     """
-    new_det = deepcopy(detection)
-    new_det = cast(sv.Detections, new_det)
     is_mature = (
         track.number_of_successful_consecutive_updates >= minimum_consecutive_frames
     )
@@ -208,16 +206,16 @@ def add_track_id_to_detections(
             if track.tracker_id == -1:
                 track.tracker_id = OCSORTTracklet.get_next_tracker_id()
 
-            new_det.tracker_id = np.array([track.tracker_id])
+            detection.tracker_id = np.array([track.tracker_id])
     else:
         if is_mature:
             # Assign ID now if track just became mature
             if track.tracker_id == -1:
                 track.tracker_id = OCSORTTracklet.get_next_tracker_id()
-            new_det.tracker_id = np.array([track.tracker_id])
+            detection.tracker_id = np.array([track.tracker_id])
         else:
-            new_det.tracker_id = np.array([-1], dtype=int)
-    updated_detections.append(new_det)
+            detection.tracker_id = np.array([-1], dtype=int)
+    updated_detections.append(detection)
 
 
 def get_iou_matrix(
