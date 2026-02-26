@@ -165,9 +165,7 @@ class OCSORTTracker(BaseTracker):
 
         detections = detections[detections.confidence >= self.high_conf_det_threshold]
 
-        detection_boxes = (
-            detections.xyxy if len(detections) > 0 else np.empty((0, 4))
-        )
+        detection_boxes = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
         confidences = (
             detections.confidence
             if detections.confidence is not None

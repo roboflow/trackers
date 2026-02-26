@@ -170,10 +170,7 @@ class SORTTracker(BaseTracker):
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
         tracker_ids = np.full(len(detection_boxes), -1, dtype=int)
         for det_idx, tracker in matched_tracker_for_det.items():
-            if (
-                tracker.number_of_successful_updates
-                >= self.minimum_consecutive_frames
-            ):
+            if tracker.number_of_successful_updates >= self.minimum_consecutive_frames:
                 if tracker.tracker_id == -1:
                     tracker.tracker_id = SORTKalmanBoxTracker.get_next_tracker_id()
                 tracker_ids[det_idx] = tracker.tracker_id

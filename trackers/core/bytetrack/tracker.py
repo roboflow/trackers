@@ -162,8 +162,12 @@ class ByteTrackTracker(BaseTracker):
 
         # Spawn new tracks from unmatched high-confidence detections
         self._spawn_new_trackers(
-            detection_boxes, confidences, unmatched_high, high_indices,
-            out_det_indices, out_tracker_ids,
+            detection_boxes,
+            confidences,
+            unmatched_high,
+            high_indices,
+            out_det_indices,
+            out_tracker_ids,
         )
 
         self.tracks = get_alive_trackers(
