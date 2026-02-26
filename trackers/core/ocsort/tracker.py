@@ -171,6 +171,7 @@ class OCSORTTracker(BaseTracker):
             return result
 
         detections = detections[detections.confidence >= self.high_conf_det_threshold]
+        
         copied_detections = deepcopy(detections)
 
         updated_detections: list[
