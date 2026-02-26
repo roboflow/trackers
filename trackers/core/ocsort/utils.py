@@ -105,9 +105,7 @@ def _build_direction_consistency_matrix_batch(
     return angle_diff_cost.astype(np.float32)
 
 
-def _get_iou_matrix(
-    track_boxes: np.ndarray, detection_boxes: np.ndarray
-) -> np.ndarray:
+def _get_iou_matrix(track_boxes: np.ndarray, detection_boxes: np.ndarray) -> np.ndarray:
     """Build IoU matrix between track and detection bounding boxes.
 
     Computes pairwise Intersection over Union (IoU) scores used as the primary
