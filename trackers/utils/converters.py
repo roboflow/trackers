@@ -37,12 +37,14 @@ def xyxy_to_xcycsr(xyxy: np.ndarray) -> np.ndarray:
     if xyxy.ndim == 1:
         w = xyxy[2] - xyxy[0]
         h = xyxy[3] - xyxy[1]
-        return np.array([
-            xyxy[0] + w * 0.5,
-            xyxy[1] + h * 0.5,
-            w * h,
-            w / (h + 1e-6),
-        ])
+        return np.array(
+            [
+                xyxy[0] + w * 0.5,
+                xyxy[1] + h * 0.5,
+                w * h,
+                w / (h + 1e-6),
+            ]
+        )
 
     w = xyxy[:, 2] - xyxy[:, 0]
     h = xyxy[:, 3] - xyxy[:, 1]
@@ -85,12 +87,14 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
         h = xcycsr[2] / w
         hw = w * 0.5
         hh = h * 0.5
-        return np.array([
-            xcycsr[0] - hw,
-            xcycsr[1] - hh,
-            xcycsr[0] + hw,
-            xcycsr[1] + hh,
-        ])
+        return np.array(
+            [
+                xcycsr[0] - hw,
+                xcycsr[1] - hh,
+                xcycsr[0] + hw,
+                xcycsr[1] + hh,
+            ]
+        )
 
     w = np.sqrt(xcycsr[:, 2] * xcycsr[:, 3])
     h = xcycsr[:, 2] / w
