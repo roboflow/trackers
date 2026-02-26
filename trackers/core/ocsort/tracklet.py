@@ -6,7 +6,11 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from typing import cast
+
 import numpy as np
+import supervision as sv
 
 from trackers.utils.converters import (
     xyxy_to_xcycsr,
@@ -15,9 +19,8 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
 )
-import supervision as sv
-from copy import deepcopy
-from typing import cast
+
+
 class OCSORTTracklet:
     """Tracklet for OC-SORT tracker with ORU (Observation-centric Re-Update).
 

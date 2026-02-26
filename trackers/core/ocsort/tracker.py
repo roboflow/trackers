@@ -20,8 +20,6 @@ from trackers.utils.state_representations import XCYCSRStateEstimator
 
 
 class OCSORTTracker(BaseTracker):
-
-
     """OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm,
     using detections to correct Kalman filter errors accumulated during occlusions. It
     introduces Observation-Centric Re-Update to generate virtual trajectories for
@@ -192,7 +190,9 @@ class OCSORTTracker(BaseTracker):
         iou_matrix = _get_iou_matrix(predicted_boxes, detection_boxes)
 
         # Compute direction consistency matrix
-        direction_consistency_matrix = self._compute_direction_consistency_matrix(detection_boxes, detections)
+        direction_consistency_matrix = self._compute_direction_consistency_matrix(
+            detection_boxes, detections
+        )
 
         # 1st Association of detections to tracks (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = (
@@ -290,16 +290,24 @@ class OCSORTTracker(BaseTracker):
             if tracklet.time_since_update <= self.maximum_frames_without_update
         ]
 
-    def _compute_direction_consistency_matrix(self, detection_boxes: np.ndarray, detections: sv.Detections) -> np.ndarray:
+    def _compute_direction_consistency_matrix(
+        self, detection_boxes: np.ndarray, detections: sv.Detections
+    ) -> np.ndarray:
         """Extract arrays and compute the direction consistency matrix for association, including confidence scaling."""
-        velocities = np.array([
-            t.velocity if t.velocity is not None else np.array([0.0, 0.0])
-            for t in self.tracks
-        ])
-        k_observations = np.array([
-            t.get_k_previous_obs() if t.get_k_previous_obs() is not None else t.last_observation
-            for t in self.tracks
-        ])
+        velocities = np.array(
+            [
+                t.velocity if t.velocity is not None else np.array([0.0, 0.0])
+                for t in self.tracks
+            ]
+        )
+        k_observations = np.array(
+            [
+                t.get_k_previous_obs()
+                if t.get_k_previous_obs() is not None
+                else t.last_observation
+                for t in self.tracks
+            ]
+        )
         valid_mask = np.array(
             [t.velocity is not None for t in self.tracks],
             dtype=np.float32,

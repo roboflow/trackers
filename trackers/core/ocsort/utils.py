@@ -9,11 +9,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
-
 import numpy as np
 import supervision as sv
+
 
 def _speed_direction_batch(
     dets: np.ndarray, tracks: np.ndarray
@@ -80,13 +78,9 @@ def _build_direction_consistency_matrix_batch(
     diff_angle = np.arccos(diff_angle_cos)
     angle_diff_cost = (np.pi / 2.0 - np.abs(diff_angle)) / np.pi
 
-
-
     angle_diff_cost = valid_mask * angle_diff_cost
 
     return angle_diff_cost.astype(np.float32)
-
-
 
 
 def _get_iou_matrix(
