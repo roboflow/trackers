@@ -10,13 +10,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from copy import deepcopy
-from typing import cast
+
 
 import numpy as np
 import supervision as sv
-
-from trackers.core.ocsort.tracklet import OCSORTTracklet
 
 def _speed_direction_batch(
     dets: np.ndarray, tracks: np.ndarray
@@ -42,9 +39,11 @@ def _speed_direction_batch(
     return dy, dx
 
 
-def build_direction_consistency_matrix_batch(
-    tracklets: list[OCSORTTracklet],
+def _build_direction_consistency_matrix_batch(
+    velocities: np.ndarray,
+    k_observations: np.ndarray,
     detection_boxes: np.ndarray,
+    valid_mask: np.ndarray,
 ) -> np.ndarray:
     """Build direction consistency cost matrix (OCM) in batch - vectorized version.
 
@@ -53,39 +52,22 @@ def build_direction_consistency_matrix_batch(
     Used in OC-SORT for motion-aware association.
 
     Args:
-        tracklets: List of OCSORTTracklet objects.
-        detection_boxes: Detection bounding boxes `[x1, y1, x2, y2]`.
+        velocities: Array of shape (n_tracklets, 2) with velocity vectors.
+        k_observations: Array of shape (n_tracklets, 4) with reference boxes.
+        detection_boxes: Array of shape (n_detections, 4).
+        valid_mask: Array of shape (n_tracklets, 1) indicating valid velocities.
 
     Returns:
         np.ndarray: Direction consistency cost matrix (n_tracklets, n_detections).
     """
-    n_tracklets = len(tracklets)
+    n_tracklets = velocities.shape[0]
     n_detections = detection_boxes.shape[0] if len(detection_boxes) > 0 else 0
 
     if n_tracklets == 0 or n_detections == 0:
         return np.zeros((n_tracklets, n_detections), dtype=np.float32)
 
-    # Use precomputed velocities from tracklets (computed with delta_t lookback)
-    velocities = np.array(
-        [
-            tracklet.velocity if tracklet.velocity is not None else np.array([0.0, 0.0])
-            for tracklet in tracklets
-        ]
-    )
-
-    # Get k-previous observations as reference for association direction
-    k_obs_list = [tracklet.get_k_previous_obs() for tracklet in tracklets]
-    k_observations = np.array(
-        [
-            obs if obs is not None else tracklet.last_observation
-            for obs, tracklet in zip(k_obs_list, tracklets)
-        ]
-    )
-
     # Compute association directions (from k_observations -> detection) in batch
-    Y, X = _speed_direction_batch(
-        detection_boxes, k_observations
-    )  # (n_tracklets, n_detections)
+    Y, X = _speed_direction_batch(detection_boxes, k_observations)
 
     # Expand velocities for broadcasting
     inertia_Y = velocities[:, 0:1]  # (n_tracklets, 1)
@@ -98,80 +80,31 @@ def build_direction_consistency_matrix_batch(
     diff_angle = np.arccos(diff_angle_cos)
     angle_diff_cost = (np.pi / 2.0 - np.abs(diff_angle)) / np.pi
 
-    # Mask out tracklets without velocity (no previous observation)
-    valid_mask = np.array(
-        [tracklet.velocity is not None for tracklet in tracklets],
-        dtype=np.float32,
-    )[:, np.newaxis]  # (n_tracklets, 1)
+
 
     angle_diff_cost = valid_mask * angle_diff_cost
 
     return angle_diff_cost.astype(np.float32)
 
 
-def add_track_id_to_detections(
-    track: OCSORTTracklet,
-    detection: sv.Detections,
-    updated_detections: list[sv.Detections],
-    minimum_consecutive_frames: int,
-    frame_count: int,
-) -> None:
-    """Assign track ID to detection and add to updated_detections list.
-
-    Handles ID assignment based on track maturity. In early frames
-    (`frame_count < minimum_consecutive_frames`), assigns ID if track was just
-    updated and doesn't have an ID yet. In later frames, assigns ID only if
-    track is mature (has enough consecutive updates). Immature tracks get
-    `tracker_id = -1`.
-
-    Args:
-        track: The tracklet being processed.
-        detection: The detection to assign an ID to.
-        updated_detections: List to append the updated detection to.
-        minimum_consecutive_frames: Frames required for track maturity.
-        frame_count: Current frame number in tracking process.
-    """
-    new_det = deepcopy(detection)
-    new_det = cast(sv.Detections, new_det)
-    is_mature = (
-        track.number_of_successful_consecutive_updates >= minimum_consecutive_frames
-    )
-    if frame_count <= minimum_consecutive_frames:
-        if track.time_since_update == 0:
-            if track.tracker_id == -1:
-                track.tracker_id = OCSORTTracklet.get_next_tracker_id()
-
-            new_det.tracker_id = np.array([track.tracker_id])
-    else:
-        if is_mature:
-            # Assign ID now if track just became mature
-            if track.tracker_id == -1:
-                track.tracker_id = OCSORTTracklet.get_next_tracker_id()
-            new_det.tracker_id = np.array([track.tracker_id])
-        else:
-            new_det.tracker_id = np.array([-1], dtype=int)
-    updated_detections.append(new_det)
 
 
-def get_iou_matrix(
-    tracks: Sequence[OCSORTTracklet], detection_boxes: np.ndarray
+def _get_iou_matrix(
+    predicted_boxes: np.ndarray, detection_boxes: np.ndarray
 ) -> np.ndarray:
     """Build IOU cost matrix between tracks and detections.
 
     Args:
-        tracks: Sequence of OCSORTTracklet objects.
+        predicted_boxes: Array of shape (n_tracks, 4) with predicted bounding boxes.
         detection_boxes: Detection bounding boxes `[x1, y1, x2, y2]`.
 
     Returns:
         np.ndarray: IOU matrix of shape (n_tracks, n_detections).
     """
-    predicted_boxes = np.array([t.get_state_bbox() for t in tracks])
-    if len(predicted_boxes) == 0 and len(tracks) > 0:
-        predicted_boxes = np.zeros((len(tracks), 4), dtype=np.float32)
-
-    if len(tracks) > 0 and len(detection_boxes) > 0:
+    n_tracks = predicted_boxes.shape[0]
+    n_detections = detection_boxes.shape[0]
+    if n_tracks > 0 and n_detections > 0:
         iou_matrix = sv.box_iou_batch(predicted_boxes, detection_boxes)
     else:
-        iou_matrix = np.zeros((len(tracks), len(detection_boxes)), dtype=np.float32)
-
+        iou_matrix = np.zeros((n_tracks, n_detections), dtype=np.float32)
     return iou_matrix

@@ -13,14 +13,15 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.ocsort.utils import (
-    add_track_id_to_detections,
-    build_direction_consistency_matrix_batch,
-    get_iou_matrix,
+    _build_direction_consistency_matrix_batch,
+    _get_iou_matrix,
 )
 from trackers.utils.state_representations import XCYCSRStateEstimator
 
 
 class OCSORTTracker(BaseTracker):
+
+
     """OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm,
     using detections to correct Kalman filter errors accumulated during occlusions. It
     introduces Observation-Centric Re-Update to generate virtual trajectories for
@@ -186,12 +187,12 @@ class OCSORTTracker(BaseTracker):
             tracker.predict()
 
         # Build IOU cost matrix between detections and predicted bounding boxes
-        iou_matrix = get_iou_matrix(self.tracks, detection_boxes)
+        predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
 
-        direction_consistency_matrix = build_direction_consistency_matrix_batch(
-            self.tracks, detection_boxes
-        )
-        direction_consistency_matrix *= detections.confidence[np.newaxis, :]
+        iou_matrix = _get_iou_matrix(predicted_boxes, detection_boxes)
+
+        # Compute direction consistency matrix
+        direction_consistency_matrix = self._compute_direction_consistency_matrix(detection_boxes, detections)
 
         # 1st Association of detections to tracks (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = (
@@ -201,8 +202,7 @@ class OCSORTTracker(BaseTracker):
         # Update matched trackers with assigned detections
         for row, col in matched_indices:
             self.tracks[row].update(detection_boxes[col])
-            add_track_id_to_detections(
-                self.tracks[row],
+            self.tracks[row].add_track_id_to_detections(
                 detections[col : col + 1],
                 updated_detections,
                 self.minimum_consecutive_frames,
@@ -231,8 +231,8 @@ class OCSORTTracker(BaseTracker):
                 track_idx = unmatched_tracks[ocr_row]
                 det_idx = unmatched_detections[ocr_col]
                 self.tracks[track_idx].update(detection_boxes[det_idx])
-                add_track_id_to_detections(
-                    self.tracks[track_idx],
+
+                self.tracks[track_idx].add_track_id_to_detections(
                     detections[det_idx : det_idx + 1],
                     updated_detections,
                     self.minimum_consecutive_frames,
@@ -289,3 +289,23 @@ class OCSORTTracker(BaseTracker):
             for tracklet in self.tracks
             if tracklet.time_since_update <= self.maximum_frames_without_update
         ]
+
+    def _compute_direction_consistency_matrix(self, detection_boxes: np.ndarray, detections: sv.Detections) -> np.ndarray:
+        """Extract arrays and compute the direction consistency matrix for association, including confidence scaling."""
+        velocities = np.array([
+            t.velocity if t.velocity is not None else np.array([0.0, 0.0])
+            for t in self.tracks
+        ])
+        k_observations = np.array([
+            t.get_k_previous_obs() if t.get_k_previous_obs() is not None else t.last_observation
+            for t in self.tracks
+        ])
+        valid_mask = np.array(
+            [t.velocity is not None for t in self.tracks],
+            dtype=np.float32,
+        )[:, np.newaxis]
+        matrix = _build_direction_consistency_matrix_batch(
+            velocities, k_observations, detection_boxes, valid_mask
+        )
+        matrix *= detections.confidence[np.newaxis, :]
+        return matrix

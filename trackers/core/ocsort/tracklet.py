@@ -15,8 +15,9 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
 )
-
-
+import supervision as sv
+from copy import deepcopy
+from typing import cast
 class OCSORTTracklet:
     """Tracklet for OC-SORT tracker with ORU (Observation-centric Re-Update).
 
@@ -276,3 +277,45 @@ class OCSORTTracklet:
             Current bounding box estimate `[x1, y1, x2, y2]`.
         """
         return self.kalman_filter.state_to_bbox()
+
+    def add_track_id_to_detections(
+        self,
+        detection: sv.Detections,
+        updated_detections: list[sv.Detections],
+        minimum_consecutive_frames: int,
+        frame_count: int,
+    ) -> None:
+        """Assign track ID to detection and add to updated_detections list.
+
+        Handles ID assignment based on track maturity. In early frames
+        (`frame_count < minimum_consecutive_frames`), assigns ID if track was just
+        updated and doesn't have an ID yet. In later frames, assigns ID only if
+        track is mature (has enough consecutive updates). Immature tracks get
+        `tracker_id = -1`.
+
+        Args:
+            detection: The detection to assign an ID to.
+            updated_detections: List to append the updated detection to.
+            minimum_consecutive_frames: Frames required for track maturity.
+            frame_count: Current frame number in tracking process.
+        """
+        new_det = deepcopy(detection)
+        new_det = cast(sv.Detections, new_det)
+        is_mature = (
+            self.number_of_successful_consecutive_updates >= minimum_consecutive_frames
+        )
+        if frame_count <= minimum_consecutive_frames:
+            if self.time_since_update == 0:
+                if self.tracker_id == -1:
+                    self.tracker_id = OCSORTTracklet.get_next_tracker_id()
+
+                new_det.tracker_id = np.array([self.tracker_id])
+        else:
+            if is_mature:
+                # Assign ID now if track just became mature
+                if self.tracker_id == -1:
+                    self.tracker_id = OCSORTTracklet.get_next_tracker_id()
+                new_det.tracker_id = np.array([self.tracker_id])
+            else:
+                new_det.tracker_id = np.array([-1], dtype=int)
+        updated_detections.append(new_det)
