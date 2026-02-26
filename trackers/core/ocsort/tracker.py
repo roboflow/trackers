@@ -293,7 +293,8 @@ class OCSORTTracker(BaseTracker):
     def _compute_direction_consistency_matrix(
         self, detection_boxes: np.ndarray, detections: sv.Detections
     ) -> np.ndarray:
-        """Extract arrays and compute the direction consistency matrix for association, including confidence scaling."""
+        """Extract arrays and compute the direction consistency matrix for association,
+        including confidence scaling."""
         velocities = np.array(
             [
                 t.velocity if t.velocity is not None else np.array([0.0, 0.0])
