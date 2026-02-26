@@ -295,13 +295,13 @@ class OCSORTTracker(BaseTracker):
     ) -> np.ndarray:
         """Extract arrays and compute the direction consistency matrix for association,
         including confidence scaling."""
-        velocities = np.array(
+        tracklet_velocities = np.array(
             [
                 t.velocity if t.velocity is not None else np.array([0.0, 0.0])
                 for t in self.tracks
             ]
         )
-        k_observations = np.array(
+        reference_boxes = np.array(
             [
                 t.get_k_previous_obs()
                 if t.get_k_previous_obs() is not None
@@ -309,12 +309,15 @@ class OCSORTTracker(BaseTracker):
                 for t in self.tracks
             ]
         )
-        valid_mask = np.array(
+        velocity_mask = np.array(
             [t.velocity is not None for t in self.tracks],
             dtype=np.float32,
         )[:, np.newaxis]
         matrix = _build_direction_consistency_matrix_batch(
-            velocities, k_observations, detection_boxes, valid_mask
+            tracklet_velocities=tracklet_velocities,
+            reference_boxes=reference_boxes,
+            detection_boxes=detection_boxes,
+            velocity_mask=velocity_mask,
         )
         matrix *= detections.confidence[np.newaxis, :]
         return matrix
