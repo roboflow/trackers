@@ -232,7 +232,7 @@ def _extract_metric(result: BenchmarkResult, metric: str) -> float:
             ``"IDF1"``).
 
     Returns:
-        The metric value as a float.    """
+        The metric value as a float."""
     agg = result.aggregate
     for metrics_obj in (agg.CLEAR, agg.HOTA, agg.Identity):
         if metrics_obj is None:
