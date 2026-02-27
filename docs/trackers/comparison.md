@@ -55,7 +55,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
 |   SORT    |   45.0   |   39.0   |   80.6   |
-| ByteTrack |   50.2   |   49.9  |  86.2 |
-|  OC-SORT  |   **51.8**   |  **50.9**  |    **87.3** |
+| ByteTrack |   50.2   |   49.9   |   86.2   |
+|  OC-SORT  | **51.8** | **50.9** | **87.3** |
 
-**Note:** DanceTrack table uses defaults parameters in each tracker, for better performance we can adjust the parameters to the dataset. 
+**Note:** DanceTrack test set is not available at the moment, that's why the table uses valid set. Default parameters are used in each tracker, for better performance it is possible to adjust the parameters to the dataset.
