@@ -170,6 +170,8 @@ test.py
 **.pth
 .DS_Store
 data/
+!test/data/
 logs/
 runs/
 wandb/
+.gradio/
