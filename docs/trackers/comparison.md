@@ -1,6 +1,6 @@
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT and ByteTrack on standard MOT benchmarks.
+This page shows head-to-head performance of SORT, ByteTrack, and OC-SORT on standard MOT benchmarks. All results come from benchmarking our current implementation of each tracker with default parameters.
 
 ## [MOT17](https://arxiv.org/abs/1603.00831)
 
@@ -9,6 +9,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 <video width="100%" controls autoplay muted loop>
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/MOT17_MOT17-04-DPM-1280x720.mp4" type="video/mp4">
 </video>
+<p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>
 
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
@@ -23,6 +24,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 <video width="100%" controls autoplay muted loop>
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SportsMOT_v_-6Os86HzwCs_c001-1280x720.mp4" type="video/mp4">
 </video>
+<p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
 
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
@@ -37,6 +39,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 <video width="100%" controls autoplay muted loop>
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SoccerNet-tracking_SNMOT-060-1280x720.mp4" type="video/mp4">
 </video>
+<p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SoccerNet.</small></p>
 
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
@@ -51,6 +54,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 <video width="100%" controls autoplay muted loop>
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/DanceTrack_dancetrack0052-1280x720.mp4" type="video/mp4">
 </video>
+<p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for DanceTrack.</small></p>
 
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
