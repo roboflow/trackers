@@ -52,6 +52,10 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/DanceTrack_dancetrack0052-1280x720.mp4" type="video/mp4">
 </video>
 
-!!! tip "Stay Tuned"
+|  Tracker  |   HOTA   |   IDF1   |   MOTA   |
+| :-------: | :------: | :------: | :------: |
+|   SORT    |   45.0   |   39.0   |   80.6   |
+| ByteTrack |   50.2   |   49.9   |   86.2   |
+|  OC-SORT  | **51.8** | **50.9** | **87.3** |
 
-    We're actively benchmarking trackers on DanceTrack. Results will be added here shortly.
+**Note:** DanceTrack test set is not available at the moment, that's why the table uses valid set. Default parameters are used in each tracker, for better performance it is possible to adjust the parameters to the dataset.
