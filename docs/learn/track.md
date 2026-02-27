@@ -108,7 +108,7 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
       <tbody>
         <tr>
           <td><code>--tracker</code></td>
-          <td>Tracking algorithm. Options: <code>bytetrack</code>, <code>sort</code>.</td>
+          <td>Tracking algorithm. Options: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>.</td>
           <td><code>bytetrack</code></td>
         </tr>
         <tr>
