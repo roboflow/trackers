@@ -80,19 +80,33 @@ class Tuner:
                 "Install it with: pip install 'trackers[tune]'"
             ) from exc
 
-        self._tracker_info = BaseTracker._lookup_tracker(tracker_id)
+        tracker_info = BaseTracker._lookup_tracker(tracker_id)
+        if tracker_info is None:
+            raise ValueError(
+                f"Tracker {tracker_id!r} is not registered. "
+                f"Available trackers: {BaseTracker._registered_trackers()}"
+            )
+
+        search_space = tracker_info.tracker_class.search_space
+        if not search_space:
+            raise ValueError(
+                f"Tracker {tracker_id!r} does not define a search_space. "
+                "Add a search_space ClassVar to enable tuning."
+            )
+
         self._tracker_id = tracker_id
-        self._search_space = self._tracker_info.tracker_class.search_space
+        self._tracker_info = tracker_info
+        self._search_space: dict[str, dict] = search_space
         self._gt_dir = Path(gt_dir)
         self._detections_dir = Path(detections_dir)
         self._metrics = metrics or ["CLEAR"]
         self._objective_metric = objective
         self._n_trials = n_trials
         self._threshold = threshold
-        self._sequences = _discover_sequences(detections_dir, seqmap)
+        self._sequences = _discover_sequences(self._detections_dir, seqmap)
 
         if not self._sequences:
-            raise ValueError(f"No sequences found in {detections_dir}")
+            raise ValueError(f"No sequences found in {self._detections_dir}")
 
     def _objective(self, trial: optuna.Trial) -> float:
         """Sample hyperparameters, run tracker over all sequences, return metric.
@@ -167,6 +181,7 @@ def _discover_sequences(
     Returns:
         Sorted list of sequence names.
     """
+    detections_dir = Path(detections_dir)
     if seqmap is not None:
         lines = Path(seqmap).read_text().splitlines()
         return [
