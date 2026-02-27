@@ -1,0 +1,32 @@
+name: Tracker Integration Tests
+
+on:
+  pull_request:
+    paths:
+      - 'trackers/core/**'
+      - 'trackers/utils/**'
+      - 'test/core/test_tracker_integration.py'
+      - 'test/conftest.py'
+      - 'test/data/tracker_expected_*.json'
+
+jobs:
+  tracker-integration-tests:
+    name: Tracker Regression Validation
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: 🐍 Install uv and set Python version
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b  # v7.3.0
+        with:
+          python-version: "3.12"
+          activate-environment: true
+
+      - name: 🚀 Install Packages
+        run: uv sync --frozen --group dev
+
+      - name: 🧪 Run Tracker Integration Tests
+        run: uv run pytest test/core/test_tracker_integration.py -m integration -v --tb=short

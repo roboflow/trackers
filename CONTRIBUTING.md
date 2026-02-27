@@ -109,7 +109,7 @@ uv sync --group dev
     uv run pytest --doctest-modules trackers/ --ignore=test/
     ```
 
-3. **Integration Tests**: Integration tests validate that our evaluation metrics match TrackEval's results on real MOT datasets. Run integration tests (requires downloading ~50MB of test data):
+3. **Integration Tests**: Validate eval parity and tracker correctness against TrackEval on real MOT datasets (~50MB download):
 
     ```bash
     uv run pytest -m integration
