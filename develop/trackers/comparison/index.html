@@ -1307,10 +1307,37 @@
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/DanceTrack_dancetrack0052-1280x720.mp4" type="video/mp4">
 </video>
 
-<div class="admonition tip">
-<p class="admonition-title">Stay Tuned</p>
-<p>We're actively benchmarking trackers on DanceTrack. Results will be added here shortly.</p>
-</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">SORT</td>
+<td style="text-align: center;">45.0</td>
+<td style="text-align: center;">39.0</td>
+<td style="text-align: center;">80.6</td>
+</tr>
+<tr>
+<td style="text-align: center;">ByteTrack</td>
+<td style="text-align: center;">50.2</td>
+<td style="text-align: center;">49.9</td>
+<td style="text-align: center;">86.2</td>
+</tr>
+<tr>
+<td style="text-align: center;">OC-SORT</td>
+<td style="text-align: center;"><strong>51.8</strong></td>
+<td style="text-align: center;"><strong>50.9</strong></td>
+<td style="text-align: center;"><strong>87.3</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note:</strong> DanceTrack test set is not available at the moment, that's why the table uses valid set. Default parameters are used in each tracker, for better performance it is possible to adjust the parameters to the dataset.</p>
 
 
 
