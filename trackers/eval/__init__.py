@@ -6,8 +6,6 @@
 
 """Evaluation metrics and utilities for tracking benchmarks."""
 
-from typing import Any
-
 from trackers.eval.box import box_ioa, box_iou
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.evaluate import evaluate_mot_sequence, evaluate_mot_sequences
