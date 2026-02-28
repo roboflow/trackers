@@ -4,8 +4,9 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from collections.abc import Sequence
 from copy import deepcopy
-from typing import Sequence, TypeVar
+from typing import TypeVar
 
 import numpy as np
 import supervision as sv

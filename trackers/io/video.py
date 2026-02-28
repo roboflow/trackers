@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Video and frame I/O utilities."""
-
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -17,6 +15,7 @@ import numpy as np
 from trackers.io.paths import _resolve_video_output_path
 
 IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"})
+_DEFAULT_OUTPUT_FPS = 30.0
 
 
 def frames_from_source(
@@ -91,7 +90,7 @@ def _iter_image_folder_frames(
 class _VideoOutput:
     """Context manager for lazy video file writing."""
 
-    def __init__(self, path: Path | None, *, fps: float = 30.0) -> None:
+    def __init__(self, path: Path | None, *, fps: float = _DEFAULT_OUTPUT_FPS) -> None:
         self.path = path
         self.fps = fps
         self._writer: cv2.VideoWriter | None = None
@@ -118,9 +117,9 @@ class _VideoOutput:
         resolved = _resolve_video_output_path(self.path)
         resolved.parent.mkdir(parents=True, exist_ok=True)
 
-        h, w = frame.shape[:2]
+        height, width = frame.shape[:2]
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
-        writer = cv2.VideoWriter(str(resolved), fourcc, self.fps, (w, h))
+        writer = cv2.VideoWriter(str(resolved), fourcc, self.fps, (width, height))
 
         if not writer.isOpened():
             raise OSError(f"Failed to open video writer for '{resolved}'")
@@ -130,7 +129,7 @@ class _VideoOutput:
     def __enter__(self) -> _VideoOutput:
         return self
 
-    def __exit__(self, *_) -> None:
+    def __exit__(self, *_: object) -> None:
         if self._writer is not None:
             self._writer.release()
 
