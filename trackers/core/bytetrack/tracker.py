@@ -254,7 +254,7 @@ class ByteTrackTracker(BaseTracker):
         detection_boxes: np.ndarray,
         unmatched_detections: set[int],
         updated_detections: list[sv.Detections],
-    ):
+    ) -> None:
         """
         Create new trackers for unmatched detections and
             append detections to updated_detections detections.

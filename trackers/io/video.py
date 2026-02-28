@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Union
 
 import cv2
 import numpy as np
@@ -21,7 +20,7 @@ IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"})
 
 
 def frames_from_source(
-    source: Union[str, Path, int],
+    source: str | Path | int,
 ) -> Iterator[tuple[int, np.ndarray]]:
     """Yield numbered BGR frames from video files, webcams, network streams, or image
     directories.
@@ -47,7 +46,7 @@ def frames_from_source(
 
 
 def _iter_capture_frames(
-    src: Union[str, int, Path],
+    src: str | int | Path,
 ) -> Iterator[tuple[int, np.ndarray]]:
     # Convert numeric strings to int for webcam indices
     if isinstance(src, str) and src.isdigit():
@@ -92,7 +91,7 @@ def _iter_image_folder_frames(
 class _VideoOutput:
     """Context manager for lazy video file writing."""
 
-    def __init__(self, path: Path | None, *, fps: float = 30.0):
+    def __init__(self, path: Path | None, *, fps: float = 30.0) -> None:
         self.path = path
         self.fps = fps
         self._writer: cv2.VideoWriter | None = None
@@ -128,10 +127,10 @@ class _VideoOutput:
 
         return writer
 
-    def __enter__(self):
+    def __enter__(self) -> _VideoOutput:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_) -> None:
         if self._writer is not None:
             self._writer.release()
 
@@ -139,7 +138,7 @@ class _VideoOutput:
 class _DisplayWindow:
     """Context manager for OpenCV display window with resizable output."""
 
-    def __init__(self, window_name: str = "Tracking"):
+    def __init__(self, window_name: str = "Tracking") -> None:
         self.window_name = window_name
         self._quit_requested = False
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
@@ -161,8 +160,8 @@ class _DisplayWindow:
         """Return True if user pressed quit key."""
         return self._quit_requested
 
-    def __enter__(self):
+    def __enter__(self) -> _DisplayWindow:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_) -> None:
         cv2.destroyWindow(self.window_name)

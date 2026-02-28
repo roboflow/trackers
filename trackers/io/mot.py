@@ -304,7 +304,7 @@ def _prepare_mot_sequence(
 class _MOTOutput:
     """Context manager for MOT format file writing."""
 
-    def __init__(self, path: Path | None):
+    def __init__(self, path: Path | None) -> None:
         self.path = path
         self._file = None
 
@@ -333,12 +333,12 @@ class _MOTOutput:
                 f"{conf:.4f},-1,-1,-1\n"
             )
 
-    def __enter__(self):
+    def __enter__(self) -> _MOTOutput:
         if self.path is not None:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self._file = open(self.path, "w")
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_) -> None:
         if self._file is not None:
             self._file.close()
