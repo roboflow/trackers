@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # ------------------------------------------------------------------------
 # Trackers
-# Copyright (c) 2026 Roboflow. All Rights Reserved.
-# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
-# ------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------
-# Trackers
 # Copyright (c) 2026 Roboflow.
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
@@ -15,6 +9,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import cast
 
 from trackers.datasets.manifest import DATASETS
 from trackers.utils.downloader import download_file, extract_zip
@@ -74,11 +69,14 @@ def run_download(args) -> int:
 
     ds = DATASETS[dataset]
 
+    # ---- Explicit typing for mypy (without modifying manifest.py) ----
+    splits_dict = cast(dict[str, dict[str, dict[str, str]]], ds["splits"])
+
     # Parse splits
     if args.split:
         splits: list[str] = [s.strip() for s in args.split.split(",")]
     else:
-        splits = list(ds["splits"].keys())
+        splits = list(splits_dict.keys())
 
     # Parse content
     if args.content:
@@ -87,14 +85,14 @@ def run_download(args) -> int:
         requested_content = []
 
     for split in splits:
-        if split not in ds["splits"]:
+        if split not in splits_dict:
             sys.exit(f"Invalid split '{split}' for dataset '{dataset}'")
 
-        available_content: dict[str, dict] = ds["splits"][split]
+        available_content = splits_dict[split]
 
         # Resolve which content to download
         if requested_content:
-            selected_content: dict[str, dict] = {}
+            selected_content: dict[str, dict[str, str]] = {}
             for c in requested_content:
                 if c not in available_content:
                     sys.exit(
@@ -109,7 +107,6 @@ def run_download(args) -> int:
             url = item["url"]
             md5 = item.get("md5")
 
-            # marker file = source of truth
             marker = output_dir / f".{dataset}-{split}-{kind}.complete"
             if marker.exists():
                 print(f"[skip] {dataset}:{split}:{kind} already downloaded")
@@ -122,7 +119,6 @@ def run_download(args) -> int:
             download_file(url, zip_path, md5=md5)
             extract_zip(zip_path, output_dir)
 
-            # mark completion only after successful extraction
             marker.touch()
 
     return 0
@@ -131,8 +127,9 @@ def run_download(args) -> int:
 def _print_available():
     print("\nAvailable datasets:\n")
     for name, ds in DATASETS.items():
+        splits_dict = cast(dict[str, dict[str, dict[str, str]]], ds["splits"])
         print(f"{name}: {ds.get('description', '')}")
-        for split, contents in ds["splits"].items():
+        for split, contents in splits_dict.items():
             kinds = ", ".join(contents.keys())
             print(f"  - {split}: {kinds}")
         print()
