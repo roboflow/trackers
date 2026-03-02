@@ -10,12 +10,19 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/MOT17_MOT17-04-DPM-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>
-
+Default:
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
 |   SORT    |   58.4   |   69.9   |   67.2   |
 | ByteTrack |   60.1   |   73.2   |   74.1   |
 |  OC-SORT  | **61.9** | **76.1** | **76.7** |
+
+Parameter tuned:
+| Tracker   |   HOTA   |   IDF1   |   MOTA   |
+| :-------: | :------: | :------: | :------: |
+| SORT      | 60.4     | 72.5     | 75.8     |
+| OC-SORT   | **62.0** | **77.4** | **78.0** |
+| ByteTrack | 60.5     | 72.7     | 76.1     |
 
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
 
@@ -26,12 +33,20 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
 
+Default:
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
 |   SORT    |   70.9   |   68.9   |   95.7   |
 | ByteTrack | **73.0** | **72.5** | **96.4** |
 |  OC-SORT  |   71.5   |   71.2   |   95.2   |
 
+Parameter tuned:
+
+| Tracker | HOTA | IDF1 | MOTA |
+| :-------: | :--------: | :--------: | :--------: |
+|  OC-SORT  | **74.0** | **75.4** | 95.6 |
+| ByteTrack | 73.3 | 73.5 | **95.9** |
+|    SORT   | 72.9 | 73.0 | 95.8 |
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
 
 Long sequences with dense interactions and partial occlusions. Tests long-term ID consistency.
@@ -40,13 +55,19 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SoccerNet-tracking_SNMOT-060-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SoccerNet.</small></p>
+Default:
 
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
 |   SORT    |   81.6   |   76.2   |   95.1   |
 | ByteTrack | **84.0** | **78.1** | **97.8** |
 |  OC-SORT  |   78.6   |   72.7   |   94.5   |
-
+Parameter tuned:
+| Tracker   |   HOTA   |   IDF1   |   MOTA   |
+| :-------: | :------: | :------: | :------: |
+|   SORT    | **84.2**  | **78.2**  | **98.2**  |
+| ByteTrack |  84.0 | 78.1  | 97.8  |
+| OC-SORT | 82.9  |  77.9  | 96.8  |
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
 Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.
@@ -55,6 +76,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/DanceTrack_dancetrack0052-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for DanceTrack.</small></p>
+Default:
 
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
