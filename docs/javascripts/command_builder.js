@@ -84,10 +84,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (state.showModelOptions) {
       if (state.confidence !== defaults.confidence && isValidDecimal01(state.confidence, 0.05)) {
-        parts.push(`--model_confidence ${state.confidence}`);
+        parts.push(`--model.confidence ${state.confidence}`);
       }
       if (state.device !== "auto") {
-        parts.push(`--model_device ${state.device}`);
+        parts.push(`--model.device ${state.device}`);
       }
       if (state.classes && isValidClasses(state.classes)) {
         parts.push(`--classes ${state.classes}`);
@@ -96,41 +96,37 @@ document.addEventListener("DOMContentLoaded", function () {
 
     parts.push(`--tracker ${state.tracker}`);
 
-    const trackerParams = {};
     if (state.showTrackerOptions) {
       if (state.lostTrackBuffer !== defaults.lostTrackBuffer && isValidPositiveInt(state.lostTrackBuffer)) {
-        trackerParams.lost_track_buffer = parseInt(state.lostTrackBuffer, 10);
+        parts.push(`--tracker.lost_track_buffer ${state.lostTrackBuffer}`);
       }
       if (
         state.trackActivationThreshold !== defaults.trackActivationThreshold &&
         isValidDecimal01(state.trackActivationThreshold, 0.05)
       ) {
-        trackerParams.track_activation_threshold = parseFloat(state.trackActivationThreshold);
+        parts.push(`--tracker.track_activation_threshold ${state.trackActivationThreshold}`);
       }
       if (
         state.minimumConsecutiveFrames !== defaults.minimumConsecutiveFrames &&
         isValidPositiveInt(state.minimumConsecutiveFrames)
       ) {
-        trackerParams.minimum_consecutive_frames = parseInt(state.minimumConsecutiveFrames, 10);
+        parts.push(`--tracker.minimum_consecutive_frames ${state.minimumConsecutiveFrames}`);
       }
       if (
         state.minimumIouThreshold !== defaults.minimumIouThreshold &&
         isValidDecimal01(state.minimumIouThreshold, 0.05)
       ) {
-        trackerParams.minimum_iou_threshold = parseFloat(state.minimumIouThreshold);
+        parts.push(`--tracker.minimum_iou_threshold ${state.minimumIouThreshold}`);
       }
-    }
-    if (Object.keys(trackerParams).length > 0) {
-      parts.push(`--tracker_params '${JSON.stringify(trackerParams)}'`);
     }
 
     if (state.display) parts.push("--display");
-    if (!state.showBoxes) parts.push("--show_boxes false");
-    if (state.showMasks) parts.push("--show_masks");
-    if (state.showConfidence) parts.push("--show_confidence");
-    if (state.showLabels) parts.push("--show_labels");
-    if (!state.showIds) parts.push("--show_ids false");
-    if (state.showTrajectories) parts.push("--show_trajectories");
+    if (!state.showBoxes) parts.push("--no-boxes");
+    if (state.showMasks) parts.push("--show-masks");
+    if (state.showConfidence) parts.push("--show-confidence");
+    if (state.showLabels) parts.push("--show-labels");
+    if (!state.showIds) parts.push("--no-ids");
+    if (state.showTrajectories) parts.push("--show-trajectories");
 
     const outputValue = state.output.trim();
     if (outputValue) {

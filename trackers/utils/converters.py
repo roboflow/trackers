@@ -34,19 +34,27 @@ def xyxy_to_xcycsr(xyxy: np.ndarray) -> np.ndarray:
                [ 10.        ,   5.        , 200.        ,   1.9999998 ],
                [  5.        ,  10.        , 200.        ,   0.49999998]])
     """
-    single = xyxy.ndim == 1
-    if single:
-        xyxy = xyxy[np.newaxis, :]
+    if xyxy.ndim == 1:
+        w = xyxy[2] - xyxy[0]
+        h = xyxy[3] - xyxy[1]
+        return np.array(
+            [
+                xyxy[0] + w * 0.5,
+                xyxy[1] + h * 0.5,
+                w * h,
+                w / (h + 1e-6),
+            ]
+        )
 
+    # Batch path — pre-allocated array avoids np.stack overhead
     w = xyxy[:, 2] - xyxy[:, 0]
     h = xyxy[:, 3] - xyxy[:, 1]
-    x = xyxy[:, 0] + w / 2.0
-    y = xyxy[:, 1] + h / 2.0
-    s = w * h
-    r = w / (h + 1e-6)
-
-    result = np.stack([x, y, s, r], axis=1)
-    return result[0] if single else result
+    result = np.empty((xyxy.shape[0], 4), dtype=np.float64)
+    result[:, 0] = xyxy[:, 0] + w * 0.5
+    result[:, 1] = xyxy[:, 1] + h * 0.5
+    result[:, 2] = w * h
+    result[:, 3] = w / (h + 1e-6)
+    return result
 
 
 def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
@@ -75,13 +83,25 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
                [ 0.,  0., 20., 10.],
                [ 0.,  0., 10., 20.]])
     """
-    single = xcycsr.ndim == 1
-    if single:
-        xcycsr = xcycsr[np.newaxis, :]
+    if xcycsr.ndim == 1:
+        w = np.sqrt(xcycsr[2] * xcycsr[3])
+        h = xcycsr[2] / w
+        hw, hh = w * 0.5, h * 0.5
+        return np.array(
+            [
+                xcycsr[0] - hw,
+                xcycsr[1] - hh,
+                xcycsr[0] + hw,
+                xcycsr[1] + hh,
+            ]
+        )
 
+    # Batch path — pre-allocated array avoids np.stack overhead
     w = np.sqrt(xcycsr[:, 2] * xcycsr[:, 3])
     h = xcycsr[:, 2] / w
-    x, y = xcycsr[:, 0], xcycsr[:, 1]
-
-    result = np.stack([x - w / 2.0, y - h / 2.0, x + w / 2.0, y + h / 2.0], axis=1)
-    return result[0] if single else result
+    result = np.empty((xcycsr.shape[0], 4), dtype=xcycsr.dtype)
+    result[:, 0] = xcycsr[:, 0] - w * 0.5
+    result[:, 1] = xcycsr[:, 1] - h * 0.5
+    result[:, 2] = xcycsr[:, 0] + w * 0.5
+    result[:, 3] = xcycsr[:, 1] + h * 0.5
+    return result
