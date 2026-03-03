@@ -126,6 +126,26 @@ class BaseStateEstimator(ABC):
         """
         self.kf.set_state(state)
 
+    def set_kf_covariances(
+        self,
+        R: np.ndarray | None = None,
+        Q: np.ndarray | None = None,
+        P: np.ndarray | None = None,
+    ) -> None:
+        """Set Kalman filter parameters.
+
+        Args:
+            R: Measurement noise covariance matrix.
+            Q: Process noise covariance matrix.
+            P: Error covariance matrix.
+        """
+        if R is not None:
+            self.kf.R = R
+        if Q is not None:
+            self.kf.Q = Q
+        if P is not None:
+            self.kf.P = P
+
 
 class XCYCSRStateEstimator(BaseStateEstimator):
     """Center-based Kalman filter with 7 state dimensions and 4 measurements.
@@ -156,13 +176,6 @@ class XCYCSRStateEstimator(BaseStateEstimator):
 
         # Measurement function: observe (x, y, s, r) from state
         kf.H = np.eye(4, 7, dtype=np.float64)
-
-        # Noise tuning (from OC-SORT paper)
-        kf.R[2:, 2:] *= 10.0
-        kf.P[4:, 4:] *= 1000.0  # high uncertainty for velocities
-        kf.P *= 10.0
-        kf.Q[-1, -1] *= 0.01
-        kf.Q[4:, 4:] *= 0.01
 
         # Initialise state with first observation
         kf.x[:4] = xyxy_to_xcycsr(bbox).reshape((4, 1))
@@ -210,12 +223,6 @@ class XYXYStateEstimator(BaseStateEstimator):
 
         # Measurement function: observe (x1, y1, x2, y2) from state
         kf.H = np.eye(4, 8, dtype=np.float64)
-
-        # Noise tuning (similar scaling to XCYCSR version)
-        kf.R *= 1.0  # measurement noise
-        kf.P[4:, 4:] *= 1000.0  # high uncertainty for velocities
-        kf.P *= 10.0
-        kf.Q[4:, 4:] *= 0.01
 
         # Initialise state with first observation (direct XYXY)
         kf.x[:4] = bbox.reshape((4, 1))

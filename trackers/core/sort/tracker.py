@@ -14,6 +14,10 @@ from trackers.core.sort.utils import (
     get_alive_tracklets,
     get_iou_matrix,
 )
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XCYCSRStateEstimator,
+)
 
 
 class SORTTracker(BaseTracker):
@@ -51,6 +55,9 @@ class SORTTracker(BaseTracker):
             threshold, tracks are assigned `tracker_id` of `-1`.
         minimum_iou_threshold: `float` specifying IoU threshold for associating
             detections to existing tracks. Higher values require more overlap.
+        state_estimator_class: State estimator class to use for Kalman filter.
+            Defaults to `XCYCSRStateEstimator`. Can also use
+            `XYXYStateEstimator` for corner-based representation.
     """
 
     tracker_id = "sort"
@@ -62,6 +69,7 @@ class SORTTracker(BaseTracker):
         track_activation_threshold: float = 0.25,
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
+        state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -70,6 +78,7 @@ class SORTTracker(BaseTracker):
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
+        self.state_estimator_class = state_estimator_class
 
         # Active trackers
         self.trackers: list[SORTTracklet] = []
@@ -119,6 +128,7 @@ class SORTTracker(BaseTracker):
             ):
                 new_tracker = SORTTracklet(
                     detection_boxes[detection_idx],
+                    state_estimator_class=self.state_estimator_class,
                 )
                 self.trackers.append(new_tracker)
 
@@ -166,7 +176,7 @@ class SORTTracker(BaseTracker):
         self._spawn_new_trackers(detections, detection_boxes, unmatched_detections)
 
         # Remove dead trackers
-        self.trackers = get_alive_tracklets(
+        self.trackers = get_alive_tracklets(  # type: ignore[assignment]
             self.trackers,
             self.minimum_consecutive_frames,
             self.maximum_frames_without_update,
@@ -175,7 +185,10 @@ class SORTTracker(BaseTracker):
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
         tracker_ids = np.full(len(detection_boxes), -1, dtype=int)
         for det_idx, tracker in matched_tracker_for_det.items():
-            if tracker.number_of_successful_updates >= self.minimum_consecutive_frames:
+            if (
+                tracker.number_of_successful_consecutive_updates
+                >= self.minimum_consecutive_frames
+            ):
                 if tracker.tracker_id == -1:
                     tracker.tracker_id = SORTTracklet.get_next_tracker_id()
                 tracker_ids[det_idx] = tracker.tracker_id

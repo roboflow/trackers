@@ -9,10 +9,14 @@ import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
+from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.sort.utils import (
     get_alive_tracklets,
     get_iou_matrix,
+)
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XYXYStateEstimator,
 )
 
 
@@ -53,6 +57,9 @@ class ByteTrackTracker(BaseTracker):
             detections to existing tracks. Higher values require more overlap.
         high_conf_det_threshold: `float` specifying threshold for separating
             high and low confidence detections in the two-stage association.
+        state_estimator_class: State estimator class to use for Kalman filter.
+            Defaults to `XYXYStateEstimator`. Can also use
+            `XCYCSRStateEstimator` for center-based representation.
     """
 
     tracker_id = "bytetrack"
@@ -65,6 +72,7 @@ class ByteTrackTracker(BaseTracker):
         minimum_consecutive_frames: int = 2,
         minimum_iou_threshold: float = 0.1,
         high_conf_det_threshold: float = 0.6,
+        state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -74,7 +82,8 @@ class ByteTrackTracker(BaseTracker):
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
-        self.tracks: list[ByteTrackKalmanBoxTracker] = []
+        self.tracks: list[ByteTrackTracklet] = []
+        self.state_estimator_class = state_estimator_class
 
     def update(
         self,
@@ -129,10 +138,11 @@ class ByteTrackTracker(BaseTracker):
             track = self.tracks[row]
             track.update(high_boxes[col])
             if (
-                track.number_of_successful_updates >= self.minimum_consecutive_frames
+                track.number_of_successful_consecutive_updates
+                >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
             ):
-                track.tracker_id = ByteTrackKalmanBoxTracker.get_next_tracker_id()
+                track.tracker_id = ByteTrackTracklet.get_next_tracker_id()
             out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -148,10 +158,11 @@ class ByteTrackTracker(BaseTracker):
             track = remaining_tracks[row]
             track.update(low_boxes[col])
             if (
-                track.number_of_successful_updates >= self.minimum_consecutive_frames
+                track.number_of_successful_consecutive_updates
+                >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
             ):
-                track.tracker_id = ByteTrackKalmanBoxTracker.get_next_tracker_id()
+                track.tracker_id = ByteTrackTracklet.get_next_tracker_id()
             out_det_indices.append(int(low_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -161,7 +172,7 @@ class ByteTrackTracker(BaseTracker):
             out_tracker_ids.append(-1)
 
         # Spawn new tracks from unmatched high-confidence detections
-        self._spawn_new_trackers(
+        self._spawn_new_tracks(
             detection_boxes,
             confidences,
             unmatched_high,
@@ -170,10 +181,10 @@ class ByteTrackTracker(BaseTracker):
             out_tracker_ids,
         )
 
-        self.tracks = get_alive_trackers(
-            trackers=self.tracks,
-            maximum_frames_without_update=self.maximum_frames_without_update,
+        self.tracks = get_alive_tracklets(  # type: ignore[assignment]
+            tracklets=self.tracks,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_frames_without_update=self.maximum_frames_without_update,
         )
 
         # Build final sv.Detections from original by indexing
@@ -237,7 +248,10 @@ class ByteTrackTracker(BaseTracker):
             conf = float(confidences[global_idx])
             if conf >= self.track_activation_threshold:
                 self.tracks.append(
-                    ByteTrackKalmanBoxTracker(bbox=detection_boxes[global_idx])
+                    ByteTrackTracklet(
+                        initial_bbox=detection_boxes[global_idx],
+                        state_estimator_class=self.state_estimator_class,
+                    )
                 )
                 out_det_indices.append(global_idx)
                 out_tracker_ids.append(-1)
@@ -247,4 +261,4 @@ class ByteTrackTracker(BaseTracker):
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
-        ByteTrackKalmanBoxTracker.count_id = 0
+        ByteTrackTracklet.count_id = 0

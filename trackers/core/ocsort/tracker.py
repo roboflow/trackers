@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from copy import deepcopy
+
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
@@ -14,7 +16,10 @@ from trackers.core.ocsort.utils import (
     _build_direction_consistency_matrix_batch,
     _get_iou_matrix,
 )
-from trackers.utils.state_representations import XCYCSRStateEstimator
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XCYCSRStateEstimator,
+)
 
 
 class OCSORTTracker(BaseTracker):
@@ -57,6 +62,9 @@ class OCSORTTracker(BaseTracker):
         delta_t: `int` specifying number of past frames to use for velocity
             estimation. Higher values provide more stable direction estimates
             during occlusion.
+        state_estimator_class: State estimator class to use for Kalman filter.
+            Defaults to `XCYCSRStateEstimator`. Can also use
+            `XYXYStateEstimator` for corner-based representation.
     """
 
     tracker_id = "ocsort"
@@ -70,6 +78,7 @@ class OCSORTTracker(BaseTracker):
         direction_consistency_weight: float = 0.2,
         high_conf_det_threshold: float = 0.6,
         delta_t: int = 3,
+        state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -164,8 +173,6 @@ class OCSORTTracker(BaseTracker):
             return result
 
         detections = detections[detections.confidence >= self.high_conf_det_threshold]
-        
-        copied_detections = deepcopy(detections)
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
         confidences = (
@@ -232,7 +239,6 @@ class OCSORTTracker(BaseTracker):
 
             self.tracks = self._prune_expired_tracklets()
 
-
             remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
             self._spawn_new_tracklets(detection_boxes[remaining_indices])
             for det_idx in remaining_indices:
@@ -251,7 +257,8 @@ class OCSORTTracker(BaseTracker):
         # Build output — single index into the filtered detections preserves
         # all metadata (confidence, class_id, mask, data dict).
         if out_det_indices:
-            result = detections[out_det_indices]
+            copied_detections = deepcopy(detections)
+            result = copied_detections[out_det_indices]
             result.tracker_id = np.array(out_tracker_ids, dtype=int)
         else:
             result = sv.Detections.empty()

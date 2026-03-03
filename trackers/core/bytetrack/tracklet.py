@@ -9,20 +9,23 @@ import numpy as np
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.state_representations import (
     BaseStateEstimator,
-    XCYCSRStateEstimator,
+    XYXYStateEstimator,
 )
 
 
-class SORTTracklet(BaseTracklet):
+class ByteTrackTracklet(BaseTracklet):
     count_id: int = 0
 
     def __init__(
         self,
         initial_bbox: np.ndarray,
-        state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
+        state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
     ) -> None:
         super().__init__(initial_bbox, state_estimator_class)
         self._configure_noise()
+        # Count initial bbox as first successful update (matches original
+        # ByteTrackKalmanBoxTracker behavior where hits started at 1)
+        self.number_of_successful_consecutive_updates = 1
 
     def update(self, bbox: np.ndarray | None) -> None:
         """Update tracklet with new observation or None if missed."""
@@ -46,20 +49,9 @@ class SORTTracklet(BaseTracklet):
         return self.kalman_filter.state_to_bbox()
 
     def _configure_noise(self) -> None:
-        """Configure Kalman filter noise matrices (OC-SORT paper tuning)."""
+        """Configure Kalman filter noise (original ByteTrack tuning)."""
         kf = self.kalman_filter.kf
-        R = kf.R
-        P = kf.P
-        Q = kf.Q
-        if isinstance(self.kalman_filter, XCYCSRStateEstimator):
-            R[2:, 2:] *= 10.0
-            P[4:, 4:] *= 1000.0
-            P *= 10.0
-            Q[-1, -1] *= 0.01
-            Q[4:, 4:] *= 0.01
-        else:
-            # XYXY: same velocity uncertainty scaling
-            P[4:, 4:] *= 1000.0
-            P *= 10.0
-            Q[4:, 4:] *= 0.01
-        self.kalman_filter.set_kf_covariances(R=R, Q=Q, P=P)
+        self.kalman_filter.set_kf_covariances(
+            R=kf.R * 0.1,
+            Q=kf.Q * 0.01,
+        )
