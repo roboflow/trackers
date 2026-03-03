@@ -18,11 +18,12 @@ Default:
 |  OC-SORT  | **61.9** | **76.1** | **76.7** |
 
 Parameter tuned:
-| Tracker   |   HOTA   |   IDF1   |   MOTA   |
+
+|  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
-| SORT      | 60.4     | 72.5     | 75.8     |
-| OC-SORT   | **62.0** | **77.4** | **78.0** |
-| ByteTrack | 60.5     | 72.7     | 76.1     |
+|   SORT    |   60.4   |   72.5   |   75.8   |
+|  OC-SORT  | **62.0** | **77.4** | **78.0** |
+| ByteTrack |   60.5   |   72.7   |   76.1   |
 
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
 
@@ -34,6 +35,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
 
 Default:
+
 |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
 |   SORT    |   70.9   |   68.9   |   95.7   |
@@ -42,11 +44,12 @@ Default:
 
 Parameter tuned:
 
-| Tracker | HOTA | IDF1 | MOTA |
-| :-------: | :--------: | :--------: | :--------: |
-|  OC-SORT  | **74.0** | **75.4** | 95.6 |
-| ByteTrack | 73.3 | 73.5 | **95.9** |
-|    SORT   | 72.9 | 73.0 | 95.8 |
+|  Tracker  |   HOTA   |   IDF1   |   MOTA   |
+| :-------: | :------: | :------: | :------: |
+|  OC-SORT  | **74.0** | **75.4** |   95.6   |
+| ByteTrack |   73.3   |   73.5   | **95.9** |
+|   SORT    |   72.9   |   73.0   |   95.8   |
+
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
 
 Long sequences with dense interactions and partial occlusions. Tests long-term ID consistency.
@@ -57,17 +60,18 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SoccerNet.</small></p>
 Default:
 
-|  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-| :-------: | :------: | :------: | :------: |
-|   SORT    |   81.6   |   76.2   |   95.1   |
-| ByteTrack | **84.0** | **78.1** | **97.8** |
-|  OC-SORT  |   78.6   |   72.7   |   94.5   |
-Parameter tuned:
-| Tracker   |   HOTA   |   IDF1   |   MOTA   |
-| :-------: | :------: | :------: | :------: |
-|   SORT    | **84.2**  | **78.2**  | **98.2**  |
-| ByteTrack |  84.0 | 78.1  | 97.8  |
-| OC-SORT | 82.9  |  77.9  | 96.8  |
+|     Tracker      |   HOTA   |   IDF1   |   MOTA   |
+| :--------------: | :------: | :------: | :------: |
+|       SORT       |   81.6   |   76.2   |   95.1   |
+|    ByteTrack     | **84.0** | **78.1** | **97.8** |
+|     OC-SORT      |   78.6   |   72.7   |   94.5   |
+| Parameter tuned: |          |          |          |
+|     Tracker      |   HOTA   |   IDF1   |   MOTA   |
+|    :-------:     | :------: | :------: | :------: |
+|       SORT       | **84.2** | **78.2** | **98.2** |
+|    ByteTrack     |   84.0   |   78.1   |   97.8   |
+|     OC-SORT      |   82.9   |   77.9   |   96.8   |
+
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
 Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.
@@ -86,10 +90,10 @@ Default:
 
 Parameter tuned:
 
-| Tracker   | HOTA     | IDF1     | MOTA     |
+|  Tracker  |   HOTA   |   IDF1   |   MOTA   |
 | :-------: | :------: | :------: | :------: |
-| SORT      | 50.6     | 49.6     | 84.3     |
-| OC-SORT   | 52.0     | 51.8     | **87.2** |
-| ByteTrack | **53.2** | **54.6** | 86.8     |
+|   SORT    |   50.6   |   49.6   |   84.3   |
+|  OC-SORT  |   52.0   |   51.8   | **87.2** |
+| ByteTrack | **53.2** | **54.6** |   86.8   |
 
 **Note:** DanceTrack test set is not available at the moment, that's why the table uses valid set. Default parameters are used in each tracker, for better performance it is possible to adjust the parameters to the dataset.
