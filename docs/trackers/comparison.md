@@ -84,4 +84,12 @@ Default:
 | ByteTrack |   50.2   |   49.9   |   86.2   |
 |  OC-SORT  | **51.8** | **50.9** | **87.3** |
 
+Parameter tuned:
+
+| Tracker   | HOTA     | IDF1     | MOTA     |
+| :-------: | :------: | :------: | :------: |
+| SORT      | 50.6     | 49.6     | 84.3     |
+| OC-SORT   | 52.0     | 51.8     | **87.2** |
+| ByteTrack | **53.2** | **54.6** | 86.8     |
+
 **Note:** DanceTrack test set is not available at the moment, that's why the table uses valid set. Default parameters are used in each tracker, for better performance it is possible to adjust the parameters to the dataset.
