@@ -173,7 +173,7 @@ class SORTTracker(BaseTracker):
         # Update non matched for increasing time_since_update
         for index in unmatched_trackers:
             self.trackers[index].update(None)
-        self._spawn_new_trackers(detections, detection_boxes, unmatched_detections)
+        self._spawn_new_trackers(detections.confidence, detection_boxes, unmatched_detections)
 
         # Remove dead trackers
         self.trackers = get_alive_tracklets(  # type: ignore[assignment]
