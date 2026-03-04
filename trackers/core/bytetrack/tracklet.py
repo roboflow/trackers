@@ -9,6 +9,7 @@ import numpy as np
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.state_representations import (
     BaseStateEstimator,
+    XCYCSRStateEstimator,
     XYXYStateEstimator,
 )
 
@@ -51,7 +52,22 @@ class ByteTrackTracklet(BaseTracklet):
     def _configure_noise(self) -> None:
         """Configure Kalman filter noise (original ByteTrack tuning)."""
         kf = self.kalman_filter.kf
-        self.kalman_filter.set_kf_covariances(
-            R=kf.R * 0.1,
-            Q=kf.Q * 0.01,
-        )
+        # self.kalman_filter.set_kf_covariances(
+        #     R=kf.R * 0.1,
+        #     Q=kf.Q * 0.01,
+        # )
+        R = kf.R
+        P = kf.P
+        Q = kf.Q
+        if isinstance(self.kalman_filter, XCYCSRStateEstimator):
+            R[2:, 2:] *= 10.0
+            P[4:, 4:] *= 1000.0
+            P *= 10.0
+            Q[-1, -1] *= 0.01
+            Q[4:, 4:] *= 0.01
+        else:
+            # XYXY: same velocity uncertainty scaling
+            P[4:, 4:] *= 1000.0
+            P *= 10.0
+            Q[4:, 4:] *= 0.01
+        self.kalman_filter.set_kf_covariances(R=R, Q=Q, P=P)
