@@ -7,60 +7,244 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Literal
 
 import copy
 import numpy as np
 import cv2
 
+CMCTMethod = Literal["orb", "sparseOptFlow"]
 
 @dataclass
 class CMCConfig:
+    """
+    Configuration for camera motion compensation (CMC).
+
+    The CMC module estimates a global 2D affine transform `H` (2x3) between consecutive frames.
+    This transform is then applied to predicted track states before data association.
+
+    Attributes:
+        method:
+            Camera motion estimation method.
+
+            - "orb": Feature matching using FAST keypoints + ORB descriptors + BFMatcher,
+              followed by robust affine estimation (RANSAC).
+              Optionally masks out detection boxes so features are extracted from background.
+            - "sparseOptFlow": Sparse optical flow using corner tracking:
+              goodFeaturesToTrack -> calcOpticalFlowPyrLK -> robust affine estimation (RANSAC).
+
+        downscale:
+            Integer downscale factor applied to frames before running CMC.
+
+            Purpose:
+            - Speeds up feature extraction / optical flow.
+
+            Behavior:
+            - Frames are resized to (W//downscale, H//downscale) for motion estimation.
+            - The resulting affine translation components H[0,2], H[1,2] are scaled back
+              by multiplying by `downscale`, so the transform is in original image coordinates.
+
+        fast_threshold:
+            (ORB only) Threshold for the FAST keypoint detector.
+            Higher values yield fewer keypoints (more selective); lower values yield more keypoints.
+
+        ransac_reproj_threshold:
+            (ORB only) RANSAC reprojection threshold in pixels passed to
+            OpenCV’s affine estimation. It controls how far a point is allowed to deviate from the
+            estimated model while still being counted as an inlier.
+            Smaller values are stricter (reject more matches); larger values are more tolerant.
+
+        max_spatial_distance_frac:
+            (ORB only) Maximum allowed spatial displacement for a tentative match, expressed as a
+            fraction of (image width, image height) *after downscale*.
+
+            Example:
+                If max_spatial_distance_frac = 0.25 and the downscaled frame is (W, H),
+                then a match is rejected if |dx| >= 0.25*W or |dy| >= 0.25*H.
+
+            Motivation:
+                Reject obviously incorrect descriptor matches whose displacement is implausibly large.
+
+        roi_min_frac:
+            (ORB only) Lower bound of the region-of-interest (ROI) used to select keypoints,
+            expressed as a fraction of frame size. Points outside the ROI are masked out.
+
+            Example:
+                roi_min_frac=0.02 means we ignore a ~2% border on each side.
+
+        roi_max_frac:
+            (ORB only) Upper bound of the ROI used to select keypoints (fraction of frame size).
+            Together with roi_min_frac, it defines a central rectangle:
+                [roi_min_frac..roi_max_frac] in both x and y.
+
+        sof_max_corners:
+            (SparseOptFlow only) `maxCorners` passed to `cv2.goodFeaturesToTrack`.
+            Maximum number of corners to detect for tracking.
+            Larger values can improve robustness (more points), but cost more compute.
+
+        sof_quality_level:
+            (SparseOptFlow only) `qualityLevel` passed to `cv2.goodFeaturesToTrack`.
+            Minimum accepted quality of corners. A higher value keeps only stronger corners;
+            a lower value yields more corners (including weaker ones).
+
+        sof_min_distance:
+            (SparseOptFlow only) `minDistance` passed to `cv2.goodFeaturesToTrack`.
+            Minimum Euclidean distance (in pixels) between returned corners.
+            Higher values produce more spatially spread points; lower values allow clustering.
+
+        sof_block_size:
+            (SparseOptFlow only) `blockSize` passed to `cv2.goodFeaturesToTrack`.
+            Size of the neighborhood used to compute corner quality (structure tensor window).
+
+        sof_use_harris:
+            (SparseOptFlow only) `useHarrisDetector` passed to `cv2.goodFeaturesToTrack`.
+            If True, uses the Harris corner measure; if False, uses the Shi-Tomasi measure.
+
+        sof_k:
+            (SparseOptFlow only) `k` passed to `cv2.goodFeaturesToTrack`.
+            Harris detector free parameter. Ignored if `sof_use_harris` is False.
+    """
+    method: CMCTMethod = "orb"
     downscale: int = 2
+
+    # ORB parameters
     fast_threshold: int = 20
-
-    # Affine estimation
     ransac_reproj_threshold: float = 3.0
-
-    # Filtering matches by spatial displacement (fraction of image size)
     max_spatial_distance_frac: float = 0.25
-
-    # Keep features from central ROI (avoid borders)
     roi_min_frac: float = 0.02
     roi_max_frac: float = 0.98
 
+    # Sparse optical flow parameters (goodFeaturesToTrack)
+    sof_max_corners: int = 1000
+    sof_quality_level: float = 0.01
+    sof_min_distance: int = 1
+    sof_block_size: int = 3
+    sof_use_harris: bool = False
+    sof_k: float = 0.04
+
 
 class CMC:
+    """
+    Camera motion compensation estimator and track state warper.
+
+    Typical usage in the tracker loop:
+        H = cmc.estimate(frame_bgr, mask_boxes_xyxy)
+        CMC.apply_to_tracks(tracks, H)
+
+    Internal state:
+        - Keeps previous-frame features / points depending on the chosen method.
+        - On the first frame (or after reset), returns identity transform.
+
+    Notes:
+        - H maps points from previous frame coordinates to current frame coordinates.
+        - This class does not perform any drawing/visualization; it only estimates transforms.
+    """
+
     def __init__(self, cfg: Optional[CMCConfig] = None) -> None:
+        """
+        Initialize CMC.
+
+        Args:
+            cfg: Optional configuration. If None, defaults are used.
+
+        Notes:
+            - ORB detector/extractor/matcher are only created if method == "orb".
+            - Sparse optical flow parameters are always initialized (cheap).
+        """
         self.cfg = cfg or CMCConfig()
         self.downscale = max(1, int(self.cfg.downscale))
 
-        self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)
-        self.extractor = cv2.ORB_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
+        # ORB init (only if needed)
+        self.detector = None
+        self.extractor = None
+        self.matcher = None
+        if self.cfg.method == "orb":
+            self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)
+            self.extractor = cv2.ORB_create()
+            self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
 
+        # SparseOptFlow params
+        self.feature_params = dict(
+            maxCorners=self.cfg.sof_max_corners,
+            qualityLevel=self.cfg.sof_quality_level,
+            minDistance=self.cfg.sof_min_distance,
+            blockSize=self.cfg.sof_block_size,
+            useHarrisDetector=self.cfg.sof_use_harris,
+            k=self.cfg.sof_k,
+        )
+
+        self.reset()
+
+    def reset(self) -> None:
+        """
+        Reset internal state.
+
+        After calling reset:
+        - The next `estimate()` call returns identity and initializes prev-frame state.
+        - This should be called when starting a new sequence or after a scene cut.
+        """
         self._initialized = False
+
+        # ORB state
         self._prev_kps = None
         self._prev_desc: Optional[np.ndarray] = None
 
-    def reset(self) -> None:
-        self._initialized = False
-        self._prev_kps = None
-        self._prev_desc = None
+        # SparseOptFlow state
+        self._prev_frame_gray: Optional[np.ndarray] = None
+        self._prev_points: Optional[np.ndarray] = None  # shape (N,1,2) from goodFeaturesToTrack
 
     def estimate(self, frame_bgr: np.ndarray, dets_xyxy: Optional[np.ndarray] = None) -> np.ndarray:
+        """
+        Estimate global affine transform H (2x3) from previous frame to current frame.
+
+        Args:
+            frame_bgr: Current frame in BGR format (uint8), shape (H, W, 3).
+            dets_xyxy: Optional detections (N,4) in xyxy format, in original image scale.
+                Used only by ORB method for masking out object regions (background-only features).
+
+        Returns:
+            H: Affine transform matrix of shape (2, 3), dtype float32.
+               Identity if not enough correspondences or if not initialized yet.
+        """
         if frame_bgr is None:
             return np.eye(2, 3, dtype=np.float32)
 
+        if self.cfg.method == "orb":
+            return self._estimate_orb(frame_bgr, dets_xyxy)
+
+        if self.cfg.method == "sparseOptFlow":
+            return self._estimate_sparse_optflow(frame_bgr)
+
+        # fallback
+        return np.eye(2, 3, dtype=np.float32)
+
+    def _estimate_orb(self, frame_bgr: np.ndarray, dets_xyxy: Optional[np.ndarray] = None) -> np.ndarray:
+        """
+        ORB-based affine estimation.
+
+        Steps:
+            1) Convert to grayscale (+ optional downscale).
+            2) Create ROI mask and optionally mask out detections (background emphasis).
+            3) Detect FAST keypoints and compute ORB descriptors.
+            4) KNN match descriptors against previous frame (ratio test).
+            5) Filter matches by max spatial displacement and by 2.5*std inliers.
+            6) Estimate affine transform with RANSAC.
+            7) Scale translation back up if downscaled.
+
+        Args:
+            frame_bgr: Current BGR frame.
+            dets_xyxy: Optional detection boxes for masking (original image scale).
+
+        Returns:
+            H: (2,3) affine transform mapping previous-current, float32.
+        """
         H_img, W_img = frame_bgr.shape[:2]
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
 
-        # Downscale for speed / robustness
         if self.downscale > 1:
             gray = cv2.resize(gray, (W_img // self.downscale, H_img // self.downscale))
         H, W = gray.shape[:2]
 
-        # Build mask: central ROI + remove detections (background features)
         mask = np.zeros_like(gray, dtype=np.uint8)
         y0 = int(self.cfg.roi_min_frac * H)
         y1 = int(self.cfg.roi_max_frac * H)
@@ -71,10 +255,13 @@ class CMC:
         if dets_xyxy is not None and len(dets_xyxy) > 0:
             dets = np.asarray(dets_xyxy, dtype=np.float32) / float(self.downscale)
             dets = dets.astype(np.int32)
+
+            # Safety clipping
             dets[:, 0] = np.clip(dets[:, 0], 0, W - 1)
             dets[:, 2] = np.clip(dets[:, 2], 0, W - 1)
             dets[:, 1] = np.clip(dets[:, 1], 0, H - 1)
             dets[:, 3] = np.clip(dets[:, 3], 0, H - 1)
+
             for x1b, y1b, x2b, y2b in dets:
                 if x2b > x1b and y2b > y1b:
                     mask[y1b:y2b, x1b:x2b] = 0
@@ -85,20 +272,17 @@ class CMC:
 
         H_aff = np.eye(2, 3, dtype=np.float32)
 
-        # First frame: only initialize
         if not self._initialized:
             self._prev_kps = copy.copy(kps)
             self._prev_desc = None if desc is None else copy.copy(desc)
             self._initialized = True
             return H_aff
 
-        # If missing descriptors
         if self._prev_desc is None or desc is None or len(desc) == 0:
             self._prev_kps = copy.copy(kps)
             self._prev_desc = None if desc is None else copy.copy(desc)
             return H_aff
 
-        # KNN match (k=2) + ratio test
         knn = self.matcher.knnMatch(self._prev_desc, desc, k=2)
         if len(knn) == 0:
             self._prev_kps = copy.copy(kps)
@@ -148,14 +332,119 @@ class CMC:
                         H_aff[0, 2] *= self.downscale
                         H_aff[1, 2] *= self.downscale
 
-        # Update prev
         self._prev_kps = copy.copy(kps)
         self._prev_desc = copy.copy(desc)
+        return H_aff
+
+    def _estimate_sparse_optflow(self, frame_bgr: np.ndarray) -> np.ndarray:
+        """
+        Sparse optical-flow-based affine estimation.
+
+        Steps:
+            1) grayscale (+ optional downscale)
+            2) detect corners using goodFeaturesToTrack
+            3) compute correspondences via calcOpticalFlowPyrLK(prev, curr, prev_points)
+            4) keep only points with status == 1
+            5) estimate affine transform with RANSAC
+            6) scale translation back up if downscaled
+
+        Args:
+            frame_bgr: Current BGR frame.
+
+        Returns:
+            H: (2,3) affine transform mapping previous-current, float32.
+        """
+        H_img, W_img = frame_bgr.shape[:2]
+        frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+
+        H_aff = np.eye(2, 3, dtype=np.float32)
+
+        # Downscale
+        if self.downscale > 1:
+            frame = cv2.resize(frame, (W_img // self.downscale, H_img // self.downscale))
+
+        # Find keypoints in current frame
+        keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)
+
+        # First frame: init and return identity
+        if not self._initialized:
+            self._prev_frame_gray = frame.copy()
+            self._prev_points = copy.copy(keypoints)
+            self._initialized = True
+            return H_aff
+
+        # If we don't have points, re-init
+        if self._prev_frame_gray is None or self._prev_points is None or keypoints is None:
+            self._prev_frame_gray = frame.copy()
+            self._prev_points = copy.copy(keypoints)
+            return H_aff
+
+        # Optical flow correspondences
+        # calcOpticalFlowPyrLK will throw or return nonsense if we give it None
+        matched, status, _err = cv2.calcOpticalFlowPyrLK(self._prev_frame_gray, frame, self._prev_points, None)
+
+        if status is None or matched is None:
+            self._prev_frame_gray = frame.copy()
+            self._prev_points = copy.copy(keypoints)
+            return H_aff
+
+        # Keep only good correspondences
+        prev_pts = []
+        curr_pts = []
+        # status is (N,1) or (N,)
+        status_flat = status.reshape(-1)
+
+        for i in range(len(status_flat)):
+            if status_flat[i]:
+                prev_pts.append(self._prev_points[i])
+                curr_pts.append(matched[i])
+
+        prev_pts = np.array(prev_pts)
+        curr_pts = np.array(curr_pts)
+
+        # Find rigid matrix
+        # if (np.size(prev_pts, 0) > 4) and (np.size(prev_pts, 0) == np.size(prev_pts, 0)):
+        if (np.size(prev_pts, 0) > 4) and (np.size(prev_pts, 0) == np.size(curr_pts, 0)):
+            H_est, _ = cv2.estimateAffinePartial2D(prev_pts, curr_pts, cv2.RANSAC)
+            if H_est is not None:
+                H_aff = H_est.astype(np.float32)
+
+                # Handle downscale translation back to original image coords
+                if self.downscale > 1:
+                    H_aff[0, 2] *= self.downscale
+                    H_aff[1, 2] *= self.downscale
+        else:
+            print('Warning: not enough matching points')
+
+        # Store to next iteration
+        self._prev_frame_gray = frame.copy()
+        # self._prev_points = copy.copy(keypoints)
+        self._prev_points = None if keypoints is None else keypoints.copy()
 
         return H_aff
 
     @staticmethod
     def apply_to_tracks(tracks: list, H: np.ndarray) -> None:
+        """
+        Apply affine transform H (2x3) to tracker states and covariances in-place.
+
+        This implementation assumes each track has:
+            - `state`: (8,1) float vector [x1,y1,x2,y2,vx,vy,vx2,vy2]^T
+            - `P`: (8,8) covariance matrix
+
+        The transform is applied as:
+            state := A * state + translation
+            P     := A * P * A^T
+
+        Where A applies the 2x2 rotation/shear block to each 2D component block in the state.
+
+        Args:
+            tracks: List of track objects with `.state` and `.P` attributes.
+            H: Affine transform (2,3) mapping prev -> curr.
+
+        Returns:
+            None. Tracks are modified in-place.
+        """
         if H is None or len(tracks) == 0:
             return
 
@@ -163,12 +452,10 @@ class CMC:
         R = H[:2, :2]
         t = H[:2, 2:3]  # (2,1)
 
-        # A4 maps [x1,y1,x2,y2]
         A4 = np.zeros((4, 4), dtype=np.float32)
         A4[0:2, 0:2] = R
         A4[2:4, 2:4] = R
 
-        # A8 maps state (pos and vel blocks)
         A8 = np.zeros((8, 8), dtype=np.float32)
         A8[0:4, 0:4] = A4
         A8[4:8, 4:8] = A4
