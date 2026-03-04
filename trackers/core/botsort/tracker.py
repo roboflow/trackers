@@ -23,8 +23,8 @@ class BoTSORTTracker(BaseTracker):
     """
     BoT-SORT-style multi-object tracker (IoU association + optional CMC).
 
-    The tracker maintains a list of active tracks (Kalman-filter-based) and, for each frame,
-    performs:
+    The tracker maintains a list of active tracks (Kalman-filter-based) and, for each 
+    frame, performs:
       1) Predict existing track states (Kalman predict)
       2) Split detections into high/low confidence groups
       3) Apply camera motion compensation to predicted tracks
@@ -33,17 +33,21 @@ class BoTSORTTracker(BaseTracker):
       6) Spawn new tracks from unmatched high-confidence detections
       7) Remove tracks that have been lost for too long
 
-    Parameters in __init__ control thresholds and lifecycle logic similarly to ByteTrack/BoT-SORT.
+    Parameters in __init__ control thresholds and lifecycle logic similarly to 
+    ByteTrack.
 
     Attributes:
         tracks: List of active `BoTSORTKalmanBoxTracker` objects.
-        maximum_frames_without_update: Max number of consecutive frames a track can go unmatched
-            before being removed.
-        minimum_consecutive_frames: Track maturity threshold before assigning a permanent ID.
+        maximum_frames_without_update: Max number of consecutive frames a track can go 
+            unmatched before being removed.
+        minimum_consecutive_frames: Track maturity threshold before assigning a 
+            permanent ID.
         minimum_iou_threshold: Minimum IoU required for a valid match.
         track_activation_threshold: Confidence threshold for spawning a new track.
-        high_conf_det_threshold: Confidence threshold splitting detections into high/low groups.
-        enable_cmc: Whether to run camera motion compensation each frame (if `cmc` is set).
+        high_conf_det_threshold: Confidence threshold splitting detections into 
+            high/low groups.
+        enable_cmc: Whether to run camera motion compensation each frame 
+            (if `cmc` is set).
         cmc: Camera motion compensation instance (or None if disabled).
     """
 
@@ -56,7 +60,6 @@ class BoTSORTTracker(BaseTracker):
         minimum_iou_threshold: float = 0.1,
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
-        # cmc_method: str = "orb",
         cmc_method: str = "sparseOptFlow",
         cmc_downscale: int = 2,
 
@@ -65,19 +68,22 @@ class BoTSORTTracker(BaseTracker):
         Initialize the tracker.
 
         Args:
-            lost_track_buffer: Time buffer (in frames at 30 FPS) for keeping lost tracks alive
-                before deletion. This is scaled by `frame_rate`.
-            frame_rate: Video frame rate used to scale the lost track buffer to time-like behavior.
-            track_activation_threshold: Minimum detection confidence to spawn a new track.
-            minimum_consecutive_frames: Number of successful updates required before assigning
-                a stable track ID (different than initial -1).
+            lost_track_buffer: Time buffer (in frames at 30 FPS) for keeping lost tracks
+                alive before deletion. This is scaled by `frame_rate`.
+            frame_rate: Video frame rate used to scale the lost track buffer to 
+                time-like behavior.
+            track_activation_threshold: Minimum detection confidence to spawn a new 
+                track.
+            minimum_consecutive_frames: Number of successful updates required before 
+                assigning a stable track ID (different than initial -1).
             minimum_iou_threshold: Minimum IoU to accept a detection-track association.
             high_conf_det_threshold: Confidence threshold used to split detections into:
                 - high confidence: confidence >= threshold
                 - low confidence:  confidence < threshold
             enable_cmc: Whether to enable camera motion compensation (CMC).
-            cmc_method: CMC method string passed into `CMCConfig(method=...)`. Supported values
-                depend on `CMC` (e.g. "orb", "sparseOptFlow"). See CMCConfig.
+            cmc_method: CMC method string passed into `CMCConfig(method=...)`. 
+                Supported values depend on `CMC` (e.g. "orb", "sift", "sparseOptFlow"). 
+                See CMCConfig.
             cmc_downscale: Downscale factor used inside CMC for speed/robustness.
 
         Notes:
@@ -96,7 +102,8 @@ class BoTSORTTracker(BaseTracker):
         self.tracks: list[BoTSORTKalmanBoxTracker] = []
 
         self.enable_cmc = enable_cmc
-        self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
+        self.cmc = CMC(CMCConfig(method=cmc_method, 
+                                 downscale=cmc_downscale)) if enable_cmc else None
 
     def _update_detections(
         self,
@@ -110,16 +117,17 @@ class BoTSORTTracker(BaseTracker):
 
         For each (track_idx, det_idx) match:
         - Update the track’s Kalman state with the detection bbox.
-        - If the track is “mature” (>= minimum_consecutive_frames) and still has tracker_id == -1,
-          assign a new unique tracker ID.
-        - Create a single-row `sv.Detections` object for the matched detection and set its
-          tracker_id to the track ID (or -1 if not mature yet).
+        - If the track is “mature” (>= minimum_consecutive_frames) and still has 
+          tracker_id == -1, assign a new unique tracker ID.
+        - Create a single-row `sv.Detections` object for the matched detection and set 
+          its tracker_id to the track ID (or -1 if not mature yet).
         - Append it to `updated_detections`.
 
         Args:
             tracks: Tracks being updated.
             detections: Detections used for update.
-            updated_detections: Accumulator list of per-detection outputs for this frame.
+            updated_detections: Accumulator list of per-detection outputs for this 
+                frame.
             matched_indices: List of (track_row_index, detection_col_index) pairs.
 
         Returns:
@@ -155,34 +163,39 @@ class BoTSORTTracker(BaseTracker):
         This is the main per-frame entry point.
 
         Args:
-            detections: Supervision detections for the current frame. Must include `.xyxy`.
-                Confidence (`detections.confidence`) is optional but recommended.
-                The method writes/overwrites `detections.tracker_id`.
-            frame: Current video frame in BGR format (H, W, 3), required if CMC is enabled.
+            detections: Supervision detections for the current frame. Must include `
+                .xyxy`. Confidence (`detections.confidence`) is optional but 
+                recommended. The method writes/overwrites `detections.tracker_id`.
+            frame: Current video frame in BGR format (H, W, 3), required if CMC is 
+                enabled.
 
         Returns:
             A merged `sv.Detections` object containing detections from this frame with
             `tracker_id` assigned:
               - >= 0 indicates a confirmed track ID
-              - -1 indicates unconfirmed/untracked (e.g., new / low confidence / not yet mature)
+              - -1 indicates unconfirmed/untracked (e.g., new / low confidence / not yet
+                mature)
 
         Notes:
-            - If CMC is enabled, the tracker estimates a global affine transform (2x3) from the
-              frame and uses it to warp predicted track states before association.
+            - If CMC is enabled, the tracker estimates a global affine transform (2x3) 
+              from the frame and uses it to warp predicted track states before 
+              association.
         """
         if len(self.tracks) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
             return detections
         updated_detections: list[
             sv.Detections
-        ] = []  # List for returning the updated detections with its new assigned track id # noqa: E501
+        ] = []  # List for returning the updated detections with its new assigned 
+                # track id # noqa: E501
 
         # Predict new locations for existing tracks
         for tracker in self.tracks:
             tracker.predict()
         # Assign a default tracker_id with the correct shape
         detections.tracker_id = -np.ones(len(detections))
-        # Split into high confidence boxes and lower based on self.high_conf_det_threshold # noqa: E501
+        # Split into high confidence boxes and lower based on 
+        # self.high_conf_det_threshold # noqa: E501
         high_prob_detections, low_prob_detections = (
             self._get_high_and_low_probability_detections(detections)
         )
@@ -291,8 +304,9 @@ class BoTSORTTracker(BaseTracker):
         assignment problem in an optimal way.
 
         Args:
-            similarity_matrix: Similarity matrix between tracks (rows) and detections (columns).
-            min_similarity_thresh: Minimum similarity threshold for a valid match.
+            similarity_matrix: Similarity matrix between tracks (rows) and detections 
+            (columns). min_similarity_thresh: Minimum similarity threshold for a valid 
+            match.
 
         Returns:
             Matched indices (list of (tracker_idx, detection_idx)), indices of
@@ -362,8 +376,9 @@ class BoTSORTTracker(BaseTracker):
         detections: sv.Detections,
         tracks: list[BoTSORTKalmanBoxTracker],
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-        """Measures similarity based on IoU between tracks and detections and returns the matches
-            and unmatched tracks/detections. Is used for step 1 and 2 of the BYTE algorithm.
+        """Measures similarity based on IoU between tracks and detections and returns 
+            the matches and unmatched tracks/detections. Is used for step 1 and 2 of the
+            BYTE algorithm.
 
         Args:
             detections: The set of object detections.
@@ -382,7 +397,8 @@ class BoTSORTTracker(BaseTracker):
         thresh = self.minimum_iou_threshold
 
         # Associate detections to tracks based on the higher value of the
-        # similarity matrix, using the Jonker-Volgenant algorithm (linear_sum_assignment). # noqa: E501
+        # similarity matrix, using the Jonker-Volgenant algorithm 
+        # (linear_sum_assignment). # noqa: E501
         matched_indices, unmatched_tracks, unmatched_detections = (
             self._get_associated_indices(similarity_matrix, thresh)
         )
