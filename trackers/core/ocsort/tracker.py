@@ -92,7 +92,7 @@ class OCSORTTracker(BaseTracker):
 
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
-        self.state_estimator_class = XCYCSRStateEstimator
+        self.state_estimator_class = state_estimator_class
 
     def _get_associated_indices(
         self,

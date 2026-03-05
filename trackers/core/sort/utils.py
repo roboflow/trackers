@@ -5,7 +5,6 @@
 # ------------------------------------------------------------------------
 
 from collections.abc import Sequence
-from copy import deepcopy
 
 import numpy as np
 import supervision as sv
@@ -13,7 +12,7 @@ import supervision as sv
 from trackers.utils.base_tracklet import BaseTracklet
 
 
-def get_alive_tracklets(
+def _get_alive_tracklets(
     tracklets: Sequence[BaseTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
@@ -24,7 +23,7 @@ def get_alive_tracklets(
     it was just updated).
 
     Args:
-        tracklets: List of KalmanBoxTracker objects.
+        tracklets: List of BaseTracklet objects.
         minimum_consecutive_frames: Number of consecutive frames that an object
             must be tracked before it is considered a 'valid' track.
         maximum_frames_without_update: Maximum number of frames without update
@@ -47,14 +46,14 @@ def get_alive_tracklets(
     return alive_tracklets
 
 
-def get_iou_matrix(
+def _get_iou_matrix(
     tracks: Sequence[BaseTracklet], detection_boxes: np.ndarray
 ) -> np.ndarray:
     """
     Build IOU cost matrix between detections and predicted bounding boxes
 
     Args:
-        tracks: List of KalmanBoxTracker objects.
+        tracks: List of BaseTracklet objects.
         detection_boxes: Detected bounding boxes in the
             form [x1, y1, x2, y2].
 
@@ -72,4 +71,3 @@ def get_iou_matrix(
         iou_matrix = np.zeros((len(tracks), len(detection_boxes)), dtype=np.float32)
 
     return iou_matrix
-

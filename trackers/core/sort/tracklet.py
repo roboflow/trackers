@@ -46,7 +46,7 @@ class SORTTracklet(BaseTracklet):
         return self.kalman_filter.state_to_bbox()
 
     def _configure_noise(self) -> None:
-        """Configure Kalman filter noise matrices (OC-SORT paper tuning)."""
+        """Configure Kalman filter noise matrices (OC-SORT paper behaviour)."""
         kf = self.kalman_filter.kf
         R = kf.R
         P = kf.P

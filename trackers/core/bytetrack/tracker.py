@@ -10,10 +10,7 @@ from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
-from trackers.core.sort.utils import (
-    get_alive_tracklets,
-    get_iou_matrix,
-)
+from trackers.core.sort.utils import _get_alive_tracklets, _get_iou_matrix
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
@@ -129,7 +126,7 @@ class ByteTrackTracker(BaseTracker):
         low_boxes = detection_boxes[low_indices]
 
         # Step 1: associate high-confidence detections to all tracks
-        iou_matrix = get_iou_matrix(self.tracks, high_boxes)
+        iou_matrix = _get_iou_matrix(self.tracks, high_boxes)
         matched, unmatched_tracks, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold
         )
@@ -149,7 +146,7 @@ class ByteTrackTracker(BaseTracker):
         remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
 
         # Step 2: associate low-confidence detections to remaining tracks
-        iou_matrix = get_iou_matrix(remaining_tracks, low_boxes)
+        iou_matrix = _get_iou_matrix(remaining_tracks, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold
         )
@@ -181,7 +178,7 @@ class ByteTrackTracker(BaseTracker):
             out_tracker_ids,
         )
 
-        self.tracks = get_alive_tracklets(  # type: ignore[assignment]
+        self.tracks = _get_alive_tracklets(  # type: ignore[assignment]
             tracklets=self.tracks,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
             maximum_frames_without_update=self.maximum_frames_without_update,

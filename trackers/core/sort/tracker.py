@@ -11,8 +11,8 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.core.sort.utils import (
-    get_alive_tracklets,
-    get_iou_matrix,
+    _get_alive_tracklets,
+    _get_iou_matrix,
 )
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -80,27 +80,27 @@ class SORTTracker(BaseTracker):
         self.track_activation_threshold = track_activation_threshold
         self.state_estimator_class = state_estimator_class
 
-        # Active trackers
-        self.trackers: list[SORTTracklet] = []
+        # Active tracklets
+        self.tracklets: list[SORTTracklet] = []
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
-        Associate detections to trackers based on IOU
+        Associate detections to tracklets based on IOU
 
         Args:
             iou_matrix: IOU cost matrix.
             detection_boxes: Detected bounding boxes in the form [x1, y1, x2, y2].
 
         Returns:
-            Matched indices, unmatched trackers, unmatched detections.
+            Matched indices, unmatched tracklets, unmatched detections.
         """
         matched_indices = []
-        unmatched_trackers = set(range(len(self.trackers)))
+        unmatched_tracklets = set(range(len(self.tracklets)))
         unmatched_detections = set(range(len(detection_boxes)))
 
-        if len(self.trackers) > 0 and len(detection_boxes) > 0:
+        if len(self.tracklets) > 0 and len(detection_boxes) > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
             # Note that it uses a a modified Jonker-Volgenant algorithm with no
             # initialization instead of the Hungarian algorithm as mentioned in the
@@ -109,12 +109,12 @@ class SORTTracker(BaseTracker):
             for row, col in zip(row_indices, col_indices):
                 if iou_matrix[row, col] >= self.minimum_iou_threshold:
                     matched_indices.append((row, col))
-                    unmatched_trackers.remove(row)
+                    unmatched_tracklets.remove(row)
                     unmatched_detections.remove(col)
 
-        return matched_indices, unmatched_trackers, unmatched_detections
+        return matched_indices, unmatched_tracklets, unmatched_detections
 
-    def _spawn_new_trackers(
+    def _spawn_new_tracklets(
         self,
         confidences: np.ndarray | None,
         detection_boxes: np.ndarray,
@@ -130,7 +130,7 @@ class SORTTracker(BaseTracker):
                     detection_boxes[detection_idx],
                     state_estimator_class=self.state_estimator_class,
                 )
-                self.trackers.append(new_tracker)
+                self.tracklets.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
@@ -146,7 +146,7 @@ class SORTTracker(BaseTracker):
             `sv.Detections` with `tracker_id` assigned for each detection.
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
-        if len(self.trackers) == 0 and len(detections) == 0:
+        if len(self.tracklets) == 0 and len(detections) == 0:
             detections.tracker_id = np.array([], dtype=int)
             return detections
 
@@ -154,44 +154,46 @@ class SORTTracker(BaseTracker):
             detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
         )
 
-        for tracker in self.trackers:
+        for tracker in self.tracklets:
             tracker.predict()
 
-        iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
+        iou_matrix = _get_iou_matrix(self.tracklets, detection_boxes)
 
-        # Associate detections to trackers based on IOU
-        matched_indices, unmatched_trackers, unmatched_detections = (
+        # Associate detections to tracklets based on IOU
+        matched_indices, unmatched_tracklets, unmatched_detections = (
             self._get_associated_indices(iou_matrix, detection_boxes)
         )
 
-        # Update matched trackers and record the det_idx -> tracker mapping
-        matched_tracker_for_det: dict[int, SORTTracklet] = {}
+        # Update matched tracklets and record the det_idx -> tracklet mapping
+        matched_tracklet_for_det: dict[int, SORTTracklet] = {}
         for row, col in matched_indices:
-            self.trackers[row].update(detection_boxes[col])
-            matched_tracker_for_det[col] = self.trackers[row]
+            self.tracklets[row].update(detection_boxes[col])
+            matched_tracklet_for_det[col] = self.tracklets[row]
 
         # Update non matched for increasing time_since_update
-        for index in unmatched_trackers:
-            self.trackers[index].update(None)
-        self._spawn_new_trackers(detections.confidence, detection_boxes, unmatched_detections)
+        for index in unmatched_tracklets:
+            self.tracklets[index].update(None)
+        self._spawn_new_tracklets(
+            detections.confidence, detection_boxes, unmatched_detections
+        )
 
-        # Remove dead trackers
-        self.trackers = get_alive_tracklets(  # type: ignore[assignment]
-            self.trackers,
+        # Remove dead tracklets
+        self.tracklets = _get_alive_tracklets(  # type: ignore[assignment]
+            self.tracklets,
             self.minimum_consecutive_frames,
             self.maximum_frames_without_update,
         )
 
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
         tracker_ids = np.full(len(detection_boxes), -1, dtype=int)
-        for det_idx, tracker in matched_tracker_for_det.items():
+        for det_idx, tracklet in matched_tracklet_for_det.items():
             if (
-                tracker.number_of_successful_consecutive_updates
+                tracklet.number_of_successful_consecutive_updates
                 >= self.minimum_consecutive_frames
             ):
-                if tracker.tracker_id == -1:
-                    tracker.tracker_id = SORTTracklet.get_next_tracker_id()
-                tracker_ids[det_idx] = tracker.tracker_id
+                if tracklet.tracker_id == -1:
+                    tracklet.tracker_id = SORTTracklet.get_next_tracker_id()
+                tracker_ids[det_idx] = tracklet.tracker_id
 
         detections.tracker_id = tracker_ids
         return detections
@@ -200,5 +202,5 @@ class SORTTracker(BaseTracker):
         """Reset tracker state by clearing all tracks and resetting ID counter.
         Call this method when switching to a new video or scene.
         """
-        self.trackers = []
+        self.tracklets = []
         SORTTracklet.count_id = 0
