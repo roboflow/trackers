@@ -18,3 +18,5 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: ⬆️
+    exclude-paths:
+      - "demo"
