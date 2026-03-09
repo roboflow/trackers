@@ -168,6 +168,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for DanceTrack.</small></p>
 
 !!! warning
+
     DanceTrack test set evaluation is currently unavailable because CodaLab, which hosted
     the benchmark, has been [discontinued](https://docs.codabench.org/dev/Newsletters_Archive/CodaLab-in-2025/).
     Migration to Codabench is [in progress](https://github.com/DanceTrack/DanceTrack/issues/42).
