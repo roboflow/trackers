@@ -107,8 +107,8 @@ Clean, modular implementations of leading trackers. See the [tracker comparison]
 |                   Algorithm                   |  MOT17   | SportsMOT | SoccerNet |
 | :-------------------------------------------: | :------: | :-------: | :-------: |
 |   [SORT](https://arxiv.org/abs/1602.00763)    |   58.4   |   70.9    |   81.6    |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) | **60.1** | **73.0**  | **84.0**  |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |    —     |     —     |     —     |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) |   60.1   | **73.0**  | **84.0**  |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  | **61.9** |   71.5    |   78.6    |
 | [BoT-SORT](https://arxiv.org/abs/2206.14651)  |    —     |     —     |     —     |
 |  [McByte](https://arxiv.org/abs/2506.01373)   |    —     |     —     |     —     |
 
