@@ -168,7 +168,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       delta_t: 1
     ```
 
-**Note:** parameters are searched in validation set and results are reported over test set, to which we have complete access. Dataset provides oracle (labeled) detections.
+**Note:** parameters are searched in train set and results are reported over test set, to which we have complete access. There is no validation set for SoccerNet tracking. Dataset provides oracle (labeled) detections.
 
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
@@ -232,3 +232,24 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     ```
 
 **Note:** parameters are searched in train set and results are reported over validation set, to which we have complete access. Dataset provides oracle (labeled) detections.
+
+## Methodology
+
+### Tracking
+
+Differently to academic results, our goal is to show real performance that you would get using the tracker. That's why we perform tracking over the raw detections and tuning over a different set that is not the same in which we perform the evaluation.
+
+### Detections
+
+Detections for tracking come from two possible different sources: **oracle detections** (ground-truth labeled detections) and **detections coming from a detector**. It is specified per dataset which type of detections is used. For detector-based results, we use a YoloX model following the ByteTrack procedure.
+
+### Parameter tuning
+
+Best parameters per tracker and dataset were found via grid search over a
+predefined set of values.
+We call **tuning** step to trying the combinations and calculating metrics for each one, and keeping the parameters with highest HOTA. Then, we do the **evaluation** step where we use the parameters found in tuning step to report the results over the corresponding evaluation set. Usually we work with training, validation and test sets, but if one is not available we proceed as follows:
+
+- **Train + validation + test available:** tune on validation, report on test
+    (using the configuration with the highest HOTA on validation).
+- **No test set available:** tune on train, report on validation.
+- **No validation set available:** tune on train, report on test.
