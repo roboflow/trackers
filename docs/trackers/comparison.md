@@ -19,7 +19,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   58.4   |   69.9   |   67.2   |
     | ByteTrack |   60.1   |   73.2   |   74.1   |
-    |  OC-SORT  | **61.9** | **76.1** | **76.7** |
+    |  OC-SORT  | **61.9** | **76.4** | **76.0** |
 
 === "Tuned"
 
@@ -29,7 +29,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   60.4   |   72.5   |   75.8   |
     | ByteTrack |   60.5   |   72.7   |   76.1   |
-    |  OC-SORT  | **62.0** | **77.4** | **78.0** |
+    |  OC-SORT  | **62.0** | **76.5** | **77.3** |
 
     Tuned configuration for each tracker.
 
@@ -42,7 +42,6 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
     ByteTrack:
       lost_track_buffer: 10
-      frame_rate: 30.0
       track_activation_threshold: 0.7
       minimum_consecutive_frames: 1
       minimum_iou_threshold: 0.3
@@ -56,6 +55,8 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
       high_conf_det_threshold: 0.4
       delta_t: 1
     ```
+
+**Note:** parameters are searched in validation set and results are reported over test set, submitting in CodaBench. Detections come from YoloX detector.
 
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
 
@@ -74,7 +75,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   70.9   |   68.9   |   95.7   |
     | ByteTrack | **73.0** | **72.5** | **96.4** |
-    |  OC-SORT  |   71.5   |   71.2   |   95.2   |
+    |  OC-SORT  |   71.7   |   71.4   |   95.0   |
 
 === "Tuned"
 
@@ -95,6 +96,13 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       minimum_consecutive_frames: 2
       minimum_iou_threshold: 0.05
 
+    ByteTrack:
+      lost_track_buffer: 10
+      track_activation_threshold: 0.9
+      minimum_consecutive_frames: 1
+      minimum_iou_threshold: 0.05
+      high_conf_det_threshold: 0.7
+
     OC-SORT:
       lost_track_buffer: 60
       minimum_iou_threshold: 0.1
@@ -103,6 +111,8 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       high_conf_det_threshold: 0.6
       delta_t: 3
     ```
+
+**Note:** parameters are searched in validation set and results are reported over test set, submitting in CodaBench. Detections come from YoloX detector.
 
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
 
@@ -121,7 +131,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   81.6   |   76.2   |   95.1   |
     | ByteTrack | **84.0** | **78.1** | **97.8** |
-    |  OC-SORT  |   78.6   |   72.7   |   94.5   |
+    |  OC-SORT  |   78.4   |   72.6   |   94.1   |
 
 === "Tuned"
 
@@ -157,6 +167,8 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       high_conf_det_threshold: 0.4
       delta_t: 1
     ```
+
+**Note:** parameters are searched in validation set and results are reported over test set, to which we have complete access. Dataset provides oracle (labeled) detections.
 
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
@@ -198,8 +210,8 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
     ```yaml
     SORT:
-      lost_track_buffer: 30
-      track_activation_threshold: 0.25
+      lost_track_buffer: 10
+      track_activation_threshold: 0.9
       minimum_consecutive_frames: 2
       minimum_iou_threshold: 0.05
 
@@ -218,3 +230,5 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       high_conf_det_threshold: 0.6
       delta_t: 1
     ```
+
+**Note:** parameters are searched in train set and results are reported over validation set, to which we have complete access. Dataset provides oracle (labeled) detections.
