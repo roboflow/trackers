@@ -34,10 +34,7 @@ def _get_alive_tracklets(
     """
     alive_tracklets = []
     for tracklet in tracklets:
-        is_mature = (
-            tracklet.number_of_successful_updates
-            >= minimum_consecutive_frames
-        )
+        is_mature = tracklet.number_of_successful_updates >= minimum_consecutive_frames
         is_active = tracklet.time_since_update == 0
         if tracklet.time_since_update < maximum_frames_without_update and (
             is_mature or is_active
