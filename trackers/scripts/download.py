@@ -5,23 +5,21 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------
-# Trackers
-# Copyright (c) 2026 Roboflow.
-# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
-# ------------------------------------------------------------------------
-
 from __future__ import annotations
 
+import argparse
 import sys
-from pathlib import Path
-from typing import cast
 
-from trackers.datasets.manifest import DATASETS
-from trackers.utils.downloader import download_file, extract_zip
+from rich.console import Console
+from rich.panel import Panel
+
+from trackers.datasets.manifest import _DATASETS
 
 
-def add_download_subparser(subparsers):
+def add_download_subparser(
+    subparsers: argparse._SubParsersAction,
+) -> None:
+    """Add the download subcommand to the argument parser."""
     parser = subparsers.add_parser(
         "download",
         help="Download benchmark tracking datasets.",
@@ -36,106 +34,73 @@ def add_download_subparser(subparsers):
     parser.add_argument(
         "dataset",
         nargs="?",
-        help="Dataset name (e.g. mot17). Warning: only MOT17 is supported currently.",
+        help="Dataset name (e.g. mot17, sportsmot).",
     )
     parser.add_argument(
         "--split",
-        help="List of splits to download (e.g. train,val,test). "
+        help="Comma-separated splits to download (e.g. train,val,test). "
         "If omitted, all available splits are downloaded.",
     )
     parser.add_argument(
         "--content",
-        help="List of content to download: annotations,frames,detections. "
+        help="Comma-separated content to download: annotations,frames,detections. "
         "If omitted, all available content is downloaded.",
     )
     parser.add_argument(
         "-o",
         "--output",
-        default="./data",
-        help="Output directory (default: ./datasets).",
+        default=".",
+        help="Output directory (default: current directory).",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        default="~/.cache/trackers",
+        help="Cache directory for downloaded ZIPs (default: ~/.cache/trackers).",
     )
 
-    parser.set_defaults(func=run_download)
+    parser.set_defaults(func=_run_download)
 
 
-def run_download(args) -> int:
+def _run_download(args: argparse.Namespace) -> int:
+    """Execute the download subcommand."""
     if args.list:
         _print_available()
         return 0
 
     if not args.dataset:
-        sys.exit("Please specify a dataset name or use --list.")
+        print("Please specify a dataset name or use --list.", file=sys.stderr)
+        return 1
 
-    dataset = args.dataset.lower()
-    if dataset not in DATASETS:
-        sys.exit(f"Unknown dataset: {dataset}")
+    from trackers.datasets.download import download_dataset
 
-    output_dir = Path(args.output).expanduser().resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    ds = DATASETS[dataset]
-
-    # ---- Explicit typing for mypy (without modifying manifest.py) ----
-    splits_dict = cast(dict[str, dict[str, dict[str, str]]], ds["splits"])
-
-    # Parse splits
-    if args.split:
-        splits: list[str] = [s.strip() for s in args.split.split(",")]
-    else:
-        splits = list(splits_dict.keys())
-
-    # Parse content
-    if args.content:
-        requested_content: list[str] = [c.strip() for c in args.content.split(",")]
-    else:
-        requested_content = []
-
-    for split in splits:
-        if split not in splits_dict:
-            sys.exit(f"Invalid split '{split}' for dataset '{dataset}'")
-
-        available_content = splits_dict[split]
-
-        # Resolve which content to download
-        if requested_content:
-            selected_content: dict[str, dict[str, str]] = {}
-            for c in requested_content:
-                if c not in available_content:
-                    sys.exit(
-                        f"Error: content '{c}' is not available for split '{split}' "
-                        f"in dataset '{dataset}'"
-                    )
-                selected_content[c] = available_content[c]
-        else:
-            selected_content = available_content
-
-        for kind, item in selected_content.items():
-            url = item["url"]
-            md5 = item.get("md5")
-
-            marker = output_dir / f".{dataset}-{split}-{kind}.complete"
-            if marker.exists():
-                print(f"[skip] {dataset}:{split}:{kind} already downloaded")
-                continue
-
-            zip_name = url.split("/")[-1]
-            zip_path = output_dir / zip_name
-
-            print(f"[download] {dataset}:{split}:{kind}")
-            download_file(url, zip_path, md5=md5)
-            extract_zip(zip_path, output_dir)
-
-            marker.touch()
+    try:
+        download_dataset(
+            dataset=args.dataset,
+            split=args.split,
+            content=args.content,
+            output=args.output,
+            cache_dir=args.cache_dir,
+        )
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
     return 0
 
 
-def _print_available():
-    print("\nAvailable datasets:\n")
-    for name, ds in DATASETS.items():
-        splits_dict = cast(dict[str, dict[str, dict[str, str]]], ds["splits"])
-        print(f"{name}: {ds.get('description', '')}")
-        for split, contents in splits_dict.items():
-            kinds = ", ".join(contents.keys())
-            print(f"  - {split}: {kinds}")
-        print()
+def _print_available() -> None:
+    """Print available datasets, splits, and content types."""
+    console = Console()
+    for name, dataset_info in _DATASETS.items():
+        description = dataset_info.get("description", "")
+        splits_dict: dict[str, dict] = dataset_info.get("splits", {})
+
+        max_split_len = max(len(s) for s in splits_dict) if splits_dict else 0
+        split_lines = [
+            f"{split:<{max_split_len}}   {', '.join(content.keys())}"
+            for split, content in splits_dict.items()
+        ]
+
+        body = f"{description}\n\n" + "\n".join(split_lines)
+        console.print(Panel(body, title=name, title_align="left"))
+        console.print()
