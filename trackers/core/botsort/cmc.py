@@ -60,7 +60,7 @@ class CMCConfig:
 
         ransac_reproj_threshold:
             (ORB only) RANSAC reprojection threshold in pixels passed to
-            OpenCV’s affine estimation. It controls how far a point is allowed to 
+            OpenCV's affine estimation. It controls how far a point is allowed to 
             deviate from the estimated model while still being counted as an inlier.
             Smaller values are stricter (reject more matches); larger values are more 
             tolerant.
