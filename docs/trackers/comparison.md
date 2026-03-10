@@ -12,6 +12,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>
 
 !!! info
+
     Parameters were tuned on the validation set. Results are reported on the
     test set via Codabench submission. Detections come from a YOLOX model.
 
@@ -70,6 +71,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
 
 !!! info
+
     Parameters were tuned on the validation set. Results are reported on the
     test set via Codabench submission. Detections come from a YOLOX model.
 
@@ -128,6 +130,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SoccerNet.</small></p>
 
 !!! info
+
     Parameters were tuned on the train set. Results are reported on the test
     set. SoccerNet-tracking has no validation split. This dataset provides
     oracle (ground-truth) detections.
@@ -194,6 +197,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     Results below use the validation set instead.
 
 !!! info
+
     Parameters were tuned on the train set. Results are reported on the
     validation set. This dataset provides oracle (ground-truth) detections.
 
