@@ -24,6 +24,8 @@ class SORTTracklet(BaseTracklet):
     ) -> None:
         super().__init__(initial_bbox, state_estimator_class)
         self._configure_noise()
+        # SORTKalmanBoxTracker behavior where hits started at 1)
+        self.number_of_successful_consecutive_updates = 1
 
     def update(self, bbox: np.ndarray | None) -> None:
         """Update tracklet with new observation or None if missed."""
