@@ -302,6 +302,7 @@ class CMC:
             gray = cv2.resize(gray, (W_img // self.downscale, H_img // self.downscale))
         H, W = gray.shape[:2]
 
+        # Build mask: central ROI + remove detections (background features)
         mask = np.zeros_like(gray, dtype=np.uint8)
         y0 = int(self.cfg.roi_min_frac * H)
         y1 = int(self.cfg.roi_max_frac * H)
@@ -486,45 +487,120 @@ class CMC:
     @staticmethod
     def apply_to_tracks(tracks: list, H: np.ndarray) -> None:
         """
-        Apply affine transform H (2x3) to tracker states and covariances in-place.
+        Apply a global affine motion transform to tracker states and covariances in-place.
 
-        This implementation assumes each track has:
-            - `state`: (8,1) float vector [x1,y1,x2,y2,vx,vy,vx2,vy2]^T
-            - `P`: (8,8) covariance matrix
+        This method updates each track according to the affine transform
 
-        The transform is applied as:
-            state := A * state + translation
-            P     := A * P * A^T
+            x' = R x + t
 
-        Where A applies the 2x2 rotation/shear block to each 2D component block in the 
-        state.
+        where:
+            R:
+                2x2 linear part of the affine transform (rotation / shear / scale-like part).
+            t:
+                2D translation vector.
+
+        The input transform `H` is expected in standard OpenCV affine form:
+
+            H = [ R | t ]
+
+        with shape (2, 3).
+
+        Tracker state convention:
+            Each track is assumed to store its Kalman state as
+
+                [xc, yc, w, h, vxc, vyc, vw, vh]^T
+
+            where:
+                xc, yc:
+                    Bounding box center coordinates.
+                w, h:
+                    Bounding box width and height.
+                vxc, vyc:
+                    Velocities of the center coordinates.
+                vw, vh:
+                    Velocities of the width and height.
+
+        State update logic:
+            The affine transform is applied only to the geometric quantities that live in
+            the 2D image plane as position or velocity vectors:
+
+            1) Center position:
+                   [xc, yc]^T = R @ [xc, yc]^T + t
+
+            2) Center velocity:
+                   [vxc, vyc]^T = R @ [vxc, vyc]^T
+
+            3) Width, height, and their velocities:
+                   [w, h, vw, vh] remain unchanged
+
+        Why width and height are not transformed here:
+            Width and height are scalar box dimensions, not 2D point coordinates.
+            In this implementation, camera motion compensation is used to correct the
+            object center location and its image-plane velocity, while the box size terms
+            are left unchanged. This keeps the compensation simple and consistent with the
+            state representation used by the tracker.
+
+        Covariance update:
+            Each track also stores a covariance matrix `P` describing uncertainty in the
+            8D Kalman state. After the mean state is transformed, the covariance is updated
+            using the linear transform
+
+                P = A @ P @ A.T
+
+            where `A` is an 8x8 block matrix that applies `R` to:
+                - the center position block [xc, yc]
+                - the center velocity block [vxc, vyc]
+
+            and leaves the remaining state dimensions unchanged.
+
+            Concretely:
+                - A[0:2, 0:2] = R
+                - A[4:6, 4:6] = R
+                - all other diagonal entries remain 1
 
         Args:
-            tracks: List of track objects with `.state` and `.P` attributes.
-            H: Affine transform (2,3) mapping prev -> curr.
+            tracks:
+                List of track objects. Each track is expected to expose:
+                    - `state`: NumPy array of shape (8, 1)
+                    - `P`: NumPy array of shape (8, 8)
+            H:
+                Affine transform matrix of shape (2, 3), mapping previous-frame image
+                coordinates to current-frame image coordinates.
 
         Returns:
-            None. Tracks are modified in-place.
+            None.
+            The tracks are modified in-place.
+
+        Notes:
+            - If `H` is None or `tracks` is empty, this method does nothing.
+            - The method assumes that `H` has already been estimated in image coordinates
+              consistent with the tracker state.
+            - This method does not perform any validity checks on whether the estimated
+              transform is physically plausible; it simply applies the provided transform.
         """
         if H is None or len(tracks) == 0:
             return
 
         H = H.astype(np.float32)
         R = H[:2, :2]
-        t = H[:2, 2:3]  # (2,1)
-
-        A4 = np.zeros((4, 4), dtype=np.float32)
-        A4[0:2, 0:2] = R
-        A4[2:4, 2:4] = R
-
-        A8 = np.zeros((8, 8), dtype=np.float32)
-        A8[0:4, 0:4] = A4
-        A8[4:8, 4:8] = A4
-
-        trans4 = np.array([t[0, 0], t[1, 0], t[0, 0], t[1, 0]], 
-                          dtype=np.float32).reshape(4, 1)
+        t = H[:2, 2]
 
         for trk in tracks:
-            trk.state = (A8 @ trk.state).astype(np.float32)
-            trk.state[0:4] += trans4
-            trk.P = (A8 @ trk.P @ A8.T).astype(np.float32)
+            x = trk.state.reshape(-1)
+
+            # Update the state mean using the affine transform.
+            pos = x[0:2]
+            vel = x[4:6]
+
+            x[0:2] = R @ pos + t
+            x[4:6] = R @ vel
+
+            trk.state = x.reshape(8, 1).astype(np.float32)
+
+            # Update the state covariance under the corresponding linear transform.
+            A = np.eye(8, dtype=np.float32)
+            A[0:2, 0:2] = R      # center position
+            A[4:6, 4:6] = R      # center velocity
+            # Box size terms (w, h, vw, vh) are not transformed in this implementation.
+
+            trk.P = (A @ trk.P @ A.T).astype(np.float32)
