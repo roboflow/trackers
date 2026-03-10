@@ -11,6 +11,10 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>
 
+!!! info
+    Parameters were tuned on the validation set. Results are reported on the
+    test set via Codabench submission. Detections come from a YOLOX model.
+
 === "Default"
 
     Results using default tracker parameters.
@@ -56,8 +60,6 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
       delta_t: 1
     ```
 
-**Note:** parameters are searched in validation set and results are reported over test set, submitting in CodaBench. Detections come from YoloX detector.
-
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
 
 Sports broadcast tracking with fast motion, camera pans, and similar-looking targets. Tests association under speed and appearance ambiguity.
@@ -66,6 +68,10 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SportsMOT_v_-6Os86HzwCs_c001-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
+
+!!! info
+    Parameters were tuned on the validation set. Results are reported on the
+    test set via Codabench submission. Detections come from a YOLOX model.
 
 === "Default"
 
@@ -112,8 +118,6 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       delta_t: 3
     ```
 
-**Note:** parameters are searched in validation set and results are reported over test set, submitting in CodaBench. Detections come from YoloX detector.
-
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
 
 Long sequences with dense interactions and partial occlusions. Tests long-term ID consistency.
@@ -122,6 +126,11 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SoccerNet-tracking_SNMOT-060-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SoccerNet.</small></p>
+
+!!! info
+    Parameters were tuned on the train set. Results are reported on the test
+    set. SoccerNet-tracking has no validation split. This dataset provides
+    oracle (ground-truth) detections.
 
 === "Default"
 
@@ -168,8 +177,6 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       delta_t: 1
     ```
 
-**Note:** parameters are searched in train set and results are reported over test set, to which we have complete access. There is no validation set for SoccerNet tracking. Dataset provides oracle (labeled) detections.
-
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
 Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.
@@ -185,6 +192,10 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     the benchmark, has been [discontinued](https://docs.codabench.org/dev/Newsletters_Archive/CodaLab-in-2025/).
     Migration to Codabench is [in progress](https://github.com/DanceTrack/DanceTrack/issues/42).
     Results below use the validation set instead.
+
+!!! info
+    Parameters were tuned on the train set. Results are reported on the
+    validation set. This dataset provides oracle (ground-truth) detections.
 
 === "Default"
 
@@ -231,25 +242,20 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       delta_t: 1
     ```
 
-**Note:** parameters are searched in train set and results are reported over validation set, to which we have complete access. Dataset provides oracle (labeled) detections.
-
 ## Methodology
-
-### Tracking
-
-Differently to academic results, our goal is to show real performance that you would get using the tracker. That's why we perform tracking over the raw detections and tuning over a different set that is not the same in which we perform the evaluation.
 
 ### Detections
 
-Detections for tracking come from two possible different sources: **oracle detections** (ground-truth labeled detections) and **detections coming from a detector**. It is specified per dataset which type of detections is used. For detector-based results, we use a YoloX model following the ByteTrack procedure.
+Each dataset uses one of two detection sources: oracle detections (ground-truth
+bounding boxes provided by the dataset) or model detections (produced by a YOLOX
+detector following the ByteTrack procedure). The source is noted per dataset above.
 
-### Parameter tuning
+### Tuning
 
-Best parameters per tracker and dataset were found via grid search over a
-predefined set of values.
-We call **tuning** step to trying the combinations and calculating metrics for each one, and keeping the parameters with highest HOTA. Then, we do the **evaluation** step where we use the parameters found in tuning step to report the results over the corresponding evaluation set. Usually we work with training, validation and test sets, but if one is not available we proceed as follows:
+Best parameters per tracker and dataset were found via grid search, selecting the
+configuration with the highest HOTA. Tuning and evaluation always use separate data
+splits to reflect real-world usage:
 
-- **Train + validation + test available:** tune on validation, report on test
-    (using the configuration with the highest HOTA on validation).
-- **No test set available:** tune on train, report on validation.
-- **No validation set available:** tune on train, report on test.
+- Train + validation + test: tune on validation, report on test.
+- Train + validation: tune on train, report on validation.
+- Train + test: tune on train, report on test.
