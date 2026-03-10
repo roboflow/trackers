@@ -25,7 +25,9 @@ class SORTTracklet(BaseTracklet):
         super().__init__(initial_bbox, state_estimator_class)
         self._configure_noise()
         # SORTKalmanBoxTracker behavior where hits started at 1)
-        self.number_of_successful_updates = 1 # SORT doesnt use number_of_successful_consecutive_updates
+        self.number_of_successful_updates = (
+            1  # SORT doesn't use number_of_successful_consecutive_updates
+        )
 
     def update(self, bbox: np.ndarray | None) -> None:
         """Update tracklet with new observation or None if missed."""
@@ -48,7 +50,7 @@ class SORTTracklet(BaseTracklet):
         return self.kalman_filter.state_to_bbox()
 
     def _configure_noise(self) -> None:
-        """Configure Kalman filter noise matrices (OC-SORT paper behaviour) and SORT 
+        """Configure Kalman filter noise matrices (OC-SORT paper behaviour) and SORT
         behaviour for XYXY coordinates."""
         kf = self.kalman_filter.kf
         R = kf.R
@@ -61,14 +63,13 @@ class SORTTracklet(BaseTracklet):
             Q[-1, -1] *= 0.01
             Q[4:, 4:] *= 0.01
         else:
-
             # Process covariance matrix (Q)
-            Q = np.eye(8, dtype=np.float32) * 0.01
+            Q = np.eye(8, dtype=np.float64) * 0.01
 
             # Measurement covariance (R): noise in detection
-            R = np.eye(4, dtype=np.float32) * 0.1
+            R = np.eye(4, dtype=np.float64) * 0.1
 
             # Error covariance matrix (P)
-            P = np.eye(8, dtype=np.float32)
+            P = np.eye(8, dtype=np.float64)
 
         self.kalman_filter.set_kf_covariances(R=R, Q=Q, P=P)
