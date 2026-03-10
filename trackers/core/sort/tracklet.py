@@ -49,7 +49,8 @@ class SORTTracklet(BaseTracklet):
         return self.kalman_filter.state_to_bbox()
 
     def _configure_noise(self) -> None:
-        """Configure Kalman filter noise matrices (OC-SORT paper behaviour)."""
+        """Configure Kalman filter noise matrices (OC-SORT paper behaviour) and SORT 
+        behaviour for XYXY coordinates."""
         kf = self.kalman_filter.kf
         R = kf.R
         P = kf.P
@@ -61,8 +62,16 @@ class SORTTracklet(BaseTracklet):
             Q[-1, -1] *= 0.01
             Q[4:, 4:] *= 0.01
         else:
-            # XYXY: same velocity uncertainty scaling
-            P[4:, 4:] *= 1000.0
-            P *= 10.0
-            Q[4:, 4:] *= 0.01
+
+
+  
+            # Process covariance matrix (Q)
+            Q = np.eye(8, dtype=np.float32) * 0.01
+
+            # Measurement covariance (R): noise in detection
+            R = np.eye(4, dtype=np.float32) * 0.1
+
+            # Error covariance matrix (P)
+            P = np.eye(8, dtype=np.float32)
+
         self.kalman_filter.set_kf_covariances(R=R, Q=Q, P=P)
