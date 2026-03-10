@@ -162,8 +162,8 @@ class BoTSORTKalmanBoxTracker:
         This method initializes the following matrices:
 
         State transition matrix:
-            F is an 8x8 matrix defining how the state evolves from one frame to the next.
-            It implements a constant-velocity model:
+            F is an 8x8 matrix defining how the state evolves from one frame to the 
+            next. It implements a constant-velocity model:
                 xc <- xc + vxc
                 yc <- yc + vyc
                 w  <- w  + vw
@@ -251,7 +251,8 @@ class BoTSORTKalmanBoxTracker:
 
     def _update_process_and_measurement_noise(self) -> None:
         """
-        Recompute the process and measurement noise covariances from the current box size.
+        Recompute the process and measurement noise covariances from the current box 
+        size.
 
         This method updates:
 
@@ -266,13 +267,14 @@ class BoTSORTKalmanBoxTracker:
         Why this update is needed:
             The scale of the uncertainty should depend on the current object size.
             For example, a 2-pixel error is relatively more important for a small object
-            than for a large one. Therefore, the diagonal entries of Q and R are computed
-            from the current predicted width and height stored in the state.
+            than for a large one. Therefore, the diagonal entries of Q and R are 
+            computed from the current predicted width and height stored in the state.
 
         Implementation details:
             - Width and height are read from the current state:
                   w = state[2], h = state[3]
-            - They are clamped to a small positive minimum to avoid zero or negative values.
+            - They are clamped to a small positive minimum to avoid zero or negative 
+              values.
             - The resulting Q and R matrices remain diagonal.
 
         Notes:
@@ -324,9 +326,10 @@ class BoTSORTKalmanBoxTracker:
                 Process noise covariance.
 
         Effect of the prediction:
-            - The center position and box size are advanced using their current velocities.
-            - The covariance matrix P is propagated forward and increased by Q to reflect
-              additional uncertainty introduced during motion prediction.
+            - The center position and box size are advanced using their current 
+              velocities.
+            - The covariance matrix P is propagated forward and increased by Q to 
+              reflect additional uncertainty introduced during motion prediction.
 
         Additional behavior:
             - The process and measurement noise matrices are refreshed first by calling
