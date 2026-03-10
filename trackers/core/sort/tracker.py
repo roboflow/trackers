@@ -116,16 +116,12 @@ class SORTTracker(BaseTracker):
 
     def _spawn_new_tracklets(
         self,
-        confidences: np.ndarray | None,
+        confidences: np.ndarray ,
         detection_boxes: np.ndarray,
         unmatched_detections: set[int],
     ) -> None:
         for detection_idx in unmatched_detections:
-            if (
-                confidences is None
-                or detection_idx >= len(confidences)
-                or confidences[detection_idx] >= self.track_activation_threshold
-            ):
+            if  confidences[detection_idx] >= self.track_activation_threshold:
                 new_tracker = SORTTracklet(
                     detection_boxes[detection_idx],
                     state_estimator_class=self.state_estimator_class,
@@ -154,8 +150,8 @@ class SORTTracker(BaseTracker):
             detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
         )
 
-        for tracker in self.tracklets:
-            tracker.predict()
+        for tracklet in self.tracklets:
+            tracklet.predict()
 
         iou_matrix = _get_iou_matrix(self.tracklets, detection_boxes)
 
@@ -188,7 +184,7 @@ class SORTTracker(BaseTracker):
         tracker_ids = np.full(len(detection_boxes), -1, dtype=int)
         for det_idx, tracklet in matched_tracklet_for_det.items():
             if (
-                tracklet.number_of_successful_consecutive_updates
+                tracklet.number_of_successful_updates
                 >= self.minimum_consecutive_frames
             ):
                 if tracklet.tracker_id == -1:

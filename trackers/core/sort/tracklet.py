@@ -25,18 +25,17 @@ class SORTTracklet(BaseTracklet):
         super().__init__(initial_bbox, state_estimator_class)
         self._configure_noise()
         # SORTKalmanBoxTracker behavior where hits started at 1)
-        self.number_of_successful_consecutive_updates = 1
+        self.number_of_successful_updates = 1 # SORT doesnt use number_of_successful_consecutive_updates
 
     def update(self, bbox: np.ndarray | None) -> None:
         """Update tracklet with new observation or None if missed."""
         if bbox is not None:
             self.kalman_filter.update(bbox)
             self.time_since_update = 0
-            self.number_of_successful_consecutive_updates += 1
+            self.number_of_successful_updates += 1
         else:
             self.kalman_filter.update(None)
             self.time_since_update += 1
-            self.number_of_successful_consecutive_updates = 0
 
     def predict(self) -> np.ndarray:
         """Predict next bounding box position."""
@@ -63,8 +62,6 @@ class SORTTracklet(BaseTracklet):
             Q[4:, 4:] *= 0.01
         else:
 
-
-  
             # Process covariance matrix (Q)
             Q = np.eye(8, dtype=np.float32) * 0.01
 
