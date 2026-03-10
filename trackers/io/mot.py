@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TextIO
 
 import numpy as np
 import supervision as sv
@@ -306,7 +307,7 @@ class _MOTOutput:
 
     def __init__(self, path: Path | None) -> None:
         self.path = path
-        self._file = None
+        self._file: TextIO | None = None
 
     def write(self, frame_idx: int, detections: sv.Detections) -> None:
         """Write detections for a frame in MOT format."""

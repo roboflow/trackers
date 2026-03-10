@@ -70,6 +70,7 @@ def _run_tracker_on_flat_dataset(
                 tracked = tracker.update(detections)
                 if tracked.tracker_id is not None:
                     mature = tracked[tracked.tracker_id != -1]
+                    assert isinstance(mature, sv.Detections)
                     mot.write(frame_idx, mature)
                 else:
                     mot.write(frame_idx, tracked)
@@ -110,6 +111,9 @@ def test_tracker_regression(
     )
 
     aggregate = result.aggregate
+    assert aggregate.HOTA is not None
+    assert aggregate.CLEAR is not None
+    assert aggregate.Identity is not None
     assert aggregate.HOTA.HOTA * 100 == pytest.approx(expected["HOTA"], abs=0.001)
     assert aggregate.CLEAR.MOTA * 100 == pytest.approx(expected["MOTA"], abs=0.001)
     assert aggregate.Identity.IDF1 * 100 == pytest.approx(expected["IDF1"], abs=0.001)
