@@ -687,6 +687,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methodology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Methodology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#detections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detections
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1171,6 +1210,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methodology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Methodology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#detections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detections
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1192,7 +1270,7 @@
 
 
 <h1 id="tracker-comparison">Tracker Comparison</h1>
-<p>This page shows head-to-head performance of SORT, ByteTrack, and OC-SORT on standard MOT benchmarks. All results come from benchmarking our current implementation of each tracker with default parameters.</p>
+<p>This page shows head-to-head performance of SORT, ByteTrack, and OC-SORT on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.</p>
 <h2 id="mot17"><a href="https://arxiv.org/abs/1603.00831">MOT17</a></h2>
 <p>Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests re-identification and identity stability.</p>
 <video width="100%" controls autoplay muted loop>
@@ -1200,6 +1278,15 @@
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>
 
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Parameters were tuned on the validation set. Results are reported on the
+test set via Codabench submission. Detections come from a YOLOX model.</p>
+</div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Default</label><label for="__tabbed_1_2">Tuned</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Results using default tracker parameters.</p>
 <table>
 <thead>
 <tr>
@@ -1225,11 +1312,69 @@
 <tr>
 <td style="text-align: center;">OC-SORT</td>
 <td style="text-align: center;"><strong>61.9</strong></td>
-<td style="text-align: center;"><strong>76.1</strong></td>
-<td style="text-align: center;"><strong>76.7</strong></td>
+<td style="text-align: center;"><strong>76.4</strong></td>
+<td style="text-align: center;"><strong>76.0</strong></td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="tabbed-block">
+<p>Results after grid search over tracker parameters.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">SORT</td>
+<td style="text-align: center;">60.4</td>
+<td style="text-align: center;">72.5</td>
+<td style="text-align: center;">75.8</td>
+</tr>
+<tr>
+<td style="text-align: center;">ByteTrack</td>
+<td style="text-align: center;">60.5</td>
+<td style="text-align: center;">72.7</td>
+<td style="text-align: center;">76.1</td>
+</tr>
+<tr>
+<td style="text-align: center;">OC-SORT</td>
+<td style="text-align: center;"><strong>62.0</strong></td>
+<td style="text-align: center;"><strong>76.5</strong></td>
+<td style="text-align: center;"><strong>77.3</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Tuned configuration for each tracker.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">SORT</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.75</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nt">ByteTrack</span><span class="p">:</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nt">OC-SORT</span><span class="p">:</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span><span class="nt">direction_consistency_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">  </span><span class="nt">delta_t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
 <h2 id="sportsmot"><a href="https://arxiv.org/abs/2304.05170">SportsMOT</a></h2>
 <p>Sports broadcast tracking with fast motion, camera pans, and similar-looking targets. Tests association under speed and appearance ambiguity.</p>
 <video width="100%" controls autoplay muted loop>
@@ -1237,6 +1382,15 @@
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
 
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Parameters were tuned on the validation set. Results are reported on the
+test set via Codabench submission. Detections come from a YOLOX model.</p>
+</div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Default</label><label for="__tabbed_2_2">Tuned</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Results using default tracker parameters.</p>
 <table>
 <thead>
 <tr>
@@ -1261,12 +1415,70 @@
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
-<td style="text-align: center;">71.5</td>
-<td style="text-align: center;">71.2</td>
-<td style="text-align: center;">95.2</td>
+<td style="text-align: center;">71.7</td>
+<td style="text-align: center;">71.4</td>
+<td style="text-align: center;">95.0</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="tabbed-block">
+<p>Results after grid search over tracker parameters.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">SORT</td>
+<td style="text-align: center;">72.9</td>
+<td style="text-align: center;">73.0</td>
+<td style="text-align: center;">95.8</td>
+</tr>
+<tr>
+<td style="text-align: center;">ByteTrack</td>
+<td style="text-align: center;">73.3</td>
+<td style="text-align: center;">73.5</td>
+<td style="text-align: center;"><strong>95.9</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">OC-SORT</td>
+<td style="text-align: center;"><strong>74.0</strong></td>
+<td style="text-align: center;"><strong>75.4</strong></td>
+<td style="text-align: center;">95.6</td>
+</tr>
+</tbody>
+</table>
+<p>Tuned configuration for each tracker.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">SORT</span><span class="p">:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nt">ByteTrack</span><span class="p">:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="nt">OC-SORT</span><span class="p">:</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">  </span><span class="nt">direction_consistency_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">  </span><span class="nt">delta_t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
 <h2 id="soccernet-tracking"><a href="https://arxiv.org/abs/2204.06918">SoccerNet-tracking</a></h2>
 <p>Long sequences with dense interactions and partial occlusions. Tests long-term ID consistency.</p>
 <video width="100%" controls autoplay muted loop>
@@ -1274,6 +1486,16 @@
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SoccerNet.</small></p>
 
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Parameters were tuned on the train set. Results are reported on the test
+set. SoccerNet-tracking has no validation split. This dataset provides
+oracle (ground-truth) detections.</p>
+</div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Default</label><label for="__tabbed_3_2">Tuned</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Results using default tracker parameters.</p>
 <table>
 <thead>
 <tr>
@@ -1298,12 +1520,70 @@
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
-<td style="text-align: center;">78.6</td>
-<td style="text-align: center;">72.7</td>
-<td style="text-align: center;">94.5</td>
+<td style="text-align: center;">78.4</td>
+<td style="text-align: center;">72.6</td>
+<td style="text-align: center;">94.1</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="tabbed-block">
+<p>Results after grid search over tracker parameters.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">SORT</td>
+<td style="text-align: center;"><strong>84.2</strong></td>
+<td style="text-align: center;"><strong>78.2</strong></td>
+<td style="text-align: center;"><strong>98.2</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">ByteTrack</td>
+<td style="text-align: center;">84.0</td>
+<td style="text-align: center;">78.1</td>
+<td style="text-align: center;">97.8</td>
+</tr>
+<tr>
+<td style="text-align: center;">OC-SORT</td>
+<td style="text-align: center;">82.9</td>
+<td style="text-align: center;">77.9</td>
+<td style="text-align: center;">96.8</td>
+</tr>
+</tbody>
+</table>
+<p>Tuned configuration for each tracker.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">SORT</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.25</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nt">ByteTrack</span><span class="p">:</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="nt">OC-SORT</span><span class="p">:</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">  </span><span class="nt">direction_consistency_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4</span>
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">  </span><span class="nt">delta_t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
 <h2 id="dancetrack"><a href="https://arxiv.org/abs/2111.14690">DanceTrack</a></h2>
 <p>Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.</p>
 <video width="100%" controls autoplay muted loop>
@@ -1311,6 +1591,22 @@
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for DanceTrack.</small></p>
 
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>DanceTrack test set evaluation is currently unavailable because CodaLab, which hosted
+the benchmark, has been <a href="https://docs.codabench.org/dev/Newsletters_Archive/CodaLab-in-2025/">discontinued</a>.
+Migration to Codabench is <a href="https://github.com/DanceTrack/DanceTrack/issues/42">in progress</a>.
+Results below use the validation set instead.</p>
+</div>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Parameters were tuned on the train set. Results are reported on the
+validation set. This dataset provides oracle (ground-truth) detections.</p>
+</div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Default</label><label for="__tabbed_4_2">Tuned</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Results using default tracker parameters.</p>
 <table>
 <thead>
 <tr>
@@ -1341,7 +1637,78 @@
 </tr>
 </tbody>
 </table>
-<p><strong>Note:</strong> DanceTrack test set is not available at the moment, that's why the table uses valid set. Default parameters are used in each tracker, for better performance it is possible to adjust the parameters to the dataset.</p>
+</div>
+<div class="tabbed-block">
+<p>Results after grid search over tracker parameters.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">SORT</td>
+<td style="text-align: center;">50.6</td>
+<td style="text-align: center;">49.6</td>
+<td style="text-align: center;">84.3</td>
+</tr>
+<tr>
+<td style="text-align: center;">ByteTrack</td>
+<td style="text-align: center;"><strong>53.2</strong></td>
+<td style="text-align: center;"><strong>54.6</strong></td>
+<td style="text-align: center;">86.8</td>
+</tr>
+<tr>
+<td style="text-align: center;">OC-SORT</td>
+<td style="text-align: center;">52.0</td>
+<td style="text-align: center;">51.8</td>
+<td style="text-align: center;"><strong>87.2</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Tuned configuration for each tracker.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">SORT</span><span class="p">:</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="nt">ByteTrack</span><span class="p">:</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="nt">OC-SORT</span><span class="p">:</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">  </span><span class="nt">minimum_iou_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">  </span><span class="nt">direction_consistency_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">  </span><span class="nt">delta_t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="methodology">Methodology</h2>
+<h3 id="detections">Detections</h3>
+<p>Each dataset uses one of two detection sources: oracle detections (ground-truth
+bounding boxes provided by the dataset) or model detections (produced by a YOLOX
+detector following the ByteTrack procedure). The source is noted per dataset above.</p>
+<h3 id="tuning">Tuning</h3>
+<p>Best parameters per tracker and dataset were found via grid search, selecting the
+configuration with the highest HOTA. Tuning and evaluation always use separate data
+splits to reflect real-world usage:</p>
+<ul>
+<li>Train + validation + test: tune on validation, report on test.</li>
+<li>Train + validation: tune on train, report on validation.</li>
+<li>Train + test: tune on train, report on test.</li>
+</ul>
 
 
 
