@@ -116,12 +116,12 @@ class SORTTracker(BaseTracker):
 
     def _spawn_new_tracklets(
         self,
-        confidences: np.ndarray ,
+        confidences: np.ndarray,
         detection_boxes: np.ndarray,
         unmatched_detections: set[int],
     ) -> None:
         for detection_idx in unmatched_detections:
-            if  confidences[detection_idx] >= self.track_activation_threshold:
+            if confidences[detection_idx] >= self.track_activation_threshold:
                 new_tracker = SORTTracklet(
                     detection_boxes[detection_idx],
                     state_estimator_class=self.state_estimator_class,
@@ -183,10 +183,7 @@ class SORTTracker(BaseTracker):
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
         tracker_ids = np.full(len(detection_boxes), -1, dtype=int)
         for det_idx, tracklet in matched_tracklet_for_det.items():
-            if (
-                tracklet.number_of_successful_updates
-                >= self.minimum_consecutive_frames
-            ):
+            if tracklet.number_of_successful_updates >= self.minimum_consecutive_frames:
                 if tracklet.tracker_id == -1:
                     tracklet.tracker_id = SORTTracklet.get_next_tracker_id()
                 tracker_ids[det_idx] = tracklet.tracker_id
