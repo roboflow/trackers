@@ -10,6 +10,7 @@ from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
+    XYXYStateEstimator,
 )
 
 
@@ -19,7 +20,7 @@ class SORTTracklet(BaseTracklet):
     def __init__(
         self,
         initial_bbox: np.ndarray,
-        state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
+        state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
     ) -> None:
         super().__init__(initial_bbox, state_estimator_class)
         self._configure_noise()

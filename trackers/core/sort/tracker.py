@@ -16,7 +16,7 @@ from trackers.core.sort.utils import (
 )
 from trackers.utils.state_representations import (
     BaseStateEstimator,
-    XCYCSRStateEstimator,
+    XYXYStateEstimator,
 )
 
 
@@ -56,7 +56,7 @@ class SORTTracker(BaseTracker):
         minimum_iou_threshold: `float` specifying IoU threshold for associating
             detections to existing tracks. Higher values require more overlap.
         state_estimator_class: State estimator class to use for Kalman filter.
-            Defaults to `XCYCSRStateEstimator`. Can also use
+            Defaults to `XYXYStateEstimator`. Can also use
             `XYXYStateEstimator` for corner-based representation.
     """
 
@@ -69,7 +69,7 @@ class SORTTracker(BaseTracker):
         track_activation_threshold: float = 0.25,
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
-        state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
+        state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
