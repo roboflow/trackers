@@ -487,7 +487,8 @@ class CMC:
     @staticmethod
     def apply_to_tracks(tracks: list, H: np.ndarray) -> None:
         """
-        Apply a global affine motion transform to tracker states and covariances in-place.
+        Apply a global affine motion transform to tracker states and covariances 
+        in-place.
 
         This method updates each track according to the affine transform
 
@@ -495,7 +496,8 @@ class CMC:
 
         where:
             R:
-                2x2 linear part of the affine transform (rotation / shear / scale-like part).
+                2x2 linear part of the affine transform (rotation / shear / scale-like 
+                part).
             t:
                 2D translation vector.
 
@@ -521,8 +523,8 @@ class CMC:
                     Velocities of the width and height.
 
         State update logic:
-            The affine transform is applied only to the geometric quantities that live in
-            the 2D image plane as position or velocity vectors:
+            The affine transform is applied only to the geometric quantities that live 
+            in the 2D image plane as position or velocity vectors:
 
             1) Center position:
                    [xc, yc]^T = R @ [xc, yc]^T + t
@@ -536,14 +538,14 @@ class CMC:
         Why width and height are not transformed here:
             Width and height are scalar box dimensions, not 2D point coordinates.
             In this implementation, camera motion compensation is used to correct the
-            object center location and its image-plane velocity, while the box size terms
-            are left unchanged. This keeps the compensation simple and consistent with the
-            state representation used by the tracker.
+            object center location and its image-plane velocity, while the box size 
+            terms are left unchanged. This keeps the compensation simple and consistent 
+            with the state representation used by the tracker.
 
         Covariance update:
             Each track also stores a covariance matrix `P` describing uncertainty in the
-            8D Kalman state. After the mean state is transformed, the covariance is updated
-            using the linear transform
+            8D Kalman state. After the mean state is transformed, the covariance is 
+            updated using the linear transform
 
                 P = A @ P @ A.T
 
@@ -573,10 +575,11 @@ class CMC:
 
         Notes:
             - If `H` is None or `tracks` is empty, this method does nothing.
-            - The method assumes that `H` has already been estimated in image coordinates
-              consistent with the tracker state.
+            - The method assumes that `H` has already been estimated in image 
+              coordinates onsistent with the tracker state.
             - This method does not perform any validity checks on whether the estimated
-              transform is physically plausible; it simply applies the provided transform.
+              transform is physically plausible; it simply applies the provided 
+              transform.
         """
         if H is None or len(tracks) == 0:
             return
