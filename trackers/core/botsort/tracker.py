@@ -116,7 +116,7 @@ class BoTSORTTracker(BaseTracker):
         Apply matched detection updates to tracks and append corresponding outputs.
 
         For each (track_idx, det_idx) match:
-        - Update the track’s Kalman state with the detection bbox.
+        - Update the track's Kalman state with the detection bbox.
         - If the track is “mature” (>= minimum_consecutive_frames) and still has 
           tracker_id == -1, assign a new unique tracker ID.
         - Create a single-row `sv.Detections` object for the matched detection and set 
