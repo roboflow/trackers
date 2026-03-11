@@ -113,16 +113,16 @@ plugins:
 nav:
   - Home:
     - Quickstart: index.md
-  - Trackers:
-    - Comparison: trackers/comparison.md
-    - SORT: trackers/sort.md
-    - ByteTrack: trackers/bytetrack.md
-    - OC-SORT: trackers/ocsort.md
   - Guides:
     - Install Trackers: learn/install.md
     - Track Objects: learn/track.md
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
+  - Trackers:
+    - Comparison: trackers/comparison.md
+    - SORT: trackers/sort.md
+    - ByteTrack: trackers/bytetrack.md
+    - OC-SORT: trackers/ocsort.md
   - API Reference:
     - Trackers: api/trackers.md
     - Motion: api/motion.md

@@ -67,7 +67,7 @@ The `detection` extra installs `inference-models`, enabling the CLI to run detec
 
 !!! tip "GPU Acceleration"
 
-    Detection models automatically select the best available device. For GPU support, ensure PyTorch is installed with CUDA or MPS.
+    For GPU support, ensure PyTorch is installed with CUDA or MPS.
 
 ---
 

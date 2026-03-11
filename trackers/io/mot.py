@@ -232,9 +232,11 @@ def _prepare_mot_sequence(
 
     for frame in range(1, num_frames + 1):
         if frame in gt_data:
-            all_gt_ids.update(gt_data[frame].ids.tolist())
+            keep = gt_data[frame].confidences > 0
+            all_gt_ids.update(gt_data[frame].ids[keep].tolist())
         if frame in tracker_data:
-            all_tracker_ids.update(tracker_data[frame].ids.tolist())
+            keep = tracker_data[frame].ids >= 0
+            all_tracker_ids.update(tracker_data[frame].ids[keep].tolist())
 
     # Build ID mappings (original -> 0-indexed)
     sorted_gt_ids = sorted(all_gt_ids)
@@ -251,12 +253,12 @@ def _prepare_mot_sequence(
     num_tracker_dets = 0
 
     for frame in range(1, num_frames + 1):
-        # Get GT data for this frame
+        # Get GT data for this frame (filter distractors where conf == 0)
         if frame in gt_data:
             gt_frame = gt_data[frame]
-            gt_boxes = gt_frame.boxes
-            gt_ids_orig = gt_frame.ids
-            # Remap IDs to 0-indexed
+            keep = gt_frame.confidences > 0
+            gt_boxes = gt_frame.boxes[keep]
+            gt_ids_orig = gt_frame.ids[keep]
             gt_ids_remapped = np.array(
                 [gt_id_mapping[int(gid)] for gid in gt_ids_orig], dtype=np.intp
             )
@@ -265,12 +267,12 @@ def _prepare_mot_sequence(
             gt_boxes = np.empty((0, 4), dtype=np.float64)
             gt_ids_remapped = np.array([], dtype=np.intp)
 
-        # Get tracker data for this frame
+        # Get tracker data for this frame (filter unconfirmed tracks with id < 0)
         if frame in tracker_data:
             tracker_frame = tracker_data[frame]
-            tracker_boxes = tracker_frame.boxes
-            tracker_ids_orig = tracker_frame.ids
-            # Remap IDs to 0-indexed
+            keep = tracker_frame.ids >= 0
+            tracker_boxes = tracker_frame.boxes[keep]
+            tracker_ids_orig = tracker_frame.ids[keep]
             tracker_ids_remapped = np.array(
                 [tracker_id_mapping[int(tid)] for tid in tracker_ids_orig],
                 dtype=np.intp,
