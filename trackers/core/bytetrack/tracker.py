@@ -10,7 +10,8 @@ from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
-from trackers.core.sort.utils import _get_alive_tracklets, _get_iou_matrix
+from trackers.core.bytetrack.utils import _get_alive_tracklets
+from trackers.core.sort.utils import _get_iou_matrix
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
