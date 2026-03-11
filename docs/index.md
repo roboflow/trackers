@@ -8,30 +8,117 @@ comments: true
 
 </div>
 
-`trackers` gives you clean, modular re-implementations of leading multi-object tracking algorithms released under the permissive Apache 2.0 license. You combine them with any detection model you already use.
+Plug-and-play multi-object tracking for any detection model. Clean, modular implementations of SORT, ByteTrack, and OC-SORT under the Apache 2.0 license.
+
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
+</video>
+
+---
 
 ## Install
 
-You can install and use `trackers` in a [**Python>=3.10**](https://www.python.org/) environment. For detailed installation instructions, including installing from source and setting up a local development environment, check out our [install](learn/install.md) page.
+Get started by installing the package.
 
-!!! example "Installation"
+```text
+pip install trackers
+```
 
-    [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
-    [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
-    [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE.md)
-    [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
+For more options, see the [install guide](learn/install.md).
 
-    === "pip"
+---
 
-        ```bash
-        pip install trackers
-        ```
+## Track from CLI
 
-    === "uv"
+Track objects in any video with a single command.
 
-        ```bash
-        uv pip install trackers
-        ```
+```text
+trackers track --source video.mp4 --output output.mp4
+```
+
+Configure the detection model, tracking algorithm, and visualization with additional flags.
+
+```text
+trackers track \
+    --source video.mp4 \
+    --output output.mp4 \
+    --model rfdetr-medium \
+    --tracker bytetrack \
+    --show-labels \
+    --show-trajectories
+```
+
+For all CLI options, see the [tracking guide](learn/track.md).
+
+---
+
+## Track from Python
+
+Use `trackers` as a Python library alongside your existing detector. Two lines to add tracking to any pipeline.
+
+```python hl_lines="4 7 17"
+import cv2
+import supervision as sv
+from inference import get_model
+from trackers import ByteTrackTracker
+
+model = get_model(model_id="rfdetr-nano")
+tracker = ByteTrackTracker()
+
+cap = cv2.VideoCapture("video.mp4")
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    result = model.infer(frame)[0]
+    detections = sv.Detections.from_inference(result)
+    detections = tracker.update(detections)
+```
+
+---
+
+## Evaluate
+
+Benchmark your tracker against ground truth with standard MOT metrics.
+
+```text
+trackers eval \
+    --gt-dir ./data/mot17/val \
+    --tracker-dir results \
+    --metrics CLEAR HOTA Identity \
+    --columns MOTA HOTA IDF1 IDSW
+```
+
+```
+Sequence                        MOTA    HOTA    IDF1  IDSW
+----------------------------------------------------------
+MOT17-02-FRCNN                25.263  34.672  37.137    35
+MOT17-04-FRCNN                44.586  53.968  60.111    16
+MOT17-05-FRCNN                52.755  45.515  55.705    17
+----------------------------------------------------------
+COMBINED                      43.960  49.548  55.337   234
+```
+
+For the full evaluation workflow, see the [evaluation guide](learn/evaluate.md).
+
+---
+
+## Tracking Algorithms
+
+Clean, modular implementations of leading trackers.
+
+| Algorithm | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA |
+| :-------: | :--------: | :------------: | :------------: |
+|   SORT    |    58.4    |      70.9      |      81.6      |
+| ByteTrack |    60.1    |    **73.0**    |    **84.0**    |
+|  OC-SORT  |  **61.9**  |      71.5      |      78.6      |
+| BoT-SORT  |     —      |       —        |       —        |
+|  McByte   |     —      |       —        |       —        |
+
+For detailed benchmarks, see the [tracker comparison](trackers/comparison.md).
+
+---
 
 ## Tutorials
 
@@ -58,84 +145,3 @@ You can install and use `trackers` in a [**Python>=3.10**](https://www.python.or
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
 
 </div>
-
-## Tracking Algorithms
-
-Clean, modular implementations of leading trackers. For comparisons, see the [tracker comparison](trackers/comparison.md) page.
-
-| Algorithm | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA |
-| :-------: | :--------: | :------------: | :------------: |
-|   SORT    |    58.4    |      70.9      |      81.6      |
-| ByteTrack |    60.1    |    **73.0**    |    **84.0**    |
-|  OC-SORT  |  **61.9**  |      71.5      |      78.6      |
-| BoT-SORT  |     —      |       —        |       —        |
-|  McByte   |     —      |       —        |       —        |
-
-## Integration
-
-With a modular design, `trackers` lets you combine object detectors from different libraries with the tracker of your choice. See the [Track guide](learn/track.md) for CLI usage and more options. These examples use `opencv-python` for decoding and display.
-
-=== "RF-DETR"
-
-    ```python
-    import cv2
-    from rfdetr import RFDETRNano
-    from trackers import ByteTrackTracker
-
-    model = RFDETRNano()
-    tracker = ByteTrackTracker()
-
-    cap = cv2.VideoCapture("source.mp4")
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        detections = model.predict(frame_rgb)
-        detections = tracker.update(detections)
-    ```
-
-=== "Inference"
-
-    ```python
-    import cv2
-    import supervision as sv
-    from inference import get_model
-    from trackers import ByteTrackTracker
-
-    model = get_model(model_id="rfdetr-nano")
-    tracker = ByteTrackTracker()
-
-    cap = cv2.VideoCapture("source.mp4")
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        result = model.infer(frame)[0]
-        detections = sv.Detections.from_inference(result)
-        detections = tracker.update(detections)
-    ```
-
-=== "Ultralytics"
-
-    ```python
-    import cv2
-    import supervision as sv
-    from ultralytics import YOLO
-    from trackers import ByteTrackTracker
-
-    model = YOLO("yolo11n.pt")
-    tracker = ByteTrackTracker()
-
-    cap = cv2.VideoCapture("source.mp4")
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        result = model(frame)[0]
-        detections = sv.Detections.from_ultralytics(result)
-        detections = tracker.update(detections)
-    ```
