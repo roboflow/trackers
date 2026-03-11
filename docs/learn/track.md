@@ -87,52 +87,12 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
     Select a tracker with `--tracker` and tune its behavior with `--tracker.*` arguments.
 
     ```text
-    trackers track --source source.mp4 --tracker bytetrack \
+    trackers track \
+        --source source.mp4 \
+        --tracker bytetrack \
         --tracker.lost_track_buffer 60 \
         --tracker.minimum_consecutive_frames 5
     ```
-
-    <table>
-      <colgroup>
-        <col style="width: 40%">
-        <col style="width: 40%">
-        <col style="width: 20%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Argument</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>--tracker</code></td>
-          <td>Tracking algorithm. Options: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>.</td>
-          <td><code>bytetrack</code></td>
-        </tr>
-        <tr>
-          <td><code>--tracker.lost_track_buffer</code></td>
-          <td>Frames to retain a track without detections. Higher values improve occlusion handling but risk ID drift.</td>
-          <td><code>30</code></td>
-        </tr>
-        <tr>
-          <td><code>--tracker.track_activation_threshold</code></td>
-          <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives.</td>
-          <td><code>0.25</code></td>
-        </tr>
-        <tr>
-          <td><code>--tracker.minimum_consecutive_frames</code></td>
-          <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
-          <td><code>3</code></td>
-        </tr>
-        <tr>
-          <td><code>--tracker.minimum_iou_threshold</code></td>
-          <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
-          <td><code>0.3</code></td>
-        </tr>
-      </tbody>
-    </table>
 
 === "Python"
 
@@ -173,53 +133,13 @@ Trackers don't detect objects—they link detections across frames. A detection 
     Configure detection with `--model.*` arguments. Filter by confidence and class before tracking.
 
     ```text
-    trackers track --source source.mp4 --model rfdetr-medium \
+    trackers track \
+        --source source.mp4 \
+        --model rfdetr-medium \
         --model.confidence 0.3 \
         --model.device cuda \
         --classes person,car
     ```
-
-    <table>
-      <colgroup>
-        <col style="width: 40%">
-        <col style="width: 40%">
-        <col style="width: 20%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Argument</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>--model</code></td>
-          <td>Model identifier. Pretrained: <code>rfdetr-nano</code>, <code>rfdetr-small</code>, <code>rfdetr-medium</code>, <code>rfdetr-large</code>. Segmentation: <code>rfdetr-seg-*</code>.</td>
-          <td><code>rfdetr-nano</code></td>
-        </tr>
-        <tr>
-          <td><code>--model.confidence</code></td>
-          <td>Minimum confidence threshold. Lower values increase recall but may add noise.</td>
-          <td><code>0.5</code></td>
-        </tr>
-        <tr>
-          <td><code>--model.device</code></td>
-          <td>Compute device. Options: <code>auto</code>, <code>cpu</code>, <code>cuda</code>, <code>cuda:0</code>, <code>mps</code>.</td>
-          <td><code>auto</code></td>
-        </tr>
-        <tr>
-          <td><code>--classes</code></td>
-          <td>Comma-separated class names or IDs to track. Example: <code>person,car</code> or <code>0,2</code>.</td>
-          <td>all</td>
-        </tr>
-        <tr>
-          <td><code>--model.api_key</code></td>
-          <td>Roboflow API key for custom hosted models.</td>
-          <td>none</td>
-        </tr>
-      </tbody>
-    </table>
 
 === "Python"
 
@@ -257,61 +177,13 @@ Visualization renders tracking results for debugging, demos, and qualitative eva
     Enable display and annotation options to see results in real time or in saved video.
 
     ```text
-    trackers track --source source.mp4 --display \
-        --show-labels --show-confidence --show-trajectories
+    trackers track \
+        --source source.mp4 \
+        --display \
+        --show-labels \
+        --show-confidence \
+        --show-trajectories
     ```
-
-    <table>
-      <colgroup>
-        <col style="width: 40%">
-        <col style="width: 40%">
-        <col style="width: 20%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Argument</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>--display</code></td>
-          <td>Opens a live preview window. Press <code>q</code> or <code>ESC</code> to quit.</td>
-          <td><code>false</code></td>
-        </tr>
-        <tr>
-          <td><code>--show-boxes</code></td>
-          <td>Draw bounding boxes around tracked objects.</td>
-          <td><code>true</code></td>
-        </tr>
-        <tr>
-          <td><code>--show-masks</code></td>
-          <td>Draw segmentation masks. Only available with <code>rfdetr-seg-*</code> models.</td>
-          <td><code>false</code></td>
-        </tr>
-        <tr>
-          <td><code>--show-confidence</code></td>
-          <td>Show detection confidence scores in labels.</td>
-          <td><code>false</code></td>
-        </tr>
-        <tr>
-          <td><code>--show-labels</code></td>
-          <td>Show class names in labels.</td>
-          <td><code>false</code></td>
-        </tr>
-        <tr>
-          <td><code>--show-ids</code></td>
-          <td>Show tracker IDs in labels.</td>
-          <td><code>true</code></td>
-        </tr>
-        <tr>
-          <td><code>--show-trajectories</code></td>
-          <td>Draw motion trails showing recent positions of each track.</td>
-          <td><code>false</code></td>
-        </tr>
-      </tbody>
-    </table>
 
 === "Python"
 
@@ -357,28 +229,6 @@ Visualization renders tracking results for debugging, demos, and qualitative eva
     trackers track --source source.mp4
     ```
 
-    <table>
-      <colgroup>
-        <col style="width: 40%">
-        <col style="width: 40%">
-        <col style="width: 20%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Argument</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>--source</code></td>
-          <td>Input source. Accepts file paths (<code>.mp4</code>, <code>.avi</code>), device indices (<code>0</code>, <code>1</code>), stream URLs (<code>rtsp://</code>), or image directories.</td>
-          <td>—</td>
-        </tr>
-      </tbody>
-    </table>
-
 === "Python"
 
     Use `opencv-python`'s `VideoCapture` to read frames from files, webcams, or streams.
@@ -418,33 +268,6 @@ Save tracking results as annotated video files or display them in real time.
     trackers track --source source.mp4 --output output.mp4 --overwrite
     ```
 
-    <table>
-      <colgroup>
-        <col style="width: 40%">
-        <col style="width: 40%">
-        <col style="width: 20%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Argument</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>--output</code></td>
-          <td>Path for output video. If a directory is given, saves as <code>output.mp4</code> inside it.</td>
-          <td>none</td>
-        </tr>
-        <tr>
-          <td><code>--overwrite</code></td>
-          <td>Allow overwriting existing output files. Without this flag, existing files cause an error.</td>
-          <td><code>false</code></td>
-        </tr>
-      </tbody>
-    </table>
-
 === "Python"
 
     Use `opencv-python`'s `VideoWriter` to save annotated frames with full control over codec and frame rate.
@@ -483,3 +306,126 @@ Save tracking results as annotated video files or display them in real time.
     cap.release()
     out.release()
     ```
+
+---
+
+## CLI Reference
+
+All arguments accepted by the `trackers track` command.
+
+<table>
+  <colgroup>
+    <col style="width: 40%">
+    <col style="width: 40%">
+    <col style="width: 20%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Argument</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>--source</code></td>
+      <td>Input source. Accepts file paths (<code>.mp4</code>, <code>.avi</code>), device indices (<code>0</code>, <code>1</code>), stream URLs (<code>rtsp://</code>), or image directories.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--output</code></td>
+      <td>Path for output video. If a directory is given, saves as <code>output.mp4</code> inside it.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--overwrite</code></td>
+      <td>Allow overwriting existing output files. Without this flag, existing files cause an error.</td>
+      <td><code>false</code></td>
+    </tr>
+    <tr>
+      <td><code>--model</code></td>
+      <td>Model identifier. Pretrained: <code>rfdetr-nano</code>, <code>rfdetr-small</code>, <code>rfdetr-medium</code>, <code>rfdetr-large</code>. Segmentation: <code>rfdetr-seg-*</code>.</td>
+      <td><code>rfdetr-nano</code></td>
+    </tr>
+    <tr>
+      <td><code>--model.confidence</code></td>
+      <td>Minimum confidence threshold. Lower values increase recall but may add noise.</td>
+      <td><code>0.5</code></td>
+    </tr>
+    <tr>
+      <td><code>--model.device</code></td>
+      <td>Compute device. Options: <code>auto</code>, <code>cpu</code>, <code>cuda</code>, <code>cuda:0</code>, <code>mps</code>.</td>
+      <td><code>auto</code></td>
+    </tr>
+    <tr>
+      <td><code>--model.api_key</code></td>
+      <td>Roboflow API key for custom hosted models.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--classes</code></td>
+      <td>Comma-separated class names or IDs to track. Example: <code>person,car</code> or <code>0,2</code>.</td>
+      <td>all</td>
+    </tr>
+    <tr>
+      <td><code>--tracker</code></td>
+      <td>Tracking algorithm. Options: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>.</td>
+      <td><code>bytetrack</code></td>
+    </tr>
+    <tr>
+      <td><code>--tracker.lost_track_buffer</code></td>
+      <td>Frames to retain a track without detections. Higher values improve occlusion handling but risk ID drift.</td>
+      <td><code>30</code></td>
+    </tr>
+    <tr>
+      <td><code>--tracker.track_activation_threshold</code></td>
+      <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives.</td>
+      <td><code>0.25</code></td>
+    </tr>
+    <tr>
+      <td><code>--tracker.minimum_consecutive_frames</code></td>
+      <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
+      <td><code>3</code></td>
+    </tr>
+    <tr>
+      <td><code>--tracker.minimum_iou_threshold</code></td>
+      <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
+      <td><code>0.3</code></td>
+    </tr>
+    <tr>
+      <td><code>--display</code></td>
+      <td>Opens a live preview window. Press <code>q</code> or <code>ESC</code> to quit.</td>
+      <td><code>false</code></td>
+    </tr>
+    <tr>
+      <td><code>--show-boxes</code></td>
+      <td>Draw bounding boxes around tracked objects.</td>
+      <td><code>true</code></td>
+    </tr>
+    <tr>
+      <td><code>--show-masks</code></td>
+      <td>Draw segmentation masks. Only available with <code>rfdetr-seg-*</code> models.</td>
+      <td><code>false</code></td>
+    </tr>
+    <tr>
+      <td><code>--show-confidence</code></td>
+      <td>Show detection confidence scores in labels.</td>
+      <td><code>false</code></td>
+    </tr>
+    <tr>
+      <td><code>--show-labels</code></td>
+      <td>Show class names in labels.</td>
+      <td><code>false</code></td>
+    </tr>
+    <tr>
+      <td><code>--show-ids</code></td>
+      <td>Show tracker IDs in labels.</td>
+      <td><code>true</code></td>
+    </tr>
+    <tr>
+      <td><code>--show-trajectories</code></td>
+      <td>Draw motion trails showing recent positions of each track.</td>
+      <td><code>false</code></td>
+    </tr>
+  </tbody>
+</table>

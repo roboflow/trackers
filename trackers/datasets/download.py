@@ -9,18 +9,81 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-from trackers.datasets.manifest import _DATASETS
+from trackers.datasets.manifest import (
+    _DATASETS,
+    Dataset,
+    DatasetAsset,
+    DatasetSplit,
+)
 from trackers.utils.downloader import _download_file, _extract_zip
+from trackers.utils.general import _normalize_list
 
 _DEFAULT_OUTPUT_DIR = "."
 _DEFAULT_CACHE_DIR = "~/.cache/trackers"
 
 
+def _resolve_dataset(dataset: str | Dataset) -> Dataset:
+    """Validate and convert a dataset identifier to a ``Dataset`` enum."""
+    if isinstance(dataset, Dataset):
+        dataset_key = dataset
+    else:
+        try:
+            dataset_key = Dataset(dataset.lower())
+        except ValueError:
+            raise ValueError(f"Unknown dataset: {dataset}")
+
+    if dataset_key not in _DATASETS:
+        raise ValueError(f"Unknown dataset: {dataset_key.value}")
+
+    return dataset_key
+
+
+def _resolve_splits(
+    split: list[str] | None,
+    splits_dict: dict[str, dict[str, dict[str, Any]]],
+    *,
+    dataset_name: str,
+) -> list[str]:
+    """Return validated split names, defaulting to all available splits."""
+    if split is None:
+        return list(splits_dict.keys())
+
+    for split_name in split:
+        if split_name not in splits_dict:
+            raise ValueError(
+                f"Invalid split '{split_name}' for dataset '{dataset_name}'"
+            )
+    return split
+
+
+def _resolve_assets(
+    requested_assets: list[str] | None,
+    available_assets: dict[str, dict[str, Any]],
+    *,
+    split_name: str,
+    dataset_name: str,
+) -> dict[str, dict[str, Any]]:
+    """Return validated asset entries for a single split."""
+    if not requested_assets:
+        return available_assets
+
+    selected: dict[str, dict[str, Any]] = {}
+    for asset_type in requested_assets:
+        if asset_type not in available_assets:
+            raise ValueError(
+                f"Asset '{asset_type}' not available for "
+                f"split '{split_name}' in dataset"
+                f" '{dataset_name}'"
+            )
+        selected[asset_type] = available_assets[asset_type]
+    return selected
+
+
 def download_dataset(
     *,
-    dataset: str,
-    split: str | None = None,
-    content: str | None = None,
+    dataset: str | Dataset,
+    split: DatasetSplit | str | list[DatasetSplit | str] | None = None,
+    asset: DatasetAsset | str | list[DatasetAsset | str] | None = None,
     output: str = _DEFAULT_OUTPUT_DIR,
     cache_dir: str = _DEFAULT_CACHE_DIR,
 ) -> None:
@@ -32,35 +95,42 @@ def download_dataset(
     require re-downloading.
 
     Args:
-        dataset: Name of the dataset to download (e.g. `"mot17"`,
-            `"sportsmot"`). Case-insensitive.
-        split: Comma-separated list of splits to download (e.g.
-            `"train"`, `"train,val"`). If `None`, all available splits
+        dataset: Dataset to download, as a `Dataset` enum or string
+            name. Case-insensitive.
+        split: Splits to download. If `None`, all available splits
             are downloaded.
-        content: Comma-separated list of content types to download (e.g.
-            `"annotations"`, `"frames,detections"`). If `None`, all
-            available content types for each split are downloaded.
-        output: Directory where dataset files will be extracted. Defaults
-            to the current working directory.
-        cache_dir: Directory for caching downloaded ZIP files. Defaults
-            to `~/.cache/trackers`. Cached ZIPs are verified by MD5
-            checksum and reused when valid.
+        asset: Asset types to download. If `None`, all available
+            assets for each split are downloaded.
+        output: Directory where dataset files will be extracted.
+            Defaults to the current working directory.
+        cache_dir: Directory for caching downloaded ZIP files.
+            Cached ZIPs are verified by MD5 and reused when valid.
 
     Raises:
-        ValueError: If `dataset` is not a recognized dataset name, if
-            `split` contains a split not available for the dataset, or
-            if `content` contains a content type not available for the
-            requested split.
+        ValueError: If `dataset`, `split`, or `asset` contains an
+            unrecognized value.
 
     Examples:
+        Using enums for type-safe dataset, split, and asset selection:
+
+        >>> from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
+        >>> download_dataset(  # doctest: +SKIP
+        ...     dataset=Dataset.MOT17,
+        ...     split=[DatasetSplit.TRAIN, DatasetSplit.VAL],
+        ...     asset=[DatasetAsset.ANNOTATIONS],
+        ... )
+
+        Using plain strings for quick, interactive use:
+
         >>> from trackers import download_dataset
         >>> download_dataset(  # doctest: +SKIP
-        ...     dataset="mot17", split="train", content="annotations",
+        ...     dataset="mot17",
+        ...     split=["train"],
+        ...     asset=["frames", "annotations"],
+        ...     output="./datasets",
         ... )
     """
-    dataset = dataset.lower()
-    if dataset not in _DATASETS:
-        raise ValueError(f"Unknown dataset: {dataset}")
+    dataset_key = _resolve_dataset(dataset)
 
     output_dir = Path(output).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -70,50 +140,36 @@ def download_dataset(
 
     splits_dict = cast(
         dict[str, dict[str, dict[str, Any]]],
-        _DATASETS[dataset]["splits"],
+        _DATASETS[dataset_key]["splits"],
     )
 
-    if split:
-        splits: list[str] = [s.strip() for s in split.split(",")]
-    else:
-        splits = list(splits_dict.keys())
-
-    if content:
-        requested_content: list[str] = [c.strip() for c in content.split(",")]
-    else:
-        requested_content = []
+    splits = _resolve_splits(
+        _normalize_list(split), splits_dict, dataset_name=dataset_key.value
+    )
+    requested_assets = _normalize_list(asset)
 
     for split_name in splits:
-        if split_name not in splits_dict:
-            raise ValueError(f"Invalid split '{split_name}' for dataset '{dataset}'")
+        selected_assets = _resolve_assets(
+            requested_assets,
+            splits_dict[split_name],
+            split_name=split_name,
+            dataset_name=dataset_key.value,
+        )
 
-        available_content: dict[str, dict[str, Any]] = splits_dict[split_name]
-
-        if requested_content:
-            selected_content: dict[str, dict[str, Any]] = {}
-            for content_type in requested_content:
-                if content_type not in available_content:
-                    raise ValueError(
-                        f"Content '{content_type}' not available for "
-                        f"split '{split_name}' in dataset '{dataset}'"
-                    )
-                selected_content[content_type] = available_content[content_type]
-        else:
-            selected_content = available_content
-
-        for kind, item in selected_content.items():
+        for asset_type, item in selected_assets.items():
             url: str = item["url"]
             md5: str | None = item.get("md5")
 
             zip_name = Path(url).name
             cached_zip = resolved_cache_dir / zip_name
 
-            print(f"[download] {dataset}:{split_name}:{kind}")
+            label = f"{dataset_key.value}:{split_name}:{asset_type}"
+            print(f"[download] {label}")
             was_downloaded = _download_file(url, cached_zip, md5=md5)
             if not was_downloaded:
                 print(f"  using cached {zip_name}")
 
-            print(f"[extract] {dataset}:{split_name}:{kind}")
+            print(f"[extract] {label}")
             _extract_zip(cached_zip, output_dir)
 
-            print(f"[done] {dataset}:{split_name}:{kind}")
+            print(f"[done] {label}")

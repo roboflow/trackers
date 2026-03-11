@@ -6,6 +6,54 @@
 
 from __future__ import annotations
 
+from enum import Enum
+from typing import Any
+
+
+class Dataset(str, Enum):
+    """Supported benchmark tracking datasets.
+
+    Attributes:
+        MOT17: Pedestrian tracking with crowded scenes and frequent
+            occlusions. Strongly tests re-identification and identity
+            stability.
+        SPORTSMOT: Sports broadcast tracking with fast motion, camera
+            pans, and similar-looking targets. Tests association under
+            speed and appearance ambiguity.
+    """
+
+    MOT17 = "mot17"
+    SPORTSMOT = "sportsmot"
+
+
+class DatasetSplit(str, Enum):
+    """Available dataset splits.
+
+    Attributes:
+        TRAIN: Training split.
+        VAL: Validation split.
+        TEST: Test split.
+    """
+
+    TRAIN = "train"
+    VAL = "val"
+    TEST = "test"
+
+
+class DatasetAsset(str, Enum):
+    """Downloadable asset types within a dataset split.
+
+    Attributes:
+        FRAMES: Raw video frames as individual image files.
+        ANNOTATIONS: Ground-truth bounding box and identity labels.
+        DETECTIONS: Pre-computed object detection results.
+    """
+
+    FRAMES = "frames"
+    ANNOTATIONS = "annotations"
+    DETECTIONS = "detections"
+
+
 _BASE_MOT17_URL = (
     "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/mot17-v2"
 )
@@ -15,8 +63,8 @@ _BASE_SPORTSMOT_URL = (
     "sportsmot-v1"
 )
 
-_DATASETS: dict[str, dict] = {
-    "mot17": {
+_DATASETS: dict[Dataset, dict[str, Any]] = {
+    Dataset.MOT17: {
         "description": (
             "Pedestrian tracking with crowded scenes and frequent"
             " occlusions. Strongly tests re-identification and"
@@ -63,7 +111,7 @@ _DATASETS: dict[str, dict] = {
             },
         },
     },
-    "sportsmot": {
+    Dataset.SPORTSMOT: {
         "description": (
             "Sports broadcast tracking with fast motion, camera pans,"
             " and similar-looking targets. Tests association under"

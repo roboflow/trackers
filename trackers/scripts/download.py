@@ -13,6 +13,7 @@ import sys
 from rich.console import Console
 from rich.panel import Panel
 
+from trackers.datasets.download import _DEFAULT_CACHE_DIR, _DEFAULT_OUTPUT_DIR
 from trackers.datasets.manifest import _DATASETS
 
 
@@ -29,7 +30,7 @@ def add_download_subparser(
     parser.add_argument(
         "--list",
         action="store_true",
-        help="List available datasets, splits, and content types.",
+        help="List available datasets, splits, and asset types.",
     )
     parser.add_argument(
         "dataset",
@@ -42,19 +43,19 @@ def add_download_subparser(
         "If omitted, all available splits are downloaded.",
     )
     parser.add_argument(
-        "--content",
-        help="Comma-separated content to download: annotations,frames,detections. "
-        "If omitted, all available content is downloaded.",
+        "--asset",
+        help="Comma-separated assets to download: annotations,frames,detections. "
+        "If omitted, all available assets are downloaded.",
     )
     parser.add_argument(
         "-o",
         "--output",
-        default=".",
+        default=_DEFAULT_OUTPUT_DIR,
         help="Output directory (default: current directory).",
     )
     parser.add_argument(
         "--cache-dir",
-        default="~/.cache/trackers",
+        default=_DEFAULT_CACHE_DIR,
         help="Cache directory for downloaded ZIPs (default: ~/.cache/trackers).",
     )
 
@@ -73,11 +74,14 @@ def _run_download(args: argparse.Namespace) -> int:
 
     from trackers.datasets.download import download_dataset
 
+    split_list = [s.strip() for s in args.split.split(",")] if args.split else None
+    asset_list = [a.strip() for a in args.asset.split(",")] if args.asset else None
+
     try:
         download_dataset(
             dataset=args.dataset,
-            split=args.split,
-            content=args.content,
+            split=split_list,
+            asset=asset_list,
             output=args.output,
             cache_dir=args.cache_dir,
         )
@@ -89,7 +93,7 @@ def _run_download(args: argparse.Namespace) -> int:
 
 
 def _print_available() -> None:
-    """Print available datasets, splits, and content types."""
+    """Print available datasets, splits, and asset types."""
     console = Console()
     for name, dataset_info in _DATASETS.items():
         description = dataset_info.get("description", "")
@@ -97,10 +101,10 @@ def _print_available() -> None:
 
         max_split_len = max(len(s) for s in splits_dict) if splits_dict else 0
         split_lines = [
-            f"{split:<{max_split_len}}   {', '.join(content.keys())}"
-            for split, content in splits_dict.items()
+            f"{split:<{max_split_len}}   {', '.join(assets.keys())}"
+            for split, assets in splits_dict.items()
         ]
 
         body = f"{description}\n\n" + "\n".join(split_lines)
-        console.print(Panel(body, title=name, title_align="left"))
+        console.print(Panel(body, title=name.value, title_align="left"))
         console.print()
