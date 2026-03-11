@@ -20,7 +20,7 @@ from trackers.core.base import BaseTracker
 from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
-from trackers.scripts.progress import _SourceInfo, _classify_source, _TrackingProgress
+from trackers.scripts.progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.utils.device import _best_device
 
 # Defaults
@@ -314,12 +314,21 @@ def run_track(args: argparse.Namespace) -> int:
 
     if args.source is not None:
         return _run_with_source(
-            args, model, detections_data, class_names, class_filter,
-            track_id_filter, tracker,
+            args,
+            model,
+            detections_data,
+            class_names,
+            class_filter,
+            track_id_filter,
+            tracker,
         )
     else:
         return _run_frameless(
-            args, detections_data, class_filter, track_id_filter, tracker,
+            args,
+            detections_data,
+            class_filter,
+            track_id_filter,
+            tracker,
         )
 
 
@@ -346,9 +355,7 @@ def _run_frameless(
             interrupted = False
             for frame_idx in range(1, total_frames + 1):
                 if frame_idx in detections_data:
-                    detections = _mot_frame_to_detections(
-                        detections_data[frame_idx]
-                    )
+                    detections = _mot_frame_to_detections(detections_data[frame_idx])
                 else:
                     detections = sv.Detections.empty()
 
@@ -360,9 +367,7 @@ def _run_frameless(
 
                 if track_id_filter is not None and len(tracked) > 0:
                     if tracked.tracker_id is not None:
-                        mask = np.isin(
-                            tracked.tracker_id.astype(int), track_id_filter
-                        )
+                        mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
                         tracked = tracked[mask]
 
                 mot.write(frame_idx, tracked)
