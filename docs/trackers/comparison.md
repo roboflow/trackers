@@ -81,7 +81,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
-    |   SORT    |   70.9   |   68.9   |   95.7   |
+    |   SORT    |   70.8   |   68.9   |   95.5   |
     | ByteTrack | **73.0** | **72.5** | **96.4** |
     |  OC-SORT  |   71.7   |   71.4   |   95.0   |
 
@@ -152,7 +152,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    | **84.2** | **78.2** | **98.2** |
-    | ByteTrack |   84.0   |   78.1   |   97.8   |
+    | ByteTrack |   84.0   |   78.1   | **98.2** |
     |  OC-SORT  |   82.9   |   77.9   |   96.8   |
 
     Tuned configuration for each tracker.
@@ -166,9 +166,9 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
     ByteTrack:
       lost_track_buffer: 30
-      track_activation_threshold: 0.5
-      minimum_consecutive_frames: 2
-      minimum_iou_threshold: 0.1
+      track_activation_threshold: 0.2
+      minimum_consecutive_frames: 1
+      minimum_iou_threshold: 0.05
       high_conf_det_threshold: 0.5
 
     OC-SORT:
