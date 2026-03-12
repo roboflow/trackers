@@ -207,12 +207,12 @@ COMBINED                      28.731  39.104  42.339   100
 
 TODO: One sentence summarizing the comparison.
 
-| Detector | MOTA | HOTA | IDF1 | IDSW |
-| :------: | :--: | :--: | :--: | :--: |
-| YOLOv11 Nano | 24.042 | 33.462 | 34.991 | 77 |
-| YOLO26 Nano | 5.292 | 18.291 | 16.229 | 489 |
-| RF-DETR Nano | 25.576 | 35.950 | 38.290 | 110 |
-| RF-DETR Medium | **28.731** | **39.104** | **42.339** | 100 |
+|    Detector    |    MOTA    |    HOTA    |    IDF1    | IDSW |
+| :------------: | :--------: | :--------: | :--------: | :--: |
+|  YOLOv11 Nano  |   24.042   |   33.462   |   34.991   |  77  |
+|  YOLO26 Nano   |   5.292    |   18.291   |   16.229   | 489  |
+|  RF-DETR Nano  |   25.576   |   35.950   |   38.290   | 110  |
+| RF-DETR Medium | **28.731** | **39.104** | **42.339** | 100  |
 
 TODO: One sentence about what the numbers show — same tracker, different scores.
 
