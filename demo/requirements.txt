@@ -1,3 +1,4 @@
+# pinned dependencies for the demo app. do not update.
 gradio>=6.3.0,<6.4.0
 inference-models==0.18.6rc14
 trackers==2.2.0rc1

@@ -119,11 +119,13 @@ nav:
     - ByteTrack: trackers/bytetrack.md
     - OC-SORT: trackers/ocsort.md
   - Guides:
-    - Install: learn/install.md
-    - Track: learn/track.md
-    - Evaluate: learn/evaluate.md
+    - Install Trackers: learn/install.md
+    - Track Objects: learn/track.md
+    - Download Datasets: learn/download.md
+    - Evaluate Trackers: learn/evaluate.md
   - API Reference:
     - Trackers: api/trackers.md
     - Motion: api/motion.md
+    - Datasets: api/datasets.md
     - Evals: api/evals.md
     - I/O: api/io.md

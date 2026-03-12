@@ -39,7 +39,8 @@ dependencies = [
     "supervision>=0.26.1",
     "scipy>=1.13.1",
     "opencv-python>=4.8.0",
-    "rich>=13.0.0"
+    "rich>=13.0.0",
+    "requests>=2.28.0",
 ]
 
 [project.optional-dependencies]
@@ -72,7 +73,6 @@ build = [
 mypy-types = [
     "types-aiofiles>=24.1.0.20250326",
     "types-requests>=2.32.0.20250328",
-    "types-tqdm>=4.67.0.20250417",
 ]
 
 [build-system]

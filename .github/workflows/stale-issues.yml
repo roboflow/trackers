@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 🕰️ Mark stale issues
-        uses: actions/stale@v9
+        uses: actions/stale@v10
         with:
           days-before-stale: 28
           days-before-close: -1
