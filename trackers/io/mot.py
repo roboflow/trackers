@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import supervision as sv
+from scipy.optimize import linear_sum_assignment
 
 from trackers.eval.box import box_iou
 
@@ -253,36 +254,61 @@ def _prepare_mot_sequence(
     num_tracker_dets = 0
 
     for frame in range(1, num_frames + 1):
-        # Get GT data for this frame (filter distractors where conf == 0)
         if frame in gt_data:
             gt_frame = gt_data[frame]
-            keep = gt_frame.confidences > 0
-            gt_boxes = gt_frame.boxes[keep]
-            gt_ids_orig = gt_frame.ids[keep]
-            gt_ids_remapped = np.array(
-                [gt_id_mapping[int(gid)] for gid in gt_ids_orig], dtype=np.intp
-            )
-            num_gt_dets += len(gt_ids_remapped)
+            all_gt_boxes = gt_frame.boxes
+            gt_valid_mask = gt_frame.confidences > 0
+            gt_distractor_mask = ~gt_valid_mask
         else:
-            gt_boxes = np.empty((0, 4), dtype=np.float64)
-            gt_ids_remapped = np.array([], dtype=np.intp)
+            all_gt_boxes = np.empty((0, 4), dtype=np.float64)
+            gt_valid_mask = np.array([], dtype=bool)
+            gt_distractor_mask = np.array([], dtype=bool)
 
-        # Get tracker data for this frame (filter unconfirmed tracks with id < 0)
         if frame in tracker_data:
             tracker_frame = tracker_data[frame]
-            keep = tracker_frame.ids >= 0
-            tracker_boxes = tracker_frame.boxes[keep]
-            tracker_ids_orig = tracker_frame.ids[keep]
-            tracker_ids_remapped = np.array(
-                [tracker_id_mapping[int(tid)] for tid in tracker_ids_orig],
-                dtype=np.intp,
-            )
-            num_tracker_dets += len(tracker_ids_remapped)
+            tk_keep = tracker_frame.ids >= 0
+            tracker_boxes = tracker_frame.boxes[tk_keep]
+            tracker_ids_orig = tracker_frame.ids[tk_keep]
         else:
             tracker_boxes = np.empty((0, 4), dtype=np.float64)
-            tracker_ids_remapped = np.array([], dtype=np.intp)
+            tracker_ids_orig = np.array([], dtype=np.intp)
 
-        # Compute IoU similarity matrix
+        # Remove tracker dets matched to distractor GT via Hungarian algorithm.
+        # This follows the MOT Challenge protocol: predictions overlapping
+        # ignored GT regions (conf==0) are neither penalized nor rewarded.
+        tracker_to_keep = np.ones(len(tracker_ids_orig), dtype=bool)
+        if gt_distractor_mask.any() and len(tracker_ids_orig) > 0:
+            iou_all = box_iou(all_gt_boxes, tracker_boxes, box_format="xywh")
+            iou_all[iou_all < 0.5 - np.finfo(float).eps] = 0
+            match_rows, match_cols = linear_sum_assignment(-iou_all)
+            matched = iou_all[match_rows, match_cols] > 0 + np.finfo(float).eps
+            match_rows = match_rows[matched]
+            match_cols = match_cols[matched]
+            distractor_matches = gt_distractor_mask[match_rows]
+            tracker_to_keep[match_cols[distractor_matches]] = False
+
+        tracker_boxes = tracker_boxes[tracker_to_keep]
+        tracker_ids_orig = tracker_ids_orig[tracker_to_keep]
+
+        # Filter GT to valid entries only (conf > 0)
+        gt_boxes = all_gt_boxes[gt_valid_mask]
+        gt_ids_orig = (
+            gt_frame.ids[gt_valid_mask] if frame in gt_data
+            else np.array([], dtype=np.intp)
+        )
+
+        gt_ids_remapped = np.array(
+            [gt_id_mapping[int(gid)] for gid in gt_ids_orig], dtype=np.intp
+        ) if len(gt_ids_orig) > 0 else np.array([], dtype=np.intp)
+        num_gt_dets += len(gt_ids_remapped)
+
+        tracker_ids_remapped = np.array(
+            [tracker_id_mapping[int(tid)] for tid in tracker_ids_orig],
+            dtype=np.intp,
+        ) if len(tracker_ids_orig) > 0 else np.array([], dtype=np.intp)
+        num_tracker_dets += len(tracker_ids_remapped)
+
+        # Compute IoU similarity matrix between valid GT and remaining tracker
         similarity = box_iou(gt_boxes, tracker_boxes, box_format="xywh")
 
         gt_ids_list.append(gt_ids_remapped)

@@ -93,11 +93,11 @@ trackers eval \
 ```
 Sequence                        MOTA    HOTA    IDF1  IDSW
 ----------------------------------------------------------
-MOT17-02-FRCNN                25.263  34.672  37.137    35
-MOT17-04-FRCNN                44.586  53.968  60.111    16
+MOT17-02-FRCNN                30.192  35.475  38.515    35
+MOT17-04-FRCNN                48.912  55.096  61.854    16
 MOT17-05-FRCNN                52.755  45.515  55.705    17
 ----------------------------------------------------------
-COMBINED                      43.960  49.548  55.337   234
+COMBINED                      47.406  50.355  56.600   234
 ```
 
 For the full evaluation workflow, see the [evaluation guide](learn/evaluate.md).
