@@ -118,6 +118,7 @@ nav:
     - Track Objects: learn/track.md
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
+    - Detection Quality Matters: learn/detection-quality.md
   - Trackers:
     - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md
