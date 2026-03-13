@@ -27,7 +27,7 @@ For more options, see the [install guide](install.md).
 We pick three models that span a wide accuracy range on COCO, from a lightweight YOLO to a mid-size transformer detector. The gap in COCO accuracy between the weakest and strongest model is nearly 15 AP. The question is how much of that carries over to tracking.
 
 |     Model      | COCO AP50 | COCO AP50:95 | Latency (ms) |
-|:--------------:|:---------:|:------------:|:------------:|
+| :------------: | :-------: | :----------: | :----------: |
 |  YOLO26 Nano   |   55.8    |     40.3     |     1.7      |
 |  RF-DETR Nano  |   67.6    |     48.4     |     2.3      |
 | RF-DETR Medium |   73.6    |     54.7     |     4.4      |
