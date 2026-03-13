@@ -30,7 +30,7 @@ We pick three models that span a wide accuracy range on COCO, from a lightweight
 <p align="center" style="margin-top: -0.4em;"><small>Comparison of RF-DETR against other top real-time detectors on MS COCO.</small></p>
 
 |     Model      | COCO AP50 | COCO AP50:95 | Latency (ms) |
-|:--------------:|:---------:|:------------:|:------------:|
+| :------------: | :-------: | :----------: | :----------: |
 |  YOLO26 Nano   |   55.8    |     40.3     |     1.7      |
 |  RF-DETR Nano  |   67.6    |     48.4     |     2.3      |
 | RF-DETR Medium |   73.6    |     54.7     |     4.4      |
