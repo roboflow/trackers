@@ -28,6 +28,10 @@ For more options, see the [install guide](learn/install.md).
 
 ---
 
+[![Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers](https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png)](https://www.youtube.com/watch?v=u0k2dTZ0vfs)
+
+---
+
 ## Track from CLI
 
 Track objects in any video with a single command.
@@ -113,8 +117,6 @@ Clean, modular implementations of leading trackers.
 |   SORT    |    58.4    |      70.9      |      81.6      |
 | ByteTrack |    60.1    |    **73.0**    |    **84.0**    |
 |  OC-SORT  |  **61.9**  |      71.5      |      78.6      |
-| BoT-SORT  |     —      |       —        |       —        |
-|  McByte   |     —      |       —        |       —        |
 
 For detailed benchmarks, see the [tracker comparison](trackers/comparison.md).
 
