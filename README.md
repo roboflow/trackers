@@ -125,10 +125,10 @@ trackers download mot17 \
     --asset annotations,detections
 ```
 
-|   Dataset    |                               Description                               |         Splits         |                Assets                 |     License     |
-| :----------: | :---------------------------------------------------------------------: | :--------------------: | :-----------------------------------: | :-------------: |
-|   `mot17`    |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
-| `sportsmot`  | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
+|   Dataset   |                               Description                               |         Splits         |                Assets                 |     License     |
+| :---------: | :---------------------------------------------------------------------: | :--------------------: | :-----------------------------------: | :-------------: |
+|   `mot17`   |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
+| `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
 
 For more download options, see the [download guide](https://trackers.roboflow.com/develop/learn/download/).
 
