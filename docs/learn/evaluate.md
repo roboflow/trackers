@@ -104,15 +104,15 @@ trackers eval \
     --gt ./data/mot17/val/MOT17-02-FRCNN/gt/gt.txt \
     --tracker results/MOT17-02-FRCNN.txt \
     --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1 IDSW
+    --columns MOTA HOTA IDF1
 ```
 
 **Output:**
 
 ```
-Sequence                        MOTA    HOTA    IDF1  IDSW
-----------------------------------------------------------
-gt                            30.192  35.475  38.515    35
+                                MOTA    HOTA    IDF1
+----------------------------------------------------
+gt                            30.192  35.475  38.515
 ```
 
 ---
@@ -146,24 +146,24 @@ trackers eval \
     --gt-dir ./data/mot17/val \
     --tracker-dir results \
     --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1 IDSW \
+    --columns MOTA HOTA IDF1 \
     --output results.json
 ```
 
 **Output:**
 
 ```
-Sequence                        MOTA    HOTA    IDF1  IDSW
-----------------------------------------------------------
-MOT17-02-FRCNN                30.192  35.475  38.515    35
-MOT17-04-FRCNN                48.912  55.096  61.854    16
-MOT17-05-FRCNN                52.755  45.515  55.705    17
-MOT17-09-FRCNN                51.441  50.108  57.038    10
-MOT17-10-FRCNN                51.832  49.648  55.797    97
-MOT17-11-FRCNN                55.501  49.401  55.061    28
-MOT17-13-FRCNN                60.488  58.651  69.884    31
-----------------------------------------------------------
-COMBINED                      47.406  50.355  56.600   234
+Sequence                        MOTA    HOTA    IDF1
+----------------------------------------------------
+MOT17-02-FRCNN                30.192  35.475  38.515
+MOT17-04-FRCNN                48.912  55.096  61.854
+MOT17-05-FRCNN                52.755  45.515  55.705
+MOT17-09-FRCNN                51.441  50.108  57.038
+MOT17-10-FRCNN                51.832  49.648  55.797
+MOT17-11-FRCNN                55.501  49.401  55.061
+MOT17-13-FRCNN                60.488  58.651  69.884
+----------------------------------------------------
+COMBINED                      47.406  50.355  56.600
 ```
 
 Use `--output` to save the full results to a JSON file for later analysis.

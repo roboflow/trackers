@@ -248,3 +248,8 @@ body[data-md-url$="/cookbooks/"] .md-content {
 .md-search {
   flex-grow: 0;
 }
+.md-footer .md-grid {
+  max-width: 1600px;
+  width: 100%;
+  margin: auto;
+}

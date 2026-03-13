@@ -87,17 +87,17 @@ trackers eval \
     --gt-dir ./data/mot17/val \
     --tracker-dir results \
     --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1 IDSW
+    --columns MOTA HOTA IDF1
 ```
 
 ```
-Sequence                        MOTA    HOTA    IDF1  IDSW
-----------------------------------------------------------
-MOT17-02-FRCNN                30.192  35.475  38.515    35
-MOT17-04-FRCNN                48.912  55.096  61.854    16
-MOT17-05-FRCNN                52.755  45.515  55.705    17
-----------------------------------------------------------
-COMBINED                      47.406  50.355  56.600   234
+Sequence                        MOTA    HOTA    IDF1
+----------------------------------------------------
+MOT17-02-FRCNN                30.192  35.475  38.515
+MOT17-04-FRCNN                48.912  55.096  61.854
+MOT17-05-FRCNN                52.755  45.515  55.705
+----------------------------------------------------
+COMBINED                      47.406  50.355  56.600
 ```
 
 For the full evaluation workflow, see the [evaluation guide](learn/evaluate.md).
