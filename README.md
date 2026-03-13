@@ -29,6 +29,10 @@ pip install git+https://github.com/roboflow/trackers.git
 
 </details>
 
+For more options, see the [install guide](https://trackers.roboflow.com/develop/learn/install/).
+
+[![Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers](https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png)](https://www.youtube.com/watch?v=u0k2dTZ0vfs)
+
 ## Track from CLI
 
 Point at a video, webcam, RTSP stream, or image directory. Get tracked output.
@@ -43,7 +47,7 @@ trackers track \
     --show-trajectories
 ```
 
-Use our [interactive command builder](https://trackers.roboflow.com/develop/learn/track) to configure your tracking pipeline.
+Use our [interactive command builder](https://trackers.roboflow.com/develop/learn/track) to configure your tracking pipeline. For all CLI options, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
 
 ## Track from Python
 
@@ -87,9 +91,15 @@ Sequence                        MOTA    HOTA    IDF1
 MOT17-02-FRCNN                30.192  35.475  38.515
 MOT17-04-FRCNN                48.912  55.096  61.854
 MOT17-05-FRCNN                52.755  45.515  55.705
+MOT17-09-FRCNN                51.441  50.108  57.038
+MOT17-10-FRCNN                51.832  49.648  55.797
+MOT17-11-FRCNN                55.501  49.401  55.061
+MOT17-13-FRCNN                60.488  58.651  69.884
 ----------------------------------------------------
 COMBINED                      47.406  50.355  56.600
 ```
+
+For the full evaluation workflow, see the [evaluation guide](https://trackers.roboflow.com/develop/learn/evaluate/).
 
 ## Download Datasets
 
@@ -99,21 +109,26 @@ Pull benchmark datasets for evaluation with a single command.
 trackers download mot17 --split val --asset annotations,detections --output ./data
 ```
 
-Supported datasets: MOT17, SportsMOT, SoccerNet, DanceTrack.
+|   Dataset    |                               Description                               |         Splits         |                Assets                 |     License     |
+| :----------: | :---------------------------------------------------------------------: | :--------------------: | :-----------------------------------: | :-------------: |
+|   `mot17`    |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
+| `sportsmot`  | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
+| `dancetrack` |                             *Coming soon.*                              |           —            |                   —                   |        —        |
+| `soccernet`  |                             *Coming soon.*                              |           —            |                   —                   |        —        |
 
-## Detection Quality
-
-The detector is the most impactful part of the tracking pipeline. Swapping the detector alone can produce larger gains than any tracker-level optimization. See the [detection quality guide](https://trackers.roboflow.com/develop/learn/detection-quality/) for a full comparison.
+For more download options, see the [download guide](https://trackers.roboflow.com/develop/learn/download/).
 
 ## Algorithms
 
-Clean, modular implementations of leading trackers. See the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) for detailed benchmarks.
+Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
 
-|                   Algorithm                   |  MOT17   | SportsMOT | SoccerNet |
-| :-------------------------------------------: | :------: | :-------: | :-------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |   58.4   |   70.9    |   81.6    |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) |   60.1   | **73.0**  | **84.0**  |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  | **61.9** |   71.5    |   78.6    |
+|                   Algorithm                   | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :-------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |    58.4    |      70.9      |      81.6      |      45.0       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) |    60.1    |    **73.0**    |    **84.0**    |      50.2       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |  **61.9**  |      71.7      |      78.4      |    **51.8**     |
+
+For detailed benchmarks and tuned configurations, see the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/).
 
 ## Try It
 
