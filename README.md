@@ -79,13 +79,13 @@ For more examples, see the [tracking guide](https://trackers.roboflow.com/develo
 
 Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
 
-|                   Algorithm                   |                          Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
-| :-------------------------------------------: | :------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |    Kalman filter + Hungarian matching baseline.                 |    58.4    |      70.9      |      81.6      |      45.0       |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) |  Two-stage association using high and low confidence detections.|    60.1    |    **73.0**    |    **84.0**    |      50.2       |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |   Observation-centric recovery for lost tracks.                |  **61.9**  |      71.7      |      78.4      |    **51.8**     |
-| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                        *Coming soon.*                          |     —      |       —        |       —        |        —        |
-|  [McByte](https://arxiv.org/abs/2506.01373)   |                        *Coming soon.*                          |     —      |       —        |       —        |        —        |
+|                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      45.0       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    60.1    |    **73.0**    |    **84.0**    |      50.2       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |  **61.9**  |      71.7      |      78.4      |    **51.8**     |
+| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                         *Coming soon.*                          |     —      |       —        |       —        |        —        |
+|  [McByte](https://arxiv.org/abs/2506.01373)   |                         *Coming soon.*                          |     —      |       —        |       —        |        —        |
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/).
 
