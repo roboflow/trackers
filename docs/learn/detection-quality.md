@@ -26,6 +26,9 @@ For more options, see the [install guide](install.md).
 
 We pick three models that span a wide accuracy range on COCO, from a lightweight YOLO to a mid-size transformer detector. The gap in COCO accuracy between the weakest and strongest model is nearly 15 AP. The question is how much of that carries over to tracking.
 
+![RF-DETR vs top object detectors on MS COCO](https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/rf_detr_1-2_latency_accuracy_object_detection.png)
+<p align="center" style="margin-top: -0.4em;"><small>Comparison of RF-DETR against other top real-time detectors on MS COCO.</small></p>
+
 |     Model      | COCO AP50 | COCO AP50:95 | Latency (ms) |
 |:--------------:|:---------:|:------------:|:------------:|
 |  YOLO26 Nano   |   55.8    |     40.3     |     1.7      |
@@ -77,6 +80,11 @@ Run ByteTrack with default parameters three times, changing only the detection m
     done
     ```
 
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/yolo26n_MOT17-13-FRCNN.mp4" type="video/mp4">
+</video>
+<p align="center" style="margin-top: -0.4em;"><small>ByteTrack with YOLO26 Nano on MOT17-13.</small></p>
+
 ### RF-DETR Nano
 
 === "Single sequence"
@@ -103,6 +111,11 @@ Run ByteTrack with default parameters three times, changing only the detection m
     done
     ```
 
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/rfdetr_nano_MOT17-13-FRCNN.mp4" type="video/mp4">
+</video>
+<p align="center" style="margin-top: -0.4em;"><small>ByteTrack with RF-DETR Nano on MOT17-13.</small></p>
+
 ### RF-DETR Medium
 
 === "Single sequence"
@@ -128,6 +141,11 @@ Run ByteTrack with default parameters three times, changing only the detection m
             --mot-output results/rfdetr-medium/$seq.txt
     done
     ```
+
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/rfdetr_medium_MOT17-13-FRCNN.mp4" type="video/mp4">
+</video>
+<p align="center" style="margin-top: -0.4em;"><small>ByteTrack with RF-DETR Medium on MOT17-13.</small></p>
 
 ---
 
