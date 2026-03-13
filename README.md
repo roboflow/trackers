@@ -47,7 +47,7 @@ trackers track \
     --show-trajectories
 ```
 
-Use our [interactive command builder](https://trackers.roboflow.com/develop/learn/track) to configure your tracking pipeline. For all CLI options, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
+For all CLI options, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
 
 ## Track from Python
 
@@ -72,6 +72,20 @@ while cap.isOpened():
     detections = sv.Detections.from_inference(result)
     tracked = tracker.update(detections)
 ```
+
+## Algorithms
+
+Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
+
+|                   Algorithm                   |         Class          | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :-------------------------------------------: | :--------------------: | :--------: | :------------: | :------------: | :-------------: |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |    `SORTTracker`       |    58.4    |      70.9      |      81.6      |      45.0       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) |  `ByteTrackTracker`    |    60.1    |    **73.0**    |    **84.0**    |      50.2       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |   `OCSORTTracker`      |  **61.9**  |      71.7      |      78.4      |    **51.8**     |
+| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                        |            |  *Coming soon.* |               |                 |
+|  [McByte](https://arxiv.org/abs/2506.01373)   |                        |            |  *Coming soon.* |               |                 |
+
+For detailed benchmarks and tuned configurations, see the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/).
 
 ## Evaluate
 
@@ -106,7 +120,7 @@ For the full evaluation workflow, see the [evaluation guide](https://trackers.ro
 Pull benchmark datasets for evaluation with a single command.
 
 ```bash
-trackers download mot17 --split val --asset annotations,detections --output ./data
+trackers download mot17 --split val --asset annotations,detections
 ```
 
 |   Dataset    |                               Description                               |         Splits         |                Assets                 |     License     |
@@ -117,18 +131,6 @@ trackers download mot17 --split val --asset annotations,detections --output ./da
 | `soccernet`  |                             *Coming soon.*                              |           —            |                   —                   |        —        |
 
 For more download options, see the [download guide](https://trackers.roboflow.com/develop/learn/download/).
-
-## Algorithms
-
-Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
-
-|                   Algorithm                   | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
-| :-------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |    58.4    |      70.9      |      81.6      |      45.0       |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) |    60.1    |    **73.0**    |    **84.0**    |      50.2       |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |  **61.9**  |      71.7      |      78.4      |    **51.8**     |
-
-For detailed benchmarks and tuned configurations, see the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/).
 
 ## Try It
 
