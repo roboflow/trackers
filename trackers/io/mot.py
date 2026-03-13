@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""MOT Challenge format I/O utilities."""
-
 from __future__ import annotations
 
 import csv
@@ -14,8 +12,12 @@ from pathlib import Path
 
 import numpy as np
 import supervision as sv
+from scipy.optimize import linear_sum_assignment
 
 from trackers.eval.box import box_iou
+from trackers.eval.constants import EPS
+
+_DISTRACTOR_IOU_THRESHOLD = 0.5
 
 
 @dataclass
@@ -200,8 +202,157 @@ def _load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
     return result
 
 
+def _resolve_num_frames(
+    ground_truth_data: dict[int, _MOTFrameData],
+    tracker_data: dict[int, _MOTFrameData],
+    num_frames: int | None,
+) -> int:
+    """Determine the total frame count from data if not explicitly provided."""
+    if num_frames is not None:
+        return num_frames
+    ground_truth_frames = set(ground_truth_data.keys()) if ground_truth_data else set()
+    tracker_frames = set(tracker_data.keys()) if tracker_data else set()
+    all_frames = ground_truth_frames | tracker_frames
+    return max(all_frames) if all_frames else 0
+
+
+def _build_id_mappings(
+    ground_truth_data: dict[int, _MOTFrameData],
+    tracker_data: dict[int, _MOTFrameData],
+    num_frames: int,
+) -> tuple[dict[int, int], dict[int, int]]:
+    """Collect valid IDs across all frames and build original-to-0-indexed maps.
+
+    Returns:
+        Tuple of (ground_truth_id_map, tracker_id_map) where each maps original
+        track IDs to contiguous 0-indexed values.
+    """
+    # Reference: trackeval/datasets/mot_challenge_2d_box.py:402-421
+    unique_ground_truth_ids: set[int] = set()
+    unique_tracker_ids: set[int] = set()
+
+    for frame in range(1, num_frames + 1):
+        if frame in ground_truth_data:
+            valid_mask = ground_truth_data[frame].confidences > 0
+            unique_ground_truth_ids.update(
+                ground_truth_data[frame].ids[valid_mask].tolist()
+            )
+        if frame in tracker_data:
+            confirmed_mask = tracker_data[frame].ids >= 0
+            unique_tracker_ids.update(tracker_data[frame].ids[confirmed_mask].tolist())
+
+    sorted_ground_truth_ids = sorted(unique_ground_truth_ids)
+    sorted_tracker_ids = sorted(unique_tracker_ids)
+
+    ground_truth_id_map = {
+        original_id: index for index, original_id in enumerate(sorted_ground_truth_ids)
+    }
+    tracker_id_map = {
+        original_id: index for index, original_id in enumerate(sorted_tracker_ids)
+    }
+    return ground_truth_id_map, tracker_id_map
+
+
+def _extract_ground_truth_frame(
+    ground_truth_data: dict[int, _MOTFrameData],
+    frame: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Extract and split ground truth data for a single frame.
+
+    Returns:
+        Tuple of (valid_boxes, valid_ids, all_boxes, distractor_mask).
+        For missing frames, returns empty arrays with correct shapes.
+    """
+    # Reference: trackeval/datasets/mot_challenge_2d_box.py:390-400
+    if frame in ground_truth_data:
+        frame_data = ground_truth_data[frame]
+        valid_mask = frame_data.confidences > 0
+        return (
+            frame_data.boxes[valid_mask],
+            frame_data.ids[valid_mask],
+            frame_data.boxes,
+            ~valid_mask,
+        )
+
+    empty_boxes = np.empty((0, 4), dtype=np.float64)
+    empty_ids = np.array([], dtype=np.intp)
+    empty_mask = np.array([], dtype=bool)
+    return empty_boxes, empty_ids, empty_boxes, empty_mask
+
+
+def _extract_tracker_frame(
+    tracker_data: dict[int, _MOTFrameData],
+    frame: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract tracker detections for a single frame, keeping only confirmed tracks.
+
+    Returns:
+        Tuple of (boxes, ids) with unconfirmed tracks (id < 0) removed.
+    """
+    # Reference: trackeval/datasets/mot_challenge_2d_box.py:385-386
+    if frame in tracker_data:
+        frame_data = tracker_data[frame]
+        confirmed_mask = frame_data.ids >= 0
+        return frame_data.boxes[confirmed_mask], frame_data.ids[confirmed_mask]
+
+    return np.empty((0, 4), dtype=np.float64), np.array([], dtype=np.intp)
+
+
+def _remove_distractor_matches(
+    all_ground_truth_boxes: np.ndarray,
+    distractor_mask: np.ndarray,
+    tracker_boxes: np.ndarray,
+    tracker_ids: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Remove tracker detections matched to distractor ground truth regions.
+
+    Uses the Hungarian algorithm to match tracker detections against ALL ground
+    truth boxes (including distractors). Tracker detections that best-match a
+    distractor (conf==0) are removed so they are neither penalized as FP nor
+    rewarded as TP.
+
+    Returns:
+        Filtered (boxes, ids) with distractor-matched detections removed.
+    """
+    # Reference: trackeval/datasets/mot_challenge_2d_box.py:360-386
+    if not distractor_mask.any() or len(tracker_ids) == 0:
+        return tracker_boxes, tracker_ids
+
+    distractor_iou_matrix = box_iou(
+        all_ground_truth_boxes, tracker_boxes, box_format="xywh"
+    )
+    distractor_iou_matrix[distractor_iou_matrix < _DISTRACTOR_IOU_THRESHOLD - EPS] = 0
+
+    matched_gt_indices, matched_tracker_indices = linear_sum_assignment(
+        -distractor_iou_matrix
+    )
+
+    actually_matched = (
+        distractor_iou_matrix[matched_gt_indices, matched_tracker_indices] > 0 + EPS
+    )
+    matched_gt_indices = matched_gt_indices[actually_matched]
+    matched_tracker_indices = matched_tracker_indices[actually_matched]
+
+    matched_to_distractor = distractor_mask[matched_gt_indices]
+    keep_mask = np.ones(len(tracker_ids), dtype=bool)
+    keep_mask[matched_tracker_indices[matched_to_distractor]] = False
+
+    return tracker_boxes[keep_mask], tracker_ids[keep_mask]
+
+
+def _remap_ids(
+    ids: np.ndarray,
+    id_map: dict[int, int],
+) -> np.ndarray:
+    """Remap original track IDs to 0-indexed contiguous values."""
+    # Reference: trackeval/datasets/mot_challenge_2d_box.py:407-421
+    if len(ids) == 0:
+        return np.array([], dtype=np.intp)
+    return np.array([id_map[int(original_id)] for original_id in ids], dtype=np.intp)
+
+
 def _prepare_mot_sequence(
-    gt_data: dict[int, _MOTFrameData],
+    ground_truth_data: dict[int, _MOTFrameData],
     tracker_data: dict[int, _MOTFrameData],
     num_frames: int | None = None,
 ) -> _MOTSequenceData:
@@ -212,7 +363,7 @@ def _prepare_mot_sequence(
     CLEAR, HOTA, and Identity metrics.
 
     Args:
-        gt_data: Ground truth data from `load_mot_file`.
+        ground_truth_data: Ground truth data from `load_mot_file`.
         tracker_data: Tracker predictions from `load_mot_file`.
         num_frames: Total number of frames in the sequence. If `None`,
             auto-detected from the maximum frame number in the data.
@@ -220,84 +371,47 @@ def _prepare_mot_sequence(
     Returns:
         `_MOTSequenceData` containing prepared data ready for metric evaluation.
     """
-    gt_frames = set(gt_data.keys()) if gt_data else set()
-    tracker_frames = set(tracker_data.keys()) if tracker_data else set()
-    all_frames = gt_frames | tracker_frames
+    num_frames = _resolve_num_frames(ground_truth_data, tracker_data, num_frames)
+    ground_truth_id_map, tracker_id_map = _build_id_mappings(
+        ground_truth_data, tracker_data, num_frames
+    )
 
-    if num_frames is None:
-        num_frames = max(all_frames) if all_frames else 0
-
-    all_gt_ids: set[int] = set()
-    all_tracker_ids: set[int] = set()
-
-    for frame in range(1, num_frames + 1):
-        if frame in gt_data:
-            all_gt_ids.update(gt_data[frame].ids.tolist())
-        if frame in tracker_data:
-            all_tracker_ids.update(tracker_data[frame].ids.tolist())
-
-    # Build ID mappings (original -> 0-indexed)
-    sorted_gt_ids = sorted(all_gt_ids)
-    sorted_tracker_ids = sorted(all_tracker_ids)
-    gt_id_mapping = {orig_id: idx for idx, orig_id in enumerate(sorted_gt_ids)}
-    tracker_id_mapping = {
-        orig_id: idx for idx, orig_id in enumerate(sorted_tracker_ids)
-    }
-
-    gt_ids_list: list[np.ndarray] = []
-    tracker_ids_list: list[np.ndarray] = []
-    similarity_scores_list: list[np.ndarray] = []
-    num_gt_dets = 0
-    num_tracker_dets = 0
+    per_frame_ground_truth_ids: list[np.ndarray] = []
+    per_frame_tracker_ids: list[np.ndarray] = []
+    per_frame_similarity: list[np.ndarray] = []
+    total_ground_truth_detections = 0
+    total_tracker_detections = 0
 
     for frame in range(1, num_frames + 1):
-        # Get GT data for this frame
-        if frame in gt_data:
-            gt_frame = gt_data[frame]
-            gt_boxes = gt_frame.boxes
-            gt_ids_orig = gt_frame.ids
-            # Remap IDs to 0-indexed
-            gt_ids_remapped = np.array(
-                [gt_id_mapping[int(gid)] for gid in gt_ids_orig], dtype=np.intp
-            )
-            num_gt_dets += len(gt_ids_remapped)
-        else:
-            gt_boxes = np.empty((0, 4), dtype=np.float64)
-            gt_ids_remapped = np.array([], dtype=np.intp)
+        ground_truth_boxes, ground_truth_ids, all_boxes, distractor_mask = (
+            _extract_ground_truth_frame(ground_truth_data, frame)
+        )
+        tracker_boxes, tracker_ids = _extract_tracker_frame(tracker_data, frame)
+        tracker_boxes, tracker_ids = _remove_distractor_matches(
+            all_boxes, distractor_mask, tracker_boxes, tracker_ids
+        )
 
-        # Get tracker data for this frame
-        if frame in tracker_data:
-            tracker_frame = tracker_data[frame]
-            tracker_boxes = tracker_frame.boxes
-            tracker_ids_orig = tracker_frame.ids
-            # Remap IDs to 0-indexed
-            tracker_ids_remapped = np.array(
-                [tracker_id_mapping[int(tid)] for tid in tracker_ids_orig],
-                dtype=np.intp,
-            )
-            num_tracker_dets += len(tracker_ids_remapped)
-        else:
-            tracker_boxes = np.empty((0, 4), dtype=np.float64)
-            tracker_ids_remapped = np.array([], dtype=np.intp)
+        remapped_ground_truth_ids = _remap_ids(ground_truth_ids, ground_truth_id_map)
+        remapped_tracker_ids = _remap_ids(tracker_ids, tracker_id_map)
+        similarity = box_iou(ground_truth_boxes, tracker_boxes, box_format="xywh")
 
-        # Compute IoU similarity matrix
-        similarity = box_iou(gt_boxes, tracker_boxes, box_format="xywh")
-
-        gt_ids_list.append(gt_ids_remapped)
-        tracker_ids_list.append(tracker_ids_remapped)
-        similarity_scores_list.append(similarity)
+        per_frame_ground_truth_ids.append(remapped_ground_truth_ids)
+        per_frame_tracker_ids.append(remapped_tracker_ids)
+        per_frame_similarity.append(similarity)
+        total_ground_truth_detections += len(remapped_ground_truth_ids)
+        total_tracker_detections += len(remapped_tracker_ids)
 
     return _MOTSequenceData(
-        gt_ids=gt_ids_list,
-        tracker_ids=tracker_ids_list,
-        similarity_scores=similarity_scores_list,
+        gt_ids=per_frame_ground_truth_ids,
+        tracker_ids=per_frame_tracker_ids,
+        similarity_scores=per_frame_similarity,
         num_frames=num_frames,
-        num_gt_ids=len(sorted_gt_ids),
-        num_tracker_ids=len(sorted_tracker_ids),
-        num_gt_dets=num_gt_dets,
-        num_tracker_dets=num_tracker_dets,
-        gt_id_mapping=gt_id_mapping,
-        tracker_id_mapping=tracker_id_mapping,
+        num_gt_ids=len(ground_truth_id_map),
+        num_tracker_ids=len(tracker_id_map),
+        num_gt_dets=total_ground_truth_detections,
+        num_tracker_dets=total_tracker_detections,
+        gt_id_mapping=ground_truth_id_map,
+        tracker_id_mapping=tracker_id_map,
     )
 
 

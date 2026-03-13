@@ -7,15 +7,12 @@
 [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
 [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE.md)
 [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
-[![hf space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/Roboflow/Trackers)
 [![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
 [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
 
 </div>
 
-## Try It
-
-No install needed. Try trackers in your browser with our [Hugging Face Playground](https://huggingface.co/spaces/roboflow/trackers).
+https://github.com/user-attachments/assets/eef9b00a-cfe4-40f7-a495-954550e3ef1f
 
 ## Install
 
@@ -24,7 +21,7 @@ pip install trackers
 ```
 
 <details>
-<summary>install from source</summary>
+<summary>Install from source</summary>
 
 ```bash
 pip install git+https://github.com/roboflow/trackers.git
@@ -32,13 +29,13 @@ pip install git+https://github.com/roboflow/trackers.git
 
 </details>
 
-https://github.com/user-attachments/assets/eef9b00a-cfe4-40f7-a495-954550e3ef1f
+For more options, see the [install guide](https://trackers.roboflow.com/develop/learn/install/).
+
+[![Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers](https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png)](https://www.youtube.com/watch?v=u0k2dTZ0vfs)
 
 ## Track from CLI
 
 Point at a video, webcam, RTSP stream, or image directory. Get tracked output.
-
-Use our [interactive command builder](https://trackers.roboflow.com/develop/learn/track) to configure your tracking pipeline.
 
 ```bash
 trackers track \
@@ -49,6 +46,8 @@ trackers track \
     --show-labels \
     --show-trajectories
 ```
+
+For all CLI options, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
 
 ## Track from Python
 
@@ -63,9 +62,6 @@ from trackers import ByteTrackTracker
 model = get_model(model_id="rfdetr-medium")
 tracker = ByteTrackTracker()
 
-label_annotator = sv.LabelAnnotator()
-trajectory_annotator = sv.TrajectoryAnnotator()
-
 cap = cv2.VideoCapture("video.mp4")
 while cap.isOpened():
     ret, frame = cap.read()
@@ -75,10 +71,21 @@ while cap.isOpened():
     result = model.infer(frame)[0]
     detections = sv.Detections.from_inference(result)
     tracked = tracker.update(detections)
-
-    frame = label_annotator.annotate(frame, tracked)
-    frame = trajectory_annotator.annotate(frame, tracked)
 ```
+
+For more examples, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
+
+## Algorithms
+
+Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
+
+|                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      45.0       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    60.1    |    **73.0**    |    **84.0**    |      50.2       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |  **61.9**  |      71.7      |      78.4      |    **51.8**     |
+
+For detailed benchmarks and tuned configurations, see the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/).
 
 ## Evaluate
 
@@ -86,31 +93,52 @@ Benchmark your tracker against ground truth with standard MOT metrics.
 
 ```bash
 trackers eval \
-    --gt-dir data/gt \
-    --tracker-dir data/trackers \
-    --metrics CLEAR HOTA Identity
+    --gt-dir ./data/mot17/val \
+    --tracker-dir results \
+    --metrics CLEAR HOTA Identity \
+    --columns MOTA HOTA IDF1
 ```
 
 ```
-Sequence                        MOTA    HOTA    IDF1  IDSW
-----------------------------------------------------------
-MOT17-02-FRCNN                75.600  62.300  72.100    42
-MOT17-04-FRCNN                78.200  65.100  74.800    31
-----------------------------------------------------------
-COMBINED                      75.033  62.400  72.033    73
+Sequence                        MOTA    HOTA    IDF1
+----------------------------------------------------
+MOT17-02-FRCNN                30.192  35.475  38.515
+MOT17-04-FRCNN                48.912  55.096  61.854
+MOT17-05-FRCNN                52.755  45.515  55.705
+MOT17-09-FRCNN                51.441  50.108  57.038
+MOT17-10-FRCNN                51.832  49.648  55.797
+MOT17-11-FRCNN                55.501  49.401  55.061
+MOT17-13-FRCNN                60.488  58.651  69.884
+----------------------------------------------------
+COMBINED                      47.406  50.355  56.600
 ```
 
-## Algorithms
+For the full evaluation workflow, see the [evaluation guide](https://trackers.roboflow.com/develop/learn/evaluate/).
 
-Clean, modular implementations of leading trackers. See the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) for detailed benchmarks.
+## Download Datasets
 
-|                   Algorithm                   |  MOT17   | SportsMOT | SoccerNet |
-| :-------------------------------------------: | :------: | :-------: | :-------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |   58.4   |   70.9    |   81.6    |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) |   60.1   | **73.0**  | **84.0**  |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  | **61.9** |   71.5    |   78.6    |
-| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |    —     |     —     |     —     |
-|  [McByte](https://arxiv.org/abs/2506.01373)   |    —     |     —     |     —     |
+Pull benchmark datasets for evaluation with a single command.
+
+```bash
+trackers download mot17 \
+    --split val \
+    --asset annotations,detections
+```
+
+|   Dataset   |                               Description                               |         Splits         |                Assets                 |     License     |
+| :---------: | :---------------------------------------------------------------------: | :--------------------: | :-----------------------------------: | :-------------: |
+|   `mot17`   |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
+| `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
+
+For more download options, see the [download guide](https://trackers.roboflow.com/develop/learn/download/).
+
+## Try It
+
+Try trackers in your browser with our [Hugging Face Playground](https://huggingface.co/spaces/roboflow/trackers).
+
+## Documentation
+
+Full guides, API reference, and tutorials: [trackers.roboflow.com](https://trackers.roboflow.com)
 
 ## Contributing
 

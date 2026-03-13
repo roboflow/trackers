@@ -5,7 +5,7 @@ site_description: A unified library for object tracking featuring clean room re-
 repo_name: roboflow/trackers
 repo_url: https://github.com/roboflow/trackers
 edit_uri: https://github.com/roboflow/trackers/tree/main/docs
-copyright: Roboflow 2025. All rights reserved.
+copyright: Roboflow 2026. All rights reserved.
 
 hooks:
   - docs/hooks/doctest_filter.py
@@ -42,6 +42,7 @@ theme:
     - content.code.select
     - content.tabs.link
     - content.tooltips
+    - navigation.footer
     - navigation.tracking
     - navigation.expand
     - navigation.tabs
@@ -113,16 +114,17 @@ plugins:
 nav:
   - Home:
     - Quickstart: index.md
-  - Trackers:
-    - Comparison: trackers/comparison.md
-    - SORT: trackers/sort.md
-    - ByteTrack: trackers/bytetrack.md
-    - OC-SORT: trackers/ocsort.md
   - Guides:
     - Install Trackers: learn/install.md
     - Track Objects: learn/track.md
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
+    - Detection Quality Matters: learn/detection-quality.md
+  - Trackers:
+    - Comparison: trackers/comparison.md
+    - SORT: trackers/sort.md
+    - ByteTrack: trackers/bytetrack.md
+    - OC-SORT: trackers/ocsort.md
   - API Reference:
     - Trackers: api/trackers.md
     - Motion: api/motion.md

@@ -31,6 +31,10 @@ For more options, see the [install guide](install.md).
 
 ---
 
+[![Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers](https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png)](https://www.youtube.com/watch?v=u0k2dTZ0vfs)
+
+---
+
 ## Quickstart
 
 Read frames from video files, webcams, RTSP streams, or image directories. Each frame flows through detection to find objects, then through tracking to assign IDs.
