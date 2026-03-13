@@ -23,7 +23,7 @@ class BaseTracklet(ABC):
         self, bbox: np.ndarray, state_estimator_class: type[BaseStateEstimator]
     ) -> None:
         self.age = 0
-        self.kalman_filter: BaseStateEstimator = state_estimator_class(bbox)
+        self.state_estimator: BaseStateEstimator = state_estimator_class(bbox)
 
         self.tracker_id = -1
         self.time_since_update = 0

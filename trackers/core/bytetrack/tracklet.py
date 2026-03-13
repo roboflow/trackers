@@ -30,28 +30,28 @@ class ByteTrackTracklet(BaseTracklet):
     def update(self, bbox: np.ndarray | None) -> None:
         """Update tracklet with new observation or None if missed."""
         if bbox is not None:
-            self.kalman_filter.update(bbox)
+            self.state_estimator.update(bbox)
             self.time_since_update = 0
             self.number_of_successful_consecutive_updates += 1
         else:
-            self.kalman_filter.update(None)
+            self.state_estimator.update(None)
             self.time_since_update += 1
             self.number_of_successful_consecutive_updates = 0
 
     def predict(self) -> np.ndarray:
         """Predict next bounding box position."""
-        self.kalman_filter.predict()
+        self.state_estimator.predict()
         self.age += 1
-        return self.kalman_filter.state_to_bbox()
+        return self.state_estimator.state_to_bbox()
 
     def get_state_bbox(self) -> np.ndarray:
         """Get current bounding box estimate from the filter/state."""
-        return self.kalman_filter.state_to_bbox()
+        return self.state_estimator.state_to_bbox()
 
     def _configure_noise(self) -> None:
         """Configure Kalman filter noise (original ByteTrack tuning)."""
-        kf = self.kalman_filter.kf
-        self.kalman_filter.set_kf_covariances(
+        kf = self.state_estimator.kf
+        self.state_estimator.set_kf_covariances(
             R=kf.R * 0.1,
             Q=kf.Q * 0.01,
         )
