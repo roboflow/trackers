@@ -4,8 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from copy import deepcopy
-from typing import ClassVar, cast
+from typing import ClassVar
 
 import numpy as np
 import supervision as sv
