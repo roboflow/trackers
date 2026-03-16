@@ -29,10 +29,10 @@ A state estimator wraps a Kalman filter and defines how bounding boxes are encod
 
 Two representations are available:
 
-| Estimator               | State Dimensions | Representation                                       | Aspect Ratio  |
-| :---------------------: | :--------------: | :---------------------------------------------------- | :-----------: |
-| `XYXYStateEstimator`    | 8                | Top-left and bottom-right corners + their velocities  | Can change    |
-| `XCYCSRStateEstimator`  | 7                | Center point, area, their velocities and aspect ratio | Held constant |
+|       Estimator        | State Dimensions | Representation                                        | Aspect Ratio  |
+| :--------------------: | :--------------: | :---------------------------------------------------- | :-----------: |
+|  `XYXYStateEstimator`  |        8         | Top-left and bottom-right corners + their velocities  |  Can change   |
+| `XCYCSRStateEstimator` |        7         | Center point, area, their velocities and aspect ratio | Held constant |
 
 They accept `[x1, y1, x2, y2]` bounding boxes on input and produce `[x1, y1, x2, y2]` bounding boxes on output. The difference is entirely in how the filter models motion internally.
 
@@ -78,10 +78,10 @@ vx2' = vx2
 vy2' = vy2
 ```
 
-| Row | Meaning |
-| :-- | :------ |
+| Row | Meaning                                                  |
+| :-- | :------------------------------------------------------- |
 | 1-4 | Each corner coordinate is updated by adding its velocity |
-| 5-8 | Velocities persist unchanged from frame to frame |
+| 5-8 | Velocities persist unchanged from frame to frame         |
 
 Because each corner moves freely, the box width and height can change between frames. This makes XYXY a natural fit when objects change shape — due to camera perspective, non-rigid motion, or inconsistent detections.
 
@@ -127,28 +127,27 @@ vy'           = vy
 vs'           = vs
 ```
 
-| Row | Meaning |
-| :-- | :------ |
+| Row | Meaning                                                   |
+| :-- | :-------------------------------------------------------- |
 | 1-3 | Center position and scale follow constant-velocity motion |
-| 4   | Aspect ratio is copied forward unchanged |
-| 5-7 | Velocities persist unchanged from frame to frame |
+| 4   | Aspect ratio is copied forward unchanged                  |
+| 5-7 | Velocities persist unchanged from frame to frame          |
 
 The aspect ratio `r = w / h` is carried forward unchanged. This acts as a regularizer — the filter resists sudden shape changes. It works well for rigid objects whose proportions stay consistent, like pedestrians walking or cars on a highway.
 
 **This is the default** for `OCSORTTracker`, matching the original OC-SORT paper.
 
-
 ---
 
 ## When to Use Each
 
-| Scenario                                       | Recommended           | Why                                                          |
-| :--------------------------------------------- | :-------------------: | :----------------------------------------------------------- |
-| Pedestrians, vehicles, rigid objects            | `XCYCSRStateEstimator`| Constant aspect ratio stabilizes predictions                 |
-| Non-rigid or deformable objects                 | `XYXYStateEstimator`  | Corners move independently to track shape changes            |
-| Noisy detections with fluctuating box sizes     | `XCYCSRStateEstimator`| Aspect ratio constraint absorbs size noise                   |
-| Strong perspective changes (camera pan/zoom)    | `XYXYStateEstimator`  | Box proportions shift with viewpoint; corners adapt freely   |
-| Default choice when unsure                      | `XYXYStateEstimator`  | More general, fewer assumptions                              |
+| Scenario                                     |      Recommended       | Why                                                        |
+| :------------------------------------------- | :--------------------: | :--------------------------------------------------------- |
+| Pedestrians, vehicles, rigid objects         | `XCYCSRStateEstimator` | Constant aspect ratio stabilizes predictions               |
+| Non-rigid or deformable objects              |  `XYXYStateEstimator`  | Corners move independently to track shape changes          |
+| Noisy detections with fluctuating box sizes  | `XCYCSRStateEstimator` | Aspect ratio constraint absorbs size noise                 |
+| Strong perspective changes (camera pan/zoom) |  `XYXYStateEstimator`  | Box proportions shift with viewpoint; corners adapt freely |
+| Default choice when unsure                   |  `XYXYStateEstimator`  | More general, fewer assumptions                            |
 
 ---
 
@@ -235,8 +234,6 @@ while True:
 ```
 
 ---
-
-
 
 ## Takeaway
 
