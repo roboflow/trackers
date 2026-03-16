@@ -226,8 +226,8 @@ while True:
     result = model.infer(frame)[0]
     detections = sv.Detections.from_inference(result)
 
-    tracked_xyxy = tracker_xyxy.update(detections.copy())
-    tracked_xcycsr = tracker_xcycsr.update(detections.copy())
+    tracked_xyxy = tracker_xyxy.update(detections)
+    tracked_xcycsr = tracker_xcycsr.update(detections)
 
     # Compare tracker_id assignments, box smoothness, etc.
     print(f"XYXY IDs:   {tracked_xyxy.tracker_id}")
