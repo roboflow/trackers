@@ -11,7 +11,7 @@ import copy
 import numpy as np
 import cv2
 
-CMCTMethod = Literal["orb", "sift", "sparseOptFlow"]
+CMCTMethod = Literal["orb", "sift", "sparseOptFlow", "ecc"]
 
 @dataclass
 class CMCConfig:
@@ -40,6 +40,10 @@ class CMCConfig:
             - "sparseOptFlow": Sparse optical flow using corner tracking:
               goodFeaturesToTrack -> calcOpticalFlowPyrLK -> robust affine estimation 
               (RANSAC).
+            - "ecc": Global image alignment using the Enhanced Correlation Coefficient
+              (ECC) optimization method. This estimates a 2D Euclidean transform
+              directly from grayscale image intensities rather than from sparse feature
+              correspondences.
 
         downscale:
             Integer downscale factor applied to frames before running CMC.
@@ -134,6 +138,19 @@ class CMCConfig:
         sof_k:
             (SparseOptFlow only) `k` passed to `cv2.goodFeaturesToTrack`.
             Harris detector free parameter. Ignored if `sof_use_harris` is False.
+
+        ecc_number_of_iterations:
+            (ECC only) Maximum number of optimization iterations used by the ECC
+            alignment procedure.
+
+        ecc_termination_eps:
+            (ECC only) Convergence tolerance used by the ECC optimizer.
+            Smaller values require a more precise fit and may increase runtime.
+
+        ecc_gaussian_filter_size:
+            (ECC only) Gaussian filter size parameter passed to OpenCV's
+            `findTransformECC`. This can help stabilize optimization on noisy frames.
+            A value of 1 matches the current implementation.
     """
     method: CMCTMethod = "sparseOptFlow"
     downscale: int = 2
@@ -159,6 +176,18 @@ class CMCConfig:
     sof_block_size: int = 3
     sof_use_harris: bool = False
     sof_k: float = 0.04
+
+    # ECC parameters
+
+    # BoT-SORT's original - resulting in veeery long (=unacceptably long) execution time 
+    # ecc_number_of_iterations: int = 5000
+    # ecc_termination_eps: float = 1e-6
+
+    # Adjusted
+    ecc_number_of_iterations: int = 50
+    ecc_termination_eps: float = 1e-4
+
+    ecc_gaussian_filter_size: int = 1
 
 
 class CMC:
@@ -189,6 +218,7 @@ class CMC:
         Notes:
             - Detector/extractor/matcher are only created if method is "orb" or "sift".
             - feature_paramsare only created if method is "sparseOptFlow".
+            - ECC optimization settings are created for "ecc".
         """
         self.cfg = cfg or CMCConfig()
         self.downscale = max(1, int(self.cfg.downscale))
@@ -222,6 +252,13 @@ class CMC:
                 useHarrisDetector=self.cfg.sof_use_harris,
                 k=self.cfg.sof_k,
             )
+        elif self.cfg.method == "ecc":
+            self.warp_mode = cv2.MOTION_EUCLIDEAN
+            self.criteria = (
+                cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
+                self.cfg.ecc_number_of_iterations,
+                self.cfg.ecc_termination_eps,
+            )
 
         self.reset()
 
@@ -252,9 +289,9 @@ class CMC:
 
         Args:
             frame_bgr: Current frame in BGR format (uint8), shape (H, W, 3).
-            dets_xyxy: Optional detections (N,4) in xyxy format, in original image 
-                scale. Used only by ORB method for masking out object regions 
-                (background-only features).
+            dets_xyxy: Optional detections (N,4) in xyxy format, in original image
+                scale. Used by feature-based methods (ORB and SIFT) to mask out object 
+                regions during motion estimation.
 
         Returns:
             H: Affine transform matrix of shape (2, 3), dtype float32.
@@ -268,6 +305,9 @@ class CMC:
 
         if self.cfg.method == "sparseOptFlow":
             return self._estimate_sparse_optflow(frame_bgr)
+
+        if self.cfg.method == "ecc":
+            return self._estimate_ecc(frame_bgr)
 
         # fallback
         return np.eye(2, 3, dtype=np.float32)
@@ -483,6 +523,79 @@ class CMC:
         self._prev_points = None if keypoints is None else keypoints.copy()
 
         return H_aff
+    
+
+    def _estimate_ecc(self, frame_bgr: np.ndarray) -> np.ndarray:
+        """
+        ECC-based affine motion estimation.
+
+        This method estimates a global 2D Euclidean transform between the previous
+        frame and the current frame using OpenCV's Enhanced Correlation Coefficient
+        (ECC) image alignment algorithm.
+
+        Steps:
+            1) Convert the current frame to grayscale.
+            2) Optionally smooth and downscale the frame.
+            3) If this is the first frame, store it and return identity.
+            4) Optimize a 2x3 warp matrix aligning the previous frame to the current 
+               frame.
+            5) If optimization succeeds, return the estimated transform.
+               Otherwise, keep the identity transform.
+            6) Store the current frame for the next call.
+
+        Args:
+            frame_bgr:
+                Current frame in BGR format.
+
+        Returns:
+            H:
+                Affine transform matrix of shape (2, 3), dtype float32, mapping
+                previous-frame coordinates to current-frame coordinates. Returns 
+                identity if initialization has not yet occurred or if ECC optimization 
+                fails.
+        """
+        H_img, W_img = frame_bgr.shape[:2]
+        frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+
+        H_aff = np.eye(2, 3, dtype=np.float32)
+
+        if self.downscale > 1:
+            frame = cv2.GaussianBlur(frame, (3, 3), 1.5)
+            frame = cv2.resize(frame, (W_img // self.downscale, H_img // self.downscale))
+
+        if not self._initialized:
+            self._prev_frame_gray = frame.copy()
+            self._initialized = True
+            return H_aff
+
+        if self._prev_frame_gray is None:
+            self._prev_frame_gray = frame.copy()
+            return H_aff
+
+        try:
+            _cc, H_est = cv2.findTransformECC(
+                self._prev_frame_gray,
+                frame,
+                H_aff,
+                self.warp_mode,
+                self.criteria,
+                None,
+                self.cfg.ecc_gaussian_filter_size,
+            )
+            if H_est is not None:
+                H_aff = H_est.astype(np.float32)
+        except cv2.error as e:
+            print('Warning: find transform failed. Set warp as identity')
+            pass
+
+        # NOTE: this line is not included in the original BoT-SORT. However,
+        # in a working recurrent estimator, you do need to update the previous frame 
+        # after each call. Otherwise the next call would keep aligning against an old 
+        # frame.
+        self._prev_frame_gray = frame.copy()
+        
+        return H_aff
+
 
     @staticmethod
     def apply_to_tracks(tracks: list, H: np.ndarray) -> None:
