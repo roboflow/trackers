@@ -82,8 +82,8 @@ class BoTSORTTracker(BaseTracker):
                 - low confidence:  confidence < threshold
             enable_cmc: Whether to enable camera motion compensation (CMC).
             cmc_method: CMC method string passed into `CMCConfig(method=...)`. 
-                Supported values depend on `CMC` (e.g. "orb", "sift", "sparseOptFlow"). 
-                See CMCConfig.
+                Supported values depend on `CMC` (e.g. "orb", "sift", "sparseOptFlow", 
+                "ecc"). See CMCConfig.
             cmc_downscale: Downscale factor used inside CMC for speed/robustness.
 
         Notes:
