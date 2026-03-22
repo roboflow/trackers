@@ -13,9 +13,7 @@ import supervision as sv
 
 from trackers.core.botsort.kalman_box_tracker import BoTSORTKalmanBoxTracker
 
-KalmanBoxTrackerType = TypeVar(
-    "KalmanBoxTrackerType", bound=BoTSORTKalmanBoxTracker 
-)
+KalmanBoxTrackerType = TypeVar("KalmanBoxTrackerType", bound=BoTSORTKalmanBoxTracker)
 
 BoTSORTKalmanBoxTracker
 

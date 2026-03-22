@@ -162,7 +162,7 @@ class BoTSORTKalmanBoxTracker:
         This method initializes the following matrices:
 
         State transition matrix:
-            F is an 8x8 matrix defining how the state evolves from one frame to the 
+            F is an 8x8 matrix defining how the state evolves from one frame to the
             next. It implements a constant-velocity model:
                 xc <- xc + vxc
                 yc <- yc + vyc
@@ -209,49 +209,58 @@ class BoTSORTKalmanBoxTracker:
 
         self.H = np.eye(4, 8, dtype=np.float32)
 
-        # BoT-SORT-style scale-aware noise using width/height. 
+        # BoT-SORT-style scale-aware noise using width/height.
         sigma_p = 0.05
         sigma_v = 0.00625
         sigma_m = 0.05
 
         w, h = measurement[2], measurement[3]
 
-        q_diag = np.array([
-            (sigma_p * w) ** 2,
-            (sigma_p * h) ** 2,
-            (sigma_p * w) ** 2,
-            (sigma_p * h) ** 2,
-            (sigma_v * w) ** 2,
-            (sigma_v * h) ** 2,
-            (sigma_v * w) ** 2,
-            (sigma_v * h) ** 2,
-        ], dtype=np.float32)
+        q_diag = np.array(
+            [
+                (sigma_p * w) ** 2,
+                (sigma_p * h) ** 2,
+                (sigma_p * w) ** 2,
+                (sigma_p * h) ** 2,
+                (sigma_v * w) ** 2,
+                (sigma_v * h) ** 2,
+                (sigma_v * w) ** 2,
+                (sigma_v * h) ** 2,
+            ],
+            dtype=np.float32,
+        )
         self.Q = np.diag(q_diag)
 
-        r_diag = np.array([
-            (sigma_m * w) ** 2,
-            (sigma_m * h) ** 2,
-            (sigma_m * w) ** 2,
-            (sigma_m * h) ** 2,
-        ], dtype=np.float32)
+        r_diag = np.array(
+            [
+                (sigma_m * w) ** 2,
+                (sigma_m * h) ** 2,
+                (sigma_m * w) ** 2,
+                (sigma_m * h) ** 2,
+            ],
+            dtype=np.float32,
+        )
         self.R = np.diag(r_diag)
 
         # Initial covariance, as in original BoT-SORT KF
-        p_diag = np.array([
-            (2 * sigma_p * w) ** 2,
-            (2 * sigma_p * h) ** 2,
-            (2 * sigma_p * w) ** 2,
-            (2 * sigma_p * h) ** 2,
-            (10 * sigma_v * w) ** 2,
-            (10 * sigma_v * h) ** 2,
-            (10 * sigma_v * w) ** 2,
-            (10 * sigma_v * h) ** 2,
-        ], dtype=np.float32)
+        p_diag = np.array(
+            [
+                (2 * sigma_p * w) ** 2,
+                (2 * sigma_p * h) ** 2,
+                (2 * sigma_p * w) ** 2,
+                (2 * sigma_p * h) ** 2,
+                (10 * sigma_v * w) ** 2,
+                (10 * sigma_v * h) ** 2,
+                (10 * sigma_v * w) ** 2,
+                (10 * sigma_v * h) ** 2,
+            ],
+            dtype=np.float32,
+        )
         self.P = np.diag(p_diag)
 
     def _update_process_and_measurement_noise(self) -> None:
         """
-        Recompute the process and measurement noise covariances from the current box 
+        Recompute the process and measurement noise covariances from the current box
         size.
 
         This method updates:
@@ -267,13 +276,13 @@ class BoTSORTKalmanBoxTracker:
         Why this update is needed:
             The scale of the uncertainty should depend on the current object size.
             For example, a 2-pixel error is relatively more important for a small object
-            than for a large one. Therefore, the diagonal entries of Q and R are 
+            than for a large one. Therefore, the diagonal entries of Q and R are
             computed from the current predicted width and height stored in the state.
 
         Implementation details:
             - Width and height are read from the current state:
                   w = state[2], h = state[3]
-            - They are clamped to a small positive minimum to avoid zero or negative 
+            - They are clamped to a small positive minimum to avoid zero or negative
               values.
             - The resulting Q and R matrices remain diagonal.
 
@@ -288,24 +297,30 @@ class BoTSORTKalmanBoxTracker:
         w = max(float(self.state[2, 0]), 1e-3)
         h = max(float(self.state[3, 0]), 1e-3)
 
-        q_diag = np.array([
-            (sigma_p * w) ** 2,
-            (sigma_p * h) ** 2,
-            (sigma_p * w) ** 2,
-            (sigma_p * h) ** 2,
-            (sigma_v * w) ** 2,
-            (sigma_v * h) ** 2,
-            (sigma_v * w) ** 2,
-            (sigma_v * h) ** 2,
-        ], dtype=np.float32)
+        q_diag = np.array(
+            [
+                (sigma_p * w) ** 2,
+                (sigma_p * h) ** 2,
+                (sigma_p * w) ** 2,
+                (sigma_p * h) ** 2,
+                (sigma_v * w) ** 2,
+                (sigma_v * h) ** 2,
+                (sigma_v * w) ** 2,
+                (sigma_v * h) ** 2,
+            ],
+            dtype=np.float32,
+        )
         self.Q = np.diag(q_diag)
 
-        r_diag = np.array([
-            (sigma_m * w) ** 2,
-            (sigma_m * h) ** 2,
-            (sigma_m * w) ** 2,
-            (sigma_m * h) ** 2,
-        ], dtype=np.float32)
+        r_diag = np.array(
+            [
+                (sigma_m * w) ** 2,
+                (sigma_m * h) ** 2,
+                (sigma_m * w) ** 2,
+                (sigma_m * h) ** 2,
+            ],
+            dtype=np.float32,
+        )
         self.R = np.diag(r_diag)
 
     def predict(self) -> None:
@@ -326,9 +341,9 @@ class BoTSORTKalmanBoxTracker:
                 Process noise covariance.
 
         Effect of the prediction:
-            - The center position and box size are advanced using their current 
+            - The center position and box size are advanced using their current
               velocities.
-            - The covariance matrix P is propagated forward and increased by Q to 
+            - The covariance matrix P is propagated forward and increased by Q to
               reflect additional uncertainty introduced during motion prediction.
 
         Additional behavior:
