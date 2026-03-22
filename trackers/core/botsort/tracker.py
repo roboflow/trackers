@@ -42,7 +42,10 @@ class BoTSORTTracker(BaseTracker):
             unmatched before being removed.
         minimum_consecutive_frames: Track maturity threshold before assigning a 
             permanent ID.
-        minimum_iou_threshold: Minimum IoU required for a valid match.
+        minimum_iou_threshold_first_assoc: Minimum IoU required for a valid match
+            in the first association step
+        minimum_iou_threshold_second_assoc: Minimum IoU required for a valid match
+            in the second association step
         track_activation_threshold: Confidence threshold for spawning a new track.
         high_conf_det_threshold: Confidence threshold splitting detections into 
             high/low groups.
@@ -57,7 +60,8 @@ class BoTSORTTracker(BaseTracker):
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.7,
         minimum_consecutive_frames: int = 2,
-        minimum_iou_threshold: float = 0.1,
+        minimum_iou_threshold_first_assoc: float = 0.2,
+        minimum_iou_threshold_second_assoc: float = 0.5,
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
         cmc_method: str = "sparseOptFlow",
@@ -76,7 +80,10 @@ class BoTSORTTracker(BaseTracker):
                 track.
             minimum_consecutive_frames: Number of successful updates required before 
                 assigning a stable track ID (different than initial -1).
-            minimum_iou_threshold: Minimum IoU to accept a detection-track association.
+            minimum_iou_threshold_first_assoc: Minimum IoU to accept a detection-track 
+                association during the first association step.
+            minimum_iou_threshold_second_assoc: Minimum IoU to accept a detection-track 
+                association during the second association step.
             high_conf_det_threshold: Confidence threshold used to split detections into:
                 - high confidence: confidence >= threshold
                 - low confidence:  confidence < threshold
@@ -96,7 +103,8 @@ class BoTSORTTracker(BaseTracker):
         # consistent time-based tracking across different frame rates.
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
         self.minimum_consecutive_frames = minimum_consecutive_frames
-        self.minimum_iou_threshold = minimum_iou_threshold
+        self.minimum_iou_threshold_first_assoc = minimum_iou_threshold_first_assoc
+        self.minimum_iou_threshold_second_assoc = minimum_iou_threshold_second_assoc
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
         self.tracks: list[BoTSORTKalmanBoxTracker] = []
@@ -211,6 +219,7 @@ class BoTSORTTracker(BaseTracker):
             self._similarity_step(
                 high_prob_detections,
                 self.tracks,
+                self.minimum_iou_threshold_first_assoc
             )
         )
 
@@ -226,7 +235,9 @@ class BoTSORTTracker(BaseTracker):
 
         # Step 2: associate Low Probability detections with remaining tracks
         matched_indices, unmatched_tracks, unmatched_detections = self._similarity_step(
-            low_prob_detections, remaining_tracks
+            low_prob_detections, 
+            remaining_tracks, 
+            self.minimum_iou_threshold_second_assoc
         )
 
         # Update matched tracks with low-confidence detections
@@ -263,33 +274,47 @@ class BoTSORTTracker(BaseTracker):
         if len(final_updated_detections) == 0:
             final_updated_detections.tracker_id = np.array([], dtype=int)
         return final_updated_detections
-
+    
     def _get_high_and_low_probability_detections(
-        self, detections: sv.Detections
-    ) -> tuple[sv.Detections, sv.Detections]:
+            self, detections: sv.Detections
+        ) -> tuple[sv.Detections, sv.Detections]:
         """
-        Splits the input detections into high-confidence and low-confidence sets
-        based on the `self.high_conf_det_threshold`.
+        Split detections into high-confidence and low-confidence sets.
+
+        Detections with confidence <= 0.1 are discarded completely and are not
+        used by the tracker.
+
+        Rules:
+            high-confidence:
+                confidence >= self.high_conf_det_threshold
+
+            low-confidence:
+                0.1 < confidence < self.high_conf_det_threshold
+
+            discarded:
+                confidence <= 0.1
 
         Args:
-            detections: The input detections with confidence scores.
+            detections:
+                Input detections containing confidence scores.
 
         Returns:
-            A tuple containing two `sv.Detections objects`: the first for
-                high-confidence detections `(confidence >= threshold)` and the second
-                for low-confidence detections `(confidence < threshold)`.
+            Tuple:
+                (high_confidence_detections, low_confidence_detections)
         """
-        # Check if confidence scores exist before comparing
-        if detections.confidence is not None:
-            # Perform element-wise comparison if confidence is a NumPy array
-            condition = detections.confidence >= self.high_conf_det_threshold
-        else:
-            # If no confidence scores, no detections meet the threshold
-            # Create a boolean array of False with the same length as detections
-            condition = np.zeros(len(detections), dtype=bool)
 
-        high_confidence = detections[condition]
-        low_confidence = detections[np.logical_not(condition)]
+        if detections.confidence is None:
+            # If no confidence information exists, treat all detections as high-confidence
+            return detections, detections[:0]
+
+        conf = detections.confidence
+
+        high_mask = conf >= self.high_conf_det_threshold
+        low_mask = (conf > 0.1) & (conf < self.high_conf_det_threshold)
+
+        high_confidence = detections[high_mask]
+        low_confidence = detections[low_mask]
+
         return high_confidence, low_confidence
 
     def _get_associated_indices(
@@ -375,6 +400,7 @@ class BoTSORTTracker(BaseTracker):
         self,
         detections: sv.Detections,
         tracks: list[BoTSORTKalmanBoxTracker],
+        thresh: float
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """Measures similarity based on IoU between tracks and detections and returns 
             the matches and unmatched tracks/detections. Is used for step 1 and 2 of the
@@ -383,6 +409,7 @@ class BoTSORTTracker(BaseTracker):
         Args:
             detections: The set of object detections.
             tracks: The list of tracks that will be matched to the detections.
+            thresh: Minimum IoU required for a valid match.
 
         Returns:
             A tuple containing:
@@ -394,7 +421,6 @@ class BoTSORTTracker(BaseTracker):
         """  # noqa: E501
         # Build IoU cost matrix between detections and predicted bounding boxes
         similarity_matrix = get_iou_matrix(tracks, detections.xyxy)
-        thresh = self.minimum_iou_threshold
 
         # Associate detections to tracks based on the higher value of the
         # similarity matrix, using the Jonker-Volgenant algorithm 
