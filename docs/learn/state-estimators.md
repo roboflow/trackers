@@ -155,13 +155,14 @@ We can also benchmark the trackers using the different State Estimators and we g
 - With defaults parameters in Soccernet dataset, SORT tracker with XYXYStateEstimator has ~5% more HOTA than using XCYC, 
 - In SportsMOT, for OC-SORT and ByteTrack, the StateEstimator doesn't affect the performance, while for SORT XYXYStateEstimator gives a small advantage of ~2% HOTA with default parameters and 0.4% when tuning both.
 
-HIGHLIGHTS OF DIFFERENCES
 
 But lets visualize where these differences are, here is an example where using XCYCSR State Estimator associates an occluded track correctly, while using XYXY changes the ID:
 
-<video width="100%" controls>
-  <source src="../assets/SNMOT-118-single-track-xyxy-vs-xcycsr.mp4" type="video/mp4">
-</video>
+<div style="display: flex; justify-content: center;">
+  <video style="width: 50%; height: auto;" controls>
+    <source src="../../assets/SNMOT-118-single-track-xyxy-vs-xcycsr.mp4" type="video/mp4">
+  </video>
+</div>
 
 
 ---
