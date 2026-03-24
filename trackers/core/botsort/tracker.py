@@ -4,19 +4,18 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from copy import deepcopy
-from typing import cast
-
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.cmc import CMC, CMCConfig
-from trackers.core.botsort.kalman_box_tracker import BoTSORTKalmanBoxTracker
-from trackers.core.botsort.utils import (
-    get_alive_trackers,
-    get_iou_matrix,
+from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.core.botsort.utils import get_alive_trackers
+from trackers.core.sort.utils import _get_iou_matrix
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XCYCWHStateEstimator,
 )
 
 
@@ -38,7 +37,7 @@ class BoTSORTTracker(BaseTracker):
     ByteTrack.
 
     Attributes:
-        tracks: List of active `BoTSORTKalmanBoxTracker` objects.
+        tracks: List of active ``BoTSORTTracklet`` objects.
         maximum_frames_without_update: Max number of consecutive frames a track can go
             unmatched before being removed.
         minimum_consecutive_frames: Track maturity threshold before assigning a
@@ -67,6 +66,7 @@ class BoTSORTTracker(BaseTracker):
         enable_cmc: bool = True,
         cmc_method: str = "sparseOptFlow",
         cmc_downscale: int = 2,
+        state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
     ) -> None:
         """
         Initialize the tracker.
@@ -92,6 +92,8 @@ class BoTSORTTracker(BaseTracker):
                 Supported values depend on `CMC` (e.g. "orb", "sift", "sparseOptFlow",
                 "ecc"). See CMCConfig.
             cmc_downscale: Downscale factor used inside CMC for speed/robustness.
+            state_estimator_class: State estimator class for tracklets. Defaults
+                to ``XCYCWHStateEstimator``.
 
         Notes:
             - `maximum_frames_without_update` is computed as:
@@ -107,7 +109,8 @@ class BoTSORTTracker(BaseTracker):
         self.minimum_iou_threshold_second_assoc = minimum_iou_threshold_second_assoc
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
-        self.tracks: list[BoTSORTKalmanBoxTracker] = []
+        self.tracks: list[BoTSORTTracklet] = []
+        self.state_estimator_class = state_estimator_class
 
         self.enable_cmc = enable_cmc
         self.cmc = (
@@ -115,53 +118,6 @@ class BoTSORTTracker(BaseTracker):
             if enable_cmc
             else None
         )
-
-    def _update_detections(
-        self,
-        tracks: list[BoTSORTKalmanBoxTracker],
-        detections: sv.Detections,
-        updated_detections: list[sv.Detections],
-        matched_indices: list[tuple[int, int]],
-    ) -> list[sv.Detections]:
-        """
-        Apply matched detection updates to tracks and append corresponding outputs.
-
-        For each (track_idx, det_idx) match:
-        - Update the track's Kalman state with the detection bbox.
-        - If the track is “mature” (>= minimum_consecutive_frames) and still has
-          tracker_id == -1, assign a new unique tracker ID.
-        - Create a single-row `sv.Detections` object for the matched detection and set
-          its tracker_id to the track ID (or -1 if not mature yet).
-        - Append it to `updated_detections`.
-
-        Args:
-            tracks: Tracks being updated.
-            detections: Detections used for update.
-            updated_detections: Accumulator list of per-detection outputs for this
-                frame.
-            matched_indices: List of (track_row_index, detection_col_index) pairs.
-
-        Returns:
-            The same `updated_detections` list, returned for convenience.
-        """
-        # Update matched tracks with assigned detections.
-        det_bboxes = detections.xyxy
-        for row, col in matched_indices:
-            t = tracks[row]
-            t.update(det_bboxes[col])
-            # If tracker is mature but still has ID -1, assign a new ID
-            if (
-                t.number_of_successful_updates >= self.minimum_consecutive_frames
-                and t.tracker_id == -1
-            ):  # Check maturity before assigning ID
-                t.tracker_id = BoTSORTKalmanBoxTracker.get_next_tracker_id()
-
-            new_det = deepcopy(detections[col : col + 1])
-            # Add cast to clarify type for mypy
-            new_det = cast(sv.Detections, new_det)  # ADDED cast
-            new_det.tracker_id = np.array([t.tracker_id])
-            updated_detections.append(new_det)
-        return updated_detections
 
     def update(
         self,
@@ -181,11 +137,8 @@ class BoTSORTTracker(BaseTracker):
                 enabled.
 
         Returns:
-            A merged `sv.Detections` object containing detections from this frame with
-            `tracker_id` assigned:
-              - >= 0 indicates a confirmed track ID
-              - -1 indicates unconfirmed/untracked (e.g., new / low confidence / not yet
-                mature)
+            ``sv.Detections`` with ``tracker_id`` assigned (>= 0 confirmed,
+            -1 unconfirmed).
 
         Notes:
             - If CMC is enabled, the tracker estimates a global affine transform (2x3)
@@ -193,78 +146,93 @@ class BoTSORTTracker(BaseTracker):
               association.
         """
         if len(self.tracks) == 0 and len(detections) == 0:
-            detections.tracker_id = np.array([], dtype=int)
-            return detections
-        updated_detections: list[
-            sv.Detections
-        ] = []  # List for returning the updated detections with its new assigned
-        # track id
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
+
+        out_det_indices: list[int] = []
+        out_tracker_ids: list[int] = []
 
         # Predict new locations for existing tracks
         for tracker in self.tracks:
             tracker.predict()
-        # Assign a default tracker_id with the correct shape
-        detections.tracker_id = -np.ones(len(detections))
-        # Split into high confidence boxes and lower based on
-        # self.high_conf_det_threshold
-        high_prob_detections, low_prob_detections = (
-            self._get_high_and_low_probability_detections(detections)
+
+        detection_boxes = detections.xyxy
+        confidences = (
+            detections.confidence
+            if detections.confidence is not None
+            else np.zeros(len(detections))
         )
 
-        # CMC (ORB) apply to all predicted tracks before association
+        # Split indices into high / low / discarded by confidence
+        high_mask = confidences >= self.high_conf_det_threshold
+        low_mask = (confidences > 0.1) & (~high_mask)
+
+        high_indices = np.where(high_mask)[0]
+        low_indices = np.where(low_mask)[0]
+
+        high_boxes = detection_boxes[high_indices]
+        low_boxes = detection_boxes[low_indices]
+
+        # CMC: apply to all predicted tracks before association
         if self.enable_cmc and self.cmc is not None and frame is not None:
-            mask_boxes = (
-                high_prob_detections.xyxy if len(high_prob_detections) > 0 else None
-            )
+            mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(frame, mask_boxes)
-            self.cmc.apply_to_tracks(self.tracks, H)
+            if H is not None:
+                for trk in self.tracks:
+                    trk.apply_cmc(H)
 
-        # Step 1: first association, with high confidence boxes
-        matched_indices, unmatched_tracks, unmatched_high_prob_detections = (
-            self._similarity_step(
-                high_prob_detections,
-                self.tracks,
-                self.minimum_iou_threshold_first_assoc,
-            )
+        # Step 1: associate high-confidence detections to all tracks
+        iou_matrix = _get_iou_matrix(self.tracks, high_boxes)
+        matched, unmatched_tracks, unmatched_high = self._get_associated_indices(
+            iou_matrix, self.minimum_iou_threshold_first_assoc
         )
 
-        # Update matched tracks with high-confidence detections
-        self._update_detections(
-            self.tracks,
-            high_prob_detections,
-            updated_detections,
-            matched_indices,
-        )
+        for row, col in matched:
+            track = self.tracks[row]
+            track.update(high_boxes[col])
+            if (
+                track.number_of_successful_updates
+                >= self.minimum_consecutive_frames
+                and track.tracker_id == -1
+            ):
+                track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+            out_det_indices.append(int(high_indices[col]))
+            out_tracker_ids.append(track.tracker_id)
 
         remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
 
-        # Step 2: associate Low Probability detections with remaining tracks
-        matched_indices, unmatched_tracks, unmatched_detections = self._similarity_step(
-            low_prob_detections,
-            remaining_tracks,
-            self.minimum_iou_threshold_second_assoc,
+        # Step 2: associate low-confidence detections to remaining tracks
+        iou_matrix = _get_iou_matrix(remaining_tracks, low_boxes)
+        matched, _, unmatched_low = self._get_associated_indices(
+            iou_matrix, self.minimum_iou_threshold_second_assoc
         )
 
-        # Update matched tracks with low-confidence detections
-        self._update_detections(
-            remaining_tracks,
-            low_prob_detections,
-            updated_detections,
-            matched_indices,
-        )
+        for row, col in matched:
+            track = remaining_tracks[row]
+            track.update(low_boxes[col])
+            if (
+                track.number_of_successful_updates
+                >= self.minimum_consecutive_frames
+                and track.tracker_id == -1
+            ):
+                track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+            out_det_indices.append(int(low_indices[col]))
+            out_tracker_ids.append(track.tracker_id)
 
-        # Add unmatched low prob predictions to updated predictions
-        for det_index in unmatched_detections:
-            new_det = deepcopy(low_prob_detections[det_index : det_index + 1])
+        # Unmatched low-confidence detections
+        for det_local_idx in unmatched_low:
+            out_det_indices.append(int(low_indices[det_local_idx]))
+            out_tracker_ids.append(-1)
 
-            new_det.tracker_id = np.array([-1])
-            updated_detections.append(new_det)
-
-        self._spawn_new_trackers(
-            high_prob_detections,
-            high_prob_detections.xyxy,
-            unmatched_high_prob_detections,
-            updated_detections,
+        # Spawn new tracks from unmatched high-confidence detections
+        self._spawn_new_tracks(
+            detection_boxes,
+            confidences,
+            unmatched_high,
+            high_indices,
+            out_det_indices,
+            out_tracker_ids,
         )
 
         # Kill lost tracks
@@ -273,54 +241,17 @@ class BoTSORTTracker(BaseTracker):
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
         )
-        final_updated_detections: sv.Detections = sv.Detections.merge(
-            updated_detections
-        )
-        if len(final_updated_detections) == 0:
-            final_updated_detections.tracker_id = np.array([], dtype=int)
-        return final_updated_detections
 
-    def _get_high_and_low_probability_detections(
-        self, detections: sv.Detections
-    ) -> tuple[sv.Detections, sv.Detections]:
-        """
-        Split detections into high-confidence and low-confidence sets.
+        # Build final sv.Detections from original by indexing
+        if not out_det_indices:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
 
-        Detections with confidence <= 0.1 are discarded completely and are not
-        used by the tracker.
-
-        Rules:
-            high-confidence:
-                confidence >= self.high_conf_det_threshold
-
-            low-confidence:
-                0.1 < confidence < self.high_conf_det_threshold
-
-            discarded:
-                confidence <= 0.1
-
-        Args:
-            detections:
-                Input detections containing confidence scores.
-
-        Returns:
-            Tuple:
-                (high_confidence_detections, low_confidence_detections)
-        """
-
-        if detections.confidence is None:
-            # If no confidence information exists, treat all detections as high-confidence
-            return detections, detections[:0]
-
-        conf = detections.confidence
-
-        high_mask = conf >= self.high_conf_det_threshold
-        low_mask = (conf > 0.1) & (conf < self.high_conf_det_threshold)
-
-        high_confidence = detections[high_mask]
-        low_confidence = detections[low_mask]
-
-        return high_confidence, low_confidence
+        idx = np.array(out_det_indices)
+        result = detections[idx]
+        result.tracker_id = np.array(out_tracker_ids, dtype=int)
+        return result
 
     def _get_associated_indices(
         self,
@@ -359,87 +290,34 @@ class BoTSORTTracker(BaseTracker):
 
         return matched_indices, unmatched_tracks, unmatched_detections
 
-    def _spawn_new_trackers(
+    def _spawn_new_tracks(
         self,
-        detections: sv.Detections,
         detection_boxes: np.ndarray,
-        unmatched_detections: set[int],
-        updated_detections: list[sv.Detections],
-    ):
-        """
-        Create new trackers for unmatched detections and
-            append detections to updated_detections detections.
-
-        Args:
-            detections: Current detections.
-            detection_boxes: Bounding boxes for detections.
-            unmatched_detections: Indices of unmatched detections.
-            updated_detections: List with all the detections
-
-        """
-        for detection_idx in unmatched_detections:
-            # Check for detections.confidence existence and index bounds
-            if detections.confidence is not None and detection_idx < len(
-                detections.confidence
-            ):
-                # Assign to a temporary variable with explicit type hint
-                confidence_score: float = float(detections.confidence[detection_idx])
-
-                # Use the temporary variable in the comparison
-                if confidence_score >= self.track_activation_threshold:
-                    # Original logic for high confidence detection
-
-                    new_tracker = BoTSORTKalmanBoxTracker(
-                        bbox=detection_boxes[detection_idx]
+        confidences: np.ndarray,
+        unmatched_high_local: set[int],
+        high_indices: np.ndarray,
+        out_det_indices: list[int],
+        out_tracker_ids: list[int],
+    ) -> None:
+        """Create new tracklets from unmatched high-confidence detections."""
+        for det_local_idx in unmatched_high_local:
+            global_idx = int(high_indices[det_local_idx])
+            conf = float(confidences[global_idx])
+            if conf >= self.track_activation_threshold:
+                self.tracks.append(
+                    BoTSORTTracklet(
+                        initial_bbox=detection_boxes[global_idx],
+                        state_estimator_class=self.state_estimator_class,
                     )
-                    self.tracks.append(new_tracker)
-
-                    new_det = deepcopy(detections[detection_idx : detection_idx + 1])
-                    new_det = cast(sv.Detections, new_det)  # Cast added previously
-                    new_det.tracker_id = np.array([-1])
-                    updated_detections.append(new_det)
-            else:
-                pass  # Do nothing, the detection remains unmatched
-
-    def _similarity_step(
-        self,
-        detections: sv.Detections,
-        tracks: list[BoTSORTKalmanBoxTracker],
-        thresh: float,
-    ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-        """Measures similarity based on IoU between tracks and detections and returns
-            the matches and unmatched tracks/detections. Is used for step 1 and 2 of the
-            BYTE algorithm.
-
-        Args:
-            detections: The set of object detections.
-            tracks: The list of tracks that will be matched to the detections.
-            thresh: Minimum IoU required for a valid match.
-
-        Returns:
-            A tuple containing:
-                - matched_indices: A list of (tracker_idx, detection_idx) pairs.
-                - unmatched_tracks_indices: A set of indices for tracks that
-                  were not matched.
-                - unmatched_detections_indices: A set of indices for detections
-                  that were not matched.
-        """
-        # Build IoU cost matrix between detections and predicted bounding boxes
-        similarity_matrix = get_iou_matrix(tracks, detections.xyxy)
-
-        # Associate detections to tracks based on the higher value of the
-        # similarity matrix, using the Jonker-Volgenant algorithm
-        # (linear_sum_assignment).
-        matched_indices, unmatched_tracks, unmatched_detections = (
-            self._get_associated_indices(similarity_matrix, thresh)
-        )
-        return matched_indices, unmatched_tracks, unmatched_detections
+                )
+                out_det_indices.append(global_idx)
+                out_tracker_ids.append(-1)
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
-        BoTSORTKalmanBoxTracker.count_id = 0
+        BoTSORTTracklet.count_id = 0
         if self.cmc is not None:
             self.cmc.reset()
