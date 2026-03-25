@@ -6,6 +6,8 @@
 
 from collections.abc import Sequence
 
+import numpy as np
+
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 
 
@@ -40,3 +42,22 @@ def get_alive_trackers(
         ):
             alive_trackers.append(tracker)
     return alive_trackers
+
+
+def _fuse_score(iou_similarity: np.ndarray, scores: np.ndarray) -> np.ndarray:
+    """Fuse IoU similarity matrix with detection confidence scores.
+
+    Following the original ByteTrack implementation, the IoU similarity is
+    multiplied element-wise by the detection scores.  This biases the
+    association toward higher-confidence detections.
+
+    Args:
+        iou_similarity: IoU similarity matrix of shape ``(n_tracks, n_dets)``.
+        scores: Detection confidence scores of shape ``(n_dets,)``.
+
+    Returns:
+        Fused similarity matrix of the same shape.
+    """
+    if iou_similarity.size == 0:
+        return iou_similarity
+    return iou_similarity * scores[np.newaxis, :]

@@ -56,10 +56,6 @@ class BoTSORTTracklet(BaseTracklet):
         # number_of_successful_updates starts at 1.
         self.number_of_successful_updates = 1
 
-    # ------------------------------------------------------------------
-    # Scale-aware noise (BoTSORT-specific, lives in the tracklet)
-    # ------------------------------------------------------------------
-
     def _configure_initial_noise(self, bbox: np.ndarray) -> None:
         """Set initial P, Q, R based on the first detection's size."""
         measurement = XCYCWHStateEstimator.xyxy_to_xywh(bbox)
@@ -73,23 +69,36 @@ class BoTSORTTracklet(BaseTracklet):
 
         Q = np.diag(
             [
-                (sp * w) ** 2, (sp * h) ** 2, (sp * w) ** 2, (sp * h) ** 2,
-                (sv * w) ** 2, (sv * h) ** 2, (sv * w) ** 2, (sv * h) ** 2,
+                (sp * w) ** 2,
+                (sp * h) ** 2,
+                (sp * w) ** 2,
+                (sp * h) ** 2,
+                (sv * w) ** 2,
+                (sv * h) ** 2,
+                (sv * w) ** 2,
+                (sv * h) ** 2,
             ]
         )
         R = np.diag(
             [
-                (sm * w) ** 2, (sm * h) ** 2, (sm * w) ** 2, (sm * h) ** 2,
+                (sm * w) ** 2,
+                (sm * h) ** 2,
+                (sm * w) ** 2,
+                (sm * h) ** 2,
             ]
         )
 
         if initial:
             P = np.diag(
                 [
-                    (2 * sp * w) ** 2, (2 * sp * h) ** 2,
-                    (2 * sp * w) ** 2, (2 * sp * h) ** 2,
-                    (10 * sv * w) ** 2, (10 * sv * h) ** 2,
-                    (10 * sv * w) ** 2, (10 * sv * h) ** 2,
+                    (2 * sp * w) ** 2,
+                    (2 * sp * h) ** 2,
+                    (2 * sp * w) ** 2,
+                    (2 * sp * h) ** 2,
+                    (10 * sv * w) ** 2,
+                    (10 * sv * h) ** 2,
+                    (10 * sv * w) ** 2,
+                    (10 * sv * h) ** 2,
                 ]
             )
             self.state_estimator.set_kf_covariances(R=R, Q=Q, P=P)
@@ -108,10 +117,6 @@ class BoTSORTTracklet(BaseTracklet):
         """Ensure width and height stay positive."""
         kf_x[2, 0] = max(kf_x[2, 0], 1e-3)
         kf_x[3, 0] = max(kf_x[3, 0], 1e-3)
-
-    # ------------------------------------------------------------------
-    # BaseTracklet interface
-    # ------------------------------------------------------------------
 
     def update(self, bbox: np.ndarray | None) -> None:
         """Update tracklet with a new observation.
@@ -150,10 +155,6 @@ class BoTSORTTracklet(BaseTracklet):
         """Return the current bounding-box estimate in xyxy format."""
         return self.state_estimator.state_to_bbox()
 
-    # ------------------------------------------------------------------
-    # Camera motion compensation
-    # ------------------------------------------------------------------
-
     def apply_cmc(self, H: np.ndarray) -> None:
         """Apply a 2×3 affine camera-motion transform **in place**.
 
@@ -186,9 +187,7 @@ class BoTSORTTracklet(BaseTracklet):
         kf.P = A @ kf.P @ A.T
 
     @staticmethod
-    def apply_cmc_batch(
-        tracklets: Sequence[BoTSORTTracklet], H: np.ndarray
-    ) -> None:
+    def apply_cmc_batch(tracklets: Sequence[BoTSORTTracklet], H: np.ndarray) -> None:
         """Apply a 2×3 affine camera-motion transform to all tracklets at once.
 
         Vectorised replacement for calling :meth:`apply_cmc` in a loop.
@@ -209,9 +208,7 @@ class BoTSORTTracklet(BaseTracklet):
         dim = tracklets[0].state_estimator.kf.x.shape[0]
 
         # Stack states (N, dim) and covariances (N, dim, dim)
-        states = np.array(
-            [trk.state_estimator.kf.x.reshape(-1) for trk in tracklets]
-        )
+        states = np.array([trk.state_estimator.kf.x.reshape(-1) for trk in tracklets])
         Ps = np.array([trk.state_estimator.kf.P for trk in tracklets])
 
         # Batch-transform centre positions: x' = x @ R.T + t
