@@ -174,13 +174,12 @@ class BoTSORTTracker(BaseTracker):
         high_boxes = detection_boxes[high_indices]
         low_boxes = detection_boxes[low_indices]
 
-        # CMC: apply to all predicted tracks before association
+        # CMC: apply to all predicted tracks before association (batched)
         if self.enable_cmc and self.cmc is not None and frame is not None:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(frame, mask_boxes)
             if H is not None:
-                for trk in self.tracks:
-                    trk.apply_cmc(H)
+                BoTSORTTracklet.apply_cmc_batch(self.tracks, H)
 
         # Step 1: associate high-confidence detections to all tracks
         iou_matrix = _get_iou_matrix(self.tracks, high_boxes)
