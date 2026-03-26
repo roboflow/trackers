@@ -360,10 +360,10 @@ class BoTSORTKalmanBoxTracker:
         self._update_process_and_measurement_noise()
 
         # Predict state
-        self.state = self.F @ self.state
+        self.state = self.F @ self.state  # type: ignore[assignment]
 
         # Predict error (uncertainty) covariance
-        self.P = self.F @ self.P @ self.F.T + self.Q
+        self.P = self.F @ self.P @ self.F.T + self.Q  # type: ignore[assignment]
 
         # Prevent degenerate box shape
         self.state[2, 0] = max(self.state[2, 0], 1e-3)
@@ -437,7 +437,7 @@ class BoTSORTKalmanBoxTracker:
 
         # Update covariance
         identity_matrix = np.eye(8, dtype=np.float32)
-        self.P = (identity_matrix - K @ self.H) @ self.P
+        self.P = (identity_matrix - K @ self.H) @ self.P  # type: ignore[assignment]
 
         self.state[2, 0] = max(self.state[2, 0], 1e-3)
         self.state[3, 0] = max(self.state[3, 0], 1e-3)
