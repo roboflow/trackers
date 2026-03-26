@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import cast
+from typing import Literal, cast
 
 import numpy as np
 import supervision as sv
@@ -55,6 +55,8 @@ class BoTSORTTracker(BaseTracker):
         cmc: Camera motion compensation instance (or None if disabled).
     """
 
+    tracker_id = "botsort"
+
     def __init__(
         self,
         lost_track_buffer: int = 30,
@@ -65,7 +67,7 @@ class BoTSORTTracker(BaseTracker):
         minimum_iou_threshold_second_assoc: float = 0.5,
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
-        cmc_method: str = "sparseOptFlow",
+        cmc_method: Literal["orb", "sift", "sparseOptFlow", "ecc"] = "sparseOptFlow",
         cmc_downscale: int = 2,
     ) -> None:
         """
@@ -163,10 +165,10 @@ class BoTSORTTracker(BaseTracker):
             updated_detections.append(new_det)
         return updated_detections
 
-    def update(
+    def update(  # type: ignore[override]
         self,
         detections: sv.Detections,
-        frame: np.ndarray,
+        frame: np.ndarray | None = None,
     ) -> sv.Detections:
         """
         Update the tracker with detections from the current frame.
@@ -255,7 +257,10 @@ class BoTSORTTracker(BaseTracker):
 
         # Add unmatched low prob predictions to updated predictions
         for det_index in unmatched_detections:
-            new_det = deepcopy(low_prob_detections[det_index : det_index + 1])
+            new_det = cast(
+                sv.Detections,
+                deepcopy(low_prob_detections[det_index : det_index + 1]),
+            )
 
             new_det.tracker_id = np.array([-1])
             updated_detections.append(new_det)
@@ -309,16 +314,17 @@ class BoTSORTTracker(BaseTracker):
         """
 
         if detections.confidence is None:
-            # If no confidence information exists, treat all detections as high-confidence
-            return detections, detections[:0]
+            # If no confidence information exists, treat all detections
+            # as high-confidence
+            return detections, cast(sv.Detections, detections[:0])
 
         conf = detections.confidence
 
         high_mask = conf >= self.high_conf_det_threshold
         low_mask = (conf > 0.1) & (conf < self.high_conf_det_threshold)
 
-        high_confidence = detections[high_mask]
-        low_confidence = detections[low_mask]
+        high_confidence = cast(sv.Detections, detections[high_mask])
+        low_confidence = cast(sv.Detections, detections[low_mask])
 
         return high_confidence, low_confidence
 

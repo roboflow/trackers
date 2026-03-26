@@ -230,16 +230,16 @@ class CMC:
         self.extractor = None
         self.matcher = None
         if self.cfg.method == "orb":
-            self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)
-            self.extractor = cv2.ORB_create()
+            self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)  # type: ignore[attr-defined]
+            self.extractor = cv2.ORB_create()  # type: ignore[attr-defined]
             self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
         elif self.cfg.method == "sift":
-            self.detector = cv2.SIFT_create(
+            self.detector = cv2.SIFT_create(  # type: ignore[attr-defined]
                 nOctaveLayers=self.cfg.sift_n_octave_layers,
                 contrastThreshold=self.cfg.sift_contrast_threshold,
                 edgeThreshold=int(self.cfg.sift_edge_threshold),
             )
-            self.extractor = cv2.SIFT_create(
+            self.extractor = cv2.SIFT_create(  # type: ignore[attr-defined]
                 nOctaveLayers=self.cfg.sift_n_octave_layers,
                 contrastThreshold=self.cfg.sift_contrast_threshold,
                 edgeThreshold=int(self.cfg.sift_edge_threshold),
@@ -369,8 +369,8 @@ class CMC:
                     mask[y1b:y2b, x1b:x2b] = 0
 
         # Detect + describe (ORB)
-        kps = self.detector.detect(gray, mask)
-        kps, desc = self.extractor.compute(gray, kps)
+        kps = self.detector.detect(gray, mask)  # type: ignore[union-attr]
+        kps, desc = self.extractor.compute(gray, kps)  # type: ignore[union-attr]
 
         H_aff = np.eye(2, 3, dtype=np.float32)
 
@@ -386,7 +386,7 @@ class CMC:
             self._prev_desc = None if desc is None else copy.copy(desc)
             return H_aff
 
-        knn = self.matcher.knnMatch(self._prev_desc, desc, k=2)
+        knn = self.matcher.knnMatch(self._prev_desc, desc, k=2)  # type: ignore[union-attr]
         if len(knn) == 0:
             self._prev_kps = copy.copy(kps)
             self._prev_desc = copy.copy(desc)
@@ -405,7 +405,7 @@ class CMC:
                 continue
             m, n = pair
             if m.distance < 0.9 * n.distance:
-                p_prev = np.array(self._prev_kps[m.queryIdx].pt, dtype=np.float32)
+                p_prev = np.array(self._prev_kps[m.queryIdx].pt, dtype=np.float32)  # type: ignore[index]
                 p_curr = np.array(kps[m.trainIdx].pt, dtype=np.float32)
                 d = p_prev - p_curr
                 if (abs(d[0]) < max_spatial[0]) and (abs(d[1]) < max_spatial[1]):
@@ -414,12 +414,12 @@ class CMC:
                     curr_pts.append(p_curr)
 
         if len(prev_pts) >= 5:
-            spatial = np.asarray(spatial, dtype=np.float32)
-            mean = spatial.mean(axis=0)
-            std = spatial.std(axis=0) + 1e-6
+            spatial_arr = np.asarray(spatial, dtype=np.float32)
+            mean = spatial_arr.mean(axis=0)
+            std = spatial_arr.std(axis=0) + 1e-6
             inl = np.logical_and(
-                np.abs(spatial[:, 0] - mean[0]) < 2.5 * std[0],
-                np.abs(spatial[:, 1] - mean[1]) < 2.5 * std[1],
+                np.abs(spatial_arr[:, 0] - mean[0]) < 2.5 * std[0],
+                np.abs(spatial_arr[:, 1] - mean[1]) < 2.5 * std[1],
             )
             prev_pts_np = np.asarray(prev_pts, dtype=np.float32)[inl]
             curr_pts_np = np.asarray(curr_pts, dtype=np.float32)[inl]
@@ -471,7 +471,7 @@ class CMC:
             )
 
         # Find keypoints in current frame
-        keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)
+        keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)  # type: ignore[call-overload]
 
         # First frame: init and return identity
         if not self._initialized:
@@ -492,7 +492,7 @@ class CMC:
 
         # Optical flow correspondences
         # calcOpticalFlowPyrLK will throw or return nonsense if we give it None
-        matched, status, _err = cv2.calcOpticalFlowPyrLK(
+        matched, status, _err = cv2.calcOpticalFlowPyrLK(  # type: ignore[call-overload]
             self._prev_frame_gray, frame, self._prev_points, None
         )
 
@@ -512,14 +512,16 @@ class CMC:
                 prev_pts.append(self._prev_points[i])
                 curr_pts.append(matched[i])
 
-        prev_pts = np.array(prev_pts)
-        curr_pts = np.array(curr_pts)
+        prev_pts_arr = np.array(prev_pts)
+        curr_pts_arr = np.array(curr_pts)
 
         # Find rigid matrix
-        if (np.size(prev_pts, 0) > 4) and (
-            np.size(prev_pts, 0) == np.size(curr_pts, 0)
+        if (np.size(prev_pts_arr, 0) > 4) and (
+            np.size(prev_pts_arr, 0) == np.size(curr_pts_arr, 0)
         ):
-            H_est, _ = cv2.estimateAffinePartial2D(prev_pts, curr_pts, cv2.RANSAC)
+            H_est, _ = cv2.estimateAffinePartial2D(  # type: ignore[call-overload]
+                prev_pts_arr, curr_pts_arr, cv2.RANSAC
+            )
             if H_est is not None:
                 H_aff = H_est.astype(np.float32)
 
@@ -587,7 +589,7 @@ class CMC:
             return H_aff
 
         try:
-            _cc, H_est = cv2.findTransformECC(
+            _cc, H_est = cv2.findTransformECC(  # type: ignore[call-overload]
                 self._prev_frame_gray,
                 frame,
                 H_aff,

@@ -17,7 +17,7 @@ from trackers.core.base import BaseTracker
 from trackers.eval import evaluate_mot_sequences
 from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
 
-_TRACKER_IDS = ["sort", "bytetrack", "ocsort"]
+_TRACKER_IDS = ["sort", "bytetrack", "ocsort", "botsort"]
 _METRICS = ["CLEAR", "HOTA", "Identity"]
 _TEST_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
