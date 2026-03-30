@@ -13,10 +13,8 @@ from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.sort.tracklet import SORTTracklet
-from trackers.core.sort.utils import (
-    _get_alive_tracklets,
-    _get_iou_matrix,
-)
+from trackers.core.sort.utils import _get_alive_tracklets
+from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
@@ -64,8 +62,12 @@ class SORTTracker(BaseTracker):
         minimum_iou_threshold: `float` specifying IoU threshold for associating
             detections to existing tracks. Higher values require more overlap.
         state_estimator_class: State estimator class to use for Kalman filter.
-            Defaults to `XYXYStateEstimator`. Can also use
-            `XCYCSRStateEstimator` for center-based representation.
+            `XCYCSRStateEstimator` for center-based representation or
+            `XYXYStateEstimator` for corner-based representation.
+        iou: IoU similarity metric instance to use for data association.
+            Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
+            subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
+            similarity is computed during the association step.
     """
 
     tracker_id = "sort"
@@ -85,6 +87,7 @@ class SORTTracker(BaseTracker):
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
         state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
+        iou: BaseIoU | None = None,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -94,6 +97,7 @@ class SORTTracker(BaseTracker):
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
         self.state_estimator_class = state_estimator_class
+        self.iou = iou if iou is not None else IoU()
 
         # Active tracklets
         self.tracks: list[SORTTracklet] = []
@@ -188,7 +192,12 @@ class SORTTracker(BaseTracker):
         for tracklet in self.tracks:
             tracklet.predict()
 
-        iou_matrix = _get_iou_matrix(self.tracks, detection_boxes)
+        predicted_boxes = (
+            np.array([t.get_state_bbox() for t in self.tracks])
+            if self.tracks
+            else np.empty((0, 4))
+        )
+        iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
 
         # Associate detections to tracklets based on IOU
         matched_indices, _unmatched_tracklets, unmatched_detections = (
