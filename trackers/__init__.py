@@ -20,15 +20,19 @@ from trackers.motion.transformation import (
     IdentityTransformation,
 )
 from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr
+from trackers.utils.iou import BaseIoU, GIoU, IoU
 
 __all__ = [
+    "BaseIoU",
     "ByteTrackTracker",
+    "GIoU",
     "CoordinatesTransformation",
     "Dataset",
     "DatasetAsset",
     "DatasetSplit",
     "HomographyTransformation",
     "IdentityTransformation",
+    "IoU",
     "MotionAwareTraceAnnotator",
     "MotionEstimator",
     "OCSORTTracker",
