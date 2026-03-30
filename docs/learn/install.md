@@ -1,19 +1,21 @@
-# Install `trackers`
+# Install Trackers
 
-Get up and running with `trackers` in minutes. Choose your preferred package manager and start tracking objects in video.
+Add multi-object tracking to your detection pipeline with a single install. Works with any detector, any framework.
 
 **What you'll learn:**
 
 - Install `trackers` with `pip` or `uv`
-- Set up a development environment
+- Set up a local development environment
 
 !!! tip "Requirements"
 
-    Python `3.10` or higher is required.
+    Python `3.10+`. Works on Linux, macOS, and Windows.
 
 ---
 
 ## Quickstart
+
+Get started by installing the package.
 
 === "pip"
 
@@ -27,7 +29,7 @@ Get up and running with `trackers` in minutes. Choose your preferred package man
     uv pip install trackers
     ```
 
-    For `uv`-managed projects:
+    If your project uses `uv` for dependency management, add `trackers` directly to your project.
 
     ```bash
     uv add trackers
@@ -35,17 +37,37 @@ Get up and running with `trackers` in minutes. Choose your preferred package man
 
 === "From Source"
 
-    Install the latest development version:
+    Install the latest development version directly from GitHub.
 
     ```bash
-    pip install https://github.com/roboflow/trackers/archive/refs/heads/develop.zip
+    pip install git+https://github.com/roboflow/trackers.git
     ```
 
-**Verify installation:**
+---
 
-```bash
-python -c "import trackers; print(trackers.__version__)"
-```
+## Extras
+
+The base install covers tracking only. Optional extras add functionality like built-in detection.
+
+### Detection
+
+The `detection` extra installs `inference-models`, enabling the CLI to run detection automatically so you don't need to bring your own model.
+
+=== "pip"
+
+    ```bash
+    pip install "trackers[detection]"
+    ```
+
+=== "uv"
+
+    ```bash
+    uv pip install "trackers[detection]"
+    ```
+
+!!! tip "GPU Acceleration"
+
+    For GPU support, ensure PyTorch is installed with CUDA or MPS.
 
 ---
 
@@ -56,15 +78,12 @@ Set up a local environment for contributing or modifying `trackers`.
 === "virtualenv"
 
     ```bash
-    # Clone and enter repository
     git clone --depth 1 -b develop https://github.com/roboflow/trackers.git
     cd trackers
 
-    # Create and activate environment
     python3.10 -m venv venv
     source venv/bin/activate
 
-    # Install in editable mode
     pip install --upgrade pip
     pip install -e "."
     ```
@@ -72,18 +91,10 @@ Set up a local environment for contributing or modifying `trackers`.
 === "uv"
 
     ```bash
-    # Clone and enter repository
     git clone --depth 1 -b develop https://github.com/roboflow/trackers.git
     cd trackers
 
-    # Set up environment
     uv python pin 3.10
     uv sync
     uv pip install -e . --all-extras
     ```
-
-**Verify dev install:**
-
-```bash
-python -c "import trackers; print(trackers.__version__)"
-```
