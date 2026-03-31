@@ -22,12 +22,14 @@ from trackers.motion.transformation import (
     IdentityTransformation,
 )
 from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr
-from trackers.utils.iou import BaseIoU, GIoU, IoU
+from trackers.utils.iou import BaseIoU, CIoU, DIoU, GIoU, IoU
 
 __all__ = [
     "BoTSORTTracker",
     "BaseIoU",
     "ByteTrackTracker",
+    "CIoU",
+    "DIoU",
     "GIoU",
     "CoordinatesTransformation",
     "Dataset",

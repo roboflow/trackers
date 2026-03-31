@@ -137,3 +137,97 @@ class GIoU(BaseIoU):
         )
 
         return giou
+
+
+class DIoU(BaseIoU):
+    """Distance Intersection over Union (Zheng et al., 2019).
+
+    Extends IoU by penalizing the normalized Euclidean distance between
+    bounding-box centers, using the diagonal length of the smallest
+    enclosing rectangle as the scale. This yields a smooth signal when
+    boxes overlap or are separated and aligns with how many detectors
+    localize objects (center-based error).
+
+    DIoU = IoU - d^2 / (c^2 + epsilon)
+
+    where `d` is the center-to-center distance, `c` is the enclosing
+    diagonal, and ``\\epsilon`` avoids division by zero (same convention as
+    :func:`torchvision.ops.distance_box_iou`).
+
+    Because the penalty is nonnegative, ``DIoU \\leq IoU`` for every pair.
+    Values typically lie in ``[-1, 1]`` for well-formed boxes.
+
+    Reference: https://arxiv.org/abs/1911.08287
+    """
+
+    _EPS = 1e-7
+
+    def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+        iou, _, _, _, enclosing_diagonal_sq = _compute_iou_and_enclosing(
+            boxes_1, boxes_2
+        )
+
+        cx1 = (boxes_1[:, 0] + boxes_1[:, 2]) / 2
+        cy1 = (boxes_1[:, 1] + boxes_1[:, 3]) / 2
+        cx2 = (boxes_2[:, 0] + boxes_2[:, 2]) / 2
+        cy2 = (boxes_2[:, 1] + boxes_2[:, 3]) / 2
+
+        dx = cx1[:, np.newaxis] - cx2[np.newaxis, :]
+        dy = cy1[:, np.newaxis] - cy2[np.newaxis, :]
+        center_dist_sq = dx * dx + dy * dy
+
+        denom = enclosing_diagonal_sq + self._EPS
+        return iou - center_dist_sq / denom
+
+
+class CIoU(BaseIoU):
+    """Complete Intersection over Union (Zheng et al., 2019).
+
+    Builds on **DIoU** by adding a penalty for mismatched aspect ratio between
+    boxes (via a term ``v`` on the difference of box arctan aspect ratios).
+    The trade-off is weighted by ``\\alpha`` that depends on IoU and ``v``,
+    matching :func:`torchvision.ops.complete_box_iou`.
+
+    ``CIoU = DIoU - \\alpha v``, with ``\\alpha = v / (1 - \\mathrm{IoU} + v + \\epsilon)``.
+
+    So **CIoU \\leq DIoU \\leq IoU** when widths and heights are positive.
+    Scores are at most 1; unlike plain IoU they can fall **below** -1 when the
+    aspect-ratio penalty is large.
+
+    Reference: https://arxiv.org/abs/1911.08287
+    """
+
+    _EPS = 1e-7
+
+    def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+        iou, _, _, _, enclosing_diagonal_sq = _compute_iou_and_enclosing(
+            boxes_1, boxes_2
+        )
+
+        cx1 = (boxes_1[:, 0] + boxes_1[:, 2]) / 2
+        cy1 = (boxes_1[:, 1] + boxes_1[:, 3]) / 2
+        cx2 = (boxes_2[:, 0] + boxes_2[:, 2]) / 2
+        cy2 = (boxes_2[:, 1] + boxes_2[:, 3]) / 2
+
+        dx = cx1[:, np.newaxis] - cx2[np.newaxis, :]
+        dy = cy1[:, np.newaxis] - cy2[np.newaxis, :]
+        center_dist_sq = dx * dx + dy * dy
+
+        denom = enclosing_diagonal_sq + self._EPS
+        diou = iou - center_dist_sq / denom
+
+        w1 = boxes_1[:, 2] - boxes_1[:, 0]
+        h1 = boxes_1[:, 3] - boxes_1[:, 1]
+        w2 = boxes_2[:, 2] - boxes_2[:, 0]
+        h2 = boxes_2[:, 3] - boxes_2[:, 1]
+
+        w_pred = w1[:, np.newaxis]
+        h_pred = h1[:, np.newaxis]
+        w_gt = w2[np.newaxis, :]
+        h_gt = h2[np.newaxis, :]
+
+        v = (4.0 / (np.pi**2)) * (
+            np.arctan(w_pred / h_pred) - np.arctan(w_gt / h_gt)
+        ) ** 2
+        alpha = v / (1.0 - iou + v + self._EPS)
+        return diou - alpha * v
