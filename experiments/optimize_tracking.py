@@ -85,6 +85,10 @@ def _define_search_space(trial: optuna.Trial) -> dict:
         # Post-processing: fill gaps <= N frames via linear bbox interpolation.
         # Improves AssA by making fragmented tracks continuous.  0 = disabled.
         "max_interpolation_gap": trial.suggest_int("max_interpolation_gap", 0, 30),
+        # Reset P to identity after re-detection following >= N lost frames.
+        # Clears stale cross-covariances accumulated during Q-inflated occlusion.
+        # 0 = disabled.
+        "p_reset_threshold": trial.suggest_int("p_reset_threshold", 0, 15),
     }
 
 
@@ -137,6 +141,8 @@ def _apply_kalman_patch(params: dict) -> None:
     ByteTrackKalmanBoxTracker.velocity_decay = vel_decay
     # Set Q inflation rate for lost tracks
     ByteTrackKalmanBoxTracker.q_miss_alpha = q_miss
+    # Set P reset threshold for re-detection after long occlusion
+    ByteTrackKalmanBoxTracker.p_reset_threshold = params.get("p_reset_threshold", 5)
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +276,7 @@ _DEFAULTS = {
     "velocity_decay": 0.95,
     "q_miss_alpha": 0.1,
     "max_interpolation_gap": 20,
+    "p_reset_threshold": 5,
 }
 
 

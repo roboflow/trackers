@@ -46,6 +46,14 @@ class ByteTrackKalmanBoxTracker:
     # trusts the fresh measurement more.  Orthogonal to velocity_decay which
     # acts on the state mean, not the covariance.
     q_miss_alpha: float = 0.1
+    # Minimum number of missed frames before resetting P on re-detection.
+    # When a lost track is re-matched after a long gap, the accumulated
+    # error covariance P carries stale position-velocity cross-correlations
+    # from the Q-inflated lost period.  Resetting P to a fresh initial state
+    # after the Kalman update gives the filter a clean slate for velocity
+    # estimation while keeping the measurement-corrected position from the
+    # update step.  Set to 0 to disable the reset.
+    p_reset_threshold: int = 5
     state: NDArray[np.float32]
     F: NDArray[np.float32]
     H: NDArray[np.float32]
@@ -150,6 +158,7 @@ class ByteTrackKalmanBoxTracker:
         Args:
             bbox: Detected bounding box in the form [x1, y1, x2, y2].
         """
+        was_lost_for = self.time_since_update
         self.time_since_update = 0
         self.number_of_successful_updates += 1
 
@@ -167,6 +176,13 @@ class ByteTrackKalmanBoxTracker:
         # Update covariance
         identity_matrix = np.eye(8, dtype=np.float32)
         self.P = ((identity_matrix - K @ self.H) @ self.P).astype(np.float32)
+
+        # Reset P after long occlusion to clear stale cross-covariances.
+        # The Kalman update above already used the inflated P (high gain,
+        # trusting the fresh measurement).  Resetting afterwards gives the
+        # filter a clean velocity-estimation slate for subsequent frames.
+        if self.p_reset_threshold > 0 and was_lost_for >= self.p_reset_threshold:
+            self.P = np.eye(8, dtype=np.float32)
 
     def get_state_bbox(self) -> np.ndarray:
         """
