@@ -75,6 +75,11 @@ mypy-types = [
     "types-requests>=2.32.0.20250328",
 ]
 
+optimize = [
+    "optuna[rdb]>=3.1.0",
+    "fire>=0.6.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

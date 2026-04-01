@@ -175,3 +175,5 @@ logs/
 runs/
 wandb/
 .gradio/
+
+experiments/mot17/
