@@ -82,6 +82,9 @@ def _define_search_space(trial: optuna.Trial) -> dict:
         "velocity_decay": trial.suggest_float("velocity_decay", 0.80, 1.0),
         # Q inflation rate for lost tracks: Q_eff = Q * (1 + alpha * t_since_update)
         "q_miss_alpha": trial.suggest_float("q_miss_alpha", 0.0, 0.5),
+        # Post-processing: fill gaps <= N frames via linear bbox interpolation.
+        # Improves AssA by making fragmented tracks continuous.  0 = disabled.
+        "max_interpolation_gap": trial.suggest_int("max_interpolation_gap", 0, 30),
     }
 
 
@@ -157,8 +160,11 @@ def _find_data_dir() -> Path:
     sys.exit(1)
 
 
-def _run_tracker_on_sequence(tracker, det_file: Path, output_file: Path) -> None:
+def _run_tracker_on_sequence(
+    tracker, det_file: Path, output_file: Path, max_interpolation_gap: int = 0
+) -> None:
     from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
+    from trackers.core.sort.utils import interpolate_mot_gaps
     from trackers.io.mot import _load_mot_file, _mot_frame_to_detections
 
     tracker.reset()
@@ -193,6 +199,9 @@ def _run_tracker_on_sequence(tracker, det_file: Path, output_file: Path) -> None
                     f"{w:.2f},{h:.2f},{conf:.4f},-1,-1,-1"
                 )
 
+    if max_interpolation_gap > 0:
+        lines = interpolate_mot_gaps(lines, max_gap=max_interpolation_gap)
+
     output_file.parent.mkdir(parents=True, exist_ok=True)
     output_file.write_text("\n".join(lines) + "\n" if lines else "")
 
@@ -206,11 +215,17 @@ def _run_eval(params: dict, sequences: list[str], data_dir: Path) -> dict:
     with tempfile.TemporaryDirectory() as _tmp:
         output_dir = Path(_tmp)
 
+        max_interp = params.get("max_interpolation_gap", 0)
         tracker = _build_tracker(params)
         for seq in sequences:
             det_file = data_dir / seq / "det" / "det.txt"
             if det_file.exists():
-                _run_tracker_on_sequence(tracker, det_file, output_dir / f"{seq}.txt")
+                _run_tracker_on_sequence(
+                    tracker,
+                    det_file,
+                    output_dir / f"{seq}.txt",
+                    max_interpolation_gap=max_interp,
+                )
 
         metrics_list = ["HOTA", "CLEAR", "Identity"]
         if len(sequences) == 1:
@@ -254,6 +269,7 @@ _DEFAULTS = {
     "p_scale": 1.0,
     "velocity_decay": 0.95,
     "q_miss_alpha": 0.1,
+    "max_interpolation_gap": 20,
 }
 
 

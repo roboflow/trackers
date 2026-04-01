@@ -77,6 +77,70 @@ def get_iou_matrix(
     return iou_matrix
 
 
+def interpolate_mot_gaps(
+    lines: list[str],
+    max_gap: int = 20,
+) -> list[str]:
+    """Fill short gaps in MOT-format output via linear bbox interpolation.
+
+    For each track that disappears for up to ``max_gap`` consecutive frames
+    and then reappears, linearly interpolate the bounding box coordinates
+    between the last observation before the gap and the first observation after.
+
+    Args:
+        lines: MOT-format lines, each ``"frame,id,x,y,w,h,conf,-1,-1,-1"``.
+        max_gap: Maximum gap length (in frames) to interpolate. Gaps longer
+            than this are left unfilled. ``0`` disables interpolation.
+
+    Returns:
+        Augmented list of MOT-format lines including interpolated entries.
+
+    Examples:
+        >>> obs = ["1,1,10,20,30,40,0.9,-1,-1,-1", "3,1,16,26,30,40,0.8,-1,-1,-1"]
+        >>> result = interpolate_mot_gaps(obs, max_gap=2)
+        >>> any("2,1," in r for r in result)
+        True
+    """
+    if not lines or max_gap <= 0:
+        return lines
+
+    tracks: dict[int, list[tuple[int, float, float, float, float, float]]] = {}
+    for line in lines:
+        parts = line.split(",")
+        if len(parts) < 7:
+            continue
+        frame = int(parts[0])
+        tid = int(parts[1])
+        x, y, w, h = float(parts[2]), float(parts[3]), float(parts[4]), float(parts[5])
+        conf = float(parts[6])
+        tracks.setdefault(tid, []).append((frame, x, y, w, h, conf))
+
+    for tid in tracks:
+        tracks[tid].sort(key=lambda t: t[0])
+
+    interp_lines: list[str] = []
+    for tid, obs in tracks.items():
+        for i in range(len(obs) - 1):
+            f1, x1, y1, w1, h1, c1 = obs[i]
+            f2, x2, y2, w2, h2, c2 = obs[i + 1]
+            gap = f2 - f1
+            if gap <= 1 or gap > max_gap + 1:
+                continue
+            for j in range(1, gap):
+                alpha = j / gap
+                fx = x1 + alpha * (x2 - x1)
+                fy = y1 + alpha * (y2 - y1)
+                fw = w1 + alpha * (w2 - w1)
+                fh = h1 + alpha * (h2 - h1)
+                fc = min(c1, c2)
+                interp_lines.append(
+                    f"{f1 + j},{tid},{fx:.2f},{fy:.2f},"
+                    f"{fw:.2f},{fh:.2f},{fc:.4f},-1,-1,-1"
+                )
+
+    return lines + interp_lines
+
+
 def update_detections_with_track_ids(
     trackers: Sequence[KalmanBoxTrackerType],
     detections: sv.Detections,
