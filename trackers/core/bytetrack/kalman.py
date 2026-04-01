@@ -38,6 +38,14 @@ class ByteTrackKalmanBoxTracker:
     # technique from OC-SORT / BoT-SORT that directly improves association
     # accuracy (AssA) for re-identification after occlusion gaps.
     velocity_decay: float = 0.95
+    # Process noise inflation rate for lost tracks.  During occlusion the true
+    # object motion is unknown, so uncertainty should grow faster than in the
+    # steady-state.  Each missed frame multiplies the process noise covariance
+    # by (1 + q_miss_alpha * time_since_update), widening the predicted
+    # covariance and increasing Kalman gain on re-appearance — the filter
+    # trusts the fresh measurement more.  Orthogonal to velocity_decay which
+    # acts on the state mean, not the covariance.
+    q_miss_alpha: float = 0.1
     state: NDArray[np.float32]
     F: NDArray[np.float32]
     H: NDArray[np.float32]
@@ -111,8 +119,18 @@ class ByteTrackKalmanBoxTracker:
         """
         # Predict state
         self.state = (self.F @ self.state).astype(np.float32)
+
+        # When the track is lost, inflate process noise to reflect growing
+        # uncertainty about the object's true position.  The base Q is NOT
+        # mutated — a scaled copy is used for this prediction step only.
+        if self.time_since_update > 0:
+            q_scale = 1.0 + self.q_miss_alpha * self.time_since_update
+            q_eff = self.Q * q_scale
+        else:
+            q_eff = self.Q
+
         # Predict error covariance
-        self.P = (self.F @ self.P @ self.F.T + self.Q).astype(np.float32)
+        self.P = (self.F @ self.P @ self.F.T + q_eff).astype(np.float32)
 
         # Attenuate velocity components when track is lost (unmatched).
         # Indices 4-7 are (vx1, vy1, vx2, vy2).  Applied *after* the

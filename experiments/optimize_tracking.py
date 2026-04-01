@@ -80,6 +80,8 @@ def _define_search_space(trial: optuna.Trial) -> dict:
         "p_scale": trial.suggest_float("p_scale", 0.1, 10.0, log=True),
         # Velocity decay per lost frame (1.0 = no decay, 0.8 = aggressive)
         "velocity_decay": trial.suggest_float("velocity_decay", 0.80, 1.0),
+        # Q inflation rate for lost tracks: Q_eff = Q * (1 + alpha * t_since_update)
+        "q_miss_alpha": trial.suggest_float("q_miss_alpha", 0.0, 0.5),
     }
 
 
@@ -117,6 +119,7 @@ def _apply_kalman_patch(params: dict) -> None:
     r = params.get("r_scale", 0.1)
     p = params.get("p_scale", 1.0)
     vel_decay = params.get("velocity_decay", 0.95)
+    q_miss = params.get("q_miss_alpha", 0.1)
 
     orig = _ORIG_KALMAN_INIT
 
@@ -129,6 +132,8 @@ def _apply_kalman_patch(params: dict) -> None:
     setattr(ByteTrackKalmanBoxTracker, "_initialize_kalman_filter", _patched)
     # Set velocity decay as class attribute so all new instances pick it up
     ByteTrackKalmanBoxTracker.velocity_decay = vel_decay
+    # Set Q inflation rate for lost tracks
+    ByteTrackKalmanBoxTracker.q_miss_alpha = q_miss
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +253,7 @@ _DEFAULTS = {
     "r_scale": 0.1,
     "p_scale": 1.0,
     "velocity_decay": 0.95,
+    "q_miss_alpha": 0.1,
 }
 
 
