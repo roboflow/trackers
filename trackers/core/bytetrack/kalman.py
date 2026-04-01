@@ -32,6 +32,12 @@ class ByteTrackKalmanBoxTracker:
     """
 
     count_id = 0
+    # Velocity decay factor applied per frame when the track is unmatched.
+    # Attenuates velocity to prevent unbounded linear drift during occlusion,
+    # keeping the predicted box near the last observed position.  Standard
+    # technique from OC-SORT / BoT-SORT that directly improves association
+    # accuracy (AssA) for re-identification after occlusion gaps.
+    velocity_decay: float = 0.95
     state: NDArray[np.float32]
     F: NDArray[np.float32]
     H: NDArray[np.float32]
@@ -107,6 +113,14 @@ class ByteTrackKalmanBoxTracker:
         self.state = (self.F @ self.state).astype(np.float32)
         # Predict error covariance
         self.P = (self.F @ self.P @ self.F.T + self.Q).astype(np.float32)
+
+        # Attenuate velocity components when track is lost (unmatched).
+        # Indices 4-7 are (vx1, vy1, vx2, vy2).  Applied *after* the
+        # transition so the current frame's prediction still uses full
+        # velocity; only subsequent predictions on still-lost tracks see
+        # progressively slower motion.
+        if self.time_since_update > 0:
+            self.state[4:8] *= self.velocity_decay
 
         # Increase time since update
         self.time_since_update += 1
