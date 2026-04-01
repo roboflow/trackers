@@ -11,7 +11,7 @@ import pytest
 import torch
 import torchvision
 
-from trackers.utils.iou import CIoU, DIoU, GIoU, IoU
+from trackers.utils.iou import BIoU, CIoU, DIoU, GIoU, IoU
 
 
 def _torchvision_giou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
@@ -36,6 +36,7 @@ def _torchvision_ciou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
 
 
 _iou = IoU()
+_biou = BIoU()
 _giou = GIoU()
 _diou = DIoU()
 _ciou = CIoU()
@@ -119,13 +120,13 @@ class TestGIoUAgainstTorchvision:
             [
                 [0.0, 0.0, 100.0, 10.0],  # wide
                 [0.0, 0.0, 10.0, 100.0],  # tall
-                [0.0, 0.0, 50.0, 50.0],   # square
+                [0.0, 0.0, 50.0, 50.0],  # square
             ]
         )
         boxes_2 = np.array(
             [
-                [10.0, 0.0, 60.0, 8.0],   # wide, offset
-                [2.0, 10.0, 12.0, 80.0],   # tall, offset
+                [10.0, 0.0, 60.0, 8.0],  # wide, offset
+                [2.0, 10.0, 12.0, 80.0],  # tall, offset
             ]
         )
         result = _giou.compute(boxes_1, boxes_2)
@@ -146,6 +147,33 @@ class TestGIoUAgainstTorchvision:
         expected = _torchvision_giou(boxes_1, boxes_2)
         assert result.shape == (50, 30)
         np.testing.assert_allclose(result, expected, atol=1e-6)
+
+
+class TestBIoUProperties:
+    """Verify behavior of Buffered IoU."""
+
+    def test_buffer_zero_matches_iou(self) -> None:
+        boxes_1 = np.array(
+            [[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 35.0, 40.0]], dtype=np.float64
+        )
+        boxes_2 = np.array(
+            [[5.0, 5.0, 15.0, 15.0], [50.0, 50.0, 60.0, 60.0]], dtype=np.float64
+        )
+        biou0 = BIoU(buffer_ratio=0.0).compute(boxes_1, boxes_2)
+        iou = _iou.compute(boxes_1, boxes_2).astype(np.float64)
+        np.testing.assert_allclose(biou0, iou, atol=1e-10)
+
+    def test_nearby_non_overlap_gets_positive_signal(self) -> None:
+        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
+        boxes_2 = np.array([[11.0, 0.0, 21.0, 10.0]])
+        iou = _iou.compute(boxes_1, boxes_2)[0, 0]
+        biou = BIoU(buffer_ratio=0.1).compute(boxes_1, boxes_2)[0, 0]
+        assert iou == 0.0
+        assert biou > 0.0
+
+    def test_invalid_negative_buffer_ratio(self) -> None:
+        with pytest.raises(ValueError, match="buffer_ratio must be non-negative"):
+            BIoU(buffer_ratio=-0.01)
 
 
 class TestDIoUAgainstTorchvision:
@@ -487,8 +515,8 @@ class TestEmptyArrayHandling:
 
     @pytest.mark.parametrize(
         "iou_instance",
-        [_iou, _giou, _diou, _ciou],
-        ids=["IoU", "GIoU", "DIoU", "CIoU"],
+        [_iou, _biou, _giou, _diou, _ciou],
+        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU"],
     )
     def test_empty_boxes_1(self, iou_instance) -> None:
         boxes_1 = np.empty((0, 4))
@@ -498,8 +526,8 @@ class TestEmptyArrayHandling:
 
     @pytest.mark.parametrize(
         "iou_instance",
-        [_iou, _giou, _diou, _ciou],
-        ids=["IoU", "GIoU", "DIoU", "CIoU"],
+        [_iou, _biou, _giou, _diou, _ciou],
+        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU"],
     )
     def test_empty_boxes_2(self, iou_instance) -> None:
         boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0], [5.0, 5.0, 15.0, 15.0]])
@@ -509,8 +537,8 @@ class TestEmptyArrayHandling:
 
     @pytest.mark.parametrize(
         "iou_instance",
-        [_iou, _giou, _diou, _ciou],
-        ids=["IoU", "GIoU", "DIoU", "CIoU"],
+        [_iou, _biou, _giou, _diou, _ciou],
+        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU"],
     )
     def test_both_empty(self, iou_instance) -> None:
         boxes_1 = np.empty((0, 4))

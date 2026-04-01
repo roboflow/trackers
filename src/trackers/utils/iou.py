@@ -15,8 +15,8 @@ import supervision as sv
 class BaseIoU(ABC):
     """Abstract base for IoU similarity metrics used in tracker association.
 
-    Subclasses implement a specific variant of Intersection over Union
-    (e.g. standard IoU, GIoU, DIoU, CIoU) that computes a pairwise
+    Subclasses implement a specific Intersection over Union variant
+    (e.g. standard IoU, GIoU, DIoU, CIoU, BIoU) that computes a pairwise
     similarity matrix between two sets of bounding boxes.
 
     The resulting matrix is used as a cost/similarity signal in the
@@ -27,7 +27,7 @@ class BaseIoU(ABC):
         """Compute pairwise similarity between two sets of bounding boxes.
 
         Handles the empty-input edge case (returns a correctly-shaped zero
-        matrix) and delegates to :meth:`_compute` for the actual math.
+        matrix) and delegates to subclass `_compute` method for the actual math.
 
         Args:
             boxes_1: ``(N, 4)`` array of boxes in ``[x1, y1, x2, y2]`` format.
@@ -61,11 +61,62 @@ class IoU(BaseIoU):
 
     Computes the ratio of the intersection area to the union area for
     every pair of boxes. Values range from 0 (no overlap) to 1 (perfect
-    overlap). This is the metric used in the original SORT paper.
+    overlap). This is the classic metric used in SORT.
     """
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
         return sv.box_iou_batch(boxes_1, boxes_2)
+
+
+class BIoU(BaseIoU):
+    """Buffered Intersection over Union.
+
+    Computes IoU after expanding each box by a configurable relative margin
+    around its center:
+
+    - ``x1' = x1 - r * w``
+    - ``y1' = y1 - r * h``
+    - ``x2' = x2 + r * w``
+    - ``y2' = y2 + r * h``
+
+    where ``w = x2 - x1``, ``h = y2 - y1``, and ``r`` is ``buffer_ratio``.
+
+    In practice, this makes association more tolerant to small localization
+    gaps while preserving familiar IoU behavior. Setting
+    ``buffer_ratio=0`` recovers standard IoU exactly.
+
+    Reference: https://arxiv.org/pdf/2211.14317
+    """
+
+    def __init__(self, buffer_ratio: float = 0.1) -> None:
+        if buffer_ratio < 0:
+            raise ValueError(f"buffer_ratio must be non-negative, got {buffer_ratio}")
+        self.buffer_ratio = buffer_ratio
+
+    def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+        if self.buffer_ratio == 0:
+            return sv.box_iou_batch(boxes_1, boxes_2)
+
+        boxes_1_b = boxes_1.astype(np.float64, copy=True)
+        boxes_2_b = boxes_2.astype(np.float64, copy=True)
+
+        w1 = boxes_1_b[:, 2] - boxes_1_b[:, 0]
+        h1 = boxes_1_b[:, 3] - boxes_1_b[:, 1]
+        w2 = boxes_2_b[:, 2] - boxes_2_b[:, 0]
+        h2 = boxes_2_b[:, 3] - boxes_2_b[:, 1]
+
+        r = self.buffer_ratio
+        boxes_1_b[:, 0] -= r * w1
+        boxes_1_b[:, 1] -= r * h1
+        boxes_1_b[:, 2] += r * w1
+        boxes_1_b[:, 3] += r * h1
+
+        boxes_2_b[:, 0] -= r * w2
+        boxes_2_b[:, 1] -= r * h2
+        boxes_2_b[:, 2] += r * w2
+        boxes_2_b[:, 3] += r * h2
+
+        return sv.box_iou_batch(boxes_1_b, boxes_2_b)
 
 
 def _compute_iou_and_enclosing(
@@ -118,17 +169,15 @@ class GIoU(BaseIoU):
     enclosing box that is not covered by either box. This provides a
     meaningful gradient even when the two boxes do not overlap.
 
-    ``GIoU = IoU - |C \\ (A ∪ B)| / |C|``
+    ``GIoU = IoU - |C \\ (A U B)| / |C|``
 
-    Values range from -1 (boxes far apart) to 1 (perfect overlap).
+    Values are in ``[-1, 1]``: near -1 for far-apart boxes, 1 for perfect overlap.
 
     Reference: https://arxiv.org/abs/1902.09630
     """
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
-        iou, _, union, enclosing_area, _ = _compute_iou_and_enclosing(
-            boxes_1, boxes_2
-        )
+        iou, _, union, enclosing_area, _ = _compute_iou_and_enclosing(boxes_1, boxes_2)
 
         giou = iou - np.where(
             enclosing_area > 0,
@@ -148,13 +197,13 @@ class DIoU(BaseIoU):
     boxes overlap or are separated and aligns with how many detectors
     localize objects (center-based error).
 
-    DIoU = IoU - d^2 / (c^2 + epsilon)
+    ``DIoU = IoU - d^2 / (c^2 + epsilon)``
 
     where `d` is the center-to-center distance, `c` is the enclosing
     diagonal, and ``\\epsilon`` avoids division by zero (same convention as
     :func:`torchvision.ops.distance_box_iou`).
 
-    Because the penalty is nonnegative, ``DIoU \\leq IoU`` for every pair.
+    Because the penalty is nonnegative, ``DIoU ≤ IoU`` for every pair.
     Values typically lie in ``[-1, 1]`` for well-formed boxes.
 
     Reference: https://arxiv.org/abs/1911.08287
@@ -188,9 +237,9 @@ class CIoU(BaseIoU):
     The trade-off is weighted by ``\\alpha`` that depends on IoU and ``v``,
     matching :func:`torchvision.ops.complete_box_iou`.
 
-    ``CIoU = DIoU - \\alpha v``, with ``\\alpha = v / (1 - \\mathrm{IoU} + v + \\epsilon)``.
+    ``CIoU = DIoU - alpha * v``, with ``alpha = v / (1 - IoU + v + epsilon)``.
 
-    So **CIoU \\leq DIoU \\leq IoU** when widths and heights are positive.
+    So **CIoU ≤ DIoU ≤ IoU** when widths and heights are positive.
     Scores are at most 1; unlike plain IoU they can fall **below** -1 when the
     aspect-ratio penalty is large.
 
