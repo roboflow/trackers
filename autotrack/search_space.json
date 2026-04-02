@@ -71,6 +71,11 @@
             "type": "int",
             "low": 0,
             "high": 30
+        },
+        "oru_threshold": {
+            "type": "int",
+            "low": 0,
+            "high": 15
         }
     },
     "sort": {

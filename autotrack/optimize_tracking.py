@@ -247,6 +247,11 @@ def _apply_kalman_patch(params: dict, tracker_name: str) -> None:
         "p_reset_threshold",
         params.get("p_reset_threshold", 5),
     )
+    setattr(
+        ByteTrackKalmanBoxTracker,
+        "oru_threshold",
+        params.get("oru_threshold", 2),
+    )
 
 
 # ---------------------------------------------------------------------------

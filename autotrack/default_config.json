@@ -13,7 +13,8 @@
         "velocity_decay": 0.95,
         "q_miss_alpha": 0.1,
         "max_interpolation_gap": 20,
-        "p_reset_threshold": 5
+        "p_reset_threshold": 5,
+        "oru_threshold": 2
     },
     "sort": {
         "lost_track_buffer": 30,
