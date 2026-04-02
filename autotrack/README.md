@@ -18,10 +18,9 @@ Three trackers are supported: **SORT**, **ByteTrack**, and **OC-SORT**. ByteTrac
 
 The [MOT17 benchmark](https://www.codabench.org/competitions/10049/) provides two complementary detection sources:
 
-- **FRCNN public detections** — bundled with the benchmark, reproducible on any machine without a GPU or API key. Weaker than modern detectors (HOTA ~50 vs ~60 with YOLOX), which creates genuine headroom for algorithmic improvement.
-- **YOLO detections** — generated via `generate_detections.py` using `yolov8x-1280`. Stronger recall but capped at ~49 HOTA after tuning due to the detector being a generic COCO model rather than a purpose-built pedestrian detector. Algorithmic improvements target the association ceiling above whichever detector floor is in use.
+- **FRCNN public detections** — bundled with the benchmark, reproducible on any machine without a GPU or API key. Weaker than modern detectors, which creates genuine headroom for algorithmic improvement.
 
-Additional detectors (RF-DETR, YOLOX-X CrowdHuman) are supported by `generate_detections.py`; see the Detection sources section.
+Additional detectors (RF-DETR, YOLO World X) are supported by `generate_detections.py`; see the Detection sources section.
 
 ### Why HOTA?
 
@@ -58,7 +57,7 @@ Pre-computed FRCNN public detections are downloaded with the benchmark data:
   MOT17-04-FRCNN/
     det/det.txt        ← bundled FRCNN detections
     gt/gt.txt          ← ground truth (never seen at inference)
-    img1/              ← video frames (needed for YOLO generation only)
+    img1/              ← video frames (needed for generated detections only)
 ```
 
 No inference required. Pass `--det-source frcnn` (default) to use these.
@@ -70,25 +69,25 @@ Running `generate_detections.py` creates sibling directories for each sequence:
 ```
 ~/.cache/trackers/mot17/val/
   MOT17-04-FRCNN/       ← original (frames + bundled FRCNN dets)
-  MOT17-04-YOLOX/       ← created by generate_detections.py (YOLOX-X CrowdHuman)
-    det/det.txt         ← YOLOX detections
+  MOT17-04-RFDETR/      ← created by generate_detections.py (RF-DETR-L)
+    det/det.txt
     gt   -> ../MOT17-04-FRCNN/gt    ← symlink; evaluator finds ground truth here
     img1 -> ../MOT17-04-FRCNN/img1  ← symlink; full sequence structure mirrored
-  MOT17-04-RFDETR/      ← created by generate_detections.py (RF-DETR-L)
+  MOT17-04-YOLOWORLD/   ← created by generate_detections.py (YOLO World X)
     det/det.txt
     gt   -> ../MOT17-04-FRCNN/gt
     img1 -> ../MOT17-04-FRCNN/img1
 ```
 
-The detector tag (`YOLOX`, `RFDETR`, …) is auto-derived from the model name and appended to the directory. Use `--det-source yolox` to evaluate against YOLOX detections.
+The detector tag (`RFDETR`, `YOLOWORLD`, …) is auto-derived from the model name and appended to the directory.
 
-`generate_detections.py` supports three backends via `--model`:
+`generate_detections.py` supports these backends via `--model`:
 
-| Model flag               | Tag      | Backend       | Notes                                              |
-| ------------------------ | -------- | ------------- | -------------------------------------------------- |
-| `yolox-x-crowdhuman`     | `YOLOX`  | Local weights | ByteTrack paper detector; no API key needed        |
-| `rfdetr-l`               | `RFDETR` | Native rfdetr | RF-DETR large; weights auto-downloaded; no API key |
-| `yolov8x-1280` (default) | `YOLO`   | Roboflow API  | COCO-pretrained; requires `ROBOFLOW_API_KEY`       |
+| Model flag           | Tag         | Backend       | Notes                                              |
+| -------------------- | ----------- | ------------- | -------------------------------------------------- |
+| `rfdetr-l` (default) | `RFDETR`    | Native rfdetr | RF-DETR large; weights auto-downloaded; no API key |
+| `rfdetr-n/s/m`       | `RFDETR`    | Native rfdetr | Nano / small / medium variants; same auto-download |
+| `yoloworld-x`        | `YOLOWORLD` | ultralytics   | YOLO World X; weights auto-downloaded; no API key  |
 
 Override the tag with `--detector-tag` if needed. Each detector writes to its own directory so runs never overwrite each other.
 
@@ -96,73 +95,108 @@ Override the tag with `--detector-tag` if needed. Each detector writes to its ow
 
 ### FRCNN public detections (MOT17-val, bundled)
 
-`optimize_tracking.py --fast` evaluates default parameters; no Optuna tuning.
+`optimize_tracking.py --fast` evaluates default parameters; `--n-trials 500` is the Optuna run. IDF1/MOTA/IDSW are only recorded for the Optuna-tuned result.
 
-| Tracker   | Published ref (MOT17-val, FRCNN) | HOTA default                | HOTA Optuna (500 trials) | IDF1   | MOTA   | IDSW | Theoretical ceiling |
-| --------- | -------------------------------- | --------------------------- | ------------------------ | ------ | ------ | ---- | ------------------- |
-| SORT      | ~45–50 (estimated)               | **49.950**                  | **51.488**               | 58.417 | 47.770 | 173  | ~52–55              |
-| ByteTrack | ~50–52                           | **51.198** _(Phase 1 best)_ | **51.757**               | 58.367 | 47.740 | 237  | ~60–65              |
-| OC-SORT   | ~55–57                           | **49.690**                  | **52.218**               | 58.946 | 47.753 | 233  | ~62–65              |
+Published reference points (MOT17-val, FRCNN, IoU-only): SORT ~45–50 (estimated) · ByteTrack ~50–52 · OC-SORT ~55–57. Theoretical ceilings: SORT ~52–55 · ByteTrack ~60–65 · OC-SORT ~62–65.
 
-> IDF1/MOTA/IDSW columns show the Optuna-tuned result. **Note — why is OC-SORT's FRCNN baseline below SORT?** Default params are not tuned for FRCNN dets. `minimum_iou_threshold=0.3` is conservative for noisy public detections; ByteTrack uses 0.1. Despite the lower HOTA, OC-SORT already shows 40% fewer ID switches (154 vs 260) at defaults — its direction-consistency mechanism is working. Tuned params bring all three trackers into the 51–53 HOTA range.
+| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
+| -------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults             | HOTA   | 50.355      | 49.690      | 49.950      |
+|                      | IDF1   | 56.600      | 56.143      | 56.088      |
+|                      | MOTA   | 47.406      | 45.858      | 46.769      |
+|                      | IDSW   | 234         | 154         | 260         |
+| + Optuna (n=500)     | HOTA   | 51.757      | **52.218**  | 51.488      |
+|                      | IDF1   | 58.367      | 58.946      | 58.417      |
+|                      | MOTA   | 47.740      | 47.753      | 47.770      |
+|                      | IDSW   | 237         | 233         | 173         |
+| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
+
+> **Note — why is OC-SORT's FRCNN baseline below SORT?** Default params are not tuned for FRCNN dets. `minimum_iou_threshold=0.3` is conservative for noisy public detections; ByteTrack uses 0.1. Despite the lower HOTA, OC-SORT already shows 40% fewer ID switches (154 vs 260) at defaults — its direction-consistency mechanism is working. Tuned params bring all three trackers into the 51–53 HOTA range.
 
 ### SDP public detections (MOT17-val, bundled)
 
-Bundled SDP detections; same ground truth as FRCNN. Full 7-sequence Optuna study (500 trials).
+Bundled SDP detections; same ground truth as FRCNN. Full 7-sequence eval.
 
-| Tracker   | HOTA Optuna (500 trials, 7-seq) | IDF1   | MOTA   | IDSW |
-| --------- | ------------------------------- | ------ | ------ | ---- |
-| SORT      | **56.083**                      | 67.517 | 65.283 | 326  |
-| ByteTrack | **56.115**                      | 68.077 | 65.602 | 329  |
-| OC-SORT   | **57.747**                      | 70.330 | 66.215 | 303  |
+| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
+| -------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults             | HOTA   | 53.941      | 53.351      | 53.217      |
+|                      | IDF1   | 65.402      | 65.817      | 64.538      |
+|                      | MOTA   | 62.464      | 58.731      | 61.917      |
+|                      | IDSW   | 371         | 283         | 355         |
+| + Optuna (n=500)     | HOTA   | 56.115      | **57.747**  | 56.083      |
+|                      | IDF1   | 68.077      | 70.330      | 67.517      |
+|                      | MOTA   | 65.602      | 66.215      | 65.283      |
+|                      | IDSW   | 329         | 303         | 326         |
+| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
 
-> IDF1/MOTA/IDSW columns show the Optuna-tuned result. SDP is stronger than FRCNN — expect single-sequence defaults around 60–65 HOTA on MOT17-04, but the 7-sequence Optuna average is lower because the benchmark includes harder sequences that pull the mean down.
+> SDP is stronger than FRCNN — expect single-sequence defaults around 60–65 HOTA on MOT17-04, but the 7-sequence Optuna average is lower because the benchmark includes harder sequences that pull the mean down.
 
-### DPM public detections (MOT17-val, bundled — single sequence)
+### DPM public detections (MOT17-val, bundled)
 
-DPM is the weakest bundled detector. Numbers below are default params on MOT17-04 only (`--fast`).
+DPM is the weakest bundled detector. Full 7-sequence eval.
 
-| Tracker   | HOTA (MOT17-04, default) | IDF1   | MOTA   | IDSW |
-| --------- | ------------------------ | ------ | ------ | ---- |
-| SORT      | 32.966                   | 39.686 | 25.527 | 77   |
-| ByteTrack | 32.573                   | 38.183 | 26.115 | 57   |
-| OC-SORT   | 26.106                   | 30.794 | 19.977 | 36   |
+| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
+| -------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults             | HOTA   | 31.121      | 25.256      | 29.890      |
+|                      | IDF1   | 37.897      | 30.571      | 36.308      |
+|                      | MOTA   | 26.664      | 20.662      | 25.738      |
+|                      | IDSW   | 191         | 104         | 363         |
+| + Optuna (n=500)     | HOTA   | 33.468      | **35.238**  | 31.962      |
+|                      | IDF1   | 41.178      | 43.798      | 38.660      |
+|                      | MOTA   | 27.603      | 30.904      | 26.717      |
+|                      | IDSW   | 199         | 119         | 265         |
+| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
 
-### RF-DETR detections (MOT17-val, generated — single sequence)
+### RF-DETR detections (MOT17-val, generated)
 
-RF-DETR-L (`rfdetr-l`), native backend, weights auto-downloaded. Default params, MOT17-04 only (`--fast`). Full 7-sequence Optuna study not yet run.
+RF-DETR-L (`rfdetr-l`), native backend, weights auto-downloaded. Defaults: MOT17-04 only (`--fast`). Optuna: full 7-sequence.
 
-| Tracker   | HOTA (MOT17-04, default) | IDF1   | MOTA   | IDSW |
-| --------- | ------------------------ | ------ | ------ | ---- |
-| SORT      | 49.606                   | 55.911 | 43.171 | 96   |
-| ByteTrack | 35.759                   | 33.341 | 19.224 | 1    |
-| OC-SORT   | 33.763                   | 31.047 | 17.446 | 5    |
+| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
+| -------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults             | HOTA   | 35.759      | 33.763      | 49.606      |
+|                      | IDF1   | 33.341      | 31.047      | 55.911      |
+|                      | MOTA   | 19.224      | 17.446      | 43.171      |
+|                      | IDSW   | 1           | 5           | 96          |
+| + Optuna (n=500)     | HOTA   | 44.804      | **46.724**  | 44.219      |
+|                      | IDF1   | 50.757      | 54.484      | 50.221      |
+|                      | MOTA   | 32.394      | 38.734      | 34.077      |
+|                      | IDSW   | 326         | 249         | 498         |
+| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
 
-> RF-DETR with default params (tuned for FRCNN) performs well for SORT but poorly for ByteTrack/OC-SORT — the high-conf threshold and IoU defaults don't match RF-DETR's score distribution. An Optuna run is expected to close this gap significantly.
+> RF-DETR defaults (tuned for FRCNN) favour SORT — its looser thresholds match RF-DETR's score distribution better. After Optuna, OC-SORT flips to lead: direction-consistency recovers strongly once thresholds are tuned, outpacing both ByteTrack and SORT by ~2.5 HOTA.
 
-### YOLOX-X CrowdHuman detections (MOT17-val, generated — single sequence)
+### YOLO World X detections (MOT17-val, generated)
 
-ByteTrack paper detector (`yolox-x-crowdhuman`). Default params, MOT17-04 only (`--fast`). Full 7-sequence Optuna study not yet run.
+YOLO World X (`yoloworld`), generated via `generate_detections.py`. Full 7-sequence eval.
 
-| Tracker   | HOTA (MOT17-04, default) | IDF1  | MOTA      | IDSW |
-| --------- | ------------------------ | ----- | --------- | ---- |
-| SORT      | 3.787                    | 1.188 | -1205.757 | 265  |
-| ByteTrack | 7.382                    | 4.106 | -143.585  | 48   |
-| OC-SORT   | 5.994                    | 3.446 | -90.673   | 18   |
+| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
+| -------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults             | HOTA   | 33.291      | 29.565      | 41.468      |
+|                      | IDF1   | 33.123      | 30.079      | 46.795      |
+|                      | MOTA   | 22.589      | 18.013      | 32.179      |
+|                      | IDSW   | 89          | 49          | 107         |
+| + Optuna (n=500)     | HOTA   | 43.110      | 41.406      | **45.629**  |
+|                      | IDF1   | 47.444      | 45.546      | 52.432      |
+|                      | MOTA   | 33.143      | 31.273      | 36.962      |
+|                      | IDSW   | 126         | 107         | 171         |
+| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
 
-> **These numbers are not a bug — they are expected without detector-specific tuning.** The default thresholds (`track_activation_threshold=0.7`, `high_conf_det_threshold=0.6`) were calibrated for FRCNN's score distribution. YOLOX-X CrowdHuman scores are distributed very differently — the same thresholds either let through a flood of low-confidence detections (causing MOTA to crater to −1000+) or suppress almost everything. An Optuna run will bring HOTA to 60–65, matching published results. Do not compare these numbers to FRCNN defaults.
-
-### YOLO detections (MOT17-val, generated — yolov8x-1280) _(historical reference)_
-
-> **These numbers are from a prior setup and may not be reproducible here.** Generating YOLOv8x-1280 detections requires a `ROBOFLOW_API_KEY`. Published YOLOX MOT17-test numbers provided for reference; val scores run ~3–5 pts higher than test.
-
-| Tracker   | Published ref (MOT17-test, YOLOX) | HOTA default | HOTA Optuna (2000 trials) | IDF1   | MOTA   | IDSW | Theoretical ceiling |
-| --------- | --------------------------------- | ------------ | ------------------------- | ------ | ------ | ---- | ------------------- |
-| SORT      | ~58.4 (test)                      | 47.933       | **48.963**                | 55.913 | 39.148 | 311  | ~62–65              |
-| ByteTrack | ~60.1 (test)                      | 45.574       | **48.250**                | 54.524 | 40.594 | 234  | ~68–72              |
-| OC-SORT   | ~61.9 (test)                      | 42.636       | **48.996**                | 57.047 | 40.358 | 189  | ~70–75              |
-
-> **Why does Optuna only reach ~49 HOTA?** After 2000 trials all three trackers converge to the same ~49 HOTA ceiling — still below FRCNN (51.2 ByteTrack). This confirms the detector gap: `yolov8x-1280` is a generic COCO 80-class model, not a purpose-built pedestrian detector. Reaching 58–65 HOTA requires a stronger pedestrian detector, not parameter tuning.
+> YOLO World X with default params shows the same pattern as RF-DETR: SORT leads because its looser IoU threshold (0.3 vs 0.1) better matches the detector's score distribution. After Optuna, ByteTrack closes to within 2.5 HOTA of SORT — the gap narrows but doesn't close, suggesting a structural mismatch rather than a pure tuning issue.
 
 ### Metric legend
 
@@ -194,22 +228,22 @@ uv run python optimize_tracking.py sort      dpm
 uv run python optimize_tracking.py bytetrack dpm
 uv run python optimize_tracking.py ocsort    dpm
 
-# YOLOX-X CrowdHuman (requires generate_detections.py --model yolox-x-crowdhuman)
-uv run python optimize_tracking.py sort      yolox
-uv run python optimize_tracking.py bytetrack yolox
-uv run python optimize_tracking.py ocsort    yolox
-
 # RF-DETR (requires generate_detections.py --model rfdetr-l)
 uv run python optimize_tracking.py sort      rfdetr
 uv run python optimize_tracking.py bytetrack rfdetr
 uv run python optimize_tracking.py ocsort    rfdetr
+
+# YOLO World X (requires generate_detections.py --model yoloworld-x)
+uv run python optimize_tracking.py sort      yoloworld
+uv run python optimize_tracking.py bytetrack yoloworld
+uv run python optimize_tracking.py ocsort    yoloworld
 ```
 
 </details>
 
 ## Target analysis
 
-The ByteTrack Phase 2 campaign target of HOTA = 68.0 is set above the published YOLOX IoU-only ceiling (OC-SORT val ≈ 65–67) and therefore requires real architectural improvements, not parameter search.
+The ByteTrack Phase 2 campaign target of HOTA = 68.0 requires real architectural improvements, not parameter search — Optuna alone on FRCNN detections plateaus around 52–53.
 
 **HOTA formula**: HOTA = √(DetA × AssA) × 100, where DetA measures detection accuracy and AssA measures ID-consistency over time.
 
@@ -258,23 +292,6 @@ uv run python optimize_tracking.py sort frcnn --fast          # SORT sanity chec
 uv run python optimize_tracking.py ocsort frcnn --fast        # OC-SORT sanity check
 ```
 
-### YOLOX detections (ByteTrack paper detector — recommended for the campaign)
-
-YOLOX detections are not bundled. Generate them once before starting the campaign:
-
-```bash
-# Download frames (~4 GB additional) + annotations + detections
-trackers download mot17 --split val --asset annotations,detections,frames
-# Run YOLOX-X CrowdHuman inference — creates MOT17-{N}-YOLOX/ sibling dirs
-cd autotrack && uv run python generate_detections.py \
-    --model yolox-x-crowdhuman \
-    --weights pretrained/bytetrack_x_mot17.pth.tar
-# Verify with a single sequence
-uv run python optimize_tracking.py bytetrack yolox --fast
-```
-
-Run with `--skip-existing` to resume an interrupted generation without re-running inference on completed sequences.
-
 ### RF-DETR detections (no API key — weights auto-downloaded)
 
 ```bash
@@ -315,15 +332,15 @@ uv run python optimize_tracking.py bytetrack mydet --n-trials 50
 
 Before starting the campaign loop, all steps must pass:
 
-| Check            | Command                                                                                                          | Expected result                                                      |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Dependencies     | `uv sync --group optimize`                                                                                       | Resolves without error                                               |
-| MOT17 data       | `trackers download mot17 --split val --asset annotations,detections,frames`                                      | Downloads to `~/.cache/trackers/mot17/val/`                          |
-| YOLOX detections | `uv run python generate_detections.py --model yolox-x-crowdhuman --weights pretrained/bytetrack_x_mot17.pth.tar` | Creates `MOT17-{N}-YOLOX/` sibling dirs for all 7 sequences          |
-| RF-DETR (alt)    | `uv run python generate_detections.py --model rfdetr-l`                                                          | Creates `MOT17-{N}-RFDETR/` sibling dirs; no API key or weights file |
-| Metric sanity    | `uv run python optimize_tracking.py bytetrack yolox --fast`                                                      | Prints `__METRICS__: HOTA≈60–67` (YOLOX-val, single seq)             |
+| Check         | Command                                                                     | Expected result                                                         |
+| ------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Dependencies  | `uv sync --group optimize`                                                  | Resolves without error                                                  |
+| MOT17 data    | `trackers download mot17 --split val --asset annotations,detections,frames` | Downloads to `~/.cache/trackers/mot17/val/`                             |
+| RF-DETR       | `uv run python generate_detections.py --model rfdetr-l`                     | Creates `MOT17-{N}-RFDETR/` sibling dirs; no API key or weights file    |
+| YOLO World X  | `uv run python generate_detections.py --model yoloworld-x`                  | Creates `MOT17-{N}-YOLOWORLD/` sibling dirs; no API key or weights file |
+| Metric sanity | `uv run python optimize_tracking.py bytetrack frcnn --fast`                 | Prints `__METRICS__: HOTA≈50–55` (FRCNN-val, single seq)                |
 
-> **Bundled-only run** (no frames needed): use `frcnn` as det-source. Expect `HOTA≈51.2`. The Phase 2 campaign in `program.md` targets YOLOX.
+> **Bundled-only run** (no frames needed): use `frcnn` as det-source. Expect `HOTA≈50–55`.
 
 The campaign metric command uses `uv run` — bare `python` will fail with `ModuleNotFoundError: No module named 'fire'` because `fire` only lives in the `uv` virtualenv.
 

@@ -11,9 +11,9 @@ Usage:
     python optimize_tracking.py bytetrack frcnn         # ByteTrack, FRCNN dets
     python optimize_tracking.py sort frcnn              # SORT baseline
     python optimize_tracking.py ocsort sdp              # OC-SORT, SDP dets
-    python optimize_tracking.py bytetrack yolox         # ByteTrack, YOLOX dets
+    python optimize_tracking.py bytetrack yoloworld      # ByteTrack, YOLO-World dets
     python optimize_tracking.py bytetrack frcnn --n-trials 200   # Full Optuna study
-    python optimize_tracking.py bytetrack yolox --n-trials 50 --fast  # Quick study
+    python optimize_tracking.py bytetrack yoloworld --n-trials 50 --fast  # Quick study
     python optimize_tracking.py bytetrack mydet                   # Custom detector
 
 Supported trackers: sort | bytetrack | ocsort
@@ -23,8 +23,8 @@ Supported det-sources (MOT17 bundled detectors, no setup needed):
   dpm     — DPM bundled detections from MOT17-{N}-DPM/det/det.txt
 
 Supported det-sources (generated via generate_detections.py):
-  yolox   — YOLOX-X CrowdHuman detections from MOT17-{N}-YOLOX/det/det.txt
-  rfdetr  — RF-DETR-L detections from MOT17-{N}-RFDETR/det/det.txt
+  yoloworld — YOLO-World detections from MOT17-{N}-YOLOWORLD/det/det.txt
+  rfdetr    — RF-DETR-L detections from MOT17-{N}-RFDETR/det/det.txt
 
 Custom detectors:
   Pass any det_source name not in the list above (e.g. "mydet") — it is
@@ -72,7 +72,7 @@ _DET_SOURCE_TO_TAG: dict[str, str] = {
     "frcnn": "FRCNN",
     "sdp": "SDP",
     "dpm": "DPM",
-    "yolox": "YOLOX",
+    "yoloworld": "YOLOWORLD",
     "rfdetr": "RFDETR",
 }
 
@@ -205,9 +205,13 @@ def _apply_kalman_patch(params: dict, tracker_name: str) -> None:
         self.P = np.eye(self.P.shape[0], dtype=np.float32) * p
 
     setattr(ByteTrackKalmanBoxTracker, "_initialize_kalman_filter", _patched)
-    ByteTrackKalmanBoxTracker.velocity_decay = vel_decay
-    ByteTrackKalmanBoxTracker.q_miss_alpha = q_miss
-    ByteTrackKalmanBoxTracker.p_reset_threshold = params.get("p_reset_threshold", 5)
+    setattr(ByteTrackKalmanBoxTracker, "velocity_decay", vel_decay)
+    setattr(ByteTrackKalmanBoxTracker, "q_miss_alpha", q_miss)
+    setattr(
+        ByteTrackKalmanBoxTracker,
+        "p_reset_threshold",
+        params.get("p_reset_threshold", 5),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -245,11 +249,9 @@ def _run_tracker_on_sequence(
     max_frame = max(detections_data.keys())
     lines = []
     for frame_idx in range(1, max_frame + 1):
-        dets = (
-            _mot_frame_to_detections(detections_data[frame_idx])
-            if frame_idx in detections_data
-            else sv.Detections.empty()
-        )
+        dets = sv.Detections.empty()
+        if frame_idx in detections_data:
+            dets = _mot_frame_to_detections(detections_data[frame_idx])
         tracked = tracker.update(dets)
         if tracked.tracker_id is not None:
             for i, tid in enumerate(tracked.tracker_id):
@@ -257,11 +259,9 @@ def _run_tracker_on_sequence(
                     continue
                 x1, y1, x2, y2 = tracked.xyxy[i]
                 w, h = x2 - x1, y2 - y1
-                conf = (
-                    float(tracked.confidence[i])
-                    if tracked.confidence is not None
-                    else 1.0
-                )
+                conf = 1.0
+                if tracked.confidence is not None:
+                    conf = float(tracked.confidence[i])
                 lines.append(
                     f"{frame_idx},{tid + 1},{x1:.2f},{y1:.2f},"
                     f"{w:.2f},{h:.2f},{conf:.4f},-1,-1,-1"
@@ -280,7 +280,7 @@ def _ensure_gt_symlink(data_dir: Path, seq: str) -> None:
     Bundled SDP and DPM sequence directories do not include a gt/ subdirectory;
     ground truth lives only in the corresponding FRCNN sibling (which is always
     downloaded alongside the other detectors).  This mirrors what
-    ``generate_detections.py`` does for YOLOX/RFDETR directories.
+    ``generate_detections.py`` does for YOLOWORLD/RFDETR directories.
 
     Args:
         data_dir: MOT17-val root directory.
@@ -321,9 +321,9 @@ def _run_eval(
             det_file = data_dir / seq / "det" / "det.txt"
             if det_file.exists():
                 _run_tracker_on_sequence(
-                    tracker,
-                    det_file,
-                    output_dir / f"{seq}.txt",
+                    tracker=tracker,
+                    det_file=det_file,
+                    output_file=output_dir / f"{seq}.txt",
                     max_interpolation_gap=max_interp,
                 )
 
@@ -411,7 +411,7 @@ def _mp_worker(
         sequences: MOT17-val sequence names to evaluate.
         data_dir_str: Stringified path to the MOT17-val root (pickling-safe).
         tracker_name: Which tracker to evaluate (sort | bytetrack | ocsort).
-        det_source: Detection source — "frcnn", "sdp", "dpm", "yolo", or "yolox".
+        det_source: Detection source — "frcnn", "sdp", "dpm", "yolo", or "yoloworld".
     """
     _data_dir = Path(data_dir_str)
     _study = optuna.load_study(study_name=_STUDY_NAME, storage=storage_url)
@@ -433,7 +433,7 @@ def _mp_worker(
 def _validate_args(tracker: str, det_source: str) -> None:
     """Raise ValueError if tracker is unrecognised.
 
-    Any ``det_source`` value is accepted — known sources (frcnn, sdp, dpm, yolox,
+    Any ``det_source`` value is accepted — known sources (frcnn, sdp, dpm, yoloworld,
     rfdetr) map to their canonical tags via ``_DET_SOURCE_TO_TAG``; unknown values
     are uppercased automatically, enabling custom detectors without any extra flags.
     """
@@ -451,7 +451,7 @@ def _resolve_sequences(
     """Locate MOT17 dir and enumerate sequences for the requested detector.
 
     Sequences are discovered by the directory suffix that matches the detector tag
-    (e.g. ``-FRCNN`` for frcnn, ``-YOLOX`` for yolox).  Each sequence directory must
+    (e.g. ``-FRCNN`` for frcnn, ``-YOLOWORLD`` for yoloworld).  Each sequence dir must
     have ``det/det.txt``; ground truth is found via ``gt/gt.txt`` (which may be a
     symlink created by ``generate_detections.py``).
 
@@ -498,7 +498,7 @@ def _load_warm_start(
     Args:
         best_config_path: Path to ``best_config.json``.
         tracker: Tracker name (sort | bytetrack | ocsort).
-        det_source: Detection source (frcnn | sdp | dpm | yolo | yolox).
+        det_source: Detection source (frcnn | sdp | dpm | yolo | yoloworld).
         n_trials: Number of trials; warm-start is skipped when n_trials == 1.
 
     Returns:
@@ -524,6 +524,92 @@ def _load_warm_start(
         return None
 
 
+def _make_progress_bar() -> Progress:
+    """Standard progress bar used for Optuna trial tracking."""
+    return Progress(
+        TextColumn("  {task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeRemainingColumn(),
+        console=_err,
+    )
+
+
+def _run_parallel_study(
+    n_trials: int,
+    n_workers: int,
+    cpu_count: int,
+    initial_params: dict,
+    sequences: list[str],
+    data_dir: Path,
+    tracker: str,
+    det_source: str,
+) -> optuna.Study:
+    """Run an Optuna study across ``n_workers`` processes via a SQLite back-end.
+
+    Args:
+        n_trials: Total trials to distribute across workers.
+        n_workers: Number of parallel worker processes.
+        cpu_count: Logical CPU count (used only for the startup log line).
+        initial_params: Parameter dict enqueued as the first trial (warm start).
+        sequences: MOT17-val sequence names each worker evaluates.
+        data_dir: Root directory containing the sequences.
+        tracker: Tracker name (sort | bytetrack | ocsort).
+        det_source: Detection source tag (frcnn | sdp | dpm | yoloworld | rfdetr).
+
+    Returns:
+        Completed ``optuna.Study`` loaded from the shared SQLite storage.
+    """
+    import multiprocessing
+    import os
+    import tempfile
+
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    storage_url = f"sqlite:///{db_path}"
+    try:
+        study = optuna.create_study(
+            study_name=_STUDY_NAME,
+            storage=storage_url,
+            direction="maximize",
+            sampler=optuna.samplers.TPESampler(seed=42),
+        )
+        study.enqueue_trial(initial_params)
+        base, rem = divmod(n_trials, n_workers)
+        counts = [base + (1 if i < rem else 0) for i in range(n_workers)]
+        worker_args = [
+            (storage_url, c, sequences, str(data_dir), tracker, det_source)
+            for c in counts
+        ]
+        print(f"[→ {n_workers} workers · {n_trials} trials · {cpu_count} cores]")
+        with multiprocessing.Pool(n_workers) as pool:
+            result = pool.starmap_async(_mp_worker, worker_args)
+            with _make_progress_bar() as prog:
+                _prefix = f"{tracker} | {det_source}"
+                tid = prog.add_task(f"{_prefix} | HOTA=?", total=n_trials)
+                while not result.ready():
+                    _poll = optuna.load_study(
+                        study_name=_STUDY_NAME, storage=storage_url
+                    )
+                    done = sum(
+                        1
+                        for t in _poll.trials
+                        if t.state == optuna.trial.TrialState.COMPLETE
+                    )
+                    best = _poll.best_value if done > 0 else 0.0
+                    prog.update(
+                        tid,
+                        completed=done,
+                        description=f"{_prefix} | HOTA={best:.3f}",
+                    )
+                    result.wait(timeout=2)
+                prog.update(tid, completed=n_trials)
+            result.get()  # re-raise any worker exceptions
+        return optuna.load_study(study_name=_STUDY_NAME, storage=storage_url)
+    finally:
+        Path(db_path).unlink(missing_ok=True)
+
+
 def _run_optuna_study(
     n_trials: int,
     n_jobs: int,
@@ -534,7 +620,7 @@ def _run_optuna_study(
     defaults: dict,
     warm: dict | None,
 ) -> tuple[optuna.Study, int]:
-    """Create and run an Optuna study, using multiprocessing when n_trials > 1.
+    """Create and run an Optuna study, using multiprocessing when n_workers > 1.
 
     Args:
         n_trials: Total number of trials to run.
@@ -542,75 +628,29 @@ def _run_optuna_study(
         sequences: MOT17-val sequence names to evaluate per trial.
         data_dir: Root directory containing the sequences.
         tracker: Tracker name (sort | bytetrack | ocsort).
-        det_source: Detection source (frcnn | sdp | dpm | yolo | yolox).
+        det_source: Detection source (frcnn | sdp | dpm | yolo | yoloworld).
         defaults: Default parameter dict (from ``default_config.json``) to enqueue.
         warm: Prior best-config dict to warm-start from, or None.
 
     Returns:
         Tuple of (completed Optuna Study, number of workers used).
     """
-    import multiprocessing
     import os
-    import tempfile
 
     cpu_count = os.cpu_count() or 1
-    n_workers = (
-        1
-        if n_trials == 1
-        else min(n_trials, cpu_count if n_jobs == -1 else max(1, n_jobs))
-    )
+    n_workers = min(n_trials, cpu_count if n_jobs == -1 else max(1, n_jobs))
 
     if n_workers > 1:
-        fd, db_path = tempfile.mkstemp(suffix=".db")
-        os.close(fd)
-        storage_url = f"sqlite:///{db_path}"
-        try:
-            study = optuna.create_study(
-                study_name=_STUDY_NAME,
-                storage=storage_url,
-                direction="maximize",
-                sampler=optuna.samplers.TPESampler(seed=42),
-            )
-            study.enqueue_trial(warm or defaults)
-            base, rem = divmod(n_trials, n_workers)
-            counts = [base + (1 if i < rem else 0) for i in range(n_workers)]
-            worker_args = [
-                (storage_url, c, sequences, str(data_dir), tracker, det_source)
-                for c in counts
-            ]
-            print(f"[→ {n_workers} workers · {n_trials} trials · {cpu_count} cores]")
-            with multiprocessing.Pool(n_workers) as pool:
-                result = pool.starmap_async(_mp_worker, worker_args)
-                with Progress(
-                    TextColumn("  {task.description}"),
-                    BarColumn(),
-                    MofNCompleteColumn(),
-                    TimeRemainingColumn(),
-                    console=_err,
-                ) as prog:
-                    _prefix = f"{tracker} | {det_source}"
-                    tid = prog.add_task(f"{_prefix} | HOTA=?", total=n_trials)
-                    while not result.ready():
-                        _poll = optuna.load_study(
-                            study_name=_STUDY_NAME, storage=storage_url
-                        )
-                        done = sum(
-                            1
-                            for t in _poll.trials
-                            if t.state == optuna.trial.TrialState.COMPLETE
-                        )
-                        best = _poll.best_value if done > 0 else 0.0
-                        prog.update(
-                            tid,
-                            completed=done,
-                            description=f"{_prefix} | HOTA={best:.3f}",
-                        )
-                        result.wait(timeout=2)
-                    prog.update(tid, completed=n_trials)
-                result.get()  # re-raise any worker exceptions
-            study = optuna.load_study(study_name=_STUDY_NAME, storage=storage_url)
-        finally:
-            Path(db_path).unlink(missing_ok=True)
+        study = _run_parallel_study(
+            n_trials=n_trials,
+            n_workers=n_workers,
+            cpu_count=cpu_count,
+            initial_params=warm or defaults,
+            sequences=sequences,
+            data_dir=data_dir,
+            tracker=tracker,
+            det_source=det_source,
+        )
     else:
         study = optuna.create_study(
             direction="maximize",
@@ -632,13 +672,7 @@ def _run_optuna_study(
         callbacks: list = []
         _trial_prog: Progress | None = None
         if n_trials > 1:
-            _trial_prog = Progress(
-                TextColumn("  {task.description}"),
-                BarColumn(),
-                MofNCompleteColumn(),
-                TimeRemainingColumn(),
-                console=_err,
-            )
+            _trial_prog = _make_progress_bar()
             _prefix = f"{tracker} | {det_source}"
             _tid = _trial_prog.add_task(f"{_prefix} | HOTA=?", total=n_trials)
             _trial_prog.start()
@@ -681,7 +715,7 @@ def _save_best_if_improved(
     Args:
         best_config_path: Path to ``best_config.json``.
         tracker: Tracker name (sort | bytetrack | ocsort).
-        det_source: Detection source (frcnn | sdp | dpm | yolo | yolox).
+        det_source: Detection source (frcnn | sdp | dpm | yolo | yoloworld).
         best_metrics: Metric dict from the current run.
         best_params: Corresponding Optuna best params.
         n_trials: Saving is skipped for single-trial baseline evals.
@@ -746,14 +780,13 @@ def main(
         tracker: Which tracker to evaluate. One of: sort | bytetrack | ocsort.
         det_source: Detection source — maps to MOT17-{N}-{TAG}/det/det.txt.
             Bundled (no setup): frcnn, sdp, dpm.
-            Generated (run generate_detections.py first): yolox, rfdetr.
+            Generated (run generate_detections.py first): yoloworld, rfdetr.
             Any other value is uppercased and used directly as the directory tag,
             e.g. ``mydet`` → ``MOT17-{N}-MYDET/``.
         n_trials: Number of Optuna trials. 1 evaluates default params (campaign metric).
         fast: Single sequence only (~3x faster, for development checks).
         data_dir: MOT17 val directory. Auto-detected from standard cache paths if unset.
-        n_jobs: Worker processes for parallel trials. -1 uses all CPU cores. 1 disables
-            multiprocessing. Ignored when n_trials=1 (single eval needs no parallelism).
+        n_jobs: Worker processes. -1 uses all CPU cores (default). 1 = single process.
     """
     _validate_args(tracker, det_source)
 

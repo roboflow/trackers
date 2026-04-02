@@ -12,20 +12,16 @@ Each detector gets its own sequence-level sibling directory, making the detector
 visible directly in the filesystem path.
 
 Usage:
-    uv run python generate_detections.py \\
-        --model yolox-x-crowdhuman \\
-        --weights pretrained/yolox_x.pth        # → YOLOX/  (recommended)
-    uv run python generate_detections.py --model rfdetr-l   # → RFDETR/
-    uv run python generate_detections.py --seq MOT17-04     # single sequence
-    uv run python generate_detections.py --model yolov8x-640 --conf 0.3
+    uv run python generate_detections.py --model rfdetr/l              # → RFDETR/
+    uv run python generate_detections.py --model yolo_world/l         # → YOLOWORLD/
+    uv run python generate_detections.py --model yolo_world/l \\
+        --api-key YOUR_ROBOFLOW_KEY                                    # explicit key
+    uv run python generate_detections.py --seq MOT17-04               # single sequence
 
 Prerequisites:
     1. Install optimize group:
            uv sync --group optimize
-    2. API key (Roboflow models only — not required for yolox or rfdetr):
-           export ROBOFLOW_API_KEY=your_key_here
-       Get a free key at https://app.roboflow.com — Account → API Key.
-    3. Download frame images (≈ 4 GB):
+    2. Download frame images (≈ 4 GB):
            trackers download mot17 --split val --asset annotations,detections,frames
 
 Output:
@@ -34,8 +30,7 @@ Output:
     {data_dir}/{sequence_base}-{TAG}/img1 →  symlink to ../{sequence_base}-FRCNN/img1
 
     TAG is auto-derived from the model name (rfdetr → RFDETR,
-    yolox-x-crowdhuman → YOLOX, yolov8x → YOLO) and can be overridden
-    with ``--detector-tag``.
+    yolo_world/l → YOLOWORLD) and can be overridden with ``--detector-tag``.
 
     Each line:  frame_idx,-1,x,y,w,h,confidence,-1,-1,-1
     where (x, y) is the top-left corner and (w, h) is width/height.
@@ -43,30 +38,24 @@ Output:
 
 Detector backends:
 
-    rfdetr (recommended — no API key needed):
-        Models:   ``rfdetr-l`` (large) — size suffix is required
+    rfdetr (default — no API key needed):
+        Model:    ``rfdetr/l`` (large) — size suffix is required
         Backend:  native ``rfdetr`` package (>= 1.6)
         Weights:  downloaded automatically on first use
-        Returns ``sv.Detections`` directly; person class filtered from COCO output.
 
-    yolox (YOLOX-X CrowdHuman / ByteTrack weights — no API key needed):
-        Model:    ``yolox-x-crowdhuman``
-        Backend:  local YOLOX package (``pip install yolox torch``)
-        Weights:  download ``bytetrack_x_mot17.pth.tar`` from the ByteTrack
-                  GitHub releases and pass ``--weights /path/to/file``
-        This is the exact detector used in the published ByteTrack MOT17 numbers.
-        Outputs are person-only (single class).
-
-    roboflow (any Roboflow-hosted model — requires ROBOFLOW_API_KEY):
-        Any Roboflow-hosted model ID, e.g. ``yolov8x-1280``.
-        Passed directly to ``inference.get_model()``.
-        All COCO models output person as class 0; other classes are discarded.
+    yolo_world (open-vocabulary person detector):
+        Model:    ``yolo_world/s``, ``yolo_world/m``, ``yolo_world/l`` (default),
+                  ``yolo_world/x``
+        Backend:  ``inference-models`` package (>= 0.19.0)
+        API key:  set ``ROBOFLOW_API_KEY`` env var, or pass ``--api-key``
+                  (needed to download weights on first use)
+        Text:     searches for ``"person"`` via CLIP text embeddings
+        Outputs are person-only (single text class).
 
 Notes:
     - Each detector writes to its own sequence-level directory (e.g.
-      ``MOT17-04-RFDETR/``, ``MOT17-04-YOLOX/``), keeping detector outputs fully
-      transparent in the filesystem.  Use ``--detector-tag`` to override the
-      auto-derived tag.
+      ``MOT17-04-RFDETR/``, ``MOT17-04-YOLOWORLD/``), keeping detector outputs
+      fully transparent in the filesystem.  Use ``--detector-tag`` to override.
     - Overwrites existing det.txt if present (use --skip-existing).
     - Ground truth (gt/) is never read or written; inference is detection-only.
     - Sequences without an img1/ directory are skipped with a warning.
@@ -74,40 +63,31 @@ Notes:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
 import fire
 import supervision as sv
-from loguru import logger as _loguru_logger
 from rich.console import Console
 from rich.progress import track
 
 console = Console()
 
-# Silence per-frame "Infer time" logs from yolox — they break Rich's live rendering
-_loguru_logger.disable("yolox")
-
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
 
-_DEFAULT_MODEL_ID = "yolov8x-1280"  # YOLOv8-X 1280 px — best recall, free tier
+_DEFAULT_MODEL_ID = "rfdetr/l"
 _DEFAULT_CONFIDENCE = 0.1  # low threshold — let the tracker filter aggressively
-_DEFAULT_IOU_THRESHOLD = 0.45  # NMS threshold
 
-# Person class ID varies by backend:
-# - Roboflow inference / YOLOX: 0-indexed COCO → person = 0
-# - rfdetr native (>= 1.6): 1-indexed COCO category IDs → person = 1
-_COCO_PERSON_CLASS_ID = 0
+# rfdetr native (>= 1.6) uses 1-indexed COCO category IDs; person = 1
 _RFDETR_PERSON_CLASS_ID = 1
 
-# Model names that route to the local YOLOX backend instead of Roboflow inference
-_YOLOX_BACKEND_MODELS = frozenset({"yolox-x-crowdhuman", "yolox-x"})
-
-# Model names that route to the native rfdetr package (>= 1.6) — no API key needed
-_RFDETR_NATIVE_MODELS = frozenset({"rfdetr-l"})
+_RFDETR_NATIVE_MODELS = frozenset({"rfdetr/n", "rfdetr/s", "rfdetr/m", "rfdetr/l"})
+# YOLO-World with text=["person"] outputs person-only (single text class)
+_YOLO_WORLD_MODELS = frozenset(
+    {"yolo_world/s", "yolo_world/m", "yolo_world/l", "yolo_world/x"}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -133,24 +113,24 @@ def _find_data_dir() -> Path:
 def _derive_detector_tag(model: str) -> str:
     """Derive an uppercase detector tag from a model identifier.
 
-    The tag is used as the directory suffix, e.g. ``MOT17-04-YOLO/``.
+    The tag is used as the directory suffix, e.g. ``MOT17-04-RFDETR/``.
 
     Args:
-        model: Model name or Roboflow model ID, e.g. ``"yolov8x-1280"``,
-            ``"rf-detr-l"``, ``"yolox-x-crowdhuman"``.
+        model: Model name or Roboflow model ID, e.g. ``"rfdetr/l"``,
+            ``"yolo_world/x"``.
 
     Returns:
-        Short uppercase tag, e.g. ``"YOLO"``, ``"RFDETR"``, ``"YOLOX"``.
+        Short uppercase tag, e.g. ``"RFDETR"``, ``"YOLOWORLD"``.
 
     Examples:
-        Default YOLOv8x model maps to ``"YOLO"``::
+        RF-DETR maps to ``"RFDETR"``::
 
-            tag = _derive_detector_tag("yolov8x-1280")
-            # "YOLO"
+            tag = _derive_detector_tag("rfdetr/l")
+            # "RFDETR"
     """
     m = model.lower()
-    if m.startswith("yolox"):
-        return "YOLOX"
+    if m.startswith("yolo_world") or m.startswith("yolo-world"):
+        return "YOLOWORLD"
     if m.startswith("rfdetr") or m.startswith("rf-detr"):
         return "RFDETR"
     if m.startswith("yolo"):
@@ -160,23 +140,58 @@ def _derive_detector_tag(model: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Roboflow inference backend
+# YOLO-World backend (inference-models >= 0.19.0)
 # ---------------------------------------------------------------------------
 
 
-def _process_frame(
+def _load_yolo_world_model(model_id: str, api_key: str | None) -> Any:
+    """Load a YOLO-World model via the inference-models package.
+
+    Weights are downloaded from Roboflow on first use.  Set
+    ``ROBOFLOW_API_KEY`` or pass ``api_key`` explicitly.
+
+    Args:
+        model_id: One of ``"yolo_world/s"``, ``"yolo_world/m"``,
+            ``"yolo_world/l"`` (default), ``"yolo_world/x"``.
+        api_key: Roboflow API key.  Falls back to the ``ROBOFLOW_API_KEY``
+            environment variable when ``None``.
+
+    Returns:
+        A ``YOLOWorld`` model instance ready for ``.infer()`` calls.
+
+    Raises:
+        RuntimeError: If the ``inference-models`` package is not installed.
+
+    Examples:
+        Load the large YOLO-World model::
+
+            model = _load_yolo_world_model("yolo_world/l", api_key=None)
+    """
+    try:
+        from inference.models.yolo_world import YOLOWorld
+    except ImportError as exc:
+        raise RuntimeError(
+            "YOLO-World backend requires the 'inference-models' package.\n"
+            "Install: uv sync --group optimize"
+        ) from exc
+    return YOLOWorld(model_id=model_id, api_key=api_key)
+
+
+def _process_frame_yolo_world(
     frame_path: Path,
     model: Any,
     confidence: float,
-    iou_threshold: float,
 ) -> list[str]:
-    """Run Roboflow inference on one frame; return MOT-format detection lines.
+    """Run YOLO-World inference on one frame; return MOT-format detection lines.
+
+    The model is queried with text prompt ``["person"]``.  Predictions are
+    returned in center-format (x_center, y_center, width, height) and are
+    converted to top-left corner format for MOT output.
 
     Args:
         frame_path: Image file whose stem is a zero-padded integer frame index.
-        model: Loaded Roboflow inference model with an ``infer`` method.
+        model: A loaded ``YOLOWorld`` instance.
         confidence: Minimum detection confidence threshold.
-        iou_threshold: NMS IoU threshold passed to the model.
 
     Returns:
         List of strings in MOT format: ``"frame,-1,x,y,w,h,conf,-1,-1,-1"``.
@@ -184,149 +199,23 @@ def _process_frame(
     Examples:
         Output is a list of comma-separated detection strings::
 
-            lines = _process_frame(frame_path, model, 0.1, 0.45)
+            lines = _process_frame_yolo_world(frame_path, model, confidence=0.1)
             # ["1,-1,120.50,200.30,60.00,150.00,0.9200,-1,-1,-1", ...]
     """
     frame_idx = int(frame_path.stem)
-    results = model.infer(
+    response = model.infer(
         image=str(frame_path),
+        text=["person"],
         confidence=confidence,
-        iou_threshold=iou_threshold,
     )
-    result = results[0] if isinstance(results, list) else results
-    detections = sv.Detections.from_inference(result)
-    detections = detections[detections.class_id == _COCO_PERSON_CLASS_ID]  # type: ignore[assignment]
     lines = []
-    for i, (x1, y1, x2, y2) in enumerate(detections.xyxy):
-        w = x2 - x1
-        h = y2 - y1
-        if detections.confidence is None:
-            raise RuntimeError(
-                f"Model returned no confidence scores for frame {frame_path.stem}."
-                " Use a model that provides per-detection confidence."
-            )
-        conf = float(detections.confidence[i])
+    for pred in response.predictions:
+        # inference returns center-format; convert to top-left for MOT
+        x_tl = pred.x - pred.width / 2
+        y_tl = pred.y - pred.height / 2
         lines.append(
-            f"{frame_idx},-1,{x1:.2f},{y1:.2f},{w:.2f},{h:.2f},{conf:.4f},-1,-1,-1"
-        )
-    return lines
-
-
-# ---------------------------------------------------------------------------
-# YOLOX backend
-# ---------------------------------------------------------------------------
-
-
-def _load_yolox_predictor(model_name: str, weights_path: str, conf: float) -> Any:
-    """Load a YOLOX predictor from a local weights file.
-
-    Args:
-        model_name: Model name, e.g. ``"yolox-x-crowdhuman"``.
-        weights_path: Path to the local ``.pth`` or ``.pth.tar`` weights file.
-        conf: Detection confidence threshold applied during NMS postprocessing.
-
-    Returns:
-        A ``yolox.utils.Predictor`` instance ready for inference.
-
-    Raises:
-        RuntimeError: If the ``yolox`` or ``torch`` packages are not installed.
-
-    Examples:
-        Load ByteTrack's YOLOX-X CrowdHuman model::
-
-            predictor = _load_yolox_predictor(
-                "yolox-x-crowdhuman",
-                "/path/to/bytetrack_x_mot17.pth.tar",
-                conf=0.01,
-            )
-    """
-    try:
-        import torch
-        from yolox.exp import get_exp
-        from yolox.tools.demo import Predictor
-    except ImportError as exc:
-        raise RuntimeError(
-            "YOLOX backend requires the 'yolox' and 'torch' packages.\n"
-            "Install: pip install yolox torch\n"
-            "Download ByteTrack YOLOX-X weights (bytetrack_x_mot17.pth.tar) from\n"
-            "the ByteTrack GitHub releases, then pass: --weights /path/to/file"
-        ) from exc
-
-    exp = get_exp(exp_file=None, exp_name="yolox_x")
-    if "crowdhuman" in model_name:
-        # ByteTrack's CrowdHuman-pretrained model is single-class (person only)
-        exp.num_classes = 1
-        exp.test_size = (800, 1440)  # ByteTrack default test size for MOT17
-    exp.test_conf = conf  # apply user threshold at NMS postprocessing time
-
-    model_obj = exp.get_model()
-    model_obj.eval()
-
-    # ByteTrack checkpoints store the model under the "model" key
-    ckpt = torch.load(weights_path, map_location="cpu", weights_only=False)
-    model_state = ckpt.get("model", ckpt)
-    model_obj.load_state_dict(model_state)
-
-    device = "gpu" if torch.cuda.is_available() else "cpu"
-    return Predictor(
-        model=model_obj,
-        exp=exp,
-        trt_file=None,
-        decoder=None,
-        device=device,
-        fp16=False,
-    )
-
-
-def _process_frame_yolox(
-    frame_path: Path,
-    predictor: Any,
-    conf: float,
-) -> list[str]:
-    """Run YOLOX inference on one frame; return MOT-format detection lines.
-
-    Args:
-        frame_path: Image file whose stem is a zero-padded integer frame index.
-        predictor: A loaded ``yolox.utils.Predictor`` instance.
-        conf: Secondary confidence filter (applied after model NMS).  Set low
-            (e.g. 0.01) to rely on the predictor's built-in threshold instead.
-
-    Returns:
-        List of strings in MOT format: ``"frame,-1,x,y,w,h,conf,-1,-1,-1"``.
-
-    Examples:
-        Output is a list of comma-separated detection strings::
-
-            lines = _process_frame_yolox(frame_path, predictor, conf=0.01)
-            # ["1,-1,120.50,200.30,60.00,150.00,0.8500,-1,-1,-1", ...]
-    """
-    import torch
-
-    frame_idx = int(frame_path.stem)
-    # Predictor.inference() accepts a file path string and handles cv2.imread internally
-    outputs, img_info = predictor.inference(str(frame_path))
-    if outputs[0] is None:
-        return []
-
-    output = outputs[0]
-    if isinstance(output, torch.Tensor):
-        output = output.cpu().numpy()
-
-    # img_info["ratio"] = min(test_h/img_h, test_w/img_w); divide to get original coords
-    ratio = img_info["ratio"]
-    lines = []
-    for det in output:
-        x1, y1, x2, y2, obj_conf, cls_conf, cls_id = det[:7]
-        x1, y1, x2, y2 = x1 / ratio, y1 / ratio, x2 / ratio, y2 / ratio
-        score = float(obj_conf) * float(cls_conf)
-        if score < conf:
-            continue
-        # For multi-class (COCO) YOLOX models, keep only person (class 0)
-        if predictor.num_classes > 1 and int(cls_id) != 0:
-            continue
-        w, h = x2 - x1, y2 - y1
-        lines.append(
-            f"{frame_idx},-1,{x1:.2f},{y1:.2f},{w:.2f},{h:.2f},{score:.4f},-1,-1,-1"
+            f"{frame_idx},-1,{x_tl:.2f},{y_tl:.2f}"
+            f",{pred.width:.2f},{pred.height:.2f},{pred.confidence:.4f},-1,-1,-1"
         )
     return lines
 
@@ -342,7 +231,7 @@ def _load_rfdetr_model(model_name: str) -> Any:
     Weights are downloaded automatically on first use — no API key required.
 
     Args:
-        model_name: ``"rfdetr-l"`` (large). A size suffix is required;
+        model_name: ``"rfdetr/l"`` (large). A size suffix is required;
             bare ``"rfdetr"`` is not accepted.
 
     Returns:
@@ -356,17 +245,24 @@ def _load_rfdetr_model(model_name: str) -> Any:
     Examples:
         Load the large RF-DETR model::
 
-            model = _load_rfdetr_model("rfdetr-l")
+            model = _load_rfdetr_model("rfdetr/l")
     """
+    _RFDETR_CLASS_MAP = {
+        "rfdetr/n": "RFDETRNano",
+        "rfdetr/s": "RFDETRSmall",
+        "rfdetr/m": "RFDETRMedium",
+        "rfdetr/l": "RFDETRLarge",
+    }
+    class_name = _RFDETR_CLASS_MAP.get(model_name)
+    if class_name is None:
+        raise ValueError(
+            f"Unknown RF-DETR model {model_name!r}. "
+            f"Supported: {', '.join(sorted(_RFDETR_CLASS_MAP))}"
+        )
     try:
-        if model_name == "rfdetr-l":
-            from rfdetr import RFDETRLarge
+        import rfdetr as _rfdetr
 
-            return RFDETRLarge()
-        else:
-            raise ValueError(
-                f"Unknown RF-DETR model {model_name!r}. Only 'rfdetr-l' is supported."
-            )
+        return getattr(_rfdetr, class_name)()
     except ImportError as exc:
         raise RuntimeError(
             "RF-DETR backend requires the 'rfdetr' package (>= 1.6).\n"
@@ -429,7 +325,6 @@ def _run_on_sequence(
     model: Any,
     backend: str,
     confidence: float,
-    iou_threshold: float,
     skip_existing: bool,
 ) -> int:
     """Run inference on one sequence; return number of frames processed.
@@ -437,12 +332,11 @@ def _run_on_sequence(
     Args:
         seq_dir: Path to the source sequence directory with frames (e.g.
             ``.../MOT17-04-FRCNN``).
-        out_dir: Output directory for this detector (e.g. ``.../MOT17-04-YOLO``).
+        out_dir: Output directory for this detector (e.g. ``.../MOT17-04-YOLOWORLD``).
             Detections are written to ``out_dir/det/det.txt``.
-        model: Loaded Roboflow model or YOLOX predictor.
-        backend: Either ``"roboflow"`` or ``"yolox"``.
+        model: Loaded model instance (rfdetr or YOLO-World).
+        backend: Either ``"rfdetr"`` or ``"yolo_world"``.
         confidence: Minimum detection confidence.
-        iou_threshold: NMS IoU threshold (Roboflow backend only).
         skip_existing: If True and ``out_dir/det/det.txt`` already exists, skip.
 
     Returns:
@@ -452,7 +346,7 @@ def _run_on_sequence(
         Returns 0 for a sequence without frames::
 
             n = _run_on_sequence(
-                Path("/missing"), Path("/out"), model, "roboflow", 0.1, 0.45, False
+                Path("/missing"), Path("/out"), model, "rfdetr", 0.1, False
             )
             # n == 0
     """
@@ -481,12 +375,10 @@ def _run_on_sequence(
 
     lines: list[str] = []
     for frame_path in track(frames, description=f"  {seq_dir.name}", console=console):
-        if backend == "yolox":
-            lines.extend(_process_frame_yolox(frame_path, model, confidence))
-        elif backend == "rfdetr":
-            lines.extend(_process_frame_rfdetr(frame_path, model, confidence))
+        if backend == "yolo_world":
+            lines.extend(_process_frame_yolo_world(frame_path, model, confidence))
         else:
-            lines.extend(_process_frame(frame_path, model, confidence, iou_threshold))
+            lines.extend(_process_frame_rfdetr(frame_path, model, confidence))
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
     output_file.write_text("\n".join(lines) + "\n" if lines else "")
@@ -501,8 +393,7 @@ def _run_on_sequence(
 def main(
     model: str = _DEFAULT_MODEL_ID,
     conf: float = _DEFAULT_CONFIDENCE,
-    iou_threshold: float = _DEFAULT_IOU_THRESHOLD,
-    weights: str | None = None,
+    api_key: str | None = None,
     detector_tag: str | None = None,
     data_dir: str | None = None,
     seq: str | None = None,
@@ -511,61 +402,53 @@ def main(
     """Generate detections for MOT17-val sequences.
 
     Args:
-        model: Detector to use.  Any Roboflow-hosted model ID (e.g.
-            ``"yolov8x-1280"``, ``"rfdetr-l"``), or ``"yolox-x-crowdhuman"``
-            to use the local YOLOX backend with ByteTrack's CrowdHuman weights.
+        model: Detector to use. RF-DETR: ``"rfdetr/n"``, ``"rfdetr/s"``,
+            ``"rfdetr/m"``, ``"rfdetr/l"`` (default). YOLO-World:
+            ``"yolo_world/s"``, ``"yolo_world/m"``, ``"yolo_world/l"``,
+            ``"yolo_world/x"``.
         conf: Minimum detection confidence threshold (default: 0.1).
-        iou_threshold: NMS IoU threshold; Roboflow backend only (default: 0.45).
-        weights: Path to a local weights file.  Required when
-            ``model="yolox-x-crowdhuman"``; unused for Roboflow models.
+        api_key: Roboflow API key for YOLO-World weight download.  Falls back
+            to the ``ROBOFLOW_API_KEY`` environment variable when unset.
         detector_tag: Uppercase tag appended to the output directory name, e.g.
-            ``"YOLO"`` → ``MOT17-04-YOLO/``.  Auto-derived from the model name
-            if unset: ``yolov8x-*`` → YOLO, ``rfdetr-*`` → RFDETR,
-            ``yolox-*`` → YOLOX.
+            ``"RFDETR"`` → ``MOT17-04-RFDETR/``. Auto-derived if unset.
         data_dir: MOT17 val directory. Auto-detected if unset.
         seq: Filter to a single sequence prefix, e.g. ``"MOT17-04"``. If unset,
             runs on all sequences with ground-truth annotations and frames.
         skip_existing: Skip sequences where ``{TAG}/det/det.txt`` already exists.
 
     Examples:
-        Run on all sequences with the default YOLOv8x model::
+        RF-DETR large (default)::
 
-            uv run python generate_detections.py
+            uv run python generate_detections.py --model rfdetr/l
 
-        RF-DETR large (Roboflow)::
+        YOLO-World large (open-vocabulary person detector)::
 
-            uv run python generate_detections.py --model rfdetr-l
-
-        YOLOX-X fine-tuned on CrowdHuman (ByteTrack paper detector)::
-
-            uv run python generate_detections.py \\
-                --model yolox-x-crowdhuman \\
-                --weights /path/to/bytetrack_x_mot17.pth.tar
+            uv run python generate_detections.py --model yolo_world/l
     """
-    is_yolox = model in _YOLOX_BACKEND_MODELS
+    is_yolo_world = model in _YOLO_WORLD_MODELS
     is_rfdetr = model in _RFDETR_NATIVE_MODELS
 
-    if not is_yolox and not is_rfdetr and not os.environ.get("ROBOFLOW_API_KEY"):
-        raise RuntimeError(
-            "ROBOFLOW_API_KEY not set. "
-            "Get a free key at https://app.roboflow.com (Account → API Key), "
-            "then: export ROBOFLOW_API_KEY=your_key_here"
-        )
-
-    if is_yolox and weights is None:
-        raise RuntimeError(
-            f"--weights is required for model '{model}'.\n"
-            "Download bytetrack_x_mot17.pth.tar from the ByteTrack GitHub releases\n"
-            "and pass: --weights /path/to/bytetrack_x_mot17.pth.tar"
+    if not is_yolo_world and not is_rfdetr:
+        rfdetr_opts = ", ".join(sorted(_RFDETR_NATIVE_MODELS))
+        yoloworld_opts = ", ".join(sorted(_YOLO_WORLD_MODELS))
+        raise ValueError(
+            f"Unknown model {model!r}.\n"
+            f"RF-DETR options: {rfdetr_opts}\n"
+            f"YOLO-World options: {yoloworld_opts}"
         )
 
     _data_dir = Path(data_dir) if data_dir else _find_data_dir()
 
     # Source sequences: dirs that have actual frames (img1/) and ground truth (gt/)
+    # Only use dirs where img1/ is a real directory (not a symlink) — this
+    # excludes RFDETR/YOLOWORLD sibling dirs whose img1/ points back to FRCNN.
     source_seqs = sorted(
         d
         for d in _data_dir.iterdir()
-        if d.is_dir() and (d / "img1").exists() and (d / "gt" / "gt.txt").exists()
+        if d.is_dir()
+        and (d / "img1").is_dir()
+        and not (d / "img1").is_symlink()
+        and (d / "gt" / "gt.txt").exists()
     )
     if not source_seqs:
         raise FileNotFoundError(
@@ -585,17 +468,12 @@ def main(
     console.print(
         f"Loading model [bold]{model}[/bold] ... (detector tag: [bold]{tag}[/bold])"
     )
-    if is_yolox:
-        loaded_model = _load_yolox_predictor(model, weights, conf)  # type: ignore[arg-type]
-        backend = "yolox"
-    elif is_rfdetr:
+    if is_yolo_world:
+        loaded_model = _load_yolo_world_model(model, api_key)
+        backend = "yolo_world"
+    else:
         loaded_model = _load_rfdetr_model(model)
         backend = "rfdetr"
-    else:
-        from inference import get_model  # lazy import — requires ROBOFLOW_API_KEY
-
-        loaded_model = get_model(model)
-        backend = "roboflow"
 
     total_frames = 0
     for seq_dir in source_seqs:
@@ -618,7 +496,6 @@ def main(
             loaded_model,
             backend,
             conf,
-            iou_threshold,
             skip_existing,
         )
         total_frames += n

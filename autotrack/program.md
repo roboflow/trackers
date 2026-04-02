@@ -11,7 +11,7 @@ Optuna is a **validation tool**, not the goal. Every candidate improvement is ev
 ## Metric
 
 ```
-command: cd autotrack && uv run python optimize_tracking.py bytetrack yolox --n-trials 1 2>&1 | grep "^__METRICS__" | grep -oE "HOTA=[0-9.]+" | cut -d= -f2
+command: cd autotrack && uv run python optimize_tracking.py bytetrack sdp --n-trials 1 2>&1 | grep "^__METRICS__" | grep -oE "HOTA=[0-9.]+" | cut -d= -f2
 direction: higher
 target: 68.0
 ```
@@ -28,7 +28,7 @@ command: uv run pytest test/ -m "not integration" --ignore=test/scripts -q
 algo: bytetrack
 max_iterations: 20
 agent_strategy: ml
-det_source: yolox
+det_source: sdp
 scope_files:
   - trackers/**
   - autotrack/optimize_tracking.py
@@ -47,30 +47,20 @@ compute: local
 
 All three setup steps must pass before starting the campaign loop:
 
-| Check            | Command                                                                                                                          | Expected result                                              |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Dependencies     | `uv sync --group optimize`                                                                                                       | Resolves without error                                       |
-| MOT17 data       | `trackers download mot17 --split val --asset annotations,detections,frames`                                                      | Downloads to `~/.cache/trackers/mot17/val/`                  |
-| YOLOX detections | `cd autotrack && uv run python generate_detections.py --model yolox-x-crowdhuman --weights pretrained/bytetrack_x_mot17.pth.tar` | Creates `MOT17-{N}-YOLOX/` sibling dirs for all 7 sequences  |
-| Metric sanity    | `cd autotrack && uv run python optimize_tracking.py bytetrack yolox --fast`                                                      | Prints `__METRICS__: HOTA≈60–67` (YOLOX-val, single seq est) |
-
-> If YOLOX detections already exist from a previous run, pass `--skip-existing` to `generate_detections.py` to avoid re-running inference.
-
-> **Alternative: RF-DETR** (no weights file needed) — run `generate_detections.py --model rfdetr-l`, then use `det_source: rfdetr` in the Config block above. RF-DETR gives a comparable detection floor without YOLOX weights.
+| Check         | Command                                                                     | Expected result                                        |
+| ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Dependencies  | `uv sync --group optimize`                                                  | Resolves without error                                 |
+| MOT17 data    | `trackers download mot17 --split val --asset annotations,detections,frames` | Downloads to `~/.cache/trackers/mot17/val/`            |
+| Metric sanity | `cd autotrack && uv run python optimize_tracking.py bytetrack sdp --fast`   | Prints `__METRICS__: HOTA≈60–65` (SDP-val, single seq) |
 
 > **Custom detector** — create `MOT17-{N}-MYDET/det/det.txt` sibling dirs (see README.md Custom detections section), just pass the name as `det_source`: `uv run python optimize_tracking.py bytetrack mydet` — unknown names are uppercased to form the directory tag (`MYDET`).
 
 ### Evaluation protocol
 
-- **Primary metric**: HOTA on MOT17-val, YOLOX detections. Stops at 68.0 or `max_iterations`, whichever comes first.
+- **Primary metric**: HOTA on MOT17-val, SDP detections. Stops at target or `max_iterations`, whichever comes first.
 - **Secondary metrics** (logged, not gated): IDF1, MOTA, IDSW. A change that improves HOTA but worsens IDSW significantly is a warning sign — log it.
-- **Phase 1 baseline (FRCNN)**: HOTA = 50.355 at default parameters (campaign start).
-- **Phase 2 baseline (FRCNN)**: HOTA = 51.198 (current code, default params).
-- **Phase 2 baseline (YOLOX)**: HOTA ≈ 60–64 at default params (purpose-built YOLOX-X CrowdHuman weights). Algorithmic improvements target the association ceiling above this detector floor.
-- **Target**: 68.0 — above the published YOLOX IoU-only ceiling (OC-SORT val ≈ 65–67) and therefore requires real architectural improvements, not parameter search.
-    - Optuna alone on current code: ceiling ≈ 65–66
-    - Best published IoU-only YOLOX trackers on MOT17 val: OC-SORT ≈ 65–67
-    - Theoretical IoU-only ceiling (YOLOX): ≈ 68–72
+- **Phase 1 baseline (SDP)**: HOTA = 53.941 at default parameters (campaign start).
+- **Phase 2 baseline (SDP)**: HOTA = 53.941 (current code, default params — Phase 1 improvements are FRCNN-measured; SDP re-baseline TBD after first Phase 2 iteration).
 - **Fast mode** (`--fast`): single sequence (~3 s), sanity check only; campaign metric (`--n-trials 1`) always runs the full eval (~7 s, all sequences).
 
 ### Hard boundaries — these invalidate the experiment if violated
@@ -86,7 +76,7 @@ All three setup steps must pass before starting the campaign loop:
 
 Optuna is used in two places only:
 
-1. **Pre-campaign baseline** (run once by the human before starting the loop): run `python optimize_tracking.py bytetrack yolox --n-trials 200`, save the best param config to `best_config.json`. This gives a tuned ceiling for the *current* code.
+1. **Pre-campaign baseline** (run once by the human before starting the loop): run `python optimize_tracking.py bytetrack sdp --n-trials 200`, save the best param config to `best_config.json`. This gives a tuned ceiling for the *current* code.
 
 2. **Post-change validation** (optional, agent-initiated): after a code change is *kept* by the campaign loop, the agent may run a 50-trial mini-Optuna with the new code to confirm the improvement holds under tuned params and to update `best_config.json`. If tuned params *erase* the code change's improvement, that is a negative result — log it and revert.
 
@@ -178,11 +168,11 @@ Use score as a minimum-gate for keeping lost tracks in the active pool (tracks b
 
 `_apply_kalman_patch` in `optimize_tracking.py` overwrites Q, R, and P with uniform identity-scaled matrices. If the state representation is changed (H-A), the patch must be redesigned to work with the new state dimension and matrix structure. After implementing H-A, replace `_apply_kalman_patch` with representation-aware parameter injection, or integrate the noise scales directly into the constructor.
 
-### Current best config (Phase 2 start — FRCNN detections)
+### Current best config (Phase 2 start — SDP detections)
 
 ```json
 {
-  "hota": 51.198,
+  "hota": 53.941,
   "config": {
     "lost_track_buffer": 30,
     "track_activation_threshold": 0.7,
