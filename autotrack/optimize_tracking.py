@@ -44,6 +44,7 @@ Hard boundaries (never change):
 from __future__ import annotations
 
 import json
+import math
 import time
 from pathlib import Path
 
@@ -107,6 +108,38 @@ _SEARCH_SPACE: dict[str, dict] = {
 }
 
 
+def _check_config_drift(tracker_name: str) -> None:
+    """Warn if default_config.json and search_space.json keys diverge for a tracker.
+
+    When a parameter is added to one file but not the other, enqueue_trial silently
+    uses a random Optuna-sampled value instead of the intended default — making
+    ``--n-trials 1`` baselines unreliable without any error signal.
+
+    Args:
+        tracker_name: Tracker identifier (e.g. ``"bytetrack"``).
+    """
+    default_keys = set(_DEFAULTS.get(tracker_name, {}).keys())
+    space_keys = set(_SEARCH_SPACE.get(tracker_name, {}).keys())
+    if default_keys == space_keys:
+        return
+    parts = []
+    if default_keys - space_keys:
+        parts.append(
+            f"in default_config.json but not search_space.json:"
+            f" {sorted(default_keys - space_keys)}"
+        )
+    if space_keys - default_keys:
+        parts.append(
+            f"in search_space.json but not default_config.json:"
+            f" {sorted(space_keys - default_keys)}"
+        )
+    _err.print(
+        f"[yellow]warn[/yellow] config key drift for {tracker_name!r}:"
+        f" {'; '.join(parts)}"
+        " — --n-trials 1 baseline may use random values for drifted params"
+    )
+
+
 def _define_search_space(trial: optuna.Trial, tracker_name: str) -> dict:
     """Sample a parameter dict for this trial from the search_space.json definition.
 
@@ -114,7 +147,7 @@ def _define_search_space(trial: optuna.Trial, tracker_name: str) -> dict:
     modify this function.  Supported spec keys per parameter:
       type        "int" | "float" | "categorical"
       low / high  numeric bounds (int and float)
-      log         true → log-scale sampling (float only)
+      log         true → log-scale sampling (int and float; low must be >= 1 for int)
       choices     list of values (categorical only)
     """
     space = _SEARCH_SPACE[tracker_name]
@@ -122,7 +155,9 @@ def _define_search_space(trial: optuna.Trial, tracker_name: str) -> dict:
     for name, spec in space.items():
         kind = spec["type"]
         if kind == "int":
-            params[name] = trial.suggest_int(name, spec["low"], spec["high"])
+            params[name] = trial.suggest_int(
+                name, spec["low"], spec["high"], log=spec.get("log", False)
+            )
         elif kind == "float":
             params[name] = trial.suggest_float(
                 name, spec["low"], spec["high"], log=spec.get("log", False)
@@ -637,6 +672,7 @@ def _run_optuna_study(
     """
     import os
 
+    _check_config_drift(tracker)
     cpu_count = os.cpu_count() or 1
     n_workers = min(n_trials, cpu_count if n_jobs == -1 else max(1, n_jobs))
 
@@ -751,7 +787,13 @@ def _print_metrics(
     sequences: list[str],
 ) -> None:
     """Print __METRICS__, __CONFIG__, __ELAPSED__, __TRACKER__ lines to stdout."""
-    hota = best_metrics["HOTA"]
+    raw_hota = best_metrics["HOTA"]
+    hota = raw_hota if math.isfinite(raw_hota) else 0.0
+    if not math.isfinite(raw_hota):
+        _err.print(
+            f"[yellow]warn[/yellow] HOTA={raw_hota!r} — degenerate eval;"
+            " clamping to 0.0 so the campaign loop can revert this change"
+        )
     idf1 = best_metrics["IDF1"]
     mota = best_metrics["MOTA"]
     idsw = best_metrics["IDSW"]

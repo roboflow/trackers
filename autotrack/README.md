@@ -83,11 +83,11 @@ The detector tag (`RFDETR`, `YOLOWORLD`, …) is auto-derived from the model nam
 
 `generate_detections.py` supports these backends via `--model`:
 
-| Model flag           | Tag         | Backend       | Notes                                              |
-| -------------------- | ----------- | ------------- | -------------------------------------------------- |
-| `rfdetr-l` (default) | `RFDETR`    | Native rfdetr | RF-DETR large; weights auto-downloaded; no API key |
-| `rfdetr-n/s/m`       | `RFDETR`    | Native rfdetr | Nano / small / medium variants; same auto-download |
-| `yoloworld-x`        | `YOLOWORLD` | ultralytics   | YOLO World X; weights auto-downloaded; no API key  |
+| Model flag           | Tag         | Backend          | Notes                                              |
+| -------------------- | ----------- | ---------------- | -------------------------------------------------- |
+| `rfdetr/l` (default) | `RFDETR`    | Native rfdetr    | RF-DETR large; weights auto-downloaded; no API key |
+| `rfdetr/n/s/m`       | `RFDETR`    | Native rfdetr    | Nano / small / medium variants; same auto-download |
+| `yolo_world/l`       | `YOLOWORLD` | inference-models | YOLO World L; requires `ROBOFLOW_API_KEY`          |
 
 Override the tag with `--detector-tag` if needed. Each detector writes to its own directory so runs never overwrite each other.
 
@@ -158,7 +158,7 @@ DPM is the weakest bundled detector. Full 7-sequence eval.
 
 ### RF-DETR detections (MOT17-val, generated)
 
-RF-DETR-L (`rfdetr-l`), native backend, weights auto-downloaded. Defaults: MOT17-04 only (`--fast`). Optuna: full 7-sequence.
+RF-DETR-L (`rfdetr/l`), native backend, weights auto-downloaded. Defaults: MOT17-04 only (`--fast`). Optuna: full 7-sequence.
 
 | Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
 | -------------------- | ------ | ----------- | ----------- | ----------- |
@@ -166,10 +166,10 @@ RF-DETR-L (`rfdetr-l`), native backend, weights auto-downloaded. Defaults: MOT17
 |                      | IDF1   | 33.341      | 31.047      | 55.911      |
 |                      | MOTA   | 19.224      | 17.446      | 43.171      |
 |                      | IDSW   | 1           | 5           | 96          |
-| + Optuna (n=500)     | HOTA   | 44.804      | **46.724**  | 44.219      |
-|                      | IDF1   | 50.757      | 54.484      | 50.221      |
-|                      | MOTA   | 32.394      | 38.734      | 34.077      |
-|                      | IDSW   | 326         | 249         | 498         |
+| + Optuna (n=10k)     | HOTA   | 44.780      | **47.311**  | 44.465      |
+|                      | IDF1   | 51.076      | 55.651      | 50.884      |
+|                      | MOTA   | 32.355      | 39.269      | 35.053      |
+|                      | IDSW   | 336         | 212         | 489         |
 | + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
 |                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
 |                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
@@ -228,12 +228,12 @@ uv run python optimize_tracking.py sort      dpm
 uv run python optimize_tracking.py bytetrack dpm
 uv run python optimize_tracking.py ocsort    dpm
 
-# RF-DETR (requires generate_detections.py --model rfdetr-l)
+# RF-DETR (requires generate_detections.py --model rfdetr/l)
 uv run python optimize_tracking.py sort      rfdetr
 uv run python optimize_tracking.py bytetrack rfdetr
 uv run python optimize_tracking.py ocsort    rfdetr
 
-# YOLO World X (requires generate_detections.py --model yoloworld-x)
+# YOLO World (requires generate_detections.py --model yolo_world/l)
 uv run python optimize_tracking.py sort      yoloworld
 uv run python optimize_tracking.py bytetrack yoloworld
 uv run python optimize_tracking.py ocsort    yoloworld
@@ -295,7 +295,7 @@ uv run python optimize_tracking.py ocsort frcnn --fast        # OC-SORT sanity c
 ### RF-DETR detections (no API key — weights auto-downloaded)
 
 ```bash
-cd autotrack && uv run python generate_detections.py --model rfdetr-l
+cd autotrack && uv run python generate_detections.py --model rfdetr/l
 # Verify
 uv run python optimize_tracking.py bytetrack rfdetr --fast
 ```
@@ -332,13 +332,13 @@ uv run python optimize_tracking.py bytetrack mydet --n-trials 50
 
 Before starting the campaign loop, all steps must pass:
 
-| Check         | Command                                                                     | Expected result                                                         |
-| ------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Dependencies  | `uv sync --group optimize`                                                  | Resolves without error                                                  |
-| MOT17 data    | `trackers download mot17 --split val --asset annotations,detections,frames` | Downloads to `~/.cache/trackers/mot17/val/`                             |
-| RF-DETR       | `uv run python generate_detections.py --model rfdetr-l`                     | Creates `MOT17-{N}-RFDETR/` sibling dirs; no API key or weights file    |
-| YOLO World X  | `uv run python generate_detections.py --model yoloworld-x`                  | Creates `MOT17-{N}-YOLOWORLD/` sibling dirs; no API key or weights file |
-| Metric sanity | `uv run python optimize_tracking.py bytetrack frcnn --fast`                 | Prints `__METRICS__: HOTA≈50–55` (FRCNN-val, single seq)                |
+| Check         | Command                                                                     | Expected result                                                          |
+| ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Dependencies  | `uv sync --group optimize`                                                  | Resolves without error                                                   |
+| MOT17 data    | `trackers download mot17 --split val --asset annotations,detections,frames` | Downloads to `~/.cache/trackers/mot17/val/`                              |
+| RF-DETR       | `uv run python generate_detections.py --model rfdetr/l`                     | Creates `MOT17-{N}-RFDETR/` sibling dirs; no API key or weights file     |
+| YOLO World    | `uv run python generate_detections.py --model yolo_world/l`                 | Creates `MOT17-{N}-YOLOWORLD/` sibling dirs; requires `ROBOFLOW_API_KEY` |
+| Metric sanity | `uv run python optimize_tracking.py bytetrack frcnn --fast`                 | Prints `__METRICS__: HOTA≈50–55` (FRCNN-val, single seq)                 |
 
 > **Bundled-only run** (no frames needed): use `frcnn` as det-source. Expect `HOTA≈50–55`.
 

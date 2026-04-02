@@ -69,20 +69,20 @@
             }
         },
         "rfdetr": {
-            "hota": 44.80365624696436,
+            "hota": 45.08010773156588,
             "config": {
-                "lost_track_buffer": 22,
-                "track_activation_threshold": 0.33306273221560073,
-                "minimum_consecutive_frames": 3,
-                "minimum_iou_threshold": 0.26386532043791583,
-                "high_conf_det_threshold": 0.3630376947727823,
-                "q_scale": 0.0013860833506438566,
-                "r_scale": 0.02806757992364699,
-                "p_scale": 0.23675426369218083,
-                "velocity_decay": 0.9854008850955834,
-                "q_miss_alpha": 0.4875821085179165,
+                "lost_track_buffer": 23,
+                "track_activation_threshold": 0.3745944278462327,
+                "minimum_consecutive_frames": 2,
+                "minimum_iou_threshold": 0.27457871879161927,
+                "high_conf_det_threshold": 0.34417413371181516,
+                "q_scale": 0.0015034333915341493,
+                "r_scale": 0.030618921917120717,
+                "p_scale": 1.7599576140653497,
+                "velocity_decay": 0.9900231907191813,
+                "q_miss_alpha": 0.1359643548005466,
                 "max_interpolation_gap": 0,
-                "p_reset_threshold": 2
+                "p_reset_threshold": 3
             }
         },
         "dpm": {
@@ -145,13 +145,13 @@
             }
         },
         "rfdetr": {
-            "hota": 44.21890601316497,
+            "hota": 44.50231724515753,
             "config": {
-                "lost_track_buffer": 50,
-                "track_activation_threshold": 0.32245300111971065,
+                "lost_track_buffer": 12,
+                "track_activation_threshold": 0.31939618886129845,
                 "minimum_consecutive_frames": 4,
-                "minimum_iou_threshold": 0.4619728700812563,
-                "max_interpolation_gap": 0
+                "minimum_iou_threshold": 0.5589129313391519,
+                "max_interpolation_gap": 53
             }
         },
         "dpm": {
@@ -215,13 +215,13 @@
             }
         },
         "rfdetr": {
-            "hota": 46.7243717640652,
+            "hota": 47.31064661267384,
             "config": {
-                "lost_track_buffer": 45,
-                "minimum_consecutive_frames": 3,
-                "minimum_iou_threshold": 0.2618351010976837,
-                "direction_consistency_weight": 0.3020551537267835,
-                "high_conf_det_threshold": 0.30053275376045246,
+                "lost_track_buffer": 40,
+                "minimum_consecutive_frames": 4,
+                "minimum_iou_threshold": 0.24666708190317915,
+                "direction_consistency_weight": 0.30169607868951015,
+                "high_conf_det_threshold": 0.3064234735815301,
                 "delta_t": 1,
                 "max_interpolation_gap": 29
             }

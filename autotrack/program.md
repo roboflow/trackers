@@ -19,7 +19,20 @@ target: 68.0
 ## Guard
 
 ```
-command: uv run pytest test/ -m "not integration" --ignore=test/scripts -q
+command: uv run pytest test/ -m "not integration" --ignore=test/scripts -q && cd autotrack && python3 -c "
+import json, re, subprocess, sys
+best = json.load(open('best_config.json'))
+failed = []
+for t in ['bytetrack', 'sort', 'ocsort']:
+    out = subprocess.run(['uv','run','python','optimize_tracking.py',t,'sdp','--n-trials','500'], capture_output=True, text=True).stdout
+    m = re.search(r'HOTA=([0-9.]+)', out)
+    if not m: failed.append(f'{t}: no HOTA output'); continue
+    hota, base = float(m.group(1)), best[t]['sdp']['hota']
+    drop = (base - hota) / base * 100
+    print(f'{t}: HOTA={hota:.3f} vs best={base:.3f} ({drop:+.2f}%)')
+    if drop > 0.5: failed.append(f'{t}: regressed {drop:.2f}%')
+sys.exit(1 if failed else 0)
+"
 ```
 
 ## Config
@@ -52,6 +65,8 @@ All three setup steps must pass before starting the campaign loop:
 | Dependencies  | `uv sync --group optimize`                                                  | Resolves without error                                 |
 | MOT17 data    | `trackers download mot17 --split val --asset annotations,detections,frames` | Downloads to `~/.cache/trackers/mot17/val/`            |
 | Metric sanity | `cd autotrack && uv run python optimize_tracking.py bytetrack sdp --fast`   | Prints `__METRICS__: HOTA≈60–65` (SDP-val, single seq) |
+
+The guard uses `best_config.json` as the regression baseline — no separate seeding step required. The guard runs all three trackers (`bytetrack`, `sort`, `ocsort`) via `optimize_tracking.py sdp --n-trials 500` and fails if any tracker's HOTA drops more than 0.5% from its stored best.
 
 > **Custom detector** — create `MOT17-{N}-MYDET/det/det.txt` sibling dirs (see README.md Custom detections section), just pass the name as `det_source`: `uv run python optimize_tracking.py bytetrack mydet` — unknown names are uppercased to form the directory tag (`MYDET`).
 
@@ -106,6 +121,8 @@ Each iteration must propose and implement **one atomic hypothesis**. Compound ch
 ### Failure logging
 
 Every reverted change is a result, not a failure. The `experiments.jsonl` log captures what was tried and what didn't improve HOTA. After the campaign, this log is the primary research artifact.
+
+If the campaign reaches `max_iterations` without achieving `target`, the campaign is complete — this is a valid research outcome, not a failure. The `experiments.jsonl` log and final code state are the deliverables; a negative result (no single architectural change substantially improves HOTA beyond Kalman tuning) is itself a finding worth documenting.
 
 ### Phase 1 findings — what is already in the code
 
