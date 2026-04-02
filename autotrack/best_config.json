@@ -1,0 +1,142 @@
+{
+    "bytetrack": {
+        "yolo": {
+            "hota": 48.58818539944531,
+            "config": {
+                "lost_track_buffer": 54,
+                "track_activation_threshold": 0.36662081625497334,
+                "minimum_consecutive_frames": 2,
+                "minimum_iou_threshold": 0.14829028655285478,
+                "high_conf_det_threshold": 0.40316579393568125,
+                "q_scale": 0.0016120031702703274,
+                "r_scale": 0.03117576609478459,
+                "p_scale": 1.1880636938315343,
+                "velocity_decay": 0.9985304615585172,
+                "q_miss_alpha": 0.27608671295409976,
+                "max_interpolation_gap": 4,
+                "p_reset_threshold": 1
+            }
+        },
+        "yolox": {
+            "hota": 7.744600323097117,
+            "config": {
+                "lost_track_buffer": 60,
+                "track_activation_threshold": 0.8321322486893291,
+                "minimum_consecutive_frames": 1,
+                "minimum_iou_threshold": 0.26962643927426255,
+                "high_conf_det_threshold": 0.6886671010468401,
+                "q_scale": 0.0017127563734582326,
+                "r_scale": 0.08996253004896126,
+                "p_scale": 0.7562459085192482,
+                "velocity_decay": 0.9523944002817442,
+                "q_miss_alpha": 0.09382126146633762,
+                "max_interpolation_gap": 14,
+                "p_reset_threshold": 7
+            }
+        },
+        "frcnn": {
+            "hota": 51.84881143584812,
+            "config": {
+                "lost_track_buffer": 43,
+                "track_activation_threshold": 0.8998461360575083,
+                "minimum_consecutive_frames": 2,
+                "minimum_iou_threshold": 0.24558122495848753,
+                "high_conf_det_threshold": 0.6667091892736219,
+                "q_scale": 0.025972652071928594,
+                "r_scale": 0.6376872626815574,
+                "p_scale": 8.248991281945695,
+                "velocity_decay": 0.8526710714527408,
+                "q_miss_alpha": 0.26730473472924804,
+                "max_interpolation_gap": 30,
+                "p_reset_threshold": 14
+            }
+        },
+        "sdp": {
+            "hota": 56.115236201858174,
+            "config": {
+                "lost_track_buffer": 62,
+                "track_activation_threshold": 0.3137602484124397,
+                "minimum_consecutive_frames": 2,
+                "minimum_iou_threshold": 0.10891156951725174,
+                "high_conf_det_threshold": 0.5888558470054454,
+                "q_scale": 0.002461935811729914,
+                "r_scale": 0.2917972055305529,
+                "p_scale": 7.344328487365455,
+                "velocity_decay": 0.8170978009768973,
+                "q_miss_alpha": 0.461153054065417,
+                "max_interpolation_gap": 30,
+                "p_reset_threshold": 13
+            }
+        }
+    },
+    "sort": {
+        "yolo": {
+            "hota": 48.96250176039076,
+            "config": {
+                "lost_track_buffer": 32,
+                "track_activation_threshold": 0.13745663808577574,
+                "minimum_consecutive_frames": 3,
+                "minimum_iou_threshold": 0.1246551542543195,
+                "max_interpolation_gap": 6
+            }
+        },
+        "frcnn": {
+            "hota": 51.48837202767612,
+            "config": {
+                "lost_track_buffer": 51,
+                "track_activation_threshold": 0.8999954169593144,
+                "minimum_consecutive_frames": 1,
+                "minimum_iou_threshold": 0.13146703885810584,
+                "max_interpolation_gap": 30
+            }
+        },
+        "sdp": {
+            "hota": 56.082738538689306,
+            "config": {
+                "lost_track_buffer": 26,
+                "track_activation_threshold": 0.8005617563719339,
+                "minimum_consecutive_frames": 1,
+                "minimum_iou_threshold": 0.279059910878476,
+                "max_interpolation_gap": 30
+            }
+        }
+    },
+    "ocsort": {
+        "yolo": {
+            "hota": 48.99644225788888,
+            "config": {
+                "lost_track_buffer": 41,
+                "minimum_consecutive_frames": 2,
+                "minimum_iou_threshold": 0.09880017257768466,
+                "direction_consistency_weight": 0.14863194608182262,
+                "high_conf_det_threshold": 0.3004488138251855,
+                "delta_t": 4,
+                "max_interpolation_gap": 30
+            }
+        },
+        "frcnn": {
+            "hota": 52.21799284058125,
+            "config": {
+                "lost_track_buffer": 60,
+                "minimum_consecutive_frames": 1,
+                "minimum_iou_threshold": 0.19877407987839066,
+                "direction_consistency_weight": 0.3781799818765092,
+                "high_conf_det_threshold": 0.30884266952034833,
+                "delta_t": 4,
+                "max_interpolation_gap": 29
+            }
+        },
+        "sdp": {
+            "hota": 57.747117908146265,
+            "config": {
+                "lost_track_buffer": 53,
+                "minimum_consecutive_frames": 1,
+                "minimum_iou_threshold": 0.18660940099275233,
+                "direction_consistency_weight": 0.1760040346885319,
+                "high_conf_det_threshold": 0.6337596015992571,
+                "delta_t": 2,
+                "max_interpolation_gap": 29
+            }
+        }
+    }
+}

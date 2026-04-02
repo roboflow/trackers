@@ -78,7 +78,20 @@ mypy-types = [
 optimize = [
     "optuna[rdb]>=3.1.0",
     "fire>=0.6.0",
+    "inference>=0.9.0",
+    "yolox",
+    "rfdetr>=1.6"
 ]
+
+[tool.uv]
+no-build-isolation-package = ["yolox"]
+
+[tool.uv.sources]
+yolox = { git = "https://github.com/Megvii-BaseDetection/YOLOX.git" }
+onnx-simplifier = { git = "https://github.com/daquexian/onnx-simplifier.git", tag = "v0.4.10" }
+
+#[tool.uv.extra-build-dependencies]
+#yolox = ["setuptools"]
 
 [build-system]
 requires = ["hatchling"]

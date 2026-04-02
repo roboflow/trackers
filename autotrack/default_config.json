@@ -1,0 +1,34 @@
+{
+    "_comment": "Default tracker parameters used for baseline evaluation (--n-trials 1).",
+    "_edit_here": "Edit this file to change defaults. Do not hard-code values in optimize_tracking.py.",
+    "bytetrack": {
+        "lost_track_buffer": 30,
+        "track_activation_threshold": 0.7,
+        "minimum_consecutive_frames": 2,
+        "minimum_iou_threshold": 0.1,
+        "high_conf_det_threshold": 0.6,
+        "q_scale": 0.01,
+        "r_scale": 0.1,
+        "p_scale": 1.0,
+        "velocity_decay": 0.95,
+        "q_miss_alpha": 0.1,
+        "max_interpolation_gap": 20,
+        "p_reset_threshold": 5
+    },
+    "sort": {
+        "lost_track_buffer": 30,
+        "track_activation_threshold": 0.25,
+        "minimum_consecutive_frames": 3,
+        "minimum_iou_threshold": 0.3,
+        "max_interpolation_gap": 0
+    },
+    "ocsort": {
+        "lost_track_buffer": 30,
+        "minimum_consecutive_frames": 3,
+        "minimum_iou_threshold": 0.3,
+        "direction_consistency_weight": 0.2,
+        "high_conf_det_threshold": 0.6,
+        "delta_t": 3,
+        "max_interpolation_gap": 0
+    }
+}
