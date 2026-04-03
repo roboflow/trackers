@@ -16,7 +16,8 @@
         "q_miss_alpha": 0.282,
         "max_interpolation_gap": 32,
         "p_reset_threshold": 26,
-        "oru_threshold": 14
+        "oru_threshold": 14,
+        "conf_cost_weight": 0.0
     },
     "sort": {
         "lost_track_buffer": 30,

@@ -185,6 +185,7 @@ def _build_tracker(params: dict, tracker_name: str):
             stage2_iou_threshold=params["stage2_iou_threshold"],
             iou_age_weight=params["iou_age_weight"],
             high_conf_det_threshold=params["high_conf_det_threshold"],
+            conf_cost_weight=params.get("conf_cost_weight", 0.0),
         )
     if tracker_name == "sort":
         from trackers import SORTTracker

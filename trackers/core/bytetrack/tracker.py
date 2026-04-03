@@ -82,6 +82,7 @@ class ByteTrackTracker(BaseTracker):
         stage2_iou_threshold: float = 0.05,
         iou_age_weight: float = 0.03,
         high_conf_det_threshold: float = 0.6,
+        conf_cost_weight: float = 0.0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -93,6 +94,7 @@ class ByteTrackTracker(BaseTracker):
         self.iou_age_weight = iou_age_weight
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
+        self.conf_cost_weight = conf_cost_weight
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
 
     def update(
@@ -161,6 +163,14 @@ class ByteTrackTracker(BaseTracker):
             solver_iou = iou_matrix * discount[:, np.newaxis]
         else:
             solver_iou = iou_matrix
+
+        # Confidence boost: scale up solver IoU for higher-confidence detections
+        # so the Hungarian assignment prefers confident detections over uncertain
+        # ones when IoU values are close.  The boost only affects ranking; the
+        # threshold gate still uses raw IoU so valid matches are never blocked.
+        if self.conf_cost_weight > 0 and solver_iou.size > 0 and len(high_indices) > 0:
+            conf_boost = 1.0 + self.conf_cost_weight * confidences[high_indices]
+            solver_iou = solver_iou * conf_boost[np.newaxis, :]
 
         matched, unmatched_tracks, unmatched_high = self._get_associated_indices(
             solver_iou, self.minimum_iou_threshold, raw_similarity=iou_matrix
@@ -259,7 +269,9 @@ class ByteTrackTracker(BaseTracker):
         unmatched_detections = set(range(n_detections))
 
         # Use raw similarity for threshold gating when available
-        thresh_matrix = raw_similarity if raw_similarity is not None else similarity_matrix
+        thresh_matrix = (
+            raw_similarity if raw_similarity is not None else similarity_matrix
+        )
 
         if n_tracks > 0 and n_detections > 0:
             row_indices, col_indices = linear_sum_assignment(
