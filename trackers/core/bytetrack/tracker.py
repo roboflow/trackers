@@ -16,6 +16,53 @@ from trackers.core.sort.utils import (
 )
 
 
+def _giou_matrix(
+    track_bboxes: np.ndarray,
+    det_bboxes: np.ndarray,
+) -> np.ndarray:
+    """Compute Generalized IoU between all track-detection pairs.
+
+    GIoU extends standard IoU by adding a penalty term for the gap between
+    the two boxes and their smallest enclosing box, providing a non-zero
+    gradient even for non-overlapping boxes.
+
+    Args:
+        track_bboxes: Track predicted bboxes, shape ``(N, 4)`` in
+            ``[x1, y1, x2, y2]`` format.
+        det_bboxes: Detection bboxes, shape ``(M, 4)`` in
+            ``[x1, y1, x2, y2]`` format.
+
+    Returns:
+        GIoU matrix of shape ``(N, M)`` with values in ``[-1, 1]``.
+    """
+    # Intersection corners
+    x1_i = np.maximum(track_bboxes[:, None, 0], det_bboxes[None, :, 0])
+    y1_i = np.maximum(track_bboxes[:, None, 1], det_bboxes[None, :, 1])
+    x2_i = np.minimum(track_bboxes[:, None, 2], det_bboxes[None, :, 2])
+    y2_i = np.minimum(track_bboxes[:, None, 3], det_bboxes[None, :, 3])
+    inter = np.maximum(0.0, x2_i - x1_i) * np.maximum(0.0, y2_i - y1_i)
+
+    # Individual box areas and union
+    area_t = (track_bboxes[:, 2] - track_bboxes[:, 0]) * (
+        track_bboxes[:, 3] - track_bboxes[:, 1]
+    )
+    area_d = (det_bboxes[:, 2] - det_bboxes[:, 0]) * (
+        det_bboxes[:, 3] - det_bboxes[:, 1]
+    )
+    union = area_t[:, None] + area_d[None, :] - inter
+    iou = np.where(union > 0, inter / union, 0.0)
+
+    # Smallest enclosing box area
+    x1_c = np.minimum(track_bboxes[:, None, 0], det_bboxes[None, :, 0])
+    y1_c = np.minimum(track_bboxes[:, None, 1], det_bboxes[None, :, 1])
+    x2_c = np.maximum(track_bboxes[:, None, 2], det_bboxes[None, :, 2])
+    y2_c = np.maximum(track_bboxes[:, None, 3], det_bboxes[None, :, 3])
+    enc_area = (x2_c - x1_c) * (y2_c - y1_c)
+
+    giou = iou - np.where(enc_area > 0, (enc_area - union) / enc_area, 0.0)
+    return giou.astype(np.float32)
+
+
 class ByteTrackTracker(BaseTracker):
     """ByteTrack operates online by processing all detector outputs, categorizing them
     by confidence thresholds to enable a two-stage association process. High-score boxes
@@ -84,6 +131,7 @@ class ByteTrackTracker(BaseTracker):
         high_conf_det_threshold: float = 0.6,
         conf_cost_weight: float = 0.0,
         stage2_min_updates: int = 0,
+        giou_blend: float = 0.0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -97,6 +145,7 @@ class ByteTrackTracker(BaseTracker):
         self.high_conf_det_threshold = high_conf_det_threshold
         self.conf_cost_weight = conf_cost_weight
         self.stage2_min_updates = stage2_min_updates
+        self.giou_blend = giou_blend
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
 
     def update(
@@ -143,7 +192,23 @@ class ByteTrackTracker(BaseTracker):
         low_boxes = detection_boxes[low_indices]
 
         # Step 1: associate high-confidence detections to all tracks
-        iou_matrix = get_iou_matrix(self.tracks, high_boxes)
+        raw_iou = get_iou_matrix(self.tracks, high_boxes)
+
+        # GIoU blend: mix standard IoU with normalized GIoU (∈ [-1,1] mapped
+        # to [0,1]) to provide proximity credit for near-miss cases where the
+        # Kalman prediction drifted slightly below the IoU threshold.  The
+        # threshold gate always uses *raw* IoU so the blend only affects
+        # ranking, never filtering.
+        if self.giou_blend > 0 and raw_iou.size > 0:
+            track_bboxes = np.array(
+                [t.get_state_bbox() for t in self.tracks], dtype=np.float32
+            )
+            giou = _giou_matrix(track_bboxes, high_boxes)
+            iou_matrix = (
+                (1.0 - self.giou_blend) * raw_iou + self.giou_blend * (giou + 1.0) / 2.0
+            ).astype(np.float32)
+        else:
+            iou_matrix = raw_iou
 
         # Age discount: scale down IoU for lost tracks so the assignment
         # algorithm prefers active tracks over stale predictions.  This
@@ -175,7 +240,7 @@ class ByteTrackTracker(BaseTracker):
             solver_iou = solver_iou * conf_boost[np.newaxis, :]
 
         matched, unmatched_tracks, unmatched_high = self._get_associated_indices(
-            solver_iou, self.minimum_iou_threshold, raw_similarity=iou_matrix
+            solver_iou, self.minimum_iou_threshold, raw_similarity=raw_iou
         )
 
         for row, col in matched:

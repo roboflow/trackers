@@ -97,6 +97,11 @@
             "type": "int",
             "low": 0,
             "high": 5
+        },
+        "giou_blend": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
         }
     },
     "sort": {

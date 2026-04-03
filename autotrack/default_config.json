@@ -18,7 +18,8 @@
         "p_reset_threshold": 26,
         "oru_threshold": 14,
         "conf_cost_weight": 0.0,
-        "stage2_min_updates": 0
+        "stage2_min_updates": 0,
+        "giou_blend": 0.0
     },
     "sort": {
         "lost_track_buffer": 30,

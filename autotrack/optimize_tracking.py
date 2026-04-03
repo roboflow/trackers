@@ -187,6 +187,7 @@ def _build_tracker(params: dict, tracker_name: str):
             high_conf_det_threshold=params["high_conf_det_threshold"],
             conf_cost_weight=params.get("conf_cost_weight", 0.0),
             stage2_min_updates=params.get("stage2_min_updates", 0),
+            giou_blend=params.get("giou_blend", 0.0),
         )
     if tracker_name == "sort":
         from trackers import SORTTracker
