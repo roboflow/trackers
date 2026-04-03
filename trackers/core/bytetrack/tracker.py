@@ -54,6 +54,14 @@ class ByteTrackTracker(BaseTracker):
         stage2_iou_threshold: `float` specifying IoU threshold for stage-2
             low-confidence association. Lower values are more permissive when
             reviving tracks from low-confidence detections.
+        iou_age_weight: `float` specifying how much to discount IoU
+            similarity for lost tracks in stage-1 association. Each track's
+            IoU row is scaled by ``1 / (1 + iou_age_weight * lost_frames)``
+            where ``lost_frames = max(0, time_since_update - 1)``. This
+            makes the assignment prefer active tracks over stale predictions,
+            reducing identity switches. ``0`` disables the discount.
+            Only applied in stage 1; stage 2 is unaffected so that lost
+            tracks can still recover via low-confidence detections.
         high_conf_det_threshold: `float` specifying threshold for separating
             high and low confidence detections in the two-stage association.
     """
@@ -68,6 +76,7 @@ class ByteTrackTracker(BaseTracker):
         minimum_consecutive_frames: int = 2,
         minimum_iou_threshold: float = 0.1,
         stage2_iou_threshold: float = 0.05,
+        iou_age_weight: float = 0.03,
         high_conf_det_threshold: float = 0.6,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
@@ -77,6 +86,7 @@ class ByteTrackTracker(BaseTracker):
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.stage2_iou_threshold = stage2_iou_threshold
+        self.iou_age_weight = iou_age_weight
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
@@ -126,6 +136,19 @@ class ByteTrackTracker(BaseTracker):
 
         # Step 1: associate high-confidence detections to all tracks
         iou_matrix = get_iou_matrix(self.tracks, high_boxes)
+
+        # Age discount: scale down IoU for lost tracks so the assignment
+        # algorithm prefers active tracks over stale predictions.  This
+        # reduces identity switches from a drifted prediction "stealing"
+        # a detection that should go to the correct active track.
+        if self.iou_age_weight > 0 and iou_matrix.size > 0:
+            lost_frames = np.array(
+                [max(0, t.time_since_update - 1) for t in self.tracks],
+                dtype=np.float32,
+            )
+            discount = 1.0 / (1.0 + self.iou_age_weight * lost_frames)
+            iou_matrix = iou_matrix * discount[:, np.newaxis]
+
         matched, unmatched_tracks, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold
         )
