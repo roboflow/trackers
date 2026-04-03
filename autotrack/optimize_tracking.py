@@ -182,6 +182,7 @@ def _build_tracker(params: dict, tracker_name: str):
             track_activation_threshold=params["track_activation_threshold"],
             minimum_consecutive_frames=params["minimum_consecutive_frames"],
             minimum_iou_threshold=params["minimum_iou_threshold"],
+            stage2_iou_threshold=params["stage2_iou_threshold"],
             high_conf_det_threshold=params["high_conf_det_threshold"],
         )
     if tracker_name == "sort":

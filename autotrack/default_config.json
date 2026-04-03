@@ -6,6 +6,7 @@
         "track_activation_threshold": 0.7,
         "minimum_consecutive_frames": 2,
         "minimum_iou_threshold": 0.1,
+        "stage2_iou_threshold": 0.05,
         "high_conf_det_threshold": 0.6,
         "q_scale": 0.01,
         "r_scale": 0.1,

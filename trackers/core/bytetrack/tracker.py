@@ -51,6 +51,9 @@ class ByteTrackTracker(BaseTracker):
             threshold, tracks are assigned `tracker_id` of `-1`.
         minimum_iou_threshold: `float` specifying IoU threshold for associating
             detections to existing tracks. Higher values require more overlap.
+        stage2_iou_threshold: `float` specifying IoU threshold for stage-2
+            low-confidence association. Lower values are more permissive when
+            reviving tracks from low-confidence detections.
         high_conf_det_threshold: `float` specifying threshold for separating
             high and low confidence detections in the two-stage association.
     """
@@ -64,6 +67,7 @@ class ByteTrackTracker(BaseTracker):
         track_activation_threshold: float = 0.7,
         minimum_consecutive_frames: int = 2,
         minimum_iou_threshold: float = 0.1,
+        stage2_iou_threshold: float = 0.05,
         high_conf_det_threshold: float = 0.6,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
@@ -72,6 +76,7 @@ class ByteTrackTracker(BaseTracker):
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
+        self.stage2_iou_threshold = stage2_iou_threshold
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
@@ -141,7 +146,7 @@ class ByteTrackTracker(BaseTracker):
         # Step 2: associate low-confidence detections to remaining tracks
         iou_matrix = get_iou_matrix(remaining_tracks, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold
+            iou_matrix, self.stage2_iou_threshold
         )
 
         for row, col in matched:
