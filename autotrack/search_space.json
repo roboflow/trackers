@@ -92,6 +92,11 @@
             "type": "float",
             "low": 0.0,
             "high": 1.0
+        },
+        "stage2_min_updates": {
+            "type": "int",
+            "low": 0,
+            "high": 5
         }
     },
     "sort": {

@@ -83,6 +83,7 @@ class ByteTrackTracker(BaseTracker):
         iou_age_weight: float = 0.03,
         high_conf_det_threshold: float = 0.6,
         conf_cost_weight: float = 0.0,
+        stage2_min_updates: int = 0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -95,6 +96,7 @@ class ByteTrackTracker(BaseTracker):
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
         self.conf_cost_weight = conf_cost_weight
+        self.stage2_min_updates = stage2_min_updates
         self.tracks: list[ByteTrackKalmanBoxTracker] = []
 
     def update(
@@ -187,7 +189,20 @@ class ByteTrackTracker(BaseTracker):
             out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
-        remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
+        # Stage-2 maturity gate: only established tracks participate in low-conf
+        # recovery.  Young tracks (number_of_successful_updates < stage2_min_updates)
+        # are excluded to prevent tentative ghost tracks from being incorrectly
+        # recovered via low-confidence detections.  When stage2_min_updates == 0
+        # (default) all unmatched tracks participate, preserving the original behaviour.
+        if self.stage2_min_updates > 0:
+            remaining_tracks = [
+                self.tracks[i]
+                for i in unmatched_tracks
+                if self.tracks[i].number_of_successful_updates
+                >= self.stage2_min_updates
+            ]
+        else:
+            remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
 
         # Step 2: associate low-confidence detections to remaining tracks
         iou_matrix = get_iou_matrix(remaining_tracks, low_boxes)
