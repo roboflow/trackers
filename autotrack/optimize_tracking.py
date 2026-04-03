@@ -857,6 +857,7 @@ def main(
     )
 
     best_params = study.best_params
+    _apply_kalman_patch(best_params, tracker)
     best_metrics = _run_eval(
         params=best_params,
         sequences=sequences,
