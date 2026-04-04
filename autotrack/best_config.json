@@ -35,23 +35,26 @@
             }
         },
         "sdp": {
-            "hota": 58.75338069856523,
+            "hota": 58.861671537200145,
             "config": {
-                "lost_track_buffer": 52,
-                "track_activation_threshold": 0.5606075625008323,
-                "minimum_consecutive_frames": 2,
-                "minimum_iou_threshold": 0.07750346624708371,
-                "stage2_iou_threshold": 0.232749121521037,
-                "iou_age_weight": 0.03994197168422616,
-                "high_conf_det_threshold": 0.6079298670523339,
-                "q_scale": 0.00020207119434666944,
-                "r_scale": 0.04410818607423282,
-                "p_scale": 0.7311248571890605,
-                "velocity_decay": 0.7744433574536109,
-                "q_miss_alpha": 0.2819590902100747,
-                "max_interpolation_gap": 32,
-                "p_reset_threshold": 26,
-                "oru_threshold": 14
+                "lost_track_buffer": 57,
+                "track_activation_threshold": 0.332801764006514,
+                "minimum_consecutive_frames": 1,
+                "minimum_iou_threshold": 0.1544921247216997,
+                "stage2_iou_threshold": 0.29989235405145226,
+                "iou_age_weight": 0.07196565867821506,
+                "high_conf_det_threshold": 0.7952182147566667,
+                "q_scale": 0.0028187955724807505,
+                "r_scale": 0.5761571573167951,
+                "p_scale": 1.7563623326650344,
+                "velocity_decay": 0.8269725237719426,
+                "q_miss_alpha": 0.7960744853865391,
+                "max_interpolation_gap": 45,
+                "p_reset_threshold": 12,
+                "oru_threshold": 0,
+                "conf_cost_weight": 0.1696009083827073,
+                "stage2_min_updates": 5,
+                "giou_blend": 0.3963324609512682
             }
         },
         "yoloworld": {
