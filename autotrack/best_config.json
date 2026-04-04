@@ -35,26 +35,26 @@
             }
         },
         "sdp": {
-            "hota": 58.861671537200145,
+            "hota": 58.961,
             "config": {
                 "lost_track_buffer": 57,
-                "track_activation_threshold": 0.332801764006514,
+                "track_activation_threshold": 0.3328,
                 "minimum_consecutive_frames": 1,
-                "minimum_iou_threshold": 0.1544921247216997,
-                "stage2_iou_threshold": 0.29989235405145226,
-                "iou_age_weight": 0.07196565867821506,
-                "high_conf_det_threshold": 0.7952182147566667,
-                "q_scale": 0.0028187955724807505,
-                "r_scale": 0.5761571573167951,
-                "p_scale": 1.7563623326650344,
-                "velocity_decay": 0.8269725237719426,
-                "q_miss_alpha": 0.7960744853865391,
+                "minimum_iou_threshold": 0.1545,
+                "stage2_iou_threshold": 0.2999,
+                "iou_age_weight": 0.07197,
+                "high_conf_det_threshold": 0.7952,
+                "q_scale": 0.002819,
+                "r_scale": 0.5762,
+                "p_scale": 1.756,
+                "velocity_decay": 0.827,
+                "q_miss_alpha": 0.7961,
                 "max_interpolation_gap": 45,
                 "p_reset_threshold": 12,
                 "oru_threshold": 0,
-                "conf_cost_weight": 0.1696009083827073,
-                "stage2_min_updates": 5,
-                "giou_blend": 0.3963324609512682
+                "conf_cost_weight": 0.1696,
+                "stage2_min_updates": 12,
+                "giou_blend": 0.3963
             }
         },
         "yoloworld": {
@@ -131,13 +131,13 @@
             }
         },
         "sdp": {
-            "hota": 56.082738538689306,
+            "hota": 56.12888180226776,
             "config": {
                 "lost_track_buffer": 26,
-                "track_activation_threshold": 0.8005617563719339,
+                "track_activation_threshold": 0.9725014596862432,
                 "minimum_consecutive_frames": 1,
-                "minimum_iou_threshold": 0.279059910878476,
-                "max_interpolation_gap": 30
+                "minimum_iou_threshold": 0.2749178006176272,
+                "max_interpolation_gap": 57
             }
         },
         "yoloworld": {
