@@ -35,7 +35,7 @@
             }
         },
         "sdp": {
-            "hota": 58.961,
+            "hota": 59.031,
             "config": {
                 "lost_track_buffer": 57,
                 "track_activation_threshold": 0.3328,
@@ -47,14 +47,14 @@
                 "q_scale": 0.002819,
                 "r_scale": 0.5762,
                 "p_scale": 1.756,
-                "velocity_decay": 0.827,
+                "velocity_decay": 0.82,
                 "q_miss_alpha": 0.7961,
-                "max_interpolation_gap": 45,
+                "max_interpolation_gap": 48,
                 "p_reset_threshold": 12,
                 "oru_threshold": 0,
                 "conf_cost_weight": 0.1696,
                 "stage2_min_updates": 12,
-                "giou_blend": 0.3963
+                "giou_blend": 0.42
             }
         },
         "yoloworld": {
