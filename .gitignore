@@ -178,6 +178,5 @@ wandb/
 
 autotrack/mot17/
 autotrack/pretrained/
-_optimizations/
-_outputs/
+autotrack/*.zip
 *.local.*
