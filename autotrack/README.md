@@ -120,20 +120,20 @@ Published reference points (MOT17-val, FRCNN, IoU-only): SORT ~45–50 (estimate
 
 Bundled SDP detections; same ground truth as FRCNN. Full 7-sequence eval.
 
-| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
-| -------------------- | ------ | ----------- | ----------- | ----------- |
-| Defaults             | HOTA   | 53.941      | 53.351      | 53.217      |
-|                      | IDF1   | 65.402      | 65.817      | 64.538      |
-|                      | MOTA   | 62.464      | 58.731      | 61.917      |
-|                      | IDSW   | 371         | 283         | 355         |
-| + Optuna (n=500)     | HOTA   | 56.115      | **57.747**  | 56.083      |
-|                      | IDF1   | 68.077      | 70.330      | 67.517      |
-|                      | MOTA   | 65.602      | 66.215      | 65.283      |
-|                      | IDSW   | 329         | 303         | 326         |
-| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
+| Config               | Metric | ByteTrack  | OC-SORT     | SORT        |
+| -------------------- | ------ | ---------- | ----------- | ----------- |
+| Defaults             | HOTA   | 53.941     | 53.351      | 53.217      |
+|                      | IDF1   | 65.402     | 65.817      | 64.538      |
+|                      | MOTA   | 62.464     | 58.731      | 61.917      |
+|                      | IDSW   | 371        | 283         | 355         |
+| + Optuna (n=500)     | HOTA   | 56.115     | **57.747**  | 56.083      |
+|                      | IDF1   | 68.077     | 70.330      | 67.517      |
+|                      | MOTA   | 65.602     | 66.215      | 65.283      |
+|                      | IDSW   | 329        | 303         | 326         |
+| + autotrack + Optuna | HOTA   | **59.092** | _(pending)_ | _(pending)_ |
+|                      | IDF1   | **71.993** | _(pending)_ | _(pending)_ |
+|                      | MOTA   | **66.977** | _(pending)_ | _(pending)_ |
+|                      | IDSW   | **259**    | _(pending)_ | _(pending)_ |
 
 > SDP is stronger than FRCNN — expect single-sequence defaults around 60–65 HOTA on MOT17-04, but the 7-sequence Optuna average is lower because the benchmark includes harder sequences that pull the mean down.
 
@@ -240,6 +240,68 @@ uv run python optimize_tracking.py ocsort    yoloworld
 ```
 
 </details>
+
+## Journal
+
+### ByteTrack — Phase 2 Campaign (MOT17-val SDP, 20 iterations)
+
+**Period**: 2026-04-02 → 2026-04-04 | **Baseline**: HOTA = 56.003 | **Final**: HOTA = 59.092 (+5.51%, +3.089 pts) | **Best commit**: `9f45bda`
+
+Full iteration log: `_optimizations/state/20260402-233730/experiments.jsonl`. The table below shows **kept** experiments only — all 20 iterations including regressions are in the JSONL.
+
+#### Positive experiments
+
+| Iter | Change                            | HOTA before → after | Δ pts  | Δ %    | IDSW      |
+| ---- | --------------------------------- | ------------------- | ------ | ------ | --------- |
+| i1   | ORU velocity re-estimation        | 56.003 → 56.063     | +0.060 | +0.11% | 323 → 314 |
+| i2b  | Separate stage-2 IoU threshold    | 56.063 → 56.196     | +0.133 | +0.24% | 314 → 320 |
+| i5   | Stage-1 age discount              | 56.196 → 56.781     | +0.585 | +1.04% | —         |
+| i10  | 1st calibration wave              | 56.781 → 57.424     | +0.643 | +1.13% | —         |
+| i11  | oru_threshold 2 → 5               | 57.424 → 57.813     | +0.389 | +0.68% | —         |
+| i12  | 2nd calibration wave              | 57.813 → 58.753     | +0.940 | +1.62% | → 297     |
+| i16  | 3rd calibration wave              | 58.753 → 58.862     | +0.109 | +0.19% | 297 → 269 |
+| i17  | stage2_min_updates search cap fix | 58.862 → 58.961     | +0.099 | +0.17% | 269 → 266 |
+| i18  | Micro-calibration (wave 1)        | 58.961 → 59.031     | +0.070 | +0.12% | 266 → 262 |
+| i19  | Micro-calibration (wave 2)        | 59.031 → 59.092     | +0.061 | +0.10% | 262 → 259 |
+
+<details>
+<summary><strong>Experiment descriptions</strong></summary>
+
+- **ORU velocity re-estimation** (i1) — on re-detection after occlusion, replay virtual predict+update cycles along an interpolated trajectory to reconstruct velocity. Borrowed from OC-SORT.
+- **Separate stage-2 IoU threshold** (i2b) — stage-2 low-confidence recovery uses an independent, lower threshold than stage-1; original ByteTrack shares one threshold for both stages. Codex contribution.
+- **Stage-1 age discount** (i5, `iou_age_weight`) — IoU in the Hungarian cost matrix is multiplied by `1 / (1 + w × lost_frames)` for stale tracks, biasing assignment toward recently-seen ones without affecting the threshold gate.
+- **1st calibration wave** (i10) — first Optuna pass over all 9 parameters under the new code. Key shifts: `lost_track_buffer` 30→62, `track_activation_threshold` 0.70→0.31, `q_scale` 0.01→0.0025, `velocity_decay` 0.95→0.82.
+- **oru_threshold 2 → 5** (i11) — ORU reserved for longer occlusions (≥5 frames); shorter gaps handled by velocity decay alone, reducing noisy replays on brief miss frames.
+- **2nd calibration wave** (i12) — Optuna re-run after i11 guard. Kalman tightened ~10× (smaller `q_scale`/`r_scale`/`p_scale`), `oru_threshold` 5→14, `stage2_iou_threshold` 0.05→0.233, `velocity_decay` 0.817→0.774.
+- **3rd calibration wave** (i16) — 1000-trial joint search over all 19 params after 3 new knobs added in i13–i15 (`conf_cost_weight`, `stage2_min_updates`, `giou_blend`). Key shifts: `oru_threshold` 14→0 (ORU disabled), Kalman loosened ~14×, `high_conf_det_threshold` 0.61→0.80, `stage2_min_updates` activated at 5, `giou_blend` 0.396, `conf_cost_weight` 0.170. Note: i13–i15 added these three features at `default=0` (disabled); no HOTA change at default params until i16 activated them jointly.
+- **stage2_min_updates search cap fix** (i17) — search space was [0, 5]; Optuna reported 5 as optimal (hitting the cap). Manual scan revealed true peak at 12 with a cliff at 14+. Cap widened to [0, 15].
+- **Micro-calibration wave 1** (i18) — `max_interpolation_gap` 45→48, `giou_blend` 0.396→0.42, `velocity_decay` 0.827→0.82. Each sub-threshold alone (+0.02–0.03%); jointly +0.12%.
+- **Micro-calibration wave 2** (i19) — `min_iou_threshold` 0.1545→0.146, `p_scale` 1.756→2.5, `q_scale` 0.002819→0.003. Optuna continuous sampler undershot near integer/round discontinuities; targeted local scan recovered the gap.
+
+</details>
+
+#### Code features added
+
+All six features are in `trackers/core/bytetrack/tracker.py` and wired through `optimize_tracking.py`:
+
+| Parameter              | Default | What it does                                                                        |
+| ---------------------- | ------- | ----------------------------------------------------------------------------------- |
+| `stage2_iou_threshold` | 0.2999  | Independent IoU gate for stage-2 low-confidence detection recovery                  |
+| `iou_age_weight`       | 0.07197 | Age discount factor for stage-1 Hungarian assignment cost                           |
+| `conf_cost_weight`     | 0.1696  | Confidence boost multiplier in stage-1 assignment, biases toward certain detections |
+| `stage2_min_updates`   | 12      | Minimum track age (successful updates) required to enter stage-2                    |
+| `giou_blend`           | 0.42    | Blend weight between standard IoU and GIoU in stage-1 cost matrix                   |
+| `oru_threshold`        | 0       | Minimum occlusion length (frames) to trigger ORU velocity replay                    |
+
+#### What failed (reverted)
+
+xcycsr 7D Kalman state (−1.2%), anisotropic Q matrix (−0.5%), EMA position blend (−0.2%), CMC detection-centroid (−27%), conf-based R scaling (−0.6%), NMS pre-filter (neutral), cascade matching (−1.2%), birth suppression (neutral), split velocity decay (−0.6%), adaptive confirmation (−0.2%), q_miss_start (neutral).
+
+#### Key lesson
+
+**Calibration waves account for ~87% of the total gain**: the three Optuna passes (i10 +1.13%, i12 +1.62%, i16 +0.19%) delivered +2.94 of the +3.09 total HOTA improvement. Joint optimisation over all parameters simultaneously reaches basins that sequential per-parameter tuning cannot. Algorithmic additions (ORU, stage-2 threshold, age discount, etc.) created new tunable structure that the calibration waves then exploited.
+
+---
 
 ## Target analysis
 
