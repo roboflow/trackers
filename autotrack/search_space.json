@@ -96,7 +96,7 @@
         "stage2_min_updates": {
             "type": "int",
             "low": 0,
-            "high": 5
+            "high": 15
         },
         "giou_blend": {
             "type": "float",
