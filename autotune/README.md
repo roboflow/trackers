@@ -415,30 +415,33 @@ claude  # or any coding agent
 > Read program.md and start the experiment loop.
 ```
 
-### Run with /optimize campaign
+### Run with /optimize
 
 If you use [Borda's Claude Code skill suite](https://github.com/Borda/.ai-home), the `/optimize` skill drives the loop directly from `program.md`:
 
 ```bash
 claude
-> /optimize campaign autotune/program.md
+> /optimize run autotune/program.md                              # uses algo/det_source from Config (defaults)
+> /optimize run autotune/program.md "algo=sort"                  # override tracker without editing the file
+> /optimize run autotune/program.md "algo=ocsort det_source=dpm" # override both
+> /optimize run autotune/program.md "algo=sort" --codex --docker # with Codex co-pilot + Docker sandbox
 ```
 
-The skill handles the full iteration loop — baseline measurement, agent-driven code changes, metric verification, auto-rollback on regression, and a final results report. To run a tuning-only pass (Optuna, no code changes), set `agent_strategy: perf` in `program.md` before launching. See the skill docs for `--team` and `--codex` flags.
+The skill handles the full iteration loop — baseline measurement, agent-driven code changes, metric verification, auto-rollback on regression, and a final results report. `algo` and `det_source` in the Config block are **defaults**; pass them as `key=value` clarifications to override per run without editing the file. To run a tuning-only pass (Optuna, no code changes), set `agent_strategy: perf` in `program.md` before launching. See the skill docs for `--team` and `--codex` flags.
 
 ## Files
 
-| File                     | Who edits | Purpose                                                                                                |
-| ------------------------ | --------- | ------------------------------------------------------------------------------------------------------ |
-| `README.md`              | Human     | This file                                                                                              |
-| `program.md`             | Human     | Research contract + hard boundaries (ByteTrack Phase 2)                                                |
-| `generate_detections.py` | Human     | Detection generation for any supported model; creates `MOT17-{N}-{TAG}/` sibling directories           |
-| `default_config.json`    | Human     | Default tracker params for baseline eval — edit here, not in `optimize_tracking.py`                    |
-| `search_space.json`      | Agent     | Optuna search space — add/remove params or adjust ranges here, not in the script                       |
-| `optimize_tracking.py`   | Agent     | Optuna runner — positional `tracker det_source`; `--n-trials N`; `--det-tag TAG` for custom detectors  |
-| `best_config.json`       | Agent     | Best Optuna params keyed by `{tracker: {det_source: {hota, config}}}` — written after `--n-trials > 1` |
+| File                     | Who edits | Purpose                                                                                                                                       |
+| ------------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`              | Human     | This file                                                                                                                                     |
+| `program.md`             | Human     | Research contract — tracker-agnostic via `{algo}`/`{det_source}` placeholders; `algo`/`det_source` in Config are defaults overridable per run |
+| `generate_detections.py` | Human     | Detection generation for any supported model; creates `MOT17-{N}-{TAG}/` sibling directories                                                  |
+| `default_config.json`    | Human     | Default tracker params for baseline eval — edit here, not in `optimize_tracking.py`                                                           |
+| `search_space.json`      | Agent     | Optuna search space — add/remove params or adjust ranges here, not in the script                                                              |
+| `optimize_tracking.py`   | Agent     | Optuna runner — positional `tracker det_source`; `--n-trials N`; `--det-tag TAG` for custom detectors                                         |
+| `best_config.json`       | Agent     | Best Optuna params keyed by `{tracker: {det_source: {hota, config}}}` — written after `--n-trials > 1`                                        |
 
-To run a campaign for a different tracker, copy `program.md`, set `algo: sort` (or `ocsort`) in the Config section, update the metric command to pass `--tracker sort`, and widen `scope_files` to include that tracker's implementation files.
+To run a campaign for a different tracker, change `algo` in the Config block (`sort`, `bytetrack`, or `ocsort`) — or pass `"algo=sort"` as a clarification override without editing the file. `det_source` can be overridden the same way (`"algo=sort det_source=dpm"`).
 
 ## References
 
