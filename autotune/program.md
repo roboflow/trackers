@@ -11,7 +11,7 @@ Optuna is a **validation tool**, not the goal. Every candidate improvement is ev
 ## Metric
 
 ```
-command: cd autotrack && uv run python optimize_tracking.py bytetrack sdp --n-trials 1 2>&1 | grep "^__METRICS__" | grep -oE "HOTA=[0-9.]+" | cut -d= -f2
+command: cd autotune && uv run python optimize_tracking.py bytetrack sdp --n-trials 1 2>&1 | grep "^__METRICS__" | grep -oE "HOTA=[0-9.]+" | cut -d= -f2
 direction: higher
 target: 68.0
 ```
@@ -19,7 +19,7 @@ target: 68.0
 ## Guard
 
 ```
-command: uv run pytest test/ -m "not integration" --ignore=test/scripts -q && cd autotrack && python3 -c "
+command: uv run pytest test/ -m "not integration" --ignore=test/scripts -q && cd autotune && python3 -c "
 import json, re, subprocess, sys
 best = json.load(open('best_config.json'))
 failed = []
@@ -44,10 +44,10 @@ agent_strategy: ml
 det_source: sdp
 scope_files:
   - trackers/**
-  - autotrack/optimize_tracking.py
-  - autotrack/generate_detections.py
-  - autotrack/search_space.json
-  - autotrack/default_config.json
+  - autotune/optimize_tracking.py
+  - autotune/generate_detections.py
+  - autotune/search_space.json
+  - autotune/default_config.json
 out_of_scope_files:
   - trackers/eval/**
   - trackers/datasets/**
@@ -64,7 +64,7 @@ All three setup steps must pass before starting the campaign loop:
 | ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------ |
 | Dependencies  | `uv sync --group optimize`                                                  | Resolves without error                                 |
 | MOT17 data    | `trackers download mot17 --split val --asset annotations,detections,frames` | Downloads to `~/.cache/trackers/mot17/val/`            |
-| Metric sanity | `cd autotrack && uv run python optimize_tracking.py bytetrack sdp --fast`   | Prints `__METRICS__: HOTA≈60–65` (SDP-val, single seq) |
+| Metric sanity | `cd autotune && uv run python optimize_tracking.py bytetrack sdp --fast`    | Prints `__METRICS__: HOTA≈60–65` (SDP-val, single seq) |
 
 The guard uses `best_config.json` as the regression baseline — no separate seeding step required. The guard runs all three trackers (`bytetrack`, `sort`, `ocsort`) via `optimize_tracking.py sdp --n-trials 500` and fails if any tracker's HOTA drops more than 0.5% from its stored best.
 

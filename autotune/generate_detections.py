@@ -513,7 +513,7 @@ def main(
     )
     console.print(
         f"Run campaign:\n"
-        f"  [dim]cd autotrack &&"
+        f"  [dim]cd autotune &&"
         f" uv run python optimize_tracking.py bytetrack {tag.lower()}[/dim]"
     )
 

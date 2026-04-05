@@ -1,4 +1,4 @@
-# autotrack
+# autotune
 
 Autonomous optimization of MOT17 trackers — SORT, ByteTrack, OC-SORT — using the [autoresearch](https://github.com/karpathy/autoresearch) pattern with [Roboflow trackers](https://github.com/roboflow/trackers).
 
@@ -99,20 +99,20 @@ Override the tag with `--detector-tag` if needed. Each detector writes to its ow
 
 Published reference points (MOT17-val, FRCNN, IoU-only): SORT ~45–50 (estimated) · ByteTrack ~50–52 · OC-SORT ~55–57. Theoretical ceilings: SORT ~52–55 · ByteTrack ~60–65 · OC-SORT ~62–65.
 
-| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
-| -------------------- | ------ | ----------- | ----------- | ----------- |
-| Defaults             | HOTA   | 50.355      | 49.690      | 49.950      |
-|                      | IDF1   | 56.600      | 56.143      | 56.088      |
-|                      | MOTA   | 47.406      | 45.858      | 46.769      |
-|                      | IDSW   | 234         | 154         | 260         |
-| + Optuna (n=500)     | HOTA   | 51.757      | **52.218**  | 51.488      |
-|                      | IDF1   | 58.367      | 58.946      | 58.417      |
-|                      | MOTA   | 47.740      | 47.753      | 47.770      |
-|                      | IDSW   | 237         | 233         | 173         |
-| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
+| Config              | Metric | ByteTrack   | OC-SORT     | SORT        |
+| ------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults            | HOTA   | 50.355      | 49.690      | 49.950      |
+|                     | IDF1   | 56.600      | 56.143      | 56.088      |
+|                     | MOTA   | 47.406      | 45.858      | 46.769      |
+|                     | IDSW   | 234         | 154         | 260         |
+| + Optuna (n=500)    | HOTA   | 51.757      | **52.218**  | 51.488      |
+|                     | IDF1   | 58.367      | 58.946      | 58.417      |
+|                     | MOTA   | 47.740      | 47.753      | 47.770      |
+|                     | IDSW   | 237         | 233         | 173         |
+| + autotune + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
 
 > **Note — why is OC-SORT's FRCNN baseline below SORT?** Default params are not tuned for FRCNN dets. `minimum_iou_threshold=0.3` is conservative for noisy public detections; ByteTrack uses 0.1. Despite the lower HOTA, OC-SORT already shows 40% fewer ID switches (154 vs 260) at defaults — its direction-consistency mechanism is working. Tuned params bring all three trackers into the 51–53 HOTA range.
 
@@ -120,20 +120,20 @@ Published reference points (MOT17-val, FRCNN, IoU-only): SORT ~45–50 (estimate
 
 Bundled SDP detections; same ground truth as FRCNN. Full 7-sequence eval.
 
-| Config               | Metric | ByteTrack  | OC-SORT     | SORT        |
-| -------------------- | ------ | ---------- | ----------- | ----------- |
-| Defaults             | HOTA   | 53.941     | 53.351      | 53.217      |
-|                      | IDF1   | 65.402     | 65.817      | 64.538      |
-|                      | MOTA   | 62.464     | 58.731      | 61.917      |
-|                      | IDSW   | 371        | 283         | 355         |
-| + Optuna (n=500)     | HOTA   | 56.115     | **57.747**  | 56.083      |
-|                      | IDF1   | 68.077     | 70.330      | 67.517      |
-|                      | MOTA   | 65.602     | 66.215      | 65.283      |
-|                      | IDSW   | 329        | 303         | 326         |
-| + autotrack + Optuna | HOTA   | **59.092** | _(pending)_ | _(pending)_ |
-|                      | IDF1   | **71.993** | _(pending)_ | _(pending)_ |
-|                      | MOTA   | **66.977** | _(pending)_ | _(pending)_ |
-|                      | IDSW   | **259**    | _(pending)_ | _(pending)_ |
+| Config              | Metric | ByteTrack  | OC-SORT     | SORT        |
+| ------------------- | ------ | ---------- | ----------- | ----------- |
+| Defaults            | HOTA   | 53.941     | 53.351      | 53.217      |
+|                     | IDF1   | 65.402     | 65.817      | 64.538      |
+|                     | MOTA   | 62.464     | 58.731      | 61.917      |
+|                     | IDSW   | 371        | 283         | 355         |
+| + Optuna (n=500)    | HOTA   | 56.115     | **57.747**  | 56.083      |
+|                     | IDF1   | 68.077     | 70.330      | 67.517      |
+|                     | MOTA   | 65.602     | 66.215      | 65.283      |
+|                     | IDSW   | 329        | 303         | 326         |
+| + autotune + Optuna | HOTA   | **59.092** | _(pending)_ | _(pending)_ |
+|                     | IDF1   | **71.993** | _(pending)_ | _(pending)_ |
+|                     | MOTA   | **66.977** | _(pending)_ | _(pending)_ |
+|                     | IDSW   | **259**    | _(pending)_ | _(pending)_ |
 
 > SDP is stronger than FRCNN — expect single-sequence defaults around 60–65 HOTA on MOT17-04, but the 7-sequence Optuna average is lower because the benchmark includes harder sequences that pull the mean down.
 
@@ -141,39 +141,39 @@ Bundled SDP detections; same ground truth as FRCNN. Full 7-sequence eval.
 
 DPM is the weakest bundled detector. Full 7-sequence eval.
 
-| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
-| -------------------- | ------ | ----------- | ----------- | ----------- |
-| Defaults             | HOTA   | 31.121      | 25.256      | 29.890      |
-|                      | IDF1   | 37.897      | 30.571      | 36.308      |
-|                      | MOTA   | 26.664      | 20.662      | 25.738      |
-|                      | IDSW   | 191         | 104         | 363         |
-| + Optuna (n=500)     | HOTA   | 33.468      | **35.238**  | 31.962      |
-|                      | IDF1   | 41.178      | 43.798      | 38.660      |
-|                      | MOTA   | 27.603      | 30.904      | 26.717      |
-|                      | IDSW   | 199         | 119         | 265         |
-| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
+| Config              | Metric | ByteTrack   | OC-SORT     | SORT        |
+| ------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults            | HOTA   | 31.121      | 25.256      | 29.890      |
+|                     | IDF1   | 37.897      | 30.571      | 36.308      |
+|                     | MOTA   | 26.664      | 20.662      | 25.738      |
+|                     | IDSW   | 191         | 104         | 363         |
+| + Optuna (n=500)    | HOTA   | 33.468      | **35.238**  | 31.962      |
+|                     | IDF1   | 41.178      | 43.798      | 38.660      |
+|                     | MOTA   | 27.603      | 30.904      | 26.717      |
+|                     | IDSW   | 199         | 119         | 265         |
+| + autotune + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
 
 ### RF-DETR detections (MOT17-val, generated)
 
 RF-DETR-L (`rfdetr/l`), native backend, weights auto-downloaded. Defaults: MOT17-04 only (`--fast`). Optuna: full 7-sequence.
 
-| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
-| -------------------- | ------ | ----------- | ----------- | ----------- |
-| Defaults             | HOTA   | 35.759      | 33.763      | 49.606      |
-|                      | IDF1   | 33.341      | 31.047      | 55.911      |
-|                      | MOTA   | 19.224      | 17.446      | 43.171      |
-|                      | IDSW   | 1           | 5           | 96          |
-| + Optuna (n=10k)     | HOTA   | 44.780      | **47.311**  | 44.465      |
-|                      | IDF1   | 51.076      | 55.651      | 50.884      |
-|                      | MOTA   | 32.355      | 39.269      | 35.053      |
-|                      | IDSW   | 336         | 212         | 489         |
-| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
+| Config              | Metric | ByteTrack   | OC-SORT     | SORT        |
+| ------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults            | HOTA   | 35.759      | 33.763      | 49.606      |
+|                     | IDF1   | 33.341      | 31.047      | 55.911      |
+|                     | MOTA   | 19.224      | 17.446      | 43.171      |
+|                     | IDSW   | 1           | 5           | 96          |
+| + Optuna (n=10k)    | HOTA   | 44.780      | **47.311**  | 44.465      |
+|                     | IDF1   | 51.076      | 55.651      | 50.884      |
+|                     | MOTA   | 32.355      | 39.269      | 35.053      |
+|                     | IDSW   | 336         | 212         | 489         |
+| + autotune + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
 
 > RF-DETR defaults (tuned for FRCNN) favour SORT — its looser thresholds match RF-DETR's score distribution better. After Optuna, OC-SORT flips to lead: direction-consistency recovers strongly once thresholds are tuned, outpacing both ByteTrack and SORT by ~2.5 HOTA.
 
@@ -181,20 +181,20 @@ RF-DETR-L (`rfdetr/l`), native backend, weights auto-downloaded. Defaults: MOT17
 
 YOLO World X (`yoloworld`), generated via `generate_detections.py`. Full 7-sequence eval.
 
-| Config               | Metric | ByteTrack   | OC-SORT     | SORT        |
-| -------------------- | ------ | ----------- | ----------- | ----------- |
-| Defaults             | HOTA   | 33.291      | 29.565      | 41.468      |
-|                      | IDF1   | 33.123      | 30.079      | 46.795      |
-|                      | MOTA   | 22.589      | 18.013      | 32.179      |
-|                      | IDSW   | 89          | 49          | 107         |
-| + Optuna (n=500)     | HOTA   | 43.110      | 41.406      | **45.629**  |
-|                      | IDF1   | 47.444      | 45.546      | 52.432      |
-|                      | MOTA   | 33.143      | 31.273      | 36.962      |
-|                      | IDSW   | 126         | 107         | 171         |
-| + autotrack + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
-|                      | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
+| Config              | Metric | ByteTrack   | OC-SORT     | SORT        |
+| ------------------- | ------ | ----------- | ----------- | ----------- |
+| Defaults            | HOTA   | 33.291      | 29.565      | 41.468      |
+|                     | IDF1   | 33.123      | 30.079      | 46.795      |
+|                     | MOTA   | 22.589      | 18.013      | 32.179      |
+|                     | IDSW   | 89          | 49          | 107         |
+| + Optuna (n=500)    | HOTA   | 43.110      | 41.406      | **45.629**  |
+|                     | IDF1   | 47.444      | 45.546      | 52.432      |
+|                     | MOTA   | 33.143      | 31.273      | 36.962      |
+|                     | IDSW   | 126         | 107         | 171         |
+| + autotune + Optuna | HOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | IDF1   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | MOTA   | _(pending)_ | _(pending)_ | _(pending)_ |
+|                     | IDSW   | _(pending)_ | _(pending)_ | _(pending)_ |
 
 > YOLO World X with default params shows the same pattern as RF-DETR: SORT leads because its looser IoU threshold (0.3 vs 0.1) better matches the detector's score distribution. After Optuna, ByteTrack closes to within 2.5 HOTA of SORT — the gap narrows but doesn't close, suggesting a structural mismatch rather than a pure tuning issue.
 
@@ -211,7 +211,7 @@ All metrics are higher-is-better except IDSW (lower is better):
 <summary><strong>Measuring baselines</strong></summary>
 
 ```bash
-cd autotrack
+cd autotune
 
 # FRCNN (bundled) — all three trackers
 uv run python optimize_tracking.py sort      frcnn
@@ -340,7 +340,7 @@ See `program.md` for the full contract. Short version:
 ### Dependencies
 
 ```bash
-# Run from the project root (not autotrack/)
+# Run from the project root (not autotune/)
 uv sync --group optimize   # installs optuna[rdb] + fire + inference
 ```
 
@@ -348,7 +348,7 @@ uv sync --group optimize   # installs optuna[rdb] + fire + inference
 
 ```bash
 trackers download mot17 --split val --asset annotations,detections
-cd autotrack
+cd autotune
 uv run python optimize_tracking.py bytetrack frcnn --fast     # expect HOTA ~51.2
 uv run python optimize_tracking.py sort frcnn --fast          # SORT sanity check
 uv run python optimize_tracking.py ocsort frcnn --fast        # OC-SORT sanity check
@@ -357,7 +357,7 @@ uv run python optimize_tracking.py ocsort frcnn --fast        # OC-SORT sanity c
 ### RF-DETR detections (no API key — weights auto-downloaded)
 
 ```bash
-cd autotrack && uv run python generate_detections.py --model rfdetr/l
+cd autotune && uv run python generate_detections.py --model rfdetr/l
 # Verify
 uv run python optimize_tracking.py bytetrack rfdetr --fast
 ```
@@ -383,7 +383,7 @@ frame_idx,-1,x,y,w,h,confidence,-1,-1,-1
 where `(x, y)` is the top-left corner, `(w, h)` is width/height, and `id=-1` marks raw detections (not tracked identities). Then evaluate by passing the detector name as `det_source` — unknown names are uppercased automatically to form the directory tag:
 
 ```bash
-cd autotrack
+cd autotune
 uv run python optimize_tracking.py bytetrack mydet
 uv run python optimize_tracking.py bytetrack mydet --n-trials 50
 ```
@@ -421,7 +421,7 @@ If you use [Borda's Claude Code skill suite](https://github.com/Borda/.ai-home),
 
 ```bash
 claude
-> /optimize campaign autotrack/program.md
+> /optimize campaign autotune/program.md
 ```
 
 The skill handles the full iteration loop — baseline measurement, agent-driven code changes, metric verification, auto-rollback on regression, and a final results report. To run a tuning-only pass (Optuna, no code changes), set `agent_strategy: perf` in `program.md` before launching. See the skill docs for `--team` and `--codex` flags.

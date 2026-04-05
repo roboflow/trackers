@@ -176,7 +176,7 @@ runs/
 wandb/
 .gradio/
 
-autotrack/mot17/
-autotrack/pretrained/
-autotrack/*.zip
+autotune/mot17/
+autotune/pretrained/
+autotune/*.zip
 *.local.*

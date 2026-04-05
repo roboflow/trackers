@@ -65,7 +65,7 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 _err = Console(stderr=True)
 
-_STUDY_NAME = "autotrack"
+_STUDY_NAME = "autotune"
 
 # Maps --det-source values to the sequence directory suffix used in the filesystem.
 # generate_detections.py creates MOT17-{N}-{TAG}/ sibling dirs; FRCNN is the original.

@@ -253,7 +253,7 @@ def generate_submission(
             constructor (e.g. ``lost_track_buffer=50``).
 
     Examples:
-        Run from the autotrack directory:
+        Run from the autotune directory:
 
         >>> # uv run python generate_codabench.py bytetrack
         >>> # uv run python generate_codabench.py bytetrack --det-source all

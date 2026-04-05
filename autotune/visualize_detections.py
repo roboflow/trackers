@@ -11,7 +11,7 @@ Reads ``det/det.txt`` and ``img1/`` from one or more sequence directories and
 writes annotated JPEG frames to ``vis/`` inside each sequence directory.
 
 Usage:
-    cd autotrack
+    cd autotune
     uv run python visualize_detections.py MOT17-04-YOLOWORLD
     uv run python visualize_detections.py MOT17-04-YOLOWORLD MOT17-02-RFDETR
     uv run python visualize_detections.py --det-source yoloworld
