@@ -61,6 +61,10 @@ class SORTTracker(BaseTracker):
         p_reset_threshold: `int` minimum number of missed frames before resetting
             the error covariance P to identity on re-detection. Discards stale
             accumulated uncertainty after long gaps. `0` disables the reset.
+        oru_threshold: `int` minimum missed frames before applying observation-
+            centric velocity re-estimation on re-detection. Computes a virtual
+            trajectory velocity from (current - last_observed) / gap to replace
+            the decayed Kalman velocity. Technique from OC-SORT. `0` disables.
     """
 
     tracker_id = "sort"
@@ -75,6 +79,7 @@ class SORTTracker(BaseTracker):
         velocity_decay: float = 0.95,
         q_miss_alpha: float = 0.0,
         p_reset_threshold: int = 0,
+        oru_threshold: int = 0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -86,6 +91,7 @@ class SORTTracker(BaseTracker):
         self.velocity_decay = velocity_decay
         self.q_miss_alpha = q_miss_alpha
         self.p_reset_threshold = p_reset_threshold
+        self.oru_threshold = oru_threshold
 
         # Active trackers
         self.trackers: list[SORTKalmanBoxTracker] = []
@@ -139,6 +145,7 @@ class SORTTracker(BaseTracker):
                         velocity_decay=self.velocity_decay,
                         q_miss_alpha=self.q_miss_alpha,
                         p_reset_threshold=self.p_reset_threshold,
+                        oru_threshold=self.oru_threshold,
                     )
                 )
 

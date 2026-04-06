@@ -51,6 +51,7 @@ class SORTKalmanBoxTracker:
         velocity_decay: float = 0.95,
         q_miss_alpha: float = 0.0,
         p_reset_threshold: int = 0,
+        oru_threshold: int = 0,
     ) -> None:
         # Initialize with a temporary ID of -1
         # Will be assigned a real ID when the track is considered mature
@@ -74,6 +75,14 @@ class SORTKalmanBoxTracker:
         # re-detection, reset P to identity after the update step so stale
         # uncertainty is discarded. 0 disables the reset.
         self.p_reset_threshold = p_reset_threshold
+        # oru_threshold: observation-centric re-estimation update — on re-detection
+        # after >= this many missed frames, override the Kalman velocity with a
+        # virtual trajectory computed from (current - last_observed) / gap.
+        # Technique from OC-SORT. 0 disables.
+        self.oru_threshold = oru_threshold
+
+        # Store last observed bbox for observation-centric velocity re-estimation
+        self._last_observed_bbox: NDArray[np.float32] | None = None
 
         # For simplicity, we keep a small state vector:
         # (x, y, x2, y2, vx, vy, vx2, vy2).
@@ -86,6 +95,7 @@ class SORTKalmanBoxTracker:
         self.state[1, 0] = bbox_float[1]
         self.state[2, 0] = bbox_float[2]
         self.state[3, 0] = bbox_float[3]
+        self._last_observed_bbox = bbox_float[:4].copy()
 
         # Basic constant velocity model
         self._initialize_kalman_filter()
@@ -150,6 +160,24 @@ class SORTKalmanBoxTracker:
         self.time_since_update = 0
         self.number_of_successful_updates += 1
 
+        # Observation-centric velocity re-estimation (OC-SORT technique):
+        # on re-detection after a gap, compute a "virtual trajectory" velocity
+        # from (current_bbox - last_observed_bbox) / gap and override the
+        # (decayed) Kalman velocity estimate.
+        if (
+            self.oru_threshold > 0
+            and was_lost_for >= self.oru_threshold
+            and self._last_observed_bbox is not None
+        ):
+            bbox_f = bbox.astype(np.float32)
+            virtual_vel = (
+                (bbox_f[:4] - self._last_observed_bbox) / was_lost_for
+            )
+            self.state[4, 0] = virtual_vel[0]
+            self.state[5, 0] = virtual_vel[1]
+            self.state[6, 0] = virtual_vel[2]
+            self.state[7, 0] = virtual_vel[3]
+
         # Kalman Gain
         S: NDArray[np.float32] = (self.H @ self.P @ self.H.T + self.R).astype(
             np.float32
@@ -170,6 +198,9 @@ class SORTKalmanBoxTracker:
         # Update covariance
         identity_matrix: NDArray[np.float32] = np.eye(8, dtype=np.float32)
         self.P = ((identity_matrix - K @ self.H) @ self.P).astype(np.float32)
+
+        # Store this observation for future ORU velocity re-estimation
+        self._last_observed_bbox = bbox.astype(np.float32)[:4].copy()
 
         # P reset: after a long gap, discard stale accumulated uncertainty so
         # velocity estimation starts fresh from the re-detection.

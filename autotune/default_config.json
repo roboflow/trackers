@@ -29,7 +29,8 @@
         "max_interpolation_gap": 0,
         "velocity_decay": 0.82,
         "q_miss_alpha": 0.8,
-        "p_reset_threshold": 10
+        "p_reset_threshold": 10,
+        "oru_threshold": 3
     },
     "ocsort": {
         "lost_track_buffer": 30,
