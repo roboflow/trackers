@@ -107,18 +107,18 @@ class SORTTracker(BaseTracker):
         self,
         iou_matrix: np.ndarray,
         detection_boxes: np.ndarray,
-        confidences: np.ndarray | None = None,
+        raw_similarity: np.ndarray | None = None,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
-        """
-        Associate detections to trackers based on IOU
+        """Associate detections to trackers based on IOU.
 
         Args:
-            iou_matrix: IOU cost matrix.
+            iou_matrix: Similarity matrix used by the solver for ranking.
+                May include confidence-boosted values.
             detection_boxes: Detected bounding boxes in the form [x1, y1, x2, y2].
-            confidences: Optional detection confidence scores, shape (N,). When
-                ``conf_cost_weight > 0`` these are used to break IoU ties by
-                boosting the solver matrix — the IoU gate still uses raw IoU so
-                no invalid matches are accepted.
+            raw_similarity: Optional unmodified similarity matrix.  When
+                provided, the threshold check uses this matrix instead of
+                ``iou_matrix`` so that solver-side boosts cannot reject
+                otherwise valid matches.
 
         Returns:
             Matched indices, unmatched trackers, unmatched detections.
@@ -127,22 +127,14 @@ class SORTTracker(BaseTracker):
         unmatched_trackers = set(range(len(self.trackers)))
         unmatched_detections = set(range(len(detection_boxes)))
 
+        # Use raw similarity for threshold gating when available
+        thresh_matrix = raw_similarity if raw_similarity is not None else iou_matrix
+
         if len(self.trackers) > 0 and len(detection_boxes) > 0:
-            # Optionally boost the solver matrix by detection confidence so that
-            # when two detections have similar IoU with a track, the
-            # higher-confidence one is preferred.  The gate still checks raw IoU
-            # so the threshold semantics are preserved.
-            if (
-                self.conf_cost_weight > 0
-                and confidences is not None
-                and len(confidences) == len(detection_boxes)
-            ):
-                conf_boost = 1.0 + self.conf_cost_weight * confidences.astype(
-                    np.float32
-                )
-                solver_iou = iou_matrix * conf_boost[np.newaxis, :]
-            else:
-                solver_iou = iou_matrix
+            # iou_matrix may already be boosted by the caller; use it directly
+            # for ranking. The threshold gate uses thresh_matrix (raw) so the
+            # IoU semantics are preserved regardless of any solver-side boost.
+            solver_iou = iou_matrix
 
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
             # Note that it uses a a modified Jonker-Volgenant algorithm with no
@@ -150,7 +142,7 @@ class SORTTracker(BaseTracker):
             # SORT paper.
             row_indices, col_indices = linear_sum_assignment(solver_iou, maximize=True)
             for row, col in zip(row_indices, col_indices):
-                if iou_matrix[row, col] >= self.minimum_iou_threshold:
+                if thresh_matrix[row, col] >= self.minimum_iou_threshold:
                     matched_indices.append((row, col))
                     unmatched_trackers.remove(row)
                     unmatched_detections.remove(col)
@@ -204,9 +196,24 @@ class SORTTracker(BaseTracker):
         for tracker in self.trackers:
             tracker.predict()
 
-        iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
+        raw_iou = get_iou_matrix(self.trackers, detection_boxes)
+
+        # Confidence boost: scale up solver similarity for higher-confidence
+        # detections so the assignment prefers confident detections over uncertain
+        # ones when DIoU values are close.  The threshold gate uses raw DIoU so
+        # valid matches are never blocked by the boost.
+        if (
+            self.conf_cost_weight > 0
+            and raw_iou.size > 0
+            and detections.confidence is not None
+        ):
+            conf_boost = 1.0 + self.conf_cost_weight * detections.confidence
+            solver_iou = (raw_iou * conf_boost[np.newaxis, :]).astype(np.float32)
+        else:
+            solver_iou = raw_iou
+
         matched_indices, _, unmatched_detections = self._get_associated_indices(
-            iou_matrix, detection_boxes, detections.confidence
+            solver_iou, detection_boxes, raw_similarity=raw_iou
         )
 
         # Update matched trackers and record the det_idx -> tracker mapping
