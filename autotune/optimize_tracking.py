@@ -80,6 +80,7 @@ _DET_SOURCE_TO_TAG: dict[str, str] = {
 # Capture the original ByteTrack Kalman init once so repeated patching across
 # trials always re-applies from the true original (not a previously patched version).
 _ORIG_KALMAN_INIT = None
+_ORIG_OCSORT_CREATE_FILTER = None
 
 
 # ---------------------------------------------------------------------------
@@ -223,48 +224,73 @@ def _build_tracker(params: dict, tracker_name: str):
 
 
 def _apply_kalman_patch(params: dict, tracker_name: str) -> None:
-    """Override ByteTrack Kalman noise matrices from params. No-op for other trackers.
+    """Override Kalman noise matrices from params for ByteTrack and OC-SORT.
+
+    ByteTrack: replaces Q/R/P with scaled identity matrices.
+    OC-SORT: multiplies the paper-default Q/R/P by global scalars, preserving
+    the relative noise structure while allowing Optuna to tune the overall level.
 
     Remove or replace this function if Kalman scales become constructor args,
     or if the Kalman architecture changes to a point where simple scalar scaling
     no longer makes sense.
     """
-    if tracker_name != "bytetrack":
-        return
+    if tracker_name == "bytetrack":
+        global _ORIG_KALMAN_INIT
+        from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
 
-    global _ORIG_KALMAN_INIT
-    from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
+        if _ORIG_KALMAN_INIT is None:
+            _ORIG_KALMAN_INIT = ByteTrackKalmanBoxTracker._initialize_kalman_filter
 
-    if _ORIG_KALMAN_INIT is None:
-        _ORIG_KALMAN_INIT = ByteTrackKalmanBoxTracker._initialize_kalman_filter
+        q = params.get("q_scale", 0.01)
+        r = params.get("r_scale", 0.1)
+        p = params.get("p_scale", 1.0)
+        vel_decay = params.get("velocity_decay", 0.95)
+        q_miss = params.get("q_miss_alpha", 0.1)
 
-    q = params.get("q_scale", 0.01)
-    r = params.get("r_scale", 0.1)
-    p = params.get("p_scale", 1.0)
-    vel_decay = params.get("velocity_decay", 0.95)
-    q_miss = params.get("q_miss_alpha", 0.1)
+        orig = _ORIG_KALMAN_INIT
 
-    orig = _ORIG_KALMAN_INIT
+        def _patched(self: ByteTrackKalmanBoxTracker) -> None:
+            orig(self)
+            self.Q = np.eye(self.Q.shape[0], dtype=np.float32) * q
+            self.R = np.eye(self.R.shape[0], dtype=np.float32) * r
+            self.P = np.eye(self.P.shape[0], dtype=np.float32) * p
 
-    def _patched(self: ByteTrackKalmanBoxTracker) -> None:
-        orig(self)
-        self.Q = np.eye(self.Q.shape[0], dtype=np.float32) * q
-        self.R = np.eye(self.R.shape[0], dtype=np.float32) * r
-        self.P = np.eye(self.P.shape[0], dtype=np.float32) * p
+        setattr(ByteTrackKalmanBoxTracker, "_initialize_kalman_filter", _patched)
+        setattr(ByteTrackKalmanBoxTracker, "velocity_decay", vel_decay)
+        setattr(ByteTrackKalmanBoxTracker, "q_miss_alpha", q_miss)
+        setattr(
+            ByteTrackKalmanBoxTracker,
+            "p_reset_threshold",
+            params.get("p_reset_threshold", 5),
+        )
+        setattr(
+            ByteTrackKalmanBoxTracker,
+            "oru_threshold",
+            params.get("oru_threshold", 2),
+        )
 
-    setattr(ByteTrackKalmanBoxTracker, "_initialize_kalman_filter", _patched)
-    setattr(ByteTrackKalmanBoxTracker, "velocity_decay", vel_decay)
-    setattr(ByteTrackKalmanBoxTracker, "q_miss_alpha", q_miss)
-    setattr(
-        ByteTrackKalmanBoxTracker,
-        "p_reset_threshold",
-        params.get("p_reset_threshold", 5),
-    )
-    setattr(
-        ByteTrackKalmanBoxTracker,
-        "oru_threshold",
-        params.get("oru_threshold", 2),
-    )
+    elif tracker_name == "ocsort":
+        # Multiply paper-default Q/R/P by global scalars, preserving the relative
+        # noise structure while allowing Optuna to tune the overall level.
+        global _ORIG_OCSORT_CREATE_FILTER
+        from trackers.utils.state_representations import XCYCSRStateEstimator
+
+        if _ORIG_OCSORT_CREATE_FILTER is None:
+            _ORIG_OCSORT_CREATE_FILTER = XCYCSRStateEstimator._create_filter
+
+        q = params.get("q_scale", 1.0)
+        r = params.get("r_scale", 1.0)
+        p = params.get("p_scale", 1.0)
+        orig_cf = _ORIG_OCSORT_CREATE_FILTER
+
+        def _patched_create_filter(self: XCYCSRStateEstimator, bbox: np.ndarray):
+            kf = orig_cf(self, bbox)
+            kf.Q *= q
+            kf.R *= r
+            kf.P *= p
+            return kf
+
+        setattr(XCYCSRStateEstimator, "_create_filter", _patched_create_filter)
 
 
 # ---------------------------------------------------------------------------

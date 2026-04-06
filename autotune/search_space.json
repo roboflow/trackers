@@ -211,6 +211,24 @@
             "type": "int",
             "low": 0,
             "high": 60
+        },
+        "q_scale": {
+            "type": "float",
+            "low": 0.001,
+            "high": 10.0,
+            "log": true
+        },
+        "r_scale": {
+            "type": "float",
+            "low": 0.01,
+            "high": 100.0,
+            "log": true
+        },
+        "p_scale": {
+            "type": "float",
+            "low": 0.01,
+            "high": 100.0,
+            "log": true
         }
     }
 }
