@@ -163,6 +163,56 @@ Provided as inspiration, not a prescribed order. Hypotheses apply to the active 
 
 **H-H: Separate high/low IoU thresholds (parametrised correctly)** Expose `stage1_iou` and `stage2_iou` as separate Optuna parameters with the constraint `stage2_iou ≤ stage1_iou`, default `stage1_iou = 0.1` so baseline is not broken. Relevant to ByteTrack's two-stage association; SORT uses single-stage so this maps differently.
 
+### SORT Phase 1 findings — already in the code (do not re-implement)
+
+Campaign run on `bemch/auto-research` using 3-team parallel strategy (Kalman / Association / Lifecycle). Baseline: HOTA 53.217 → default-param result: 55.7 → tuned (500 trials): **57.7** (+8.4%).
+
+#### Kept changes
+
+| Hypothesis                                                                             | Commit    | HOTA delta at defaults               |
+| -------------------------------------------------------------------------------------- | --------- | ------------------------------------ |
+| Kalman covariance dynamics (velocity_decay, q_miss_alpha, p_reset_threshold)           | `8d66fba` | +0.98%                               |
+| OC-SORT observation-centric velocity re-estimation (oru_threshold)                     | `de5704a` | +1.22%                               |
+| DIoU replaces IoU in association matrix                                                | `c4de2c6` | +0.17%                               |
+| Confidence-weighted Hungarian assignment (conf_cost_weight)                            | `eefe13e` | enables Optuna headroom              |
+| IoU age discount for lost tracks (iou_age_weight)                                      | `c094bcb` | enables Optuna headroom              |
+| Two-stage confidence-based association (high_conf_det_threshold, stage2_iou_threshold) | `e576b9e` | enables Optuna headroom              |
+| conf_cost_weight wiring + gap interpolation activation                                 | `25d00c5` | activates existing feature           |
+| minimum_consecutive_frames 3→2                                                         | `3555147` | faster confirmation                  |
+| Align defaults with Optuna-tuned best_config                                           | `ce69432` | +1.18% (single biggest default jump) |
+
+**New SORT constructor params**: `velocity_decay`, `q_miss_alpha`, `p_reset_threshold`, `oru_threshold`, `conf_cost_weight`, `iou_age_weight`, `high_conf_det_threshold`, `stage2_iou_threshold`
+
+#### Tried and reverted
+
+| Hypothesis                                              | Outcome    |
+| ------------------------------------------------------- | ---------- |
+| xcycsr Kalman state representation                      | −0.51%     |
+| Velocity-adaptive Q scaling                             | −0.06%     |
+| Mahalanobis distance gate                               | Regression |
+| GIoU as association metric                              | Regression |
+| OC-SORT velocity correction (duplicate, second attempt) | Reverted   |
+
+#### Tuned best config (sort/sdp, 500 trials)
+
+```json
+{
+  "lost_track_buffer": 82,
+  "track_activation_threshold": 0.232,
+  "minimum_consecutive_frames": 2,
+  "minimum_iou_threshold": 0.0618,
+  "max_interpolation_gap": 31,
+  "velocity_decay": 0.524,
+  "q_miss_alpha": 0.79,
+  "p_reset_threshold": 12,
+  "oru_threshold": 2,
+  "conf_cost_weight": 0.36,
+  "iou_age_weight": 0.156,
+  "high_conf_det_threshold": 0.628,
+  "stage2_iou_threshold": 0.248
+}
+```
+
 ### Agent warning — Kalman patch and state representation
 
 `_apply_kalman_patch` in `optimize_tracking.py` overwrites Q, R, and P with uniform identity-scaled matrices. If the state representation is changed (H-A), the patch must be redesigned to work with the new state dimension and matrix structure.
