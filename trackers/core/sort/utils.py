@@ -50,11 +50,71 @@ def get_alive_trackers(
     return alive_trackers
 
 
+def _compute_diou_matrix(
+    boxes_a: np.ndarray, boxes_b: np.ndarray
+) -> np.ndarray:
+    """Compute Distance IoU (DIoU) between two sets of boxes.
+
+    DIoU = IoU - d^2 / c^2 where d is the Euclidean distance between box
+    centers and c is the diagonal length of the smallest enclosing box.
+    Ranges from -1 to 1; penalizes center displacement directly.
+
+    Reference: Zheng et al., "Distance-IoU Loss", AAAI 2020.
+
+    Args:
+        boxes_a: Array of shape ``(M, 4)`` in ``[x1, y1, x2, y2]`` format.
+        boxes_b: Array of shape ``(N, 4)`` in ``[x1, y1, x2, y2]`` format.
+
+    Returns:
+        DIoU matrix of shape ``(M, N)``.
+    """
+    # Intersection coordinates
+    x1_inter = np.maximum(boxes_a[:, 0:1], boxes_b[:, 0:1].T)
+    y1_inter = np.maximum(boxes_a[:, 1:2], boxes_b[:, 1:2].T)
+    x2_inter = np.minimum(boxes_a[:, 2:3], boxes_b[:, 2:3].T)
+    y2_inter = np.minimum(boxes_a[:, 3:4], boxes_b[:, 3:4].T)
+
+    inter_area = np.maximum(x2_inter - x1_inter, 0) * np.maximum(
+        y2_inter - y1_inter, 0
+    )
+
+    # Areas of individual boxes
+    area_a = (
+        (boxes_a[:, 2] - boxes_a[:, 0]) * (boxes_a[:, 3] - boxes_a[:, 1])
+    ).reshape(-1, 1)
+    area_b = (
+        (boxes_b[:, 2] - boxes_b[:, 0]) * (boxes_b[:, 3] - boxes_b[:, 1])
+    ).reshape(1, -1)
+
+    union_area = area_a + area_b - inter_area
+    iou = np.where(union_area > 0, inter_area / union_area, 0.0)
+
+    # Center distance squared
+    cx_a = ((boxes_a[:, 0] + boxes_a[:, 2]) / 2).reshape(-1, 1)
+    cy_a = ((boxes_a[:, 1] + boxes_a[:, 3]) / 2).reshape(-1, 1)
+    cx_b = ((boxes_b[:, 0] + boxes_b[:, 2]) / 2).reshape(1, -1)
+    cy_b = ((boxes_b[:, 1] + boxes_b[:, 3]) / 2).reshape(1, -1)
+    d_sq = (cx_a - cx_b) ** 2 + (cy_a - cy_b) ** 2
+
+    # Enclosing box diagonal squared
+    x1_c = np.minimum(boxes_a[:, 0:1], boxes_b[:, 0:1].T)
+    y1_c = np.minimum(boxes_a[:, 1:2], boxes_b[:, 1:2].T)
+    x2_c = np.maximum(boxes_a[:, 2:3], boxes_b[:, 2:3].T)
+    y2_c = np.maximum(boxes_a[:, 3:4], boxes_b[:, 3:4].T)
+    c_sq = (x2_c - x1_c) ** 2 + (y2_c - y1_c) ** 2
+
+    diou = iou - np.where(c_sq > 0, d_sq / c_sq, 0.0)
+
+    return diou.astype(np.float32)
+
+
 def get_iou_matrix(
     trackers: Sequence[KalmanBoxTrackerType], detection_boxes: np.ndarray
 ) -> np.ndarray:
-    """
-    Build IOU cost matrix between detections and predicted bounding boxes
+    """Build DIoU similarity matrix between tracked and detected boxes.
+
+    Uses Distance IoU (DIoU) instead of standard IoU to penalize center
+    displacement and recover association signal for near-miss pairs.
 
     Args:
         trackers: List of KalmanBoxTracker objects.
@@ -62,7 +122,7 @@ def get_iou_matrix(
             form [x1, y1, x2, y2].
 
     Returns:
-        IOU cost matrix.
+        DIoU similarity matrix.
     """
     predicted_boxes = np.array([t.get_state_bbox() for t in trackers])
     if len(predicted_boxes) == 0 and len(trackers) > 0:
@@ -70,7 +130,7 @@ def get_iou_matrix(
         predicted_boxes = np.zeros((len(trackers), 4), dtype=np.float32)
 
     if len(trackers) > 0 and len(detection_boxes) > 0:
-        iou_matrix = sv.box_iou_batch(predicted_boxes, detection_boxes)
+        iou_matrix = _compute_diou_matrix(predicted_boxes, detection_boxes)
     else:
         iou_matrix = np.zeros((len(trackers), len(detection_boxes)), dtype=np.float32)
 
