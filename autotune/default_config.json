@@ -43,6 +43,6 @@
         "direction_consistency_weight": 0.2,
         "high_conf_det_threshold": 0.6,
         "delta_t": 3,
-        "max_interpolation_gap": 0
+        "max_interpolation_gap": 20
     }
 }
