@@ -131,13 +131,21 @@
             }
         },
         "sdp": {
-            "hota": 56.12888180226776,
+            "hota": 55.656,
             "config": {
                 "lost_track_buffer": 26,
-                "track_activation_threshold": 0.9725014596862432,
+                "track_activation_threshold": 0.9725,
                 "minimum_consecutive_frames": 1,
-                "minimum_iou_threshold": 0.2749178006176272,
-                "max_interpolation_gap": 57
+                "minimum_iou_threshold": 0.275,
+                "max_interpolation_gap": 57,
+                "velocity_decay": 0.82,
+                "q_miss_alpha": 0.8,
+                "p_reset_threshold": 10,
+                "oru_threshold": 3,
+                "conf_cost_weight": 0.2,
+                "iou_age_weight": 0.0,
+                "high_conf_det_threshold": 0.0,
+                "stage2_iou_threshold": 0.05
             }
         },
         "yoloworld": {
