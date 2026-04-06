@@ -197,6 +197,9 @@ def _build_tracker(params: dict, tracker_name: str):
             track_activation_threshold=params["track_activation_threshold"],
             minimum_consecutive_frames=params["minimum_consecutive_frames"],
             minimum_iou_threshold=params["minimum_iou_threshold"],
+            velocity_decay=params.get("velocity_decay", 0.95),
+            q_miss_alpha=params.get("q_miss_alpha", 0.0),
+            p_reset_threshold=params.get("p_reset_threshold", 0),
         )
     if tracker_name == "ocsort":
         from trackers import OCSORTTracker

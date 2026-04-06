@@ -131,6 +131,21 @@
             "type": "int",
             "low": 0,
             "high": 60
+        },
+        "velocity_decay": {
+            "type": "float",
+            "low": 0.5,
+            "high": 1.0
+        },
+        "q_miss_alpha": {
+            "type": "float",
+            "low": 0.0,
+            "high": 2.0
+        },
+        "p_reset_threshold": {
+            "type": "int",
+            "low": 0,
+            "high": 30
         }
     },
     "ocsort": {

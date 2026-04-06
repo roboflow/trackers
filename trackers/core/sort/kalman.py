@@ -45,7 +45,13 @@ class SORTKalmanBoxTracker:
         cls.count_id += 1
         return next_id
 
-    def __init__(self, bbox: NDArray[np.float64]) -> None:
+    def __init__(
+        self,
+        bbox: NDArray[np.float64],
+        velocity_decay: float = 0.95,
+        q_miss_alpha: float = 0.0,
+        p_reset_threshold: int = 0,
+    ) -> None:
         # Initialize with a temporary ID of -1
         # Will be assigned a real ID when the track is considered mature
         self.tracker_id = -1
@@ -55,6 +61,19 @@ class SORTKalmanBoxTracker:
         self.number_of_successful_updates = 1
         # Number of frames since the last update
         self.time_since_update = 0
+
+        # Kalman dynamics hyper-parameters
+        # velocity_decay: shrinks velocity components each missed frame to prevent
+        # runaway linear extrapolation during occlusions (technique from OC-SORT).
+        self.velocity_decay = velocity_decay
+        # q_miss_alpha: multiplicative Q-inflation rate for missed frames —
+        # widens predicted covariance so the filter trusts fresh measurements
+        # more on re-detection. Orthogonal to velocity_decay.
+        self.q_miss_alpha = q_miss_alpha
+        # p_reset_threshold: if a track was lost for >= this many frames before
+        # re-detection, reset P to identity after the update step so stale
+        # uncertainty is discarded. 0 disables the reset.
+        self.p_reset_threshold = p_reset_threshold
 
         # For simplicity, we keep a small state vector:
         # (x, y, x2, y2, vx, vy, vx2, vy2).
@@ -98,10 +117,24 @@ class SORTKalmanBoxTracker:
         """
         Predict the next state of the bounding box (applies the state transition).
         """
+        # Velocity decay: shrink velocity components when the track is lost to
+        # prevent runaway linear extrapolation during occlusions.
+        if self.time_since_update > 0 and self.velocity_decay < 1.0:
+            self.state[4:8] = (self.state[4:8] * self.velocity_decay).astype(np.float32)
+
         # Predict state
         self.state = (self.F @ self.state).astype(np.float32)
+
+        # Q inflation for missed frames: widen uncertainty so the filter gives
+        # higher weight to fresh measurements on re-detection.
+        if self.time_since_update > 0 and self.q_miss_alpha > 0.0:
+            q_scale = 1.0 + self.q_miss_alpha * self.time_since_update
+            q_eff = (self.Q * q_scale).astype(np.float32)
+        else:
+            q_eff = self.Q
+
         # Predict error covariance
-        self.P = (self.F @ self.P @ self.F.T + self.Q).astype(np.float32)
+        self.P = (self.F @ self.P @ self.F.T + q_eff).astype(np.float32)
 
         # Increase time since update
         self.time_since_update += 1
@@ -113,6 +146,7 @@ class SORTKalmanBoxTracker:
         Args:
             bbox: Detected bounding box in the form [x1, y1, x2, y2].
         """
+        was_lost_for = self.time_since_update
         self.time_since_update = 0
         self.number_of_successful_updates += 1
 
@@ -136,6 +170,11 @@ class SORTKalmanBoxTracker:
         # Update covariance
         identity_matrix: NDArray[np.float32] = np.eye(8, dtype=np.float32)
         self.P = ((identity_matrix - K @ self.H) @ self.P).astype(np.float32)
+
+        # P reset: after a long gap, discard stale accumulated uncertainty so
+        # velocity estimation starts fresh from the re-detection.
+        if self.p_reset_threshold > 0 and was_lost_for >= self.p_reset_threshold:
+            self.P = np.eye(8, dtype=np.float32)
 
     def get_state_bbox(self) -> NDArray[np.float32]:
         """

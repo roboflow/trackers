@@ -51,6 +51,16 @@ class SORTTracker(BaseTracker):
             threshold, tracks are assigned `tracker_id` of `-1`.
         minimum_iou_threshold: `float` specifying IoU threshold for associating
             detections to existing tracks. Higher values require more overlap.
+        velocity_decay: `float` in [0, 1] applied to the Kalman velocity
+            components each missed frame, preventing runaway linear extrapolation
+            during occlusions. `1.0` disables the feature.
+        q_miss_alpha: `float` ≥ 0 scaling the per-frame Q inflation rate for
+            lost tracks (`Q_eff = Q * (1 + alpha * time_since_update)`). Wider
+            uncertainty on re-detection gives higher Kalman gain to fresh
+            measurements. `0.0` disables the feature.
+        p_reset_threshold: `int` minimum number of missed frames before resetting
+            the error covariance P to identity on re-detection. Discards stale
+            accumulated uncertainty after long gaps. `0` disables the reset.
     """
 
     tracker_id = "sort"
@@ -62,6 +72,9 @@ class SORTTracker(BaseTracker):
         track_activation_threshold: float = 0.25,
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
+        velocity_decay: float = 0.95,
+        q_miss_alpha: float = 0.0,
+        p_reset_threshold: int = 0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -70,6 +83,9 @@ class SORTTracker(BaseTracker):
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
+        self.velocity_decay = velocity_decay
+        self.q_miss_alpha = q_miss_alpha
+        self.p_reset_threshold = p_reset_threshold
 
         # Active trackers
         self.trackers: list[SORTKalmanBoxTracker] = []
@@ -118,7 +134,12 @@ class SORTTracker(BaseTracker):
                 or confidences[detection_idx] >= self.track_activation_threshold
             ):
                 self.trackers.append(
-                    SORTKalmanBoxTracker(detection_boxes[detection_idx])
+                    SORTKalmanBoxTracker(
+                        detection_boxes[detection_idx],
+                        velocity_decay=self.velocity_decay,
+                        q_miss_alpha=self.q_miss_alpha,
+                        p_reset_threshold=self.p_reset_threshold,
+                    )
                 )
 
     def update(self, detections: sv.Detections) -> sv.Detections:
