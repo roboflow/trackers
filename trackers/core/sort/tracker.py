@@ -70,6 +70,13 @@ class SORTTracker(BaseTracker):
             disables the feature (pure IoU). Positive values boost
             higher-confidence detections in the solver matrix while keeping
             the IoU gate unchanged, so no invalid matches are accepted.
+        iou_age_weight: `float` specifying how much to discount DIoU
+            similarity for lost tracks. Each lost track's row is scaled by
+            ``1 / (1 + iou_age_weight * lost_frames)`` where
+            ``lost_frames = max(0, time_since_update - 1)``. This biases the
+            solver to prefer active tracks over stale predictions, reducing
+            identity switches from drifted predictions. The threshold gate
+            always uses raw DIoU. ``0`` disables the discount.
     """
 
     tracker_id = "sort"
@@ -86,6 +93,7 @@ class SORTTracker(BaseTracker):
         p_reset_threshold: int = 0,
         oru_threshold: int = 0,
         conf_cost_weight: float = 0.0,
+        iou_age_weight: float = 0.0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -99,6 +107,7 @@ class SORTTracker(BaseTracker):
         self.p_reset_threshold = p_reset_threshold
         self.oru_threshold = oru_threshold
         self.conf_cost_weight = conf_cost_weight
+        self.iou_age_weight = iou_age_weight
 
         # Active trackers
         self.trackers: list[SORTKalmanBoxTracker] = []
@@ -198,19 +207,31 @@ class SORTTracker(BaseTracker):
 
         raw_iou = get_iou_matrix(self.trackers, detection_boxes)
 
+        solver_iou = raw_iou
+
+        # Age discount: scale down similarity for lost tracks so the solver
+        # prefers active tracks over stale predictions.  Reduces identity
+        # switches from drifted Kalman predictions "stealing" detections.
+        # The threshold gate uses raw DIoU so valid matches are never rejected.
+        if self.iou_age_weight > 0 and solver_iou.size > 0:
+            lost_frames = np.array(
+                [max(0, t.time_since_update - 1) for t in self.trackers],
+                dtype=np.float32,
+            )
+            discount = 1.0 / (1.0 + self.iou_age_weight * lost_frames)
+            solver_iou = (solver_iou * discount[:, np.newaxis]).astype(np.float32)
+
         # Confidence boost: scale up solver similarity for higher-confidence
         # detections so the assignment prefers confident detections over uncertain
         # ones when DIoU values are close.  The threshold gate uses raw DIoU so
         # valid matches are never blocked by the boost.
         if (
             self.conf_cost_weight > 0
-            and raw_iou.size > 0
+            and solver_iou.size > 0
             and detections.confidence is not None
         ):
             conf_boost = 1.0 + self.conf_cost_weight * detections.confidence
-            solver_iou = (raw_iou * conf_boost[np.newaxis, :]).astype(np.float32)
-        else:
-            solver_iou = raw_iou
+            solver_iou = (solver_iou * conf_boost[np.newaxis, :]).astype(np.float32)
 
         matched_indices, _, unmatched_detections = self._get_associated_indices(
             solver_iou, detection_boxes, raw_similarity=raw_iou

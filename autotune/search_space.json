@@ -156,6 +156,11 @@
             "type": "float",
             "low": 0.0,
             "high": 1.0
+        },
+        "iou_age_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 0.2
         }
     },
     "ocsort": {

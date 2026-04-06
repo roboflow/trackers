@@ -31,7 +31,8 @@
         "q_miss_alpha": 0.8,
         "p_reset_threshold": 10,
         "oru_threshold": 3,
-        "conf_cost_weight": 0.2
+        "conf_cost_weight": 0.2,
+        "iou_age_weight": 0.0
     },
     "ocsort": {
         "lost_track_buffer": 30,
