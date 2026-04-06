@@ -203,6 +203,8 @@ def _build_tracker(params: dict, tracker_name: str):
             oru_threshold=params.get("oru_threshold", 0),
             conf_cost_weight=params.get("conf_cost_weight", 0.0),
             iou_age_weight=params.get("iou_age_weight", 0.0),
+            high_conf_det_threshold=params.get("high_conf_det_threshold", 0.0),
+            stage2_iou_threshold=params.get("stage2_iou_threshold", 0.05),
         )
     if tracker_name == "ocsort":
         from trackers import OCSORTTracker

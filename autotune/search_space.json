@@ -161,6 +161,17 @@
             "type": "float",
             "low": 0.0,
             "high": 0.2
+        },
+        "high_conf_det_threshold": {
+            "type": "float",
+            "low": 0.0,
+            "high": 0.8
+        },
+        "stage2_iou_threshold": {
+            "type": "float",
+            "low": 0.01,
+            "high": 0.3,
+            "log": true
         }
     },
     "ocsort": {
