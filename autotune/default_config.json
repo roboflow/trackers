@@ -26,11 +26,12 @@
         "track_activation_threshold": 0.25,
         "minimum_consecutive_frames": 3,
         "minimum_iou_threshold": 0.3,
-        "max_interpolation_gap": 0,
+        "max_interpolation_gap": 30,
         "velocity_decay": 0.82,
         "q_miss_alpha": 0.8,
         "p_reset_threshold": 10,
-        "oru_threshold": 3
+        "oru_threshold": 3,
+        "conf_cost_weight": 0.2
     },
     "ocsort": {
         "lost_track_buffer": 30,

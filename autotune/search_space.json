@@ -151,6 +151,11 @@
             "type": "int",
             "low": 0,
             "high": 15
+        },
+        "conf_cost_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
         }
     },
     "ocsort": {

@@ -65,6 +65,11 @@ class SORTTracker(BaseTracker):
             centric velocity re-estimation on re-detection. Computes a virtual
             trajectory velocity from (current - last_observed) / gap to replace
             the decayed Kalman velocity. Technique from OC-SORT. `0` disables.
+        conf_cost_weight: `float` specifying how strongly detection confidence
+            breaks IoU ties in the Hungarian assignment. A value of ``0.0``
+            disables the feature (pure IoU). Positive values boost
+            higher-confidence detections in the solver matrix while keeping
+            the IoU gate unchanged, so no invalid matches are accepted.
     """
 
     tracker_id = "sort"
@@ -80,6 +85,7 @@ class SORTTracker(BaseTracker):
         q_miss_alpha: float = 0.0,
         p_reset_threshold: int = 0,
         oru_threshold: int = 0,
+        conf_cost_weight: float = 0.0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -92,12 +98,16 @@ class SORTTracker(BaseTracker):
         self.q_miss_alpha = q_miss_alpha
         self.p_reset_threshold = p_reset_threshold
         self.oru_threshold = oru_threshold
+        self.conf_cost_weight = conf_cost_weight
 
         # Active trackers
         self.trackers: list[SORTKalmanBoxTracker] = []
 
     def _get_associated_indices(
-        self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
+        self,
+        iou_matrix: np.ndarray,
+        detection_boxes: np.ndarray,
+        confidences: np.ndarray | None = None,
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
         """
         Associate detections to trackers based on IOU
@@ -105,6 +115,10 @@ class SORTTracker(BaseTracker):
         Args:
             iou_matrix: IOU cost matrix.
             detection_boxes: Detected bounding boxes in the form [x1, y1, x2, y2].
+            confidences: Optional detection confidence scores, shape (N,). When
+                ``conf_cost_weight > 0`` these are used to break IoU ties by
+                boosting the solver matrix — the IoU gate still uses raw IoU so
+                no invalid matches are accepted.
 
         Returns:
             Matched indices, unmatched trackers, unmatched detections.
@@ -114,11 +128,27 @@ class SORTTracker(BaseTracker):
         unmatched_detections = set(range(len(detection_boxes)))
 
         if len(self.trackers) > 0 and len(detection_boxes) > 0:
+            # Optionally boost the solver matrix by detection confidence so that
+            # when two detections have similar IoU with a track, the
+            # higher-confidence one is preferred.  The gate still checks raw IoU
+            # so the threshold semantics are preserved.
+            if (
+                self.conf_cost_weight > 0
+                and confidences is not None
+                and len(confidences) == len(detection_boxes)
+            ):
+                conf_boost = 1.0 + self.conf_cost_weight * confidences.astype(
+                    np.float32
+                )
+                solver_iou = iou_matrix * conf_boost[np.newaxis, :]
+            else:
+                solver_iou = iou_matrix
+
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
             # Note that it uses a a modified Jonker-Volgenant algorithm with no
             # initialization instead of the Hungarian algorithm as mentioned in the
             # SORT paper.
-            row_indices, col_indices = linear_sum_assignment(iou_matrix, maximize=True)
+            row_indices, col_indices = linear_sum_assignment(solver_iou, maximize=True)
             for row, col in zip(row_indices, col_indices):
                 if iou_matrix[row, col] >= self.minimum_iou_threshold:
                     matched_indices.append((row, col))
@@ -176,7 +206,7 @@ class SORTTracker(BaseTracker):
 
         iou_matrix = get_iou_matrix(self.trackers, detection_boxes)
         matched_indices, _, unmatched_detections = self._get_associated_indices(
-            iou_matrix, detection_boxes
+            iou_matrix, detection_boxes, detections.confidence
         )
 
         # Update matched trackers and record the det_idx -> tracker mapping

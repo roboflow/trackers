@@ -201,6 +201,7 @@ def _build_tracker(params: dict, tracker_name: str):
             q_miss_alpha=params.get("q_miss_alpha", 0.0),
             p_reset_threshold=params.get("p_reset_threshold", 0),
             oru_threshold=params.get("oru_threshold", 0),
+            conf_cost_weight=params.get("conf_cost_weight", 0.0),
         )
     if tracker_name == "ocsort":
         from trackers import OCSORTTracker
