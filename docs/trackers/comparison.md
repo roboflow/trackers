@@ -13,8 +13,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
 !!! info
 
-    Parameters were tuned on the validation set. Results are reported on the
-    test set via Codabench submission. Detections come from a YOLOX model.
+    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model.
 
 === "Default"
 
@@ -72,8 +71,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 
 !!! info
 
-    Parameters were tuned on the validation set. Results are reported on the
-    test set via Codabench submission. Detections come from a YOLOX model.
+    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model.
 
 === "Default"
 
@@ -131,9 +129,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the test
-    set. SoccerNet-tracking has no validation split. This dataset provides
-    oracle (ground-truth) detections.
+    Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections.
 
 === "Default"
 
@@ -191,15 +187,11 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 !!! warning
 
-    DanceTrack test set evaluation is currently unavailable because CodaLab, which hosted
-    the benchmark, has been [discontinued](https://docs.codabench.org/dev/Newsletters_Archive/CodaLab-in-2025/).
-    Migration to Codabench is [in progress](https://github.com/DanceTrack/DanceTrack/issues/42).
-    Results below use the validation set instead.
+    DanceTrack test set evaluation is currently unavailable because CodaLab, which hosted the benchmark, has been [discontinued](https://docs.codabench.org/dev/Newsletters_Archive/CodaLab-in-2025/). Migration to Codabench is [in progress](https://github.com/DanceTrack/DanceTrack/issues/42). Results below use the validation set instead.
 
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the
-    validation set. This dataset provides oracle (ground-truth) detections.
+    Parameters were tuned on the train set. Results are reported on the validation set. This dataset provides oracle (ground-truth) detections.
 
 === "Default"
 
@@ -250,15 +242,11 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 ### Detections
 
-Each dataset uses one of two detection sources: oracle detections (ground-truth
-bounding boxes provided by the dataset) or model detections (produced by a YOLOX
-detector following the ByteTrack procedure). The source is noted per dataset above.
+Each dataset uses one of two detection sources: oracle detections (ground-truth bounding boxes provided by the dataset) or model detections (produced by a YOLOX detector following the ByteTrack procedure). The source is noted per dataset above.
 
 ### Tuning
 
-Best parameters per tracker and dataset were found via grid search, selecting the
-configuration with the highest HOTA. Tuning and evaluation always use separate data
-splits to reflect real-world usage:
+Best parameters per tracker and dataset were found via grid search, selecting the configuration with the highest HOTA. Tuning and evaluation always use separate data splits to reflect real-world usage:
 
 - Train + validation + test: tune on validation, report on test.
 - Train + validation: tune on train, report on validation.

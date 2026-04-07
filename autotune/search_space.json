@@ -1,0 +1,259 @@
+{
+    "_comment": "Optuna search space for each tracker. Edit this file to add/remove parameters or adjust ranges.",
+    "_edit_here": "Do not hard-code search ranges in optimize_tracking.py. Widen, narrow, or add new params here.",
+    "_types": {
+        "int": "trial.suggest_int(name, low, high [, log=true])",
+        "float": "trial.suggest_float(name, low, high [, log=true])",
+        "categorical": "trial.suggest_categorical(name, choices)"
+    },
+    "bytetrack": {
+        "lost_track_buffer": {
+            "type": "int",
+            "low": 10,
+            "high": 120,
+            "log": true
+        },
+        "track_activation_threshold": {
+            "type": "float",
+            "low": 0.1,
+            "high": 0.99
+        },
+        "minimum_consecutive_frames": {
+            "type": "int",
+            "low": 1,
+            "high": 5
+        },
+        "minimum_iou_threshold": {
+            "type": "float",
+            "low": 0.05,
+            "high": 0.5,
+            "log": true
+        },
+        "stage2_iou_threshold": {
+            "type": "float",
+            "low": 0.01,
+            "high": 0.3,
+            "log": true
+        },
+        "iou_age_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 0.1
+        },
+        "high_conf_det_threshold": {
+            "type": "float",
+            "low": 0.15,
+            "high": 0.85
+        },
+        "q_scale": {
+            "type": "float",
+            "low": 0.0001,
+            "high": 0.1,
+            "log": true
+        },
+        "r_scale": {
+            "type": "float",
+            "low": 0.01,
+            "high": 5.0,
+            "log": true
+        },
+        "p_scale": {
+            "type": "float",
+            "low": 0.1,
+            "high": 50.0,
+            "log": true
+        },
+        "velocity_decay": {
+            "type": "float",
+            "low": 0.5,
+            "high": 1.0
+        },
+        "q_miss_alpha": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
+        },
+        "max_interpolation_gap": {
+            "type": "int",
+            "low": 0,
+            "high": 60
+        },
+        "p_reset_threshold": {
+            "type": "int",
+            "low": 0,
+            "high": 30
+        },
+        "oru_threshold": {
+            "type": "int",
+            "low": 0,
+            "high": 15
+        },
+        "conf_cost_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
+        },
+        "stage2_min_updates": {
+            "type": "int",
+            "low": 0,
+            "high": 15
+        },
+        "giou_blend": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
+        }
+    },
+    "sort": {
+        "lost_track_buffer": {
+            "type": "int",
+            "low": 5,
+            "high": 100,
+            "log": true
+        },
+        "track_activation_threshold": {
+            "type": "float",
+            "low": 0.05,
+            "high": 0.99
+        },
+        "minimum_consecutive_frames": {
+            "type": "int",
+            "low": 1,
+            "high": 5
+        },
+        "minimum_iou_threshold": {
+            "type": "float",
+            "low": 0.05,
+            "high": 0.7,
+            "log": true
+        },
+        "max_interpolation_gap": {
+            "type": "int",
+            "low": 0,
+            "high": 60
+        },
+        "velocity_decay": {
+            "type": "float",
+            "low": 0.5,
+            "high": 1.0
+        },
+        "q_miss_alpha": {
+            "type": "float",
+            "low": 0.0,
+            "high": 2.0
+        },
+        "p_reset_threshold": {
+            "type": "int",
+            "low": 0,
+            "high": 30
+        },
+        "oru_threshold": {
+            "type": "int",
+            "low": 0,
+            "high": 15
+        },
+        "conf_cost_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
+        },
+        "iou_age_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 0.2
+        },
+        "high_conf_det_threshold": {
+            "type": "float",
+            "low": 0.0,
+            "high": 0.8
+        },
+        "stage2_iou_threshold": {
+            "type": "float",
+            "low": 0.01,
+            "high": 0.3,
+            "log": true
+        }
+    },
+    "ocsort": {
+        "lost_track_buffer": {
+            "type": "int",
+            "low": 10,
+            "high": 80,
+            "log": true
+        },
+        "minimum_consecutive_frames": {
+            "type": "int",
+            "low": 1,
+            "high": 5
+        },
+        "minimum_iou_threshold": {
+            "type": "float",
+            "low": 0.05,
+            "high": 0.5,
+            "log": true
+        },
+        "direction_consistency_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
+        },
+        "high_conf_det_threshold": {
+            "type": "float",
+            "low": 0.1,
+            "high": 0.7
+        },
+        "delta_t": {
+            "type": "int",
+            "low": 1,
+            "high": 5
+        },
+        "max_interpolation_gap": {
+            "type": "int",
+            "low": 0,
+            "high": 60
+        },
+        "q_scale": {
+            "type": "float",
+            "low": 0.001,
+            "high": 10.0,
+            "log": true
+        },
+        "r_scale": {
+            "type": "float",
+            "low": 0.01,
+            "high": 100.0,
+            "log": true
+        },
+        "p_scale": {
+            "type": "float",
+            "low": 0.01,
+            "high": 100.0,
+            "log": true
+        },
+        "conf_cost_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
+        },
+        "iou_age_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 0.5
+        },
+        "p_reset_threshold": {
+            "type": "int",
+            "low": 0,
+            "high": 30
+        },
+        "velocity_decay": {
+            "type": "float",
+            "low": 0.5,
+            "high": 1.0
+        },
+        "q_miss_alpha": {
+            "type": "float",
+            "low": 0.0,
+            "high": 2.0
+        }
+    }
+}

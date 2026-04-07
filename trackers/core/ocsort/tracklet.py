@@ -45,6 +45,9 @@ class OCSORTTracklet:
         initial_bbox: np.ndarray,
         state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
         delta_t: int = 3,
+        p_reset_threshold: int = 0,
+        velocity_decay: float = 1.0,
+        q_miss_alpha: float = 0.0,
     ) -> None:
         """Initialize tracklet with first detection.
 
@@ -56,8 +59,17 @@ class OCSORTTracklet:
             delta_t: Number of timesteps back to look for velocity estimation.
                 Higher values use observations further in the past to estimate
                 motion direction, providing more stable velocity estimates.
+            p_reset_threshold: Minimum missed frames before resetting P to
+                identity on re-detection. ``0`` disables the reset.
+            velocity_decay: Multiplicative factor applied to velocity components
+                ``kf.x[4:7]`` each missed frame. ``1.0`` disables.
+            q_miss_alpha: Per-frame Q inflation rate for missed frames.
+                ``Q_eff = Q * (1 + alpha * time_since_update)``. ``0.0`` disables.
         """
         self.age = 0
+        self.p_reset_threshold = p_reset_threshold
+        self.velocity_decay = velocity_decay
+        self.q_miss_alpha = q_miss_alpha
 
         # Initialize state estimator (wraps KalmanFilter + state repr)
         self.kalman_filter: BaseStateEstimator = state_estimator_class(initial_bbox)
@@ -232,6 +244,8 @@ class OCSORTTracklet:
             if previous_box is not None:
                 self.velocity = self._compute_velocity(previous_box, bbox)
 
+            gap = self.time_since_update
+
             # Check if we need to unfreeze (was lost, now observed)
             if not self._observed and self._frozen_state is not None:
                 self._unfreeze(bbox)
@@ -240,6 +254,12 @@ class OCSORTTracklet:
             # (after ORU this is the final update at the correct time step;
             #  without ORU this is the normal measurement update)
             self.kalman_filter.update(bbox)
+
+            # P reset: after a long gap, discard stale accumulated uncertainty
+            # so velocity estimation starts fresh from the re-detection.
+            if self.p_reset_threshold > 0 and gap >= self.p_reset_threshold:
+                kf = self.kalman_filter.kf
+                kf.P = np.eye(kf.P.shape[0], dtype=np.float32)
 
             self._observed = True
             self.time_since_update = 0
@@ -260,10 +280,30 @@ class OCSORTTracklet:
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
+        is_lost = self.time_since_update > 0
+
+        # Q inflation: widen predicted covariance for lost tracks so the filter
+        # trusts fresh measurements more on re-detection.
+        if self.q_miss_alpha > 0 and is_lost:
+            q_orig = self.kalman_filter.kf.Q.copy()
+            self.kalman_filter.kf.Q = (
+                q_orig * (1.0 + self.q_miss_alpha * self.time_since_update)
+            ).astype(np.float32)
+
         self.kalman_filter.predict()
+
+        if self.q_miss_alpha > 0 and is_lost:
+            self.kalman_filter.kf.Q = q_orig
+
+        # Velocity decay: attenuate velocity components to reduce prediction drift.
+        if self.velocity_decay < 1.0 and is_lost:
+            self.kalman_filter.kf.x[4:7] = (
+                self.kalman_filter.kf.x[4:7] * self.velocity_decay
+            ).astype(np.float32)
+
         self.age += 1
 
-        if self.time_since_update > 0:
+        if is_lost:
             self.number_of_successful_consecutive_updates = 0
 
         self.time_since_update += 1

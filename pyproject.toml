@@ -75,6 +75,18 @@ mypy-types = [
     "types-requests>=2.32.0.20250328",
 ]
 
+optimize = [
+    "optuna[rdb]>=3.1.0",
+    "fire>=0.6.0",
+    "inference>=0.9.0",
+    "inference-models>=0.19.0",
+    "ultralytics",  # dependency in inference
+    "rfdetr>=1.6",
+]
+
+[tool.uv.sources]
+onnx-simplifier = { git = "https://github.com/daquexian/onnx-simplifier.git", tag = "v0.4.10" }
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

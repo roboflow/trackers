@@ -3,12 +3,7 @@
     <h1>trackers</h1>
     <p>Plug-and-play multi-object tracking for any detection model.</p>
 
-[![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers)
-[![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers)
-[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE.md)
-[![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers)
-[![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
-[![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
+[![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers) [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers) [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE.md) [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers) [![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb) [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
 
 </div>
 
@@ -79,13 +74,13 @@ https://github.com/user-attachments/assets/d2347a25-469d-44cd-8049-d15274bd91ae
 
 ## Algorithms
 
-Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
+Clean, modular implementations of leading trackers. HOTA scores at default parameters; tuned scores use Optuna-optimised hyperparameters from the autotune campaign (MOT17-SDP).
 
-|                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
-| :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      45.0       |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    60.1    |    **73.0**    |    **84.0**    |      50.2       |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |  **61.9**  |      71.7      |      78.4      |    **51.8**     |
+|                   Algorithm                   |                           Description                           | MOT17 HOTA | MOT17 HOTA (tuned) | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :----------------: | :------------: | :------------: | :-------------: |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    55.7    |      **57.7**      |      70.9      |      81.6      |      45.0       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    60.1    |        59.1        |    **73.0**    |    **84.0**    |      50.2       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |  **61.9**  |      **58.9**      |      71.7      |      78.4      |    **51.8**     |
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/).
 

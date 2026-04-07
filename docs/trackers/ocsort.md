@@ -6,10 +6,7 @@ comments: true
 
 ## Overview
 
-OC-SORT remains Simple, Online, and Real-Time like ([SORT](../sort/tracker.md)) but improves robustness during occlusion and non-linear motion.
-It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These
-mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
-due to object stopping or short-term occlusion.
+OC-SORT remains Simple, Online, and Real-Time like ([SORT](../sort/tracker.md)) but improves robustness during occlusion and non-linear motion. It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost due to object stopping or short-term occlusion.
 
 ## Comparison
 
