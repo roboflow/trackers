@@ -14,6 +14,7 @@ from trackers.core.ocsort.utils import (
     _build_direction_consistency_matrix_batch,
     _get_iou_matrix,
 )
+from trackers.core.sort.utils import _compute_diou_matrix
 from trackers.utils.state_representations import XCYCSRStateEstimator
 
 
@@ -205,7 +206,7 @@ class OCSORTTracker(BaseTracker):
             last_observation_of_tracks = np.array(
                 [self.tracks[t].last_observation for t in unmatched_tracks]
             )
-            ocr_iou_matrix = sv.box_iou_batch(
+            ocr_iou_matrix = _compute_diou_matrix(
                 last_observation_of_tracks,
                 detection_boxes[unmatched_detections],
             )

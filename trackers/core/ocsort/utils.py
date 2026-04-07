@@ -10,7 +10,8 @@
 from __future__ import annotations
 
 import numpy as np
-import supervision as sv
+
+from trackers.core.sort.utils import _compute_diou_matrix
 
 
 def _speed_direction_batch(
@@ -127,7 +128,7 @@ def _get_iou_matrix(track_boxes: np.ndarray, detection_boxes: np.ndarray) -> np.
     n_tracks = track_boxes.shape[0]
     n_detections = detection_boxes.shape[0]
     if n_tracks > 0 and n_detections > 0:
-        iou_matrix = sv.box_iou_batch(track_boxes, detection_boxes)
+        iou_matrix = _compute_diou_matrix(track_boxes, detection_boxes)
     else:
         iou_matrix = np.zeros((n_tracks, n_detections), dtype=np.float32)
     return iou_matrix
