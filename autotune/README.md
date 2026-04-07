@@ -120,20 +120,20 @@ Published reference points (MOT17-val, FRCNN, IoU-only): SORT ~45–50 (estimate
 
 Bundled SDP detections; same ground truth as FRCNN. Full 7-sequence eval.
 
-| Config              | Metric | ByteTrack  | OC-SORT     | SORT        |
-| ------------------- | ------ | ---------- | ----------- | ----------- |
-| Defaults            | HOTA   | 53.941     | 53.351      | 53.217      |
-|                     | IDF1   | 65.402     | 65.817      | 64.538      |
-|                     | MOTA   | 62.464     | 58.731      | 61.917      |
-|                     | IDSW   | 371        | 283         | 355         |
-| + Optuna (n=500)    | HOTA   | 56.115     | **57.747**  | 56.083      |
-|                     | IDF1   | 68.077     | 70.330      | 67.517      |
-|                     | MOTA   | 65.602     | 66.215      | 65.283      |
-|                     | IDSW   | 329        | 303         | 326         |
-| + autotune + Optuna | HOTA   | **59.092** | _(pending)_ | _(pending)_ |
-|                     | IDF1   | **71.993** | _(pending)_ | _(pending)_ |
-|                     | MOTA   | **66.977** | _(pending)_ | _(pending)_ |
-|                     | IDSW   | **259**    | _(pending)_ | _(pending)_ |
+| Config              | Metric | ByteTrack  | OC-SORT    | SORT        |
+| ------------------- | ------ | ---------- | ---------- | ----------- |
+| Defaults            | HOTA   | 53.941     | 53.351     | 53.217      |
+|                     | IDF1   | 65.402     | 65.817     | 64.538      |
+|                     | MOTA   | 62.464     | 58.731     | 61.917      |
+|                     | IDSW   | 371        | 283        | 355         |
+| + Optuna (n=500)    | HOTA   | 56.115     | **57.747** | 56.083      |
+|                     | IDF1   | 68.077     | 70.330     | 67.517      |
+|                     | MOTA   | 65.602     | 66.215     | 65.283      |
+|                     | IDSW   | 329        | 303        | 326         |
+| + autotune + Optuna | HOTA   | **59.092** | **58.905** | **58.026**  |
+|                     | IDF1   | **71.993** | **71.636** | _(pending)_ |
+|                     | MOTA   | **66.977** | **66.396** | _(pending)_ |
+|                     | IDSW   | **259**    | **291**    | _(pending)_ |
 
 > SDP is stronger than FRCNN — expect single-sequence defaults around 60–65 HOTA on MOT17-04, but the 7-sequence Optuna average is lower because the benchmark includes harder sequences that pull the mean down.
 
@@ -300,6 +300,107 @@ xcycsr 7D Kalman state (−1.2%), anisotropic Q matrix (−0.5%), EMA position b
 #### Key lesson
 
 **Calibration waves account for ~87% of the total gain**: the three Optuna passes (i10 +1.13%, i12 +1.62%, i16 +0.19%) delivered +2.94 of the +3.09 total HOTA improvement. Joint optimisation over all parameters simultaneously reaches basins that sequential per-parameter tuning cannot. Algorithmic additions (ORU, stage-2 threshold, age discount, etc.) created new tunable structure that the calibration waves then exploited.
+
+---
+
+### SORT — Phase 1 Campaign (MOT17-val SDP, 9 kept + 5 reverted)
+
+**Period**: 2026-04-05 → 2026-04-06 | **Baseline**: HOTA = 53.217 | **Final**: HOTA = 57.675 (+8.4%, +4.458 pts) | **Best commit**: `f873a75`
+
+Full iteration log: `.experiments/state/sort-phase1/experiments.jsonl`. The table below shows **kept** experiments only.
+
+#### Positive experiments
+
+| Hypothesis                                                                             | Commit    | HOTA delta at defaults       |
+| -------------------------------------------------------------------------------------- | --------- | ---------------------------- |
+| Kalman covariance dynamics: velocity_decay, q_miss_alpha, p_reset_threshold            | `8d66fba` | +0.98%                       |
+| OC-SORT observation-centric velocity re-estimation (oru_threshold)                     | `de5704a` | +1.22%                       |
+| DIoU replaces IoU in association matrix                                                | `c4de2c6` | +0.17%                       |
+| Confidence-weighted Hungarian assignment (conf_cost_weight)                            | `eefe13e` | enables Optuna headroom      |
+| IoU age discount for lost tracks (iou_age_weight)                                      | `c094bcb` | enables Optuna headroom      |
+| Two-stage confidence-based association (high_conf_det_threshold, stage2_iou_threshold) | `e576b9e` | enables Optuna headroom      |
+| conf_cost_weight wiring + gap interpolation activation                                 | `25d00c5` | activates existing feature   |
+| minimum_consecutive_frames 3→2                                                         | `3555147` | faster confirmation          |
+| Align defaults with Optuna-tuned best_config                                           | `ce69432` | +1.18% (single biggest jump) |
+
+#### Code features added
+
+All features are in `trackers/core/sort/tracker.py` and wired through `optimize_tracking.py`:
+
+| Parameter                 | Default | What it does                                                                       |
+| ------------------------- | ------- | ---------------------------------------------------------------------------------- |
+| `velocity_decay`          | 0.82    | Multiplicative attenuation of velocity components each missed frame                |
+| `q_miss_alpha`            | 0.8     | Per-frame Q inflation rate for missed frames: Q_eff = Q × (1 + α × t)              |
+| `p_reset_threshold`       | 10      | Reset error covariance P to identity on re-detection after this many missed frames |
+| `oru_threshold`           | 3       | Minimum occlusion length (frames) to trigger ORU virtual trajectory replay         |
+| `conf_cost_weight`        | 0.2     | Confidence boost multiplier in Hungarian assignment cost matrix                    |
+| `iou_age_weight`          | 0.0     | Age discount factor for stale lost tracks in stage-1 solver cost                   |
+| `high_conf_det_threshold` | 0.0     | Score gate for high-confidence first-stage detections                              |
+| `stage2_iou_threshold`    | 0.05    | Independent IoU gate for second-stage low-confidence recovery                      |
+
+#### What failed (reverted)
+
+xcycsr Kalman state representation (−0.51%), velocity-adaptive Q scaling (−0.06%), Mahalanobis distance gate (regression), GIoU as association metric (regression), OC-SORT velocity correction duplicate (reverted).
+
+#### Key lesson
+
+**A single calibration wave** (aligning defaults with the Optuna best, `ce69432`) accounted for +1.18% — the single largest step in the campaign. Each individual code feature added only 0.17–1.22% on its own, but together they created 8 new tunable dimensions that Optuna could jointly exploit.
+
+---
+
+### OC-SORT — Phase 1 Campaign (MOT17-val SDP, 7 iterations + Codex co-pilot)
+
+**Period**: 2026-04-06 → 2026-04-07 | **Baseline**: HOTA = 53.351 | **Final**: HOTA = 58.905 (+10.4%, +5.554 pts) | **Best commit**: `573e71b`
+
+Full iteration log: `.experiments/state/20260406-225110/experiments.jsonl`. Team Mode (3 axes: kalman-covariance / association-pipeline / post-processing-lifecycle) + Codex co-pilot. Table shows **kept** experiments only.
+
+#### Positive experiments
+
+| Iter     | Change                                                      | HOTA before → after | Δ pts  | Δ %    | IDSW |
+| -------- | ----------------------------------------------------------- | ------------------- | ------ | ------ | ---- |
+| i1       | Gap interpolation (max_interpolation_gap=20)                | 53.351 → 55.361     | +2.010 | +3.77% | —    |
+| i2       | Kalman Q/R/P scalar multipliers (q_scale, r_scale, p_scale) | 55.361 → 55.361     | 0.0    | 0.0%   | —    |
+| i2-codex | Codex param promotion (Optuna best → default_config)        | 55.361 → 58.525     | +3.164 | +5.71% | —    |
+| i3       | DIoU in OCM + OCR association stages                        | 58.525 → 58.244     | −0.281 | −0.48% | —    |
+| i4       | Confidence-weighted Hungarian (conf_cost_weight)            | 58.244 → 58.652     | +0.408 | +0.70% | —    |
+| i5       | IoU age discount for lost tracks (iou_age_weight)           | 58.652 → 58.652     | 0.0    | 0.0%   | —    |
+| i6       | P reset to identity on re-detection (p_reset_threshold)     | 58.652 → 58.652     | 0.0    | 0.0%   | —    |
+| i7       | Velocity decay + Q inflation during missed frames           | 58.652 → 58.905     | +0.253 | +0.43% | 291  |
+
+<details>
+<summary><strong>Experiment descriptions</strong></summary>
+
+- **Gap interpolation** (i1) — post-processing pass that linearly interpolates tracklet positions across gaps up to `max_interpolation_gap` frames. Infrastructure already existed in `optimize_tracking.py`; only `default_config.json` needed updating.
+- **Kalman Q/R/P scalars** (i2) — expose global multipliers for the noise matrices to Optuna, replacing hardcoded paper defaults. No change at default params (multipliers=1); creates Optuna headroom.
+- **Codex param promotion** (i2-codex) — after the i2 guard's 500-trial run found HOTA=58.525, Codex co-pilot promoted the full-precision Optuna best into `default_config.json`. Largest single step in the campaign.
+- **DIoU** (i3) — replaced `sv.box_iou_batch` with `_compute_diou_matrix` in both OCM stage (`ocsort/utils.py`) and OCR stage (`tracker.py`). DIoU penalises centre distance, recovering near-miss associations. Registered as a slight regression at 1-trial defaults (−0.28 HOTA) but within guard tolerance; kept because Optuna later recovered and surpassed with tuned DIoU threshold.
+- **conf_cost_weight** (i4) — confidence boost in Hungarian cost matrix: `cost *= (1 + w × conf)`. Higher-confidence detections win ties; gate check uses raw IoU.
+- **iou_age_weight** (i5) — age discount for stale lost tracks in stage-1 solver: `cost *= 1/(1 + w × max(0, t−1))`. Pushes long-lost tracks to OCR recovery, keeps stage-1 for recently-seen tracks. Creates Optuna headroom.
+- **p_reset_threshold** (i6) — after a gap ≥ threshold frames, reset covariance P to identity on re-detection, discarding stale accumulated uncertainty. Creates Optuna headroom.
+- **velocity_decay + q_miss_alpha** (i7) — during missed frames: attenuate velocity components by `velocity_decay` and inflate Q by `(1 + alpha × t)`. Reduces prediction drift during occlusion. Optuna found velocity_decay=0.926, q_miss_alpha=0.512.
+
+</details>
+
+#### Code features added
+
+All features are in `trackers/core/ocsort/tracker.py` + `tracklet.py` and wired through `optimize_tracking.py`:
+
+| Parameter                         | Default | What it does                                                          |
+| --------------------------------- | ------- | --------------------------------------------------------------------- |
+| `q_scale` / `r_scale` / `p_scale` | tuned   | Global multipliers for Kalman Q, R, P noise matrices                  |
+| `conf_cost_weight`                | 0.9699  | Confidence boost in Hungarian cost; gate check uses raw IoU           |
+| `iou_age_weight`                  | 0.4279  | Age discount for stale lost tracks in stage-1 solver cost             |
+| `p_reset_threshold`               | 8       | Reset P to identity when re-detected after ≥ this many missed frames  |
+| `velocity_decay`                  | 0.9260  | Multiplicative attenuation of velocity components each missed frame   |
+| `q_miss_alpha`                    | 0.5123  | Per-frame Q inflation rate for missed frames: Q_eff = Q × (1 + α × t) |
+
+#### What failed (reverted)
+
+Two Codex co-pilot passes hit transient guard failures (sort HOTA output missing during parallel 500-trial runs) and were reverted; neither represented a real code regression — re-runs passed. No algorithmic hypotheses were reverted.
+
+#### Key lesson
+
+**`direction_consistency_weight` is near-useless on SDP**: Optuna converged to 0.0006 (essentially zero) for the OCM direction signal. Confidence-based assignment (`conf_cost_weight` = 0.97) proved far more effective as a tiebreaker. The Codex param-promotion step (i2-codex, +5.71%) shows how much headroom existed in the pre-campaign hyperparameters — a single calibration wave after exposing Kalman scalars to Optuna captured the majority of the total gain.
 
 ---
 

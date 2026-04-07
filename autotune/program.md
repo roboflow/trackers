@@ -213,6 +213,48 @@ Campaign run on `bemch/auto-research` using 3-team parallel strategy (Kalman / A
 }
 ```
 
+### OC-SORT Phase 1 findings — already in the code (do not re-implement)
+
+Campaign run on `bemch/auto-research` using 3-team parallel strategy (Kalman / Association / Lifecycle + Codex co-pilot). Baseline: HOTA 53.351 → tuned (500 trials): **58.9** (+10.4%).
+
+#### Kept changes
+
+| Hypothesis                                                                       | Commit     | HOTA delta at defaults  |
+| -------------------------------------------------------------------------------- | ---------- | ----------------------- |
+| Gap interpolation (max_interpolation_gap=20)                                     | `(iter 1)` | +2.01%                  |
+| Kalman Q/R/P scalar multipliers exposed to Optuna (q_scale, r_scale, p_scale)    | `(iter 2)` | enables Optuna headroom |
+| DIoU replaces IoU in OCM + OCR association stages                                | `(iter 3)` | within guard tolerance  |
+| Confidence-weighted Hungarian assignment (conf_cost_weight)                      | `(iter 4)` | +0.22%                  |
+| IoU age discount for lost tracks in stage 1 (iou_age_weight)                     | `(iter 5)` | enables Optuna headroom |
+| P reset to identity on re-detection after gap (p_reset_threshold)                | `9960dd5`  | enables Optuna headroom |
+| Velocity decay + Q inflation during missed frames (velocity_decay, q_miss_alpha) | `9525885`  | +0.43% to HOTA 58.905   |
+
+**Optuna findings**: `direction_consistency_weight` converged near-zero (0.0006) — OCM direction signal hurts on SDP; `conf_cost_weight` converged high (0.97); `iou_age_weight` = 0.43 is effective; `velocity_decay` = 0.926 + `q_miss_alpha` = 0.512 reduce prediction drift.
+
+**New OC-SORT constructor params**: `conf_cost_weight`, `iou_age_weight`, `p_reset_threshold`, `velocity_decay`, `q_miss_alpha`
+
+#### Tuned best config (ocsort/sdp, 500 trials, HOTA=58.905)
+
+```json
+{
+  "lost_track_buffer": 74,
+  "minimum_consecutive_frames": 1,
+  "minimum_iou_threshold": 0.1488,
+  "direction_consistency_weight": 0.000618,
+  "high_conf_det_threshold": 0.6876,
+  "delta_t": 1,
+  "max_interpolation_gap": 42,
+  "q_scale": 0.7203,
+  "r_scale": 1.1889,
+  "p_scale": 0.0952,
+  "conf_cost_weight": 0.9699,
+  "iou_age_weight": 0.4279,
+  "p_reset_threshold": 8,
+  "velocity_decay": 0.926,
+  "q_miss_alpha": 0.5123
+}
+```
+
 ### Agent warning — Kalman patch and state representation
 
 `_apply_kalman_patch` in `optimize_tracking.py` overwrites Q, R, and P with uniform identity-scaled matrices. If the state representation is changed (H-A), the patch must be redesigned to work with the new state dimension and matrix structure.
