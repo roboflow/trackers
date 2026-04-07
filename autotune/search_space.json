@@ -239,6 +239,11 @@
             "type": "float",
             "low": 0.0,
             "high": 0.5
+        },
+        "p_reset_threshold": {
+            "type": "int",
+            "low": 0,
+            "high": 30
         }
     }
 }

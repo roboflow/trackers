@@ -48,6 +48,7 @@
         "r_scale": 0.1357,
         "p_scale": 9.735,
         "conf_cost_weight": 0.2585,
-        "iou_age_weight": 0.0
+        "iou_age_weight": 0.0,
+        "p_reset_threshold": 0
     }
 }
