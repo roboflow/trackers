@@ -229,6 +229,11 @@
             "low": 0.01,
             "high": 100.0,
             "log": true
+        },
+        "conf_cost_weight": {
+            "type": "float",
+            "low": 0.0,
+            "high": 1.0
         }
     }
 }

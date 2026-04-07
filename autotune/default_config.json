@@ -37,15 +37,16 @@
         "stage2_iou_threshold": 0.05
     },
     "ocsort": {
-        "lost_track_buffer": 45,
+        "lost_track_buffer": 43,
         "minimum_consecutive_frames": 1,
-        "minimum_iou_threshold": 0.09544,
-        "direction_consistency_weight": 0.04136,
-        "high_conf_det_threshold": 0.6671,
+        "minimum_iou_threshold": 0.06074,
+        "direction_consistency_weight": 0.09740,
+        "high_conf_det_threshold": 0.6652,
         "delta_t": 2,
-        "max_interpolation_gap": 29,
-        "q_scale": 1.214,
-        "r_scale": 14.31,
-        "p_scale": 47.16
+        "max_interpolation_gap": 28,
+        "q_scale": 0.007214,
+        "r_scale": 0.1357,
+        "p_scale": 9.735,
+        "conf_cost_weight": 0.2585
     }
 }
