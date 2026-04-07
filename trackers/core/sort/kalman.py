@@ -170,9 +170,7 @@ class SORTKalmanBoxTracker:
             and self._last_observed_bbox is not None
         ):
             bbox_f = bbox.astype(np.float32)
-            virtual_vel = (
-                (bbox_f[:4] - self._last_observed_bbox) / was_lost_for
-            )
+            virtual_vel = (bbox_f[:4] - self._last_observed_bbox) / was_lost_for
             self.state[4, 0] = virtual_vel[0]
             self.state[5, 0] = virtual_vel[1]
             self.state[6, 0] = virtual_vel[2]

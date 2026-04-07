@@ -129,20 +129,6 @@ These hypotheses were implemented and kept in ByteTrack Phase 1. They are **not 
 | Post-processing gap interpolation (max_gap=20) | +1.666%                 |
 | P reset on re-detection after occlusion        | +1.674%                 |
 
-### ByteTrack Phase 1 — tried and reverted (likely to regress for any tracker)
-
-| Hypothesis                                   | Outcome                                         |
-| -------------------------------------------- | ----------------------------------------------- |
-| Non-uniform P init (pos/vel split)           | Both regressions on ByteTrack                   |
-| Size-adaptive R (area scaling)               | Regression                                      |
-| NSA Kalman confidence-gated R                | Regression                                      |
-| Two-stage IoU threshold (Stage 1 ≠ Stage 2)  | Both regressions on ByteTrack                   |
-| Immature track grace period (1 missed frame) | Regression                                      |
-| Joseph-form covariance update                | No change (algebraically equivalent at float32) |
-| Two-hit birth policy                         | Regression                                      |
-| Per-axis velocity decay (pos/size split)     | Regression                                      |
-| Velocity-only Q inflation                    | No change                                       |
-
 ### Research starting points — SOTA-inspired, not yet tried on all trackers
 
 Provided as inspiration, not a prescribed order. Hypotheses apply to the active `{algo}` tracker unless noted.
@@ -183,16 +169,6 @@ Campaign run on `bemch/auto-research` using 3-team parallel strategy (Kalman / A
 
 **New SORT constructor params**: `velocity_decay`, `q_miss_alpha`, `p_reset_threshold`, `oru_threshold`, `conf_cost_weight`, `iou_age_weight`, `high_conf_det_threshold`, `stage2_iou_threshold`
 
-#### Tried and reverted
-
-| Hypothesis                                              | Outcome    |
-| ------------------------------------------------------- | ---------- |
-| xcycsr Kalman state representation                      | −0.51%     |
-| Velocity-adaptive Q scaling                             | −0.06%     |
-| Mahalanobis distance gate                               | Regression |
-| GIoU as association metric                              | Regression |
-| OC-SORT velocity correction (duplicate, second attempt) | Reverted   |
-
 #### Tuned best config (sort/sdp, 500 trials)
 
 ```json
@@ -228,8 +204,6 @@ Campaign run on `bemch/auto-research` using 3-team parallel strategy (Kalman / A
 | IoU age discount for lost tracks in stage 1 (iou_age_weight)                     | `(iter 5)` | enables Optuna headroom |
 | P reset to identity on re-detection after gap (p_reset_threshold)                | `9960dd5`  | enables Optuna headroom |
 | Velocity decay + Q inflation during missed frames (velocity_decay, q_miss_alpha) | `9525885`  | +0.43% to HOTA 58.905   |
-
-**Optuna findings**: `direction_consistency_weight` converged near-zero (0.0006) — OCM direction signal hurts on SDP; `conf_cost_weight` converged high (0.97); `iou_age_weight` = 0.43 is effective; `velocity_decay` = 0.926 + `q_miss_alpha` = 0.512 reduce prediction drift.
 
 **New OC-SORT constructor params**: `conf_cost_weight`, `iou_age_weight`, `p_reset_threshold`, `velocity_decay`, `q_miss_alpha`
 

@@ -1,19 +1,34 @@
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Regression guard: ensures no tracker's HOTA drops >0.5% from the stored best."""
 
 import json
 import re
-import subprocess
 import sys
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
 
-best = json.load(open("best_config.json"))
+from optimize_tracking import main as optimize_tracking_main
+
+
+def _run_search(tracker_name: str) -> str:
+    """Run tracker optimization and return captured stdout."""
+    stdout_buffer = StringIO()
+    with redirect_stdout(stdout_buffer):
+        optimize_tracking_main(tracker=tracker_name, det_source="sdp", n_trials=500)
+    return stdout_buffer.getvalue()
+
+
+best = json.loads((Path(__file__).parent / "best_config.json").read_text())
 failed = []
 
 for t in ["bytetrack", "sort", "ocsort"]:
-    out = subprocess.run(
-        ["uv", "run", "python", "optimize_tracking.py", t, "sdp", "--n-trials", "500"],
-        capture_output=True,
-        text=True,
-    ).stdout
+    out = _run_search(t)
     m = re.search(r"HOTA=([0-9.]+)", out)
     if not m:
         failed.append(f"{t}: no HOTA output")

@@ -50,9 +50,7 @@ def get_alive_trackers(
     return alive_trackers
 
 
-def _compute_diou_matrix(
-    boxes_a: np.ndarray, boxes_b: np.ndarray
-) -> np.ndarray:
+def _compute_diou_matrix(boxes_a: np.ndarray, boxes_b: np.ndarray) -> np.ndarray:
     """Compute Distance IoU (DIoU) between two sets of boxes.
 
     DIoU = IoU - d^2 / c^2 where d is the Euclidean distance between box
@@ -74,9 +72,7 @@ def _compute_diou_matrix(
     x2_inter = np.minimum(boxes_a[:, 2:3], boxes_b[:, 2:3].T)
     y2_inter = np.minimum(boxes_a[:, 3:4], boxes_b[:, 3:4].T)
 
-    inter_area = np.maximum(x2_inter - x1_inter, 0) * np.maximum(
-        y2_inter - y1_inter, 0
-    )
+    inter_area = np.maximum(x2_inter - x1_inter, 0) * np.maximum(y2_inter - y1_inter, 0)
 
     # Areas of individual boxes
     area_a = (
