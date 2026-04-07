@@ -220,6 +220,8 @@ def _build_tracker(params: dict, tracker_name: str):
             conf_cost_weight=params.get("conf_cost_weight", 0.0),
             iou_age_weight=params.get("iou_age_weight", 0.0),
             p_reset_threshold=params.get("p_reset_threshold", 0),
+            velocity_decay=params.get("velocity_decay", 1.0),
+            q_miss_alpha=params.get("q_miss_alpha", 0.0),
         )
     raise ValueError(
         f"Unknown tracker: {tracker_name!r}. Choose: sort | bytetrack | ocsort"

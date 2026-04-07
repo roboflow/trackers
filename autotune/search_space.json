@@ -244,6 +244,16 @@
             "type": "int",
             "low": 0,
             "high": 30
+        },
+        "velocity_decay": {
+            "type": "float",
+            "low": 0.5,
+            "high": 1.0
+        },
+        "q_miss_alpha": {
+            "type": "float",
+            "low": 0.0,
+            "high": 2.0
         }
     }
 }

@@ -83,6 +83,8 @@ class OCSORTTracker(BaseTracker):
         conf_cost_weight: float = 0.0,
         iou_age_weight: float = 0.0,
         p_reset_threshold: int = 0,
+        velocity_decay: float = 1.0,
+        q_miss_alpha: float = 0.0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -96,6 +98,8 @@ class OCSORTTracker(BaseTracker):
         self.conf_cost_weight = conf_cost_weight
         self.iou_age_weight = iou_age_weight
         self.p_reset_threshold = p_reset_threshold
+        self.velocity_decay = velocity_decay
+        self.q_miss_alpha = q_miss_alpha
 
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
@@ -185,6 +189,8 @@ class OCSORTTracker(BaseTracker):
                     delta_t=self.delta_t,
                     state_estimator_class=self.state_estimator_class,
                     p_reset_threshold=self.p_reset_threshold,
+                    velocity_decay=self.velocity_decay,
+                    q_miss_alpha=self.q_miss_alpha,
                 )
             )
 

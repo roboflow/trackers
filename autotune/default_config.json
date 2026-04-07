@@ -49,6 +49,8 @@
         "p_scale": 9.735,
         "conf_cost_weight": 0.2585,
         "iou_age_weight": 0.0,
-        "p_reset_threshold": 0
+        "p_reset_threshold": 0,
+        "velocity_decay": 1.0,
+        "q_miss_alpha": 0.0
     }
 }
