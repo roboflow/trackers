@@ -63,6 +63,10 @@ class OCSORTTracker(BaseTracker):
             disables the feature (pure IoU+direction). Positive values boost
             higher-confidence detections in the solver matrix while keeping
             the gate check on the raw IoU.
+        iou_age_weight: `float` specifying how strongly a track's age (frames
+            since last update) discounts its solver cost. A value of ``0.0``
+            disables the feature. Stale lost tracks get a lower solver score,
+            pushing them to OCR recovery while fresh tracks win stage 1.
     """
 
     tracker_id = "ocsort"
@@ -77,6 +81,7 @@ class OCSORTTracker(BaseTracker):
         high_conf_det_threshold: float = 0.6,
         delta_t: int = 3,
         conf_cost_weight: float = 0.0,
+        iou_age_weight: float = 0.0,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -88,6 +93,7 @@ class OCSORTTracker(BaseTracker):
         self.high_conf_det_threshold = high_conf_det_threshold
         self.delta_t = delta_t
         self.conf_cost_weight = conf_cost_weight
+        self.iou_age_weight = iou_age_weight
 
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
@@ -98,6 +104,7 @@ class OCSORTTracker(BaseTracker):
         iou_matrix: np.ndarray,
         direction_consistency_matrix: np.ndarray,
         confidences: np.ndarray | None = None,
+        track_ages: np.ndarray | None = None,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
         Associate detections to tracks based on IOU.
@@ -108,6 +115,9 @@ class OCSORTTracker(BaseTracker):
             confidences: Optional detection confidence scores `(n_detections,)` used
                 to break IoU ties when `conf_cost_weight > 0`. Gate check still uses
                 raw `iou_matrix`.
+            track_ages: Optional `(n_tracks,)` array of `time_since_update` values.
+                When `iou_age_weight > 0`, stale tracks are discounted in the solver
+                cost so they fall through to OCR. Gate check is unaffected.
 
         Returns:
             matched_indices: List of (track_index, detection_index) tuples for
@@ -127,6 +137,17 @@ class OCSORTTracker(BaseTracker):
                 iou_matrix
                 + self.direction_consistency_weight * direction_consistency_matrix
             )
+            if (
+                self.iou_age_weight > 0
+                and track_ages is not None
+                and track_ages.size > 0
+            ):
+                age_discount = 1.0 / (
+                    1.0 + self.iou_age_weight * np.maximum(0, track_ages - 1)
+                )
+                cost_matrix = (cost_matrix * age_discount[:, np.newaxis]).astype(
+                    np.float32
+                )
             if (
                 self.conf_cost_weight > 0
                 and confidences is not None
@@ -202,6 +223,7 @@ class OCSORTTracker(BaseTracker):
             tracker.predict()
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
+        track_ages = np.array([t.time_since_update for t in self.tracks])
         iou_matrix = _get_iou_matrix(predicted_boxes, detection_boxes)
 
         direction_consistency_matrix = self._compute_direction_consistency_matrix(
@@ -211,7 +233,7 @@ class OCSORTTracker(BaseTracker):
         # 1st association (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = (
             self._get_associated_indices(
-                iou_matrix, direction_consistency_matrix, confidences
+                iou_matrix, direction_consistency_matrix, confidences, track_ages
             )
         )
 

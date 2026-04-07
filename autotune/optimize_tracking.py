@@ -218,6 +218,7 @@ def _build_tracker(params: dict, tracker_name: str):
             high_conf_det_threshold=params["high_conf_det_threshold"],
             delta_t=params["delta_t"],
             conf_cost_weight=params.get("conf_cost_weight", 0.0),
+            iou_age_weight=params.get("iou_age_weight", 0.0),
         )
     raise ValueError(
         f"Unknown tracker: {tracker_name!r}. Choose: sort | bytetrack | ocsort"
