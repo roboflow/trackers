@@ -131,21 +131,21 @@
             }
         },
         "sdp": {
-            "hota": 57.67464748702108,
+            "hota": 58.02555700576912,
             "config": {
-                "lost_track_buffer": 82,
-                "track_activation_threshold": 0.2320478261407267,
+                "lost_track_buffer": 95,
+                "track_activation_threshold": 0.08514177018576655,
                 "minimum_consecutive_frames": 2,
-                "minimum_iou_threshold": 0.06181804967868924,
-                "max_interpolation_gap": 31,
-                "velocity_decay": 0.5238022129493903,
-                "q_miss_alpha": 0.7898317380243735,
-                "p_reset_threshold": 12,
-                "oru_threshold": 2,
-                "conf_cost_weight": 0.3603385598416909,
-                "iou_age_weight": 0.1560674927180593,
-                "high_conf_det_threshold": 0.6281865321381218,
-                "stage2_iou_threshold": 0.24818749751865166
+                "minimum_iou_threshold": 0.2647618093617279,
+                "max_interpolation_gap": 56,
+                "velocity_decay": 0.7133017576736629,
+                "q_miss_alpha": 1.2801764098034227,
+                "p_reset_threshold": 28,
+                "oru_threshold": 10,
+                "conf_cost_weight": 0.2450541948445727,
+                "iou_age_weight": 0.10759441095050457,
+                "high_conf_det_threshold": 0.6620881582466704,
+                "stage2_iou_threshold": 0.27743640261484814
             }
         },
         "yoloworld": {
@@ -205,15 +205,23 @@
             }
         },
         "sdp": {
-            "hota": 57.8667086034892,
+            "hota": 58.9053700075999,
             "config": {
-                "lost_track_buffer": 31,
+                "lost_track_buffer": 74,
                 "minimum_consecutive_frames": 1,
-                "minimum_iou_threshold": 0.3343865974448257,
-                "direction_consistency_weight": 0.12323324418052534,
-                "high_conf_det_threshold": 0.6448629538940001,
-                "delta_t": 2,
-                "max_interpolation_gap": 49
+                "minimum_iou_threshold": 0.1487990736044123,
+                "direction_consistency_weight": 0.0006177923357997676,
+                "high_conf_det_threshold": 0.6875834299207869,
+                "delta_t": 1,
+                "max_interpolation_gap": 42,
+                "q_scale": 0.7203257524174236,
+                "r_scale": 1.1889118447922835,
+                "p_scale": 0.09520352672425254,
+                "conf_cost_weight": 0.9698770881869533,
+                "iou_age_weight": 0.42792379789381346,
+                "p_reset_threshold": 8,
+                "velocity_decay": 0.9259939633989623,
+                "q_miss_alpha": 0.5122722647370503
             }
         },
         "yoloworld": {
