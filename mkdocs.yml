@@ -126,6 +126,7 @@ nav:
     - Evaluate Trackers: learn/evaluate.md
     - Detection Quality Matters: learn/detection-quality.md
     - State Estimators: learn/state-estimators.md
+    - IoU Variants: learn/iou.md
   - Trackers:
     - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md
@@ -134,7 +135,6 @@ nav:
   - API Reference:
     - Trackers: api/trackers.md
     - Motion: api/motion.md
-    - IoU: api/iou.md
     - Datasets: api/datasets.md
     - Evals: api/evals.md
     - I/O: api/io.md
