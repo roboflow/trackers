@@ -237,7 +237,8 @@ class CIoU(BaseIoU):
     The trade-off is weighted by ``\\alpha`` that depends on IoU and ``v``,
     matching :func:`torchvision.ops.complete_box_iou`.
 
-    ``CIoU = DIoU - alpha * v``, with ``alpha = v / (1 - IoU + v + epsilon)``.
+    ``CIoU = DIoU - alpha * v``, with
+    ``alpha = v / (1 - IoU + v + epsilon)``.
 
     So **CIoU ≤ DIoU ≤ IoU** when widths and heights are positive.
     Scores are at most 1; unlike plain IoU they can fall **below** -1 when the
