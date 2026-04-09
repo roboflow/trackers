@@ -1,4 +1,4 @@
-# IoU API
+# IoU variants
 
 IoU variants are pluggable similarity metrics used during detection-to-track
 association. You pass one of these classes to a tracker via the `iou=` argument.
