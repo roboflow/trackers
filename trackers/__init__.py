@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from trackers.annotators.trace import MotionAwareTraceAnnotator
+from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
@@ -25,6 +26,7 @@ from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU
 __all__ = [
     "BIoU",
     "BaseIoU",
+    "BoTSORTTracker",
     "ByteTrackTracker",
     "CIoU",
     "CoordinatesTransformation",

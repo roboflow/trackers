@@ -131,6 +131,7 @@ nav:
     - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md
     - ByteTrack: trackers/bytetrack.md
+    - BoT-SORT: trackers/botsort.md
     - OC-SORT: trackers/ocsort.md
   - API Reference:
     - Trackers: api/trackers.md

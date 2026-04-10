@@ -198,5 +198,7 @@ module = [
     "torchvision",
     "torchvision.transforms",
     "firerequests",
+    "scipy",
+    "scipy.optimize",
 ]
 ignore_missing_imports = true
