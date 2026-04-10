@@ -44,9 +44,7 @@ def get_alive_trackers(
     return alive_trackers
 
 
-def _fuse_score(
-    iou_similarity: np.ndarray, scores: np.ndarray
-) -> np.ndarray:
+def _fuse_score(iou_similarity: np.ndarray, scores: np.ndarray) -> np.ndarray:
     """Fuse IoU similarity matrix with detection confidence scores.
 
     Following the original ByteTrack implementation, the IoU similarity is

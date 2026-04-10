@@ -72,6 +72,7 @@ class BoTSORTTracker(BaseTracker):
             int(frame_rate / 30.0 * lost_track_buffer)
             to maintain consistent “seconds” worth of buffer across different FPS.
     """
+
     def __init__(
         self,
         lost_track_buffer: int = 30,
@@ -179,10 +180,7 @@ class BoTSORTTracker(BaseTracker):
         for track in self.tracks:
             if track.time_since_update > 1:
                 lost_tracks.append(track)
-            elif (
-                track.number_of_successful_updates
-                >= self.minimum_consecutive_frames
-            ):
+            elif track.number_of_successful_updates >= self.minimum_consecutive_frames:
                 confirmed_tracks.append(track)
             else:
                 unconfirmed_tracks.append(track)
@@ -208,8 +206,7 @@ class BoTSORTTracker(BaseTracker):
             track = strack_pool[row]
             track.update(high_boxes[col])
             if (
-                track.number_of_successful_updates
-                >= self.minimum_consecutive_frames
+                track.number_of_successful_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
             ):
                 track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
@@ -233,8 +230,7 @@ class BoTSORTTracker(BaseTracker):
             track = remaining_tracked[row]
             track.update(low_boxes[col])
             if (
-                track.number_of_successful_updates
-                >= self.minimum_consecutive_frames
+                track.number_of_successful_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
             ):
                 track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
