@@ -16,10 +16,12 @@ import numpy as np
 import supervision as sv
 
 from trackers import frames_from_source
+from trackers.annotators.trace import MotionAwareTraceAnnotator
 from trackers.core.base import BaseTracker
 from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
+from trackers.motion.estimator import MotionEstimator
 from trackers.scripts.progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.utils.device import _best_device
 
@@ -28,6 +30,7 @@ DEFAULT_MODEL = "rfdetr-nano"
 DEFAULT_TRACKER = "bytetrack"
 DEFAULT_CONFIDENCE = 0.5
 DEFAULT_DEVICE = "auto"
+DEFAULT_TRAJECTORY_SECONDS = 1.0
 
 # Visualization
 COLOR_PALETTE = sv.ColorPalette.from_hex(
@@ -227,6 +230,26 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
         dest="show_trajectories",
         help="Draw track trajectories.",
     )
+    vis_group.add_argument(
+        "--motion-aware-trajectories",
+        action="store_true",
+        dest="motion_aware_trajectories",
+        help=(
+            "Use camera-motion-compensated trajectories when drawing traces. "
+            "Requires --show-trajectories."
+        ),
+    )
+    vis_group.add_argument(
+        "--trajectory-seconds",
+        type=float,
+        default=DEFAULT_TRAJECTORY_SECONDS,
+        dest="trajectory_seconds",
+        metavar="SECONDS",
+        help=(
+            "How many seconds of trajectory history to keep on screen. "
+            f"Default: {DEFAULT_TRAJECTORY_SECONDS}"
+        ),
+    )
 
     parser.set_defaults(func=run_track)
 
@@ -393,6 +416,10 @@ def _run_with_source(
     """Run tracking with a frame source (video, webcam, images)."""
     frame_gen = frames_from_source(args.source)
     source_info = _classify_source(args.source)
+    trajectory_trace_length = _trajectory_trace_length(
+        source_info.fps or _DEFAULT_OUTPUT_FPS,
+        args.trajectory_seconds,
+    )
 
     # Setup annotators
     annotators, label_annotator = _init_annotators(
@@ -403,11 +430,23 @@ def _run_with_source(
         show_confidence=args.show_confidence,
     )
     trace_annotator = None
+    motion_estimator = None
     if args.show_trajectories:
-        trace_annotator = sv.TraceAnnotator(
-            color=COLOR_PALETTE,
-            color_lookup=sv.ColorLookup.TRACK,
-        )
+        if args.motion_aware_trajectories:
+            trace_annotator = MotionAwareTraceAnnotator(
+                color=COLOR_PALETTE,
+                position=sv.Position.BOTTOM_CENTER,
+                trace_length=trajectory_trace_length,
+                color_lookup=sv.ColorLookup.TRACK,
+            )
+            motion_estimator = MotionEstimator()
+        else:
+            trace_annotator = sv.TraceAnnotator(
+                color=COLOR_PALETTE,
+                position=sv.Position.BOTTOM_CENTER,
+                trace_length=trajectory_trace_length,
+                color_lookup=sv.ColorLookup.TRACK,
+            )
 
     display_ctx = _DisplayWindow() if args.display else nullcontext()
 
@@ -454,7 +493,15 @@ def _run_with_source(
                 if args.display or args.output:
                     annotated = frame.copy()
                     if trace_annotator is not None:
-                        annotated = trace_annotator.annotate(annotated, tracked)
+                        if motion_estimator is not None:
+                            coord_transform = motion_estimator.update(frame)
+                            annotated = trace_annotator.annotate(
+                                annotated,
+                                tracked,
+                                coord_transform=coord_transform,
+                            )
+                        else:
+                            annotated = trace_annotator.annotate(annotated, tracked)
                     for annotator in annotators:
                         annotated = annotator.annotate(annotated, tracked)
                     if label_annotator is not None:
@@ -482,6 +529,13 @@ def _run_with_source(
         pass
 
     return 0
+
+
+def _trajectory_trace_length(fps: float, seconds: float) -> int:
+    """Convert a trajectory duration in seconds to a frame-history length."""
+    safe_seconds = max(seconds, 0.0)
+    safe_fps = fps if fps > 0 else _DEFAULT_OUTPUT_FPS
+    return max(2, int(round(safe_fps * safe_seconds)))
 
 
 def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:

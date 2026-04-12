@@ -1,0 +1,42 @@
+[provider]
+name = "pnlcalib"
+device = "cpu"
+
+[pitch]
+length_m = 105.0
+width_m = 68.0
+
+[weights]
+keypoints = "weights/SV_kp"
+lines = "weights/SV_lines"
+
+[thresholds]
+keypoints = 0.3434
+lines = 0.7867
+max_reproj_error = 20.0
+vote_threshold = 5.0
+
+[sampling]
+every_n_frames = 10
+
+[smoothing]
+enabled = true
+mode = "interpolate"
+edge_strategy = "hold"
+max_gap_frames = 15
+min_confidence = 0.4
+
+[overlay]
+enabled = true
+path = "overlay.mp4"
+line_color_bgr = [255, 0, 0]
+line_thickness = 2
+
+[inference]
+mode = "homography"
+pnl_refine = true
+
+[output]
+write_camera_jsonl = false
+write_homography_jsonl = true
+write_quality_csv = true
