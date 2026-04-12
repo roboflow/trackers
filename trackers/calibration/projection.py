@@ -11,7 +11,9 @@ import numpy as np
 from trackers.calibration.types import CalibrationFrame
 
 
-def _as_points(points: np.ndarray | list[list[float]] | list[tuple[float, float]]) -> np.ndarray:
+def _as_points(
+    points: np.ndarray | list[list[float]] | list[tuple[float, float]],
+) -> np.ndarray:
     array = np.asarray(points, dtype=np.float64)
     if array.ndim == 1:
         if array.shape[0] != 2:

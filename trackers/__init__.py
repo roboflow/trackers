@@ -19,7 +19,11 @@ from trackers.calibration.projection import (
 )
 from trackers.calibration.providers.pnlcalib import PnLCalibProvider
 from trackers.calibration.smoothing import HoldLastCalibration, fill_calibration_gaps
-from trackers.calibration.types import CalibrationFrame, PitchDimensions, TrackProjection
+from trackers.calibration.types import (
+    CalibrationFrame,
+    PitchDimensions,
+    TrackProjection,
+)
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker

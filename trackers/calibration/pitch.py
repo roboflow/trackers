@@ -13,7 +13,9 @@ import numpy as np
 from trackers.calibration.types import PitchDimensions
 
 
-def _as_points(points: np.ndarray | list[list[float]] | list[tuple[float, float]]) -> np.ndarray:
+def _as_points(
+    points: np.ndarray | list[list[float]] | list[tuple[float, float]],
+) -> np.ndarray:
     array = np.asarray(points, dtype=np.float64)
     if array.ndim == 1:
         if array.shape[0] != 2:
@@ -30,14 +32,18 @@ class PitchModel:
 
     dimensions: PitchDimensions = field(default_factory=PitchDimensions)
 
-    def metric_to_normalized(self, points: np.ndarray | list[list[float]]) -> np.ndarray:
+    def metric_to_normalized(
+        self, points: np.ndarray | list[list[float]]
+    ) -> np.ndarray:
         metric_points = _as_points(points)
         normalized = metric_points.copy()
         normalized[:, 0] /= self.dimensions.length_m
         normalized[:, 1] /= self.dimensions.width_m
         return normalized
 
-    def normalized_to_metric(self, points: np.ndarray | list[list[float]]) -> np.ndarray:
+    def normalized_to_metric(
+        self, points: np.ndarray | list[list[float]]
+    ) -> np.ndarray:
         normalized_points = _as_points(points)
         metric = normalized_points.copy()
         metric[:, 0] *= self.dimensions.length_m

@@ -9,12 +9,12 @@ from __future__ import annotations
 import importlib.util
 import os
 import sys
-import tomllib
 from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
+import tomllib
 
 from trackers.calibration.base import PitchCalibrator
 from trackers.calibration.projection import invert_homography
@@ -71,9 +71,8 @@ class PnLCalibProvider(PitchCalibrator):
         if not self._weights_line_path().exists():
             missing_weights.append(str(self._weights_line_path()))
         if missing_weights:
-            return (
-                "PnLCalib weights are missing. Expected: "
-                + ", ".join(missing_weights)
+            return "PnLCalib weights are missing. Expected: " + ", ".join(
+                missing_weights
             )
         return (
             "PnLCalib is not ready in the current environment. Check the "
@@ -84,7 +83,9 @@ class PnLCalibProvider(PitchCalibrator):
         data = super().describe()
         data.update(
             {
-                "config_path": None if self.config_path is None else str(self.config_path),
+                "config_path": None
+                if self.config_path is None
+                else str(self.config_path),
                 "upstream_root": str(self.upstream_root),
                 "weights_kp": str(self._weights_kp_path()),
                 "weights_line": str(self._weights_line_path()),
@@ -273,7 +274,7 @@ class PnLCalibProvider(PitchCalibrator):
         )
         os.environ.setdefault(
             "MPLCONFIGDIR",
-            str((self.upstream_root.parent.parent / ".cache" / "matplotlib")),
+            str(self.upstream_root.parent.parent / ".cache" / "matplotlib"),
         )
 
         upstream_path = str(self.upstream_root.resolve())
@@ -284,10 +285,9 @@ class PnLCalibProvider(PitchCalibrator):
         import torchvision.transforms as T
         import torchvision.transforms.functional as f
         import yaml
-        from PIL import Image
-
         from model.cls_hrnet import get_cls_net
         from model.cls_hrnet_l import get_cls_net as get_cls_net_l
+        from PIL import Image
         from utils.utils_calib import FramebyFrameCalib
         from utils.utils_heatmap import (
             complete_keypoints,
@@ -306,7 +306,9 @@ class PnLCalibProvider(PitchCalibrator):
             device = torch.device(device_name)
 
         cfg = yaml.safe_load(
-            (self.upstream_root / "config" / "hrnetv2_w48.yaml").read_text(encoding="utf-8")
+            (self.upstream_root / "config" / "hrnetv2_w48.yaml").read_text(
+                encoding="utf-8"
+            )
         )
         cfg_l = yaml.safe_load(
             (self.upstream_root / "config" / "hrnetv2_w48_l.yaml").read_text(
@@ -458,8 +460,14 @@ class PnLCalibProvider(PitchCalibrator):
             **camera_params,
             "world_origin": "pitch_center",
             "position_meters_top_left_origin": [
-                float(camera_params["position_meters"][0] + (self.pitch_dimensions.length_m / 2.0)),
-                float(camera_params["position_meters"][1] + (self.pitch_dimensions.width_m / 2.0)),
+                float(
+                    camera_params["position_meters"][0]
+                    + (self.pitch_dimensions.length_m / 2.0)
+                ),
+                float(
+                    camera_params["position_meters"][1]
+                    + (self.pitch_dimensions.width_m / 2.0)
+                ),
                 float(camera_params["position_meters"][2]),
             ],
         }
@@ -612,7 +620,9 @@ class PnLCalibProvider(PitchCalibrator):
             if calibration.pitch_to_image is not None:
                 overlay = frame.copy()
                 for polyline in polylines:
-                    projected = self._project_polyline(polyline, calibration.pitch_to_image)
+                    projected = self._project_polyline(
+                        polyline, calibration.pitch_to_image
+                    )
                     if projected.shape[0] < 2:
                         continue
                     overlay = cv2.polylines(
@@ -630,7 +640,9 @@ class PnLCalibProvider(PitchCalibrator):
         cap.release()
         writer.release()
 
-    def _project_polyline(self, polyline: np.ndarray, homography: np.ndarray) -> np.ndarray:
+    def _project_polyline(
+        self, polyline: np.ndarray, homography: np.ndarray
+    ) -> np.ndarray:
         homogeneous = np.concatenate(
             [polyline, np.ones((polyline.shape[0], 1), dtype=np.float64)],
             axis=1,
@@ -657,7 +669,9 @@ class PnLCalibProvider(PitchCalibrator):
                 dtype=np.float64,
             )
 
-        def circle(cx: float, cy: float, radius: float, samples: int = 180) -> np.ndarray:
+        def circle(
+            cx: float, cy: float, radius: float, samples: int = 180
+        ) -> np.ndarray:
             angles = np.linspace(0.0, 2.0 * np.pi, samples)
             return np.column_stack(
                 [cx + (radius * np.cos(angles)), cy + (radius * np.sin(angles))]

@@ -11,8 +11,9 @@ import argparse
 import json
 import os
 import sys
-import tomllib
 from pathlib import Path
+
+import tomllib
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _CACHE_DIR = _REPO_ROOT / ".cache"
@@ -24,11 +25,11 @@ os.environ.setdefault("MPLCONFIGDIR", str(_CACHE_DIR / "matplotlib"))
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from trackers.calibration.export import write_manifest
 from trackers.calibration.export import (
     write_calibration_jsonl,
     write_calibration_quality_csv,
     write_homography_jsonl,
+    write_manifest,
 )
 from trackers.calibration.providers.pnlcalib import PnLCalibProvider
 from trackers.calibration.types import PitchDimensions
@@ -71,7 +72,9 @@ def _load_toml(path: Path) -> dict[str, object]:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
-def _default_output_dir(source: Path, provider: str, config_path: Path, root: Path) -> Path:
+def _default_output_dir(
+    source: Path, provider: str, config_path: Path, root: Path
+) -> Path:
     return (
         root
         / "runs"

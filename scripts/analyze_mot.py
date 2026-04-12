@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 from __future__ import annotations
 
 import argparse
@@ -110,8 +116,12 @@ def analyze(path: Path) -> dict:
         track_frames[track_id].append(frame)
 
     total_frames = max_frame - min_frame + 1
-    frame_counts = [frame_to_all_count.get(frame, 0) for frame in range(min_frame, max_frame + 1)]
-    confirmed_frame_counts = [len(frame_to_ids.get(frame, set())) for frame in range(min_frame, max_frame + 1)]
+    frame_counts = [
+        frame_to_all_count.get(frame, 0) for frame in range(min_frame, max_frame + 1)
+    ]
+    confirmed_frame_counts = [
+        len(frame_to_ids.get(frame, set())) for frame in range(min_frame, max_frame + 1)
+    ]
 
     adjacent_retention: list[float] = []
     adjacent_jaccard: list[float] = []

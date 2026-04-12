@@ -111,12 +111,13 @@ def _interpolate_between_frames(
 
     alpha = (target_frame.frame_idx - previous_frame.frame_idx) / total_gap
     control_points = _control_points(previous_frame)
-    previous_image_points = _apply_homography(control_points, previous_frame.pitch_to_image)
+    previous_image_points = _apply_homography(
+        control_points, previous_frame.pitch_to_image
+    )
     next_image_points = _apply_homography(control_points, next_frame.pitch_to_image)
     interpolated_image_points = (
-        (1.0 - alpha) * previous_image_points
-        + alpha * next_image_points
-    )
+        1.0 - alpha
+    ) * previous_image_points + alpha * next_image_points
 
     pitch_to_image, _ = cv2.findHomography(
         control_points.astype(np.float32),

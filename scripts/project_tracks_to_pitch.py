@@ -23,7 +23,10 @@ os.environ.setdefault("MPLCONFIGDIR", str(_CACHE_DIR / "matplotlib"))
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from trackers.calibration.export import load_calibration_jsonl, write_track_projections_csv
+from trackers.calibration.export import (
+    load_calibration_jsonl,
+    write_track_projections_csv,
+)
 from trackers.calibration.pitch import PitchModel
 from trackers.calibration.projection import project_image_points_to_pitch
 from trackers.calibration.types import PitchDimensions, TrackProjection
@@ -106,7 +109,9 @@ def main() -> int:
 
         image_x = row["bb_left"] + (row["bb_width"] / 2.0)
         image_y = row["bb_top"] + row["bb_height"]
-        pitch_point = project_image_points_to_pitch([[image_x, image_y]], calibration)[0]
+        pitch_point = project_image_points_to_pitch([[image_x, image_y]], calibration)[
+            0
+        ]
         normalized_point = pitch_model.metric_to_normalized([pitch_point])[0]
         in_pitch_bounds = bool(
             pitch_model.contains_metric_points([pitch_point], tolerance_m=0.0)[0]

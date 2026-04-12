@@ -83,7 +83,7 @@ class CalibrationFrame:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CalibrationFrame":
+    def from_dict(cls, data: dict[str, Any]) -> CalibrationFrame:
         pitch_data = data.get("pitch_dimensions", {})
         return cls(
             frame_idx=int(data["frame_idx"]),
