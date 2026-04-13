@@ -955,7 +955,7 @@ wheels = [
 
 [[package]]
 name = "inference-models"
-version = "0.24.0"
+version = "0.24.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "accelerate" },
@@ -989,9 +989,9 @@ dependencies = [
     { name = "torchvision" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/1f/30c895312cb73e172aaf9bb9967459cd5effaefae4f78ea4a0542c5cae56/inference_models-0.24.0.tar.gz", hash = "sha256:32e92d54e710cf9a18bc5c318216e467bc2cea99b8091ffef689c76149d66ea7", size = 1662024, upload-time = "2026-03-27T19:28:33.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/09/690a69afde6522a7c14f815ce44276a6e9401baca3701fdd9674159767d8/inference_models-0.24.3.tar.gz", hash = "sha256:1ee0d108150fe535f673a5560c542ae13ffa65ed1ec011d103b340cc9ccc2cb8", size = 1662487, upload-time = "2026-04-10T11:53:11.137Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/2c/e3980077ec24a2ec1327aa9f2f7a66ce74647dd3dbf784da46565a4e5743/inference_models-0.24.0-py3-none-any.whl", hash = "sha256:a35986a403dcf398c565d173f11ba08f077ce989e3f71a6cc5ddbc1b08d568dc", size = 1829539, upload-time = "2026-03-27T19:28:31.231Z" },
+    { url = "https://files.pythonhosted.org/packages/61/fd/fc1e166d689107dfa1334dc41dcd53b2af5f98729459066666957afe6667/inference_models-0.24.3-py3-none-any.whl", hash = "sha256:14b1645deb373dd02b54255546298dacdfbbe8b887582b4351a2ad0225205b5b", size = 1830168, upload-time = "2026-04-10T11:53:09.355Z" },
 ]
 
 [[package]]
