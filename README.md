@@ -75,6 +75,8 @@ while cap.isOpened():
 
 For more examples, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
 
+https://github.com/user-attachments/assets/d2347a25-469d-44cd-8049-d15274bd91ae
+
 ## Algorithms
 
 Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
