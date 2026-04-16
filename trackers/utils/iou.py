@@ -39,7 +39,10 @@ class BaseIoU(ABC):
         """
         if len(boxes_1) == 0 or len(boxes_2) == 0:
             return np.zeros((len(boxes_1), len(boxes_2)), dtype=np.float64)
-        return self._compute(boxes_1, boxes_2)
+        scores = self._compute(boxes_1, boxes_2)
+        # Guard Hungarian assignment against NaN/Inf from degenerate boxes.
+        # Invalid similarities are treated as strongly unfavorable matches.
+        return np.nan_to_num(scores, nan=-1.0, posinf=1.0, neginf=-1.0)
 
     @abstractmethod
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
@@ -277,7 +280,8 @@ class CIoU(BaseIoU):
         h_gt = h2[np.newaxis, :]
 
         v = (4.0 / (np.pi**2)) * (
-            np.arctan(w_pred / h_pred) - np.arctan(w_gt / h_gt)
+            np.arctan(w_pred / (h_pred + self._EPS))
+            - np.arctan(w_gt / (h_gt + self._EPS))
         ) ** 2
         alpha = v / (1.0 - iou + v + self._EPS)
         return diou - alpha * v

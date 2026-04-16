@@ -17,13 +17,13 @@ tracker = SORTTracker(
 
 ## Overview
 
-| Variant | Score range | When to use |
-| :------ | :---------- | :---------- |
-| `IoU`   | `[0, 1]`    | Default — strong baseline for most scenes |
-| `GIoU`  | `[-1, 1]`   | Scenes where boxes frequently lose overlap (occlusion, re-entry) |
+| Variant | Score range | When to use                                                            |
+| :------ | :---------- | :--------------------------------------------------------------------- |
+| `IoU`   | `[0, 1]`    | Default — strong baseline for most scenes                              |
+| `GIoU`  | `[-1, 1]`   | Scenes where boxes frequently lose overlap (occlusion, re-entry)       |
 | `DIoU`  | `[-1, 1]`   | Fast-moving objects; centre-distance signal without aspect sensitivity |
-| `CIoU`  | `(−∞, 1]`   | Same as DIoU plus aspect-ratio consistency |
-| `BIoU`  | `[0, 1]`    | Very small or very fast objects where raw boxes rarely overlap |
+| `CIoU`  | `(−∞, 1]`   | Same as DIoU plus aspect-ratio consistency                             |
+| `BIoU`  | `[0, 1]`    | Very small or very fast objects where raw boxes rarely overlap         |
 
 Negative thresholds are meaningful for `GIoU`, `DIoU`, and `CIoU` because they extend their range to give a signal even when there is no pixel overlap. For `IoU` and `BIoU` thresholds
 must be non-negative.
@@ -74,18 +74,16 @@ tracker = OCSORTTracker(iou=GIoU(), minimum_iou_threshold=-0.3)
 
 **Example — SportsMOT `v_0kUtTtmLaJA_c006`**
 
-| | HOTA (%) | Δ (pts) |
-| :- | ------: | ------: |
-| Best IoU | 73.07 | — |
-| Best GIoU | 89.31 | **+16.24** |
-
+|           | HOTA (%) |    Δ (pts) |
+| :-------- | -------: | ---------: |
+| Best IoU  |    73.07 |          — |
+| Best GIoU |    89.31 | **+16.24** |
 
 Left: IoU. Right: GIoU. Camera movements confuses IoU by introducing an external movement, producing ID switches when this lands in other object. GIoU gives a partial solution to this by considering how similar the boxes are, which keeps most of the tracks that with IoU are confused or lost due direction changes and non linear motion. E.g: tracks 5, 12/13.
 
 <video width="100%" controls muted loop>
   <source src="../../assets/iou_vs_GIoU_v_0kUtTtmLaJA_c006.mp4" type="video/mp4">
 </video>
-
 
 ---
 
@@ -111,10 +109,10 @@ tracker = OCSORTTracker(iou=DIoU(), minimum_iou_threshold=-0.3)
 
 **Example — SportsMOT `v_0kUtTtmLaJA_c006`**
 
-| | HOTA (%) | Δ (pts) |
-| :- | ------: | ------: |
-| Best IoU | 73.07 | — |
-| Best DIoU | 86.53 | **+13.46** |
+|           | HOTA (%) |    Δ (pts) |
+| :-------- | -------: | ---------: |
+| Best IoU  |    73.07 |          — |
+| Best DIoU |    86.53 | **+13.46** |
 
 Left: IoU. Right: DIoU. Camera movements confuses IoU by introducing an external movement, producing ID switches when this prediction runs into another object. Watch how the centre-distance term keeps track IDs stable
 when camera accelerates quickly, so that objects geometrically close would lose the track with IoU. E.g: tracks 3, 4 and 5.
@@ -152,10 +150,10 @@ tracker = OCSORTTracker(iou=CIoU(), minimum_iou_threshold=-0.3)
 
 **Example — SportsMOT `v_0kUtTtmLaJA_c006`**
 
-| | HOTA (%) | Δ (pts) |
-| :- | ------: | ------: |
-| Best IoU | 73.07 | — |
-| Best CIoU | 86.53 | **+13.46** |
+|           | HOTA (%) |    Δ (pts) |
+| :-------- | -------: | ---------: |
+| Best IoU  |    73.07 |          — |
+| Best CIoU |    86.53 | **+13.46** |
 
 Left: IoU. Right: CIoU. The gain here mirrors DIoU. The aspect-ratio term adds
 a small tweak for boxes that differ in shape.
@@ -192,10 +190,10 @@ tracker = SORTTracker(iou=BIoU(buffer_ratio=0.15), minimum_iou_threshold=0.3)
 
 **Example — SportsMOT `v_9MHDmAMxO5I_c004`**
 
-| | HOTA (%) | Δ (pts) |
-| :- | ------: | ------: |
-| Best IoU | 80.54 | — |
-| Best BIoU | 88.00 | **+7.46** |
+|           | HOTA (%) |   Δ (pts) |
+| :-------- | -------: | --------: |
+| Best IoU  |    80.54 |         — |
+| Best BIoU |    88.00 | **+7.46** |
 
 Left: IoU. Right: BIoU. Notice how ID switches happen when fast players
 temporarily produce non-overlapping boxes between frames. The buffer closes
@@ -207,20 +205,33 @@ that gap and keeps the same ID. E.g: tracks 7 and 8.
 
 ---
 
-## Empirical HOTA deltas
+## IoU Variant Performance Across Benchmarks
 
-The following numbers come from running **OC-SORT** on **MOT17 train (FRCNN)** and
-**SportsMOT val**: for each sequence the best HOTA over the IoU threshold grid is
-taken separately for each variant, and **Δ = HOTA(variant) − HOTA(IoU)**. On
-SportsMOT detections are derived from GT boxes (oracle feed); on MOT17 the FRCNN
-public detections are used. 
+Now that we understand each variant, we evaluate how much do they change the performance over different datasets.
+For each `(dataset, tracker)` pair, we first keep the state estimator
+(`xyxy` or `xcycsr`) with the best **IoU HOTA**, then compute mean
+`ΔHOTA = HOTA(variant) − HOTA(IoU)` across those retained tracker rows. For more information on the datasets see: [dataset comparison](../trackers/comparison.md)
 
-HOTA is shown as a **percentage** (0–100 scale); **Δ** is percentage points.
+<!-- Positive value  = green, negative = red,  |delta| < 0.1 = yellow  -->
 
-| Dataset | Sequences | GIoU mean Δ | DIoU mean Δ | CIoU mean Δ | BIoU mean Δ |
-| :------ | --------: | ----------: | ----------: | ----------: | ----------: |
-| MOT17 train (FRCNN) | 7 | +0.35 | −0.10 | −0.10 | +0.66 |
-| SportsMOT val | 45 | +1.15 | +0.89 | +0.89 | +0.74 |
+<style>
+  .delta {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .delta.pos { background: rgba(46, 125, 50, 0.16); }
+  .delta.neg { background: rgba(198, 40, 40, 0.16); }
+  .delta.neutral { background: rgba(251, 192, 45, 0.22); }
+</style>
+
+| Dataset        |                              GIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
+| :------------- | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
+| MOT17 val      | <span class="delta neutral">−0.09</span> | <span class="delta neutral">−0.04</span> | <span class="delta neg">−0.28</span> |
+| SportsMOT val  |     <span class="delta pos">+0.65</span> |     <span class="delta pos">+0.88</span> | <span class="delta pos">+0.36</span> |
+| DanceTrack val |     <span class="delta neg">−0.80</span> | <span class="delta neutral">+0.05</span> | <span class="delta pos">+0.15</span> |
+| SoccerNet test |     <span class="delta pos">+1.57</span> |     <span class="delta pos">+2.76</span> | <span class="delta pos">+1.41</span> |
 
 ---
 

@@ -12,7 +12,7 @@ from trackers.core.base import BaseTracker
 from trackers.core.botsort.cmc import CMC, CMCConfig
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_trackers
-from trackers.core.sort.utils import _get_iou_matrix
+from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
@@ -52,7 +52,7 @@ class BoTSORTTracker(BaseTracker):
             association during the first association step.
         minimum_iou_threshold_second_assoc: Minimum IoU to accept a detection-track
             association during the second association step.
-        minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU ×
+        minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU x
             score) to accept a match between an unconfirmed track and a remaining
             high-confidence detection.  Corresponds to the original ByteTrack's
             hardcoded cost threshold of 0.7 (= similarity 0.3).
@@ -87,6 +87,7 @@ class BoTSORTTracker(BaseTracker):
         cmc_method: str = "sparseOptFlow",
         cmc_downscale: int = 2,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
+        iou: BaseIoU = IoU(),
     ) -> None:
 
         # Calculate maximum frames without update based on lost_track_buffer and
@@ -105,6 +106,7 @@ class BoTSORTTracker(BaseTracker):
         self.state_estimator_class = state_estimator_class
         self.frame_id: int = 0
 
+        self.iou = iou
         self.enable_cmc = enable_cmc
         self.cmc = (
             CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale))
@@ -196,7 +198,7 @@ class BoTSORTTracker(BaseTracker):
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = _get_iou_matrix(strack_pool, high_boxes)
+        iou_matrix = self._iou_matrix(strack_pool, high_boxes)
         iou_matrix = _fuse_score(iou_matrix, high_scores)
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
@@ -221,7 +223,7 @@ class BoTSORTTracker(BaseTracker):
             for i in unmatched_pool
             if strack_pool[i].time_since_update == 1
         ]
-        iou_matrix = _get_iou_matrix(remaining_tracked, low_boxes)
+        iou_matrix = self._iou_matrix(remaining_tracked, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_second_assoc
         )
@@ -252,7 +254,7 @@ class BoTSORTTracker(BaseTracker):
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
 
-            iou_matrix = _get_iou_matrix(unconfirmed_tracks, uh_boxes)
+            iou_matrix = self._iou_matrix(unconfirmed_tracks, uh_boxes)
             iou_matrix = _fuse_score(iou_matrix, uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = (
                 self._get_associated_indices(
@@ -310,6 +312,15 @@ class BoTSORTTracker(BaseTracker):
         result = detections[idx]
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
+
+    def _iou_matrix(
+        self, tracklets: list[BoTSORTTracklet], boxes: np.ndarray
+    ) -> np.ndarray:
+        """Compute the IoU similarity matrix between tracked and detected boxes."""
+        if not tracklets or len(boxes) == 0:
+            return np.zeros((len(tracklets), len(boxes)), dtype=np.float64)
+        predicted = np.array([t.get_state_bbox() for t in tracklets], dtype=np.float64)
+        return self.iou.compute(predicted, boxes)
 
     def _get_associated_indices(
         self,
