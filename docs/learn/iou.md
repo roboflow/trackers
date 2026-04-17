@@ -148,18 +148,18 @@ from trackers.utils.iou import CIoU
 tracker = OCSORTTracker(iou=CIoU(), minimum_iou_threshold=-0.3)
 ```
 
-**Example — SportsMOT `v_0kUtTtmLaJA_c006`**
+**Example — Soccernet `SNMOT-122`**
 
 |           | HOTA (%) |    Δ (pts) |
 | :-------- | -------: | ---------: |
-| Best IoU  |    73.07 |          — |
-| Best CIoU |    86.53 | **+13.46** |
+| Best IoU  |    77.36 |          — |
+| Best CIoU |    85.58 | **+8.22** |
 
-Left: IoU. Right: CIoU. The gain here mirrors DIoU. The aspect-ratio term adds
-a small tweak for boxes that differ in shape.
+Left: IoU. Right: CIoU. In this example, CIoU is the only IoU variant that is capable of perfectly keeping the track of the ball, which is explained by the fact that the ball is a small and fast moving object, with constant aspect ratio, so it helps a lot to math considering the distance between the detections tracks and the aspect ratio.  
+
 
 <video width="100%" controls muted loop>
-  <source src="../../assets/iou_vs_CIoU_v_0kUtTtmLaJA_c006.mp4" type="video/mp4">
+  <source src="../../assets/snmot_122_botsort_iou_vs_CIoU_web.mp4" type="video/mp4">
 </video>
 
 ---
@@ -207,10 +207,12 @@ that gap and keeps the same ID. E.g: tracks 7 and 8.
 
 ## IoU Variant Performance Across Benchmarks
 
-Now that we understand each variant, we evaluate how much do they change the performance over different datasets.
+Now that we understand each variant, we evaluate how much each one changes performance over different datasets.
 For each `(dataset, tracker)` pair, we first keep the state estimator
 (`xyxy` or `xcycsr`) with the best **IoU HOTA**, then compute mean
-`ΔHOTA = HOTA(variant) − HOTA(IoU)` across those retained tracker rows. For more information on the datasets see: [dataset comparison](../trackers/comparison.md)
+`ΔHOTA = HOTA(variant) − HOTA(IoU)` across those retained tracker rows. In parenthesis, the mean of HOTAs achieved by different trackers using the corresponding variant.
+
+For more information on the datasets see: [dataset comparison](../trackers/comparison.md)
 
 <!-- Positive value  = green, negative = red,  |delta| < 0.1 = yellow  -->
 
@@ -226,12 +228,19 @@ For each `(dataset, tracker)` pair, we first keep the state estimator
   .delta.neutral { background: rgba(251, 192, 45, 0.22); }
 </style>
 
-| Dataset        |                              GIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
-| :------------- | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
-| MOT17 val      | <span class="delta neutral">−0.09</span> | <span class="delta neutral">−0.04</span> | <span class="delta neg">−0.28</span> |
-| SportsMOT val  |     <span class="delta pos">+0.65</span> |     <span class="delta pos">+0.88</span> | <span class="delta pos">+0.36</span> |
-| DanceTrack val |     <span class="delta neg">−0.80</span> | <span class="delta neutral">+0.05</span> | <span class="delta pos">+0.15</span> |
-| SoccerNet test |     <span class="delta pos">+1.57</span> |     <span class="delta pos">+2.76</span> | <span class="delta pos">+1.41</span> |
+| Dataset        |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ | IoU mean HOTA |
+| :------------- | ---------------------------------------: | --------------------------------------: | ---------------------------------------: | -----------------------------------: | ------------: |
+| MOT17 val      | <span class="delta neutral">−0.09 (38.00)</span> | <span class="delta neutral">−0.04 (38.05)</span> | <span class="delta neutral">−0.04 (38.05)</span> | <span class="delta neg">−0.28 (37.80)</span> |         38.09 |
+| SportsMOT val  |     <span class="delta pos">+0.65 (80.85)</span> |     <span class="delta pos">+0.95 (81.16)</span> |     <span class="delta pos">+0.88 (81.09)</span> | <span class="delta pos">+0.36 (80.57)</span> |         80.21 |
+| DanceTrack val |     <span class="delta neg">−0.80 (49.47)</span> |     <span class="delta neg">−0.34 (49.94)</span> | <span class="delta neutral">+0.05 (50.32)</span> | <span class="delta pos">+0.15 (50.42)</span> |         50.27 |
+| SoccerNet test |     <span class="delta pos">+1.57 (84.77)</span> |     <span class="delta pos">+2.82 (86.03)</span> |     <span class="delta pos">+2.76 (85.96)</span> | <span class="delta pos">+1.41 (84.62)</span> |         83.21 |
+
+Over SportsMOT and Soccernet all IoU variants perform better than standard IoU, with DIoU and CIoU strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In MOT17, standard IoU is the best one by a small margin, which is almost negligible (DIoU and CIoU match each other here). On DanceTrack, GIoU and DIoU underperform IoU at this aggregation, while CIoU and BIoU are slightly ahead.
+
+What we find from this is that IoU variants seems to give better performance depending on the task, but does detection quality matter? Soccernet gives perfect detections, and SportsMOT has detections from a really accurate detector, whereas MOT17 and DanceTrack are know for having noisy ground truth detection.
+
+We tried SportsMOT and MOT17 with its ground truth tracks as detections, and we found that the ΔHOTA was even bigger in SportsMOT (making IoU variants advantage bigger) and in MOT17 the difference becomes smaller, where BIoU gives even a positive performance always. This makes sense, a better detection makes the Kalman Filter estimate a better track location and then associating using additional information  other than the intersection and union will give better matches 
+
 
 ---
 
