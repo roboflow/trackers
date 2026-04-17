@@ -6,7 +6,7 @@
 
 import copy
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import cv2
 import numpy as np
@@ -226,9 +226,9 @@ class CMC:
         self.downscale = max(1, int(self.cfg.downscale))
 
         # ORB init (only if needed)
-        self.detector = None
-        self.extractor = None
-        self.matcher = None
+        self.detector: Any | None = None
+        self.extractor: Any | None = None
+        self.matcher: Any | None = None
         if self.cfg.method == "orb":
             self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)
             self.extractor = cv2.ORB_create()
@@ -246,14 +246,14 @@ class CMC:
             )
             self.matcher = cv2.BFMatcher(cv2.NORM_L2)
         elif self.cfg.method == "sparseOptFlow":
-            self.feature_params = dict(
-                maxCorners=self.cfg.sof_max_corners,
-                qualityLevel=self.cfg.sof_quality_level,
-                minDistance=self.cfg.sof_min_distance,
-                blockSize=self.cfg.sof_block_size,
-                useHarrisDetector=self.cfg.sof_use_harris,
-                k=self.cfg.sof_k,
-            )
+            self.feature_params = {
+                "maxCorners": self.cfg.sof_max_corners,
+                "qualityLevel": self.cfg.sof_quality_level,
+                "minDistance": self.cfg.sof_min_distance,
+                "blockSize": self.cfg.sof_block_size,
+                "useHarrisDetector": self.cfg.sof_use_harris,
+                "k": self.cfg.sof_k,
+            }
         elif self.cfg.method == "ecc":
             self.warp_mode = cv2.MOTION_EUCLIDEAN
             self.criteria = (
@@ -368,9 +368,9 @@ class CMC:
                 if x2b > x1b and y2b > y1b:
                     mask[y1b:y2b, x1b:x2b] = 0
 
-        # Detect + describe (ORB)
-        kps = self.detector.detect(gray, mask)
-        kps, desc = self.extractor.compute(gray, kps)
+        # Detect + describe (ORB / SIFT). Mypy cannot narrow instance attrs here.
+        kps = self.detector.detect(gray, mask)  # type: ignore[union-attr]
+        kps, desc = self.extractor.compute(gray, kps)  # type: ignore[union-attr]
 
         H_aff = np.eye(2, 3, dtype=np.float32)
 
@@ -381,12 +381,17 @@ class CMC:
             self._initialized = True
             return H_aff
 
-        if self._prev_desc is None or desc is None or len(desc) == 0:
+        if (
+            self._prev_desc is None
+            or desc is None
+            or len(desc) == 0
+            or self._prev_kps is None
+        ):
             self._prev_kps = copy.copy(kps)
             self._prev_desc = None if desc is None else copy.copy(desc)
             return H_aff
 
-        knn = self.matcher.knnMatch(self._prev_desc, desc, k=2)
+        knn = self.matcher.knnMatch(self._prev_desc, desc, k=2)  # type: ignore[union-attr]
         if len(knn) == 0:
             self._prev_kps = copy.copy(kps)
             self._prev_desc = copy.copy(desc)
@@ -396,9 +401,9 @@ class CMC:
             [W, H], dtype=np.float32
         )
 
-        prev_pts = []
-        curr_pts = []
-        spatial = []
+        prev_pts: list[np.ndarray] = []
+        curr_pts: list[np.ndarray] = []
+        spatial_deltas: list[np.ndarray] = []
 
         for pair in knn:
             if len(pair) < 2:
@@ -409,17 +414,17 @@ class CMC:
                 p_curr = np.array(kps[m.trainIdx].pt, dtype=np.float32)
                 d = p_prev - p_curr
                 if (abs(d[0]) < max_spatial[0]) and (abs(d[1]) < max_spatial[1]):
-                    spatial.append(d)
+                    spatial_deltas.append(d)
                     prev_pts.append(p_prev)
                     curr_pts.append(p_curr)
 
         if len(prev_pts) >= 5:
-            spatial = np.asarray(spatial, dtype=np.float32)
-            mean = spatial.mean(axis=0)
-            std = spatial.std(axis=0) + 1e-6
+            spatial_arr = np.asarray(spatial_deltas, dtype=np.float32)
+            mean = spatial_arr.mean(axis=0)
+            std = spatial_arr.std(axis=0) + 1e-6
             inl = np.logical_and(
-                np.abs(spatial[:, 0] - mean[0]) < 2.5 * std[0],
-                np.abs(spatial[:, 1] - mean[1]) < 2.5 * std[1],
+                np.abs(spatial_arr[:, 0] - mean[0]) < 2.5 * std[0],
+                np.abs(spatial_arr[:, 1] - mean[1]) < 2.5 * std[1],
             )
             prev_pts_np = np.asarray(prev_pts, dtype=np.float32)[inl]
             curr_pts_np = np.asarray(curr_pts, dtype=np.float32)[inl]
@@ -502,8 +507,8 @@ class CMC:
             return H_aff
 
         # Keep only good correspondences
-        prev_pts = []
-        curr_pts = []
+        prev_pts: list[np.ndarray] = []
+        curr_pts: list[np.ndarray] = []
         # status is (N,1) or (N,)
         status_flat = status.reshape(-1)
 
@@ -512,14 +517,18 @@ class CMC:
                 prev_pts.append(self._prev_points[i])
                 curr_pts.append(matched[i])
 
-        prev_pts = np.array(prev_pts)
-        curr_pts = np.array(curr_pts)
+        prev_pts_np = np.array(prev_pts)
+        curr_pts_np = np.array(curr_pts)
 
         # Find rigid matrix
-        if (np.size(prev_pts, 0) > 4) and (
-            np.size(prev_pts, 0) == np.size(curr_pts, 0)
+        if (np.size(prev_pts_np, 0) > 4) and (
+            np.size(prev_pts_np, 0) == np.size(curr_pts_np, 0)
         ):
-            H_est, _ = cv2.estimateAffinePartial2D(prev_pts, curr_pts, cv2.RANSAC)
+            H_est, _ = cv2.estimateAffinePartial2D(
+                prev_pts_np,
+                curr_pts_np,
+                method=cv2.RANSAC,
+            )
             if H_est is not None:
                 H_aff = H_est.astype(np.float32)
 

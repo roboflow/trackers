@@ -4,12 +4,14 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from typing import cast
+
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.botsort.cmc import CMC, CMCConfig
+from trackers.core.botsort.cmc import CMC, CMCConfig, CMCTMethod
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_trackers
 from trackers.core.sort.utils import _get_iou_matrix
@@ -52,7 +54,7 @@ class BoTSORTTracker(BaseTracker):
             association during the first association step.
         minimum_iou_threshold_second_assoc: Minimum IoU to accept a detection-track
             association during the second association step.
-        minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU ×
+        minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU x
             score) to accept a match between an unconfirmed track and a remaining
             high-confidence detection.  Corresponds to the original ByteTrack's
             hardcoded cost threshold of 0.7 (= similarity 0.3).
@@ -73,6 +75,8 @@ class BoTSORTTracker(BaseTracker):
             to maintain consistent “seconds” worth of buffer across different FPS.
     """
 
+    tracker_id = "botsort"
+
     def __init__(
         self,
         lost_track_buffer: int = 30,
@@ -84,7 +88,7 @@ class BoTSORTTracker(BaseTracker):
         minimum_iou_threshold_unconfirmed_assoc: float = 0.3,
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
-        cmc_method: str = "sparseOptFlow",
+        cmc_method: CMCTMethod = "sparseOptFlow",
         cmc_downscale: int = 2,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
     ) -> None:
@@ -115,7 +119,7 @@ class BoTSORTTracker(BaseTracker):
     def update(
         self,
         detections: sv.Detections,
-        frame: np.ndarray,
+        frame: np.ndarray | None = None,
     ) -> sv.Detections:
         """
         Update the tracker with detections from the current frame.
@@ -307,7 +311,7 @@ class BoTSORTTracker(BaseTracker):
             return result
 
         idx = np.array(out_det_indices)
-        result = detections[idx]
+        result = cast(sv.Detections, detections[idx])
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
 
@@ -362,7 +366,7 @@ class BoTSORTTracker(BaseTracker):
 
         On the very first frame, new tracklets are immediately activated with a
         real tracker ID, following the original ByteTrack convention where
-        ``STrack.activate()`` sets ``is_activated = True`` only when
+        ``activate()`` sets ``is_activated = True`` only when
         ``frame_id == 1``.
         """
         for det_local_idx in unmatched_high_local:
