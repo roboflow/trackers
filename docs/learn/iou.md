@@ -150,13 +150,12 @@ tracker = OCSORTTracker(iou=CIoU(), minimum_iou_threshold=-0.3)
 
 **Example — Soccernet `SNMOT-122`**
 
-|           | HOTA (%) |    Δ (pts) |
-| :-------- | -------: | ---------: |
-| Best IoU  |    77.36 |          — |
+|           | HOTA (%) |   Δ (pts) |
+| :-------- | -------: | --------: |
+| Best IoU  |    77.36 |         — |
 | Best CIoU |    85.58 | **+8.22** |
 
-Left: IoU. Right: CIoU. In this example, CIoU is the only IoU variant that is capable of perfectly keeping the track of the ball, which is explained by the fact that the ball is a small and fast moving object, with constant aspect ratio, so it helps a lot to math considering the distance between the detections tracks and the aspect ratio.  
-
+Left: IoU. Right: CIoU. In this example, CIoU is the only IoU variant that is capable of perfectly keeping the track of the ball, which is explained by the fact that the ball is a small and fast moving object, with constant aspect ratio, so it helps a lot to math considering the distance between the detections tracks and the aspect ratio.
 
 <video width="100%" controls muted loop>
   <source src="../../assets/snmot_122_botsort_iou_vs_CIoU_web.mp4" type="video/mp4">
@@ -228,8 +227,8 @@ For more information on the datasets see: [dataset comparison](../trackers/compa
   .delta.neutral { background: rgba(251, 192, 45, 0.22); }
 </style>
 
-| Dataset        |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ | IoU mean HOTA |
-| :------------- | ---------------------------------------: | --------------------------------------: | ---------------------------------------: | -----------------------------------: | ------------: |
+| Dataset        |                                      GIoU mean Δ |                                      DIoU mean Δ |                                      CIoU mean Δ |                                  BIoU mean Δ | IoU mean HOTA |
+| :------------- | -----------------------------------------------: | -----------------------------------------------: | -----------------------------------------------: | -------------------------------------------: | ------------: |
 | MOT17 val      | <span class="delta neutral">−0.09 (38.00)</span> | <span class="delta neutral">−0.04 (38.05)</span> | <span class="delta neutral">−0.04 (38.05)</span> | <span class="delta neg">−0.28 (37.80)</span> |         38.09 |
 | SportsMOT val  |     <span class="delta pos">+0.65 (80.85)</span> |     <span class="delta pos">+0.95 (81.16)</span> |     <span class="delta pos">+0.88 (81.09)</span> | <span class="delta pos">+0.36 (80.57)</span> |         80.21 |
 | DanceTrack val |     <span class="delta neg">−0.80 (49.47)</span> |     <span class="delta neg">−0.34 (49.94)</span> | <span class="delta neutral">+0.05 (50.32)</span> | <span class="delta pos">+0.15 (50.42)</span> |         50.27 |
@@ -239,8 +238,7 @@ Over SportsMOT and Soccernet all IoU variants perform better than standard IoU, 
 
 What we find from this is that IoU variants seems to give better performance depending on the task, but does detection quality matter? Soccernet gives perfect detections, and SportsMOT has detections from a really accurate detector, whereas MOT17 and DanceTrack are know for having noisy ground truth detection.
 
-We tried SportsMOT and MOT17 with its ground truth tracks as detections, and we found that the ΔHOTA was even bigger in SportsMOT (making IoU variants advantage bigger) and in MOT17 the difference becomes smaller, where BIoU gives even a positive performance always. This makes sense, a better detection makes the Kalman Filter estimate a better track location and then associating using additional information  other than the intersection and union will give better matches 
-
+We tried SportsMOT and MOT17 with its ground truth tracks as detections, and we found that the ΔHOTA was even bigger in SportsMOT (making IoU variants advantage bigger) and in MOT17 the difference becomes smaller, where BIoU gives even a positive performance always. This makes sense, a better detection makes the Kalman Filter estimate a better track location and then associating using additional information other than the intersection and union will give better matches
 
 ---
 
