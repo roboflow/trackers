@@ -13,7 +13,9 @@ docs/overrides/main.html can emit it inside <script type="application/ld+json">.
 
 import json
 
-SITE_URL = "https://trackers.roboflow.com"
+# Canonical Roboflow organization @id — shared across all Roboflow properties.
+# Must match the Organization @id in docs/overrides/main.html.
+ORG_ID = "https://roboflow.com/#organization"
 
 
 def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
@@ -25,6 +27,10 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
     if not description:
         return context
 
+    # Derive base URL from mkdocs.yml site_url so this hook stays in sync with
+    # deployment configuration and never drifts from the actual canonical base.
+    site_url = config.get("site_url", "https://trackers.roboflow.com").rstrip("/")
+
     article = {
         "@context": "https://schema.org",
         "@type": "TechArticle",
@@ -33,16 +39,16 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
         "url": canonical,
         "author": {
             "@type": "Organization",
-            "@id": f"{SITE_URL}/#organization",
+            "@id": ORG_ID,
             "name": "Roboflow",
         },
         "publisher": {
             "@type": "Organization",
-            "@id": f"{SITE_URL}/#organization",
+            "@id": ORG_ID,
             "name": "Roboflow",
             "logo": {
                 "@type": "ImageObject",
-                "url": f"{SITE_URL}/assets/logo-trackers-violet.svg",
+                "url": f"{site_url}/assets/logo-trackers-violet.svg",
             },
         },
         "speakable": {
