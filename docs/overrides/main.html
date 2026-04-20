@@ -48,7 +48,7 @@
 {# ── Per-page TechArticle JSON-LD (injected by schema_inject.py hook) ── #}
 {% if page.meta and page.meta.json_ld_article %}
 <script type="application/ld+json">
-{{ page.meta.json_ld_article }}
+{{ page.meta.json_ld_article | safe }}
 </script>
 {% endif %}
 
