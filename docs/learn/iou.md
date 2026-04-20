@@ -258,13 +258,12 @@ For more information on the datasets see: [dataset comparison](../trackers/compa
 
 Over SportsMOT and SoccerNet all IoU variants perform better than standard IoU, with DIoU and CIoU strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In MOT17, standard IoU is the best one by a small margin (DIoU and CIoU match each other here). On DanceTrack, GIoU and DIoU underperform IoU, while CIoU and BIoU perform slightly better.
 
-What we find in these experiments is that IoU variants seem to give better performance depending on the task, performing visbly better on sports like football. We hypothesize that detection quality have an impact on IoU variants, because SoccerNet provides perfect detections, and SportsMOT has detections from a very accurate detector, and they are both the ones where we got the biggest increase. To check this, we run a new experiment, where we use the ground truths boxes from MOT17 and SportsMOT as the detections that are the input for the tracker. 
+What we find in these experiments is that IoU variants seem to give better performance depending on the task, performing visbly better on sports like football. We hypothesize that detection quality have an impact on IoU variants, because SoccerNet provides perfect detections, and SportsMOT has detections from a very accurate detector, and they are both the ones where we got the biggest increase. To check this, we run a new experiment, where we use the ground truths boxes from MOT17 and SportsMOT as the detections that are the input for the tracker.
 
-| Dataset (GT-as-det) | IoU mean HOTA |                   GIoU mean Δ |                   DIoU mean Δ |                   CIoU mean Δ |                   BIoU mean Δ |
-| :------------------ | ------------: | ----------------------------: | ----------------------------: | ----------------------------: | ----------------------------: |
-| MOT17 val           |         97.17 | <span class="delta neutral">−0.05</span> | <span class="delta neutral">−0.07</span> | <span class="delta neutral">−0.05</span> |     <span class="delta pos">+0.31</span> |
-| SportsMOT val       |         87.18 |     <span class="delta pos">+0.47</span> |     <span class="delta pos">+1.09</span> |     <span class="delta pos">+1.06</span> |     <span class="delta pos">+0.46</span> |
-
+| Dataset (GT-as-det) | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
+| :------------------ | ------------: | ---------------------------------------: | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
+| MOT17 val           |         97.17 | <span class="delta neutral">−0.05</span> | <span class="delta neutral">−0.07</span> | <span class="delta neutral">−0.05</span> | <span class="delta pos">+0.31</span> |
+| SportsMOT val       |         87.18 |     <span class="delta pos">+0.47</span> |     <span class="delta pos">+1.09</span> |     <span class="delta pos">+1.06</span> | <span class="delta pos">+0.46</span> |
 
 With GT detections, mean ΔHOTA increases for three of four variants on SportsMOT vs YOLOX detections; on MOT17, deltas shrink toward zero and BIoU becomes positive on average, while other variants stay slightly below IoU. That is consistent with cleaner inputs: the Kalman predictions align better with detections, so association metrics that use more than plain overlap can help more.
 
