@@ -73,3 +73,26 @@ jobs:
           latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
           uv run mike deploy --push --update-aliases $latest_tag latest
           uv run mike set-default --push latest
+
+      - name: 🔔 Notify IndexNow
+        if: success() && secrets.INDEXNOW_KEY != ''
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: |
+          curl -s -X POST "https://api.indexnow.org/indexnow" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            -d "{
+              \"host\": \"trackers.roboflow.com\",
+              \"key\": \"${INDEXNOW_KEY}\",
+              \"keyLocation\": \"https://trackers.roboflow.com/indexnow-key.txt\",
+              \"urlList\": [
+                \"https://trackers.roboflow.com/latest/\",
+                \"https://trackers.roboflow.com/latest/trackers/comparison/\",
+                \"https://trackers.roboflow.com/latest/trackers/sort/\",
+                \"https://trackers.roboflow.com/latest/trackers/bytetrack/\",
+                \"https://trackers.roboflow.com/latest/trackers/ocsort/\",
+                \"https://trackers.roboflow.com/latest/learn/track/\",
+                \"https://trackers.roboflow.com/latest/learn/evaluate/\",
+                \"https://trackers.roboflow.com/latest/api/trackers/\"
+              ]
+            }" || echo "IndexNow ping failed (non-blocking)"

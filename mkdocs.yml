@@ -123,6 +123,7 @@ nav:
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
     - Detection Quality Matters: learn/detection-quality.md
+    - About: learn/about.md
   - Trackers:
     - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md

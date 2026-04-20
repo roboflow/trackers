@@ -6,6 +6,10 @@ description: Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT o
 
 This page shows head-to-head performance of SORT, ByteTrack, and OC-SORT on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.
 
+!!! info "Benchmark version"
+
+    Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT) or ground-truth oracle boxes (SoccerNet, DanceTrack). Parameters were tuned via grid search on held-out splits. See [Methodology](#methodology) for details.
+
 ## [MOT17](https://arxiv.org/abs/1603.00831)
 
 Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests re-identification and identity stability.
