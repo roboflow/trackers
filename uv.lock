@@ -2458,6 +2458,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pydeprecate"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/be/0f746a6cc399dc437d494c4240d25fa3151314dbd42cb1e89a5543fc1801/pydeprecate-0.7.0.tar.gz", hash = "sha256:925ee2e39f266bcd923c1abb76256da240e51ac04fc1ebb5490e32683770f9c4", size = 98242, upload-time = "2026-03-31T17:31:36.498Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ef/e6/42ece1260c287c5b376932d0d0fb776e5fe2a55ee58cf85d01ef97ca6c15/pydeprecate-0.7.0-py3-none-any.whl", hash = "sha256:b2baf35f82c06a22824029dd54ed763c7e8226f133893d15af4f9cf950a3b4d3", size = 63749, upload-time = "2026-03-31T17:31:35.023Z" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.19.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3483,7 +3492,7 @@ wheels = [
 
 [[package]]
 name = "supervision"
-version = "0.28.0rc0"
+version = "0.28.0rc1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "defusedxml" },
@@ -3491,14 +3500,15 @@ dependencies = [
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "pillow" },
+    { name = "pydeprecate" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/37/ec477432381b1e6d7bdc3d8c0fc98df452e0adb2d5262c703e20d69bed6b/supervision-0.28.0rc0.tar.gz", hash = "sha256:b33e85dcaae173339c91bae98d7f600acd02a298b96e6613e1f345481ad14b97", size = 182223, upload-time = "2026-01-19T13:24:48.828Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/c5/6800457a4cf7ce170bee4e57904bd821126755f64945410c6a2166837401/supervision-0.28.0rc1.tar.gz", hash = "sha256:39bba075bdcc40ab9de826ee037f0d833c9b38aed9b5362ada8622df4c35513b", size = 211285, upload-time = "2026-04-17T09:48:34.718Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bb/df/c9324cecebaf2327b5f1a6d984c7aa1f4f957e99a4aa9782f44326c6ae35/supervision-0.28.0rc0-py3-none-any.whl", hash = "sha256:c11184fe8b750ad3d972c3b730e983b27859b09075a4d83cc58ca4d4f7921fd7", size = 212601, upload-time = "2026-01-19T13:24:46.936Z" },
+    { url = "https://files.pythonhosted.org/packages/80/d7/1b6cc6b93c85d7a9e0c5a5ba640dbcf8d4c69338aca4d251533300c12de3/supervision-0.28.0rc1-py3-none-any.whl", hash = "sha256:9fde8f6f02819490734b7b7be7503a4d29e0cc8d9273c8ab28221a676ea4d1c2", size = 244604, upload-time = "2026-04-17T09:48:32.969Z" },
 ]
 
 [[package]]
