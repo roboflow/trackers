@@ -156,9 +156,9 @@ tracker = OCSORTTracker(iou=CIoU(), minimum_iou_threshold=-0.3)
 
 **Example — SoccerNet `SNMOT-122`**
 
-|           | HOTA (%) |    Δ (pts) |
-| :-------- | -------: | ---------: |
-| Best IoU  |    77.36 |          — |
+|           | HOTA (%) |   Δ (pts) |
+| :-------- | -------: | --------: |
+| Best IoU  |    77.36 |         — |
 | Best CIoU |    85.58 | **+8.22** |
 
 Left: IoU. Right: CIoU. In this example, CIoU is capable of perfectly keeping the track of the ball, which is explained by the fact that the ball is a small and fast moving object, with roughly constant aspect ratio, where CIoU’s distance + aspect terms help more than overlap alone.
@@ -269,7 +269,6 @@ What we find in these experiments is that IoU variants seem to give better perfo
 
 
 We found that the ΔHOTA was even bigger in 3 out of 4 variants in SportsMOT (making IoU variants advantage bigger) and in MOT17 the difference becomes smaller, where BIoU gives even a positive performance always. This makes sense, a better detection makes the Kalman Filter estimate a better track location and then associating using additional information other than the intersection and union will give better matches 
-
 
 
 ---
