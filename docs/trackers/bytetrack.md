@@ -1,5 +1,6 @@
 ---
 comments: true
+description: ByteTrack improves multi-object tracking by associating every detection box — including low-confidence ones — to reduce missed tracks and fragmentation while maintaining real-time performance.
 ---
 
 # ByteTrack

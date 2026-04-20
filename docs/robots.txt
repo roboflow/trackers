@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# AI crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+Sitemap: https://trackers.roboflow.com/sitemap.xml
