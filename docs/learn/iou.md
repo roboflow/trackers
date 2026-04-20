@@ -25,7 +25,7 @@ tracker = SORTTracker(
 | `CIoU`  | `(−∞, 1]`   | Same as DIoU plus aspect-ratio consistency                             |
 | `BIoU`  | `[0, 1]`    | Very small or very fast objects where raw boxes rarely overlap         |
 
-Negative thresholds are meaningful for `GIoU`, `DIoU`, and `CIoU` because they extend their range to give a signal even when there is no pixel overlap. 
+Negative thresholds are meaningful for `GIoU`, `DIoU`, and `CIoU` because they extend their range to give a signal even when there is no pixel overlap.
 
 ---
 
@@ -121,7 +121,7 @@ tracker = OCSORTTracker(iou=DIoU(), minimum_iou_threshold=-0.3)
 | Best IoU  |    73.07 |          — |
 | Best DIoU |    86.53 | **+13.46** |
 
-Left: IoU. Right: DIoU. Highly non linear motion makes IoU drop to zero between frames, so nearby trajectories get confused. The centre-distance term keeps a smoother score and preserves IDs more often (e.g. tracks 3–5). 
+Left: IoU. Right: DIoU. Highly non linear motion makes IoU drop to zero between frames, so nearby trajectories get confused. The centre-distance term keeps a smoother score and preserves IDs more often (e.g. tracks 3–5).
 
 <video width="100%" controls muted loop>
   <source src="../../assets/iou_vs_DIoU_v_0kUtTtmLaJA_c006.mp4" type="video/mp4">
@@ -162,7 +162,6 @@ tracker = OCSORTTracker(iou=CIoU(), minimum_iou_threshold=-0.3)
 | Best CIoU |    85.58 | **+8.22** |
 
 Left: IoU. Right: CIoU. In this example, CIoU is capable of perfectly keeping the track of the ball, which is explained by the fact that the ball is a small and fast moving object, with roughly constant aspect ratio, where CIoU’s distance + aspect terms help more than overlap alone.
-
 
 <video width="100%" controls muted loop>
   <source src="../../assets/snmot_122_botsort_iou_vs_CIoU_web.mp4" type="video/mp4">
@@ -250,12 +249,12 @@ For more information on the datasets see: [dataset comparison](../trackers/compa
   .delta.neutral { background: rgba(251, 192, 45, 0.22); }
 </style>
 
-| Dataset        | IoU mean HOTA |                   GIoU mean Δ |                   DIoU mean Δ |                   CIoU mean Δ |                   BIoU mean Δ |
-| :------------- | ------------: | ----------------------------: | ----------------------------: | ----------------------------: | ----------------------------: |
+| Dataset        | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
+| :------------- | ------------: | ---------------------------------------: | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
 | MOT17 val      |         38.09 | <span class="delta neutral">−0.09</span> | <span class="delta neutral">−0.04</span> | <span class="delta neutral">−0.04</span> | <span class="delta neg">−0.28</span> |
-| SportsMOT val  |         80.21 |     <span class="delta pos">+0.65</span> |     <span class="delta pos">+0.95</span> |     <span class="delta pos">+0.88</span> |     <span class="delta pos">+0.36</span> |
-| DanceTrack val |         50.27 |     <span class="delta neg">−0.80</span> |     <span class="delta neg">−0.34</span> | <span class="delta neutral">+0.05</span> |     <span class="delta pos">+0.15</span> |
-| SoccerNet test |         83.21 |     <span class="delta pos">+1.57</span> |     <span class="delta pos">+2.82</span> |     <span class="delta pos">+2.76</span> |     <span class="delta pos">+1.41</span> |
+| SportsMOT val  |         80.21 |     <span class="delta pos">+0.65</span> |     <span class="delta pos">+0.95</span> |     <span class="delta pos">+0.88</span> | <span class="delta pos">+0.36</span> |
+| DanceTrack val |         50.27 |     <span class="delta neg">−0.80</span> |     <span class="delta neg">−0.34</span> | <span class="delta neutral">+0.05</span> | <span class="delta pos">+0.15</span> |
+| SoccerNet test |         83.21 |     <span class="delta pos">+1.57</span> |     <span class="delta pos">+2.82</span> |     <span class="delta pos">+2.76</span> | <span class="delta pos">+1.41</span> |
 
 Over SportsMOT and SoccerNet all IoU variants perform better than standard IoU, with DIoU and CIoU strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In MOT17, standard IoU is the best one by a small margin (DIoU and CIoU match each other here). On DanceTrack, GIoU and DIoU underperform IoU, while CIoU and BIoU perform slightly better.
 
@@ -269,6 +268,7 @@ What we find in these experiments is that IoU variants seem to give better perfo
 
 With GT detections, mean ΔHOTA increases for three of four variants on SportsMOT vs YOLOX detections; on MOT17, deltas shrink toward zero and BIoU becomes positive on average, while other variants stay slightly below IoU. That is consistent with cleaner inputs: the Kalman predictions align better with detections, so association metrics that use more than plain overlap can help more.
 
+We found that the ΔHOTA was even bigger in 3 out of 4 variants in SportsMOT (making IoU variants advantage bigger) and in MOT17 the difference becomes smaller, where BIoU gives even a positive performance always. This makes sense, a better detection makes the Kalman Filter estimate a better track location and then associating using additional information other than the intersection and union will give better matches
 
 ---
 
