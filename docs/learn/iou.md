@@ -217,10 +217,9 @@ that gap and keeps the same ID. (e.g. tracks 7 and 8).
 
 ## IoU Variant Performance Across Benchmarks
 
-Let's evaluate how much each one changes performance over different datasets.
-For each `(dataset, tracker)` pair, we first keep the `state estimator`
-(`xyxy` or `xcycsr`) with the highest HOTA using the standard IoU variant, then compute mean
-`ΔHOTA = HOTA(variant) − HOTA(IoU)` averaged over trackers (same split, same tuned thresholds per experiment).. 
+We evaluate how much each variant changes performance across datasets.
+For each `(dataset, tracker)` pair, we keep the `state_estimator` with the highest **IoU HOTA** on the val/test split (including `xcycwh` where applicable, e.g. BoT-SORT), then report mean
+`ΔHOTA = HOTA(variant) − HOTA(IoU)` over trackers (same split; thresholds tuned per experiment).
 
 For more information on the datasets see: [dataset comparison](../trackers/comparison.md)
 
@@ -260,7 +259,7 @@ For more information on the datasets see: [dataset comparison](../trackers/compa
 
 Over SportsMOT and SoccerNet all IoU variants perform better than standard IoU, with DIoU and CIoU strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In MOT17, standard IoU is the best one by a small margin (DIoU and CIoU match each other here). On DanceTrack, GIoU and DIoU underperform IoU, while CIoU and BIoU perform slightly better.
 
-What we find in these experiments is that IoU variants seem to give better performance depending on the task, performing visbly better on sports like football. But we hypothesize that detection quality have an impact on IoU variants, because SoccerNet provides perfect detections, and SportsMOT has detections from a very accurate detector, and they are both the ones where we got the biggest increase. To check this, we run a new experiment, where we use the ground truths boxes from MOT17 and SportsMOT as the detections that are the input for the tracker. 
+What we find in these experiments is that IoU variants seem to give better performance depending on the task, performing visbly better on sports like football. We hypothesize that detection quality have an impact on IoU variants, because SoccerNet provides perfect detections, and SportsMOT has detections from a very accurate detector, and they are both the ones where we got the biggest increase. To check this, we run a new experiment, where we use the ground truths boxes from MOT17 and SportsMOT as the detections that are the input for the tracker. 
 
 | Dataset (GT-as-det) | IoU mean HOTA |                   GIoU mean Δ |                   DIoU mean Δ |                   CIoU mean Δ |                   BIoU mean Δ |
 | :------------------ | ------------: | ----------------------------: | ----------------------------: | ----------------------------: | ----------------------------: |
@@ -268,7 +267,7 @@ What we find in these experiments is that IoU variants seem to give better perfo
 | SportsMOT val       |         87.18 |     <span class="delta pos">+0.47</span> |     <span class="delta pos">+1.09</span> |     <span class="delta pos">+1.06</span> |     <span class="delta pos">+0.46</span> |
 
 
-We found that the ΔHOTA was even bigger in 3 out of 4 variants in SportsMOT (making IoU variants advantage bigger) and in MOT17 the difference becomes smaller, where BIoU gives even a positive performance always. This makes sense, a better detection makes the Kalman Filter estimate a better track location and then associating using additional information other than the intersection and union will give better matches 
+With GT detections, mean ΔHOTA increases for three of four variants on SportsMOT vs YOLOX detections; on MOT17, deltas shrink toward zero and BIoU becomes positive on average, while other variants stay slightly below IoU. That is consistent with cleaner inputs: the Kalman predictions align better with detections, so association metrics that use more than plain overlap can help more.
 
 
 ---
