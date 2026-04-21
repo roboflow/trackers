@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.">
+        <meta name="description" content="OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://roboflow.github.io/trackers/develop/develop/trackers/ocsort/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/trackers/ocsort/">
       
       
         <link rel="prev" href="../bytetrack/">
@@ -66,6 +66,114 @@
 
     
     
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://roboflow.com/#organization",
+      "name": "Roboflow",
+      "url": "https://roboflow.com",
+      "logo": "https://trackers.roboflow.com/assets/logo-trackers-violet.svg",
+      "sameAs": [
+        "https://github.com/roboflow",
+        "https://twitter.com/roboflow",
+        "https://www.linkedin.com/company/roboflow-ai/",
+        "https://www.youtube.com/roboflow",
+        "https://en.wikipedia.org/wiki/Roboflow"
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://trackers.roboflow.com/#software",
+      "name": "Roboflow Trackers",
+      "description": "A unified library for multi-object tracking with clean-room implementations of SORT, ByteTrack, and OC-SORT, designed to plug into any detection model via the supervision library.",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "url": "https://trackers.roboflow.com",
+      "downloadUrl": "https://pypi.org/project/trackers/",
+      "codeRepository": "https://github.com/roboflow/trackers",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://roboflow.com/#organization"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  ]
+}
+</script>
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "OC-SORT",
+  "description": "OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes.",
+  "url": "https://trackers.roboflow.com/latest/develop/trackers/ocsort/",
+  "author": {
+    "@type": "Organization",
+    "@id": "https://roboflow.com/#organization",
+    "name": "Roboflow"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "@id": "https://roboflow.com/#organization",
+    "name": "Roboflow",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://trackers.roboflow.com/latest/develop/assets/logo-trackers-violet.svg"
+    }
+  },
+  "speakable": {
+    "@type": "SpeakableSpecification",
+    "cssSelector": [
+      "h1",
+      ".md-content p:first-of-type"
+    ]
+  }
+}
+</script>
+
+
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Roboflow Trackers" />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/trackers/ocsort/" />
+<meta property="og:title" content="OC-SORT — Roboflow Trackers" />
+<meta property="og:description" content="OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes." />
+<meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+<meta property="og:image:alt" content="Roboflow Trackers logo" />
+
+
+
+<meta name="indexnow-key" content="bc061e8ae9e449d7acb9f86d29637e58" />
+
+
+
+<meta name="msvalidate.01" content="REPLACE_WITH_BING_VERIFICATION_KEY" />
+
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@roboflow" />
+<meta name="twitter:title" content="OC-SORT — Roboflow Trackers" />
+<meta name="twitter:description" content="OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes." />
+<meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+
+
+
   </head>
   
   
@@ -714,6 +822,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -949,10 +1085,54 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#watch-it-in-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watch It in Action
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Algorithm
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run-on-video-webcam-or-rtsp-stream" class="md-nav__link">
     <span class="md-ellipsis">
       
         Run on video, webcam, or RTSP stream
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
       
     </span>
   </a>
@@ -1223,10 +1403,54 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#watch-it-in-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watch It in Action
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Algorithm
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run-on-video-webcam-or-rtsp-stream" class="md-nav__link">
     <span class="md-ellipsis">
       
         Run on video, webcam, or RTSP stream
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
       
     </span>
   </a>
@@ -1255,7 +1479,7 @@
 
 <h1 id="oc-sort">OC-SORT</h1>
 <h2 id="overview">Overview</h2>
-<p>OC-SORT remains Simple, Online, and Real-Time like (<a href="../sort/tracker.md">SORT</a>) but improves robustness during occlusion and non-linear motion.
+<p>OC-SORT remains Simple, Online, and Real-Time like (<a href="../sort/">SORT</a>) but improves robustness during occlusion and non-linear motion.
 It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These
 mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
 due to object stopping or short-term occlusion.</p>
@@ -1288,6 +1512,57 @@ due to object stopping or short-term occlusion.</p>
 <td style="text-align: center;">78.6</td>
 <td style="text-align: center;">72.7</td>
 <td style="text-align: center;">94.5</td>
+</tr>
+</tbody>
+</table>
+<h2 id="watch-it-in-action">Watch It in Action</h2>
+<iframe width="100%" style="aspect-ratio: 16/9;" src="https://www.youtube.com/embed/u0k2dTZ0vfs" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+<h2 id="algorithm">Algorithm</h2>
+<p>OC-SORT extends <a href="../sort/">SORT</a> with three observation-centric mechanisms that address the linear motion assumption's failures during occlusion and non-linear trajectories. It retains the same Kalman filter and Hungarian algorithm backbone but adds corrections that use stored observations rather than relying solely on the filter's predicted state.</p>
+<p><strong>OCM (Observation-Centric Momentum).</strong> When a track reappears after being unmatched for several frames, the Kalman filter's velocity estimate may have drifted because it continued predicting without corrections. OCM re-computes the velocity using the time gap (<code>delta_t</code>) between the last matched observation and the current detection, then feeds this corrected velocity back into the filter. This produces a more accurate state estimate at the moment of re-association.</p>
+<p><strong>OCV (Observation-Centric Velocity).</strong> Standard IoU matching ignores direction of motion. OCV adds a velocity direction consistency term to the association cost: if a candidate match would require the track to have moved in a direction inconsistent with its recent observation history, that match is penalized. The <code>direction_consistency_weight</code> parameter controls the strength of this penalty. This helps prevent cross-identity matches when two objects are close but moving in different directions.</p>
+<p><strong>ORU (Observation-Centric Re-Update).</strong> After the primary Hungarian matching, ORU performs a second-stage re-association between the last known positions of unmatched (lost) tracks and unmatched current detections. This recovers tracks that were briefly lost due to a momentary stop or 1-2 frame occlusion, where the Kalman prediction drifted too far from the actual position for primary matching to succeed.</p>
+<p>Together, these three mechanisms make OC-SORT effective for group dancing, sports, and other scenarios where objects follow non-linear paths, stop and restart, or are occluded in dense groups.</p>
+<h2 id="key-parameters">Key Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Purpose</th>
+<th>Tuning guidance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lost_track_buffer</code></td>
+<td>Frames to keep an unmatched track alive before deletion.</td>
+<td>Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions.</td>
+</tr>
+<tr>
+<td><code>track_activation_threshold</code></td>
+<td>Minimum detection confidence to create or continue a track.</td>
+<td>Higher reduces spurious tracks; lower catches weak detections. 0.5-0.9 typical.</td>
+</tr>
+<tr>
+<td><code>minimum_consecutive_frames</code></td>
+<td>Consecutive detections required to confirm a new track.</td>
+<td>1 confirms immediately; 2-3 filters out single-frame false positives.</td>
+</tr>
+<tr>
+<td><code>minimum_iou_threshold</code></td>
+<td>Minimum IoU to accept a track-detection match.</td>
+<td>Lower associates through more displacement between frames. 0.1-0.3 typical.</td>
+</tr>
+<tr>
+<td><code>direction_consistency_weight</code></td>
+<td>Strength of the OCV velocity direction penalty.</td>
+<td>0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.</td>
+</tr>
+<tr>
+<td><code>delta_t</code></td>
+<td>Frame gap for OCM velocity re-estimation after occlusion.</td>
+<td>1-3 typical. Larger values smooth velocity estimate over more frames.</td>
 </tr>
 </tbody>
 </table>
@@ -1411,6 +1686,8 @@ due to object stopping or short-term occlusion.</p>
 </div>
 </div>
 </div>
+<h2 id="reference">Reference</h2>
+<p>Cao, J., Pang, J., Weng, X., Khirodkar, R., and Kitani, K. (2023). Observation-Centric SORT: Rethinking SORT for Robust Multi-Object Tracking. CVPR. <a href="https://arxiv.org/abs/2203.14360">arXiv:2203.14360</a></p>
 
 
 
@@ -1419,8 +1696,37 @@ due to object stopping or short-term occlusion.</p>
 
 
   
+    
+  
+  
+    
   
 
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 21, 2026 13:12:13 UTC">April 21, 2026</span>
+  </span>
+
+    
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Created">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 22, 2025 14:59:15 UTC">April 22, 2025</span>
+  </span>
+
+    
+    
+    
+  </aside>
 
 
 

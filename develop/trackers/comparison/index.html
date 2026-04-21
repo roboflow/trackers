@@ -6,16 +6,16 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.">
+        <meta name="description" content="Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://roboflow.github.io/trackers/develop/develop/trackers/comparison/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/trackers/comparison/">
       
       
-        <link rel="prev" href="../../learn/detection-quality/">
+        <link rel="prev" href="../../learn/about/">
       
       
         <link rel="next" href="../sort/">
@@ -66,6 +66,114 @@
 
     
     
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://roboflow.com/#organization",
+      "name": "Roboflow",
+      "url": "https://roboflow.com",
+      "logo": "https://trackers.roboflow.com/assets/logo-trackers-violet.svg",
+      "sameAs": [
+        "https://github.com/roboflow",
+        "https://twitter.com/roboflow",
+        "https://www.linkedin.com/company/roboflow-ai/",
+        "https://www.youtube.com/roboflow",
+        "https://en.wikipedia.org/wiki/Roboflow"
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://trackers.roboflow.com/#software",
+      "name": "Roboflow Trackers",
+      "description": "A unified library for multi-object tracking with clean-room implementations of SORT, ByteTrack, and OC-SORT, designed to plug into any detection model via the supervision library.",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "url": "https://trackers.roboflow.com",
+      "downloadUrl": "https://pypi.org/project/trackers/",
+      "codeRepository": "https://github.com/roboflow/trackers",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://roboflow.com/#organization"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  ]
+}
+</script>
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Comparison",
+  "description": "Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.",
+  "url": "https://trackers.roboflow.com/latest/develop/trackers/comparison/",
+  "author": {
+    "@type": "Organization",
+    "@id": "https://roboflow.com/#organization",
+    "name": "Roboflow"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "@id": "https://roboflow.com/#organization",
+    "name": "Roboflow",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://trackers.roboflow.com/latest/develop/assets/logo-trackers-violet.svg"
+    }
+  },
+  "speakable": {
+    "@type": "SpeakableSpecification",
+    "cssSelector": [
+      "h1",
+      ".md-content p:first-of-type"
+    ]
+  }
+}
+</script>
+
+
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Roboflow Trackers" />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/trackers/comparison/" />
+<meta property="og:title" content="Comparison — Roboflow Trackers" />
+<meta property="og:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters." />
+<meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+<meta property="og:image:alt" content="Roboflow Trackers logo" />
+
+
+
+<meta name="indexnow-key" content="bc061e8ae9e449d7acb9f86d29637e58" />
+
+
+
+<meta name="msvalidate.01" content="REPLACE_WITH_BING_VERIFICATION_KEY" />
+
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@roboflow" />
+<meta name="twitter:title" content="Comparison — Roboflow Trackers" />
+<meta name="twitter:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters." />
+<meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+
+
+
   </head>
   
   
@@ -714,6 +822,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -922,6 +1058,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use-each-tracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use Each Tracker
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metric-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metric Definitions
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1333,6 +1491,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#when-to-use-each-tracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use Each Tracker
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metric-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metric Definitions
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1355,6 +1535,10 @@
 
 <h1 id="tracker-comparison">Tracker Comparison</h1>
 <p>This page shows head-to-head performance of SORT, ByteTrack, and OC-SORT on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.</p>
+<div class="admonition info">
+<p class="admonition-title">Benchmark version</p>
+<p>Results use <strong>trackers v2.3.0</strong> (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT) or ground-truth oracle boxes (SoccerNet, DanceTrack). Parameters were tuned via grid search on held-out splits. See <a href="#methodology">Methodology</a> for details.</p>
+</div>
 <h2 id="mot17"><a href="https://arxiv.org/abs/1603.00831">MOT17</a></h2>
 <p>Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests re-identification and identity stability.</p>
 <video width="100%" controls autoplay muted loop>
@@ -1793,6 +1977,35 @@ splits to reflect real-world usage:</p>
 <li>Train + validation: tune on train, report on validation.</li>
 <li>Train + test: tune on train, report on test.</li>
 </ul>
+<h2 id="when-to-use-each-tracker">When to Use Each Tracker</h2>
+<p><strong>SORT</strong> is the right choice when speed is the primary constraint and scenes are not heavily
+occluded. Its Kalman filter plus Hungarian matching runs at hundreds of frames per second and
+produces clean, easy-to-debug results. Use SORT as a baseline before adding more complex
+trackers, or when deploying on edge devices with tight compute budgets.</p>
+<p><strong>ByteTrack</strong> is the default recommendation for most applications. It outperforms SORT on all
+four benchmarks by recovering low-confidence detections that SORT discards. The two-stage
+association adds almost no extra compute and consistently reduces missed tracks and identity
+switches. Use ByteTrack when your detector produces noisy or variable-confidence outputs —
+sports video, aerial footage, and crowded retail scenes all benefit.</p>
+<p><strong>OC-SORT</strong> is best when camera motion is significant or objects follow non-linear paths. Its
+observation-centric re-update mechanism and direction consistency cost reduce drift from the
+linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns,
+camera pans, or erratic motion — the benchmark edge on MOT17 and DanceTrack reflects exactly
+these conditions.</p>
+<h2 id="metric-definitions">Metric Definitions</h2>
+<p><strong>HOTA</strong> (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes
+tracking quality into detection accuracy (DetA) and association accuracy (AssA), then takes
+their geometric mean. It weights identity consistency equally with detection recall and
+precision, unlike older metrics that under-penalize fragmented tracks. Higher HOTA indicates
+both good detection and stable long-term identity.</p>
+<p><strong>IDF1</strong> (Identity F1) — measures how long the system correctly identifies each ground-truth
+object over its lifetime. IDF1 is the harmonic mean of identification precision and
+identification recall. High IDF1 means tracks stay on the correct identity; low IDF1 means
+frequent identity switches.</p>
+<p><strong>MOTA</strong> (Multiple Object Tracking Accuracy) — combines the count of false positives, missed
+detections, and identity switches into a single score relative to the total number of
+ground-truth objects. MOTA is dominated by detection recall and precision; a detector with
+near-perfect recall produces high MOTA even when identity switches are frequent.</p>
 
 
 
@@ -1800,6 +2013,38 @@ splits to reflect real-world usage:</p>
 
 
 
+  
+    
+  
+  
+    
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 21, 2026 13:12:13 UTC">April 21, 2026</span>
+  </span>
+
+    
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Created">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="February 4, 2026 23:18:18 UTC">February 4, 2026</span>
+  </span>
+
+    
+    
+    
+  </aside>
 
 
 
@@ -1824,7 +2069,7 @@ splits to reflect real-world usage:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../learn/detection-quality/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Detection Quality Matters">
+          <a href="../../learn/about/" class="md-footer__link md-footer__link--prev" aria-label="Previous: About">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1834,7 +2079,7 @@ splits to reflect real-world usage:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Detection Quality Matters
+                About
               </div>
             </div>
           </a>
