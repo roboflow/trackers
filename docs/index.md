@@ -188,9 +188,8 @@ models and spatial matching.
 
 **Which tracker should I use?**
 
-Start with ByteTrack — it performs best across all four benchmarks in our evaluation and
-handles variable-confidence detectors well. Use SORT if speed or device constraints require
-the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow
+Start with ByteTrack — out of the box, it performs best across two out of four benchmarks in our evaluation and
+handles variable-confidence detectors well, while providing real time latency. Use SORT if speed or device constraints require the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow
 non-linear paths. See the [tracker comparison](trackers/comparison.md) for benchmark scores.
 
 **Do I need a specific detector?**
