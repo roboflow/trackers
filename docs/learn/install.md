@@ -1,3 +1,7 @@
+---
+description: Install Roboflow Trackers with pip or uv. Add multi-object tracking to any detection pipeline with a single package — supports SORT, ByteTrack, and OC-SORT out of the box.
+---
+
 # Install Trackers
 
 Add multi-object tracking to your detection pipeline with a single install. Works with any detector, any framework.

@@ -44,7 +44,7 @@ repos:
     rev: 1.0.0
     hooks:
       - id: mdformat
-        exclude: ^docs/reference/
+        exclude: ^(docs/reference/|\.reports/|\.plans/|\.temp/|\.notes/)
         additional_dependencies:
           - "mdformat-mkdocs[recommended]>=2.1.0"
           - "mdformat-ruff"

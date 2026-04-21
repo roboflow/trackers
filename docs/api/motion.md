@@ -1,3 +1,7 @@
+---
+description: Python API reference for MotionEstimator and motion compensation utilities in Roboflow Trackers — optical flow and homography-based camera motion correction.
+---
+
 # Motion API
 
 ## MotionEstimator

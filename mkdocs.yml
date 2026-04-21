@@ -1,5 +1,5 @@
 site_name: Trackers
-site_url: https://roboflow.github.io/trackers/develop/
+site_url: !ENV [SITE_URL, "https://trackers.roboflow.com/latest/"]
 site_author: Roboflow
 site_description: A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.
 repo_name: roboflow/trackers
@@ -9,6 +9,7 @@ copyright: Roboflow 2026. All rights reserved.
 
 hooks:
   - docs/hooks/doctest_filter.py
+  - docs/hooks/schema_inject.py
 
 extra:
   version:
@@ -90,6 +91,8 @@ markdown_extensions:
 
 plugins:
   - search
+  - git-revision-date-localized:
+      enable_creation_date: true
   - mkdocstrings:
       handlers:
         python:
@@ -120,6 +123,7 @@ nav:
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
     - Detection Quality Matters: learn/detection-quality.md
+    - About: learn/about.md
   - Trackers:
     - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md

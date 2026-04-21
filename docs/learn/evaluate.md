@@ -1,3 +1,7 @@
+---
+description: Measure tracker accuracy with standard MOT metrics — HOTA, IDF1, and MOTA — using Roboflow Trackers built-in evaluation pipeline on MOT benchmark datasets.
+---
+
 # Evaluate Trackers
 
 Measure tracker quality with standard MOT metrics to get reproducible scores for development and benchmarking.

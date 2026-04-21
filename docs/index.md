@@ -1,5 +1,6 @@
 ---
 comments: true
+description: Get started with Roboflow Trackers — install SORT, ByteTrack, and OC-SORT, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.
 ---
 
 <div align="center">
@@ -172,3 +173,40 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
 
 </div>
+
+---
+
+## FAQ
+
+**What is multi-object tracking and how does it differ from object detection?**
+
+Object detection finds and classifies objects in a single image frame. Multi-object tracking
+assigns a persistent ID to each detected object across video frames, maintaining continuity
+through occlusions, re-entries, and camera motion. Trackers use a detect-then-track approach:
+a detector runs on each frame, and the tracker links detections across time using motion
+models and spatial matching.
+
+**Which tracker should I use?**
+
+Start with ByteTrack — it performs best across all four benchmarks in our evaluation and
+handles variable-confidence detectors well. Use SORT if speed or device constraints require
+the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow
+non-linear paths. See the [tracker comparison](trackers/comparison.md) for benchmark scores.
+
+**Do I need a specific detector?**
+
+No. Roboflow Trackers works with any detector that outputs `supervision.Detections` objects.
+The library ships example pipelines using RF-DETR but is compatible with YOLO, Detectron2,
+and any custom model. The tracker never inspects the detection model directly.
+
+**What MOT datasets does the library support?**
+
+MOT17, MOT20, SportsMOT, SoccerNet-tracking, and DanceTrack are supported for download and
+evaluation. Use `trackers download <dataset>` to pull frames, annotations, and pre-computed
+detections in one command. See the [download guide](learn/download.md) for asset options.
+
+**How do I evaluate my tracker?**
+
+Run `trackers eval` against a directory of ground-truth MOT-format text files. The evaluation
+pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table.
+See the [evaluation guide](learn/evaluate.md) for the full workflow.
