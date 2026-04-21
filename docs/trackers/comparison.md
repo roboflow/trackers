@@ -27,7 +27,6 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |  OC-SORT  | **61.9** | **76.4** | **76.0** |
     | BoT-SORT  |   63.7   |   78.7   |   79.2   |
 
-
 === "Tuned"
 
     Results after grid search over tracker parameters.
