@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+{{ super() }}
+
+{# ── GEO: JSON-LD + meta tags (page context required — skip for 404 and theme templates) #}
+{% if page %}
+
+{# ── Organization + SoftwareApplication JSON-LD (site-wide) ── #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://roboflow.com/#organization",
+      "name": "Roboflow",
+      "url": "https://roboflow.com",
+      "logo": "https://trackers.roboflow.com/assets/logo-trackers-violet.svg",
+      "sameAs": [
+        "https://github.com/roboflow",
+        "https://twitter.com/roboflow",
+        "https://www.linkedin.com/company/roboflow-ai/",
+        "https://www.youtube.com/roboflow",
+        "https://en.wikipedia.org/wiki/Roboflow"
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://trackers.roboflow.com/#software",
+      "name": "Roboflow Trackers",
+      "description": "A unified library for multi-object tracking with clean-room implementations of SORT, ByteTrack, and OC-SORT, designed to plug into any detection model via the supervision library.",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "url": "https://trackers.roboflow.com",
+      "downloadUrl": "https://pypi.org/project/trackers/",
+      "codeRepository": "https://github.com/roboflow/trackers",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://roboflow.com/#organization"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  ]
+}
+</script>
+
+{# ── Per-page TechArticle JSON-LD (injected by schema_inject.py hook) ── #}
+{% if page.meta and page.meta.json_ld_article %}
+<script type="application/ld+json">
+{{ page.meta.json_ld_article | safe }}
+</script>
+{% endif %}
+
+{# ── Open Graph meta tags ── #}
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Roboflow Trackers" />
+<meta property="og:url" content="{{ page.canonical_url }}" />
+<meta property="og:title" content="{% if page.meta and page.meta.title %}{{ page.meta.title }}{% else %}{{ page.title }} — Roboflow Trackers{% endif %}" />
+<meta property="og:description" content="{% if page.meta and page.meta.description %}{{ page.meta.description }}{% else %}A unified library for multi-object tracking with SORT, ByteTrack, and OC-SORT.{% endif %}" />
+<meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+<meta property="og:image:alt" content="Roboflow Trackers logo" />
+
+{# ── IndexNow key (Bing/Yandex site ownership verification) ── #}
+{# Key file: docs/bc061e8ae9e449d7acb9f86d29637e58.txt — must stay in sync with workflow + this tag #}
+<meta name="indexnow-key" content="bc061e8ae9e449d7acb9f86d29637e58" />
+
+{# ── Bing Webmaster Tools verification ── #}
+{# Replace the content value with your key from https://www.bing.com/webmasters #}
+<meta name="msvalidate.01" content="REPLACE_WITH_BING_VERIFICATION_KEY" />
+
+{# ── Twitter / X Card meta tags ── #}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@roboflow" />
+<meta name="twitter:title" content="{% if page.meta and page.meta.title %}{{ page.meta.title }}{% else %}{{ page.title }} — Roboflow Trackers{% endif %}" />
+<meta name="twitter:description" content="{% if page.meta and page.meta.description %}{{ page.meta.description }}{% else %}A unified library for multi-object tracking with SORT, ByteTrack, and OC-SORT.{% endif %}" />
+<meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+
+{% endif %}{# end if page #}
+{% endblock %}
