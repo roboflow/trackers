@@ -25,6 +25,8 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |   SORT    |   58.4   |   69.9   |   67.2   |
     | ByteTrack |   60.1   |   73.2   |   74.1   |
     |  OC-SORT  | **61.9** | **76.4** | **76.0** |
+    | BoT-SORT  |   63.7   |   78.7   |   79.2   |
+
 
 === "Tuned"
 
@@ -82,8 +84,9 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   70.8   |   68.9   |   95.5   |
-    | ByteTrack | **73.0** | **72.5** | **96.4** |
+    | ByteTrack |   73.0   |   72.5   |   96.4   |
     |  OC-SORT  |   71.7   |   71.4   |   95.0   |
+    | BoT-SORT  | **73.8** | **73.4** | **96.9** |
 
 === "Tuned"
 
@@ -142,8 +145,9 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   81.6   |   76.2   |   95.1   |
-    | ByteTrack | **84.0** | **78.1** | **97.8** |
+    | ByteTrack |   84.0   |   78.1   | **97.8** |
     |  OC-SORT  |   78.4   |   72.6   |   94.1   |
+    | BoT-SORT  | **84.5** | **79.3** |   96.6   |
 
 === "Tuned"
 

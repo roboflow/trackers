@@ -12,7 +12,11 @@ BoT-SORT extends ([ByteTrack](../bytetrack/tracker.md)) with camera motion compe
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
-ADD TABLE HERE ONCE WE HAVE FINAL RESULTS
+|  Dataset  | HOTA | IDF1 | MOTA |
+| :-------: | :--: | :--: | :--: |
+|   MOT17   | 63.7 | 78.7| 79.2 |
+| SportsMOT | 73.8 | 73.4 |96.9 |
+| SoccerNet | 84.5 | 79.3 | 96.6 |
 
 ## Run on video, webcam, or RTSP stream
 
