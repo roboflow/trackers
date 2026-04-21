@@ -1,12 +1,13 @@
 ---
 comments: true
+description: BoT-SORT extends ByteTrack with camera motion compensation and confidence-aware association to improve identity stability in camera moving and crowded scenes.
 ---
 
 # BoT-SORT
 
 ## Overview
 
-BoT-SORT extends ([ByteTrack](../bytetrack/tracker.md)) with camera motion compensation (CMC) to handle moving cameras and dynamic scenes. It uses the same two-stage association strategy: first matching high-confidence detections, then recovering low-confidence ones, but applies a transformation estimated from optical flow to warp Kalman filter predictions before matching. This compensates for camera ego-motion that would otherwise degrade IoU overlap and cause missed associations. Additionally, BoT-SORT fuses IoU similarity with detection confidence scores during association, splits tracks into confirmed, unconfirmed, and lost categories for more precise lifecycle management, and only activates new tracklets after a two-frame confirmation (except on the very first frame). The result is more stable tracking under camera motion while retaining real-time speed.
+BoT-SORT extends [ByteTrack](bytetrack.md) with camera motion compensation (CMC) to handle moving cameras and dynamic scenes. It keeps ByteTrack's two-stage association strategy (high-confidence matching followed by low-confidence recovery), but first applies a frame-to-frame geometric transform estimated from optical flow so predictions are compared in the correct camera coordinate frame. This reduces missed matches and ID-switches when camera ego-motion causes apparent object jumps. BoT-SORT also combines IoU similarity with detection confidence during association and uses stricter track confirmation logic for more stable identities.
 
 ## Comparison
 
@@ -17,6 +18,33 @@ For comparisons with other trackers, plus dataset context and evaluation details
 |   MOT17   | 63.7 | 78.7 | 79.2 |
 | SportsMOT | 73.8 | 73.4 | 96.9 |
 | SoccerNet | 84.5 | 79.3 | 96.6 |
+
+## Watch It in Action
+
+<iframe width="100%" style="aspect-ratio: 16/9;" src="https://www.youtube.com/embed/u0k2dTZ0vfs" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+## Algorithm
+
+BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.md) but adds camera-motion-aware prediction and confidence-aware association.
+
+**CMC (Camera Motion Compensation).** Before data association, BoT-SORT estimates global camera motion between consecutive frames (typically from sparse optical flow) and warps each track's Kalman-predicted box into the current frame. Without this step, a panning or moving camera can make stationary or slow-moving targets appear to jump, degrading IoU overlap and causing false unmatched tracks.
+
+**Two-stage association.** BoT-SORT performs ByteTrack-style matching in two passes: high-confidence detections first, then lower-confidence detections for unmatched tracks. This recovers objects that are briefly weakly scored due to blur, occlusion, or scale change.
+
+**Confidence-aware matching.** Association costs blend geometric overlap (IoU) with detection confidence so that stronger detections are preferred when multiple matches are plausible.
+
+**Track lifecycle.** New tracks are initiated and confirmed with a conservative policy (`minimum_consecutive_frames`) to reduce one-frame false positives. Tracks that remain unmatched longer than `lost_track_buffer` are removed.
+
+## Key Parameters
+
+| Parameter                    | Purpose                                                          | Tuning guidance                                                                                                                   |
+| ---------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `lost_track_buffer`          | Frames to keep an unmatched track alive before deletion.         | Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps.   |
+| `track_activation_threshold` | Minimum detection confidence to use in matching/track creation.  | Higher reduces noisy tracks; lower retains harder objects. 0.5-0.9 typical depending on detector quality.                       |
+| `minimum_consecutive_frames` | Consecutive matches required before confirming a new track.      | 1 for immediate activation; 2-3 improves robustness against flicker and false positives.                                         |
+| `minimum_iou_threshold`      | Minimum IoU to accept a track-detection assignment.              | Lower helps with faster motion and imperfect compensation; higher is stricter. 0.1-0.3 typical.                                 |
+| `high_conf_det_threshold`    | Confidence split between stage-1 and stage-2 detections.         | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                          |
+| `use_cmc`                    | Enables camera motion compensation before association.           | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.  |
 
 ## Run on video, webcam, or RTSP stream
 
@@ -69,6 +97,10 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     video_capture.release()
     cv2.destroyAllWindows()
     ```
+
+## Reference
+
+Aharon, N., Orfaig, R., and Bobrovsky, B.-Z. (2023). BoT-SORT: Robust Associations Multi-Pedestrian Tracking. [arXiv:2206.14651](https://arxiv.org/abs/2206.14651)
 
 === "Webcam"
 
