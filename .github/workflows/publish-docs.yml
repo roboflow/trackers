@@ -74,23 +74,22 @@ jobs:
           uv run mike deploy --push --update-aliases $latest_tag latest
           uv run mike set-default --push latest
 
-      - name: 📄 Copy llms.txt to site root
-        # llms.txt under docs/ lands in the versioned path (e.g. /latest/llms.txt)
-        # because mike deploys to version subdirectories. AI crawlers look for /llms.txt
-        # at the site root, so we copy it there on the gh-pages branch after every deploy.
+      - name: 🌐 Inject GEO root files into gh-pages
+        # llms.txt and robots.txt under docs/ land in the versioned path (e.g. /latest/)
+        # because mike deploys to version subdirectories. Crawlers and AI bots look for
+        # these at the site root, so we copy them to the gh-pages root after every deploy.
         if: success()
         run: |
+          cp docs/robots.txt /tmp/robots.txt
+          cp docs/llms.txt /tmp/llms.txt
           git fetch origin gh-pages 2>/dev/null || true
-          # Stash any uncommitted changes so checkout succeeds
           git stash --include-untracked 2>/dev/null || true
           git checkout gh-pages
-          # Copy from the latest version directory to root
-          if [ -f latest/llms.txt ]; then
-            cp latest/llms.txt llms.txt
-            git add llms.txt
-            git diff --cached --quiet || git commit -m "chore: sync llms.txt to site root"
-            git push origin gh-pages
-          fi
+          cp /tmp/robots.txt robots.txt
+          cp /tmp/llms.txt llms.txt
+          git add robots.txt llms.txt
+          git diff --cached --quiet || git commit -m "chore: update GEO root files (robots.txt, llms.txt)"
+          git push origin gh-pages
           git checkout -
 
       - name: 🔔 Notify IndexNow

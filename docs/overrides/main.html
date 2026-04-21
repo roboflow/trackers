@@ -3,6 +3,9 @@
 {% block extrahead %}
 {{ super() }}
 
+{# ── GEO: JSON-LD + meta tags (page context required — skip for 404 and theme templates) #}
+{% if page %}
+
 {# ── Organization + SoftwareApplication JSON-LD (site-wide) ── #}
 <script type="application/ld+json">
 {
@@ -18,7 +21,8 @@
         "https://github.com/roboflow",
         "https://twitter.com/roboflow",
         "https://www.linkedin.com/company/roboflow-ai/",
-        "https://www.youtube.com/roboflow"
+        "https://www.youtube.com/roboflow",
+        "https://en.wikipedia.org/wiki/Roboflow"
       ]
     },
     {
@@ -71,4 +75,6 @@
 <meta name="twitter:title" content="{% if page.meta and page.meta.title %}{{ page.meta.title }}{% else %}{{ page.title }} — Roboflow Trackers{% endif %}" />
 <meta name="twitter:description" content="{% if page.meta and page.meta.description %}{{ page.meta.description }}{% else %}A unified library for multi-object tracking with SORT, ByteTrack, and OC-SORT.{% endif %}" />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+
+{% endif %}{# end if page #}
 {% endblock %}
