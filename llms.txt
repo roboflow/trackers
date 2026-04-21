@@ -1,0 +1,23 @@
+# Roboflow Trackers
+
+> A unified library for multi-object tracking (MOT) with clean-room implementations of SORT, ByteTrack, and OC-SORT. Designed to plug into any detection model via the supervision library.
+
+Roboflow Trackers is an open-source Python library that provides production-ready implementations of leading multi-object tracking algorithms. It supports evaluation on standard MOT benchmarks (HOTA, IDF1, MOTA) and integrates natively with the supervision detection format.
+
+## Pages
+
+- [Quickstart](https://trackers.roboflow.com/latest/): Get started with Roboflow Trackers — installation, basic tracking, and evaluation
+- [Install Trackers](https://trackers.roboflow.com/latest/learn/install/): Step-by-step installation guide using pip or uv
+- [Track Objects](https://trackers.roboflow.com/latest/learn/track/): How to run object tracking on video with any detection model
+- [Download Datasets](https://trackers.roboflow.com/latest/learn/download/): Download MOT benchmark datasets (MOT17, MOT20, DanceTrack, SportsMOT)
+- [Evaluate Trackers](https://trackers.roboflow.com/latest/learn/evaluate/): Run HOTA, IDF1, and MOTA evaluation on tracking results
+- [Detection Quality Matters](https://trackers.roboflow.com/latest/learn/detection-quality/): How detector quality affects tracker performance
+- [Tracker Comparison](https://trackers.roboflow.com/latest/trackers/comparison/): Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT
+- [SORT](https://trackers.roboflow.com/latest/trackers/sort/): SORT (Simple Online and Realtime Tracking) algorithm reference
+- [ByteTrack](https://trackers.roboflow.com/latest/trackers/bytetrack/): ByteTrack algorithm reference — tracking by associating every detection box
+- [OC-SORT](https://trackers.roboflow.com/latest/trackers/ocsort/): OC-SORT (Observation-Centric SORT) algorithm reference
+- [API: Trackers](https://trackers.roboflow.com/latest/api/trackers/): Python API reference for tracker classes
+- [API: Motion](https://trackers.roboflow.com/latest/api/motion/): Python API reference for motion estimation (optical flow, homography)
+- [API: Datasets](https://trackers.roboflow.com/latest/api/datasets/): Python API reference for dataset download helpers
+- [API: Evals](https://trackers.roboflow.com/latest/api/evals/): Python API reference for evaluation metrics (HOTA, IDF1, MOTA)
+- [API: I/O](https://trackers.roboflow.com/latest/api/io/): Python API reference for MOT-format file I/O and video readers
