@@ -1,6 +1,14 @@
+---
+description: Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.
+---
+
 # Tracker Comparison
 
 This page shows head-to-head performance of SORT, ByteTrack, and OC-SORT on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.
+
+!!! info "Benchmark version"
+
+    Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT) or ground-truth oracle boxes (SoccerNet, DanceTrack). Parameters were tuned via grid search on held-out splits. See [Methodology](#methodology) for details.
 
 ## [MOT17](https://arxiv.org/abs/1603.00831)
 
@@ -263,3 +271,40 @@ splits to reflect real-world usage:
 - Train + validation + test: tune on validation, report on test.
 - Train + validation: tune on train, report on validation.
 - Train + test: tune on train, report on test.
+
+## When to Use Each Tracker
+
+**SORT** is the right choice when speed is the primary constraint and scenes are not heavily
+occluded. Its Kalman filter plus Hungarian matching runs at hundreds of frames per second and
+produces clean, easy-to-debug results. Use SORT as a baseline before adding more complex
+trackers, or when deploying on edge devices with tight compute budgets.
+
+**ByteTrack** is the default recommendation for most applications. It outperforms SORT on all
+four benchmarks by recovering low-confidence detections that SORT discards. The two-stage
+association adds almost no extra compute and consistently reduces missed tracks and identity
+switches. Use ByteTrack when your detector produces noisy or variable-confidence outputs —
+sports video, aerial footage, and crowded retail scenes all benefit.
+
+**OC-SORT** is best when camera motion is significant or objects follow non-linear paths. Its
+observation-centric re-update mechanism and direction consistency cost reduce drift from the
+linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns,
+camera pans, or erratic motion — the benchmark edge on MOT17 and DanceTrack reflects exactly
+these conditions.
+
+## Metric Definitions
+
+**HOTA** (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes
+tracking quality into detection accuracy (DetA) and association accuracy (AssA), then takes
+their geometric mean. It weights identity consistency equally with detection recall and
+precision, unlike older metrics that under-penalize fragmented tracks. Higher HOTA indicates
+both good detection and stable long-term identity.
+
+**IDF1** (Identity F1) — measures how long the system correctly identifies each ground-truth
+object over its lifetime. IDF1 is the harmonic mean of identification precision and
+identification recall. High IDF1 means tracks stay on the correct identity; low IDF1 means
+frequent identity switches.
+
+**MOTA** (Multiple Object Tracking Accuracy) — combines the count of false positives, missed
+detections, and identity switches into a single score relative to the total number of
+ground-truth objects. MOTA is dominated by detection recall and precision; a detector with
+near-perfect recall produces high MOTA even when identity switches are frequent.
