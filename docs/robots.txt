@@ -35,4 +35,16 @@ Allow: /
 User-agent: Applebot
 Allow: /
 
-Sitemap: https://trackers.roboflow.com/sitemap.xml
+User-agent: Google-Extended
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://trackers.roboflow.com/latest/sitemap.xml

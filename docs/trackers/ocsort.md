@@ -5,14 +5,14 @@ description: OC-SORT (Observation-Centric SORT) enhances SORT with three mechani
 
 # OC-SORT
 
-## Overview
+## What is OC-SORT?
 
 OC-SORT remains Simple, Online, and Real-Time like ([SORT](sort.md)) but improves robustness during occlusion and non-linear motion.
 It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These
 mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
 due to object stopping or short-term occlusion.
 
-## Comparison
+## How does OC-SORT compare to other trackers?
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
@@ -22,7 +22,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 | SportsMOT | 71.5 | 71.2 | 95.2 |
 | SoccerNet | 78.6 | 72.7 | 94.5 |
 
-## Algorithm
+## How does OC-SORT work?
 
 OC-SORT extends [SORT](sort.md) with three observation-centric mechanisms that address the linear motion assumption's failures during occlusion and non-linear trajectories. It retains the same Kalman filter and Hungarian algorithm backbone but adds corrections that use stored observations rather than relying solely on the filter's predicted state.
 

@@ -16,13 +16,17 @@
       "@id": "https://roboflow.com/#organization",
       "name": "Roboflow",
       "url": "https://roboflow.com",
+      "description": "Roboflow builds computer vision infrastructure and tools for training and deploying vision AI models.",
+      "foundingDate": "2019",
       "logo": "https://trackers.roboflow.com/assets/logo-trackers-violet.svg",
       "sameAs": [
         "https://github.com/roboflow",
         "https://twitter.com/roboflow",
         "https://www.linkedin.com/company/roboflow-ai/",
         "https://www.youtube.com/roboflow",
-        "https://en.wikipedia.org/wiki/Roboflow"
+        "https://en.wikipedia.org/wiki/Roboflow",
+        "https://www.wikidata.org/wiki/Q117062679",
+        "https://www.crunchbase.com/organization/roboflow"
       ]
     },
     {
@@ -31,6 +35,8 @@
       "name": "Roboflow Trackers",
       "description": "A unified library for multi-object tracking with clean-room implementations of SORT, ByteTrack, and OC-SORT, designed to plug into any detection model via the supervision library.",
       "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Object Tracking",
+      "featureList": ["SORT tracking", "ByteTrack tracking", "OC-SORT tracking", "HOTA evaluation", "IDF1 evaluation", "MOTA evaluation", "MOT17 dataset support", "SportsMOT dataset support"],
       "operatingSystem": "Linux, macOS, Windows",
       "url": "https://trackers.roboflow.com",
       "downloadUrl": "https://pypi.org/project/trackers/",
@@ -56,6 +62,20 @@
 </script>
 {% endif %}
 
+{# ── Per-page FAQPage JSON-LD (injected by schema_inject.py hook — homepage only) ── #}
+{% if page.meta and page.meta.json_ld_faq %}
+<script type="application/ld+json">
+{{ page.meta.json_ld_faq | safe }}
+</script>
+{% endif %}
+
+{# ── Per-page BreadcrumbList JSON-LD (injected by schema_inject.py hook) ── #}
+{% if page.meta and page.meta.json_ld_breadcrumbs %}
+<script type="application/ld+json">
+{{ page.meta.json_ld_breadcrumbs | safe }}
+</script>
+{% endif %}
+
 {# ── Open Graph meta tags ── #}
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Roboflow Trackers" />
@@ -68,10 +88,6 @@
 {# ── IndexNow key (Bing/Yandex site ownership verification) ── #}
 {# Key file: docs/bc061e8ae9e449d7acb9f86d29637e58.txt — must stay in sync with workflow + this tag #}
 <meta name="indexnow-key" content="bc061e8ae9e449d7acb9f86d29637e58" />
-
-{# ── Bing Webmaster Tools verification ── #}
-{# Replace the content value with your key from https://www.bing.com/webmasters #}
-<meta name="msvalidate.01" content="REPLACE_WITH_BING_VERIFICATION_KEY" />
 
 {# ── Twitter / X Card meta tags ── #}
 <meta name="twitter:card" content="summary_large_image" />

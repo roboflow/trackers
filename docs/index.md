@@ -9,7 +9,7 @@ description: Get started with Roboflow Trackers — install SORT, ByteTrack, and
 
 </div>
 
-Plug-and-play multi-object tracking for any detection model. Clean, modular implementations of SORT, ByteTrack, and OC-SORT under the Apache 2.0 license.
+Roboflow Trackers achieves 60.5 HOTA (ByteTrack) and 62.0 HOTA (OC-SORT) on MOT17, benchmarked across four standard datasets. Apache 2.0, Python 3.10+, 71K+ monthly PyPI installs.
 
 <video width="100%" controls autoplay muted loop>
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
