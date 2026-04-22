@@ -1,4 +1,5 @@
 ---
+title: "SORT Tracker — Simple Online and Realtime Tracking | Trackers"
 comments: true
 description: SORT (Simple Online and Realtime Tracking) uses a Kalman filter and Hungarian algorithm to track objects in real time using only bounding-box geometry — fast, lightweight, and easy to integrate.
 ---

@@ -1,4 +1,5 @@
 ---
+title: "OC-SORT — Observation-Centric SORT Tracker | Trackers"
 comments: true
 description: OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes.
 ---
@@ -19,8 +20,8 @@ For comparisons with other trackers, plus dataset context and evaluation details
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
 |   MOT17   | 61.9 | 76.1 | 76.7 |
-| SportsMOT | 71.5 | 71.2 | 95.2 |
-| SoccerNet | 78.6 | 72.7 | 94.5 |
+| SportsMOT | 71.7 | 71.4 | 95.0 |
+| SoccerNet | 78.4 | 72.6 | 94.1 |
 
 ## How does OC-SORT work?
 

@@ -1,4 +1,5 @@
 ---
+title: "SORT vs ByteTrack vs OC-SORT — MOT Benchmark Comparison | Trackers"
 description: Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.
 ---
 

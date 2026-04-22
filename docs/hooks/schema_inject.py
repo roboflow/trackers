@@ -13,6 +13,8 @@ docs/overrides/main.html can emit it inside <script type="application/ld+json">.
 Also injects:
 - FAQPage JSON-LD on the homepage (index.md)
 - BreadcrumbList JSON-LD for pages with navigation ancestors
+- Dataset JSON-LD on the comparison page
+- Citation (ScholarlyArticle) on algorithm pages
 """
 
 import json
@@ -22,6 +24,9 @@ import json
 ORG_ID = "https://roboflow.com/#organization"
 
 # Fixed FAQ entries for the homepage FAQPage schema.
+# NOTE: dataset list must stay in sync with trackers/datasets/manifest.py.
+# Currently only MOT17 and SportsMOT are downloadable; DanceTrack and SoccerNet
+# are "coming soon" (see docs/learn/download.md).
 _HOMEPAGE_FAQ = [
     {
         "question": "Which tracker should I use?",
@@ -61,25 +66,74 @@ _HOMEPAGE_FAQ = [
     {
         "question": "What MOT datasets does the library support?",
         "answer": (
-            "MOT17, MOT20, SportsMOT, SoccerNet-tracking, and DanceTrack are supported "
-            "for download and evaluation. Use trackers download <dataset> to pull frames, "
-            "annotations, and pre-computed detections."
+            "MOT17 and SportsMOT are supported for download and evaluation. "
+            "Use trackers download <dataset> to pull frames, annotations, and "
+            "pre-computed detections. DanceTrack and SoccerNet-tracking support "
+            "is coming soon."
         ),
     },
 ]
 
+# Academic citations for algorithm pages (keyed by page.file.src_path).
+_CITATIONS = {
+    "trackers/sort.md": {
+        "name": "SORT: A Simple, Online and Realtime Tracking",
+        "url": "https://arxiv.org/abs/1602.00763",
+        "author": "Alex Bewley et al.",
+    },
+    "trackers/bytetrack.md": {
+        "name": "ByteTrack: Multi-Object Tracking by Associating Every Detection Box",
+        "url": "https://arxiv.org/abs/2110.06864",
+        "author": "Zhang et al.",
+    },
+    "trackers/ocsort.md": {
+        "name": "Observation-Centric SORT: Rethinking SORT for Robust Multi-Object Tracking",
+        "url": "https://arxiv.org/abs/2203.14360",
+        "author": "Cao et al.",
+    },
+}
 
-def _build_breadcrumbs(page, config, nav):
+# Benchmark datasets shown on the comparison page.
+_BENCHMARK_DATASETS = [
+    {
+        "name": "MOT17",
+        "url": "https://motchallenge.net/data/MOT17/",
+        "citation": "https://arxiv.org/abs/1603.00831",
+    },
+    {
+        "name": "SportsMOT",
+        "url": "https://deeperaction.github.io/sportsmot/",
+        "citation": "https://arxiv.org/abs/2304.05170",
+    },
+    {
+        "name": "SoccerNet-tracking",
+        "url": "https://www.soccer-net.org/tasks/tracking",
+        "citation": "https://arxiv.org/abs/2204.12438",
+    },
+    {
+        "name": "DanceTrack",
+        "url": "https://dancetrack.github.io/",
+        "citation": "https://arxiv.org/abs/2111.14690",
+    },
+]
+
+
+def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
     """Build BreadcrumbList JSON-LD from navigation hierarchy.
 
-    Returns None if the page is at the root level (no meaningful breadcrumb).
+    Returns None if the page is at the root level (no meaningful breadcrumb)
+    or if the page is the homepage (to avoid "Home > Home > ..." duplication).
     """
+    # Skip breadcrumbs for the homepage to avoid "Home > Home > ..." duplication.
+    if page.file.src_path == "index.md":
+        return None
+
     site_url = config.get("site_url", "https://trackers.roboflow.com").rstrip("/")
 
     # Walk the nav tree to find the path of sections leading to this page.
     crumbs = [{"name": "Home", "url": site_url + "/"}]
 
-    def _find_in_nav(items, path):
+    def _find_in_nav(items, path):  # type: ignore[no-untyped-def]
         """Recursively search nav for the page, building the path of sections."""
         for item in items:
             if hasattr(item, "children") and item.children:
@@ -87,11 +141,15 @@ def _build_breadcrumbs(page, config, nav):
                 if _find_in_nav(item.children, path):
                     return True
                 path.pop()
-            elif hasattr(item, "file") and item.file and item.file.src_path == page.file.src_path:
+            elif (
+                hasattr(item, "file")
+                and item.file
+                and item.file.src_path == page.file.src_path
+            ):
                 return True
         return False
 
-    section_path = []
+    section_path: list[dict[str, str]] = []
     _find_in_nav(nav.items, section_path)
 
     if not section_path:
@@ -102,12 +160,14 @@ def _build_breadcrumbs(page, config, nav):
 
     items = []
     for i, crumb in enumerate(crumbs, start=1):
-        items.append({
-            "@type": "ListItem",
-            "position": i,
-            "name": crumb["name"],
-            **({"item": crumb["url"]} if crumb["url"] else {}),
-        })
+        items.append(
+            {
+                "@type": "ListItem",
+                "position": i,
+                "name": crumb["name"],
+                **({"item": crumb["url"]} if crumb["url"] else {}),
+            }
+        )
 
     return {
         "@context": "https://schema.org",
@@ -166,13 +226,33 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
         }
 
         # datePublished / dateModified from git-revision-date-localized plugin.
-        # The plugin sets page.meta keys before hooks run.
-        date_modified = (page.meta or {}).get("git_revision_date_localized", "")
-        date_created = (page.meta or {}).get("git_creation_date_localized", "")
+        # Prefer the raw iso_date keys which are always YYYY-MM-DD regardless of
+        # the plugin's "type" setting in mkdocs.yml (set by plugin v1.5+ in
+        # on_page_markdown, which runs before hooks). Falls back to the
+        # formatted string key — safe as long as mkdocs.yml keeps type: iso_date.
+        date_modified = (page.meta or {}).get(
+            "git_revision_date_localized_raw_iso_date",
+            (page.meta or {}).get("git_revision_date_localized", ""),
+        )
+        date_created = (page.meta or {}).get(
+            "git_creation_date_localized_raw_iso_date",
+            (page.meta or {}).get("git_creation_date_localized", ""),
+        )
         if date_modified:
             article["dateModified"] = date_modified
         if date_created:
             article["datePublished"] = date_created
+
+        # Add citation for algorithm pages.
+        src_path = page.file.src_path
+        if src_path in _CITATIONS:
+            cite = _CITATIONS[src_path]
+            article["citation"] = {
+                "@type": "ScholarlyArticle",
+                "name": cite["name"],
+                "url": cite["url"],
+                "author": {"@type": "Person", "name": cite["author"]},
+            }
 
         page.meta["json_ld_article"] = json.dumps(
             article, ensure_ascii=False, indent=2
@@ -205,5 +285,24 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
         page.meta["json_ld_breadcrumbs"] = json.dumps(
             breadcrumbs, ensure_ascii=False, indent=2
         )
+
+    # ── Dataset JSON-LD (comparison page only) ──
+    if page.file.src_path == "trackers/comparison.md":
+        datasets = []
+        for ds in _BENCHMARK_DATASETS:
+            datasets.append(
+                json.dumps(
+                    {
+                        "@context": "https://schema.org",
+                        "@type": "Dataset",
+                        "name": ds["name"],
+                        "url": ds["url"],
+                        "citation": ds["citation"],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        page.meta["json_ld_datasets"] = datasets
 
     return context
