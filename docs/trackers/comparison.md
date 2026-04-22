@@ -23,7 +23,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   58.4   |   69.9   |   67.2   |
-    | ByteTrack |   60.1   |   73.2   |   74.1   |
+    | ByteTrack |   59.4   |   72.3   |   73.8   |
     |  OC-SORT  | **61.9** | **76.4** | **76.0** |
 
 === "Tuned"
@@ -33,7 +33,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   60.4   |   72.5   |   75.8   |
-    | ByteTrack |   60.5   |   72.7   |   76.1   |
+    | ByteTrack |   60.8   |   73.8   |   75.4   |
     |  OC-SORT  | **62.0** | **76.5** | **77.3** |
 
     Tuned configuration for each tracker.
@@ -82,7 +82,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   70.8   |   68.9   |   95.5   |
-    | ByteTrack | **73.0** | **72.5** | **96.4** |
+    | ByteTrack | **72.8** | **72.3** | **96.3** |
     |  OC-SORT  |   71.7   |   71.4   |   95.0   |
 
 === "Tuned"
@@ -92,7 +92,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   72.9   |   73.0   |   95.8   |
-    | ByteTrack |   73.3   |   73.5   | **95.9** |
+    | ByteTrack |   73.4   |   73.7   | **96.0** |
     |  OC-SORT  | **74.0** | **75.4** |   95.6   |
 
     Tuned configuration for each tracker.
@@ -142,7 +142,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   81.6   |   76.2   |   95.1   |
-    | ByteTrack | **84.0** | **78.1** | **97.8** |
+    | ByteTrack | **83.9** | **78.0** | **97.8** |
     |  OC-SORT  |   78.4   |   72.6   |   94.1   |
 
 === "Tuned"
@@ -152,7 +152,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    | **84.2** | **78.2** | **98.2** |
-    | ByteTrack |   84.0   |   78.1   | **98.2** |
+    | ByteTrack |   84.1   |   78.1   | **98.2** |
     |  OC-SORT  |   82.9   |   77.9   |   96.8   |
 
     Tuned configuration for each tracker.
