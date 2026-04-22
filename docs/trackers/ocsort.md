@@ -1,5 +1,5 @@
 ---
-title: "OC-SORT — Observation-Centric SORT Tracker | Trackers"
+title: OC-SORT — Observation-Centric SORT Tracker | Trackers
 comments: true
 description: OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes.
 ---
