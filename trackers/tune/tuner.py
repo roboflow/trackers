@@ -125,8 +125,13 @@ class Tuner:
             low, high = spec["range"]
             if spec["type"] == "randint":
                 params[name] = trial.suggest_int(name, low, high)
-            else:
+            elif spec["type"] == "uniform":
                 params[name] = trial.suggest_float(name, low, high)
+            else:
+                raise ValueError(
+                    f"Unknown search_space type: {spec['type']!r}. "
+                    "Valid types: 'randint', 'uniform'"
+                )
 
         # Start from __init__ defaults and override with sampled params
         kwargs: dict[str, Any] = {

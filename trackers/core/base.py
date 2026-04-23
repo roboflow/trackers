@@ -243,17 +243,50 @@ class BaseTracker(ABC):
         super().__init_subclass__(**kwargs)
 
         # Validate search_space keys match __init__ parameters (search_space optional)
+        _VALID_SPACE_TYPES: frozenset[str] = frozenset({"randint", "uniform"})
         search_space = getattr(cls, "search_space", None)
         if search_space is not None and len(search_space) > 0:
             init_params = {
                 n for n in inspect.signature(cls.__init__).parameters if n != "self"
             }
-            for key in search_space:
+            for key, spec in search_space.items():
                 if key not in init_params:
                     raise ValueError(
                         f"{cls.__name__}: search_space key {key!r} is not a "
                         f"parameter of __init__. "
                         f"Valid parameters: {sorted(init_params)}"
+                    )
+                if not isinstance(spec, dict):
+                    raise ValueError(
+                        f"{cls.__name__}: search_space[{key!r}] must be a dict, "
+                        f"got {type(spec).__name__!r}"
+                    )
+                if "type" not in spec:
+                    raise ValueError(
+                        f"{cls.__name__}: search_space[{key!r}] missing required "
+                        f"key 'type'. Valid types: {sorted(_VALID_SPACE_TYPES)}"
+                    )
+                if spec["type"] not in _VALID_SPACE_TYPES:
+                    raise ValueError(
+                        f"{cls.__name__}: search_space[{key!r}]['type'] = "
+                        f"{spec['type']!r} is not valid. "
+                        f"Valid types: {sorted(_VALID_SPACE_TYPES)}"
+                    )
+                if "range" not in spec:
+                    raise ValueError(
+                        f"{cls.__name__}: search_space[{key!r}] missing required "
+                        f"key 'range'"
+                    )
+                rng = spec["range"]
+                if not (hasattr(rng, "__len__") and len(rng) == 2):
+                    raise ValueError(
+                        f"{cls.__name__}: search_space[{key!r}]['range'] must be "
+                        f"a 2-element sequence, got {rng!r}"
+                    )
+                if rng[0] >= rng[1]:
+                    raise ValueError(
+                        f"{cls.__name__}: search_space[{key!r}]['range'] must "
+                        f"have low < high, got {rng!r}"
                     )
 
         tracker_id = getattr(cls, "tracker_id", None)
