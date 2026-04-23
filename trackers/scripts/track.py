@@ -17,7 +17,7 @@ import supervision as sv
 
 from trackers import frames_from_source
 from trackers.core.base import BaseTracker
-from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
+from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
 from trackers.scripts.progress import _classify_source, _SourceInfo, _TrackingProgress
@@ -292,7 +292,7 @@ def run_track(args: argparse.Namespace) -> int:
     # Create detection source
     if args.detections:
         model = None
-        detections_data = _load_mot_file(args.detections)
+        detections_data = load_mot_file(args.detections)
         class_names: list[str] = []
     else:
         model = _init_model(

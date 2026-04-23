@@ -17,7 +17,7 @@ import supervision as sv
 from trackers.core.base import BaseTracker
 from trackers.eval.evaluate import evaluate_mot_sequences
 from trackers.eval.results import BenchmarkResult
-from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
+from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 
 if TYPE_CHECKING:
     import optuna
@@ -219,7 +219,7 @@ def _run_tracker_on_detections(
         det_path: Path to the MOT-format detection file.
         pred_path: Destination path for the MOT-format prediction file.
     """
-    det_data = _load_mot_file(det_path)
+    det_data = load_mot_file(det_path)
     max_frame = max(det_data.keys())
 
     with _MOTOutput(pred_path) as mot_out:
