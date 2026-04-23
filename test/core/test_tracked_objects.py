@@ -87,7 +87,7 @@ def test_tracked_objects_drops_after_expiry(tracker_id: str) -> None:
         tracker.update(_one_detection(bbox))
     assert len(tracker.tracked_objects) == 1
 
-    buffer = tracker.maximum_frames_without_update  # type: ignore[attr-defined]
+    buffer = tracker.maximum_frames_without_update
     for _ in range(buffer + 5):
         tracker.update(sv.Detections.empty())
 
