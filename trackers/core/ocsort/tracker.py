@@ -285,7 +285,9 @@ class OCSORTTracker(BaseTracker):
             return result
         xyxy = np.array([t.get_state_bbox() for t in self.tracks], dtype=np.float32)
         tracker_ids = np.array([t.tracker_id for t in self.tracks], dtype=int)
-        return sv.Detections(xyxy=xyxy, tracker_id=tracker_ids)
+        result = sv.Detections(xyxy=xyxy)
+        result.tracker_id = tracker_ids
+        return result
 
     def _prune_expired_tracklets(self) -> list[OCSORTTracklet]:
         """Remove tracklets that have been lost for too long.
