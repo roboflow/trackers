@@ -216,3 +216,50 @@ class TestTunerRun:
             tuner.run()
 
         assert len(reset_calls) == 2  # 1 trial * 2 sequences
+
+
+class TestRunTrackerOnDetections:
+    """End-to-end tests for the _run_tracker_on_detections helper."""
+
+    def test_creates_valid_mot_output_file(self, tmp_path: Path) -> None:
+        """Output file exists and each line is valid 10-column MOT format."""
+        from trackers import ByteTrackTracker
+        from trackers.tune.tuner import _run_tracker_on_detections
+
+        # Two detections in frame 1, one in frame 3 — frame 2 is intentionally
+        # absent so the code path feeding sv.Detections.empty() is exercised.
+        det_content = (
+            "1,-1,10,20,100,80,0.90,-1,-1,-1\n"
+            "1,-1,200,150,80,60,0.85,-1,-1,-1\n"
+            "3,-1,15,25,100,80,0.88,-1,-1,-1\n"
+        )
+        det_path = tmp_path / "seq.txt"
+        pred_path = tmp_path / "pred.txt"
+        det_path.write_text(det_content)
+
+        tracker = ByteTrackTracker()
+        _run_tracker_on_detections(tracker, det_path, pred_path)
+
+        assert pred_path.exists(), "prediction file must be created"
+        lines = [ln for ln in pred_path.read_text().splitlines() if ln.strip()]
+        assert len(lines) > 0, "prediction file must contain at least one tracked box"
+        for line in lines:
+            fields = line.split(",")
+            assert len(fields) >= 7, f"invalid MOT line: {line!r}"
+            frame_idx = int(fields[0])
+            assert 1 <= frame_idx <= 3, f"unexpected frame index: {frame_idx}"
+
+    def test_empty_frames_do_not_crash(self, tmp_path: Path) -> None:
+        """Frames with no detections are fed as sv.Detections.empty() without error."""
+        from trackers import SORTTracker
+        from trackers.tune.tuner import _run_tracker_on_detections
+
+        # Only frame 1 has a detection; frames 2-5 are absent → empty detections
+        det_path = tmp_path / "sparse.txt"
+        pred_path = tmp_path / "pred.txt"
+        det_path.write_text("5,-1,50,50,60,60,0.95,-1,-1,-1\n")
+
+        tracker = SORTTracker()
+        _run_tracker_on_detections(tracker, det_path, pred_path)
+
+        assert pred_path.exists()
