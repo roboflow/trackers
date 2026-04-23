@@ -35,11 +35,14 @@ class Tuner:
     Args:
         tracker_id: Registered tracker identifier (e.g. ``"bytetrack"``).
         gt_dir: Directory of ground-truth MOT files.
-        detections_dir: Directory of pre-computed detection files in MOT 17
-            flat format — one ``{seq}.txt`` per sequence, where each line
-            is ``<frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,
-            <conf>,-1,-1,-1`` (10 comma-separated columns, 1-based frame
+        detections_dir: Directory of pre-computed detection files in MOT
+            format — one ``{seq}.txt`` per sequence, where each line must
+            contain at least ``<frame>,<id>,<bb_left>,<bb_top>,<bb_width>,
+            <bb_height>`` (6 comma-separated columns, with 1-based frame
             index). Use ``id=-1`` for detections (no pre-assigned ID).
+            Optional trailing MOT columns such as ``<conf>`` and additional
+            class / visibility fields may also be present; when omitted,
+            ``load_mot_file()`` applies its default values.
         metrics: Metric families to compute. Supported values are
             ``["CLEAR", "HOTA", "Identity"]``. Defaults to ``["CLEAR"]``.
         objective: Scalar metric field to maximise (e.g. ``"MOTA"``,
@@ -114,6 +117,36 @@ class Tuner:
         if not self._sequences:
             raise ValueError(f"No sequences found in {self._detections_dir}")
 
+        self._validate_sequence_files()
+
+    def _validate_sequence_files(self) -> None:
+        """Validate that every selected sequence has required MOT files.
+
+        This performs eager filesystem validation so configuration errors are
+        reported during tuner initialization rather than later during trial
+        execution.
+        """
+        missing_detection_files = [
+            str(self._detections_dir / f"{seq_name}.txt")
+            for seq_name in self._sequences
+            if not (self._detections_dir / f"{seq_name}.txt").is_file()
+        ]
+        if missing_detection_files:
+            raise FileNotFoundError(
+                "Missing detection files for selected sequences: "
+                + ", ".join(missing_detection_files)
+            )
+
+        missing_gt_files = [
+            str(self._gt_dir / f"{seq_name}.txt")
+            for seq_name in self._sequences
+            if not (self._gt_dir / f"{seq_name}.txt").is_file()
+        ]
+        if missing_gt_files:
+            raise FileNotFoundError(
+                "Missing ground-truth files for selected sequences: "
+                + ", ".join(missing_gt_files)
+            )
     def _objective(self, trial: optuna.Trial) -> float:
         """Sample hyperparameters, run tracker over all sequences, return metric.
 
@@ -136,12 +169,8 @@ class Tuner:
                     "Valid types: 'randint', 'uniform'"
                 )
 
-        # Start from __init__ defaults and override with sampled params
-        kwargs: dict[str, Any] = {
-            n: p.default_value for n, p in self._tracker_info.parameters.items()
-        }
-        kwargs.update(params)
-        tracker = self._tracker_info.tracker_class(**kwargs)
+        # Pass only sampled parameters so tracker __init__ defaults apply naturally.
+        tracker = self._tracker_info.tracker_class(**params)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_dir = Path(tmp_dir)
@@ -151,11 +180,20 @@ class Tuner:
                 pred_path = output_dir / f"{seq_name}.txt"
                 _run_tracker_on_detections(tracker, det_path, pred_path)
 
+            seqmap = self._seqmap
+            if seqmap is None:
+                seqmap = output_dir / "seqmap.txt"
+                seqmap.write_text(
+                    "\n".join(self._sequences) + "\n",
+                    encoding="utf-8",
+                )
+
             result: BenchmarkResult = evaluate_mot_sequences(
                 gt_dir=self._gt_dir,
                 tracker_dir=output_dir,
                 metrics=self._metrics,
                 threshold=self._threshold,
+                seqmap=seqmap,
             )
 
         return _extract_metric(result, self._objective_metric)
