@@ -201,7 +201,7 @@ class ByteTrackTracker(BaseTracker):
         self,
         similarity_matrix: np.ndarray,
         min_similarity_thresh: float,
-    ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
+    ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
         Associate detections to tracks based on Similarity (IoU) using the
         Jonker-Volgenant algorithm approach with no initialization instead of the
@@ -231,13 +231,14 @@ class ByteTrackTracker(BaseTracker):
                     unmatched_tracks.remove(row)
                     unmatched_detections.remove(col)
 
-        return matched_indices, unmatched_tracks, unmatched_detections
+        # Return sorted lists for deterministic order across CPython versions.
+        return matched_indices, sorted(unmatched_tracks), sorted(unmatched_detections)
 
     def _spawn_new_trackers(
         self,
         detection_boxes: np.ndarray,
         confidences: np.ndarray,
-        unmatched_high_local: set[int],
+        unmatched_high_local: list[int],
         high_indices: np.ndarray,
         out_det_indices: list[int],
         out_tracker_ids: list[int],
