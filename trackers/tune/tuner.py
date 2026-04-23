@@ -147,6 +147,7 @@ class Tuner:
                 "Missing ground-truth files for selected sequences: "
                 + ", ".join(missing_gt_files)
             )
+
     def _objective(self, trial: optuna.Trial) -> float:
         """Sample hyperparameters, run tracker over all sequences, return metric.
 
