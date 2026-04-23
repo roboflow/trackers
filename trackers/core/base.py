@@ -371,7 +371,8 @@ class BaseTracker(ABC):
         Returns:
             `sv.Detections` with Kalman-predicted `xyxy` and `tracker_id` for
             each alive track. Immature tracks that have not yet reached
-            `minimum_consecutive_frames` appear with `tracker_id == -1`.
+            `minimum_consecutive_frames` may be included; their `tracker_id`
+            assignment before confirmation is tracker-implementation specific.
             Returns an empty `sv.Detections` (with an empty int `tracker_id`
             array) when no tracks are alive.
         """
