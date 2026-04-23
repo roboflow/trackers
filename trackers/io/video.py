@@ -162,5 +162,5 @@ class _DisplayWindow:
     def __enter__(self) -> _DisplayWindow:
         return self
 
-    def __exit__(self, *_) -> None:
+    def __exit__(self, *_: object) -> None:
         cv2.destroyWindow(self.window_name)

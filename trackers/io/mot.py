@@ -454,6 +454,6 @@ class _MOTOutput:
             self._file = open(self.path, "w")
         return self
 
-    def __exit__(self, *_) -> None:
+    def __exit__(self, *_: object) -> None:
         if self._file is not None:
             self._file.close()
