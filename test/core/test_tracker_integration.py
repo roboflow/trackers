@@ -15,7 +15,7 @@ import supervision as sv
 
 from trackers.core.base import BaseTracker
 from trackers.eval import evaluate_mot_sequences
-from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
+from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 
 _TRACKER_IDS = ["sort", "bytetrack", "ocsort"]
 _METRICS = ["CLEAR", "HOTA", "Identity"]
@@ -54,7 +54,7 @@ def _run_tracker_on_flat_dataset(
         if not gt_file.exists():
             continue
 
-        gt_data = _load_mot_file(gt_file)
+        gt_data = load_mot_file(gt_file)
         max_frame = max(gt_data.keys()) if gt_data else 0
 
         tracker = info.tracker_class()
