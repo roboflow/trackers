@@ -351,3 +351,9 @@ class BaseTracker(ABC):
         Call between videos or when tracking should restart from scratch.
         """
         pass
+
+    @property
+    @abstractmethod
+    def tracked_objects(self) -> sv.Detections:
+        """All alive tracks with Kalman-predicted bounding boxes."""
+        ...
