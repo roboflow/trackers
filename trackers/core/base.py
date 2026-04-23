@@ -375,5 +375,6 @@ class BaseTracker(ABC):
             assignment before confirmation is tracker-implementation specific.
             Returns an empty `sv.Detections` (with an empty int `tracker_id`
             array) when no tracks are alive.
+            Note: the exact set of alive tracks depends on each tracker internal pruning logic; consult the specific tracker documentation for precise semantics.
         """
         ...
