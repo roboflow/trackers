@@ -276,6 +276,17 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         OCSORTTracklet.count_id = 0
 
+    @property
+    def tracked_objects(self) -> sv.Detections:
+        """All alive tracks with Kalman-predicted bounding boxes."""
+        if not self.tracks:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
+        xyxy = np.array([t.get_state_bbox() for t in self.tracks], dtype=np.float32)
+        tracker_ids = np.array([t.tracker_id for t in self.tracks], dtype=int)
+        return sv.Detections(xyxy=xyxy, tracker_id=tracker_ids)
+
     def _prune_expired_tracklets(self) -> list[OCSORTTracklet]:
         """Remove tracklets that have been lost for too long.
 
