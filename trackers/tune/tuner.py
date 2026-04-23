@@ -35,8 +35,11 @@ class Tuner:
     Args:
         tracker_id: Registered tracker identifier (e.g. ``"bytetrack"``).
         gt_dir: Directory of ground-truth MOT files.
-        detections_dir: Directory of pre-computed detection files in MOT flat
-            format (one ``{seq}.txt`` per sequence).
+        detections_dir: Directory of pre-computed detection files in MOT 17
+            flat format — one ``{seq}.txt`` per sequence, where each line
+            is ``<frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,
+            <conf>,-1,-1,-1`` (10 comma-separated columns, 1-based frame
+            index). Use ``id=-1`` for detections (no pre-assigned ID).
         metrics: Metric families to compute. Supported values are
             ``["CLEAR", "HOTA", "Identity"]``. Defaults to ``["CLEAR"]``.
         objective: Scalar metric field to maximise (e.g. ``"MOTA"``,
