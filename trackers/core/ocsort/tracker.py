@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from typing import ClassVar
+
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
@@ -60,6 +62,15 @@ class OCSORTTracker(BaseTracker):
     """
 
     tracker_id = "ocsort"
+
+    search_space: ClassVar[dict[str, dict]] = {
+        "lost_track_buffer": {"type": "randint", "range": [10, 61]},
+        "minimum_iou_threshold": {"type": "uniform", "range": [0.1, 0.5]},
+        "minimum_consecutive_frames": {"type": "randint", "range": [3, 6]},
+        "direction_consistency_weight": {"type": "uniform", "range": [0.0, 0.5]},
+        "high_conf_det_threshold": {"type": "uniform", "range": [0.4, 0.8]},
+        "delta_t": {"type": "randint", "range": [1, 4]},
+    }
 
     def __init__(
         self,

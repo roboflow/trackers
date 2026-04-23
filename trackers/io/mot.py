@@ -95,7 +95,7 @@ class _MOTSequenceData:
     tracker_id_mapping: dict[int, int]
 
 
-def _load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
+def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
     """Load a MOT Challenge format file.
 
     Parse a text file in the standard MOT format where each line represents
