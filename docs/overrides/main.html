@@ -18,7 +18,7 @@
       "url": "https://roboflow.com",
       "description": "Roboflow builds computer vision infrastructure and tools for training and deploying vision AI models.",
       "foundingDate": "2019",
-      "logo": "https://trackers.roboflow.com/assets/logo-trackers-violet.svg",
+      "logo": "{{ 'assets/logo-trackers-violet.svg' | url }}",
       "sameAs": [
         "https://github.com/roboflow",
         "https://twitter.com/roboflow",
@@ -57,18 +57,22 @@
 
 {# ── WebSite + SearchAction JSON-LD (homepage only) ── #}
 {% if page.url == '' or page.url == './' %}
+{% set canonical_site_url = config.site_url | default('https://trackers.roboflow.com/latest/', true) %}
+{% if not canonical_site_url.endswith('/') %}
+{% set canonical_site_url = canonical_site_url ~ '/' %}
+{% endif %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "Roboflow Trackers",
-  "url": "https://trackers.roboflow.com/",
+  "url": "{{ canonical_site_url }}",
   "description": "Documentation for Roboflow Trackers — multi-object tracking library with SORT, ByteTrack, and OC-SORT implementations.",
   "potentialAction": {
     "@type": "SearchAction",
     "target": {
       "@type": "EntryPoint",
-      "urlTemplate": "https://trackers.roboflow.com/?q={search_term_string}"
+      "urlTemplate": "{{ canonical_site_url }}?q={search_term_string}"
     },
     "query-input": "required name=search_term_string"
   }

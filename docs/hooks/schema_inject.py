@@ -133,14 +133,33 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
     # Walk the nav tree to find the path of sections leading to this page.
     crumbs = [{"name": "Home", "url": site_url + "/"}]
 
+    def _resolve_nav_item_url(item):  # type: ignore[no-untyped-def]
+        """Return an absolute URL for a nav item when it maps to a concrete page."""
+        raw_url = getattr(item, "url", None)
+        if not raw_url and hasattr(item, "file") and item.file:
+            raw_url = getattr(item.file, "url", None)
+
+        if not raw_url:
+            return ""
+        if raw_url.startswith(("http://", "https://")):
+            return raw_url
+        if raw_url.startswith("/"):
+            return site_url + raw_url
+        return site_url + "/" + raw_url.lstrip("/")
+
     def _find_in_nav(items, path):  # type: ignore[no-untyped-def]
         """Recursively search nav for the page, building the path of sections."""
         for item in items:
             if hasattr(item, "children") and item.children:
-                path.append({"name": item.title, "url": ""})
+                section_url = _resolve_nav_item_url(item)
+                appended = False
+                if section_url:
+                    path.append({"name": item.title, "url": section_url})
+                    appended = True
                 if _find_in_nav(item.children, path):
                     return True
-                path.pop()
+                if appended:
+                    path.pop()
             elif (
                 hasattr(item, "file")
                 and item.file
