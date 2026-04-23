@@ -1,3 +1,7 @@
+---
+description: Python API reference for SORT, ByteTrack, and OC-SORT tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples.
+---
+
 # Trackers API
 
 ## SORT

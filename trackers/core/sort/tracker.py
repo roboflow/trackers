@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from typing import ClassVar
+
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
@@ -55,6 +57,13 @@ class SORTTracker(BaseTracker):
 
     tracker_id = "sort"
 
+    search_space: ClassVar[dict[str, dict]] = {
+        "lost_track_buffer": {"type": "randint", "range": [10, 91]},
+        "track_activation_threshold": {"type": "uniform", "range": [0.1, 0.9]},
+        "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
+        "minimum_iou_threshold": {"type": "uniform", "range": [0.05, 0.7]},
+    }
+
     def __init__(
         self,
         lost_track_buffer: int = 30,
@@ -76,9 +85,9 @@ class SORTTracker(BaseTracker):
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
-    ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
+    ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
-        Associate detections to trackers based on IOU
+        Associate detections to trackers based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
@@ -103,13 +112,14 @@ class SORTTracker(BaseTracker):
                     unmatched_trackers.remove(row)
                     unmatched_detections.remove(col)
 
-        return matched_indices, unmatched_trackers, unmatched_detections
+        # Return sorted lists for deterministic order across CPython versions.
+        return matched_indices, sorted(unmatched_trackers), sorted(unmatched_detections)
 
     def _spawn_new_trackers(
         self,
         confidences: np.ndarray | None,
         detection_boxes: np.ndarray,
-        unmatched_detections: set[int],
+        unmatched_detections: list[int],
     ) -> None:
         for detection_idx in unmatched_detections:
             if (

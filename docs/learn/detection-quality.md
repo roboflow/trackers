@@ -1,3 +1,7 @@
+---
+description: Understand how detector quality affects tracking performance. Benchmark results show the impact of detection confidence and accuracy on HOTA, IDF1, and MOTA scores.
+---
+
 # Detection Quality Matters
 
 Tracking quality starts at the detector. If it misses an object, the tracker never gets a chance. This guide isolates the effect of detector choice by running ByteTrack with three models of increasing accuracy on the MOT17 benchmark.
