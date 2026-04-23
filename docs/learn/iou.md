@@ -145,6 +145,10 @@ v = \frac{4}{\pi^2}\!\left(\arctan\frac{w_A}{h_A} - \arctan\frac{w_B}{h_B}\right
 \alpha = \frac{v}{1 - \mathrm{IoU} + v + \epsilon}
 \]
 
+<figure class="iou-variant-figure">
+  <img src="../../assets/IoU%20variants/CIoU%20visualization.png" alt="CIoU visualization" loading="lazy" decoding="async"/>
+</figure>
+
 `v` measures aspect-ratio divergence; `α` scales it so the penalty is low when IoU
 is already high. On tracking benchmarks CIoU and DIoU behave similarly.
 
