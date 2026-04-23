@@ -181,7 +181,7 @@ class Tuner:
                 pred_path = output_dir / f"{seq_name}.txt"
                 _run_tracker_on_detections(tracker, det_path, pred_path)
 
-            seqmap = self._seqmap
+            seqmap = getattr(self, "_seqmap", None)
             if seqmap is None:
                 seqmap = output_dir / "seqmap.txt"
                 seqmap.write_text(
