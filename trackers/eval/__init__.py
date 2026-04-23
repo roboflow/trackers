@@ -8,7 +8,6 @@
 
 from trackers.eval.box import box_ioa, box_iou
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
-from trackers.eval.evaluate import evaluate_mot_sequence, evaluate_mot_sequences
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
 from trackers.eval.results import (
