@@ -29,7 +29,7 @@
     
     
       
-        <title>OC-SORT - Trackers</title>
+        <title>OC-SORT — Observation-Centric SORT Tracker | Trackers - Trackers</title>
       
     
     
@@ -81,13 +81,17 @@
       "@id": "https://roboflow.com/#organization",
       "name": "Roboflow",
       "url": "https://roboflow.com",
-      "logo": "https://trackers.roboflow.com/assets/logo-trackers-violet.svg",
+      "description": "Roboflow builds computer vision infrastructure and tools for training and deploying vision AI models.",
+      "foundingDate": "2019",
+      "logo": "../../assets/logo-trackers-violet.svg",
       "sameAs": [
         "https://github.com/roboflow",
         "https://twitter.com/roboflow",
         "https://www.linkedin.com/company/roboflow-ai/",
         "https://www.youtube.com/roboflow",
-        "https://en.wikipedia.org/wiki/Roboflow"
+        "https://en.wikipedia.org/wiki/Roboflow",
+        "https://www.wikidata.org/wiki/Q117062679",
+        "https://www.crunchbase.com/organization/roboflow"
       ]
     },
     {
@@ -96,6 +100,8 @@
       "name": "Roboflow Trackers",
       "description": "A unified library for multi-object tracking with clean-room implementations of SORT, ByteTrack, and OC-SORT, designed to plug into any detection model via the supervision library.",
       "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Object Tracking",
+      "featureList": ["SORT tracking", "ByteTrack tracking", "OC-SORT tracking", "HOTA evaluation", "IDF1 evaluation", "MOTA evaluation", "MOT17 dataset support", "SportsMOT dataset support"],
       "operatingSystem": "Linux, macOS, Windows",
       "url": "https://trackers.roboflow.com",
       "downloadUrl": "https://pypi.org/project/trackers/",
@@ -116,6 +122,9 @@
 
 
 
+
+
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -123,6 +132,14 @@
   "headline": "OC-SORT",
   "description": "OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes.",
   "url": "https://trackers.roboflow.com/latest/develop/trackers/ocsort/",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://trackers.roboflow.com/latest/develop/trackers/ocsort/"
+  },
+  "image": {
+    "@type": "ImageObject",
+    "url": "https://trackers.roboflow.com/latest/develop/assets/logo-trackers-violet.svg"
+  },
   "author": {
     "@type": "Organization",
     "@id": "https://roboflow.com/#organization",
@@ -143,16 +160,36 @@
       "h1",
       ".md-content p:first-of-type"
     ]
+  },
+  "dateModified": "2026-04-23",
+  "datePublished": "2025-04-22",
+  "citation": {
+    "@type": "ScholarlyArticle",
+    "name": "Observation-Centric SORT: Rethinking SORT for Robust Multi-Object Tracking",
+    "url": "https://arxiv.org/abs/2203.14360",
+    "author": {
+      "@type": "Person",
+      "name": "Cao et al."
+    }
   }
 }
 </script>
 
 
 
-<meta property="og:type" content="website" />
+
+
+
+
+
+
+
+
+
+<meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
 <meta property="og:url" content="https://trackers.roboflow.com/latest/develop/trackers/ocsort/" />
-<meta property="og:title" content="OC-SORT — Roboflow Trackers" />
+<meta property="og:title" content="OC-SORT — Observation-Centric SORT Tracker | Trackers" />
 <meta property="og:description" content="OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
@@ -162,13 +199,9 @@
 <meta name="indexnow-key" content="bc061e8ae9e449d7acb9f86d29637e58" />
 
 
-
-<meta name="msvalidate.01" content="REPLACE_WITH_BING_VERIFICATION_KEY" />
-
-
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="OC-SORT — Roboflow Trackers" />
+<meta name="twitter:title" content="OC-SORT — Observation-Centric SORT Tracker | Trackers" />
 <meta name="twitter:description" content="OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
@@ -252,7 +285,7 @@
 
             </a>
             
-              OC-SORT
+              OC-SORT — Observation-Centric SORT Tracker | Trackers
             
           </span>
         </div>
@@ -1063,10 +1096,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#what-is-oc-sort" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        What is OC-SORT?
       
     </span>
   </a>
@@ -1074,10 +1107,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#comparison" class="md-nav__link">
+  <a href="#how-does-oc-sort-compare-to-other-trackers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Comparison
+        How does OC-SORT compare to other trackers?
       
     </span>
   </a>
@@ -1085,10 +1118,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#algorithm" class="md-nav__link">
+  <a href="#how-does-oc-sort-work" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Algorithm
+        How does OC-SORT work?
       
     </span>
   </a>
@@ -1370,10 +1403,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#what-is-oc-sort" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        What is OC-SORT?
       
     </span>
   </a>
@@ -1381,10 +1414,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#comparison" class="md-nav__link">
+  <a href="#how-does-oc-sort-compare-to-other-trackers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Comparison
+        How does OC-SORT compare to other trackers?
       
     </span>
   </a>
@@ -1392,10 +1425,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#algorithm" class="md-nav__link">
+  <a href="#how-does-oc-sort-work" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Algorithm
+        How does OC-SORT work?
       
     </span>
   </a>
@@ -1456,12 +1489,12 @@
 
 
 <h1 id="oc-sort">OC-SORT</h1>
-<h2 id="overview">Overview</h2>
+<h2 id="what-is-oc-sort">What is OC-SORT?</h2>
 <p>OC-SORT remains Simple, Online, and Real-Time like (<a href="../sort/">SORT</a>) but improves robustness during occlusion and non-linear motion.
 It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These
 mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
 due to object stopping or short-term occlusion.</p>
-<h2 id="comparison">Comparison</h2>
+<h2 id="how-does-oc-sort-compare-to-other-trackers">How does OC-SORT compare to other trackers?</h2>
 <p>For comparisons with other trackers, plus dataset context and evaluation details, see the <a href="../comparison/">tracker comparison</a> page.</p>
 <table>
 <thead>
@@ -1481,19 +1514,19 @@ due to object stopping or short-term occlusion.</p>
 </tr>
 <tr>
 <td style="text-align: center;">SportsMOT</td>
-<td style="text-align: center;">71.5</td>
-<td style="text-align: center;">71.2</td>
-<td style="text-align: center;">95.2</td>
+<td style="text-align: center;">71.7</td>
+<td style="text-align: center;">71.4</td>
+<td style="text-align: center;">95.0</td>
 </tr>
 <tr>
 <td style="text-align: center;">SoccerNet</td>
-<td style="text-align: center;">78.6</td>
-<td style="text-align: center;">72.7</td>
-<td style="text-align: center;">94.5</td>
+<td style="text-align: center;">78.4</td>
+<td style="text-align: center;">72.6</td>
+<td style="text-align: center;">94.1</td>
 </tr>
 </tbody>
 </table>
-<h2 id="algorithm">Algorithm</h2>
+<h2 id="how-does-oc-sort-work">How does OC-SORT work?</h2>
 <p>OC-SORT extends <a href="../sort/">SORT</a> with three observation-centric mechanisms that address the linear motion assumption's failures during occlusion and non-linear trajectories. It retains the same Kalman filter and Hungarian algorithm backbone but adds corrections that use stored observations rather than relying solely on the filter's predicted state.</p>
 <p><strong>OCM (Observation-Centric Momentum).</strong> When a track reappears after being unmatched for several frames, the Kalman filter's velocity estimate may have drifted because it continued predicting without corrections. OCM re-computes the velocity using the time gap (<code>delta_t</code>) between the last matched observation and the current detection, then feeds this corrected velocity back into the filter. This produces a more accurate state estimate at the moment of re-association.</p>
 <p><strong>OCV (Observation-Centric Velocity).</strong> Standard IoU matching ignores direction of motion. OCV adds a velocity direction consistency term to the association cost: if a candidate match would require the track to have moved in a direction inconsistent with its recent observation history, that match is penalized. The <code>direction_consistency_weight</code> parameter controls the strength of this penalty. This helps prevent cross-identity matches when two objects are close but moving in different directions.</p>
@@ -1685,7 +1718,7 @@ due to object stopping or short-term occlusion.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 21, 2026 17:27:31 UTC">April 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 23, 2026 09:33:31 UTC">2026-04-23</span>
   </span>
 
     
@@ -1695,7 +1728,7 @@ due to object stopping or short-term occlusion.</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 22, 2025 14:59:15 UTC">April 22, 2025</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 22, 2025 14:59:15 UTC">2025-04-22</span>
   </span>
 
     
@@ -1815,7 +1848,8 @@ due to object stopping or short-term occlusion.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Roboflow 2026. All rights reserved.
+      Roboflow 2026. All rights reserved. | <a href="https://roboflow.com/privacy">Privacy Policy</a> | <a href="https://roboflow.com/terms">Terms of Service</a>
+
     </div>
   
   
