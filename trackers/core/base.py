@@ -355,5 +355,24 @@ class BaseTracker(ABC):
     @property
     @abstractmethod
     def tracked_objects(self) -> sv.Detections:
-        """All alive tracks with Kalman-predicted bounding boxes."""
+        """All alive tracks with Kalman-predicted bounding boxes.
+
+        Exposes every track that the tracker still considers alive after the
+        most recent `update()` call, including tracks that were not matched to
+        a detection on the current frame (e.g. temporarily occluded or missed
+        by the detector). Tracks are dropped once the time since the last
+        matching detection exceeds `lost_track_buffer` (scaled by
+        `frame_rate`).
+
+        Unlike the `sv.Detections` returned by `update()`, the result carries
+        only `xyxy` and `tracker_id`. No `confidence` or `class_id` is
+        attached because predicted boxes have no associated detection score.
+
+        Returns:
+            `sv.Detections` with Kalman-predicted `xyxy` and `tracker_id` for
+            each alive track. Immature tracks that have not yet reached
+            `minimum_consecutive_frames` appear with `tracker_id == -1`.
+            Returns an empty `sv.Detections` (with an empty int `tracker_id`
+            array) when no tracks are alive.
+        """
         ...
