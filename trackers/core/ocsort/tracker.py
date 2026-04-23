@@ -133,11 +133,8 @@ class OCSORTTracker(BaseTracker):
                     unmatched_tracks.remove(row)
                     unmatched_detections.remove(col)
 
-        return (
-            matched_indices,
-            list(unmatched_tracks),
-            list(unmatched_detections),
-        )
+        # Return sorted lists for deterministic order across CPython versions.
+        return matched_indices, sorted(unmatched_tracks), sorted(unmatched_detections)
 
     def _spawn_new_tracklets(self, boxes: np.ndarray) -> None:
         """Create new tracklets from bounding boxes.

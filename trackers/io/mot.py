@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TextIO
 
 import numpy as np
 import supervision as sv
@@ -418,9 +419,9 @@ def _prepare_mot_sequence(
 class _MOTOutput:
     """Context manager for MOT format file writing."""
 
-    def __init__(self, path: Path | None):
+    def __init__(self, path: Path | None) -> None:
         self.path = path
-        self._file = None
+        self._file: TextIO | None = None
 
     def write(self, frame_idx: int, detections: sv.Detections) -> None:
         """Write detections for a frame in MOT format."""
@@ -447,12 +448,12 @@ class _MOTOutput:
                 f"{conf:.4f},-1,-1,-1\n"
             )
 
-    def __enter__(self):
+    def __enter__(self) -> _MOTOutput:
         if self.path is not None:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self._file = open(self.path, "w")
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         if self._file is not None:
             self._file.close()

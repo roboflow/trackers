@@ -11,6 +11,7 @@ import argparse
 import sys
 from contextlib import nullcontext
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import supervision as sv
@@ -22,6 +23,9 @@ from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
 from trackers.scripts.progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.utils.device import _best_device
+
+if TYPE_CHECKING:
+    from inference_models import AnyModel
 
 # Defaults
 DEFAULT_MODEL = "rfdetr-nano"
@@ -555,7 +559,7 @@ def _init_model(
     *,
     device: str = DEFAULT_DEVICE,
     api_key: str | None = None,
-):
+) -> AnyModel:
     """Load detection model via inference-models.
 
     Args:
@@ -585,7 +589,7 @@ def _init_model(
     )
 
 
-def _run_model(model, frame: np.ndarray, confidence: float) -> sv.Detections:
+def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Detections:
     """Run model inference and return sv.Detections."""
     predictions = model(frame)
     if not predictions:
@@ -627,7 +631,7 @@ def _extract_tracker_params(
     return params
 
 
-def _init_tracker(tracker_id: str, **kwargs) -> BaseTracker:
+def _init_tracker(tracker_id: str, **kwargs: object) -> BaseTracker:
     """Create tracker instance from registry.
 
     Args:

@@ -85,9 +85,9 @@ class SORTTracker(BaseTracker):
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
-    ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
+    ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
-        Associate detections to trackers based on IOU
+        Associate detections to trackers based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
@@ -112,13 +112,14 @@ class SORTTracker(BaseTracker):
                     unmatched_trackers.remove(row)
                     unmatched_detections.remove(col)
 
-        return matched_indices, unmatched_trackers, unmatched_detections
+        # Return sorted lists for deterministic order across CPython versions.
+        return matched_indices, sorted(unmatched_trackers), sorted(unmatched_detections)
 
     def _spawn_new_trackers(
         self,
         confidences: np.ndarray | None,
         detection_boxes: np.ndarray,
-        unmatched_detections: set[int],
+        unmatched_detections: list[int],
     ) -> None:
         for detection_idx in unmatched_detections:
             if (
