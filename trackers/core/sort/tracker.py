@@ -195,15 +195,6 @@ class SORTTracker(BaseTracker):
         self.trackers = []
         SORTKalmanBoxTracker.count_id = 0
 
-    @property
-    def tracked_objects(self) -> sv.Detections:
-        """All alive tracks with Kalman-predicted bounding boxes."""
-        if not self.trackers:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
-        xyxy = np.array([t.get_state_bbox() for t in self.trackers], dtype=np.float32)
-        tracker_ids = np.array([t.tracker_id for t in self.trackers], dtype=int)
-        result = sv.Detections(xyxy=xyxy)
-        result.tracker_id = tracker_ids
-        return result
+    def _alive_tracklets(self) -> list:
+        """Return the trackers currently considered alive."""
+        return self.trackers

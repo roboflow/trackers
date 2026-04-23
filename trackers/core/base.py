@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, ClassVar, Union, get_args, get_origin
 
+import numpy as np
 import supervision as sv
 
 
@@ -352,8 +353,12 @@ class BaseTracker(ABC):
         """
         pass
 
-    @property
     @abstractmethod
+    def _alive_tracklets(self) -> list:
+        """Return the tracklets the tracker currently considers alive."""
+        pass
+
+    @property
     def tracked_objects(self) -> sv.Detections:
         """All alive tracks with Kalman-predicted bounding boxes.
 
@@ -375,6 +380,22 @@ class BaseTracker(ABC):
             assignment before confirmation is tracker-implementation specific.
             Returns an empty `sv.Detections` (with an empty int `tracker_id`
             array) when no tracks are alive.
-            Note: the exact set of alive tracks depends on each tracker internal pruning logic; consult the specific tracker documentation for precise semantics.
+            Note: the exact set of alive tracks depends on each tracker's
+            internal pruning logic; consult the specific tracker's
+            documentation for precise semantics.
         """
-        ...
+        tracklets = self._alive_tracklets()
+        if not tracklets:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
+
+        xyxy = np.array(
+            [tracklet.get_state_bbox() for tracklet in tracklets], dtype=np.float32
+        )
+        tracker_ids = np.array(
+            [tracklet.tracker_id for tracklet in tracklets], dtype=int
+        )
+        result = sv.Detections(xyxy=xyxy)
+        result.tracker_id = tracker_ids
+        return result
