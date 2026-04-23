@@ -5,9 +5,108 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from __future__ import annotations
+
+import argparse
 import json
 import sys
 from pathlib import Path
+
+
+def add_tune_subparser(subparsers: argparse._SubParsersAction) -> None:
+    """Add the tune subcommand to the argument parser."""
+    parser = subparsers.add_parser(
+        "tune",
+        help="Tune tracker hyperparameters via Optuna.",
+        description=(
+            "Run Optuna-based hyperparameter optimisation for a registered "
+            "tracker using pre-computed detections and ground-truth MOT files."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--tracker",
+        required=True,
+        metavar="ID",
+        help="Tracker ID to tune (e.g. bytetrack, sort, ocsort).",
+    )
+    parser.add_argument(
+        "--gt-dir",
+        type=Path,
+        required=True,
+        metavar="DIR",
+        help="Directory containing ground-truth MOT files.",
+    )
+    parser.add_argument(
+        "--detections-dir",
+        type=Path,
+        required=True,
+        metavar="DIR",
+        help=(
+            "Directory containing pre-computed detection files in MOT flat "
+            "format (one {seq}.txt per sequence)."
+        ),
+    )
+    parser.add_argument(
+        "--objective",
+        default="HOTA",
+        choices=["MOTA", "HOTA", "IDF1"],
+        help="Scalar metric to maximise. Default: HOTA.",
+    )
+    parser.add_argument(
+        "--n-trials",
+        type=int,
+        default=100,
+        metavar="N",
+        help="Number of Optuna trials to run. Default: 100.",
+    )
+    parser.add_argument(
+        "--metrics",
+        nargs="+",
+        default=["CLEAR"],
+        choices=["CLEAR", "HOTA", "Identity"],
+        help=(
+            "Metric families to compute. Default: CLEAR. The family required "
+            "by --objective is added automatically if missing."
+        ),
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="IoU threshold for CLEAR and Identity matching. Default: 0.5.",
+    )
+    parser.add_argument(
+        "--seqmap",
+        type=Path,
+        metavar="PATH",
+        help="Sequence map file listing sequences to evaluate.",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        metavar="PATH",
+        help="Output file for best parameters (JSON format).",
+    )
+
+    parser.set_defaults(func=run_tune)
+
+
+def run_tune(args: argparse.Namespace) -> int:
+    """Execute the tune command."""
+    return tune(
+        tracker=args.tracker,
+        gt_dir=args.gt_dir,
+        detections_dir=args.detections_dir,
+        objective=args.objective,
+        n_trials=args.n_trials,
+        metrics=args.metrics,
+        threshold=args.threshold,
+        seqmap=args.seqmap,
+        output=args.output,
+    )
 
 
 def tune(
