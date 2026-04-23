@@ -370,7 +370,7 @@ class BaseTracker(ABC):
         `frame_rate`).
 
         Unlike the `sv.Detections` returned by `update()`, the result carries
-        only `xyxy` and `tracker_id`. No `confidence` or `class_id` is
+        only `xyxy` and `tracker_id`. `confidence` and `class_id` are `None`
         attached because predicted boxes have no associated detection score.
 
         Returns:
