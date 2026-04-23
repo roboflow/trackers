@@ -203,4 +203,6 @@ class SORTTracker(BaseTracker):
             return result
         xyxy = np.array([t.get_state_bbox() for t in self.trackers], dtype=np.float32)
         tracker_ids = np.array([t.tracker_id for t in self.trackers], dtype=int)
-        return sv.Detections(xyxy=xyxy, tracker_id=tracker_ids)
+        result = sv.Detections(xyxy=xyxy)
+        result.tracker_id = tracker_ids
+        return result
