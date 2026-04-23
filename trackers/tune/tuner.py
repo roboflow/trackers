@@ -48,15 +48,17 @@ class Tuner:
             listed sequences are evaluated.
 
     Examples:
-        >>> from trackers.tune import Tuner  # doctest: +SKIP
-        >>>
-        >>> tuner = Tuner(  # doctest: +SKIP
-        ...     tracker_id="bytetrack",
-        ...     gt_dir="data/gt/",
-        ...     detections_dir="data/det/",
-        ...     n_trials=50,
-        ... )
-        >>> best_params = tuner.run()  # doctest: +SKIP
+        Tune ByteTrack hyperparameters on a local dataset::
+
+            from trackers.tune import Tuner
+
+            tuner = Tuner(
+                tracker_id="bytetrack",
+                gt_dir="data/gt/",
+                detections_dir="data/det/",
+                n_trials=50,
+            )
+            best_params = tuner.run()
     """
 
     def __init__(
@@ -104,6 +106,7 @@ class Tuner:
         self._n_trials = n_trials
         self._threshold = threshold
         self._sequences = _discover_sequences(self._detections_dir, seqmap)
+        self.study: optuna.Study | None = None
 
         if not self._sequences:
             raise ValueError(f"No sequences found in {self._detections_dir}")
@@ -232,7 +235,8 @@ def _extract_metric(result: BenchmarkResult, metric: str) -> float:
             ``"IDF1"``).
 
     Returns:
-        The metric value as a float."""
+        The metric value as a float.
+    """
     agg = result.aggregate
     for metrics_obj in (agg.CLEAR, agg.HOTA, agg.Identity):
         if metrics_obj is None:
