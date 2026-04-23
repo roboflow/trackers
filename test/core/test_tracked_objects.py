@@ -94,3 +94,12 @@ def test_tracked_objects_drops_after_expiry(tracker_id: str) -> None:
     expired = tracker.tracked_objects
     assert len(expired) == 0
     assert expired.tracker_id.size == 0
+
+
+@pytest.mark.parametrize("tracker_id", _TRACKER_IDS)
+def test_tracked_objects_empty_before_update(tracker_id: str) -> None:
+    """Before the first update, no tracked objects are exposed."""
+    tracker = _instantiate(tracker_id)
+
+    assert len(tracker.tracked_objects) == 0
+    assert tracker.tracked_objects.tracker_id.size == 0
