@@ -189,7 +189,7 @@ class ByteTrackTracker(BaseTracker):
             out_tracker_ids,
         )
 
-        self.tracks = _get_alive_tracklets(  # type: ignore[assignment]
+        self.tracks = _get_alive_tracklets(
             tracklets=self.tracks,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
             maximum_frames_without_update=self.maximum_frames_without_update,

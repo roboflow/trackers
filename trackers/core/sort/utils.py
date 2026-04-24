@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------
 
 from collections.abc import Sequence
+from typing import TypeVar
 
 import numpy as np
 import supervision as sv
@@ -12,12 +13,14 @@ import supervision as sv
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.base_tracklet import BaseTracklet
 
+T_SORTTracklet = TypeVar("T_SORTTracklet", bound="SORTTracklet")
+
 
 def _get_alive_tracklets(
-    tracklets: Sequence[SORTTracklet],
+    tracklets: Sequence[T_SORTTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
-) -> list[SORTTracklet]:
+) -> list[T_SORTTracklet]:
     """
     Remove dead or immature lost tracklets and get alive trackers
     that are within `maximum_frames_without_update` AND (it's mature OR

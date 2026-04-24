@@ -205,7 +205,7 @@ class SORTTracker(BaseTracker):
         )
 
         # Remove dead tracklets
-        self.tracks = _get_alive_tracklets(  # type: ignore[assignment]
+        self.tracks = _get_alive_tracklets(
             self.tracks,
             self.minimum_consecutive_frames,
             self.maximum_frames_without_update,
