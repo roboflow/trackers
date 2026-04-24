@@ -45,8 +45,11 @@ class Tuner:
             ``load_mot_file()`` applies its default values.
         metrics: Metric families to compute. Supported values are
             ``["CLEAR", "HOTA", "Identity"]``. Defaults to ``["CLEAR"]``.
+            The family required by ``objective`` is added automatically if
+            missing (e.g. ``objective="HOTA"`` adds ``"HOTA"`` to metrics).
         objective: Scalar metric field to maximise (e.g. ``"MOTA"``,
-            ``"HOTA"``, ``"IDF1"``). Defaults to ``"MOTA"``.
+            ``"HOTA"``, ``"IDF1"``). Case-insensitive. Defaults to
+            ``"MOTA"``.
         n_trials: Number of Optuna trials to run. Defaults to ``100``.
         threshold: IoU threshold forwarded to ``evaluate_mot_sequences``.
             Defaults to ``0.5``.
@@ -107,9 +110,20 @@ class Tuner:
         self._search_space: dict[str, dict] = search_space
         self._gt_dir = Path(gt_dir)
         self._detections_dir = Path(detections_dir)
-        self._metrics = metrics or ["CLEAR"]
-        self._objective_metric = objective
+        self._metrics = list(metrics) if metrics else ["CLEAR"]
+        self._objective_metric = objective.upper()
         self._n_trials = n_trials
+
+        # Auto-add the metric family required by the chosen objective so
+        # callers don't need to remember the mapping themselves.
+        _objective_to_family = {
+            "MOTA": "CLEAR",
+            "HOTA": "HOTA",
+            "IDF1": "Identity",
+        }
+        required_family = _objective_to_family.get(self._objective_metric)
+        if required_family and required_family not in self._metrics:
+            self._metrics = [*self._metrics, required_family]
         self._threshold = threshold
         self._sequences = _discover_sequences(self._detections_dir, seqmap)
         self.study: optuna.Study | None = None
