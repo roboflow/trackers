@@ -57,7 +57,7 @@ class SORTTracker(BaseTracker):
             detections to existing tracks. Higher values require more overlap.
         state_estimator_class: State estimator class to use for Kalman filter.
             Defaults to `XYXYStateEstimator`. Can also use
-            `XYXYStateEstimator` for corner-based representation.
+            `XCYCSRStateEstimator` for center-based representation.
     """
 
     tracker_id = "sort"
@@ -83,6 +83,23 @@ class SORTTracker(BaseTracker):
         # Active tracklets
         self.tracks: list[SORTTracklet] = []
 
+    @property
+    def tracks(self) -> list[SORTTracklet]:
+        """Backward-compatible alias for active SORT tracklets."""
+        return self.tracklets
+
+    @tracks.setter
+    def tracks(self, value: list[SORTTracklet]) -> None:
+        self.tracklets = value
+
+    @property
+    def trackers(self) -> list[SORTTracklet]:
+        """Backward-compatible alias for active SORT tracklets."""
+        return self.tracklets
+
+    @trackers.setter
+    def trackers(self, value: list[SORTTracklet]) -> None:
+        self.tracklets = value
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
     ) -> tuple[list[tuple[int, int]], set[int], set[int]]:

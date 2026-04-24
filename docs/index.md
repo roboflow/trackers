@@ -175,8 +175,6 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
-    [![](url-to-image)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
-
     End-to-end example showing how to run RF-DETR detection with the OC-SORT tracker.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)

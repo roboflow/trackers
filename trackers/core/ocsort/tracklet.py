@@ -53,7 +53,7 @@ class OCSORTTracklet(BaseTracklet):
             initial_bbox: Initial bounding box `[x1, y1, x2, y2]`.
             state_estimator_class: State estimator class to use. Instantiated
                 with *initial_bbox*. Defaults to
-                `XCYCSRKalmanFilter`.
+                `XCYCSRStateEstimator`.
             delta_t: Number of timesteps back to look for velocity estimation.
                 Higher values use observations further in the past to estimate
                 motion direction, providing more stable velocity estimates.

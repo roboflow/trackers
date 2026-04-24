@@ -151,8 +151,8 @@ The aspect ratio `r = w / h` is carried forward unchanged. This acts as a regula
 
 We can also benchmark the trackers using the different State Estimators and we get:
 
-- In **Dancetrack**, with defaults parameters all trackers perform better with XYXYStateEstimator, but with tuned parameters, SORT tracker with XCYCSRStateEstimator gets +0.8% HOTA.
-- In **Soccernet dataset**, with defaults parameters SORT tracker with XYXYStateEstimator has ~5% more HOTA than using XCYC, when tuning parameters with grid search this difference is reduced to 2%. For the other trackers we dont find significant advantages of using a different StateEstimators, just having up to 0.2% better HOTA.
+- In **Dancetrack**, with default parameters all trackers perform better with XYXYStateEstimator, but with tuned parameters, SORT tracker with XCYCSRStateEstimator gets +0.8% HOTA.
+- In the **Soccernet dataset**, with default parameters, SORT tracker with XYXYStateEstimator has ~5% more HOTA than using XCYC. When tuning parameters with grid search, this difference is reduced to 2%. For the other trackers, we don't find significant advantages of using a different StateEstimators, just having up to 0.2% better HOTA.
 - In **SportsMOT**, for OC-SORT and ByteTrack, the StateEstimator doesn't affect the performance, while for SORT XYXYStateEstimator gives a small advantage of ~2% HOTA with default parameters and 0.4% when tuning both.
 - In **MOT17**, with default parameters XYXYStateEstimator performs slightly better than XCYCSRStateEstimator with SORT and ByteTrack with up to 0.7% better results, but for OC-SORT XCYCSRStateEstimator gives 0.2% better HOTA. When tuning parameters, XCYCSRStateEstimator performs the best with all the trackers by a small margin, ranging in 0.2-0.4% HOTA.
 
