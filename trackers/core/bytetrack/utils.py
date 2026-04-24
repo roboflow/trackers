@@ -5,19 +5,28 @@
 # ------------------------------------------------------------------------
 
 from collections.abc import Sequence
+from typing import TypeVar
 
 from trackers.utils.base_tracklet import BaseTracklet
 
+T_ByteTrackTracklet = TypeVar("T_ByteTrackTracklet", bound="BaseTracklet")
+
 
 def _get_alive_tracklets(
-    tracklets: Sequence[BaseTracklet],
+    tracklets: Sequence[T_ByteTrackTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
-) -> list[BaseTracklet]:
+) -> list[T_ByteTrackTracklet]:
     """
     Remove dead or immature lost tracklets and get alive trackers
     that are within `maximum_frames_without_update` AND (it's mature OR
     it was just updated).
+
+    Note:
+        ByteTrack uses `number_of_successful_consecutive_updates` (must stay
+        consecutive) for maturity, unlike SORT which uses total
+        `number_of_successful_updates`. This matches the original ByteTrack
+        paper's "confirmed track" semantics.
 
     Args:
         tracklets: List of BaseTracklet objects.

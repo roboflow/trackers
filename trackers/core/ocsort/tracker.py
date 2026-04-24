@@ -4,7 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from copy import deepcopy
 from typing import ClassVar
 
 import numpy as np
@@ -264,8 +263,7 @@ class OCSORTTracker(BaseTracker):
         # Build output — single index into the filtered detections preserves
         # all metadata (confidence, class_id, mask, data dict).
         if out_det_indices:
-            selected_detections = detections[out_det_indices]
-            result = deepcopy(selected_detections)
+            result = detections[out_det_indices]
             result.tracker_id = np.array(out_tracker_ids, dtype=int)
         else:
             result = sv.Detections.empty()

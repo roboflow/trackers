@@ -24,9 +24,14 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-yaml
+        args: ["--unsafe"]
       - id: check-toml
       - id: check-case-conflict
       - id: check-added-large-files
+        args: ["--maxkb=200", "--enforce-all"]
+        exclude: uv.lock
       - id: detect-private-key
       - id: pretty-format-json
         args: ['--autofix', '--no-sort-keys', '--indent=4']
@@ -44,7 +49,7 @@ repos:
     rev: 1.0.0
     hooks:
       - id: mdformat
-        exclude: ^(docs/reference/|\.reports/|\.plans/|\.temp/|\.notes/)
+        exclude: ^(docs/reference/)
         additional_dependencies:
           - "mdformat-mkdocs[recommended]>=2.1.0"
           - "mdformat-ruff"
