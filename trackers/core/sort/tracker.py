@@ -110,6 +110,7 @@ class SORTTracker(BaseTracker):
     @trackers.setter
     def trackers(self, value: list[SORTTracklet]) -> None:
         self.tracklets = value
+
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
@@ -140,7 +141,11 @@ class SORTTracker(BaseTracker):
                     unmatched_detections.remove(col)
 
         # Return sorted lists for deterministic order across CPython versions.
-        return matched_indices, sorted(unmatched_tracklets), sorted(unmatched_detections)
+        return (
+            matched_indices,
+            sorted(unmatched_tracklets),
+            sorted(unmatched_detections),
+        )
 
     def _spawn_new_tracklets(
         self,
