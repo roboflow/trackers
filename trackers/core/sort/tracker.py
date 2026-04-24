@@ -136,7 +136,7 @@ class SORTTracker(BaseTracker):
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
         if len(self.trackers) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
+            result = detections[np.arange(len(detections))]
             result.tracker_id = np.array([], dtype=int)
             return result
 
