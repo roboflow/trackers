@@ -42,6 +42,7 @@ class ByteTrackTracklet(BaseTracklet):
         """Predict next bounding box position."""
         self.state_estimator.predict()
         self.age += 1
+        self.time_since_update += 1
         return self.state_estimator.state_to_bbox()
 
     def get_state_bbox(self) -> np.ndarray:

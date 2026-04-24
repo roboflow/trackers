@@ -257,8 +257,8 @@ class OCSORTTracker(BaseTracker):
         # Build output — single index into the filtered detections preserves
         # all metadata (confidence, class_id, mask, data dict).
         if out_det_indices:
-            copied_detections = deepcopy(detections)
-            result = copied_detections[out_det_indices]
+            selected_detections = detections[out_det_indices]
+            result = deepcopy(selected_detections)
             result.tracker_id = np.array(out_tracker_ids, dtype=int)
         else:
             result = sv.Detections.empty()
