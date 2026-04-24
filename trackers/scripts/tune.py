@@ -134,6 +134,9 @@ def tune(
         threshold: IoU threshold for CLEAR and Identity matching.
         seqmap: Sequence map file listing sequences to evaluate.
         output: Output file path for best parameters (JSON format).
+
+    Returns:
+        Exit code: 0 on success, 1 on error.
     """
     if metrics is None:
         metrics = ["CLEAR"]
