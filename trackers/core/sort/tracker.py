@@ -146,8 +146,9 @@ class SORTTracker(BaseTracker):
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
         if len(self.trackers) == 0 and len(detections) == 0:
-            detections.tracker_id = np.array([], dtype=int)
-            return detections
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
 
         detection_boxes = (
             detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
@@ -185,8 +186,11 @@ class SORTTracker(BaseTracker):
                     tracker.tracker_id = SORTKalmanBoxTracker.get_next_tracker_id()
                 tracker_ids[det_idx] = tracker.tracker_id
 
-        detections.tracker_id = tracker_ids
-        return detections
+        # Return a fresh sv.Detections rather than mutating the caller's object,
+        # matching the aliasing semantics of ByteTrack and OC-SORT.
+        result = detections[np.arange(len(detections))]
+        result.tracker_id = tracker_ids
+        return result
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
