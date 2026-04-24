@@ -160,7 +160,7 @@ But lets visualize where these differences are, here is an example where using X
 
 <div style="display: flex; justify-content: center;">
   <video style="width: 50%; height: auto;" controls>
-    <source src="../../assets/SNMOT-118-single-track-xyxy-vs-xcycsr.mp4" type="video/mp4">
+    <source src="https://github.com/user-attachments/assets/219acc15-c6c5-4bf2-93d2-8c1b5523f4f1" type="video/mp4">
   </video>
 </div>
 
