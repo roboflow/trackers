@@ -90,7 +90,7 @@ def _iter_image_folder_frames(
 class _VideoOutput:
     """Context manager for lazy video file writing."""
 
-    def __init__(self, path: Path | None, *, fps: float = _DEFAULT_OUTPUT_FPS):
+    def __init__(self, path: Path | None, *, fps: float = _DEFAULT_OUTPUT_FPS) -> None:
         self.path = path
         self.fps = fps
         self._writer: cv2.VideoWriter | None = None
@@ -137,7 +137,7 @@ class _VideoOutput:
 class _DisplayWindow:
     """Context manager for OpenCV display window with resizable output."""
 
-    def __init__(self, window_name: str = "Tracking"):
+    def __init__(self, window_name: str = "Tracking") -> None:
         self.window_name = window_name
         self._quit_requested = False
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
@@ -159,8 +159,8 @@ class _DisplayWindow:
         """Return True if user pressed quit key."""
         return self._quit_requested
 
-    def __enter__(self):
+    def __enter__(self) -> _DisplayWindow:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         cv2.destroyWindow(self.window_name)

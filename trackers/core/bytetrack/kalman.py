@@ -51,7 +51,7 @@ class ByteTrackKalmanBoxTracker:
         cls.count_id += 1
         return next_id
 
-    def __init__(self, bbox: np.ndarray):
+    def __init__(self, bbox: np.ndarray) -> None:
         # Initialize with a temporary ID of -1
         # Will be assigned a real ID when the track is considered mature
         self.tracker_id = -1

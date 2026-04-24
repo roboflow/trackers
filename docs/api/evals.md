@@ -1,3 +1,7 @@
+---
+description: Python API reference for evaluation metrics in Roboflow Trackers — HOTA, IDF1, and MOTA computation for MOT sequence and multi-sequence evaluation.
+---
+
 # Evals API
 
 ::: trackers.eval.evaluate.evaluate_mot_sequence
