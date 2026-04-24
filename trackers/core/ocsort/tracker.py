@@ -5,7 +5,6 @@
 # ------------------------------------------------------------------------
 
 from copy import deepcopy
-
 from typing import ClassVar
 
 import numpy as np

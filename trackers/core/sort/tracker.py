@@ -122,7 +122,11 @@ class SORTTracker(BaseTracker):
                     unmatched_detections.remove(col)
 
         # Return sorted lists for deterministic order across CPython versions.
-        return matched_indices, sorted(unmatched_tracklets), sorted(unmatched_detections)
+        return (
+            matched_indices,
+            sorted(unmatched_tracklets),
+            sorted(unmatched_detections),
+        )
 
     def _spawn_new_tracklets(
         self,
