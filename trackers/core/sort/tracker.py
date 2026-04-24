@@ -200,9 +200,7 @@ class SORTTracker(BaseTracker):
             if detections.confidence is not None
             else np.ones(len(detections))
         )
-        self._spawn_new_tracklets(
-            confidences, detection_boxes, unmatched_detections
-        )
+        self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
         # Remove dead tracklets
         self.tracks = _get_alive_tracklets(
