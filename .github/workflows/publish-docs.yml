@@ -73,3 +73,46 @@ jobs:
           latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
           uv run mike deploy --push --update-aliases $latest_tag latest
           uv run mike set-default --push latest
+
+      - name: 🌐 Inject GEO root files into gh-pages
+        # llms.txt, robots.txt, and the IndexNow key file live under docs/ and land in the
+        # versioned path (e.g. /latest/) via mike. Crawlers and IndexNow verification require
+        # these at the site root, so copy them to the gh-pages root after every deploy.
+        # IndexNow key: bc061e8ae9e449d7acb9f86d29637e58
+        # Must stay in sync: docs/bc061e8ae9e449d7acb9f86d29637e58.txt + main.html meta tag + notify step below.
+        if: success()
+        run: |
+          cp docs/robots.txt /tmp/robots.txt
+          cp docs/llms.txt /tmp/llms.txt
+          cp docs/bc061e8ae9e449d7acb9f86d29637e58.txt /tmp/indexnow.txt
+          git fetch origin gh-pages 2>/dev/null || true
+          git stash --include-untracked 2>/dev/null || true
+          git checkout gh-pages
+          cp /tmp/robots.txt robots.txt
+          cp /tmp/llms.txt llms.txt
+          cp /tmp/indexnow.txt bc061e8ae9e449d7acb9f86d29637e58.txt
+          git add robots.txt llms.txt bc061e8ae9e449d7acb9f86d29637e58.txt
+          git diff --cached --quiet || git commit -m "chore: update GEO root files (robots.txt, llms.txt, indexnow)"
+          git push origin gh-pages
+          git checkout -
+
+      - name: 📡 Notify IndexNow
+        if: success()
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.indexnow.org/IndexNow" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            -d '{
+              "host": "trackers.roboflow.com",
+              "key": "bc061e8ae9e449d7acb9f86d29637e58",
+              "keyLocation": "https://trackers.roboflow.com/bc061e8ae9e449d7acb9f86d29637e58.txt",
+              "urlList": [
+                "https://trackers.roboflow.com/latest/",
+                "https://trackers.roboflow.com/latest/trackers/comparison/",
+                "https://trackers.roboflow.com/latest/trackers/sort/",
+                "https://trackers.roboflow.com/latest/trackers/bytetrack/",
+                "https://trackers.roboflow.com/latest/trackers/ocsort/",
+                "https://trackers.roboflow.com/latest/learn/track/",
+                "https://trackers.roboflow.com/latest/learn/evaluate/",
+                "https://trackers.roboflow.com/latest/api/trackers/"
+              ]
+            }' || true
