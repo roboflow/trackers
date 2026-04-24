@@ -202,8 +202,13 @@ class SORTTracker(BaseTracker):
         # Update non matched for increasing time_since_update
         for index in unmatched_tracklets:
             self.tracks[index].update(None)
+        confidences = (
+            detections.confidence
+            if detections.confidence is not None
+            else np.ones(len(detections))
+        )
         self._spawn_new_tracklets(
-            detections.confidence, detection_boxes, unmatched_detections
+            confidences, detection_boxes, unmatched_detections
         )
 
         # Remove dead tracklets
