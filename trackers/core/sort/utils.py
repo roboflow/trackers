@@ -13,7 +13,6 @@ import supervision as sv
 
 from trackers.core.bytetrack.kalman import ByteTrackKalmanBoxTracker
 from trackers.core.sort.kalman import SORTKalmanBoxTracker
-from trackers.utils.supervision import box_iou_batch
 
 KalmanBoxTrackerType = TypeVar(
     "KalmanBoxTrackerType", bound=SORTKalmanBoxTracker | ByteTrackKalmanBoxTracker
@@ -71,7 +70,7 @@ def get_iou_matrix(
         predicted_boxes = np.zeros((len(trackers), 4), dtype=np.float32)
 
     if len(trackers) > 0 and len(detection_boxes) > 0:
-        iou_matrix = box_iou_batch(predicted_boxes, detection_boxes)
+        iou_matrix = sv.box_iou_batch(predicted_boxes, detection_boxes)
     else:
         iou_matrix = np.zeros((len(trackers), len(detection_boxes)), dtype=np.float32)
 
@@ -117,7 +116,7 @@ def update_detections_with_track_ids(
         predicted_boxes = np.zeros((len(trackers), 4), dtype=np.float32)
 
     if len(trackers) > 0 and len(detection_boxes) > 0:
-        iou_matrix_final = box_iou_batch(predicted_boxes, detection_boxes)
+        iou_matrix_final = sv.box_iou_batch(predicted_boxes, detection_boxes)
 
     row_indices, col_indices = np.where(iou_matrix_final > minimum_iou_threshold)
     sorted_pairs = sorted(
