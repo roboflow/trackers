@@ -168,6 +168,35 @@ class TestTunerInit:
         tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap)
         assert tuner._sequences == ["seq1"]
 
+    @pytest.mark.parametrize(
+        "objective,initial_metrics,expected_metrics",
+        [
+            ("HOTA", ["CLEAR"], ["CLEAR", "HOTA"]),
+            ("IDF1", ["CLEAR"], ["CLEAR", "Identity"]),
+            ("MOTA", ["CLEAR"], ["CLEAR"]),
+            ("HOTA", ["CLEAR", "HOTA"], ["CLEAR", "HOTA"]),
+        ],
+    )
+    def test_auto_adds_required_metric_family(
+        self,
+        tmp_path: Path,
+        objective: str,
+        initial_metrics: list[str],
+        expected_metrics: list[str],
+    ) -> None:
+        """Tuner auto-adds the metric family required by the objective."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner(
+            "bytetrack", gt_dir, det_dir, metrics=initial_metrics, objective=objective
+        )
+        assert tuner._metrics == expected_metrics
+
+    def test_objective_normalized_to_uppercase(self, tmp_path: Path) -> None:
+        """Objective string is normalized to uppercase regardless of input case."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner("bytetrack", gt_dir, det_dir, objective="mota")
+        assert tuner._objective_metric == "MOTA"
+
 
 class TestTunerRun:
     def test_run_returns_dict_with_search_space_keys(self, tmp_path: Path) -> None:
@@ -197,6 +226,7 @@ class TestTunerRun:
         reset_calls: list[int] = []
         gt_dir, det_dir = _setup_dirs(tmp_path)
         (det_dir / "seq2.txt").write_text(_MOT_LINE)  # two sequences → two resets
+        (gt_dir / "seq2.txt").write_text(_MOT_LINE)
 
         original_reset = SORTTracker.reset
 
