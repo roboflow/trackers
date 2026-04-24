@@ -26,6 +26,12 @@ def _get_alive_tracklets(
     that are within `maximum_frames_without_update` AND (it's mature OR
     it was just updated).
 
+    Note:
+        SORT uses total `number_of_successful_updates` (cumulative) for maturity,
+        unlike ByteTrack which uses `number_of_successful_consecutive_updates`.
+        This means a briefly-lost-and-recovered track retains its maturity in SORT
+        but resets to immature in ByteTrack.
+
     Args:
         tracklets: List of SORTTracklet objects.
         minimum_consecutive_frames: Number of consecutive frames that an object

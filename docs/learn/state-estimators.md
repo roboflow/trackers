@@ -85,7 +85,7 @@ vy2' = vy2
 
 Because each corner moves freely, the box width and height can change between frames. This makes XYXY a natural fit when objects change shape — due to camera perspective, non-rigid motion, or inconsistent detections.
 
-**In Trackers, this is the default** for `ByteTrackTracker` and `SORTTracker`.
+**In Trackers, this is the configurable default** for `ByteTrackTracker` and `SORTTracker` via the `state_estimator_class` parameter. Note: previous versions used hand-rolled Kalman filters internally — `XYXYStateEstimator` is the new unified implementation introduced in this refactoring.
 
 ---
 
