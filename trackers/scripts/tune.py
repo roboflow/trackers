@@ -141,19 +141,6 @@ def tune(
     if metrics is None:
         metrics = ["CLEAR"]
 
-    # Normalize objective to uppercase so metric lookup is case-insensitive
-    objective = objective.upper()
-
-    # Auto-add metric family required by the chosen objective
-    OBJECTIVE_TO_FAMILY = {
-        "MOTA": "CLEAR",
-        "HOTA": "HOTA",
-        "IDF1": "Identity",
-    }
-    required_family = OBJECTIVE_TO_FAMILY.get(objective)
-    if required_family and required_family not in metrics:
-        metrics = [*list(metrics), required_family]
-
     from trackers.tune import Tuner
 
     try:
