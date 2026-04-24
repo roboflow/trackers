@@ -181,8 +181,12 @@ def tune(
         print(f"\nBest {objective}: {tuner.study.best_value:.4f}")
 
     if output:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(best_params, indent=2))
+        try:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(best_params, indent=2))
+        except OSError as e:
+            print(f"Error writing output: {e}", file=sys.stderr)
+            return 1
         print(f"\nResults saved to: {output}")
 
     return 0
