@@ -164,8 +164,8 @@ def tune(
             threshold=threshold,
             seqmap=seqmap,
         )
-    except (ValueError, ImportError) as e:
-        print(f"Error: {e}", file=sys.stderr)
+    except (ValueError, ImportError, FileNotFoundError) as e:
+        print(str(e), file=sys.stderr)
         return 1
 
     try:
