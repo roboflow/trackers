@@ -1,4 +1,5 @@
 ---
+title: SORT vs ByteTrack vs OC-SORT — MOT Benchmark Comparison | Trackers
 description: Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.
 ---
 
@@ -9,6 +10,10 @@ This page shows head-to-head performance of SORT, ByteTrack, and OC-SORT on stan
 !!! info "Benchmark version"
 
     Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT) or ground-truth oracle boxes (SoccerNet, DanceTrack). Parameters were tuned via grid search on held-out splits. See [Methodology](#methodology) for details.
+
+!!! note "Benchmark methodology"
+
+    Results measured using YOLOX detections (MOT17, SportsMOT) or oracle ground-truth boxes (SoccerNet, DanceTrack) with default and grid-searched parameters. Performance varies across detectors — see [Detection Quality Matters](../learn/detection-quality.md) for the impact of detector quality on tracking metrics.
 
 ## [MOT17](https://arxiv.org/abs/1603.00831)
 

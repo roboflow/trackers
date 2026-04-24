@@ -11,17 +11,21 @@ import argparse
 import sys
 from contextlib import nullcontext
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import supervision as sv
 
 from trackers import frames_from_source
 from trackers.core.base import BaseTracker
-from trackers.io.mot import _load_mot_file, _mot_frame_to_detections, _MOTOutput
+from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
 from trackers.scripts.progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.utils.device import _best_device
+
+if TYPE_CHECKING:
+    from inference_models import AnyModel
 
 # Defaults
 DEFAULT_MODEL = "rfdetr-nano"
@@ -292,7 +296,7 @@ def run_track(args: argparse.Namespace) -> int:
     # Create detection source
     if args.detections:
         model = None
-        detections_data = _load_mot_file(args.detections)
+        detections_data = load_mot_file(args.detections)
         class_names: list[str] = []
     else:
         model = _init_model(
@@ -555,7 +559,7 @@ def _init_model(
     *,
     device: str = DEFAULT_DEVICE,
     api_key: str | None = None,
-):
+) -> AnyModel:
     """Load detection model via inference-models.
 
     Args:
@@ -585,7 +589,7 @@ def _init_model(
     )
 
 
-def _run_model(model, frame: np.ndarray, confidence: float) -> sv.Detections:
+def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Detections:
     """Run model inference and return sv.Detections."""
     predictions = model(frame)
     if not predictions:
@@ -627,7 +631,7 @@ def _extract_tracker_params(
     return params
 
 
-def _init_tracker(tracker_id: str, **kwargs) -> BaseTracker:
+def _init_tracker(tracker_id: str, **kwargs: object) -> BaseTracker:
     """Create tracker instance from registry.
 
     Args:

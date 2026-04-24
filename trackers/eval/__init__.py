@@ -6,6 +6,10 @@
 
 """Evaluation metrics and utilities for tracking benchmarks."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from trackers.eval.box import box_ioa, box_iou
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
@@ -18,8 +22,11 @@ from trackers.eval.results import (
     SequenceResult,
 )
 
+if TYPE_CHECKING:
+    from trackers.eval.evaluate import evaluate_mot_sequence, evaluate_mot_sequences
 
-def __getattr__(name: str):
+
+def __getattr__(name: str) -> object:
     """Lazy imports for evaluate functions to avoid circular imports."""
     if name in ("evaluate_mot_sequence", "evaluate_mot_sequences"):
         from trackers.eval import evaluate as _evaluate

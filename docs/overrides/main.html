@@ -3,7 +3,7 @@
 {% block extrahead %}
 {{ super() }}
 
-{# ── GEO: JSON-LD + meta tags (page context required — skip for 404 and theme templates) #}
+{# ── GEO: JSON-LD + meta tags (page context required — skip for 404 and theme templates) ── #}
 {% if page %}
 
 {# ── Organization + SoftwareApplication JSON-LD (site-wide) ── #}
@@ -16,13 +16,17 @@
       "@id": "https://roboflow.com/#organization",
       "name": "Roboflow",
       "url": "https://roboflow.com",
-      "logo": "https://trackers.roboflow.com/assets/logo-trackers-violet.svg",
+      "description": "Roboflow builds computer vision infrastructure and tools for training and deploying vision AI models.",
+      "foundingDate": "2019",
+      "logo": "{{ 'assets/logo-trackers-violet.svg' | url }}",
       "sameAs": [
         "https://github.com/roboflow",
         "https://twitter.com/roboflow",
         "https://www.linkedin.com/company/roboflow-ai/",
         "https://www.youtube.com/roboflow",
-        "https://en.wikipedia.org/wiki/Roboflow"
+        "https://en.wikipedia.org/wiki/Roboflow",
+        "https://www.wikidata.org/wiki/Q117062679",
+        "https://www.crunchbase.com/organization/roboflow"
       ]
     },
     {
@@ -31,6 +35,8 @@
       "name": "Roboflow Trackers",
       "description": "A unified library for multi-object tracking with clean-room implementations of SORT, ByteTrack, and OC-SORT, designed to plug into any detection model via the supervision library.",
       "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Object Tracking",
+      "featureList": ["SORT tracking", "ByteTrack tracking", "OC-SORT tracking", "HOTA evaluation", "IDF1 evaluation", "MOTA evaluation", "MOT17 dataset support", "SportsMOT dataset support"],
       "operatingSystem": "Linux, macOS, Windows",
       "url": "https://trackers.roboflow.com",
       "downloadUrl": "https://pypi.org/project/trackers/",
@@ -49,6 +55,31 @@
 }
 </script>
 
+{# ── WebSite + SearchAction JSON-LD (homepage only) ── #}
+{% if page.url == '' or page.url == './' %}
+{% set canonical_site_url = config.site_url | default('https://trackers.roboflow.com/latest/', true) %}
+{% if not canonical_site_url.endswith('/') %}
+{% set canonical_site_url = canonical_site_url ~ '/' %}
+{% endif %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Roboflow Trackers",
+  "url": "{{ canonical_site_url }}",
+  "description": "Documentation for Roboflow Trackers — multi-object tracking library with SORT, ByteTrack, and OC-SORT implementations.",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "{{ canonical_site_url }}?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+{% endif %}
+
 {# ── Per-page TechArticle JSON-LD (injected by schema_inject.py hook) ── #}
 {% if page.meta and page.meta.json_ld_article %}
 <script type="application/ld+json">
@@ -56,8 +87,31 @@
 </script>
 {% endif %}
 
+{# ── Per-page FAQPage JSON-LD (injected by schema_inject.py hook — homepage only) ── #}
+{% if page.meta and page.meta.json_ld_faq %}
+<script type="application/ld+json">
+{{ page.meta.json_ld_faq | safe }}
+</script>
+{% endif %}
+
+{# ── Per-page BreadcrumbList JSON-LD (injected by schema_inject.py hook) ── #}
+{% if page.meta and page.meta.json_ld_breadcrumbs %}
+<script type="application/ld+json">
+{{ page.meta.json_ld_breadcrumbs | safe }}
+</script>
+{% endif %}
+
+{# ── Per-page Dataset JSON-LD (injected by schema_inject.py hook — comparison page only) ── #}
+{% if page.meta and page.meta.json_ld_datasets %}
+{% for ds_json in page.meta.json_ld_datasets %}
+<script type="application/ld+json">
+{{ ds_json | safe }}
+</script>
+{% endfor %}
+{% endif %}
+
 {# ── Open Graph meta tags ── #}
-<meta property="og:type" content="website" />
+<meta property="og:type" content="{% if page.url == '' or page.url == './' %}website{% else %}article{% endif %}" />
 <meta property="og:site_name" content="Roboflow Trackers" />
 <meta property="og:url" content="{{ page.canonical_url }}" />
 <meta property="og:title" content="{% if page.meta and page.meta.title %}{{ page.meta.title }}{% else %}{{ page.title }} — Roboflow Trackers{% endif %}" />
@@ -68,10 +122,6 @@
 {# ── IndexNow key (Bing/Yandex site ownership verification) ── #}
 {# Key file: docs/bc061e8ae9e449d7acb9f86d29637e58.txt — must stay in sync with workflow + this tag #}
 <meta name="indexnow-key" content="bc061e8ae9e449d7acb9f86d29637e58" />
-
-{# ── Bing Webmaster Tools verification ── #}
-{# Replace the content value with your key from https://www.bing.com/webmasters #}
-<meta name="msvalidate.01" content="REPLACE_WITH_BING_VERIFICATION_KEY" />
 
 {# ── Twitter / X Card meta tags ── #}
 <meta name="twitter:card" content="summary_large_image" />

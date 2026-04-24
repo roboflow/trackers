@@ -1,32 +1,29 @@
 ---
+title: OC-SORT — Observation-Centric SORT Tracker | Trackers
 comments: true
 description: OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes.
 ---
 
 # OC-SORT
 
-## Overview
+## What is OC-SORT?
 
 OC-SORT remains Simple, Online, and Real-Time like ([SORT](sort.md)) but improves robustness during occlusion and non-linear motion.
 It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These
 mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
 due to object stopping or short-term occlusion.
 
-## Comparison
+## How does OC-SORT compare to other trackers?
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
 |   MOT17   | 61.9 | 76.1 | 76.7 |
-| SportsMOT | 71.5 | 71.2 | 95.2 |
-| SoccerNet | 78.6 | 72.7 | 94.5 |
+| SportsMOT | 71.7 | 71.4 | 95.0 |
+| SoccerNet | 78.4 | 72.6 | 94.1 |
 
-## Watch It in Action
-
-<iframe width="100%" style="aspect-ratio: 16/9;" src="https://www.youtube.com/embed/u0k2dTZ0vfs" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
-## Algorithm
+## How does OC-SORT work?
 
 OC-SORT extends [SORT](sort.md) with three observation-centric mechanisms that address the linear motion assumption's failures during occlusion and non-linear trajectories. It retains the same Kalman filter and Hungarian algorithm backbone but adds corrections that use stored observations rather than relying solely on the filter's predicted state.
 
