@@ -8,6 +8,7 @@ from typing import ClassVar
 
 import numpy as np
 import supervision as sv
+from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -20,6 +21,11 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
 )
+
+
+@deprecated(target=None, deprecated_in="0.4", remove_in="1.0")
+def _access_trackers(self_: "SORTTracker") -> "list[SORTTracklet]":
+    return self_.tracks
 
 
 class SORTTracker(BaseTracker):
@@ -93,22 +99,9 @@ class SORTTracker(BaseTracker):
         self.tracks: list[SORTTracklet] = []
 
     @property
-    def tracks(self) -> list[SORTTracklet]:
-        """Backward-compatible alias for active SORT tracklets."""
-        return self.tracklets
-
-    @tracks.setter
-    def tracks(self, value: list[SORTTracklet]) -> None:
-        self.tracklets = value
-
-    @property
     def trackers(self) -> list[SORTTracklet]:
-        """Backward-compatible alias for active SORT tracklets."""
-        return self.tracklets
-
-    @trackers.setter
-    def trackers(self, value: list[SORTTracklet]) -> None:
-        self.tracklets = value
+        """Deprecated: use tracks instead."""
+        return _access_trackers(self)
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray

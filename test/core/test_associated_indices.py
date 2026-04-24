@@ -28,7 +28,7 @@ def _call_sort(
 ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
     """Call SORTTracker._get_associated_indices with n_tracks dummy tracks."""
     tracker = SORTTracker()
-    tracker.trackers = [None] * n_tracks  # type: ignore[list-item]
+    tracker.tracks = [None] * n_tracks  # type: ignore[list-item]
     detection_boxes = np.zeros((n_detections, 4))
     return tracker._get_associated_indices(iou_matrix, detection_boxes)
 
