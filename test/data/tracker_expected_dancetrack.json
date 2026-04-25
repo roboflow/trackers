@@ -8,8 +8,8 @@
     "bytetrack": {
         "HOTA": 80.603,
         "MOTA": 99.54,
-        "IDF1": 76.648,
-        "IDSW": 582
+        "IDF1": 77.413,
+        "IDSW": 569
     },
     "ocsort": {
         "HOTA": 78.004,
