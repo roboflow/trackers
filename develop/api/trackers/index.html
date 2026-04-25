@@ -853,6 +853,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../learn/state-estimators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Estimators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../learn/about/" class="md-nav__link">
         
   
@@ -1197,6 +1225,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#trackers.core.sort.tracker.SORTTracker.trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;trackers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#trackers.core.sort.tracker.SORTTracker.update" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1534,6 +1573,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#trackers.core.sort.tracker.SORTTracker.trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;trackers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#trackers.core.sort.tracker.SORTTracker.update" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1853,6 +1903,24 @@ detections to existing tracks. Higher values require more overlap.</p>
                   <code>0.3</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>state_estimator_class</code>
+            </td>
+            <td>
+                  <code><span title="type">type</span>[<span title="trackers.utils.state_representations.BaseStateEstimator">BaseStateEstimator</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>State estimator class to use for Kalman filter.
+Defaults to <code>XYXYStateEstimator</code>. Can also use
+<code>XCYCSRStateEstimator</code> for center-based representation.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.utils.state_representations.XYXYStateEstimator">XYXYStateEstimator</span></code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -1873,6 +1941,28 @@ detections to existing tracks. Higher values require more overlap.</p>
 
 
 
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="trackers.core.sort.tracker.SORTTracker.trackers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <code class="highlight language-python"><span class="n">trackers</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Deprecated: use tracks instead.</p>
+
+    </div>
+
+</div>
 
 
 
@@ -2135,6 +2225,24 @@ high and low confidence detections in the two-stage association.</p>
                   <code>0.6</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>state_estimator_class</code>
+            </td>
+            <td>
+                  <code><span title="type">type</span>[<span title="trackers.utils.state_representations.BaseStateEstimator">BaseStateEstimator</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>State estimator class to use for Kalman filter.
+Defaults to <code>XYXYStateEstimator</code>. Can also use
+<code>XCYCSRStateEstimator</code> for center-based representation.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.utils.state_representations.XYXYStateEstimator">XYXYStateEstimator</span></code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2170,7 +2278,7 @@ high and low confidence detections in the two-stage association.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Update tracker state with new detections and return tracked objects.
+        <p>Update tracks state with new detections and return tracked objects.
 Performs Kalman filter prediction, two-stage association (high then low
 confidence), and initializes new tracks for unmatched detections.</p>
 
@@ -2434,6 +2542,24 @@ during occlusion.</p>
             </td>
             <td>
                   <code>3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>state_estimator_class</code>
+            </td>
+            <td>
+                  <code><span title="type">type</span>[<span title="trackers.utils.state_representations.BaseStateEstimator">BaseStateEstimator</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>State estimator class to use for Kalman filter.
+Defaults to <code>XCYCSRStateEstimator</code>. Can also use
+<code>XYXYStateEstimator</code> for corner-based representation.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.utils.state_representations.XCYCSRStateEstimator">XCYCSRStateEstimator</span></code>
             </td>
           </tr>
       </tbody>
@@ -2964,6 +3090,10 @@ where <code>scale</code> is area and <code>aspect_ratio</code> is <code>width / 
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
         <script src="../../javascripts/pycon_copy.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
       
         <script src="../../javascripts/cli_builder_framework.js"></script>
       

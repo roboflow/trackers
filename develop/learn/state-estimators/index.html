@@ -6,19 +6,19 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Download MOT benchmark datasets — MOT17 and SportsMOT — with a single command for tracker evaluation and development.">
+        <meta name="description" content="A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/download/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/state-estimators/">
       
       
-        <link rel="prev" href="../track/">
+        <link rel="prev" href="../detection-quality/">
       
       
-        <link rel="next" href="../evaluate/">
+        <link rel="next" href="../about/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Download Datasets - Trackers</title>
+        <title>State Estimators - Trackers</title>
       
     
     
@@ -125,47 +125,6 @@
 
 
 
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "TechArticle",
-  "headline": "Download Datasets",
-  "description": "Download MOT benchmark datasets — MOT17 and SportsMOT — with a single command for tracker evaluation and development.",
-  "url": "https://trackers.roboflow.com/latest/develop/learn/download/",
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://trackers.roboflow.com/latest/develop/learn/download/"
-  },
-  "image": {
-    "@type": "ImageObject",
-    "url": "https://trackers.roboflow.com/latest/develop/assets/logo-trackers-violet.svg"
-  },
-  "author": {
-    "@type": "Organization",
-    "@id": "https://roboflow.com/#organization",
-    "name": "Roboflow"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "@id": "https://roboflow.com/#organization",
-    "name": "Roboflow",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://trackers.roboflow.com/latest/develop/assets/logo-trackers-violet.svg"
-    }
-  },
-  "speakable": {
-    "@type": "SpeakableSpecification",
-    "cssSelector": [
-      "h1",
-      ".md-content p:first-of-type"
-    ]
-  },
-  "dateModified": "2026-04-23",
-  "datePublished": "2026-03-11"
-}
-</script>
-
 
 
 
@@ -179,9 +138,9 @@
 
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
-<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/download/" />
-<meta property="og:title" content="Download Datasets — Roboflow Trackers" />
-<meta property="og:description" content="Download MOT benchmark datasets — MOT17 and SportsMOT — with a single command for tracker evaluation and development." />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/state-estimators/" />
+<meta property="og:title" content="State Estimators — Roboflow Trackers" />
+<meta property="og:description" content="A unified library for multi-object tracking with SORT, ByteTrack, and OC-SORT." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -192,8 +151,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="Download Datasets — Roboflow Trackers" />
-<meta name="twitter:description" content="Download MOT benchmark datasets — MOT17 and SportsMOT — with a single command for tracker evaluation and development." />
+<meta name="twitter:title" content="State Estimators — Roboflow Trackers" />
+<meta name="twitter:description" content="A unified library for multi-object tracking with SORT, ByteTrack, and OC-SORT." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -210,7 +169,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#download-datasets" class="md-skip">
+        <a href="#state-estimators" class="md-skip">
           Skip to content
         </a>
       
@@ -276,7 +235,7 @@
 
             </a>
             
-              Download Datasets
+              State Estimators
             
           </span>
         </div>
@@ -769,37 +728,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Download Datasets
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../download/" class="md-nav__link">
         
   
   
@@ -815,103 +747,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#available-datasets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Available Datasets
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quickstart" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quickstart
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#selective-downloads" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Selective Downloads
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#caching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Caching
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cli-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI Reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -977,10 +812,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../state-estimators/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Estimators
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -996,6 +858,114 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-a-state-estimator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Is a State Estimator?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xyxy-corner-based" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        XYXY — Corner-Based
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xcycsr-center-based" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        XCYCSR — Center-Based
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use Each
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#swapping-the-estimator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Swapping the Estimator
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#takeaway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Takeaway
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1444,10 +1414,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#available-datasets" class="md-nav__link">
+  <a href="#what-is-a-state-estimator" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Available Datasets
+        What Is a State Estimator?
       
     </span>
   </a>
@@ -1455,10 +1425,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#quickstart" class="md-nav__link">
+  <a href="#xyxy-corner-based" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quickstart
+        XYXY — Corner-Based
       
     </span>
   </a>
@@ -1466,10 +1436,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#selective-downloads" class="md-nav__link">
+  <a href="#xcycsr-center-based" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Selective Downloads
+        XCYCSR — Center-Based
       
     </span>
   </a>
@@ -1477,10 +1447,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
+  <a href="#when-to-use-each" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output
+        When to Use Each
       
     </span>
   </a>
@@ -1488,10 +1458,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#caching" class="md-nav__link">
+  <a href="#swapping-the-estimator" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Caching
+        Swapping the Estimator
       
     </span>
   </a>
@@ -1499,10 +1469,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cli-reference" class="md-nav__link">
+  <a href="#full-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CLI Reference
+        Full Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#takeaway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Takeaway
       
     </span>
   </a>
@@ -1529,19 +1510,15 @@
   
 
 
-<h1 id="download-datasets">Download Datasets</h1>
-<p>Download benchmark multi-object tracking datasets for evaluation and development. Supported datasets can be downloaded in full or filtered by split and asset type.</p>
+<h1 id="state-estimators">State Estimators</h1>
+<p>Every tracker in <code>trackers</code> uses a Kalman filter to predict where objects will appear in the next frame. The <strong>state estimator</strong> controls how bounding boxes are represented inside that filter. Different representations make different assumptions about object motion, and picking the right one can improve tracking quality without changing anything else.</p>
 <p><strong>What you'll learn:</strong></p>
 <ul>
-<li>Download MOT17 and SportsMOT benchmark datasets</li>
-<li>Select specific splits and asset types</li>
-<li>Use the download cache to avoid re-downloading</li>
+<li>What state estimators are and why they matter</li>
+<li>How <code>XYXYStateEstimator</code> and <code>XCYCSRStateEstimator</code> represent bounding boxes</li>
+<li>When to use each representation</li>
+<li>How to swap the state estimator in any tracker</li>
 </ul>
-<video width="100%" controls autoplay muted loop>
-  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SportsMOT_v_-6Os86HzwCs_c001-1280x720.mp4" type="video/mp4">
-</video>
-<p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
-
 <hr />
 <h2 id="install">Install</h2>
 <p>Get started by installing the package.</p>
@@ -1549,256 +1526,266 @@
 </span></code></pre></div>
 <p>For more options, see the <a href="../install/">install guide</a>.</p>
 <hr />
-<h2 id="available-datasets">Available Datasets</h2>
-<p>The table below lists every dataset you can download, along with its splits, assets, and license. Assets include raw video frames, ground-truth bounding box annotations, and pre-computed detections.</p>
+<h2 id="what-is-a-state-estimator">What Is a State Estimator?</h2>
+<p>A state estimator wraps a Kalman filter and defines how bounding boxes are encoded into the filter's state vector. The Kalman filter then predicts the next position of each tracked object and corrects that prediction when a new detection arrives.</p>
+<p>Two representations are available:</p>
 <table>
 <thead>
 <tr>
-<th style="text-align: center;">Dataset</th>
-<th style="text-align: center;">Description</th>
-<th style="text-align: center;">Splits</th>
-<th style="text-align: center;">Assets</th>
-<th style="text-align: center;">License</th>
+<th style="text-align: center;">Estimator</th>
+<th style="text-align: center;">State Dimensions</th>
+<th style="text-align: left;">Representation</th>
+<th style="text-align: center;">Aspect Ratio</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: center;"><code>mot17</code></td>
-<td style="text-align: center;">Pedestrian tracking with crowded scenes and frequent occlusions.</td>
-<td style="text-align: center;"><code>train</code>, <code>val</code>, <code>test</code></td>
-<td style="text-align: center;"><code>frames</code>, <code>annotations</code>, <code>detections</code></td>
-<td style="text-align: center;">CC BY-NC-SA 3.0</td>
+<td style="text-align: center;"><code>XYXYStateEstimator</code></td>
+<td style="text-align: center;">8</td>
+<td style="text-align: left;">Top-left and bottom-right corners + their velocities</td>
+<td style="text-align: center;">Can change</td>
 </tr>
 <tr>
-<td style="text-align: center;"><code>sportsmot</code></td>
-<td style="text-align: center;">Sports broadcast tracking with fast motion and similar-looking targets.</td>
-<td style="text-align: center;"><code>train</code>, <code>val</code>, <code>test</code></td>
-<td style="text-align: center;"><code>frames</code>, <code>annotations</code></td>
-<td style="text-align: center;">CC BY 4.0</td>
-</tr>
-<tr>
-<td style="text-align: center;"><code>dancetrack</code></td>
-<td style="text-align: center;"><em>Coming soon.</em></td>
-<td style="text-align: center;">—</td>
-<td style="text-align: center;">—</td>
-<td style="text-align: center;">—</td>
-</tr>
-<tr>
-<td style="text-align: center;"><code>soccernet</code></td>
-<td style="text-align: center;"><em>Coming soon.</em></td>
-<td style="text-align: center;">—</td>
-<td style="text-align: center;">—</td>
-<td style="text-align: center;">—</td>
+<td style="text-align: center;"><code>XCYCSRStateEstimator</code></td>
+<td style="text-align: center;">7</td>
+<td style="text-align: left;">Center point, area, their velocities and aspect ratio</td>
+<td style="text-align: center;">Held constant</td>
 </tr>
 </tbody>
 </table>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Python</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Use <code>--list</code> to print available datasets, splits, and asset types.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers download --list
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Iterate over the <code>Dataset</code> enum to list supported datasets.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">Dataset</span><span class="p">:</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
+<p>They accept <code>[x1, y1, x2, y2]</code> bounding boxes on input and produce <code>[x1, y1, x2, y2]</code> bounding boxes on output. The difference is entirely in how the filter models motion internally.</p>
 <hr />
-<h2 id="quickstart">Quickstart</h2>
-<p>Pass a dataset name to download all of its splits and assets.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">CLI</label><label for="__tabbed_2_2">Python</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Download the full MOT17 dataset.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>trackers download mot17
+<h2 id="xyxy-corner-based">XYXY — Corner-Based</h2>
+<p><code>XYXYStateEstimator</code> tracks the four corner coordinates independently. Each corner gets its own velocity term, giving the filter 8 state variables:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>State:   [x1, y1, x2, y2, vx1, vy1, vx2, vy2]
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Measure: [x1, y1, x2, y2]
 </span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Download the full MOT17 dataset.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">download_dataset</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">download_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">MOT17</span><span class="p">)</span>
+<p>The transition matrix <span class="arithmatex">\(F\)</span> defines how the state evolves from one frame to the next.</p>
+<p>State order: <span class="arithmatex">\([x_1, y_1, x_2, y_2, v_{x_1}, v_{y_1}, v_{x_2}, v_{y_2}]\)</span></p>
+<div class="arithmatex">\[
+F =
+\begin{bmatrix}
+1 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 1 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1
+\end{bmatrix}
+\]</div>
+<p>Equivalent update equations:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>x1&#39;  = x1  + vx1
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>y1&#39;  = y1  + vy1
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>x2&#39;  = x2  + vx2
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>y2&#39;  = y2  + vy2
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>vx1&#39; = vx1
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>vy1&#39; = vy1
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>vx2&#39; = vx2
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>vy2&#39; = vy2
 </span></code></pre></div>
-</div>
-</div>
-</div>
-<hr />
-<h2 id="selective-downloads">Selective Downloads</h2>
-<p>Full datasets can be large. Narrow your download to specific splits and asset types.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">CLI</label><label for="__tabbed_3_2">Python</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Use <code>--split</code> and <code>--asset</code> to filter by split, asset type, or both.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>trackers download mot17 --split train --asset annotations
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>trackers download mot17 --split train,val --asset annotations,frames
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>trackers download sportsmot --split val --asset annotations
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Specify splits and assets as enums, strings, or lists of either.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="p">,</span> <span class="n">download_dataset</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">download_dataset</span><span class="p">(</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">dataset</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">MOT17</span><span class="p">,</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">split</span><span class="o">=</span><span class="n">DatasetSplit</span><span class="o">.</span><span class="n">TRAIN</span><span class="p">,</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">asset</span><span class="o">=</span><span class="n">DatasetAsset</span><span class="o">.</span><span class="n">ANNOTATIONS</span><span class="p">,</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="p">)</span>
-</span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="p">,</span> <span class="n">download_dataset</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">download_dataset</span><span class="p">(</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">dataset</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">MOT17</span><span class="p">,</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">split</span><span class="o">=</span><span class="p">[</span><span class="n">DatasetSplit</span><span class="o">.</span><span class="n">TRAIN</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="o">.</span><span class="n">VAL</span><span class="p">],</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">asset</span><span class="o">=</span><span class="p">[</span><span class="n">DatasetAsset</span><span class="o">.</span><span class="n">ANNOTATIONS</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="o">.</span><span class="n">FRAMES</span><span class="p">],</span>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="p">)</span>
-</span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="p">,</span> <span class="n">download_dataset</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">download_dataset</span><span class="p">(</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">dataset</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">SPORTSMOT</span><span class="p">,</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">split</span><span class="o">=</span><span class="n">DatasetSplit</span><span class="o">.</span><span class="n">VAL</span><span class="p">,</span>
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">asset</span><span class="o">=</span><span class="n">DatasetAsset</span><span class="o">.</span><span class="n">ANNOTATIONS</span><span class="p">,</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="p">)</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<hr />
-<h2 id="output">Output</h2>
-<p>Dataset files are extracted to the current directory by default. Set a custom output path to change this.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">CLI</label><label for="__tabbed_4_2">Python</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Use <code>--output</code> to extract into a custom directory.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>trackers download mot17 \
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    --split train,val \
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    --asset annotations,frames \
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    --output ./datasets
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Use <code>output</code> to extract into a custom directory.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="p">,</span> <span class="n">download_dataset</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">download_dataset</span><span class="p">(</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">dataset</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">MOT17</span><span class="p">,</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">split</span><span class="o">=</span><span class="p">[</span><span class="n">DatasetSplit</span><span class="o">.</span><span class="n">TRAIN</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="o">.</span><span class="n">VAL</span><span class="p">],</span>
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">asset</span><span class="o">=</span><span class="p">[</span><span class="n">DatasetAsset</span><span class="o">.</span><span class="n">ANNOTATIONS</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="o">.</span><span class="n">FRAMES</span><span class="p">],</span>
-</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">output</span><span class="o">=</span><span class="s2">&quot;./datasets&quot;</span><span class="p">,</span>
-</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="p">)</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<p>The resulting directory structure after extraction.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>datasets/
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>└── mot17/
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    ├── train/
-</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    │   ├── MOT17-02-FRCNN/
-</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    │   │   ├── gt/
-</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    │   │   │   └── gt.txt
-</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    │   │   └── img1/
-</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    │   │       ├── 000001.jpg
-</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    │   │       ├── 000002.jpg
-</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    │   │       └── ...
-</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    │   ├── MOT17-04-FRCNN/
-</span><span id="__span-13-12"><a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    │   │   ├── gt/
-</span><span id="__span-13-13"><a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    │   │   │   └── gt.txt
-</span><span id="__span-13-14"><a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    │   │   └── img1/
-</span><span id="__span-13-15"><a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>    │   │       └── ...
-</span><span id="__span-13-16"><a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    │   └── ...
-</span><span id="__span-13-17"><a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>    └── val/
-</span><span id="__span-13-18"><a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>        ├── MOT17-02-FRCNN/
-</span><span id="__span-13-19"><a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>        │   ├── gt/
-</span><span id="__span-13-20"><a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>        │   │   └── gt.txt
-</span><span id="__span-13-21"><a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>        │   └── img1/
-</span><span id="__span-13-22"><a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>        │       └── ...
-</span><span id="__span-13-23"><a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>        └── ...
-</span></code></pre></div>
-<hr />
-<h2 id="caching">Caching</h2>
-<p>Every downloaded ZIP is saved to <code>~/.cache/trackers</code> and verified with an MD5 checksum. Future runs skip the download and extract directly from the cache.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">CLI</label><label for="__tabbed_5_2">Python</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Use <code>--cache-dir</code> to store ZIPs in a custom location.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>trackers download mot17 \
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    --split train \
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    --asset annotations \
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    --cache-dir ./my-cache
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Use <code>cache_dir</code> to store ZIPs in a custom location.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="p">,</span> <span class="n">download_dataset</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="n">download_dataset</span><span class="p">(</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="n">dataset</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">MOT17</span><span class="p">,</span>
-</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="n">split</span><span class="o">=</span><span class="n">DatasetSplit</span><span class="o">.</span><span class="n">TRAIN</span><span class="p">,</span>
-</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    <span class="n">asset</span><span class="o">=</span><span class="n">DatasetAsset</span><span class="o">.</span><span class="n">ANNOTATIONS</span><span class="p">,</span>
-</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="n">cache_dir</span><span class="o">=</span><span class="s2">&quot;./my-cache&quot;</span><span class="p">,</span>
-</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="p">)</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<hr />
-<h2 id="cli-reference">CLI Reference</h2>
-<p>All arguments accepted by the <code>trackers download</code> command.</p>
 <table>
-  <colgroup>
-    <col style="width: 40%">
-    <col style="width: 40%">
-    <col style="width: 20%">
-  </colgroup>
-  <thead>
-    <tr>
-      <th>Argument</th>
-      <th>Description</th>
-      <th>Default</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>dataset</code></td>
-      <td>Dataset name to download. Options: <code>mot17</code>, <code>sportsmot</code>.</td>
-      <td>—</td>
-    </tr>
-    <tr>
-      <td><code>--list</code></td>
-      <td>List available datasets, splits, and asset types without downloading.</td>
-      <td><code>false</code></td>
-    </tr>
-    <tr>
-      <td><code>--split</code></td>
-      <td>Comma-separated splits to download. Omit to download all available splits.</td>
-      <td>all</td>
-    </tr>
-    <tr>
-      <td><code>--asset</code></td>
-      <td>Comma-separated asset types to download: <code>frames</code>, <code>annotations</code>, <code>detections</code>. Omit to download all available assets.</td>
-      <td>all</td>
-    </tr>
-    <tr>
-      <td><code>--output</code></td>
-      <td>Directory where dataset files are extracted.</td>
-      <td><code>.</code></td>
-    </tr>
-    <tr>
-      <td><code>--cache-dir</code></td>
-      <td>Directory for caching downloaded ZIP files. Cached files are verified by MD5 and reused across runs.</td>
-      <td><code>~/.cache/trackers</code></td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th style="text-align: left;">Row</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1-4</td>
+<td style="text-align: left;">Each corner coordinate is updated by adding its velocity</td>
+</tr>
+<tr>
+<td style="text-align: left;">5-8</td>
+<td style="text-align: left;">Velocities persist unchanged from frame to frame</td>
+</tr>
+</tbody>
 </table>
+<p>Because each corner moves freely, the box width and height can change between frames. This makes XYXY a natural fit when objects change shape — due to camera perspective, non-rigid motion, or inconsistent detections.</p>
+<p><strong>In Trackers, this is the configurable default</strong> for <code>ByteTrackTracker</code> and <code>SORTTracker</code> via the <code>state_estimator_class</code> parameter. Note: previous versions used hand-rolled Kalman filters internally — <code>XYXYStateEstimator</code> is the new unified implementation introduced in this refactoring.</p>
+<hr />
+<h2 id="xcycsr-center-based">XCYCSR — Center-Based</h2>
+<p><code>XCYCSRStateEstimator</code> tracks the box center, area (scale), and aspect ratio. Only the center and scale get velocity terms; aspect ratio is treated as constant. This gives 7 state variables:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>State:   [x_center, y_center, scale, aspect_ratio, vx, vy, vs]
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Measure: [x_center, y_center, scale, aspect_ratio]
+</span></code></pre></div>
+<p>The transition matrix <span class="arithmatex">\(F\)</span> shows the key difference: the aspect ratio is propagated without a velocity term.</p>
+<p>State order: <span class="arithmatex">\([x_c, y_c, s, r, v_x, v_y, v_s]\)</span></p>
+<div class="arithmatex">\[
+F =
+\begin{bmatrix}
+1 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\
+0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 \\
+0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 1 \\
+0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1
+\end{bmatrix}
+\]</div>
+<p>Equivalent update equations:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>x_center&#39;     = x_center + vx
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>y_center&#39;     = y_center + vy
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>scale&#39;        = scale + vs
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>aspect_ratio&#39; = aspect_ratio
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>vx&#39;           = vx
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>vy&#39;           = vy
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>vs&#39;           = vs
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Row</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1-3</td>
+<td style="text-align: left;">Center position and scale follow constant-velocity motion</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">Aspect ratio is copied forward unchanged</td>
+</tr>
+<tr>
+<td style="text-align: left;">5-7</td>
+<td style="text-align: left;">Velocities persist unchanged from frame to frame</td>
+</tr>
+</tbody>
+</table>
+<p>The aspect ratio <code>r = w / h</code> is carried forward unchanged. This acts as a regularizer — the filter resists sudden shape changes. It works well for rigid objects whose proportions stay consistent, like pedestrians walking or cars on a highway.</p>
+<p><strong>This is the default</strong> for <code>OCSORTTracker</code>, matching the original OC-SORT paper.</p>
+<hr />
+<h2 id="when-to-use-each">When to Use Each</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Scenario</th>
+<th style="text-align: center;">Recommended</th>
+<th style="text-align: left;">Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Pedestrians, vehicles, rigid objects</td>
+<td style="text-align: center;"><code>XCYCSRStateEstimator</code></td>
+<td style="text-align: left;">Constant aspect ratio stabilizes predictions</td>
+</tr>
+<tr>
+<td style="text-align: left;">Non-rigid or deformable objects</td>
+<td style="text-align: center;"><code>XYXYStateEstimator</code></td>
+<td style="text-align: left;">Corners move independently to track shape changes</td>
+</tr>
+<tr>
+<td style="text-align: left;">Noisy detections with fluctuating box sizes</td>
+<td style="text-align: center;"><code>XCYCSRStateEstimator</code></td>
+<td style="text-align: left;">Aspect ratio constraint absorbs size noise</td>
+</tr>
+<tr>
+<td style="text-align: left;">Strong perspective changes (camera pan/zoom)</td>
+<td style="text-align: center;"><code>XYXYStateEstimator</code></td>
+<td style="text-align: left;">Box proportions shift with viewpoint; corners adapt freely</td>
+</tr>
+<tr>
+<td style="text-align: left;">Default choice when unsure</td>
+<td style="text-align: center;"><code>XYXYStateEstimator</code></td>
+<td style="text-align: left;">More general, fewer assumptions</td>
+</tr>
+</tbody>
+</table>
+<p>We can also benchmark the trackers using the different State Estimators and we get:</p>
+<ul>
+<li>In <strong>Dancetrack</strong>, with default parameters all trackers perform better with XYXYStateEstimator, but with tuned parameters, SORT tracker with XCYCSRStateEstimator gets +0.8% HOTA.</li>
+<li>In the <strong>Soccernet dataset</strong>, with default parameters, SORT tracker with XYXYStateEstimator has ~5% more HOTA than using XCYC. When tuning parameters with grid search, this difference is reduced to 2%. For the other trackers, we don't find significant advantages of using a different StateEstimators, just having up to 0.2% better HOTA.</li>
+<li>In <strong>SportsMOT</strong>, for OC-SORT and ByteTrack, the StateEstimator doesn't affect the performance, while for SORT XYXYStateEstimator gives a small advantage of ~2% HOTA with default parameters and 0.4% when tuning both.</li>
+<li>In <strong>MOT17</strong>, with default parameters XYXYStateEstimator performs slightly better than XCYCSRStateEstimator with SORT and ByteTrack with up to 0.7% better results, but for OC-SORT XCYCSRStateEstimator gives 0.2% better HOTA. When tuning parameters, XCYCSRStateEstimator performs the best with all the trackers by a small margin, ranging in 0.2-0.4% HOTA.</li>
+</ul>
+<p>But lets visualize where these differences are, here is an example where using XCYCSR State Estimator associates an occluded track correctly, while using XYXY changes the ID:</p>
+<div style="display: flex; justify-content: center;">
+  <video style="width: 50%; height: auto;" controls>
+    <source src="https://github.com/user-attachments/assets/219acc15-c6c5-4bf2-93d2-8c1b5523f4f1" type="video/mp4">
+  </video>
+</div>
+
+<hr />
+<h2 id="swapping-the-estimator">Swapping the Estimator</h2>
+<p>All trackers accept a <code>state_estimator_class</code> parameter. Import the class you want and pass it to the constructor.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">ByteTrack with XCYCSR</label><label for="__tabbed_1_2">OC-SORT with XYXY</label><label for="__tabbed_1_3">SORT with XCYCSR</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.utils.state_representations</span><span class="w"> </span><span class="kn">import</span> <span class="n">XCYCSRStateEstimator</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">(</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">state_estimator_class</span><span class="o">=</span><span class="n">XCYCSRStateEstimator</span><span class="p">,</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">OCSORTTracker</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.utils.state_representations</span><span class="w"> </span><span class="kn">import</span> <span class="n">XYXYStateEstimator</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">OCSORTTracker</span><span class="p">(</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">state_estimator_class</span><span class="o">=</span><span class="n">XYXYStateEstimator</span><span class="p">,</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">SORTTracker</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.utils.state_representations</span><span class="w"> </span><span class="kn">import</span> <span class="n">XCYCSRStateEstimator</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">SORTTracker</span><span class="p">(</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">state_estimator_class</span><span class="o">=</span><span class="n">XCYCSRStateEstimator</span><span class="p">,</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="p">)</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<p>Everything else stays the same — detection, association, and visualization work identically regardless of which estimator you choose.</p>
+<hr />
+<h2 id="full-example">Full Example</h2>
+<p>Run ByteTrack with both estimators on the same video and compare the results side by side.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inference</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_model</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.utils.state_representations</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">XCYCSRStateEstimator</span><span class="p">,</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="n">XYXYStateEstimator</span><span class="p">,</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="p">)</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="n">model</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">(</span><span class="s2">&quot;rfdetr-nano&quot;</span><span class="p">)</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="n">tracker_xyxy</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">(</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    <span class="n">state_estimator_class</span><span class="o">=</span><span class="n">XYXYStateEstimator</span><span class="p">,</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="p">)</span>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="n">tracker_xcycsr</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">(</span>
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    <span class="n">state_estimator_class</span><span class="o">=</span><span class="n">XCYCSRStateEstimator</span><span class="p">,</span>
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="p">)</span>
+</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="n">cap</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="s2">&quot;source.mp4&quot;</span><span class="p">)</span>
+</span><span id="__span-8-21"><a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+</span><span id="__span-8-22"><a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    <span class="n">ret</span><span class="p">,</span> <span class="n">frame</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-8-23"><a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">ret</span><span class="p">:</span>
+</span><span id="__span-8-24"><a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>        <span class="k">break</span>
+</span><span id="__span-8-25"><a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>
+</span><span id="__span-8-26"><a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">frame</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-8-27"><a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">Detections</span><span class="o">.</span><span class="n">from_inference</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span id="__span-8-28"><a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>
+</span><span id="__span-8-29"><a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>    <span class="n">tracked_xyxy</span> <span class="o">=</span> <span class="n">tracker_xyxy</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span>
+</span><span id="__span-8-30"><a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>    <span class="n">tracked_xcycsr</span> <span class="o">=</span> <span class="n">tracker_xcycsr</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span>
+</span><span id="__span-8-31"><a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>
+</span><span id="__span-8-32"><a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>    <span class="c1"># Compare tracker_id assignments, box smoothness, etc.</span>
+</span><span id="__span-8-33"><a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;XYXY IDs:   </span><span class="si">{</span><span class="n">tracked_xyxy</span><span class="o">.</span><span class="n">tracker_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-8-34"><a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;XCYCSR IDs: </span><span class="si">{</span><span class="n">tracked_xcycsr</span><span class="o">.</span><span class="n">tracker_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<hr />
+<h2 id="takeaway">Takeaway</h2>
+<p>The state estimator is a single-line change that controls how the Kalman filter models bounding box motion. Use <code>XCYCSRStateEstimator</code> when objects keep a consistent shape, and <code>XYXYStateEstimator</code> when shape varies or you want fewer assumptions. Try it on your case, the best choice depends on the scene.</p>
 
 
 
@@ -1821,7 +1808,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 23, 2026 09:33:31 UTC">2026-04-23</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 25, 2026 18:25:42 UTC">2026-04-25</span>
   </span>
 
     
@@ -1831,7 +1818,7 @@
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 11, 2026 12:49:40 UTC">2026-03-11</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 25, 2026 18:25:42 UTC">2026-04-25</span>
   </span>
 
     
@@ -1862,7 +1849,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../track/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Track Objects">
+          <a href="../detection-quality/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Detection Quality Matters">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1872,20 +1859,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Track Objects
+                Detection Quality Matters
               </div>
             </div>
           </a>
         
         
           
-          <a href="../evaluate/" class="md-footer__link md-footer__link--next" aria-label="Next: Evaluate Trackers">
+          <a href="../about/" class="md-footer__link md-footer__link--next" aria-label="Next: About">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Evaluate Trackers
+                About
               </div>
             </div>
             <div class="md-footer__button md-icon">
