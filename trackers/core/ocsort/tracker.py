@@ -285,10 +285,6 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         OCSORTTracklet.count_id = 0
 
-    def _alive_tracklets(self) -> list:
-        """Return the tracks currently considered alive."""
-        return self.tracks
-
     def _prune_expired_tracklets(self) -> list[OCSORTTracklet]:
         """Remove tracklets that have been lost for too long.
 

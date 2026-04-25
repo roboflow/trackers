@@ -280,6 +280,7 @@ class BaseTracker(ABC):
     tracker_id: ClassVar[str | None] = None
     search_space: ClassVar[dict[str, dict] | None] = None
     maximum_frames_without_update: int
+    tracks: list
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.
@@ -354,11 +355,6 @@ class BaseTracker(ABC):
         """
         pass
 
-    @abstractmethod
-    def _alive_tracklets(self) -> list:
-        """Return the tracklets the tracker currently considers alive."""
-        pass
-
     @property
     def tracked_objects(self) -> sv.Detections:
         """All alive tracks with Kalman-predicted bounding boxes.
@@ -385,7 +381,7 @@ class BaseTracker(ABC):
             internal pruning logic; consult the specific tracker's
             documentation for precise semantics.
         """
-        tracklets = self._alive_tracklets()
+        tracklets = self.tracks
         if not tracklets:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
