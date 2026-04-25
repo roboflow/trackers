@@ -58,6 +58,8 @@ extra_css:
 
 extra_javascript:
   - javascripts/pycon_copy.js
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3.2.2/es5/tex-mml-chtml.js
   - javascripts/cli_builder_framework.js
   - javascripts/command_builder.js
 
@@ -79,6 +81,9 @@ markdown_extensions:
       pygments_lang_class: true
   # Enables inline code highlighting
   - pymdownx.inlinehilite
+  # Enables LaTeX-style math in Markdown
+  - pymdownx.arithmatex:
+      generic: true
   # Allows including content from other files
   - pymdownx.snippets
   # Enables nested code blocks and custom fences
@@ -127,6 +132,7 @@ nav:
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
     - Detection Quality Matters: learn/detection-quality.md
+    - State Estimators: learn/state-estimators.md
     - About: learn/about.md
   - Trackers:
     - Comparison: trackers/comparison.md

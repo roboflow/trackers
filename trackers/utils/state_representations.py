@@ -43,6 +43,15 @@ class BaseStateEstimator(ABC):
     handle conversions between `[x1, y1, x2, y2]` bboxes and the
     internal state/measurement vectors.
 
+    Note:
+        Noise matrices (R, Q, P) are not configured in `_create_filter`
+        and default to identity matrices. Callers must configure them via
+        `set_kf_covariances` after construction for accurate tracking.
+        Tracklet classes (`SORTTracklet`, `ByteTrackTracklet`,
+        `OCSORTTracklet`) do this automatically via `_configure_noise()`.
+        If you instantiate a state estimator directly, call
+        `set_kf_covariances` before the first `predict`/`update`.
+
     Attributes:
         kf: The underlying Kalman filter instance.
     """
@@ -126,6 +135,35 @@ class BaseStateEstimator(ABC):
         """
         self.kf.set_state(state)
 
+    def set_kf_covariances(
+        self,
+        R: np.ndarray | None = None,
+        Q: np.ndarray | None = None,
+        P: np.ndarray | None = None,
+    ) -> None:
+        """Set Kalman filter parameters.
+
+        Args:
+            R: Measurement noise covariance matrix.
+            Q: Process noise covariance matrix.
+            P: Error covariance matrix.
+        """
+        if R is not None:
+            expected_shape = (self.kf.dim_z, self.kf.dim_z)
+            if R.shape != expected_shape:
+                raise ValueError(f"R must have shape {expected_shape}; got {R.shape}.")
+            self.kf.R = R
+        if Q is not None:
+            expected_shape = (self.kf.dim_x, self.kf.dim_x)
+            if Q.shape != expected_shape:
+                raise ValueError(f"Q must have shape {expected_shape}; got {Q.shape}.")
+            self.kf.Q = Q
+        if P is not None:
+            expected_shape = (self.kf.dim_x, self.kf.dim_x)
+            if P.shape != expected_shape:
+                raise ValueError(f"P must have shape {expected_shape}; got {P.shape}.")
+            self.kf.P = P
+
 
 class XCYCSRStateEstimator(BaseStateEstimator):
     """Center-based Kalman filter with 7 state dimensions and 4 measurements.
@@ -156,13 +194,6 @@ class XCYCSRStateEstimator(BaseStateEstimator):
 
         # Measurement function: observe (x, y, s, r) from state
         kf.H = np.eye(4, 7, dtype=np.float64)
-
-        # Noise tuning (from OC-SORT paper)
-        kf.R[2:, 2:] *= 10.0
-        kf.P[4:, 4:] *= 1000.0  # high uncertainty for velocities
-        kf.P *= 10.0
-        kf.Q[-1, -1] *= 0.01
-        kf.Q[4:, 4:] *= 0.01
 
         # Initialise state with first observation
         kf.x[:4] = xyxy_to_xcycsr(bbox).reshape((4, 1))
@@ -210,12 +241,6 @@ class XYXYStateEstimator(BaseStateEstimator):
 
         # Measurement function: observe (x1, y1, x2, y2) from state
         kf.H = np.eye(4, 8, dtype=np.float64)
-
-        # Noise tuning (similar scaling to XCYCSR version)
-        kf.R *= 1.0  # measurement noise
-        kf.P[4:, 4:] *= 1000.0  # high uncertainty for velocities
-        kf.P *= 10.0
-        kf.Q[4:, 4:] *= 0.01
 
         # Initialise state with first observation (direct XYXY)
         kf.x[:4] = bbox.reshape((4, 1))

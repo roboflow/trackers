@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.converters import (
     xyxy_to_xcycsr,
 )
@@ -17,7 +18,7 @@ from trackers.utils.state_representations import (
 )
 
 
-class OCSORTTracklet:
+class OCSORTTracklet(BaseTracklet):
     """Tracklet for OC-SORT tracker with ORU (Observation-centric Re-Update).
 
     Manages a single tracked object with Kalman filter state estimation.
@@ -50,18 +51,17 @@ class OCSORTTracklet:
 
         Args:
             initial_bbox: Initial bounding box `[x1, y1, x2, y2]`.
-            kalman_filter_class: Kalman filter class to use. Instantiated
+            state_estimator_class: State estimator class to use. Instantiated
                 with *initial_bbox*. Defaults to
-                `XCYCSRKalmanFilter`.
+                `XCYCSRStateEstimator`.
             delta_t: Number of timesteps back to look for velocity estimation.
                 Higher values use observations further in the past to estimate
                 motion direction, providing more stable velocity estimates.
         """
-        self.age = 0
 
         # Initialize state estimator (wraps KalmanFilter + state repr)
-        self.kalman_filter: BaseStateEstimator = state_estimator_class(initial_bbox)
-
+        super().__init__(initial_bbox, state_estimator_class)
+        self._configure_noise()
         # Observation history for ORU and delta_t
         self.delta_t = delta_t
         self.last_observation = initial_bbox
@@ -69,28 +69,13 @@ class OCSORTTracklet:
         self.observations: dict[int, np.ndarray] = {}
         self.velocity: np.ndarray | None = None
 
-        # Track ID can be initialized before mature in oc-sort
-        # it is assigned if the frame number is less than minimum_consecutive_frames
-        self.tracker_id = -1
-
-        # Tracking counters
-        self.number_of_successful_consecutive_updates = 0
-        self.time_since_update = 0
-
         # ORU: saved state for freeze/unfreeze
         self._frozen_state: dict | None = None
         self._observed = True
 
-    @classmethod
-    def get_next_tracker_id(cls) -> int:
-        """Get next available tracker ID."""
-        next_id = cls.count_id
-        cls.count_id += 1
-        return next_id
-
     def _freeze(self) -> None:
         """Save Kalman filter state before track is lost (ORU mechanism)."""
-        self._frozen_state = self.kalman_filter.get_state()
+        self._frozen_state = self.state_estimator.get_state()
 
     def _unfreeze(self, new_bbox: np.ndarray) -> None:
         """Restore state and apply virtual trajectory (ORU mechanism).
@@ -106,11 +91,11 @@ class OCSORTTracklet:
             return
 
         # Restore to frozen state
-        self.kalman_filter.set_state(self._frozen_state)
+        self.state_estimator.set_state(self._frozen_state)
 
         time_gap = self.time_since_update
         # this is oc-sort specific
-        if isinstance(self.kalman_filter, XCYCSRStateEstimator):
+        if isinstance(self.state_estimator, XCYCSRStateEstimator):
             self._unfreeze_xcycsr(new_bbox, time_gap)
         else:
             self._unfreeze_xyxy(new_bbox, time_gap)
@@ -155,9 +140,9 @@ class OCSORTTracklet:
             r = w / h
             virtual_obs = np.array([x, y, s, r]).reshape((4, 1))
 
-            self.kalman_filter.kf.update(virtual_obs)
+            self.state_estimator.kf.update(virtual_obs)
             if i < time_gap - 1:
-                self.kalman_filter.kf.predict()
+                self.state_estimator.kf.predict()
 
     def _unfreeze_xyxy(self, new_bbox: np.ndarray, time_gap: int) -> None:
         """ORU interpolation for XYXY representation.
@@ -174,9 +159,9 @@ class OCSORTTracklet:
         for i in range(time_gap):
             virtual_obs = (last_xyxy + (i + 1) * delta).reshape((4, 1))
 
-            self.kalman_filter.kf.update(virtual_obs)
+            self.state_estimator.kf.update(virtual_obs)
             if i < time_gap - 1:
-                self.kalman_filter.kf.predict()
+                self.state_estimator.kf.predict()
 
     def get_k_previous_obs(self) -> np.ndarray | None:
         """Get observation from delta_t steps ago.
@@ -239,7 +224,7 @@ class OCSORTTracklet:
             # Update KF with the real observation
             # (after ORU this is the final update at the correct time step;
             #  without ORU this is the normal measurement update)
-            self.kalman_filter.update(bbox)
+            self.state_estimator.update(bbox)
 
             self._observed = True
             self.time_since_update = 0
@@ -252,7 +237,7 @@ class OCSORTTracklet:
             if self._observed:
                 self._freeze()
             self._observed = False
-            self.kalman_filter.update(None)
+            self.state_estimator.update(None)
 
     def predict(self) -> np.ndarray:
         """Predict next bounding box position.
@@ -260,14 +245,14 @@ class OCSORTTracklet:
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
-        self.kalman_filter.predict()
+        self.state_estimator.predict()
         self.age += 1
 
         if self.time_since_update > 0:
             self.number_of_successful_consecutive_updates = 0
 
         self.time_since_update += 1
-        return self.kalman_filter.state_to_bbox()
+        return self.state_estimator.state_to_bbox()
 
     def get_state_bbox(self) -> np.ndarray:
         """Get current bounding box estimate from Kalman filter.
@@ -275,7 +260,26 @@ class OCSORTTracklet:
         Returns:
             Current bounding box estimate `[x1, y1, x2, y2]`.
         """
-        return self.kalman_filter.state_to_bbox()
+        return self.state_estimator.state_to_bbox()
+
+    def _configure_noise(self) -> None:
+        """Configure Kalman filter noise matrices (OC-SORT paper tuning)."""
+        kf = self.state_estimator.kf
+        R = kf.R
+        P = kf.P
+        Q = kf.Q
+        if isinstance(self.state_estimator, XCYCSRStateEstimator):
+            R[2:, 2:] *= 10.0
+            P[4:, 4:] *= 1000.0
+            P *= 10.0
+            Q[-1, -1] *= 0.01
+            Q[4:, 4:] *= 0.01
+        else:
+            # XYXY: same velocity uncertainty scaling
+            P[4:, 4:] *= 1000.0
+            P *= 10.0
+            Q[4:, 4:] *= 0.01
+        self.state_estimator.set_kf_covariances(R=R, Q=Q, P=P)
 
     def resolve_tracker_id(
         self,

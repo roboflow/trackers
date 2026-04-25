@@ -16,7 +16,10 @@ from trackers.core.ocsort.utils import (
     _build_direction_consistency_matrix_batch,
     _get_iou_matrix,
 )
-from trackers.utils.state_representations import XCYCSRStateEstimator
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XCYCSRStateEstimator,
+)
 
 
 class OCSORTTracker(BaseTracker):
@@ -59,6 +62,9 @@ class OCSORTTracker(BaseTracker):
         delta_t: `int` specifying number of past frames to use for velocity
             estimation. Higher values provide more stable direction estimates
             during occlusion.
+        state_estimator_class: State estimator class to use for Kalman filter.
+            Defaults to `XCYCSRStateEstimator`. Can also use
+            `XYXYStateEstimator` for corner-based representation.
     """
 
     tracker_id = "ocsort"
@@ -81,6 +87,7 @@ class OCSORTTracker(BaseTracker):
         direction_consistency_weight: float = 0.2,
         high_conf_det_threshold: float = 0.6,
         delta_t: int = 3,
+        state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -94,7 +101,7 @@ class OCSORTTracker(BaseTracker):
 
         self.tracks: list[OCSORTTracklet] = []
         self.frame_count = 0
-        self.state_estimator_class = XCYCSRStateEstimator
+        self.state_estimator_class = state_estimator_class
 
     def _get_associated_indices(
         self,

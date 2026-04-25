@@ -117,7 +117,7 @@ Clean, modular implementations of leading trackers. All HOTA scores use default 
 |                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
 | :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
 |   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      45.0       |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    60.1    |    **73.0**    |    **84.0**    |      50.2       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    59.4    |    **72.8**    |    **83.9**    |      50.2       |
 |  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |  **61.9**  |      71.7      |      78.4      |    **51.8**     |
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](trackers/comparison.md).
@@ -172,6 +172,14 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
     End-to-end example showing how to run RF-DETR detection with the ByteTrack tracker.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
+
+- **How to Track Objects with OC-SORT**
+
+    ---
+
+    End-to-end example showing how to run RF-DETR detection with the OC-SORT tracker.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
 
 </div>
 
