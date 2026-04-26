@@ -278,6 +278,7 @@ class BaseTracker(ABC):
     _registry: ClassVar[dict[str, TrackerInfo]] = {}
     tracker_id: ClassVar[str | None] = None
     search_space: ClassVar[dict[str, dict] | None] = None
+    tracks: list[Any]
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.
