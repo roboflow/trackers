@@ -8,7 +8,7 @@ from typing import ClassVar
 
 import numpy as np
 import supervision as sv
-from scipy.optimize import linear_sum_assignment  # type: ignore[import-untyped]
+from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
@@ -178,13 +178,10 @@ class OCSORTTracker(BaseTracker):
             result.tracker_id = np.array([], dtype=int)
             return result
 
-        from typing import cast
-
         if detections.confidence is not None:
-            detections = cast(
-                sv.Detections,
-                detections[detections.confidence >= self.high_conf_det_threshold],
-            )
+            detections = detections[
+                detections.confidence >= self.high_conf_det_threshold
+            ]
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
         confidences = (
