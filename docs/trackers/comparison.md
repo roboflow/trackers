@@ -105,7 +105,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   72.9   |   73.0   |   95.8   |
-    | ByteTrack |   73.3   |   73.5   | **95.9** |    
+    | ByteTrack |   73.3   |   73.5   | **95.9** |
     |  OC-SORT  | **74.0** | **75.4** |   95.6   |
 
     Tuned configuration for each tracker.
