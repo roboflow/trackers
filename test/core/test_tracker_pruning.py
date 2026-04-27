@@ -25,8 +25,8 @@ import numpy as np
 import pytest
 import supervision as sv
 
-from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.base import BaseTracker
+from trackers.core.bytetrack.tracker import ByteTrackTracker
 
 _TRACKER_IDS = ["sort", "bytetrack", "ocsort"]
 
