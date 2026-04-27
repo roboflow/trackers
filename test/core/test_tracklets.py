@@ -31,16 +31,16 @@ def detections(bbox: np.ndarray) -> sv.Detections:
     return detections
 
 
-def test_sort_tracklet_update_none_increments_time_without_changing_bbox(
+def test_sort_tracklet_predict_increments_time_without_changing_bbox(
     bbox: np.ndarray,
 ) -> None:
     tracklet = SORTTracklet(bbox)
     initial_bbox = tracklet.get_state_bbox().copy()
 
-    tracklet.update(None)
+    tracklet.predict()
 
     assert tracklet.time_since_update == 1
-    np.testing.assert_allclose(tracklet.get_state_bbox(), initial_bbox)
+    np.testing.assert_allclose(tracklet.get_state_bbox(), initial_bbox, atol=1e-6)
 
 
 def test_sort_tracklet_configures_different_noise_for_state_estimators(

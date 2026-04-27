@@ -158,7 +158,7 @@ class ByteTrackTracker(BaseTracker):
 
         # Step 2: associate low-confidence detections to remaining tracks
         iou_matrix = _get_iou_matrix(remaining_tracks, low_boxes)
-        matched, unmatched_tracks, unmatched_low = self._get_associated_indices(
+        matched, unmatched_remaining, unmatched_low = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold
         )
 

@@ -240,9 +240,6 @@ class OCSORTTracker(BaseTracker):
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(tid)
 
-            for m in ocr_unmatched_tracks:
-                self.tracks[unmatched_tracks[m]].update(None)
-
             self.tracks = self._prune_expired_tracklets()
 
             remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
@@ -251,8 +248,6 @@ class OCSORTTracker(BaseTracker):
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(-1)
         else:
-            for track_idx in unmatched_tracks:
-                self.tracks[track_idx].update(None)
             self.tracks = self._prune_expired_tracklets()
 
             self._spawn_new_tracklets(detection_boxes[unmatched_detections])

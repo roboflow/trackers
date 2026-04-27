@@ -199,45 +199,37 @@ class OCSORTTracklet(BaseTracklet):
         norm = np.sqrt((cy2 - cy1) ** 2 + (cx2 - cx1) ** 2) + 1e-6
         return speed / norm
 
-    def update(self, bbox: np.ndarray | None) -> None:
-        """Update tracklet with new observation.
+    def update(self, bbox: np.ndarray) -> None:
+        """Update tracklet state with a new bounding-box observation.
 
-        Handles ORU: if track was lost and now observed again,
-        generates virtual trajectory to smooth the transition.
-        Computes velocity using observation from delta_t steps ago.
+        Handles ORU: if the track was lost and is now observed again,
+        generates a virtual trajectory to smooth the transition.
+        Computes velocity using the observation from delta_t steps ago.
 
         Args:
-            bbox: Bounding box `[x1, y1, x2, y2]` or None for no observation.
+            bbox: Bounding box `[x1, y1, x2, y2]`.
         """
-        if bbox is not None:
-            # Compute velocity only after the track has been observed at least once
-            # (matches original OC-SORT: velocity is None until 2nd match)
+        # Compute velocity only after the track has been observed at least once
+        # (matches original OC-SORT: velocity is None until 2nd match)
+        previous_box = self.get_k_previous_obs()
+        if previous_box is not None:
+            self.velocity = self._compute_velocity(previous_box, bbox)
 
-            previous_box = self.get_k_previous_obs()
-            if previous_box is not None:
-                self.velocity = self._compute_velocity(previous_box, bbox)
+        # Check if we need to unfreeze (was lost, now observed)
+        if not self._observed and self._frozen_state is not None:
+            self._unfreeze(bbox)
 
-            # Check if we need to unfreeze (was lost, now observed)
-            if not self._observed and self._frozen_state is not None:
-                self._unfreeze(bbox)
+        # Update KF with the real observation
+        # (after ORU this is the final update at the correct time step;
+        #  without ORU this is the normal measurement update)
+        self.state_estimator.update(bbox)
 
-            # Update KF with the real observation
-            # (after ORU this is the final update at the correct time step;
-            #  without ORU this is the normal measurement update)
-            self.state_estimator.update(bbox)
-
-            self._observed = True
-            self.time_since_update = 0
-            self.number_of_successful_consecutive_updates += 1
-            self.previous_to_last_observation = self.last_observation
-            self.last_observation = bbox
-            self.observations[self.age] = bbox
-        else:
-            # No observation - freeze state if this is first miss
-            if self._observed:
-                self._freeze()
-            self._observed = False
-            self.state_estimator.update(None)
+        self._observed = True
+        self.time_since_update = 0
+        self.number_of_successful_consecutive_updates += 1
+        self.previous_to_last_observation = self.last_observation
+        self.last_observation = bbox
+        self.observations[self.age] = bbox
 
     def predict(self) -> np.ndarray:
         """Predict next bounding box position.
@@ -245,6 +237,15 @@ class OCSORTTracklet(BaseTracklet):
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
+        # Freeze KF state on the first miss. At the start of predict,
+        # time_since_update reflects last frame: if it is already > 0 and
+        # _observed is still True, the track went unmatched last frame and
+        # this is the earliest point we can act on that information while
+        # capturing the same frozen KF state as miss() would.
+        if self._observed and self.time_since_update > 0:
+            self._freeze()
+            self._observed = False
+
         self.state_estimator.predict()
         self.age += 1
 

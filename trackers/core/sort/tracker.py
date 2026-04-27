@@ -192,9 +192,6 @@ class SORTTracker(BaseTracker):
             self.tracks[row].update(detection_boxes[col])
             matched_tracklet_for_det[col] = self.tracks[row]
 
-        # Update non matched for increasing time_since_update
-        for index in unmatched_tracklets:
-            self.tracks[index].update(None)
         confidences = (
             detections.confidence
             if detections.confidence is not None

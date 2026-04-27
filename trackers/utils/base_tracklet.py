@@ -36,8 +36,8 @@ class BaseTracklet(ABC):
         return next_id
 
     @abstractmethod
-    def update(self, bbox: np.ndarray | None) -> None:
-        """Update tracklet with new observation or None if missed."""
+    def update(self, bbox: np.ndarray) -> None:
+        """Update tracklet state with a new bounding-box observation."""
         pass
 
     @abstractmethod
