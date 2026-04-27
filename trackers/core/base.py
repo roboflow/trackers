@@ -368,7 +368,7 @@ class BaseTracker(ABC):
 
         Unlike the `sv.Detections` returned by `update()`, the result carries
         only `xyxy` and `tracker_id`. `confidence` and `class_id` are `None`
-        attached because predicted boxes have no associated detection score.
+        because these predicted boxes have no associated detection metadata.
 
         Returns:
             `sv.Detections` with Kalman-predicted `xyxy` and `tracker_id` for
