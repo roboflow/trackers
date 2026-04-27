@@ -27,20 +27,17 @@ class ByteTrackTracklet(BaseTracklet):
         # ByteTrackKalmanBoxTracker behavior where hits started at 1)
         self.number_of_successful_consecutive_updates = 1
 
-    def update(self, bbox: np.ndarray | None) -> None:
+    def update(self, bbox: np.ndarray ) -> None:
         """Update tracklet with new observation or None if missed."""
-        if bbox is not None:
-            self.state_estimator.update(bbox)
-            self.time_since_update = 0
-            self.number_of_successful_consecutive_updates += 1
-        else:
-            self.state_estimator.update(None)
-            self.time_since_update += 1
-            self.number_of_successful_consecutive_updates = 0
+        self.state_estimator.update(bbox)
+        self.time_since_update = 0
+        self.number_of_successful_consecutive_updates += 1
 
     def predict(self) -> np.ndarray:
         """Predict next bounding box position."""
         self.state_estimator.predict()
+            
+        self.time_since_update += 1
         self.age += 1
         return self.state_estimator.state_to_bbox()
 
