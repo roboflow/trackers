@@ -25,6 +25,7 @@ import numpy as np
 import pytest
 import supervision as sv
 
+from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.base import BaseTracker
 
 _TRACKER_IDS = ["sort", "bytetrack", "ocsort"]
@@ -109,3 +110,20 @@ def test_track_survives_short_occlusion(tracker_id: str) -> None:
     assert tracker.tracks[0].tracker_id == confirmed_id, (
         "confirmed track must survive a short gap"
     )
+
+
+def test_bytetrack_consecutive_counter_resets_on_miss() -> None:
+    """ByteTrack resets the consecutive counter after a missed frame."""
+    tracker = ByteTrackTracker(minimum_consecutive_frames=2, lost_track_buffer=30)
+    bbox = (100.0, 100.0, 200.0, 200.0)
+
+    tracker.update(_detection(bbox))
+    assert tracker.tracks[0].number_of_successful_consecutive_updates == 1
+    assert tracker.tracks[0].tracker_id == -1
+
+    tracker.tracks[0].predict()
+
+    tracker.update(_detection(bbox))
+
+    assert tracker.tracks[0].number_of_successful_consecutive_updates == 1
+    assert tracker.tracks[0].tracker_id == -1
