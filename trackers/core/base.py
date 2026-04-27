@@ -11,8 +11,9 @@ import re
 import types
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, ClassVar, Union, get_args, get_origin
+from typing import Any, ClassVar, Protocol, Union, get_args, get_origin
 
+import numpy as np
 import supervision as sv
 
 
@@ -261,24 +262,38 @@ def _validate_search_space_entry(
         )
 
 
+class TrackletProtocol(Protocol):
+    """Contract every tracklet in ``BaseTracker.tracks`` must satisfy."""
+
+    tracker_id: int
+
+    def get_state_bbox(self) -> np.ndarray: ...
+
+
 class BaseTracker(ABC):
     """Abstract tracker with auto-registration via tracker_id class variable.
 
     Subclasses that define `tracker_id` are automatically registered and
     become discoverable. Parameter metadata is extracted from __init__ for
     CLI integration.
+
     Attributes:
         tracker_id: Unique identifier for the tracker. Subclasses must define
             this to be registered.
         search_space: Hyperparameter search space for tuning. Each key must
             match an `__init__` parameter. Values are dicts with `type`
             (`"randint"` or `"uniform"`) and `range` (`[low, high]`).
+        tracks: List of alive tracklets after each `update()`. Each element
+            must satisfy `TrackletProtocol` (exposes `.tracker_id: int` and
+            `.get_state_bbox() -> np.ndarray`). Subclasses must initialise
+            this as an empty list in `__init__`. Override `tracked_objects`
+            if using a different internal container.
     """
 
     _registry: ClassVar[dict[str, TrackerInfo]] = {}
     tracker_id: ClassVar[str | None] = None
     search_space: ClassVar[dict[str, dict] | None] = None
-    tracks: list[Any]
+    tracks: list[Any]  # elements must satisfy TrackletProtocol
     maximum_frames_without_update: int
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
@@ -353,3 +368,46 @@ class BaseTracker(ABC):
         Call between videos or when tracking should restart from scratch.
         """
         pass
+
+    @property
+    def tracked_objects(self) -> sv.Detections:
+        """All confirmed alive tracks with Kalman-predicted bounding boxes.
+
+        Exposes every confirmed track (tracker_id != -1) that the tracker
+        still considers alive after the most recent `update()` call, including
+        tracks not matched to a detection on the current frame (e.g.
+        temporarily occluded or missed by the detector). Tracks are dropped
+        once the time since the last matching detection exceeds
+        `lost_track_buffer` (scaled by `frame_rate`).
+
+        Unlike the `update()` return value, the result omits `confidence` and
+        `class_id` (both remain `None`). Kalman-predicted boxes have no
+        associated detection score or class label.
+
+        Note:
+            `sv.LabelAnnotator` and other supervision annotators that read
+            `class_id` or `confidence` cannot be used directly on this result
+            and will raise `TypeError`. Guard with
+            ``if detections.class_id is not None`` before annotating.
+
+        Returns:
+            `sv.Detections` with Kalman-predicted `xyxy` and `tracker_id` for
+            each confirmed alive track. Returns an empty `sv.Detections` (with
+            an empty int `tracker_id` array) when no confirmed tracks are
+            alive. The exact set depends on each tracker's pruning logic.
+
+        Raises:
+            AttributeError: If a `BaseTracker` subclass does not initialise
+                `self.tracks` as a list of objects satisfying
+                `TrackletProtocol` in `__init__`.
+        """
+        tracklets = [t for t in self.tracks if t.tracker_id != -1]
+        xyxy = (
+            np.array([t.get_state_bbox() for t in tracklets], dtype=np.float32)
+            if tracklets
+            else np.empty((0, 4), dtype=np.float32)
+        )
+        tracker_ids = np.array([t.tracker_id for t in tracklets], dtype=int)
+        result = sv.Detections(xyxy=xyxy)
+        result.tracker_id = tracker_ids
+        return result
