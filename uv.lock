@@ -1060,7 +1060,7 @@ wheels = [
 
 [[package]]
 name = "inference-models"
-version = "0.24.4"
+version = "0.27.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "accelerate" },
@@ -1075,6 +1075,7 @@ dependencies = [
     { name = "packaging" },
     { name = "peft" },
     { name = "pybase64" },
+    { name = "pycocotools" },
     { name = "pydantic" },
     { name = "python-doctr" },
     { name = "pyvips" },
@@ -1094,9 +1095,9 @@ dependencies = [
     { name = "torchvision" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7e/51/01d53090db328f76b96067880279797fa4bfbfd7266cfde93db666412661/inference_models-0.24.4.tar.gz", hash = "sha256:90a757f57c0f6bd2d06d5119fc744063d62c786292bdba20f1ecdc48b1d477f0", size = 1662420, upload-time = "2026-04-17T09:56:54.723Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/9b/fbc44a204032b581800b09b732fddda7f1adc55bdb00ffa27b1b8e1c71b4/inference_models-0.27.2.tar.gz", hash = "sha256:0d6bc7eece60ace56974fc5d9420950fc467335f5c8768fac2a734b0f1d57c0a", size = 1686660, upload-time = "2026-04-24T15:40:27.697Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/a7/2a4104d50b62e079a7ff0b033e21077ffc2315e195181cdcef835c200d87/inference_models-0.24.4-py3-none-any.whl", hash = "sha256:a3c661bf9784e3b19d5aecc870761d10c6b6bdf3a07459dfd22409774777898f", size = 1830228, upload-time = "2026-04-17T09:56:52.736Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/b8/49af1cd80d1492ca8bf37355a273b891c3387d40c6341579fb82454b9525/inference_models-0.27.2-py3-none-any.whl", hash = "sha256:8000fc042402896fe9ee5d93bb4b229490bc65b6bdf7bad755656cb37a1ff7a4", size = 1862346, upload-time = "2026-04-24T15:40:25.783Z" },
 ]
 
 [[package]]
@@ -4106,7 +4107,7 @@ mypy-types = [
 
 [[package]]
 name = "transformers"
-version = "5.2.0"
+version = "5.6.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -4117,11 +4118,11 @@ dependencies = [
     { name = "safetensors" },
     { name = "tokenizers" },
     { name = "tqdm" },
-    { name = "typer-slim" },
+    { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/7e/8a0c57d562015e5b16c97c1f0b8e0e92ead2c7c20513225dc12c2043ba9f/transformers-5.2.0.tar.gz", hash = "sha256:0088b8b46ccc9eff1a1dca72b5d618a5ee3b1befc3e418c9512b35dea9f9a650", size = 8618176, upload-time = "2026-02-16T18:54:02.867Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/e9/c6c80a07690142a7d05444271f47b9f3c8aac7dea01d52e1137ee480ad78/transformers-5.6.2.tar.gz", hash = "sha256:e657134c3e5a6bc00a3c35f4e2674bb51adfcd89898495b788a18552bac2b91a", size = 8311867, upload-time = "2026-04-23T18:33:29.332Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/93/79754b0ca486e556c2b95d4f5afc66aaf4b260694f3d6e1b51da2d036691/transformers-5.2.0-py3-none-any.whl", hash = "sha256:9ecaf243dc45bee11a7d93f8caf03746accc0cb069181bbf4ad8566c53e854b4", size = 10403304, upload-time = "2026-02-16T18:53:59.699Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/95/0b0218149b0d6f14df35f5b8f676fa83df4f19ed253c3cc447107ef86eca/transformers-5.6.2-py3-none-any.whl", hash = "sha256:f8d3a1bb96778fed9b8aabfd0dd6e19843e4b0f2bb6b59f32b8a92051b0f348f", size = 10364898, upload-time = "2026-04-23T18:33:26.081Z" },
 ]
 
 [[package]]
@@ -4171,18 +4172,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fd/07/b822e1b307d40e263e8253d2384cf98c51aa2368cc7ba9a07e523a1d964b/typer-0.23.1.tar.gz", hash = "sha256:2070374e4d31c83e7b61362fd859aa683576432fd5b026b060ad6b4cd3b86134", size = 120047, upload-time = "2026-02-13T10:04:30.984Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/91/9b286ab899c008c2cb05e8be99814807e7fbbd33f0c0c960470826e5ac82/typer-0.23.1-py3-none-any.whl", hash = "sha256:3291ad0d3c701cbf522012faccfbb29352ff16ad262db2139e6b01f15781f14e", size = 56813, upload-time = "2026-02-13T10:04:32.008Z" },
-]
-
-[[package]]
-name = "typer-slim"
-version = "0.23.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "typer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/da/22/b9c47b8655937b6877d40791b937931702ba9c5f9d28753199266aa96f50/typer_slim-0.23.1.tar.gz", hash = "sha256:dfe92a6317030ee2380f65bf92e540d7c77fefcc689e10d585b4925b45b5e06a", size = 4762, upload-time = "2026-02-13T10:04:26.416Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/8a/5764b851659345f34787f1b6eb30b9d308bbd6c294825cbe38b6b869c97a/typer_slim-0.23.1-py3-none-any.whl", hash = "sha256:8146d5df1eb89f628191c4c604c8464fa841885d0733c58e6e700ff0228adac5", size = 3397, upload-time = "2026-02-13T10:04:27.132Z" },
 ]
 
 [[package]]
