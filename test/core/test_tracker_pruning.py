@@ -41,6 +41,13 @@ def _detection(xyxy: tuple[float, float, float, float]) -> sv.Detections:
 
 
 def _instantiate(tracker_id: str) -> BaseTracker:
+    """Instantiate a tracker by id via the BaseTracker registry.
+
+    The registry is populated by ``__init_subclass__`` hooks that fire
+    when each concrete tracker module is imported. Importing the
+    ``trackers`` package eagerly triggers those imports so the lookup
+    below succeeds regardless of test collection order.
+    """
     import trackers
 
     _ = trackers  # triggers tracker auto-registration
@@ -59,12 +66,12 @@ def test_track_expires_after_buffer(tracker_id: str) -> None:
         tracker.update(_detection(bbox))
     assert len(tracker.tracks) == 1, "track should be alive after warmup"
 
-    buffer = tracker.maximum_frames_without_update  # type: ignore[attr-defined]
+    buffer = tracker.maximum_frames_without_update
     for _ in range(buffer + 5):
         tracker.update(sv.Detections.empty())
 
     assert len(tracker.tracks) == 0, (
-        "track should be pruned after lost_track_buffer empty frames"
+        "track should be pruned after maximum_frames_without_update empty frames"
     )
 
 

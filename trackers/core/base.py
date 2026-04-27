@@ -279,6 +279,7 @@ class BaseTracker(ABC):
     tracker_id: ClassVar[str | None] = None
     search_space: ClassVar[dict[str, dict] | None] = None
     tracks: list[Any]
+    maximum_frames_without_update: int
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.
