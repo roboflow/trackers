@@ -37,6 +37,8 @@ class ByteTrackTracklet(BaseTracklet):
         """Predict next bounding box position."""
         self.state_estimator.predict()
 
+        if self.time_since_update > 0:
+            self.number_of_successful_consecutive_updates = 0
         self.time_since_update += 1
         self.age += 1
         return self.state_estimator.state_to_bbox()
