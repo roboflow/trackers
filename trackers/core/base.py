@@ -293,7 +293,9 @@ class BaseTracker(ABC):
     _registry: ClassVar[dict[str, TrackerInfo]] = {}
     tracker_id: ClassVar[str | None] = None
     search_space: ClassVar[dict[str, dict] | None] = None
-    tracks: list[Any]  # elements must satisfy TrackletProtocol
+    # list[Any]: elements satisfy TrackletProtocol; list is invariant so
+    # list[ConcreteTracklet] in subclasses rejects list[TrackletProtocol] base.
+    tracks: list[Any]
     maximum_frames_without_update: int
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
