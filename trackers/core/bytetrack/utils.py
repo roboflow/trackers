@@ -23,15 +23,22 @@ def _get_alive_tracklets(
     it was just updated).
 
     Note:
-        ByteTrack uses `number_of_successful_consecutive_updates` (must stay
-        consecutive) for maturity, unlike SORT which uses total
-        `number_of_successful_updates`. This matches the original ByteTrack
-        paper's "confirmed track" semantics.
+        Maturity is sticky: once a tracklet has reached
+        `minimum_consecutive_frames` it is assigned a non-negative
+        `tracker_id` (i.e. `tracker_id != -1`) and stays "confirmed"
+        through subsequent missed frames until pruned by
+        `maximum_frames_without_update`. This matches the original
+        ByteTrack paper's "confirmed track" semantics. Reading
+        `number_of_successful_consecutive_updates` directly would
+        un-confirm a track on its first miss because
+        `tracklet.update(None)` resets that counter to 0.
 
     Args:
         tracklets: List of BaseTracklet objects.
         minimum_consecutive_frames: Number of consecutive frames that an object
-            must be tracked before it is considered a 'valid' track.
+            must be tracked before it is considered a 'valid' track. Used as
+            the bootstrap threshold for tracks that have not yet been
+            assigned a tracker_id.
         maximum_frames_without_update: Maximum number of frames without update
             before a track is considered dead.
 
@@ -40,7 +47,11 @@ def _get_alive_tracklets(
     """
     alive_tracklets = []
     for tracklet in tracklets:
-        is_mature = (
+        # Once a tracklet reaches consecutive-update maturity it gets a
+        # non-negative tracker_id (assigned by the tracker), and that id
+        # is never reset. So tracker_id != -1 is the sticky "confirmed"
+        # signal we want here.
+        is_mature = tracklet.tracker_id != -1 or (
             tracklet.number_of_successful_consecutive_updates
             >= minimum_consecutive_frames
         )

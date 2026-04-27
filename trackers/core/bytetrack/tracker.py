@@ -158,7 +158,7 @@ class ByteTrackTracker(BaseTracker):
 
         # Step 2: associate low-confidence detections to remaining tracks
         iou_matrix = _get_iou_matrix(remaining_tracks, low_boxes)
-        matched, _, unmatched_low = self._get_associated_indices(
+        matched, unmatched_low_tracks, unmatched_low = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold
         )
 
@@ -173,6 +173,12 @@ class ByteTrackTracker(BaseTracker):
                 track.tracker_id = ByteTrackTracklet.get_next_tracker_id()
             out_det_indices.append(int(low_indices[col]))
             out_tracker_ids.append(track.tracker_id)
+
+        # Tracks unmatched after both passes need update(None) so
+        # time_since_update advances. Without this, _get_alive_tracklets
+        # never sees an expired track and ByteTrack leaks tracks indefinitely.
+        for local_idx in unmatched_low_tracks:
+            remaining_tracks[local_idx].update(None)
 
         # Unmatched low-confidence detections
         for det_local_idx in unmatched_low:
