@@ -27,11 +27,12 @@ def _get_alive_tracklets(
         `minimum_consecutive_frames` it is assigned a non-negative
         `tracker_id` (i.e. `tracker_id != -1`) and stays "confirmed"
         through subsequent missed frames until pruned by
-        `maximum_frames_without_update`. This matches the original
+        `maximum_frames_without_update`.         This matches the original
         ByteTrack paper's "confirmed track" semantics. Reading
         `number_of_successful_consecutive_updates` directly would
-        un-confirm a track on its first miss because
-        `tracklet.update(None)` resets that counter to 0.
+        un-confirm a track on its first miss (the counter is reset by
+        `ByteTrackTracklet.miss()`), whereas `tracker_id != -1` is
+        sticky once assigned.
 
     Args:
         tracklets: List of BaseTracklet objects.

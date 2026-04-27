@@ -5,12 +5,10 @@
 # ------------------------------------------------------------------------
 """Regression tests for tracker pruning across detection gaps.
 
-After the kalman/tracklet refactor (PR #310), ``time_since_update`` is
-incremented inside ``tracklet.update(None)`` rather than ``predict()``.
-This means each tracker must explicitly call ``update(None)`` on every
-track that wasn't matched in the current frame's association pass;
-otherwise the missed-frame clock never advances and dead tracks are
-never pruned.
+``time_since_update`` is incremented inside ``predict()``, which every
+tracker calls at the top of its update loop for all live tracks.
+Unmatched tracks therefore have their missed-frame clock advanced
+automatically without any explicit call from the tracker.
 
 These tests pin the contract for every concrete tracker:
 
@@ -77,7 +75,7 @@ def test_track_expires_after_buffer(tracker_id: str) -> None:
 
 @pytest.mark.parametrize("tracker_id", _TRACKER_IDS)
 def test_time_since_update_advances_for_unmatched(tracker_id: str) -> None:
-    """`update(None)` is called on unmatched tracks so the clock advances."""
+    """`predict()` advances `time_since_update` for unmatched tracks."""
     tracker = _instantiate(tracker_id)
     bbox = (100.0, 100.0, 200.0, 200.0)
 

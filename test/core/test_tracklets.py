@@ -11,6 +11,7 @@ import pytest
 import supervision as sv
 
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
+from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracker import SORTTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.state_representations import (
@@ -83,6 +84,44 @@ def test_tracklet_id_counter_increments_per_subclass() -> None:
     finally:
         SORTTracklet.count_id = sort_count_id
         ByteTrackTracklet.count_id = bytetrack_count_id
+
+
+def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
+    """ORU unfreeze fires correctly after exactly one missed frame.
+
+    Copilot raised a concern that ``_observed`` stays ``True`` throughout
+    the first missed frame, so ORU would not fire on a 1-frame gap.  The
+    freeze is intentionally deferred to the *start* of the next
+    ``predict()`` call (the re-match frame), where ``time_since_update > 0
+    AND _observed`` is the reliable first-miss signal.  At that point the
+    frozen KF state is identical to what an immediate freeze would have
+    saved, and ``_unfreeze()`` is called by ``update()`` in the same frame.
+    """
+    tracklet = OCSORTTracklet(bbox)
+
+    # Provide a second observation so last_observation / velocity are set.
+    second_bbox = np.array([15.0, 25.0, 35.0, 45.0])
+    tracklet.predict()
+    tracklet.update(second_bbox)
+    assert tracklet._observed is True
+    assert tracklet._frozen_state is None
+
+    # Miss exactly one frame — predict advances the clock but no update follows.
+    tracklet.predict()
+    # Freeze has NOT fired yet: _observed is still True.
+    assert tracklet._observed is True
+    assert tracklet._frozen_state is None
+
+    # Re-match frame: predict() fires the freeze at its very start
+    # (time_since_update > 0 AND _observed), then update() unfreezes.
+    re_match_bbox = np.array([20.0, 30.0, 40.0, 50.0])
+    tracklet.predict()
+    assert tracklet._observed is False
+    assert tracklet._frozen_state is not None
+
+    tracklet.update(re_match_bbox)
+    assert tracklet._frozen_state is None  # _unfreeze() cleared it
+    assert tracklet._observed is True
 
 
 def test_sort_tracker_trackers_alias_returns_tracks_with_warning(
