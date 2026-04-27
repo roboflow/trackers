@@ -182,7 +182,7 @@ class SORTTracker(BaseTracker):
         iou_matrix = _get_iou_matrix(self.tracks, detection_boxes)
 
         # Associate detections to tracklets based on IOU
-        matched_indices, unmatched_tracklets, unmatched_detections = (
+        matched_indices, _unmatched_tracklets, unmatched_detections = (
             self._get_associated_indices(iou_matrix, detection_boxes)
         )
 

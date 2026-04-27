@@ -224,7 +224,7 @@ class OCSORTTracker(BaseTracker):
                 last_observation_of_tracks,
                 detection_boxes[unmatched_detections],
             )
-            ocr_matched, ocr_unmatched_tracks, ocr_unmatched_dets = (
+            ocr_matched, _ocr_unmatched_tracks, ocr_unmatched_dets = (
                 self._get_associated_indices(
                     ocr_iou_matrix, np.zeros_like(ocr_iou_matrix)
                 )
