@@ -16,9 +16,9 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
-|   MOT17   | 59.4 | 72.3 | 73.8 |
-| SportsMOT | 72.8 | 72.3 | 96.3 |
-| SoccerNet | 83.9 | 78.0 | 97.8 |
+|   MOT17   | 60.1 | 73.2 | 74.1 |
+| SportsMOT | 73.0 | 72.5 | 96.4 |
+| SoccerNet | 84.0 | 78.1 | 97.8 |
 
 ## How does ByteTrack work?
 
