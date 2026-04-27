@@ -180,10 +180,11 @@ class OCSORTTracker(BaseTracker):
 
         from typing import cast
 
-        detections = cast(
-            sv.Detections,
-            detections[detections.confidence >= self.high_conf_det_threshold],
-        )
+        if detections.confidence is not None:
+            detections = cast(
+                sv.Detections,
+                detections[detections.confidence >= self.high_conf_det_threshold],
+            )
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
         confidences = (
