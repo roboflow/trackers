@@ -5,9 +5,14 @@
 # ------------------------------------------------------------------------
 """Tests for the ``tracked_objects`` property (issue #105).
 
-Verifies that all three concrete trackers expose alive-but-unmatched tracks
-(e.g. occluded) via Kalman-predicted boxes, keyed by a stable ``tracker_id``,
-and that those tracks drop out once ``lost_track_buffer`` is exceeded.
+Verifies that all three concrete trackers expose alive tracks via the
+``tracked_objects`` property as ``sv.Detections`` with Kalman-predicted
+boxes and stable tracker IDs.
+
+The pruning-and-occlusion behaviour itself (track expires after the lost
+buffer, track survives a short gap, ``time_since_update`` advances on a
+miss) is exercised at the tracker level in ``test_tracker_pruning.py``;
+this file focuses on what ``tracked_objects`` exposes to callers.
 """
 
 from __future__ import annotations
@@ -55,45 +60,6 @@ def test_tracked_objects_exposes_mature_track(tracker_id: str) -> None:
     assert np.allclose(pred, np.array(bbox), atol=10.0), (
         f"predicted box {pred} drifted far from input {bbox}"
     )
-
-
-@pytest.mark.parametrize("tracker_id", _TRACKER_IDS)
-def test_tracked_objects_survives_occlusion(tracker_id: str) -> None:
-    """A mature track stays exposed during a short detection gap."""
-    tracker = _instantiate(tracker_id)
-    bbox = (100.0, 100.0, 200.0, 200.0)
-
-    for _ in range(6):
-        tracker.update(_one_detection(bbox))
-
-    baseline = tracker.tracked_objects
-    assert len(baseline) == 1
-    original_id = int(baseline.tracker_id[0])
-
-    for _ in range(3):
-        tracker.update(sv.Detections.empty())
-        occluded = tracker.tracked_objects
-        assert len(occluded) == 1, "track should remain alive through short occlusion"
-        assert int(occluded.tracker_id[0]) == original_id
-
-
-@pytest.mark.parametrize("tracker_id", _TRACKER_IDS)
-def test_tracked_objects_drops_after_expiry(tracker_id: str) -> None:
-    """After ``lost_track_buffer`` empty frames, the track is pruned."""
-    tracker = _instantiate(tracker_id)
-    bbox = (100.0, 100.0, 200.0, 200.0)
-
-    for _ in range(6):
-        tracker.update(_one_detection(bbox))
-    assert len(tracker.tracked_objects) == 1
-
-    buffer = tracker.maximum_frames_without_update
-    for _ in range(buffer + 5):
-        tracker.update(sv.Detections.empty())
-
-    expired = tracker.tracked_objects
-    assert len(expired) == 0
-    assert expired.tracker_id.size == 0
 
 
 @pytest.mark.parametrize("tracker_id", _TRACKER_IDS)
