@@ -24,15 +24,16 @@ def _get_alive_tracklets(
 
     Note:
         Maturity is sticky: once a tracklet has reached
-        `minimum_consecutive_frames` it is assigned a non-negative
-        `tracker_id` (i.e. `tracker_id != -1`) and stays "confirmed"
-        through subsequent missed frames until pruned by
-        `maximum_frames_without_update`. This matches the original
-        ByteTrack paper's "confirmed track" semantics. Reading
-        `number_of_successful_consecutive_updates` directly would
-        un-confirm a track on its first miss (the counter is reset by
-        `ByteTrackTracklet.miss()`), whereas `tracker_id != -1` is
-        sticky once assigned.
+        `minimum_consecutive_frames` consecutive observations it is
+        assigned a non-negative `tracker_id` (i.e. `tracker_id != -1`)
+        and stays "confirmed" through subsequent missed frames until
+        pruned by `maximum_frames_without_update`. This matches the
+        original ByteTrack paper's "confirmed track" semantics. For
+        unconfirmed tracks (`tracker_id == -1`), maturity is determined
+        by `number_of_successful_consecutive_updates`; this counter is
+        reset to 0 in `predict()` when `time_since_update > 0` (i.e.
+        on any missed frame), so it correctly reflects only consecutive
+        observations.
 
     Args:
         tracklets: List of BaseTracklet objects.
