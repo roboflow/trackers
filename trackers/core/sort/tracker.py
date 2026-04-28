@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from typing import ClassVar
+
 import numpy as np
 import supervision as sv
 from scipy.optimize import linear_sum_assignment
@@ -62,6 +64,13 @@ class SORTTracker(BaseTracker):
 
     tracker_id = "sort"
 
+    search_space: ClassVar[dict[str, dict]] = {
+        "lost_track_buffer": {"type": "randint", "range": [10, 91]},
+        "track_activation_threshold": {"type": "uniform", "range": [0.1, 0.9]},
+        "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
+        "minimum_iou_threshold": {"type": "uniform", "range": [0.05, 0.7]},
+    }
+
     def __init__(
         self,
         lost_track_buffer: int = 30,
@@ -85,9 +94,9 @@ class SORTTracker(BaseTracker):
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
-    ) -> tuple[list[tuple[int, int]], set[int], set[int]]:
+    ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
-        Associate detections to tracklets based on IOU
+        Associate detections to tracklets based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
@@ -112,13 +121,18 @@ class SORTTracker(BaseTracker):
                     unmatched_tracklets.remove(row)
                     unmatched_detections.remove(col)
 
-        return matched_indices, unmatched_tracklets, unmatched_detections
+        # Return sorted lists for deterministic order across CPython versions.
+        return (
+            matched_indices,
+            sorted(unmatched_tracklets),
+            sorted(unmatched_detections),
+        )
 
     def _spawn_new_tracklets(
         self,
         confidences: np.ndarray,
         detection_boxes: np.ndarray,
-        unmatched_detections: set[int],
+        unmatched_detections: list[int],
     ) -> None:
         for detection_idx in unmatched_detections:
             if confidences[detection_idx] >= self.track_activation_threshold:
@@ -143,8 +157,9 @@ class SORTTracker(BaseTracker):
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
         if len(self.tracklets) == 0 and len(detections) == 0:
-            detections.tracker_id = np.array([], dtype=int)
-            return detections
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
 
         detection_boxes = (
             detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
@@ -188,8 +203,11 @@ class SORTTracker(BaseTracker):
                     tracklet.tracker_id = SORTTracklet.get_next_tracker_id()
                 tracker_ids[det_idx] = tracklet.tracker_id
 
-        detections.tracker_id = tracker_ids
-        return detections
+        # Return a fresh sv.Detections rather than mutating the caller's object,
+        # matching the aliasing semantics of ByteTrack and OC-SORT.
+        result = detections[np.arange(len(detections))]
+        result.tracker_id = tracker_ids
+        return result
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.

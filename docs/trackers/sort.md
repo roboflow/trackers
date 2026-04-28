@@ -1,15 +1,16 @@
 ---
+title: SORT Tracker — Simple Online and Realtime Tracking | Trackers
 comments: true
 description: SORT (Simple Online and Realtime Tracking) uses a Kalman filter and Hungarian algorithm to track objects in real time using only bounding-box geometry — fast, lightweight, and easy to integrate.
 ---
 
 # SORT
 
-## Overview
+## What is SORT?
 
 SORT is a classic online, tracking-by-detection method that predicts object motion with a Kalman filter and matches predicted tracks to detections using the Hungarian algorithm based on Intersection over Union (IoU). The tracker uses only geometric cues from bounding boxes, without appearance features, so it runs extremely fast and scales to hundreds of frames per second on typical hardware. Detections from a strong CNN detector feed SORT, which updates each track’s state via a constant velocity motion model and prunes stale tracks. Because SORT lacks explicit re-identification or appearance cues, it can suffer identity switches and fragmented tracks under long occlusions or heavy crowding.
 
-## Comparison
+## How does SORT compare to other trackers?
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
@@ -19,11 +20,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 | SportsMOT | 70.9 | 68.9 | 95.7 |
 | SoccerNet | 81.6 | 76.2 | 95.1 |
 
-## Watch It in Action
-
-<iframe width="100%" style="aspect-ratio: 16/9;" src="https://www.youtube.com/embed/u0k2dTZ0vfs" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
-## Algorithm
+## How does SORT work?
 
 SORT models each tracked object with a seven-dimensional state vector `[x, y, s, r, dx, dy, ds]`, where `x` and `y` are the bounding-box center coordinates, `s` is the box area (scale), `r` is the aspect ratio (held constant across predictions), and `dx`, `dy`, `ds` are the corresponding velocities.
 

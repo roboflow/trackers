@@ -16,6 +16,17 @@ Roboflow Trackers is built and maintained by the [Roboflow](https://roboflow.com
 
 A full list of contributors is available on the [GitHub contributors page](https://github.com/roboflow/trackers/graphs/contributors).
 
+## Package Provenance
+
+Roboflow Trackers is distributed as the [`trackers` package on PyPI](https://pypi.org/project/trackers/). The source code is hosted on [GitHub](https://github.com/roboflow/trackers) under the Apache 2.0 license.
+
+| Detail         | Value                                                                        |
+| :------------- | :--------------------------------------------------------------------------- |
+| **PyPI**       | [`trackers`](https://pypi.org/project/trackers/)                             |
+| **Repository** | [roboflow/trackers](https://github.com/roboflow/trackers)                    |
+| **License**    | [Apache License 2.0](https://github.com/roboflow/trackers/blob/main/LICENSE) |
+| **Python**     | 3.10+                                                                        |
+
 ## Support
 
 If you run into a bug, have a feature request, or need help with integration:

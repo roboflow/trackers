@@ -1,5 +1,5 @@
 ---
-description: Download MOT benchmark datasets — MOT17, MOT20, DanceTrack, and SportsMOT — with a single command for tracker evaluation and development.
+description: Download MOT benchmark datasets — MOT17 and SportsMOT — with a single command for tracker evaluation and development.
 ---
 
 # Download Datasets

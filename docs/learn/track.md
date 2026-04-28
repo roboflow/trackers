@@ -1,4 +1,5 @@
 ---
+title: Track Objects in Video — Python API & CLI Guide | Trackers
 description: Learn how to run multi-object tracking on video with Roboflow Trackers. Combine any detection model with SORT, ByteTrack, or OC-SORT to maintain consistent object IDs across frames.
 ---
 

@@ -42,10 +42,12 @@ def main() -> int:
     from trackers.scripts.download import add_download_subparser
     from trackers.scripts.eval import add_eval_subparser
     from trackers.scripts.track import add_track_subparser
+    from trackers.scripts.tune import add_tune_subparser
 
     add_download_subparser(subparsers)
     add_eval_subparser(subparsers)
     add_track_subparser(subparsers)
+    add_tune_subparser(subparsers)
 
     # Parse arguments
     args = parser.parse_args()

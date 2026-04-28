@@ -1,15 +1,16 @@
 ---
+title: ByteTrack — Multi-Object Tracking Algorithm | Trackers
 comments: true
 description: ByteTrack improves multi-object tracking by associating every detection box — including low-confidence ones — to reduce missed tracks and fragmentation while maintaining real-time performance.
 ---
 
 # ByteTrack
 
-## Overview
+## What is ByteTrack?
 
 ByteTrack builds on the same Kalman filter plus Hungarian algorithm framework as SORT but changes the data association strategy to use almost every detection box regardless of confidence score. It runs a two-stage matching: first match high-confidence detections to tracks, then match low-confidence detections to any unmatched tracks using IoU. This reduces missed tracks and fragmentation for occluded or weak detections while retaining simplicity and high frame rates. ByteTrack has set state-of-the-art results on standard MOT benchmarks with real-time performance, because it recovers valid low-score detections instead of discarding them.
 
-## Comparison
+## How does ByteTrack compare to other trackers?
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
@@ -19,11 +20,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 | SportsMOT | 73.0 | 72.5 | 96.4 |
 | SoccerNet | 84.0 | 78.1 | 97.8 |
 
-## Watch It in Action
-
-<iframe width="100%" style="aspect-ratio: 16/9;" src="https://www.youtube.com/embed/u0k2dTZ0vfs" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
-## Algorithm
+## How does ByteTrack work?
 
 ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as [SORT](sort.md) but changes how detections are associated to tracks. Instead of discarding low-confidence detections, ByteTrack uses a two-stage matching strategy that recovers valid objects the detector scored low due to occlusion, blur, or partial visibility.
 
