@@ -50,6 +50,15 @@ class BaseStateEstimator(ABC):
     handle conversions between `[x1, y1, x2, y2]` bboxes and the
     internal state/measurement vectors.
 
+    Note:
+        Noise matrices (R, Q, P) are not configured in `_create_filter`
+        and default to identity matrices. Callers must configure them via
+        `set_kf_covariances` after construction for accurate tracking.
+        Tracklet classes (`SORTTracklet`, `ByteTrackTracklet`,
+        `OCSORTTracklet`) do this automatically via `_configure_noise()`.
+        If you instantiate a state estimator directly, call
+        `set_kf_covariances` before the first `predict`/`update`.
+
     Attributes:
         kf: The underlying Kalman filter instance.
     """
@@ -147,10 +156,19 @@ class BaseStateEstimator(ABC):
             P: Error covariance matrix.
         """
         if R is not None:
+            expected_shape = (self.kf.dim_z, self.kf.dim_z)
+            if R.shape != expected_shape:
+                raise ValueError(f"R must have shape {expected_shape}; got {R.shape}.")
             self.kf.R = R
         if Q is not None:
+            expected_shape = (self.kf.dim_x, self.kf.dim_x)
+            if Q.shape != expected_shape:
+                raise ValueError(f"Q must have shape {expected_shape}; got {Q.shape}.")
             self.kf.Q = Q
         if P is not None:
+            expected_shape = (self.kf.dim_x, self.kf.dim_x)
+            if P.shape != expected_shape:
+                raise ValueError(f"P must have shape {expected_shape}; got {P.shape}.")
             self.kf.P = P
 
 

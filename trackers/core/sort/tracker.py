@@ -8,6 +8,7 @@ from typing import ClassVar
 
 import numpy as np
 import supervision as sv
+from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -20,6 +21,11 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
 )
+
+
+@deprecated(target=None, deprecated_in="0.4", remove_in="1.0")
+def _access_trackers(self_: "SORTTracker") -> "list[SORTTracklet]":
+    return self_.tracks
 
 
 class SORTTracker(BaseTracker):
@@ -59,7 +65,7 @@ class SORTTracker(BaseTracker):
             detections to existing tracks. Higher values require more overlap.
         state_estimator_class: State estimator class to use for Kalman filter.
             Defaults to `XYXYStateEstimator`. Can also use
-            `XYXYStateEstimator` for corner-based representation.
+            `XCYCSRStateEstimator` for center-based representation.
     """
 
     tracker_id = "sort"
@@ -90,26 +96,31 @@ class SORTTracker(BaseTracker):
         self.state_estimator_class = state_estimator_class
 
         # Active tracklets
-        self.tracklets: list[SORTTracklet] = []
+        self.tracks: list[SORTTracklet] = []
+
+    @property
+    def trackers(self) -> list[SORTTracklet]:
+        """Deprecated: use tracks instead."""
+        return _access_trackers(self)
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
-        Associate detections to tracklets based on IOU.
+        Associate detections to tracks based on IOU
 
         Args:
             iou_matrix: IOU cost matrix.
             detection_boxes: Detected bounding boxes in the form [x1, y1, x2, y2].
 
         Returns:
-            Matched indices, unmatched tracklets, unmatched detections.
+            Matched indices, unmatched tracks, unmatched detections.
         """
         matched_indices = []
-        unmatched_tracklets = set(range(len(self.tracklets)))
+        unmatched_tracklets = set(range(len(self.tracks)))
         unmatched_detections = set(range(len(detection_boxes)))
 
-        if len(self.tracklets) > 0 and len(detection_boxes) > 0:
+        if len(self.tracks) > 0 and len(detection_boxes) > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
             # Note that it uses a a modified Jonker-Volgenant algorithm with no
             # initialization instead of the Hungarian algorithm as mentioned in the
@@ -140,7 +151,7 @@ class SORTTracker(BaseTracker):
                     detection_boxes[detection_idx],
                     state_estimator_class=self.state_estimator_class,
                 )
-                self.tracklets.append(new_tracker)
+                self.tracks.append(new_tracker)
 
     def update(self, detections: sv.Detections) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
@@ -156,7 +167,7 @@ class SORTTracker(BaseTracker):
             `sv.Detections` with `tracker_id` assigned for each detection.
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
-        if len(self.tracklets) == 0 and len(detections) == 0:
+        if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
             return result
@@ -165,32 +176,32 @@ class SORTTracker(BaseTracker):
             detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
         )
 
-        for tracklet in self.tracklets:
+        for tracklet in self.tracks:
             tracklet.predict()
 
-        iou_matrix = _get_iou_matrix(self.tracklets, detection_boxes)
+        iou_matrix = _get_iou_matrix(self.tracks, detection_boxes)
 
         # Associate detections to tracklets based on IOU
-        matched_indices, unmatched_tracklets, unmatched_detections = (
+        matched_indices, _unmatched_tracklets, unmatched_detections = (
             self._get_associated_indices(iou_matrix, detection_boxes)
         )
 
         # Update matched tracklets and record the det_idx -> tracklet mapping
         matched_tracklet_for_det: dict[int, SORTTracklet] = {}
         for row, col in matched_indices:
-            self.tracklets[row].update(detection_boxes[col])
-            matched_tracklet_for_det[col] = self.tracklets[row]
+            self.tracks[row].update(detection_boxes[col])
+            matched_tracklet_for_det[col] = self.tracks[row]
 
-        # Update non matched for increasing time_since_update
-        for index in unmatched_tracklets:
-            self.tracklets[index].update(None)
-        self._spawn_new_tracklets(
-            detections.confidence, detection_boxes, unmatched_detections
+        confidences = (
+            detections.confidence
+            if detections.confidence is not None
+            else np.ones(len(detections))
         )
+        self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
         # Remove dead tracklets
-        self.tracklets = _get_alive_tracklets(  # type: ignore[assignment]
-            self.tracklets,
+        self.tracks = _get_alive_tracklets(
+            self.tracks,
             self.minimum_consecutive_frames,
             self.maximum_frames_without_update,
         )
@@ -205,7 +216,11 @@ class SORTTracker(BaseTracker):
 
         # Return a fresh sv.Detections rather than mutating the caller's object,
         # matching the aliasing semantics of ByteTrack and OC-SORT.
-        result = detections[np.arange(len(detections))]
+        result = (
+            sv.Detections.empty()
+            if len(detections) == 0
+            else detections[np.arange(len(detections))]
+        )
         result.tracker_id = tracker_ids
         return result
 
@@ -213,5 +228,5 @@ class SORTTracker(BaseTracker):
         """Reset tracker state by clearing all tracks and resetting ID counter.
         Call this method when switching to a new video or scene.
         """
-        self.tracklets = []
+        self.tracks = []
         SORTTracklet.count_id = 0

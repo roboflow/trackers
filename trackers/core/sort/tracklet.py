@@ -29,19 +29,29 @@ class SORTTracklet(BaseTracklet):
             1  # SORT doesn't use number_of_successful_consecutive_updates
         )
 
-    def update(self, bbox: np.ndarray | None) -> None:
-        """Update tracklet with new observation or None if missed."""
-        if bbox is not None:
-            self.state_estimator.update(bbox)
-            self.time_since_update = 0
-            self.number_of_successful_updates += 1
-        else:
-            self.state_estimator.update(None)
-            self.time_since_update += 1
+    def update(self, bbox: np.ndarray) -> None:
+        """Update tracklet state with a new bounding-box observation.
+
+        Args:
+            bbox: Bounding box `[x1, y1, x2, y2]`.
+        """
+        self.state_estimator.update(bbox)
+        self.time_since_update = 0
+        self.number_of_successful_updates += 1
 
     def predict(self) -> np.ndarray:
-        """Predict next bounding box position."""
+        """Predict next bounding box position and advance missed-frame clock.
+
+        Propagates the Kalman filter and increments `time_since_update` and
+        `age`. Called for every live track each frame regardless of match
+        status — unmatched tracks advance their clock automatically here
+        without any separate miss notification.
+
+        Returns:
+            Predicted bounding box `[x1, y1, x2, y2]`.
+        """
         self.state_estimator.predict()
+        self.time_since_update += 1
         self.age += 1
         return self.state_estimator.state_to_bbox()
 

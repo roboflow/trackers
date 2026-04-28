@@ -36,13 +36,29 @@ class BaseTracklet(ABC):
         return next_id
 
     @abstractmethod
-    def update(self, bbox: np.ndarray | None) -> None:
-        """Update tracklet with new observation or None if missed."""
+    def update(self, bbox: np.ndarray) -> None:
+        """Update tracklet state with a new bounding-box observation.
+
+        Called only when the track is matched to a detection. Missed frames
+        are handled exclusively by `predict()` — `None` is not accepted.
+
+        Args:
+            bbox: Bounding box `[x1, y1, x2, y2]`.
+        """
         pass
 
     @abstractmethod
     def predict(self) -> np.ndarray:
-        """Predict next bounding box position."""
+        """Predict next bounding box position and advance missed-frame state.
+
+        Propagates the Kalman filter and increments `time_since_update` (and
+        `age`) on every call — matched or unmatched. Subclasses that track
+        consecutive-update counters must also reset them here when
+        `time_since_update > 0` before incrementing.
+
+        Returns:
+            Predicted bounding box `[x1, y1, x2, y2]`.
+        """
         pass
 
     @abstractmethod

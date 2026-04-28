@@ -179,7 +179,10 @@ class OCSORTTracker(BaseTracker):
             result.tracker_id = np.array([], dtype=int)
             return result
 
-        detections = detections[detections.confidence >= self.high_conf_det_threshold]
+        if detections.confidence is not None:
+            detections = detections[
+                detections.confidence >= self.high_conf_det_threshold
+            ]
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
         confidences = (
@@ -225,7 +228,7 @@ class OCSORTTracker(BaseTracker):
                 last_observation_of_tracks,
                 detection_boxes[unmatched_detections],
             )
-            ocr_matched, ocr_unmatched_tracks, ocr_unmatched_dets = (
+            ocr_matched, _ocr_unmatched_tracks, ocr_unmatched_dets = (
                 self._get_associated_indices(
                     ocr_iou_matrix, np.zeros_like(ocr_iou_matrix)
                 )
@@ -241,9 +244,6 @@ class OCSORTTracker(BaseTracker):
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(tid)
 
-            for m in ocr_unmatched_tracks:
-                self.tracks[unmatched_tracks[m]].update(None)
-
             self.tracks = self._prune_expired_tracklets()
 
             remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
@@ -252,8 +252,6 @@ class OCSORTTracker(BaseTracker):
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(-1)
         else:
-            for track_idx in unmatched_tracks:
-                self.tracks[track_idx].update(None)
             self.tracks = self._prune_expired_tracklets()
 
             self._spawn_new_tracklets(detection_boxes[unmatched_detections])

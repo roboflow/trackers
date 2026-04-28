@@ -85,7 +85,7 @@ vy2' = vy2
 
 Because each corner moves freely, the box width and height can change between frames. This makes XYXY a natural fit when objects change shape — due to camera perspective, non-rigid motion, or inconsistent detections.
 
-**In Trackers, this is the default** for `ByteTrackTracker` and `SORTTracker`.
+**In Trackers, this is the configurable default** for `ByteTrackTracker` and `SORTTracker` via the `state_estimator_class` parameter. Note: previous versions used hand-rolled Kalman filters internally — `XYXYStateEstimator` is the new unified implementation introduced in this refactoring.
 
 ---
 
@@ -151,8 +151,8 @@ The aspect ratio `r = w / h` is carried forward unchanged. This acts as a regula
 
 We can also benchmark the trackers using the different State Estimators and we get:
 
-- In **Dancetrack**, with defaults parameters all trackers perform better with XYXYStateEstimator, but with tuned parameters, SORT tracker with XCYCSRStateEstimator gets +0.8% HOTA.
-- In **Soccernet dataset**, with defaults parameters SORT tracker with XYXYStateEstimator has ~5% more HOTA than using XCYC, when tuning parameters with grid search this difference is reduced to 2%. For the other trackers we dont find significant advantages of using a different StateEstimators, just having up to 0.2% better HOTA.
+- In **Dancetrack**, with default parameters all trackers perform better with XYXYStateEstimator, but with tuned parameters, SORT tracker with XCYCSRStateEstimator gets +0.8% HOTA.
+- In the **Soccernet dataset**, with default parameters, SORT tracker with XYXYStateEstimator has ~5% more HOTA than using XCYC. When tuning parameters with grid search, this difference is reduced to 2%. For the other trackers, we don't find significant advantages of using a different StateEstimators, just having up to 0.2% better HOTA.
 - In **SportsMOT**, for OC-SORT and ByteTrack, the StateEstimator doesn't affect the performance, while for SORT XYXYStateEstimator gives a small advantage of ~2% HOTA with default parameters and 0.4% when tuning both.
 - In **MOT17**, with default parameters XYXYStateEstimator performs slightly better than XCYCSRStateEstimator with SORT and ByteTrack with up to 0.7% better results, but for OC-SORT XCYCSRStateEstimator gives 0.2% better HOTA. When tuning parameters, XCYCSRStateEstimator performs the best with all the trackers by a small margin, ranging in 0.2-0.4% HOTA.
 
@@ -160,7 +160,7 @@ But lets visualize where these differences are, here is an example where using X
 
 <div style="display: flex; justify-content: center;">
   <video style="width: 50%; height: auto;" controls>
-    <source src="../../assets/SNMOT-118-single-track-xyxy-vs-xcycsr.mp4" type="video/mp4">
+    <source src="https://github.com/user-attachments/assets/219acc15-c6c5-4bf2-93d2-8c1b5523f4f1" type="video/mp4">
   </video>
 </div>
 
