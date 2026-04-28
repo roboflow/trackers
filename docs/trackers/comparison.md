@@ -37,7 +37,8 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   58.4   |   69.9   |   67.2   |
     | ByteTrack |   60.1   |   73.2   |   74.1   |
-    |  OC-SORT  | **61.9** | **76.4** | **76.0** |
+    |  OC-SORT  |   61.9   |   76.4   |   76.0   |
+    | BoT-SORT  | **63.7** | **78.7** | **79.2** |
 
 === "Tuned"
 
@@ -47,7 +48,8 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   60.4   |   72.5   |   75.8   |
     | ByteTrack |   60.5   |   72.7   |   76.1   |
-    |  OC-SORT  | **62.0** | **76.5** | **77.3** |
+    |  OC-SORT  |   62.0   |   76.5   |   77.3   |
+    | BoT-SORT  | **63.8** | **78.7** | **79.4** |
 
     Tuned configuration for each tracker.
 
@@ -72,6 +74,17 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
       direction_consistency_weight: 0.2
       high_conf_det_threshold: 0.4
       delta_t: 1
+
+    BoT-SORT:
+      lost_track_buffer: 30
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.2
+      minimum_iou_threshold_second_assoc: 0.5
+      minimum_iou_threshold_unconfirmed_assoc: 0.2
+      high_conf_det_threshold: 0.5
+      track_activation_threshold: 0.6
+      enable_cmc: true
+      cmc_method: sparseOptFlow
     ```
 
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
@@ -95,8 +108,9 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   70.8   |   68.9   |   95.5   |
-    | ByteTrack | **73.0** | **72.5** | **96.4** |
+    | ByteTrack |   73.0   |   72.5   |   96.4   |
     |  OC-SORT  |   71.7   |   71.4   |   95.0   |
+    | BoT-SORT  | **73.8** | **73.4** | **96.9** |
 
 === "Tuned"
 
@@ -105,8 +119,9 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   72.9   |   73.0   |   95.8   |
-    | ByteTrack |   73.3   |   73.5   | **95.9** |
-    |  OC-SORT  | **74.0** | **75.4** |   95.6   |
+    | ByteTrack |   73.3   |   73.5   |   95.9   |
+    |  OC-SORT  |   74.0   | **75.4** |   95.6   |
+    | BoT-SORT  | **74.1** |   74.0   | **96.9** |
 
     Tuned configuration for each tracker.
 
@@ -131,6 +146,17 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       direction_consistency_weight: 0.2
       high_conf_det_threshold: 0.6
       delta_t: 3
+
+    BoT-SORT:
+      lost_track_buffer: 30
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.1
+      minimum_iou_threshold_second_assoc: 0.5
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
+      high_conf_det_threshold: 0.7
+      track_activation_threshold: 0.8
+      enable_cmc: true
+      cmc_method: sparseOptFlow
     ```
 
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
@@ -155,8 +181,9 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   81.6   |   76.2   |   95.1   |
-    | ByteTrack | **84.0** | **78.1** | **97.8** |
+    | ByteTrack |   84.0   |   78.1   | **97.8** |
     |  OC-SORT  |   78.4   |   72.6   |   94.1   |
+    | BoT-SORT  | **84.5** | **79.3** |   96.6   |
 
 === "Tuned"
 
@@ -164,9 +191,10 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
-    |   SORT    | **84.2** | **78.2** | **98.2** |
-    | ByteTrack |   84.0   |   78.1   |   97.8   |
+    |   SORT    |   84.2   |   78.2   | **98.2** |
+    | ByteTrack |   84.0   |   78.1   | **98.2** |
     |  OC-SORT  |   82.9   |   77.9   |   96.8   |
+    | BoT-SORT  | **85.0** | **79.7** |   97.2   |
 
     Tuned configuration for each tracker.
 
@@ -191,6 +219,17 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       direction_consistency_weight: 0.2
       high_conf_det_threshold: 0.4
       delta_t: 1
+
+    BoT-SORT:
+      lost_track_buffer: 60
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.1
+      minimum_iou_threshold_second_assoc: 0.6
+      minimum_iou_threshold_unconfirmed_assoc: 0.2
+      high_conf_det_threshold: 0.6
+      track_activation_threshold: 0.7
+      enable_cmc: true
+      cmc_method: sparseOptFlow
     ```
 
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
