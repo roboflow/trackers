@@ -13,6 +13,7 @@ Thank you for your interest in contributing to the Trackers library! Your helpâ€
 7. [Google-Style Docstrings and Type Hints](#google-style-docstrings-and-type-hints)
 8. [Reporting Bugs](#reporting-bugs)
 9. [License](#license)
+10. [Docs Video Compatibility](#docs-video-compatibility)
 
 ## How to Contribute
 
@@ -177,6 +178,20 @@ Following this pattern helps ensure consistency throughout the codebase.
 ## Reporting Bugs
 
 Bug reports are vital for continued improvement. When reporting an issue, please include a clear, minimal reproducible example that demonstrates the problem. Detailed bug reports assist us in swiftly diagnosing and addressing issues.
+
+## Docs Video Compatibility
+
+When embedding local videos in MkDocs pages, use browser-safe MP4 encoding. Some `.mp4` files (for example `mpeg4`/`mp4v`) may load as a gray or frozen frame in browsers.
+
+- Preferred video settings: `H.264 (libx264) + yuv420p + faststart`
+- Keep docs assets in `docs/assets/`
+- From files under `docs/trackers/`, use `../../assets/<video>.mp4` in the `<source src=...>` path
+
+Re-encode command:
+
+```bash
+ffmpeg -y -i input.mp4 -c:v libx264 -pix_fmt yuv420p -profile:v high -level 4.0 -movflags +faststart -an output_h264.mp4
+```
 
 ## License
 
