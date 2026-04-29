@@ -129,12 +129,13 @@ class BoTSORTTracker(BaseTracker):
         Args:
             detections: Supervision detections for the current frame. Must include `
                 .xyxy`. Confidence (`detections.confidence`) is optional but
-                recommended. The method writes/overwrites `detections.tracker_id`.
+                recommended. This method does not mutate the input detections;
+                it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
             frame: Current video frame in BGR format (H, W, 3), required if CMC is
                 enabled.
 
         Returns:
-            ``sv.Detections`` with ``tracker_id`` assigned (>= 0 confirmed,
+            A new ``sv.Detections`` with ``tracker_id`` assigned (>= 0 confirmed,
             -1 unconfirmed).
 
         Notes:
