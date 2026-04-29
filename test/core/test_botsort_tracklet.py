@@ -31,9 +31,7 @@ def bbox() -> np.ndarray:
 
 
 @pytest.fixture(params=[XCYCWHStateEstimator, XYXYStateEstimator, XCYCSRStateEstimator])
-def tracklet(
-    bbox: np.ndarray, request: pytest.FixtureRequest
-) -> BoTSORTTracklet:
+def tracklet(bbox: np.ndarray, request: pytest.FixtureRequest) -> BoTSORTTracklet:
     estimator_class = request.param
     return BoTSORTTracklet(bbox, state_estimator_class=estimator_class)
 

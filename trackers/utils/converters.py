@@ -132,4 +132,3 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
     result[:, 2] = xcycsr[:, 0] + w * 0.5
     result[:, 3] = xcycsr[:, 1] + h * 0.5
     return result
-

@@ -14,6 +14,8 @@ import numpy as np
 from trackers.utils.converters import (
     xcycsr_to_xyxy,
     xyxy_to_xcycsr,
+)
+from trackers.utils.converters import (
     xyxy_to_xywh as convert_xyxy_to_xywh,
 )
 from trackers.utils.kalman_filter import KalmanFilter
