@@ -242,7 +242,7 @@ class BoTSORTTracker(BaseTracker):
             out_tracker_ids.append(track.tracker_id)
 
         # Unmatched low-confidence detections
-        for det_local_idx in unmatched_low:
+        for det_local_idx in sorted(unmatched_low):
             out_det_indices.append(int(low_indices[det_local_idx]))
             out_tracker_ids.append(-1)
 
