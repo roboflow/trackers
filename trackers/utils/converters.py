@@ -7,6 +7,33 @@
 import numpy as np
 
 
+def xyxy_to_xywh(xyxy: np.ndarray) -> np.ndarray:
+    """Convert bounding boxes from corner to center-width-height format.
+
+    Args:
+        xyxy: Bounding boxes `[x_min, y_min, x_max, y_max]` with shape `(4,)`
+            for a single box or `(N, 4)` for multiple boxes.
+
+    Returns:
+        Bounding boxes `[x_center, y_center, width, height]` with same shape
+            as input.
+    """
+    if xyxy.ndim == 1:
+        x1, y1, x2, y2 = xyxy.astype(np.float64)
+        w = x2 - x1
+        h = y2 - y1
+        return np.array([x1 + w * 0.5, y1 + h * 0.5, w, h], dtype=np.float64)
+
+    w = xyxy[:, 2] - xyxy[:, 0]
+    h = xyxy[:, 3] - xyxy[:, 1]
+    result = np.empty((xyxy.shape[0], 4), dtype=np.float64)
+    result[:, 0] = xyxy[:, 0] + w * 0.5
+    result[:, 1] = xyxy[:, 1] + h * 0.5
+    result[:, 2] = w
+    result[:, 3] = h
+    return result
+
+
 def xyxy_to_xcycsr(xyxy: np.ndarray) -> np.ndarray:
     """Convert bounding boxes from corner to center-scale-ratio format.
 
@@ -105,3 +132,4 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
     result[:, 2] = xcycsr[:, 0] + w * 0.5
     result[:, 3] = xcycsr[:, 1] + h * 0.5
     return result
+

@@ -16,6 +16,12 @@ import numpy as np
 import pytest
 
 from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XCYCSRStateEstimator,
+    XCYCWHStateEstimator,
+    XYXYStateEstimator,
+)
 
 
 @pytest.fixture
@@ -24,9 +30,12 @@ def bbox() -> np.ndarray:
     return np.array([10.0, 20.0, 50.0, 80.0])
 
 
-@pytest.fixture
-def tracklet(bbox: np.ndarray) -> BoTSORTTracklet:
-    return BoTSORTTracklet(bbox)
+@pytest.fixture(params=[XCYCWHStateEstimator, XYXYStateEstimator, XCYCSRStateEstimator])
+def tracklet(
+    bbox: np.ndarray, request: pytest.FixtureRequest
+) -> BoTSORTTracklet:
+    estimator_class = request.param
+    return BoTSORTTracklet(bbox, state_estimator_class=estimator_class)
 
 
 # -------------------------------------------------------------------
@@ -34,16 +43,21 @@ def tracklet(bbox: np.ndarray) -> BoTSORTTracklet:
 # -------------------------------------------------------------------
 
 
-def test_botsort_tracklet_predict_clamps_wh_positive(
+@pytest.mark.parametrize(
+    "estimator_class",
+    [XCYCWHStateEstimator, XYXYStateEstimator, XCYCSRStateEstimator],
+)
+def test_botsort_tracklet_predict_keeps_valid_bbox(
     bbox: np.ndarray,
+    estimator_class: type[BaseStateEstimator],
 ) -> None:
-    """Width and height stay positive even after many predictions with no update."""
-    tracklet = BoTSORTTracklet(bbox)
+    """BBox width/height stay positive even after many predictions."""
+    tracklet = BoTSORTTracklet(bbox, state_estimator_class=estimator_class)
     for _ in range(50):
         tracklet.predict()
-    state = tracklet.state_estimator.kf.x.reshape(-1)
-    assert state[2] > 0, "width must stay positive after many predicts"
-    assert state[3] > 0, "height must stay positive after many predicts"
+    state_bbox = tracklet.get_state_bbox()
+    assert state_bbox[2] > state_bbox[0], "width must stay positive after predicts"
+    assert state_bbox[3] > state_bbox[1], "height must stay positive after predicts"
 
 
 # -------------------------------------------------------------------
@@ -128,16 +142,19 @@ def test_botsort_tracklet_apply_cmc_translates_center(
 def test_botsort_tracklet_apply_cmc_does_not_affect_wh(
     tracklet: BoTSORTTracklet,
 ) -> None:
-    """CMC must not change the width and height components of the state."""
-    x_before = tracklet.state_estimator.kf.x.reshape(-1).copy()
-    w_before, h_before = x_before[2], x_before[3]
+    """CMC must preserve bbox width and height in xyxy space."""
+    bbox_before = tracklet.get_state_bbox().copy()
+    w_before = bbox_before[2] - bbox_before[0]
+    h_before = bbox_before[3] - bbox_before[1]
 
     H = np.array([[1.0, 0.0, 15.0], [0.0, 1.0, 7.0]], dtype=np.float32)
     tracklet.apply_cmc(H)
 
-    x_after = tracklet.state_estimator.kf.x.reshape(-1)
-    np.testing.assert_allclose(x_after[2], w_before, atol=1e-6)
-    np.testing.assert_allclose(x_after[3], h_before, atol=1e-6)
+    bbox_after = tracklet.get_state_bbox()
+    w_after = bbox_after[2] - bbox_after[0]
+    h_after = bbox_after[3] - bbox_after[1]
+    np.testing.assert_allclose(w_after, w_before, atol=1e-6)
+    np.testing.assert_allclose(h_after, h_before, atol=1e-6)
 
 
 # -------------------------------------------------------------------

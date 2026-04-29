@@ -11,7 +11,11 @@ from enum import Enum
 
 import numpy as np
 
-from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr
+from trackers.utils.converters import (
+    xcycsr_to_xyxy,
+    xyxy_to_xcycsr,
+    xyxy_to_xywh as convert_xyxy_to_xywh,
+)
 from trackers.utils.kalman_filter import KalmanFilter
 
 
@@ -240,10 +244,7 @@ class XCYCWHStateEstimator(BaseStateEstimator):
     @staticmethod
     def xyxy_to_xywh(bbox: np.ndarray) -> np.ndarray:
         """Convert ``[x1, y1, x2, y2]`` to ``[xc, yc, w, h]``."""
-        x1, y1, x2, y2 = bbox.astype(np.float64)
-        w = x2 - x1
-        h = y2 - y1
-        return np.array([x1 + w / 2.0, y1 + h / 2.0, w, h], dtype=np.float64)
+        return convert_xyxy_to_xywh(bbox)
 
     @staticmethod
     def xywh_to_xyxy(state: np.ndarray) -> np.ndarray:

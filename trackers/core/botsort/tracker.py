@@ -92,7 +92,6 @@ class BoTSORTTracker(BaseTracker):
         cmc_downscale: int = 2,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
     ) -> None:
-
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.

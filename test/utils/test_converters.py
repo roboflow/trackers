@@ -9,7 +9,28 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr
+from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr, xyxy_to_xywh
+
+
+@pytest.mark.parametrize(
+    ("xyxy", "expected"),
+    [
+        (np.array([0.0, 0.0, 10.0, 20.0]), np.array([5.0, 10.0, 10.0, 20.0])),
+        (np.array([-2.0, -4.0, 2.0, 4.0]), np.array([0.0, 0.0, 4.0, 8.0])),
+    ],
+)
+def test_xyxy_to_xywh_single_box(xyxy: np.ndarray, expected: np.ndarray) -> None:
+    result = xyxy_to_xywh(xyxy)
+    assert result.shape == (4,)
+    np.testing.assert_array_almost_equal(result, expected, decimal=6)
+
+
+def test_xyxy_to_xywh_batch() -> None:
+    xyxy = np.array([[0.0, 0.0, 2.0, 2.0], [10.0, 20.0, 30.0, 50.0]])
+    expected = np.array([[1.0, 1.0, 2.0, 2.0], [20.0, 35.0, 20.0, 30.0]])
+    result = xyxy_to_xywh(xyxy)
+    assert result.shape == (2, 4)
+    np.testing.assert_array_almost_equal(result, expected, decimal=6)
 
 
 @pytest.mark.parametrize(

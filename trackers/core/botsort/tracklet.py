@@ -11,9 +11,12 @@ from collections.abc import Sequence
 import numpy as np
 
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.converters import xyxy_to_xywh
 from trackers.utils.state_representations import (
     BaseStateEstimator,
+    XCYCSRStateEstimator,
     XCYCWHStateEstimator,
+    XYXYStateEstimator,
 )
 
 
@@ -55,7 +58,7 @@ class BoTSORTTracklet(BaseTracklet):
 
     def _configure_initial_noise(self, bbox: np.ndarray) -> None:
         """Set initial P, Q, R based on the first detection's size."""
-        measurement = XCYCWHStateEstimator.xyxy_to_xywh(bbox)
+        measurement = xyxy_to_xywh(bbox)
         w, h = float(measurement[2]), float(measurement[3])
         self._set_scale_aware_noise(w, h, initial=True)
 
@@ -64,56 +67,116 @@ class BoTSORTTracklet(BaseTracklet):
     ) -> None:
         sp, sv, sm = self._SIGMA_P, self._SIGMA_V, self._SIGMA_M
 
-        Q = np.diag(
-            [
-                (sp * w) ** 2,
-                (sp * h) ** 2,
-                (sp * w) ** 2,
-                (sp * h) ** 2,
-                (sv * w) ** 2,
-                (sv * h) ** 2,
-                (sv * w) ** 2,
-                (sv * h) ** 2,
-            ]
-        )
-        R = np.diag(
-            [
-                (sm * w) ** 2,
-                (sm * h) ** 2,
-                (sm * w) ** 2,
-                (sm * h) ** 2,
-            ]
-        )
-
-        if initial:
-            P = np.diag(
+        if isinstance(self.state_estimator, XCYCSRStateEstimator):
+            s = np.sqrt(max(w * h, 1e-6))
+            Q = np.diag(
                 [
-                    (2 * sp * w) ** 2,
-                    (2 * sp * h) ** 2,
-                    (2 * sp * w) ** 2,
-                    (2 * sp * h) ** 2,
-                    (10 * sv * w) ** 2,
-                    (10 * sv * h) ** 2,
-                    (10 * sv * w) ** 2,
-                    (10 * sv * h) ** 2,
+                    (sp * w) ** 2,
+                    (sp * h) ** 2,
+                    (sp * s) ** 2,
+                    (sp * 1.0) ** 2,
+                    (sv * w) ** 2,
+                    (sv * h) ** 2,
+                    (sv * s) ** 2,
                 ]
             )
+            R = np.diag(
+                [
+                    (sm * w) ** 2,
+                    (sm * h) ** 2,
+                    (sm * s) ** 2,
+                    (sm * 1.0) ** 2,
+                ]
+            )
+        else:
+            Q = np.diag(
+                [
+                    (sp * w) ** 2,
+                    (sp * h) ** 2,
+                    (sp * w) ** 2,
+                    (sp * h) ** 2,
+                    (sv * w) ** 2,
+                    (sv * h) ** 2,
+                    (sv * w) ** 2,
+                    (sv * h) ** 2,
+                ]
+            )
+            R = np.diag(
+                [
+                    (sm * w) ** 2,
+                    (sm * h) ** 2,
+                    (sm * w) ** 2,
+                    (sm * h) ** 2,
+                ]
+            )
+
+        if initial:
+            if isinstance(self.state_estimator, XCYCSRStateEstimator):
+                s = np.sqrt(max(w * h, 1e-6))
+                P = np.diag(
+                    [
+                        (2 * sp * w) ** 2,
+                        (2 * sp * h) ** 2,
+                        (2 * sp * s) ** 2,
+                        (2 * sp * 1.0) ** 2,
+                        (10 * sv * w) ** 2,
+                        (10 * sv * h) ** 2,
+                        (10 * sv * s) ** 2,
+                    ]
+                )
+            else:
+                P = np.diag(
+                    [
+                        (2 * sp * w) ** 2,
+                        (2 * sp * h) ** 2,
+                        (2 * sp * w) ** 2,
+                        (2 * sp * h) ** 2,
+                        (10 * sv * w) ** 2,
+                        (10 * sv * h) ** 2,
+                        (10 * sv * w) ** 2,
+                        (10 * sv * h) ** 2,
+                    ]
+                )
             self.state_estimator.set_kf_covariances(R=R, Q=Q, P=P)
         else:
             self.state_estimator.set_kf_covariances(R=R, Q=Q)
 
     def _refresh_noise_from_state(self) -> None:
-        """Recompute Q and R from the current w/h in the Kalman state."""
-        kf = self.state_estimator.kf
-        w = max(float(kf.x[2, 0]), 1e-3)
-        h = max(float(kf.x[3, 0]), 1e-3)
+        """Recompute Q and R from the current bbox size."""
+        bbox = self.state_estimator.state_to_bbox()
+        w = max(float(bbox[2] - bbox[0]), 1e-3)
+        h = max(float(bbox[3] - bbox[1]), 1e-3)
         self._set_scale_aware_noise(w, h)
 
     @staticmethod
-    def _clamp_wh(kf_x: np.ndarray) -> None:
-        """Ensure width and height stay positive."""
+    def _clamp_xyxy_state(kf_x: np.ndarray) -> None:
+        """Ensure XYXY state keeps valid box corners."""
+        if kf_x[2, 0] <= kf_x[0, 0]:
+            kf_x[2, 0] = kf_x[0, 0] + 1e-3
+        if kf_x[3, 0] <= kf_x[1, 0]:
+            kf_x[3, 0] = kf_x[1, 0] + 1e-3
+
+    @staticmethod
+    def _clamp_xcycwh_state(kf_x: np.ndarray) -> None:
+        """Ensure XCYCWH state keeps positive width and height."""
         kf_x[2, 0] = max(kf_x[2, 0], 1e-3)
         kf_x[3, 0] = max(kf_x[3, 0], 1e-3)
+
+    @staticmethod
+    def _clamp_xcycsr_state(kf_x: np.ndarray) -> None:
+        """Ensure XCYCSR state keeps positive scale and aspect ratio."""
+        kf_x[2, 0] = max(kf_x[2, 0], 1e-3)
+        kf_x[3, 0] = max(kf_x[3, 0], 1e-3)
+
+    def _clamp_state_bbox(self) -> None:
+        """Clamp geometric components based on active state representation."""
+        kf_x = self.state_estimator.kf.x
+        if isinstance(self.state_estimator, XYXYStateEstimator):
+            self._clamp_xyxy_state(kf_x)
+        elif isinstance(self.state_estimator, XCYCWHStateEstimator):
+            self._clamp_xcycwh_state(kf_x)
+        elif isinstance(self.state_estimator, XCYCSRStateEstimator):
+            self._clamp_xcycsr_state(kf_x)
 
     def update(self, bbox: np.ndarray) -> None:
         """Update tracklet with a new observation.
@@ -125,7 +188,7 @@ class BoTSORTTracklet(BaseTracklet):
         """
         self._refresh_noise_from_state()
         self.state_estimator.update(bbox)
-        self._clamp_wh(self.state_estimator.kf.x)
+        self._clamp_state_bbox()
         self.time_since_update = 0
         self.number_of_successful_updates += 1
 
@@ -138,7 +201,7 @@ class BoTSORTTracklet(BaseTracklet):
         """
         self._refresh_noise_from_state()
         self.state_estimator.predict()
-        self._clamp_wh(self.state_estimator.kf.x)
+        self._clamp_state_bbox()
         self.age += 1
         self.time_since_update += 1
         return self.state_estimator.state_to_bbox()
@@ -169,13 +232,25 @@ class BoTSORTTracklet(BaseTracklet):
         t = H[:2, 2].astype(np.float64)
 
         x = kf.x.reshape(-1)
-        x[0:2] = R @ x[0:2] + t
-        x[4:6] = R @ x[4:6]
+        if isinstance(self.state_estimator, XYXYStateEstimator):
+            x[0:2] = R @ x[0:2] + t
+            x[2:4] = R @ x[2:4] + t
+            x[4:6] = R @ x[4:6]
+            x[6:8] = R @ x[6:8]
+        else:
+            x[0:2] = R @ x[0:2] + t
+            x[4:6] = R @ x[4:6]
         kf.x = x.reshape(-1, 1)
 
         A = np.eye(kf.x.shape[0], dtype=np.float64)
-        A[0:2, 0:2] = R
-        A[4:6, 4:6] = R
+        if isinstance(self.state_estimator, XYXYStateEstimator):
+            A[0:2, 0:2] = R
+            A[2:4, 2:4] = R
+            A[4:6, 4:6] = R
+            A[6:8, 6:8] = R
+        else:
+            A[0:2, 0:2] = R
+            A[4:6, 4:6] = R
         kf.P = A @ kf.P @ A.T
 
     @staticmethod
@@ -199,21 +274,35 @@ class BoTSORTTracklet(BaseTracklet):
         R = H[:2, :2].astype(np.float64)
         t = H[:2, 2].astype(np.float64)
 
-        dim = tracklets[0].state_estimator.kf.x.shape[0]
+        first_estimator = tracklets[0].state_estimator
+        dim = first_estimator.kf.x.shape[0]
+        is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
 
         # Stack states (N, dim) and covariances (N, dim, dim)
         states = np.array([trk.state_estimator.kf.x.reshape(-1) for trk in tracklets])
         Ps = np.array([trk.state_estimator.kf.P for trk in tracklets])
 
-        # Batch-transform centre positions: x' = x @ R.T + t
-        states[:, 0:2] = states[:, 0:2] @ R.T + t
-        # Batch-transform centre velocities: v' = v @ R.T
-        states[:, 4:6] = states[:, 4:6] @ R.T
+        if is_xyxy:
+            states[:, 0:2] = states[:, 0:2] @ R.T + t
+            states[:, 2:4] = states[:, 2:4] @ R.T + t
+            states[:, 4:6] = states[:, 4:6] @ R.T
+            states[:, 6:8] = states[:, 6:8] @ R.T
+        else:
+            # Batch-transform centre positions: x' = x @ R.T + t
+            states[:, 0:2] = states[:, 0:2] @ R.T + t
+            # Batch-transform centre velocities: v' = v @ R.T
+            states[:, 4:6] = states[:, 4:6] @ R.T
 
         # Build 8x8 rotation-embedding matrix once
         A = np.eye(dim, dtype=np.float64)
-        A[0:2, 0:2] = R
-        A[4:6, 4:6] = R
+        if is_xyxy:
+            A[0:2, 0:2] = R
+            A[2:4, 2:4] = R
+            A[4:6, 4:6] = R
+            A[6:8, 6:8] = R
+        else:
+            A[0:2, 0:2] = R
+            A[4:6, 4:6] = R
 
         # Batch covariance: P' = A @ P @ A.T  ->  (8,8) @ (N,8,8) @ (8,8)
         Ps = A @ Ps @ A.T
