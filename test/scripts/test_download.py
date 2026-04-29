@@ -206,6 +206,7 @@ class TestRunDownload:
 class TestPrintAvailable:
     """Output of --list."""
 
-    def test_prints_without_error(self) -> None:
-        """_print_available runs without raising."""
+    def test_prints_without_error(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """_print_available runs without raising and does not leak output to the test runner."""
         _print_available()
+        capsys.readouterr()
