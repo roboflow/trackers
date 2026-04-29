@@ -108,3 +108,20 @@ class TestGetAssociatedIndicesSortedOutput:
         assert unmatched_detections == [0, 1, 3, 4]
         assert unmatched_tracks == sorted(unmatched_tracks)
         assert unmatched_detections == sorted(unmatched_detections)
+
+
+@pytest.mark.parametrize("call_fn", _TRACKER_CALL_FNS)
+def test_all_trackers_associated_indices_are_deterministically_sorted(
+    call_fn: CallFn,
+) -> None:
+    """All trackers return stable ascending unmatched indices on same pattern."""
+    n_tracks, n_detections = 4, 5
+    similarity_matrix = np.zeros((n_tracks, n_detections), dtype=np.float32)
+    similarity_matrix[1, 2] = 0.9
+
+    _, unmatched_tracks, unmatched_detections = call_fn(
+        n_tracks, n_detections, similarity_matrix
+    )
+
+    assert unmatched_tracks == [0, 2, 3]
+    assert unmatched_detections == [0, 1, 3, 4]
