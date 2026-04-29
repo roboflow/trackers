@@ -79,14 +79,7 @@ class TestRunDownload:
 
     def test_missing_dataset_exits_with_error(self) -> None:
         """No dataset and no --list prints error to stderr and returns 1."""
-        args = argparse.Namespace(
-            list=False,
-            dataset=None,
-            split=None,
-            asset=None,
-            output=".",
-            cache_dir="~/.cache/trackers",
-        )
+        args = _parse_args(["download"])
         rc = _run_download(args)
         assert rc == 1
 
