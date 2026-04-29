@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
+from trackers.datasets.download import _DEFAULT_CACHE_DIR, _DEFAULT_OUTPUT_DIR
 from trackers.scripts.download import (
     _print_available,
     _run_download,
@@ -77,11 +78,24 @@ class TestRunDownload:
             assert rc == 0
             mock_print.assert_called_once()
 
-    def test_missing_dataset_exits_with_error(self) -> None:
+    def test_list_takes_precedence_over_dataset(self) -> None:
+        """--list wins over dataset positional."""
+        args = _parse_args(["download", "mot17", "--list"])
+
+        with patch("trackers.scripts.download._print_available") as mock_print:
+            rc = _run_download(args)
+            assert rc == 0
+            mock_print.assert_called_once()
+
+    def test_missing_dataset_exits_with_error(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         """No dataset and no --list prints error to stderr and returns 1."""
         args = _parse_args(["download"])
         rc = _run_download(args)
+        captured = capsys.readouterr()
         assert rc == 1
+        assert "Please specify a dataset" in captured.err
 
     @pytest.mark.parametrize(
         "split_arg,expected_splits",
@@ -106,8 +120,35 @@ class TestRunDownload:
                 dataset="mot17",
                 split=expected_splits,
                 asset=["annotations"],
-                output=".",
-                cache_dir="~/.cache/trackers",
+                output=_DEFAULT_OUTPUT_DIR,
+                cache_dir=_DEFAULT_CACHE_DIR,
+            )
+
+    @pytest.mark.parametrize(
+        "split_arg,expected_splits",
+        [
+            ("train,", ["train", ""]),
+            (",train", ["", "train"]),
+            ("train,,val", ["train", "", "val"]),
+        ],
+    )
+    def test_split_comma_parsing_boundary(
+        self, split_arg: str, expected_splits: list[str]
+    ) -> None:
+        """--split handles malformed comma inputs gracefully."""
+        args = _parse_args(
+            ["download", "mot17", "--split", split_arg, "--asset", "annotations"]
+        )
+
+        with patch("trackers.datasets.download.download_dataset") as mock_dl:
+            rc = _run_download(args)
+            assert rc == 0
+            mock_dl.assert_called_once_with(
+                dataset="mot17",
+                split=expected_splits,
+                asset=["annotations"],
+                output=_DEFAULT_OUTPUT_DIR,
+                cache_dir=_DEFAULT_CACHE_DIR,
             )
 
     @pytest.mark.parametrize(
@@ -133,8 +174,8 @@ class TestRunDownload:
                 dataset="sportsmot",
                 split=["train"],
                 asset=expected_assets,
-                output=".",
-                cache_dir="~/.cache/trackers",
+                output=_DEFAULT_OUTPUT_DIR,
+                cache_dir=_DEFAULT_CACHE_DIR,
             )
 
     def test_none_splits_and_assets_when_omitted(self) -> None:
@@ -148,8 +189,8 @@ class TestRunDownload:
                 dataset="mot17",
                 split=None,
                 asset=None,
-                output=".",
-                cache_dir="~/.cache/trackers",
+                output=_DEFAULT_OUTPUT_DIR,
+                cache_dir=_DEFAULT_CACHE_DIR,
             )
 
     def test_output_directory_forwarded(self) -> None:
@@ -164,7 +205,7 @@ class TestRunDownload:
                 split=None,
                 asset=None,
                 output="/custom/path",
-                cache_dir="~/.cache/trackers",
+                cache_dir=_DEFAULT_CACHE_DIR,
             )
 
     def test_value_error_returns_exit_code(self) -> None:
@@ -191,8 +232,8 @@ class TestRunDownload:
                 dataset="mot17",
                 split=["train", "val"],
                 asset=["annotations"],
-                output=".",
-                cache_dir="~/.cache/trackers",
+                output=_DEFAULT_OUTPUT_DIR,
+                cache_dir=_DEFAULT_CACHE_DIR,
             )
 
 
