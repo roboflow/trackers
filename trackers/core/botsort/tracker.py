@@ -161,7 +161,7 @@ class BoTSORTTracker(BaseTracker):
         confidences = (
             detections.confidence
             if detections.confidence is not None
-            else np.zeros(len(detections))
+            else np.ones(len(detections))
         )
 
         # Split indices into high / low / discarded by confidence
