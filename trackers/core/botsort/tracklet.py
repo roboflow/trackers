@@ -23,18 +23,15 @@ class BoTSORTTracklet(BaseTracklet):
     Uses ``XCYCWHStateEstimator`` (center + width/height) by default,
     mirroring the original BoT-SORT Kalman filter model.
 
-    The *tracklet* — not the state estimator — owns all BoT-SORT-specific
-    tuning:
-
     * **Scale-aware noise**: ``Q``, ``R`` and the initial ``P`` are computed
       from the current width / height of the tracked object each frame, so
       that uncertainty scales with object size.
     * **Width / height clamping** after every predict and update step.
-    * ``predict()`` increments ``time_since_update`` — unmatched tracks are
+    * ``predict()`` increments ``time_since_update``: unmatched tracks are
       never explicitly fed ``update(None)``.
     * ``number_of_successful_updates`` counts every successful measurement
       update (never reset on a miss).
-    * ``apply_cmc(H)`` applies a 2×3 affine camera-motion transform to the
+    * ``apply_cmc(H)`` applies a 2x3 affine camera-motion transform to the
       internal Kalman state and covariance.
     """
 
@@ -118,24 +115,19 @@ class BoTSORTTracklet(BaseTracklet):
         kf_x[2, 0] = max(kf_x[2, 0], 1e-3)
         kf_x[3, 0] = max(kf_x[3, 0], 1e-3)
 
-    def update(self, bbox: np.ndarray | None) -> None:
+    def update(self, bbox: np.ndarray) -> None:
         """Update tracklet with a new observation.
 
         In the BoT-SORT flow **only matched tracks** call ``update(bbox)``
         with an actual bounding box.  Unmatched tracks simply skip
         ``update`` (their ``time_since_update`` is incremented in
-        ``predict`` instead).  Passing ``None`` is supported for
-        compatibility but has no side-effects beyond calling
-        ``state_estimator.update(None)``.
+        ``predict`` instead).
         """
-        if bbox is not None:
-            self._refresh_noise_from_state()
-            self.state_estimator.update(bbox)
-            self._clamp_wh(self.state_estimator.kf.x)
-            self.time_since_update = 0
-            self.number_of_successful_updates += 1
-        else:
-            self.state_estimator.update(None)
+        self._refresh_noise_from_state()
+        self.state_estimator.update(bbox)
+        self._clamp_wh(self.state_estimator.kf.x)
+        self.time_since_update = 0
+        self.number_of_successful_updates += 1
 
     def predict(self) -> np.ndarray:
         """Predict the next bounding-box position.
@@ -155,8 +147,8 @@ class BoTSORTTracklet(BaseTracklet):
         """Return the current bounding-box estimate in xyxy format."""
         return self.state_estimator.state_to_bbox()
 
-    def apply_cmc(self, H: np.ndarray) -> None:
-        """Apply a 2×3 affine camera-motion transform **in place**.
+    def apply_cmc(self, H: np.ndarray | None) -> None:
+        """Apply a 2x3 affine camera-motion transform **in place**.
 
         The transform follows the convention ``x' = R @ x + t`` where
         ``R = H[:2, :2]`` and ``t = H[:2, 2]``.
@@ -187,8 +179,10 @@ class BoTSORTTracklet(BaseTracklet):
         kf.P = A @ kf.P @ A.T
 
     @staticmethod
-    def apply_cmc_batch(tracklets: Sequence[BoTSORTTracklet], H: np.ndarray) -> None:
-        """Apply a 2×3 affine camera-motion transform to all tracklets at once.
+    def apply_cmc_batch(
+        tracklets: Sequence[BoTSORTTracklet], H: np.ndarray | None
+    ) -> None:
+        """Apply a 2x3 affine camera-motion transform to all tracklets at once.
 
         Vectorised replacement for calling :meth:`apply_cmc` in a loop.
         State vectors are stacked into a single ``(N, dim)`` matrix and
@@ -197,7 +191,7 @@ class BoTSORTTracklet(BaseTracklet):
 
         Args:
             tracklets: Sequence of tracklets to transform **in place**.
-            H: 2×3 affine transform ``[R | t]``.
+            H: 2x3 affine transform ``[R | t]``.
         """
         if H is None or len(tracklets) == 0:
             return
@@ -216,12 +210,12 @@ class BoTSORTTracklet(BaseTracklet):
         # Batch-transform centre velocities: v' = v @ R.T
         states[:, 4:6] = states[:, 4:6] @ R.T
 
-        # Build 8×8 rotation-embedding matrix once
+        # Build 8x8 rotation-embedding matrix once
         A = np.eye(dim, dtype=np.float64)
         A[0:2, 0:2] = R
         A[4:6, 4:6] = R
 
-        # Batch covariance: P' = A @ P @ A.T  →  (8,8) @ (N,8,8) @ (8,8)
+        # Batch covariance: P' = A @ P @ A.T  ->  (8,8) @ (N,8,8) @ (8,8)
         Ps = A @ Ps @ A.T
 
         # Write back

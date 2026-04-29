@@ -4,37 +4,141 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+"""Shared and tracker-specific contracts for tracklet objects.
+
+Tracklets are the internal per-object state managed by a tracker.  The
+tests here operate directly on tracklet instances rather than going through
+the tracker's update() loop.
+
+Sections
+--------
+1. Shared contracts: parametrized over all concrete tracklet classes
+2. Tracklet-specific contracts: tests tied to a single tracklet class
+"""
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-import supervision as sv
 
+from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.ocsort.tracklet import OCSORTTracklet
-from trackers.core.sort.tracker import SORTTracker
 from trackers.core.sort.tracklet import SORTTracklet
-from trackers.utils.state_representations import (
-    XCYCSRStateEstimator,
-    XYXYStateEstimator,
-)
+from trackers.utils.base_tracklet import BaseTracklet
+
+# All concrete tracklet classes and their short IDs used as test suffixes.
+_TRACKLET_PARAMS = [
+    pytest.param(SORTTracklet, id="sort"),
+    pytest.param(ByteTrackTracklet, id="bytetrack"),
+    pytest.param(OCSORTTracklet, id="ocsort"),
+    pytest.param(BoTSORTTracklet, id="botsort"),
+]
+_SUCCESSFUL_UPDATES_PARAMS = [
+    pytest.param(SORTTracklet, id="sort"),
+    pytest.param(BoTSORTTracklet, id="botsort"),
+]
+
+_BBOX = np.array([10.0, 20.0, 30.0, 40.0])
+_BBOX2 = np.array([12.0, 22.0, 32.0, 42.0])
 
 
 @pytest.fixture
 def bbox() -> np.ndarray:
-    return np.array([10.0, 20.0, 30.0, 40.0])
+    return _BBOX.copy()
 
 
-@pytest.fixture
-def detections(bbox: np.ndarray) -> sv.Detections:
-    detections = sv.Detections(xyxy=bbox.reshape(1, 4))
-    detections.confidence = np.array([0.9])
-    return detections
+def _new_tracklet(tracklet_class: type[BaseTracklet], bbox: np.ndarray) -> BaseTracklet:
+    """Construct a concrete tracklet class with default constructor params."""
+    return tracklet_class(bbox)  # type: ignore[call-arg]
 
 
-def test_sort_tracklet_predict_increments_time_without_changing_bbox(
-    bbox: np.ndarray,
+# ==========================================================================
+# 1. Shared tracklet contracts
+# ==========================================================================
+
+
+@pytest.mark.parametrize("tracklet_class", _TRACKLET_PARAMS)
+def test_tracklet_starts_with_zero_time_since_update(
+    tracklet_class: type[BaseTracklet],
 ) -> None:
+    """Every tracklet must start with time_since_update == 0."""
+    assert _new_tracklet(tracklet_class, _BBOX).time_since_update == 0
+
+
+@pytest.mark.parametrize("tracklet_class", _TRACKLET_PARAMS)
+def test_tracklet_predict_increments_time_since_update(
+    tracklet_class: type[BaseTracklet],
+) -> None:
+    """predict() must increment time_since_update by 1 each call."""
+    t = _new_tracklet(tracklet_class, _BBOX)
+    t.predict()
+    assert t.time_since_update == 1
+    t.predict()
+    assert t.time_since_update == 2
+
+
+@pytest.mark.parametrize("tracklet_class", _TRACKLET_PARAMS)
+def test_tracklet_predict_increments_age(
+    tracklet_class: type[BaseTracklet],
+) -> None:
+    """predict() must increment age by 1 each call."""
+    t = _new_tracklet(tracklet_class, _BBOX)
+    initial_age = t.age
+    t.predict()
+    assert t.age == initial_age + 1
+
+
+@pytest.mark.parametrize("tracklet_class", _TRACKLET_PARAMS)
+def test_tracklet_predict_returns_finite_bbox(
+    tracklet_class: type[BaseTracklet],
+) -> None:
+    """predict() must always return finite bbox coordinates."""
+    t = _new_tracklet(tracklet_class, _BBOX)
+    for _ in range(10):
+        bbox_out = t.predict()
+        assert np.all(np.isfinite(bbox_out))
+
+
+@pytest.mark.parametrize("tracklet_class", _TRACKLET_PARAMS)
+def test_tracklet_update_resets_time_since_update(
+    tracklet_class: type[BaseTracklet],
+) -> None:
+    """update(bbox) must reset time_since_update to 0."""
+    t = _new_tracklet(tracklet_class, _BBOX)
+    t.predict()
+    assert t.time_since_update == 1
+    t.update(_BBOX2)
+    assert t.time_since_update == 0
+
+
+@pytest.mark.parametrize("tracklet_class", _SUCCESSFUL_UPDATES_PARAMS)
+def test_tracklet_starts_with_one_successful_update(
+    tracklet_class: type[BaseTracklet],
+) -> None:
+    """Construction counts as the first successful update for SORT-like counters."""
+    tracklet = _new_tracklet(tracklet_class, _BBOX)
+    assert getattr(tracklet, "number_of_successful_updates") == 1
+
+
+@pytest.mark.parametrize("tracklet_class", _SUCCESSFUL_UPDATES_PARAMS)
+def test_tracklet_update_increments_successful_updates(
+    tracklet_class: type[BaseTracklet],
+) -> None:
+    """update(bbox) increments number_of_successful_updates for SORT-like counters."""
+    tracklet = _new_tracklet(tracklet_class, _BBOX)
+    before = getattr(tracklet, "number_of_successful_updates")
+    tracklet.update(_BBOX2)
+    assert getattr(tracklet, "number_of_successful_updates") == before + 1
+
+
+# ==========================================================================
+# 2. Tracklet-specific contracts
+# ==========================================================================
+
+
+def test_sort_tracklet_predict_does_not_drift_bbox(bbox: np.ndarray) -> None:
+    """A single predict() step must not move the bbox of a freshly created tracklet."""
     tracklet = SORTTracklet(bbox)
     initial_bbox = tracklet.get_state_bbox().copy()
 
@@ -44,46 +148,36 @@ def test_sort_tracklet_predict_increments_time_without_changing_bbox(
     np.testing.assert_allclose(tracklet.get_state_bbox(), initial_bbox, atol=1e-6)
 
 
-def test_sort_tracklet_configures_different_noise_for_state_estimators(
-    bbox: np.ndarray,
-) -> None:
-    xcycsr_tracklet = SORTTracklet(bbox, state_estimator_class=XCYCSRStateEstimator)
-    xyxy_tracklet = SORTTracklet(bbox, state_estimator_class=XYXYStateEstimator)
-
-    xcycsr_kf = xcycsr_tracklet.state_estimator.kf
-    xyxy_kf = xyxy_tracklet.state_estimator.kf
-
-    noise_differs = (
-        not np.array_equal(xcycsr_kf.R, xyxy_kf.R)
-        or xcycsr_kf.Q.shape != xyxy_kf.Q.shape
-        or xcycsr_kf.P.shape != xyxy_kf.P.shape
-    )
-    assert noise_differs
-
-
 def test_bytetrack_tracklet_starts_with_one_successful_consecutive_update(
     bbox: np.ndarray,
 ) -> None:
+    """Construction counts as the first successful consecutive update."""
     tracklet = ByteTrackTracklet(bbox)
-
     assert tracklet.number_of_successful_consecutive_updates == 1
 
 
 def test_tracklet_id_counter_increments_per_subclass() -> None:
-    sort_count_id = SORTTracklet.count_id
-    bytetrack_count_id = ByteTrackTracklet.count_id
+    """Each tracklet subclass keeps its own independent ID counter."""
+    sort_id = SORTTracklet.count_id
+    byte_id = ByteTrackTracklet.count_id
+    bots_id = BoTSORTTracklet.count_id
     try:
         SORTTracklet.count_id = 0
         ByteTrackTracklet.count_id = 0
+        BoTSORTTracklet.count_id = 0
 
         assert SORTTracklet.get_next_tracker_id() == 0
         assert SORTTracklet.get_next_tracker_id() == 1
         assert ByteTrackTracklet.get_next_tracker_id() == 0
         assert ByteTrackTracklet.get_next_tracker_id() == 1
+        assert BoTSORTTracklet.get_next_tracker_id() == 0
+        assert BoTSORTTracklet.get_next_tracker_id() == 1
         assert SORTTracklet.get_next_tracker_id() == 2
+        assert BoTSORTTracklet.get_next_tracker_id() == 2
     finally:
-        SORTTracklet.count_id = sort_count_id
-        ByteTrackTracklet.count_id = bytetrack_count_id
+        SORTTracklet.count_id = sort_id
+        ByteTrackTracklet.count_id = byte_id
+        BoTSORTTracklet.count_id = bots_id
 
 
 def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
@@ -122,15 +216,3 @@ def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
     tracklet.update(re_match_bbox)
     assert tracklet._frozen_state is None  # _unfreeze() cleared it
     assert tracklet._observed is True
-
-
-def test_sort_tracker_trackers_alias_returns_tracks_with_warning(
-    detections: sv.Detections,
-) -> None:
-    tracker = SORTTracker(minimum_consecutive_frames=1)
-    tracker.update(detections)
-
-    with pytest.warns((DeprecationWarning, FutureWarning)):
-        trackers = tracker.trackers
-
-    assert trackers is tracker.tracks

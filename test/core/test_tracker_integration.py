@@ -17,7 +17,8 @@ from trackers.core.base import BaseTracker
 from trackers.eval import evaluate_mot_sequences
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 
-_TRACKER_IDS = ["sort", "bytetrack", "ocsort"]
+from .shared_ids import ALL_TRACKER_IDS
+
 _METRICS = ["CLEAR", "HOTA", "Identity"]
 _TEST_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -77,7 +78,7 @@ def _run_tracker_on_flat_dataset(
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("tracker_id", _TRACKER_IDS)
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
 @pytest.mark.parametrize(
     "dataset, fixture_name",
     [

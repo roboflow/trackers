@@ -6,7 +6,7 @@
 
 """Unit tests for deterministic unmatched-index ordering in _get_associated_indices.
 
-All three trackers (SORT, ByteTrack, OC-SORT) must return sorted lists for
+All trackers must return sorted lists for
 unmatched tracks and unmatched detections so that tracker-ID assignment is
 stable across CPython versions and implementations.
 """
@@ -18,6 +18,7 @@ from collections.abc import Callable
 import numpy as np
 import pytest
 
+from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
@@ -50,12 +51,24 @@ def _call_ocsort(
     return tracker._get_associated_indices(iou_matrix, direction_matrix)
 
 
+def _call_botsort(
+    n_tracks: int, n_detections: int, iou_matrix: np.ndarray
+) -> tuple[list[tuple[int, int]], list[int], list[int]]:
+    """Call BoTSORTTracker._get_associated_indices with default similarity threshold."""
+    tracker = BoTSORTTracker(enable_cmc=False)
+    matched, unmatched_tracks_set, unmatched_detections_set = (
+        tracker._get_associated_indices(iou_matrix, 0.1)
+    )
+    return matched, sorted(unmatched_tracks_set), sorted(unmatched_detections_set)
+
+
 _TRACKER_CALL_FNS: list[
     pytest.param  # type: ignore[type-arg]
 ] = [
     pytest.param(_call_sort, id="sort"),
     pytest.param(_call_bytetrack, id="bytetrack"),
     pytest.param(_call_ocsort, id="ocsort"),
+    pytest.param(_call_botsort, id="botsort"),
 ]
 
 CallFn = Callable[

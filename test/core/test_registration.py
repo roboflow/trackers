@@ -17,6 +17,8 @@ from trackers.core.base import (
     _parse_docstring_arguments,
 )
 
+from .shared_ids import ALL_TRACKER_IDS
+
 
 class TestParseDocstringArguments:
     @pytest.mark.parametrize(
@@ -232,15 +234,25 @@ class TestExtractParamsFromInit:
 
 
 class TestTrackerAutoRegistration:
-    @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
+    @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
     def test_tracker_is_registered(self, tracker_id: str) -> None:
-        from trackers import ByteTrackTracker, SORTTracker  # noqa: F401
+        from trackers import (  # noqa: F401
+            BoTSORTTracker,
+            ByteTrackTracker,
+            OCSORTTracker,
+            SORTTracker,
+        )
 
         assert tracker_id in BaseTracker._registered_trackers()
 
-    @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
+    @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
     def test_lookup_tracker(self, tracker_id: str) -> None:
-        from trackers import ByteTrackTracker, SORTTracker  # noqa: F401
+        from trackers import (  # noqa: F401
+            BoTSORTTracker,
+            ByteTrackTracker,
+            OCSORTTracker,
+            SORTTracker,
+        )
 
         info = BaseTracker._lookup_tracker(tracker_id)
 
@@ -253,14 +265,19 @@ class TestTrackerAutoRegistration:
         assert info is None
 
     def test_registered_trackers_returns_sorted_list(self) -> None:
-        from trackers import ByteTrackTracker, SORTTracker  # noqa: F401
+        from trackers import (  # noqa: F401
+            BoTSORTTracker,
+            ByteTrackTracker,
+            OCSORTTracker,
+            SORTTracker,
+        )
 
         registered = BaseTracker._registered_trackers()
 
         assert isinstance(registered, list)
         assert registered == sorted(registered)
 
-    @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
+    @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
     def test_tracker_params_have_descriptions(self, tracker_id: str) -> None:
         info = BaseTracker._lookup_tracker(tracker_id)
 
@@ -393,7 +410,7 @@ class TestSearchSpaceValidation:
 
 
 class TestTrackerInstantiation:
-    @pytest.mark.parametrize("tracker_id", ["bytetrack", "sort"])
+    @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
     def test_instantiate_with_defaults(self, tracker_id: str) -> None:
         info = BaseTracker._lookup_tracker(tracker_id)
         assert info is not None
