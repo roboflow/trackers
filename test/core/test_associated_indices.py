@@ -56,8 +56,8 @@ def _call_botsort(
 ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
     """Call BoTSORTTracker._get_associated_indices with default similarity threshold."""
     tracker = BoTSORTTracker(enable_cmc=False)
-    matched, unmatched_tracks, unmatched_detections = (
-        tracker._get_associated_indices(iou_matrix, 0.1)
+    matched, unmatched_tracks, unmatched_detections = tracker._get_associated_indices(
+        iou_matrix, 0.1
     )
     return matched, unmatched_tracks, unmatched_detections
 
