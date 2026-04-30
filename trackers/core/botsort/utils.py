@@ -11,7 +11,7 @@ import numpy as np
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 
 
-def get_alive_trackers(
+def _get_alive_tracklets(
     trackers: Sequence[BoTSORTTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
