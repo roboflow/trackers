@@ -62,7 +62,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     import cv2
     import supervision as sv
     from rfdetr import RFDETRMedium
-    from trackers.core.botsort import BoTSORTTracker
+    from trackers import BoTSORTTracker
 
     tracker = BoTSORTTracker()
     model = RFDETRMedium()
