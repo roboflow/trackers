@@ -184,7 +184,7 @@ class CMCConfig:
 
     # ECC parameters
 
-    # BoT-SORT's original - resulting in veeery long (=unacceptably long) execution time
+    # BoT-SORT's original, which significantly increases runtime
     # ecc_number_of_iterations: int = 5000
     # ecc_termination_eps: float = 1e-6
 
