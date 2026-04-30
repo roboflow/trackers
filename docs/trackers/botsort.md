@@ -99,8 +99,6 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     cv2.destroyAllWindows()
     ```
 
-
-
 === "Webcam"
 
     ```python
@@ -186,6 +184,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     video_capture.release()
     cv2.destroyAllWindows()
     ```
+
 ## Reference
 
 Aharon, N., Orfaig, R., and Bobrovsky, B.-Z. (2023). BoT-SORT: Robust Associations Multi-Pedestrian Tracking. [arXiv:2206.14651](https://arxiv.org/abs/2206.14651)
