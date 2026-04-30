@@ -250,4 +250,3 @@ class BoTSORTTracklet(BaseTracklet):
             A[0:2, 0:2] = R
             A[4:6, 4:6] = R
         kf.P = A @ kf.P @ A.T
-

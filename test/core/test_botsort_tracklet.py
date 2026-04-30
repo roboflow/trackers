@@ -153,5 +153,3 @@ def test_botsort_tracklet_apply_cmc_does_not_affect_wh(
     h_after = bbox_after[3] - bbox_after[1]
     np.testing.assert_allclose(w_after, w_before, atol=1e-6)
     np.testing.assert_allclose(h_after, h_before, atol=1e-6)
-
-
