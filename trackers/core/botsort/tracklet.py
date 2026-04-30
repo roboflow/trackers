@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import numpy as np
 
 from trackers.utils.base_tracklet import BaseTracklet
@@ -253,61 +251,3 @@ class BoTSORTTracklet(BaseTracklet):
             A[4:6, 4:6] = R
         kf.P = A @ kf.P @ A.T
 
-    @staticmethod
-    def apply_cmc_batch(
-        tracklets: Sequence[BoTSORTTracklet], H: np.ndarray | None
-    ) -> None:
-        """Apply a 2x3 affine camera-motion transform to all tracklets at once.
-
-        Vectorised replacement for calling :meth:`apply_cmc` in a loop.
-        State vectors are stacked into a single ``(N, dim)`` matrix and
-        covariance matrices into ``(N, dim, dim)`` so that the rotation,
-        translation and covariance transforms are pure batch numpy ops.
-
-        Args:
-            tracklets: Sequence of tracklets to transform **in place**.
-            H: 2x3 affine transform ``[R | t]``.
-        """
-        if H is None or len(tracklets) == 0:
-            return
-
-        R = H[:2, :2].astype(np.float64)
-        t = H[:2, 2].astype(np.float64)
-
-        first_estimator = tracklets[0].state_estimator
-        dim = first_estimator.kf.x.shape[0]
-        is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
-
-        # Stack states (N, dim) and covariances (N, dim, dim)
-        states = np.array([trk.state_estimator.kf.x.reshape(-1) for trk in tracklets])
-        Ps = np.array([trk.state_estimator.kf.P for trk in tracklets])
-
-        if is_xyxy:
-            states[:, 0:2] = states[:, 0:2] @ R.T + t
-            states[:, 2:4] = states[:, 2:4] @ R.T + t
-            states[:, 4:6] = states[:, 4:6] @ R.T
-            states[:, 6:8] = states[:, 6:8] @ R.T
-        else:
-            # Batch-transform centre positions: x' = x @ R.T + t
-            states[:, 0:2] = states[:, 0:2] @ R.T + t
-            # Batch-transform centre velocities: v' = v @ R.T
-            states[:, 4:6] = states[:, 4:6] @ R.T
-
-        # Build 8x8 rotation-embedding matrix once
-        A = np.eye(dim, dtype=np.float64)
-        if is_xyxy:
-            A[0:2, 0:2] = R
-            A[2:4, 2:4] = R
-            A[4:6, 4:6] = R
-            A[6:8, 6:8] = R
-        else:
-            A[0:2, 0:2] = R
-            A[4:6, 4:6] = R
-
-        # Batch covariance: P' = A @ P @ A.T  ->  (8,8) @ (N,8,8) @ (8,8)
-        Ps = A @ Ps @ A.T
-
-        # Write back
-        for i, trk in enumerate(tracklets):
-            trk.state_estimator.kf.x = states[i].reshape(-1, 1)
-            trk.state_estimator.kf.P = Ps[i]

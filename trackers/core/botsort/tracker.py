@@ -18,6 +18,7 @@ from trackers.core.sort.utils import _get_iou_matrix
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
+    XYXYStateEstimator,
 )
 
 
@@ -194,7 +195,7 @@ class BoTSORTTracker(BaseTracker):
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(frame, mask_boxes)
             if H is not None:
-                BoTSORTTracklet.apply_cmc_batch(self.tracks, H)
+                self.apply_cmc_batch(H)
 
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
@@ -314,6 +315,49 @@ class BoTSORTTracker(BaseTracker):
         result = cast(sv.Detections, detections[idx])
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
+
+    def apply_cmc_batch(self, H: np.ndarray | None) -> None:
+        """Apply a 2x3 affine camera-motion transform to all tracklets at once."""
+        if H is None or len(self.tracks) == 0:
+            return
+
+        R = H[:2, :2].astype(np.float64)
+        t = H[:2, 2].astype(np.float64)
+
+        first_estimator = self.tracks[0].state_estimator
+        dim = first_estimator.kf.x.shape[0]
+        is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
+
+        # Stack states (N, dim) and covariances (N, dim, dim)
+        states = np.array([trk.state_estimator.kf.x.reshape(-1) for trk in self.tracks])
+        Ps = np.array([trk.state_estimator.kf.P for trk in self.tracks])
+
+        if is_xyxy:
+            states[:, 0:2] = states[:, 0:2] @ R.T + t
+            states[:, 2:4] = states[:, 2:4] @ R.T + t
+            states[:, 4:6] = states[:, 4:6] @ R.T
+            states[:, 6:8] = states[:, 6:8] @ R.T
+        else:
+            # Batch-transform centre positions: x' = x @ R.T + t
+            states[:, 0:2] = states[:, 0:2] @ R.T + t
+            # Batch-transform centre velocities: v' = v @ R.T
+            states[:, 4:6] = states[:, 4:6] @ R.T
+
+        A = np.eye(dim, dtype=np.float64)
+        if is_xyxy:
+            A[0:2, 0:2] = R
+            A[2:4, 2:4] = R
+            A[4:6, 4:6] = R
+            A[6:8, 6:8] = R
+        else:
+            A[0:2, 0:2] = R
+            A[4:6, 4:6] = R
+
+        Ps = A @ Ps @ A.T
+
+        for i, trk in enumerate(self.tracks):
+            trk.state_estimator.kf.x = states[i].reshape(-1, 1)
+            trk.state_estimator.kf.P = Ps[i]
 
     def _get_associated_indices(
         self,

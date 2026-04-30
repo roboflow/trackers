@@ -15,6 +15,8 @@ import numpy as np
 import pytest
 
 from trackers.core.botsort.cmc import CMC, CMCConfig
+from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.botsort.tracklet import BoTSORTTracklet
 
 # All supported CMC methods.
 ALL_METHODS = ["sparseOptFlow", "orb", "sift", "ecc"]
@@ -168,3 +170,74 @@ def test_cmc_downscale_produces_valid_output(method: str) -> None:
         assert np.all(np.isfinite(H)), (
             f"[{method}/{label}] H must contain only finite values"
         )
+
+
+# ==========================================================================
+# BoTSORTTracker.apply_cmc_batch()
+# ==========================================================================
+
+
+def test_botsort_tracker_apply_cmc_batch_matches_single() -> None:
+    """Batch CMC must match per-track apply_cmc for a single track."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    H = np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]], dtype=np.float32)
+
+    single = BoTSORTTracklet(bbox)
+    batched = BoTSORTTracklet(bbox)
+    tracker = BoTSORTTracker()
+    tracker.tracks = [batched]
+
+    single.apply_cmc(H)
+    tracker.apply_cmc_batch(H)
+
+    np.testing.assert_allclose(
+        single.state_estimator.kf.x,
+        batched.state_estimator.kf.x,
+        atol=1e-6,
+    )
+    np.testing.assert_allclose(
+        single.state_estimator.kf.P,
+        batched.state_estimator.kf.P,
+        atol=1e-6,
+    )
+
+
+def test_botsort_tracker_apply_cmc_batch_multiple_tracklets() -> None:
+    """Batch CMC applies the same transform to every tracklet."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    H = np.array([[1.0, 0.0, 8.0], [0.0, 1.0, -2.0]], dtype=np.float32)
+
+    singles = [BoTSORTTracklet(bbox) for _ in range(3)]
+    batched = [BoTSORTTracklet(bbox) for _ in range(3)]
+    tracker = BoTSORTTracker()
+    tracker.tracks = batched
+
+    for t in singles:
+        t.apply_cmc(H)
+    tracker.apply_cmc_batch(H)
+
+    for s, b in zip(singles, batched):
+        np.testing.assert_allclose(
+            s.state_estimator.kf.x, b.state_estimator.kf.x, atol=1e-6
+        )
+
+
+def test_botsort_tracker_apply_cmc_batch_none_is_noop() -> None:
+    """apply_cmc_batch with H=None must not change any tracklet state."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    tracklet = BoTSORTTracklet(bbox)
+    tracker = BoTSORTTracker()
+    tracker.tracks = [tracklet]
+    state_before = tracklet.state_estimator.kf.x.copy()
+
+    tracker.apply_cmc_batch(None)
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.x, state_before)
+
+
+def test_botsort_tracker_apply_cmc_batch_empty_list_is_noop() -> None:
+    """apply_cmc_batch with an empty list must not raise."""
+    H = np.eye(2, 3, dtype=np.float32)
+    tracker = BoTSORTTracker()
+    tracker.tracks = []
+    tracker.apply_cmc_batch(H)  # must not raise
