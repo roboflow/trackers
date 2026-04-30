@@ -54,9 +54,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 
 !!! warning
 
-    Unlike other trackers, `BoTSORTTracker.update()` requires the current
-    video frame for camera motion compensation. Pass the BGR frame as the
-    second argument.
+    If you want to use Camera Motion Compensation, remember to call `BoTSORTTracker.set_frame()` before `BoTSORTTracker.update()`.
 
 === "Video"
 
@@ -83,7 +81,8 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         detections = model.predict(frame_rgb)
-        detections = tracker.update(detections, frame_bgr)
+        tracker.set_frame(frame_bgr)
+        detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(
@@ -129,7 +128,8 @@ Aharon, N., Orfaig, R., and Bobrovsky, B.-Z. (2023). BoT-SORT: Robust Associatio
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         detections = model.predict(frame_rgb)
-        detections = tracker.update(detections, frame_bgr)
+        tracker.set_frame(frame_bgr)
+        detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(
@@ -171,7 +171,8 @@ Aharon, N., Orfaig, R., and Bobrovsky, B.-Z. (2023). BoT-SORT: Robust Associatio
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         detections = model.predict(frame_rgb)
-        detections = tracker.update(detections, frame_bgr)
+        tracker.set_frame(frame_bgr)
+        detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(
