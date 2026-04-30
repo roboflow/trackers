@@ -13,11 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.cmc import CMC, CMCConfig, CMCTMethod
 from trackers.core.botsort.tracklet import BoTSORTTracklet
-<<<<<<< HEAD
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-=======
-from trackers.core.botsort.utils import _fuse_score, _get_alive_tracklets
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
 from trackers.core.sort.utils import _get_iou_matrix
 from trackers.utils.state_representations import (
     BaseStateEstimator,

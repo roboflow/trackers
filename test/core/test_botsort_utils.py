@@ -11,11 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from trackers.core.botsort.tracklet import BoTSORTTracklet
-<<<<<<< HEAD
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-=======
-from trackers.core.botsort.utils import _fuse_score, _get_alive_tracklets
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
 
 # -------------------------------------------------------------------
 # _fuse_score
@@ -76,20 +72,12 @@ class TestGetAliveTrackers:
 
     def test_empty_list_returns_empty(self) -> None:
         """Empty input must return empty output."""
-<<<<<<< HEAD
         assert get_alive_tracklets([], 3, 30) == []
-=======
-        assert _get_alive_tracklets([], 3, 30) == []
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
 
     def test_active_immature_track_survives(self) -> None:
         """A track updated this frame survives even with 1 successful update."""
         track = _make_tracklet(success_updates=1, time_since=0)
-<<<<<<< HEAD
         alive = get_alive_tracklets(
-=======
-        alive = _get_alive_tracklets(
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
             [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
         )
         assert alive == [track]
@@ -97,11 +85,7 @@ class TestGetAliveTrackers:
     def test_mature_lost_track_survives_within_buffer(self) -> None:
         """A mature track lost for a few frames survives inside the buffer."""
         track = _make_tracklet(success_updates=3, time_since=5)
-<<<<<<< HEAD
         alive = get_alive_tracklets(
-=======
-        alive = _get_alive_tracklets(
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
             [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
         )
         assert alive == [track]
@@ -109,11 +93,7 @@ class TestGetAliveTrackers:
     def test_immature_lost_track_dies(self) -> None:
         """An immature track that has been lost must be removed."""
         track = _make_tracklet(success_updates=1, time_since=5)
-<<<<<<< HEAD
         alive = get_alive_tracklets(
-=======
-        alive = _get_alive_tracklets(
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
             [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
         )
         assert alive == []
@@ -121,11 +101,7 @@ class TestGetAliveTrackers:
     def test_mature_track_dies_past_buffer(self) -> None:
         """Even a mature track must die once it exceeds the lost buffer."""
         track = _make_tracklet(success_updates=5, time_since=31)
-<<<<<<< HEAD
         alive = get_alive_tracklets(
-=======
-        alive = _get_alive_tracklets(
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
             [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
         )
         assert alive == []
@@ -133,11 +109,7 @@ class TestGetAliveTrackers:
     def test_buffer_boundary_exactly_at_limit(self) -> None:
         """time_since_update == maximum_frames_without_update is past the limit."""
         track = _make_tracklet(success_updates=3, time_since=30)
-<<<<<<< HEAD
         alive = get_alive_tracklets(
-=======
-        alive = _get_alive_tracklets(
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
             [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
         )
         assert alive == []
@@ -145,11 +117,7 @@ class TestGetAliveTrackers:
     def test_buffer_boundary_one_under_limit(self) -> None:
         """time_since_update == maximum_frames_without_update - 1 survives."""
         track = _make_tracklet(success_updates=3, time_since=29)
-<<<<<<< HEAD
         alive = get_alive_tracklets(
-=======
-        alive = _get_alive_tracklets(
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
             [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
         )
         assert alive == [track]
@@ -169,11 +137,7 @@ class TestGetAliveTrackers:
             lost_immature,
             dead_mature,
         ]
-<<<<<<< HEAD
         alive = get_alive_tracklets(
-=======
-        alive = _get_alive_tracklets(
->>>>>>> 8ef5bb64720c03816c9adc13afda87c6b68e5272
             tracks, minimum_consecutive_frames=3, maximum_frames_without_update=30
         )
         assert alive == [active_mature, active_immature, lost_mature]
