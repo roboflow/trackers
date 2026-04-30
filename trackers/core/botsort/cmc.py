@@ -5,11 +5,14 @@
 # ------------------------------------------------------------------------
 
 import copy
+import logging
 from dataclasses import dataclass
 from typing import Any, Literal
 
 import cv2
 import numpy as np
+
+logger = logging.getLogger("trackers.cmc")
 
 CMCTMethod = Literal["orb", "sift", "sparseOptFlow", "ecc"]
 
@@ -198,7 +201,6 @@ class CMC:
 
     Typical usage in the tracker loop:
         H = cmc.estimate(frame_bgr, mask_boxes_xyxy)
-        CMC.apply_to_tracks(tracks, H)
 
     Internal state:
         - Keeps previous-frame features / points depending on the chosen method.
@@ -262,6 +264,7 @@ class CMC:
                 self.cfg.ecc_termination_eps,
             )
 
+        self.frames_failed = 0
         self.reset()
 
     def reset(self) -> None:
@@ -273,6 +276,7 @@ class CMC:
         - This should be called when starting a new sequence or after a scene cut.
         """
         self._initialized = False
+        self.frames_failed = 0
 
         # ORB state
         self._prev_kps = None
@@ -537,7 +541,8 @@ class CMC:
                     H_aff[0, 2] *= self.downscale
                     H_aff[1, 2] *= self.downscale
         else:
-            print("Warning: not enough matching points")
+            logger.warning("CMC: not enough matching points for motion estimation")
+            self.frames_failed += 1
 
         # Store to next iteration
         self._prev_frame_gray = frame.copy()
@@ -607,9 +612,12 @@ class CMC:
             )
             if H_est is not None:
                 H_aff = H_est.astype(np.float32)
+                if self.downscale > 1:
+                    H_aff[0, 2] *= self.downscale
+                    H_aff[1, 2] *= self.downscale
         except cv2.error:
-            print("Warning: find transform failed. Set warp as identity")
-            pass
+            logger.warning("CMC: ECC motion estimation failed, using identity")
+            self.frames_failed += 1
 
         # NOTE: this line is not included in the original BoT-SORT. However,
         # in a working recurrent estimator, you do need to update the previous frame
@@ -618,4 +626,3 @@ class CMC:
         self._prev_frame_gray = frame.copy()
 
         return H_aff
-

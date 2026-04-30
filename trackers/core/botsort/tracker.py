@@ -51,10 +51,12 @@ class BoTSORTTracker(BaseTracker):
             track.
         minimum_consecutive_frames: Number of successful updates required before
             assigning a stable track ID (different than initial -1).
-        minimum_iou_threshold_first_assoc: Minimum IoU to accept a detection-track
-            association during the first association step.
-        minimum_iou_threshold_second_assoc: Minimum IoU to accept a detection-track
-            association during the second association step.
+        minimum_iou_threshold_first_assoc: Minimum fused similarity (IoU x
+            detection confidence) to accept a detection-track association during
+            the first association step.
+        minimum_iou_threshold_second_assoc: Minimum fused similarity (IoU x
+            detection confidence) to accept a detection-track association during
+            the second association step.
         minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU x
             score) to accept a match between an unconfirmed track and a remaining
             high-confidence detection.  Corresponds to the original ByteTrack's
@@ -67,6 +69,11 @@ class BoTSORTTracker(BaseTracker):
             Supported values depend on `CMC` (e.g. "orb", "sift", "sparseOptFlow",
             "ecc"). See CMCConfig.
         cmc_downscale: Downscale factor used inside CMC for speed/robustness.
+        instant_first_frame_activation: If ``True`` (default), tracks spawned on
+            the very first frame receive a real tracker ID immediately. If ``False``,
+            they start as unconfirmed (-1) and must survive
+            ``minimum_consecutive_frames`` before getting an ID, matching the
+            behaviour on every other frame.
         state_estimator_class: State estimator class for tracklets. Defaults
             to ``XCYCWHStateEstimator``.
 
@@ -74,6 +81,8 @@ class BoTSORTTracker(BaseTracker):
         - `maximum_frames_without_update` is computed as:
             int(frame_rate / 30.0 * lost_track_buffer)
             to maintain consistent “seconds” worth of buffer across different FPS.
+        - When CMC is enabled, call :meth:`set_frame` before each :meth:`update`
+          to supply the current video frame.
     """
 
     tracker_id = "botsort"
@@ -91,6 +100,7 @@ class BoTSORTTracker(BaseTracker):
         enable_cmc: bool = True,
         cmc_method: CMCTMethod = "sparseOptFlow",
         cmc_downscale: int = 2,
+        instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
@@ -105,6 +115,7 @@ class BoTSORTTracker(BaseTracker):
         )
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
+        self.instant_first_frame_activation = instant_first_frame_activation
         self.tracks: list[BoTSORTTracklet] = []
         self.state_estimator_class = state_estimator_class
         self.frame_id: int = 0
@@ -115,11 +126,24 @@ class BoTSORTTracker(BaseTracker):
             if enable_cmc
             else None
         )
+        self._frame: np.ndarray | None = None
+
+    def set_frame(self, frame: np.ndarray | None) -> None:
+        """Set the current video frame for CMC.
+
+        Must be called before :meth:`update` when camera motion compensation
+        (CMC) is enabled. The frame is consumed during the next ``update()``
+        call and then cleared.
+
+        Args:
+            frame: Current video frame in BGR format (H, W, 3), or ``None``
+                to skip CMC for the upcoming frame.
+        """
+        self._frame = frame
 
     def update(
         self,
         detections: sv.Detections,
-        frame: np.ndarray | None = None,
     ) -> sv.Detections:
         """
         Update the tracker with detections from the current frame.
@@ -131,17 +155,15 @@ class BoTSORTTracker(BaseTracker):
                 .xyxy`. Confidence (`detections.confidence`) is optional but
                 recommended. This method does not mutate the input detections;
                 it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
-            frame: Current video frame in BGR format (H, W, 3), required if CMC is
-                enabled.
 
         Returns:
             A new ``sv.Detections`` with ``tracker_id`` assigned (>= 0 confirmed,
             -1 unconfirmed).
 
         Notes:
-            - If CMC is enabled, the tracker estimates a global affine transform (2x3)
-              from the frame and uses it to warp predicted track states before
-              association.
+            - If CMC is enabled, call :meth:`set_frame` before this method so the
+              tracker can estimate a global affine transform and warp predicted
+              track states before association.
         """
         self.frame_id += 1
 
@@ -191,12 +213,12 @@ class BoTSORTTracker(BaseTracker):
                 unconfirmed_tracks.append(track)
 
         # CMC: apply to all predicted tracks before association
-        if self.enable_cmc and self.cmc is not None and frame is not None:
+        if self.enable_cmc and self.cmc is not None and self._frame is not None:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
-            H = self.cmc.estimate(frame, mask_boxes)
+            H = self.cmc.estimate(self._frame, mask_boxes)
             if H is not None:
                 self.apply_cmc_batch(H)
-
+        self._frame = None
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
@@ -422,7 +444,7 @@ class BoTSORTTracker(BaseTracker):
                     initial_bbox=detection_boxes[global_idx],
                     state_estimator_class=self.state_estimator_class,
                 )
-                if is_first_frame:
+                if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = BoTSORTTracklet.get_next_tracker_id()
                 self.tracks.append(tracklet)
                 out_det_indices.append(global_idx)

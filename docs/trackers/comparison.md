@@ -262,6 +262,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |   SORT    |   45.0   |   39.0   |   80.6   |
     | ByteTrack |   50.2   |   49.9   |   86.2   |
     |  OC-SORT  | **51.8** | **50.9** | **87.3** |
+    | BoT-SORT  |   50.5   |   49.2   |   85.1   |
 
 === "Tuned"
 
@@ -272,6 +273,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |   SORT    |   50.6   |   49.6   |   84.3   |
     | ByteTrack | **53.2** | **54.6** |   86.8   |
     |  OC-SORT  |   52.0   |   51.8   | **87.2** |
+    | BoT-SORT  | **53.5** | **54.0** |   86.5   |
 
     Tuned configuration for each tracker.
 
@@ -296,6 +298,17 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       direction_consistency_weight: 0.2
       high_conf_det_threshold: 0.6
       delta_t: 1
+
+    BoT-SORT:
+      lost_track_buffer: 60
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.1
+      minimum_iou_threshold_second_assoc: 0.5
+      minimum_iou_threshold_unconfirmed_assoc: 0.2
+      high_conf_det_threshold: 0.6
+      track_activation_threshold: 0.7
+      enable_cmc: true
+      cmc_method: sparseOptFlow
     ```
 
 ## Methodology
@@ -334,6 +347,12 @@ observation-centric re-update mechanism and direction consistency cost reduce dr
 linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns,
 camera pans, or erratic motion — the benchmark edge on MOT17 and DanceTrack reflects exactly
 these conditions.
+
+**BoT-SORT** is the choice when camera ego-motion is strong and you need the most stable
+identities. It extends ByteTrack with camera motion compensation (CMC) and confidence-aware
+association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports
+broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is
+small relative to the detector, so the trade-off favors identity stability over raw speed.
 
 ## Metric Definitions
 

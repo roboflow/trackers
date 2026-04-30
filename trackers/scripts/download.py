@@ -85,7 +85,7 @@ def _run_download(args: argparse.Namespace) -> int:
             output=args.output,
             cache_dir=args.cache_dir,
         )
-    except ValueError as e:
+    except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
