@@ -13,7 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.cmc import CMC, CMCConfig, CMCTMethod
 from trackers.core.botsort.tracklet import BoTSORTTracklet
-from trackers.core.botsort.utils import _fuse_score, get_alive_trackers
+from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.core.sort.utils import _get_iou_matrix
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -321,8 +321,8 @@ class BoTSORTTracker(BaseTracker):
         )
 
         # Kill lost tracks
-        self.tracks = get_alive_trackers(
-            trackers=self.tracks,
+        self.tracks = get_alive_tracklets(
+            tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
         )

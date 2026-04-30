@@ -11,8 +11,8 @@ import numpy as np
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 
 
-def get_alive_trackers(
-    trackers: Sequence[BoTSORTTracklet],
+def get_alive_tracklets(
+    tracklets: Sequence[BoTSORTTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
 ) -> list[BoTSORTTracklet]:
@@ -24,7 +24,7 @@ def get_alive_trackers(
     frame.
 
     Args:
-        trackers: List of BoTSORTTracklet objects.
+        tracklets: List of BoTSORTTracklet objects.
         minimum_consecutive_frames: Number of successful updates that an object
             must have before it is considered a 'valid' track.
         maximum_frames_without_update: Maximum number of frames without update
@@ -33,15 +33,15 @@ def get_alive_trackers(
     Returns:
         List of alive tracklets.
     """
-    alive_trackers = []
-    for tracker in trackers:
+    alive_tracklets = []
+    for tracker in tracklets:
         is_mature = tracker.number_of_successful_updates >= minimum_consecutive_frames
         is_active = tracker.time_since_update == 0
         if tracker.time_since_update < maximum_frames_without_update and (
             is_mature or is_active
         ):
-            alive_trackers.append(tracker)
-    return alive_trackers
+            alive_tracklets.append(tracker)
+    return alive_tracklets
 
 
 def _fuse_score(iou_similarity: np.ndarray, scores: np.ndarray) -> np.ndarray:
