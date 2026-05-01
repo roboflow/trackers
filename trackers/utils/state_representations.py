@@ -36,10 +36,10 @@ class StateRepresentation(Enum):
             More direct representation, potentially better for non-rigid objects.
         XCYCWH: Center-based representation with 8 state variables:
             `x_center`, `y_center` (box center), `w` (width), `h` (height),
-            and velocities `vx`, `vy`, `vw`, `vh`.  Unlike XCYCSR both width
-            and height carry independent velocity terms.  Process and
-            measurement noise are **scale-aware** (recomputed each frame from
-            the current w/h).  Used in the BoT-SORT paper.
+            and velocities `vx`, `vy`, `vw`, `vh`. Unlike XCYCSR, both width
+            and height carry independent velocity terms. Commonly used with
+            BoT-SORT-style tracking, where callers may refresh scale-aware
+            process and measurement noise separately based on the current w/h.
     """
 
     XCYCSR = "xcycsr"
