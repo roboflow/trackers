@@ -151,8 +151,8 @@ class BoTSORTTracker(BaseTracker):
         This is the main per-frame entry point.
 
         Args:
-            detections: Supervision detections for the current frame. Must include `
-                .xyxy`. Confidence (`detections.confidence`) is optional but
+            detections: Supervision detections for the current frame. Must include
+                ``.xyxy``. Confidence (`detections.confidence`) is optional but
                 recommended. This method does not mutate the input detections;
                 it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
 
