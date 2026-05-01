@@ -39,8 +39,7 @@ def test_mcbyte_instantiates_sets_frame_and_updates_with_sparse_opt_flow_cmc() -
     frame = _make_frame()
 
     for _ in range(5):
-        tracker.set_frame(frame)
-        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
 
     assert len(result) == 1
     assert result.tracker_id is not None

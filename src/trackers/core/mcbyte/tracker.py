@@ -8,17 +8,18 @@ from typing import cast
 
 import numpy as np
 import supervision as sv
+from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.core.mcbyte.utils import _fuse_score, get_alive_tracklets
-from trackers.core.sort.utils import _get_iou_matrix
+from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
+from trackers.utils.detections import default_confidences
+from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
-    XYXYStateEstimator,
 )
 
 
@@ -40,6 +41,7 @@ class McByteTracker(BaseTracker):
         cmc_downscale: int = 2,
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
+        iou: BaseIoU | None = None,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -56,6 +58,7 @@ class McByteTracker(BaseTracker):
         self.instant_first_frame_activation = instant_first_frame_activation
         self.tracks: list[McByteTracklet] = []
         self.state_estimator_class = state_estimator_class
+        self.iou = iou if iou is not None else IoU()
         self.frame_id: int = 0
 
         self.enable_cmc = enable_cmc
@@ -64,24 +67,11 @@ class McByteTracker(BaseTracker):
             if enable_cmc
             else None
         )
-        self._frame: np.ndarray | None = None
-
-    def set_frame(self, frame: np.ndarray | None) -> None:
-        """Set the current video frame for CMC.
-
-        Must be called before :meth:`update` when camera motion compensation
-        (CMC) is enabled. The frame is consumed during the next ``update()``
-        call and then cleared.
-
-        Args:
-            frame: Current video frame in BGR format (H, W, 3), or ``None``
-                to skip CMC for the upcoming frame.
-        """
-        self._frame = frame
 
     def update(
         self,
         detections: sv.Detections,
+        frame: np.ndarray | None = None,
     ) -> sv.Detections:
         """
         Update the tracker with detections from the current frame.
@@ -89,17 +79,18 @@ class McByteTracker(BaseTracker):
         This is the main per-frame entry point.
 
         Args:
-            detections: Supervision detections for the current frame. Must include `
-                .xyxy`. Confidence (`detections.confidence`) is optional but
+            detections: Supervision detections for the current frame. Must include
+                ``.xyxy``. Confidence (`detections.confidence`) is optional but
                 recommended. This method does not mutate the input detections;
                 it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
 
         Returns:
-            A new ``sv.Detections`` with ``tracker_id`` assigned (>= 0 confirmed,
-            -1 unconfirmed).
+            New sv.Detections with tracker_id assigned for each detection.
+            Confirmed tracks have tracker_id >= 0; unconfirmed tracks have
+            tracker_id of -1.
 
         Notes:
-            - If CMC is enabled, call :meth:`set_frame` before this method so the
+            - If CMC is enabled, pass the current video frame via ``frame`` so the
               tracker can estimate a global affine transform and warp predicted
               track states before association.
         """
@@ -118,11 +109,7 @@ class McByteTracker(BaseTracker):
             tracker.predict()
 
         detection_boxes = detections.xyxy
-        confidences = (
-            detections.confidence
-            if detections.confidence is not None
-            else np.ones(len(detections))
-        )
+        confidences = default_confidences(detections)
 
         # Split indices into high / low / discarded by confidence
         high_mask = confidences >= self.high_conf_det_threshold
@@ -151,18 +138,16 @@ class McByteTracker(BaseTracker):
                 unconfirmed_tracks.append(track)
 
         # CMC: apply to all predicted tracks before association
-        if self.enable_cmc and self.cmc is not None and self._frame is not None:
+        if self.enable_cmc and self.cmc is not None and frame is not None:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
-            H = self.cmc.estimate(self._frame, mask_boxes)
-            if H is not None:
-                self.apply_cmc_batch(H)
-        self._frame = None
+            H = self.cmc.estimate(frame, mask_boxes)
+            CMC.apply_batch(H, self.tracks)
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = _get_iou_matrix(strack_pool, high_boxes)
-        iou_matrix = _fuse_score(iou_matrix, high_scores)
+        iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
+        iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
         )
@@ -186,7 +171,7 @@ class McByteTracker(BaseTracker):
             for i in unmatched_pool
             if strack_pool[i].time_since_update == 1
         ]
-        iou_matrix = _get_iou_matrix(remaining_tracked, low_boxes)
+        iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_second_assoc
         )
@@ -217,8 +202,8 @@ class McByteTracker(BaseTracker):
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
 
-            iou_matrix = _get_iou_matrix(unconfirmed_tracks, uh_boxes)
-            iou_matrix = _fuse_score(iou_matrix, uh_scores)
+            iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
+            iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = (
                 self._get_associated_indices(
                     iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
@@ -276,48 +261,12 @@ class McByteTracker(BaseTracker):
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
 
-    def apply_cmc_batch(self, H: np.ndarray | None) -> None:
-        """Apply a 2x3 affine camera-motion transform to all tracklets at once."""
-        if H is None or len(self.tracks) == 0:
-            return
-
-        R = H[:2, :2].astype(np.float64)
-        t = H[:2, 2].astype(np.float64)
-
-        first_estimator = self.tracks[0].state_estimator
-        dim = first_estimator.kf.x.shape[0]
-        is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
-
-        # Stack states (N, dim) and covariances (N, dim, dim)
-        states = np.array([trk.state_estimator.kf.x.reshape(-1) for trk in self.tracks])
-        Ps = np.array([trk.state_estimator.kf.P for trk in self.tracks])
-
-        if is_xyxy:
-            states[:, 0:2] = states[:, 0:2] @ R.T + t
-            states[:, 2:4] = states[:, 2:4] @ R.T + t
-            states[:, 4:6] = states[:, 4:6] @ R.T
-            states[:, 6:8] = states[:, 6:8] @ R.T
+    def _get_iou_matrix(self, tracklets: list[McByteTracklet], detections: np.ndarray) -> np.ndarray:
+        if len(tracklets) == 0:
+            tracklet_boxes = np.empty((0, 4))
         else:
-            # Batch-transform centre positions: x' = x @ R.T + t
-            states[:, 0:2] = states[:, 0:2] @ R.T + t
-            # Batch-transform centre velocities: v' = v @ R.T
-            states[:, 4:6] = states[:, 4:6] @ R.T
-
-        A = np.eye(dim, dtype=np.float64)
-        if is_xyxy:
-            A[0:2, 0:2] = R
-            A[2:4, 2:4] = R
-            A[4:6, 4:6] = R
-            A[6:8, 6:8] = R
-        else:
-            A[0:2, 0:2] = R
-            A[4:6, 4:6] = R
-
-        Ps = A @ Ps @ A.T
-
-        for i, trk in enumerate(self.tracks):
-            trk.state_estimator.kf.x = states[i].reshape(-1, 1)
-            trk.state_estimator.kf.P = Ps[i]
+            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+        return self.iou.compute(tracklet_boxes, detections)
 
     def _get_associated_indices(
         self,
@@ -336,8 +285,12 @@ class McByteTracker(BaseTracker):
             match.
 
         Returns:
-            Matched indices (list of (tracker_idx, detection_idx)), indices of
-                unmatched tracks, indices of unmatched detections.
+            matched: List of ``(tracker_idx, detection_idx)`` tuples for
+                associations that meet the similarity threshold.
+            unmatched_tracks: Sorted list of track indices not matched to any
+                detection.
+            unmatched_detections: Sorted list of detection indices not matched
+                to any track.
         """
         matched_indices = []
         n_tracks, n_detections = similarity_matrix.shape
@@ -397,3 +350,20 @@ class McByteTracker(BaseTracker):
         McByteTracklet.count_id = 0
         if self.cmc is not None:
             self.cmc.reset()
+
+    @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
+    def apply_cmc_batch(self, H: np.ndarray | None) -> None:
+        """Apply CMC to all active tracks.
+
+        .. deprecated:: 2.5
+            Use CMC.apply_batch(H, self.tracks) directly.
+
+        Args:
+            H: 2x3 affine transform matrix returned by CMC.estimate().
+                If None, this method is a no-op.
+
+        Examples:
+            >>> tracker = McByteTracker()
+            >>> tracker.apply_cmc_batch(None)  # no-op
+        """
+        CMC.apply_batch(H, self.tracks)
