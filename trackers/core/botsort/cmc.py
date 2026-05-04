@@ -67,14 +67,14 @@ class CMCConfig:
             more keypoints.
 
         ransac_reproj_threshold:
-            (used for ORB and SIFT) RANSAC reprojection threshold in pixels passed to
+            (ORB and SIFT) RANSAC reprojection threshold in pixels passed to
             OpenCV's affine estimation. It controls how far a point is allowed to
             deviate from the estimated model while still being counted as an inlier.
             Smaller values are stricter (reject more matches); larger values are more
             tolerant.
 
         max_spatial_distance_frac:
-            (ORB only) Maximum allowed spatial displacement for a tentative match,
+            (ORB and SIFT) Maximum allowed spatial displacement for a tentative match,
             expressed as a fraction of (image width, image height) *after downscale*.
 
             Example:
@@ -86,7 +86,7 @@ class CMCConfig:
                 implausibly large.
 
         roi_min_frac:
-            (ORB only) Lower bound of the region-of-interest (ROI) used to select
+            (ORB and SIFT) Lower bound of the region-of-interest (ROI) used to select
             keypoints, expressed as a fraction of frame size. Points outside the ROI
             are masked out.
 
@@ -94,7 +94,7 @@ class CMCConfig:
                 roi_min_frac=0.02 means we ignore a ~2% border on each side.
 
         roi_max_frac:
-            (ORB only) Upper bound of the ROI used to select keypoints (fraction of
+            (ORB and SIFT) Upper bound of the ROI used to select keypoints (fraction of
             frame size). Together with roi_min_frac, it defines a central rectangle:
                 [roi_min_frac..roi_max_frac] in both x and y.
 
