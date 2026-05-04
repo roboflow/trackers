@@ -263,6 +263,12 @@ class CMC:
                 self.cfg.ecc_number_of_iterations,
                 self.cfg.ecc_termination_eps,
             )
+        else:
+            valid = ("orb", "sift", "sparseOptFlow", "ecc")
+            raise ValueError(
+                f"Unknown CMC method {self.cfg.method!r}. "
+                f"Valid options are: {valid}."
+            )
 
         self.frames_failed = 0
         self.reset()
