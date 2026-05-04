@@ -3712,7 +3712,7 @@ wheels = [
 
 [[package]]
 name = "supervision"
-version = "0.28.0rc2"
+version = "0.28.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "defusedxml" },
@@ -3726,9 +3726,9 @@ dependencies = [
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/3f/055de5fa1924130f7a3d5a0597f2bda129c62d74a54e413e2a12695f1073/supervision-0.28.0rc2.tar.gz", hash = "sha256:5685f47d9203d9b8caf85671cc1425f22f901854422d8d42b43f15bb0018f1c4", size = 217428, upload-time = "2026-04-22T16:25:40.351Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/b0/2a3dcfd922d115a3dd76684927d9ed7576b36a8f696181bc334b04b0bef9/supervision-0.28.0.tar.gz", hash = "sha256:ae32536bba3239125311e3e91d7d1773cf8348da2f3ebe6836d90aa95b5908e5", size = 217542, upload-time = "2026-04-30T16:02:13.172Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/2c/718cbba9206dabc2df8742ffb9523bdcc0fc72d68fd6f77b2973c38ed296/supervision-0.28.0rc2-py3-none-any.whl", hash = "sha256:ef46eb4b83ad0adbb12ae10751ae1f84c595bed3e989d67fc84edb5e6d271ae2", size = 251490, upload-time = "2026-04-22T16:25:38.589Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/2c/c3a0b6b258e9c698409dcbadd3c40c847f0cf170218d539c9b45b0069c5c/supervision-0.28.0-py3-none-any.whl", hash = "sha256:d38cf041751110c2c55a5c1c5d09c97a110ee253afa580818313db8654eef40f", size = 251564, upload-time = "2026-04-30T16:02:11.119Z" },
 ]
 
 [[package]]
