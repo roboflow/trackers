@@ -378,7 +378,11 @@ class BaseTracker(ABC):
         return sorted(cls._registry.keys())
 
     @abstractmethod
-    def update(self, detections: sv.Detections) -> sv.Detections:
+    def update(
+        self,
+        detections: sv.Detections,
+        frame: np.ndarray | None = None,
+    ) -> sv.Detections:
         """Process new detections and assign track IDs.
 
         Matches incoming detections to existing tracks, creates new tracks
@@ -386,6 +390,8 @@ class BaseTracker(ABC):
 
         Args:
             detections: Current frame detections with xyxy, confidence, class_id.
+            frame: Current video frame in BGR format (H, W, 3), or ``None``.
+                Used by trackers with camera motion compensation (e.g. BoTSORT).
 
         Returns:
             Same detections enriched with tracker_id attribute for each box.
