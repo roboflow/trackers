@@ -266,8 +266,7 @@ class CMC:
         else:
             valid = ("orb", "sift", "sparseOptFlow", "ecc")
             raise ValueError(
-                f"Unknown CMC method {self.cfg.method!r}. "
-                f"Valid options are: {valid}."
+                f"Unknown CMC method {self.cfg.method!r}. Valid options are: {valid}."
             )
 
         self.frames_failed = 0
