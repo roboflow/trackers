@@ -173,15 +173,19 @@ class Tuner:
         """
         params: dict[str, Any] = {}
         for name, spec in self._search_space.items():
-            low, high = spec["range"]
-            if spec["type"] == "randint":
+            stype = spec["type"]
+            if stype == "randint":
+                low, high = spec["range"]
                 params[name] = trial.suggest_int(name, low, high)
-            elif spec["type"] == "uniform":
+            elif stype == "uniform":
+                low, high = spec["range"]
                 params[name] = trial.suggest_float(name, low, high)
+            elif stype == "choice":
+                params[name] = trial.suggest_categorical(name, spec["options"])
             else:
                 raise ValueError(
-                    f"Unknown search_space type: {spec['type']!r}. "
-                    "Valid types: 'randint', 'uniform'"
+                    f"Unknown search_space type: {stype!r}. "
+                    "Valid types: 'randint', 'uniform', 'choice'"
                 )
 
         # Pass only sampled parameters so tracker __init__ defaults apply naturally.
@@ -281,6 +285,8 @@ def _run_tracker_on_detections(
                 dets = _mot_frame_to_detections(det_data[frame_idx])
             else:
                 dets = sv.Detections.empty()
+            if hasattr(tracker, "set_frame"):
+                tracker.set_frame(frame_idx)
             tracked = tracker.update(dets)
             mot_out.write(frame_idx, tracked)
 

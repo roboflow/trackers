@@ -290,10 +290,20 @@ class TestSearchSpaceValidation:
     """Tests for search_space ClassVar validation in __init_subclass__."""
 
     def test_search_space_keys_match_init_params(self) -> None:
-        """ByteTrack, SORT, and OC-SORT search_space keys are valid __init__ params."""
-        from trackers import ByteTrackTracker, OCSORTTracker, SORTTracker
+        """Registered trackers' search_space keys are valid __init__ params."""
+        from trackers import (
+            BoTSORTTracker,
+            ByteTrackTracker,
+            OCSORTTracker,
+            SORTTracker,
+        )
 
-        for tracker_cls in (ByteTrackTracker, SORTTracker, OCSORTTracker):
+        for tracker_cls in (
+            ByteTrackTracker,
+            SORTTracker,
+            OCSORTTracker,
+            BoTSORTTracker,
+        ):
             init_params = set(inspect.signature(tracker_cls.__init__).parameters) - {
                 "self"
             }
@@ -386,6 +396,14 @@ class TestSearchSpaceValidation:
             (
                 {"x": {"type": "uniform", "range": [1, 0]}},  # low >= high
                 r"must have low < high",
+            ),
+            (
+                {"x": {"type": "choice"}},  # missing "options"
+                r"missing required key 'options'",
+            ),
+            (
+                {"x": {"type": "choice", "options": []}},  # empty options
+                r"non-empty",
             ),
         ],
     )

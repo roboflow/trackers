@@ -217,7 +217,7 @@ def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
     return params
 
 
-_VALID_SPACE_TYPES: frozenset[str] = frozenset({"randint", "uniform"})
+_VALID_SPACE_TYPES: frozenset[str] = frozenset({"randint", "uniform", "choice"})
 
 
 def _validate_search_space_entry(
@@ -245,6 +245,33 @@ def _validate_search_space_entry(
             f"{spec['type']!r} is not valid. "
             f"Valid types: {sorted(_VALID_SPACE_TYPES)}"
         )
+    space_type = spec["type"]
+    if space_type == "choice":
+        if "options" not in spec:
+            raise ValueError(
+                f"{cls_name}: search_space[{key!r}] with type 'choice' "
+                f"missing required key 'options'"
+            )
+        opts = spec["options"]
+        if isinstance(opts, (str, bytes)):
+            raise ValueError(
+                f"{cls_name}: search_space[{key!r}]['options'] must be "
+                f"a sequence of choices, not {type(opts).__name__!r}"
+            )
+        try:
+            n_opts = len(opts)
+        except TypeError as exc:
+            raise ValueError(
+                f"{cls_name}: search_space[{key!r}]['options'] must be "
+                f"a sized sequence, got {type(opts).__name__!r}"
+            ) from exc
+        if n_opts < 1:
+            raise ValueError(
+                f"{cls_name}: search_space[{key!r}]['options'] must be "
+                f"non-empty, got {opts!r}"
+            )
+        return
+
     if "range" not in spec:
         raise ValueError(
             f"{cls_name}: search_space[{key!r}] missing required key 'range'"
@@ -282,7 +309,9 @@ class BaseTracker(ABC):
             this to be registered.
         search_space: Hyperparameter search space for tuning. Each key must
             match an `__init__` parameter. Values are dicts with `type`
-            (`"randint"` or `"uniform"`) and `range` (`[low, high]`).
+            ``"randint"`` or ``"uniform"`` and ``range`` ``[low, high]``, or
+            `type` ``"choice"`` and ``options`` (non-empty sequence of
+            categorical values for Optuna).
         tracks: List of alive tracklets after each `update()`. Each element
             must satisfy `TrackletProtocol` (exposes `.tracker_id: int` and
             `.get_state_bbox() -> np.ndarray`). Subclasses must initialise
