@@ -9,7 +9,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr, xyxy_to_xywh
+from trackers.utils.converters import (
+    xcycsr_to_xyxy,
+    xywh_to_xyxy,
+    xyxy_to_xcycsr,
+    xyxy_to_xywh,
+)
 
 
 @pytest.mark.parametrize(
@@ -31,6 +36,41 @@ def test_xyxy_to_xywh_batch() -> None:
     result = xyxy_to_xywh(xyxy)
     assert result.shape == (2, 4)
     np.testing.assert_array_almost_equal(result, expected, decimal=6)
+
+
+@pytest.mark.parametrize(
+    ("xywh", "expected"),
+    [
+        (np.array([5.0, 10.0, 10.0, 20.0]), np.array([0.0, 0.0, 10.0, 20.0])),
+        (np.array([0.0, 0.0, 4.0, 8.0]), np.array([-2.0, -4.0, 2.0, 4.0])),
+    ],
+)
+def test_xywh_to_xyxy_single_box(xywh: np.ndarray, expected: np.ndarray) -> None:
+    result = xywh_to_xyxy(xywh)
+    assert result.shape == (4,)
+    np.testing.assert_array_almost_equal(result, expected, decimal=6)
+
+
+def test_xywh_to_xyxy_batch() -> None:
+    xywh = np.array([[1.0, 1.0, 2.0, 2.0], [20.0, 35.0, 20.0, 30.0]])
+    expected = np.array([[0.0, 0.0, 2.0, 2.0], [10.0, 20.0, 30.0, 50.0]])
+    result = xywh_to_xyxy(xywh)
+    assert result.shape == (2, 4)
+    np.testing.assert_array_almost_equal(result, expected, decimal=6)
+
+
+@pytest.mark.parametrize(
+    "xyxy",
+    [
+        np.array([0.0, 0.0, 10.0, 20.0]),
+        np.array([10.0, 20.0, 30.0, 50.0]),
+        np.array([-2.0, -4.0, 2.0, 4.0]),
+    ],
+)
+def test_xyxy_xywh_roundtrip(xyxy: np.ndarray) -> None:
+    xywh = xyxy_to_xywh(xyxy)
+    recovered = xywh_to_xyxy(xywh)
+    np.testing.assert_array_almost_equal(recovered, xyxy, decimal=6)
 
 
 @pytest.mark.parametrize(

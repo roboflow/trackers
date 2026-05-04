@@ -13,10 +13,9 @@ import numpy as np
 
 from trackers.utils.converters import (
     xcycsr_to_xyxy,
+    xywh_to_xyxy,
     xyxy_to_xcycsr,
-)
-from trackers.utils.converters import (
-    xyxy_to_xywh as convert_xyxy_to_xywh,
+    xyxy_to_xywh,
 )
 from trackers.utils.kalman_filter import KalmanFilter
 
@@ -239,28 +238,6 @@ class XCYCWHStateEstimator(BaseStateEstimator):
     estimator — exactly like `XYXYStateEstimator` and `XCYCSRStateEstimator`.
     """
 
-    # ------------------------------------------------------------------
-    # Coordinate conversions (public statics so tracklets can reuse them)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def xyxy_to_xywh(bbox: np.ndarray) -> np.ndarray:
-        """Convert ``[x1, y1, x2, y2]`` to ``[xc, yc, w, h]``."""
-        return convert_xyxy_to_xywh(bbox)
-
-    @staticmethod
-    def xywh_to_xyxy(state: np.ndarray) -> np.ndarray:
-        """Convert ``[xc, yc, w, h]`` to ``[x1, y1, x2, y2]``."""
-        xc, yc, w, h = state.astype(np.float64)
-        return np.array(
-            [xc - w / 2.0, yc - h / 2.0, xc + w / 2.0, yc + h / 2.0],
-            dtype=np.float64,
-        )
-
-    # ------------------------------------------------------------------
-    # BaseStateEstimator interface
-    # ------------------------------------------------------------------
-
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
         kf = KalmanFilter(dim_x=8, dim_z=4)
 
@@ -273,16 +250,16 @@ class XCYCWHStateEstimator(BaseStateEstimator):
         kf.H = np.eye(4, 8, dtype=np.float64)
 
         # Initialise position from first bbox
-        measurement = self.xyxy_to_xywh(bbox)
+        measurement = xyxy_to_xywh(bbox)
         kf.x[:4] = measurement.reshape((4, 1))
 
         return kf
 
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
-        return self.xyxy_to_xywh(bbox)
+        return xyxy_to_xywh(bbox)
 
     def state_to_bbox(self) -> np.ndarray:
-        return self.xywh_to_xyxy(self.kf.x[:4].reshape((4,)))
+        return xywh_to_xyxy(self.kf.x[:4].reshape((4,)))
 
     def clamp_velocity(self) -> None:
         pass
