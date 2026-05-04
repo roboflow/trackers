@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import cast
+from typing import cast, ClassVar
 
 import numpy as np
 import supervision as sv
@@ -19,6 +19,7 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
     XYXYStateEstimator,
+    XCYCSRStateEstimator,
 )
 
 
@@ -86,7 +87,18 @@ class BoTSORTTracker(BaseTracker):
     """
 
     tracker_id = "botsort"
-
+    search_space: ClassVar[dict[str, dict]] = {
+        "lost_track_buffer": {"type": "randint", "range": [10, 91]},
+        "track_activation_threshold": {"type": "uniform", "range": [0.1, 0.9]},
+        "minimum_iou_threshold_first_assoc": {"type": "uniform", "range": [0.05, 0.7]},
+        "minimum_iou_threshold_second_assoc": {"type": "uniform", "range": [0.05, 0.7]},
+        "minimum_iou_threshold_unconfirmed_assoc": {"type": "uniform", "range": [0.05, 0.7]},
+        "high_conf_det_threshold": {"type": "uniform", "range": [0.3, 0.8]},
+        "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
+        'cmc_downscale': {'type': 'randint', 'range': [1, 4]},
+        'state_estimator_class': {'type': 'choice', 'options': [XCYCWHStateEstimator, XCYCSRStateEstimator]},
+        'enable_cmc': {'type': 'choice', 'options': [False]}, # CMC disabled for tuner class until frame reading is added to tuner # 
+    }
     def __init__(
         self,
         lost_track_buffer: int = 30,
