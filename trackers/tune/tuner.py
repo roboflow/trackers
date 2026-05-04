@@ -285,8 +285,9 @@ def _run_tracker_on_detections(
                 dets = _mot_frame_to_detections(det_data[frame_idx])
             else:
                 dets = sv.Detections.empty()
-            if hasattr(tracker, "set_frame"):
-                tracker.set_frame(frame_idx)
+            # TODO: Add frame reading to tuner class
+            # if hasattr(tracker, "set_frame"):
+            #    tracker.set_frame(frame)
             tracked = tracker.update(dets)
             mot_out.write(frame_idx, tracked)
 
