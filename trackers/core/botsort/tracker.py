@@ -161,8 +161,9 @@ class BoTSORTTracker(BaseTracker):
                 it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
 
         Returns:
-            A new ``sv.Detections`` with ``tracker_id`` assigned (>= 0 confirmed,
-            -1 unconfirmed).
+            New sv.Detections with tracker_id assigned for each detection.
+            Confirmed tracks have tracker_id >= 0; unconfirmed tracks have
+            tracker_id of -1.
 
         Notes:
             - If CMC is enabled, pass the current video frame via ``frame`` so the
@@ -401,8 +402,12 @@ class BoTSORTTracker(BaseTracker):
             match.
 
         Returns:
-            Matched indices (list of (tracker_idx, detection_idx)), indices of
-                unmatched tracks, indices of unmatched detections.
+            matched: List of ``(tracker_idx, detection_idx)`` tuples for
+                associations that meet the similarity threshold.
+            unmatched_tracks: Sorted list of track indices not matched to any
+                detection.
+            unmatched_detections: Sorted list of detection indices not matched
+                to any track.
         """
         matched_indices = []
         n_tracks, n_detections = similarity_matrix.shape

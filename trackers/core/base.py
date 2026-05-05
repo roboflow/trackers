@@ -61,7 +61,7 @@ def _parse_docstring_arguments(docstring: str) -> dict[str, str]:
 
     Returns:
         Mapping of parameter names to their description strings.
-        Empty dict if no Args section found.
+        Empty dict if no Args section is found in the docstring.
     """
     if not docstring:
         return {}
@@ -135,7 +135,9 @@ def _normalize_type(annotation: Any, default: Any) -> Any:
             annotation is Any or cannot be resolved.
 
     Returns:
-        Simplified type (e.g., int, str, list) or Any if unresolvable.
+        Simplified type (e.g., int, str, list) suitable for argparse type
+        conversion, or Any if the annotation cannot be resolved to a concrete
+        type.
     """
     origin = get_origin(annotation)
     args = get_args(annotation)
@@ -174,8 +176,8 @@ def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
         cls: Class whose __init__ to analyze.
 
     Returns:
-        Mapping of parameter names to ParameterInfo objects.
-        Excludes 'self' parameter.
+        Mapping of parameter names to ParameterInfo objects, excluding
+        the ``self`` parameter.
     """
     sig = inspect.signature(cls.__init__)  # type: ignore[misc]
 
@@ -362,8 +364,8 @@ class BaseTracker(ABC):
             name: Tracker identifier (e.g., "bytetrack", "sort").
 
         Returns:
-            TrackerInfo containing class and parameters if found,
-            None otherwise.
+            TrackerInfo containing the tracker class and its parameter
+            metadata, or None if no tracker is registered under that name.
         """
         return cls._registry.get(name)
 
@@ -374,7 +376,8 @@ class BaseTracker(ABC):
         Internal method used by CLI for help text and argument validation.
 
         Returns:
-            Alphabetically sorted list of tracker identifiers.
+            Alphabetically sorted list of registered tracker identifiers
+            (e.g., ``["bytetrack", "ocsort", "sort"]``).
         """
         return sorted(cls._registry.keys())
 
@@ -412,7 +415,8 @@ class BaseTracker(ABC):
                 Used by trackers with camera motion compensation (e.g. BoTSORT).
 
         Returns:
-            Same detections enriched with tracker_id attribute for each box.
+            sv.Detections enriched with tracker_id assigned for each
+            detection box.
         """
         pass
 
@@ -446,10 +450,10 @@ class BaseTracker(ABC):
             ``if detections.class_id is not None`` before annotating.
 
         Returns:
-            `sv.Detections` with Kalman-predicted `xyxy` and `tracker_id` for
-            each confirmed alive track. Returns an empty `sv.Detections` (with
-            an empty int `tracker_id` array) when no confirmed tracks are
-            alive. The exact set depends on each tracker's pruning logic.
+            sv.Detections with Kalman-predicted xyxy and tracker_id for each
+            confirmed alive track. Returns an empty sv.Detections (with an
+            empty int tracker_id array) when no confirmed tracks are alive.
+            The exact set depends on each tracker's pruning logic.
 
         Raises:
             AttributeError: If a `BaseTracker` subclass does not initialise

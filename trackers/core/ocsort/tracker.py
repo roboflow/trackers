@@ -116,12 +116,12 @@ class OCSORTTracker(BaseTracker):
             direction_consistency_matrix: Direction of the tracklet consistency cost matrix.
 
         Returns:
-            matched_indices: List of (track_index, detection_index) tuples for
-                successful associations that meet the IOU threshold.
-            unmatched_tracks: list of track indices that were not matched
-                to any detection.
-            unmatched_detections: list of detection indices that were not
-                matched to any track.
+            matched: List of ``(track_index, detection_index)`` tuples for
+                associations that meet the IoU threshold.
+            unmatched_tracks: Sorted list of track indices not matched to any
+                detection.
+            unmatched_detections: Sorted list of detection indices not matched
+                to any track.
         """  # noqa: E501
         matched_indices = []
         n_tracks, n_detections = iou_matrix.shape
@@ -174,8 +174,8 @@ class OCSORTTracker(BaseTracker):
                 emitted.
 
         Returns:
-            `sv.Detections` with `tracker_id` assigned for each detection.
-                Unmatched or immature tracks have `tracker_id` of `-1`.
+            sv.Detections with tracker_id assigned for each detection.
+            Unmatched or immature tracks have tracker_id of -1.
         """
         self._warn_if_frame_unused(frame)
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -287,7 +287,8 @@ class OCSORTTracker(BaseTracker):
         """Remove tracklets that have been lost for too long.
 
         Returns:
-            List of tracklets that are still active.
+            List of tracklets whose time_since_update has not exceeded
+            maximum_frames_without_update.
         """
         return [
             tracklet
