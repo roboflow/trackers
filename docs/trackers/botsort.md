@@ -52,9 +52,9 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 
 These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.
 
-!!! warning
+!!! tip
 
-    If you want to use Camera Motion Compensation, remember to call `BoTSORTTracker.set_frame()` before `BoTSORTTracker.update()`.
+    Pass the current video frame as `tracker.update(detections, frame=frame_bgr)` to enable Camera Motion Compensation.
 
 === "Video"
 
@@ -81,8 +81,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         detections = model.predict(frame_rgb)
-        tracker.set_frame(frame_bgr)
-        detections = tracker.update(detections)
+        detections = tracker.update(detections, frame=frame_bgr)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(
@@ -124,8 +123,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         detections = model.predict(frame_rgb)
-        tracker.set_frame(frame_bgr)
-        detections = tracker.update(detections)
+        detections = tracker.update(detections, frame=frame_bgr)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(
@@ -167,8 +165,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         detections = model.predict(frame_rgb)
-        tracker.set_frame(frame_bgr)
-        detections = tracker.update(detections)
+        detections = tracker.update(detections, frame=frame_bgr)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
         annotated_frame = label_annotator.annotate(
