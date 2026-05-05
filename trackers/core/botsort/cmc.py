@@ -306,8 +306,8 @@ class CMC:
                 regions during motion estimation.
 
         Returns:
-            H: Affine transform matrix of shape (2, 3), dtype float32.
-               Identity if not enough correspondences or if not initialized yet.
+            Affine transform matrix of shape (2, 3), dtype float32.
+            Identity if not enough correspondences or if not initialized yet.
         """
         if frame_bgr is None:
             return np.eye(2, 3, dtype=np.float32)
@@ -346,7 +346,7 @@ class CMC:
             dets_xyxy: Optional detection boxes for masking (original image scale).
 
         Returns:
-            H: (2,3) affine transform mapping previous-current, float32.
+            Affine transform matrix (2, 3) mapping previous frame to current, float32.
         """
         H_img, W_img = frame_bgr.shape[:2]
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
@@ -471,7 +471,7 @@ class CMC:
             frame_bgr: Current BGR frame.
 
         Returns:
-            H: (2,3) affine transform mapping previous-current, float32.
+            Affine transform matrix (2, 3) mapping previous frame to current, float32.
         """
         H_img, W_img = frame_bgr.shape[:2]
         frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
@@ -575,15 +575,13 @@ class CMC:
             6) Store the current frame for the next call.
 
         Args:
-            frame_bgr:
-                Current frame in BGR format.
+            frame_bgr: Current frame in BGR format.
 
         Returns:
-            H:
-                Affine transform matrix of shape (2, 3), dtype float32, mapping
-                previous-frame coordinates to current-frame coordinates. Returns
-                identity if initialization has not yet occurred or if ECC optimization
-                fails.
+            Affine transform matrix of shape (2, 3), dtype float32, mapping
+            previous-frame coordinates to current-frame coordinates. Returns
+            identity if initialization has not yet occurred or if ECC
+            optimization fails.
         """
         H_img, W_img = frame_bgr.shape[:2]
         frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
