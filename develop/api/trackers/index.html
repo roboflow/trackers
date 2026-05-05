@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/api/trackers/">
       
       
-        <link rel="prev" href="../../trackers/ocsort/">
+        <link rel="prev" href="../../trackers/botsort/">
       
       
         <link rel="next" href="../motion/">
@@ -1073,6 +1073,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../trackers/botsort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BoT-SORT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1971,7 +1999,7 @@ Defaults to <code>XYXYStateEstimator</code>. Can also use
 
 
 <h3 id="trackers.core.sort.tracker.SORTTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -2012,6 +2040,22 @@ confidence scores.</p>
                 <em>required</em>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ignored by SORT. If provided (not <code>None</code>), a warning is emitted.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2031,8 +2075,17 @@ confidence scores.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>sv.Detections</code> with <code>tracker_id</code> assigned for each detection.
-Unmatched or immature tracks have <code>tracker_id</code> of <code>-1</code>.</p>
+                <p>sv.Detections with tracker_id assigned for each detection.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unmatched or immature tracks have tracker_id of -1.</p>
               </div>
             </td>
           </tr>
@@ -2271,7 +2324,7 @@ Defaults to <code>XYXYStateEstimator</code>. Can also use
 
 
 <h3 id="trackers.core.bytetrack.tracker.ByteTrackTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -2312,6 +2365,23 @@ confidence scores.</p>
                 <em>required</em>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ignored by ByteTrack. If provided (not <code>None</code>), a warning is
+emitted.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2331,9 +2401,27 @@ confidence scores.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>sv.Detections</code> with <code>tracker_id</code> assigned for each detection.
-Unmatched detections have <code>tracker_id</code> of <code>-1</code>. Detection order
-may differ from input.</p>
+                <p>sv.Detections with tracker_id assigned for each detection.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unmatched detections have tracker_id of -1. Detection order may</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>differ from input.</p>
               </div>
             </td>
           </tr>
@@ -2590,7 +2678,7 @@ Defaults to <code>XCYCSRStateEstimator</code>. Can also use
 
 
 <h3 id="trackers.core.ocsort.tracker.OCSORTTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -2632,6 +2720,23 @@ confidence scores.</p>
                 <em>required</em>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ignored by OC-SORT. If provided (not <code>None</code>), a warning is
+emitted.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2651,8 +2756,17 @@ confidence scores.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>sv.Detections</code> with <code>tracker_id</code> assigned for each detection.
-Unmatched or immature tracks have <code>tracker_id</code> of <code>-1</code>.</p>
+                <p>sv.Detections with tracker_id assigned for each detection.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unmatched or immature tracks have tracker_id of -1.</p>
               </div>
             </td>
           </tr>
@@ -2937,7 +3051,7 @@ where <code>scale</code> is area and <code>aspect_ratio</code> is <code>width / 
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../trackers/ocsort/" class="md-footer__link md-footer__link--prev" aria-label="Previous: OC-SORT">
+          <a href="../../trackers/botsort/" class="md-footer__link md-footer__link--prev" aria-label="Previous: BoT-SORT">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2947,7 +3061,7 @@ where <code>scale</code> is area and <code>aspect_ratio</code> is <code>width / 
                 Previous
               </span>
               <div class="md-ellipsis">
-                OC-SORT
+                BoT-SORT
               </div>
             </div>
           </a>

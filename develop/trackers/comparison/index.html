@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.">
+        <meta name="description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.">
       
       
         <meta name="author" content="Roboflow">
@@ -29,7 +29,7 @@
     
     
       
-        <title>SORT vs ByteTrack vs OC-SORT — MOT Benchmark Comparison | Trackers - Trackers</title>
+        <title>SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers - Trackers</title>
       
     
     
@@ -130,7 +130,7 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Comparison",
-  "description": "Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.",
+  "description": "Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.",
   "url": "https://trackers.roboflow.com/latest/develop/trackers/comparison/",
   "mainEntityOfPage": {
     "@type": "WebPage",
@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-04-27",
+  "dateModified": "2026-05-05",
   "datePublished": "2026-02-04"
 }
 </script>
@@ -222,8 +222,8 @@
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
 <meta property="og:url" content="https://trackers.roboflow.com/latest/develop/trackers/comparison/" />
-<meta property="og:title" content="SORT vs ByteTrack vs OC-SORT — MOT Benchmark Comparison | Trackers" />
-<meta property="og:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters." />
+<meta property="og:title" content="SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers" />
+<meta property="og:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -234,8 +234,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="SORT vs ByteTrack vs OC-SORT — MOT Benchmark Comparison | Trackers" />
-<meta name="twitter:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, and OC-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters." />
+<meta name="twitter:title" content="SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers" />
+<meta name="twitter:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -318,7 +318,7 @@
 
             </a>
             
-              SORT vs ByteTrack vs OC-SORT — MOT Benchmark Comparison | Trackers
+              SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers
             
           </span>
         </div>
@@ -1270,6 +1270,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../botsort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BoT-SORT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1628,7 +1656,7 @@
 
 
 <h1 id="tracker-comparison">Tracker Comparison</h1>
-<p>This page shows head-to-head performance of SORT, ByteTrack, and OC-SORT on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.</p>
+<p>This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, and BoT-SORT on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.</p>
 <div class="admonition info">
 <p class="admonition-title">Benchmark version</p>
 <p>Results use <strong>trackers v2.3.0</strong> (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT) or ground-truth oracle boxes (SoccerNet, DanceTrack). Parameters were tuned via grid search on held-out splits. See <a href="#methodology">Methodology</a> for details.</p>
@@ -1677,9 +1705,15 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
-<td style="text-align: center;"><strong>61.9</strong></td>
-<td style="text-align: center;"><strong>76.4</strong></td>
-<td style="text-align: center;"><strong>76.0</strong></td>
+<td style="text-align: center;">61.9</td>
+<td style="text-align: center;">76.4</td>
+<td style="text-align: center;">76.0</td>
+</tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;"><strong>63.7</strong></td>
+<td style="text-align: center;"><strong>78.7</strong></td>
+<td style="text-align: center;"><strong>79.2</strong></td>
 </tr>
 </tbody>
 </table>
@@ -1710,9 +1744,15 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
-<td style="text-align: center;"><strong>62.0</strong></td>
-<td style="text-align: center;"><strong>76.5</strong></td>
-<td style="text-align: center;"><strong>77.3</strong></td>
+<td style="text-align: center;">62.0</td>
+<td style="text-align: center;">76.5</td>
+<td style="text-align: center;">77.3</td>
+</tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;"><strong>63.8</strong></td>
+<td style="text-align: center;"><strong>78.7</strong></td>
+<td style="text-align: center;"><strong>79.4</strong></td>
 </tr>
 </tbody>
 </table>
@@ -1737,6 +1777,17 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span><span class="nt">direction_consistency_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4</span>
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">  </span><span class="nt">delta_t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="nt">BoT-SORT</span><span class="p">:</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_second_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_unconfirmed_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">  </span><span class="nt">enable_cmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">  </span><span class="nt">cmc_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sparseOptFlow</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -1775,15 +1826,21 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 </tr>
 <tr>
 <td style="text-align: center;">ByteTrack</td>
-<td style="text-align: center;"><strong>73.0</strong></td>
-<td style="text-align: center;"><strong>72.5</strong></td>
-<td style="text-align: center;"><strong>96.4</strong></td>
+<td style="text-align: center;">73.0</td>
+<td style="text-align: center;">72.5</td>
+<td style="text-align: center;">96.4</td>
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
 <td style="text-align: center;">71.7</td>
 <td style="text-align: center;">71.4</td>
 <td style="text-align: center;">95.0</td>
+</tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;"><strong>73.8</strong></td>
+<td style="text-align: center;"><strong>73.4</strong></td>
+<td style="text-align: center;"><strong>96.9</strong></td>
 </tr>
 </tbody>
 </table>
@@ -1810,13 +1867,19 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 <td style="text-align: center;">ByteTrack</td>
 <td style="text-align: center;">73.3</td>
 <td style="text-align: center;">73.5</td>
-<td style="text-align: center;"><strong>95.9</strong></td>
+<td style="text-align: center;">95.9</td>
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
-<td style="text-align: center;"><strong>74.0</strong></td>
+<td style="text-align: center;">74.0</td>
 <td style="text-align: center;"><strong>75.4</strong></td>
 <td style="text-align: center;">95.6</td>
+</tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;"><strong>74.1</strong></td>
+<td style="text-align: center;">74.0</td>
+<td style="text-align: center;"><strong>96.9</strong></td>
 </tr>
 </tbody>
 </table>
@@ -1841,6 +1904,17 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 </span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">  </span><span class="nt">direction_consistency_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
 </span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
 </span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">  </span><span class="nt">delta_t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="nt">BoT-SORT</span><span class="p">:</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_second_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_unconfirmed_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="w">  </span><span class="nt">enable_cmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="w">  </span><span class="nt">cmc_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sparseOptFlow</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -1880,8 +1954,8 @@ oracle (ground-truth) detections.</p>
 </tr>
 <tr>
 <td style="text-align: center;">ByteTrack</td>
-<td style="text-align: center;"><strong>84.0</strong></td>
-<td style="text-align: center;"><strong>78.1</strong></td>
+<td style="text-align: center;">84.0</td>
+<td style="text-align: center;">78.1</td>
 <td style="text-align: center;"><strong>97.8</strong></td>
 </tr>
 <tr>
@@ -1889,6 +1963,12 @@ oracle (ground-truth) detections.</p>
 <td style="text-align: center;">78.4</td>
 <td style="text-align: center;">72.6</td>
 <td style="text-align: center;">94.1</td>
+</tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;"><strong>84.5</strong></td>
+<td style="text-align: center;"><strong>79.3</strong></td>
+<td style="text-align: center;">96.6</td>
 </tr>
 </tbody>
 </table>
@@ -1907,21 +1987,27 @@ oracle (ground-truth) detections.</p>
 <tbody>
 <tr>
 <td style="text-align: center;">SORT</td>
-<td style="text-align: center;"><strong>84.2</strong></td>
-<td style="text-align: center;"><strong>78.2</strong></td>
+<td style="text-align: center;">84.2</td>
+<td style="text-align: center;">78.2</td>
 <td style="text-align: center;"><strong>98.2</strong></td>
 </tr>
 <tr>
 <td style="text-align: center;">ByteTrack</td>
 <td style="text-align: center;">84.0</td>
 <td style="text-align: center;">78.1</td>
-<td style="text-align: center;">97.8</td>
+<td style="text-align: center;"><strong>98.2</strong></td>
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
 <td style="text-align: center;">82.9</td>
 <td style="text-align: center;">77.9</td>
 <td style="text-align: center;">96.8</td>
+</tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;"><strong>85.0</strong></td>
+<td style="text-align: center;"><strong>79.7</strong></td>
+<td style="text-align: center;">97.2</td>
 </tr>
 </tbody>
 </table>
@@ -1946,6 +2032,17 @@ oracle (ground-truth) detections.</p>
 </span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">  </span><span class="nt">direction_consistency_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
 </span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4</span>
 </span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">  </span><span class="nt">delta_t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="nt">BoT-SORT</span><span class="p">:</span>
+</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_second_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_unconfirmed_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+</span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">  </span><span class="nt">enable_cmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">  </span><span class="nt">cmc_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sparseOptFlow</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2001,6 +2098,12 @@ validation set. This dataset provides oracle (ground-truth) detections.</p>
 <td style="text-align: center;"><strong>50.9</strong></td>
 <td style="text-align: center;"><strong>87.3</strong></td>
 </tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;">50.5</td>
+<td style="text-align: center;">49.2</td>
+<td style="text-align: center;">85.1</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -2034,6 +2137,12 @@ validation set. This dataset provides oracle (ground-truth) detections.</p>
 <td style="text-align: center;">51.8</td>
 <td style="text-align: center;"><strong>87.2</strong></td>
 </tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;"><strong>53.5</strong></td>
+<td style="text-align: center;"><strong>54.0</strong></td>
+<td style="text-align: center;">86.5</td>
+</tr>
 </tbody>
 </table>
 <p>Tuned configuration for each tracker.</p>
@@ -2057,6 +2166,17 @@ validation set. This dataset provides oracle (ground-truth) detections.</p>
 </span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">  </span><span class="nt">direction_consistency_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
 </span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
 </span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">  </span><span class="nt">delta_t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="nt">BoT-SORT</span><span class="p">:</span>
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_second_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_unconfirmed_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="w">  </span><span class="nt">enable_cmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a><span class="w">  </span><span class="nt">cmc_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sparseOptFlow</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2090,6 +2210,11 @@ observation-centric re-update mechanism and direction consistency cost reduce dr
 linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns,
 camera pans, or erratic motion — the benchmark edge on MOT17 and DanceTrack reflects exactly
 these conditions.</p>
+<p><strong>BoT-SORT</strong> is the choice when camera ego-motion is strong and you need the most stable
+identities. It extends ByteTrack with camera motion compensation (CMC) and confidence-aware
+association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports
+broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is
+small relative to the detector, so the trade-off favors identity stability over raw speed.</p>
 <h2 id="metric-definitions">Metric Definitions</h2>
 <p><strong>HOTA</strong> (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes
 tracking quality into detection accuracy (DetA) and association accuracy (AssA), then takes
@@ -2126,7 +2251,7 @@ near-perfect recall produces high MOTA even when identity switches are frequent.
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 27, 2026 17:02:11 UTC">2026-04-27</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="May 5, 2026 15:03:44 UTC">2026-05-05</span>
   </span>
 
     
