@@ -4,6 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+import warnings
 from typing import ClassVar
 
 import numpy as np
@@ -170,11 +171,21 @@ class OCSORTTracker(BaseTracker):
             detections: `sv.Detections` containing bounding boxes with shape
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
                 confidence scores.
+            frame: Ignored by OC-SORT. If provided (not `None`), a warning is
+                emitted.
 
         Returns:
             `sv.Detections` with `tracker_id` assigned for each detection.
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
+        if frame is not None:
+            warnings.warn(
+                "OCSORTTracker.update() received 'frame', but OC-SORT does not use "
+                "frame data. The argument is ignored.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
