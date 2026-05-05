@@ -164,9 +164,7 @@ class SORTTracker(BaseTracker):
             detections: `sv.Detections` containing bounding boxes with shape
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
                 confidence scores.
-            frame: Current video frame. Accepted for API compatibility with
-                `BaseTracker` but not used by SORT, which performs no camera
-                motion compensation.
+            frame: Ignored by SORT. If provided (not `None`), a warning is emitted.
 
         Returns:
             `sv.Detections` with `tracker_id` assigned for each detection.

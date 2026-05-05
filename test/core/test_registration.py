@@ -7,6 +7,7 @@
 import inspect
 from typing import Any, ClassVar
 
+import numpy as np
 import pytest
 
 from trackers.core.base import (
@@ -329,7 +330,9 @@ class TestSearchSpaceValidation:
                 def __init__(self) -> None:
                     pass
 
-                def update(self, detections: Any) -> Any:
+                def update(
+                    self, detections: Any, frame: np.ndarray | None = None
+                ) -> Any:
                     return detections
 
                 def reset(self) -> None:
@@ -344,7 +347,7 @@ class TestSearchSpaceValidation:
             def __init__(self) -> None:
                 pass
 
-            def update(self, detections: Any) -> Any:
+            def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
                 return detections
 
             def reset(self) -> None:
@@ -366,7 +369,7 @@ class TestSearchSpaceValidation:
             def __init__(self, x: int = 1) -> None:
                 pass
 
-            def update(self, detections: Any) -> Any:
+            def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
                 return detections
 
             def reset(self) -> None:
@@ -420,7 +423,9 @@ class TestSearchSpaceValidation:
                 def __init__(self, x: int = 0) -> None:
                     pass
 
-                def update(self, detections: Any) -> Any:  # type: ignore[override]
+                def update(
+                    self, detections: Any, frame: np.ndarray | None = None
+                ) -> Any:
                     return detections
 
                 def reset(self) -> None:

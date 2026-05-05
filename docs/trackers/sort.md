@@ -41,6 +41,11 @@ SORT models each tracked object with a seven-dimensional state vector `[x, y, s,
 | `minimum_consecutive_frames` | Consecutive detections required to confirm a new track.     | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                        |
 | `minimum_iou_threshold`      | Minimum IoU to accept a track-detection match.              | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                  |
 
+!!! warning "Frame input is ignored by SORT"
+
+    `SORTTracker.update()` accepts `frame` for API consistency with other trackers, but SORT does not use image/frame pixels.
+    If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+
 ## Run on video, webcam, or RTSP stream
 
 These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.

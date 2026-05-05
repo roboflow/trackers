@@ -46,6 +46,11 @@ Together, these three mechanisms make OC-SORT effective for group dancing, sport
 | `direction_consistency_weight` | Strength of the OCV velocity direction penalty.             | 0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.                                 |
 | `delta_t`                      | Frame gap for OCM velocity re-estimation after occlusion.   | 1-3 typical. Larger values smooth velocity estimate over more frames.                                                        |
 
+!!! warning "Frame input is ignored by OC-SORT"
+
+    `OCSORTTracker.update()` accepts `frame` for API consistency with other trackers, but OC-SORT does not use image/frame pixels.
+    If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+
 ## Run on video, webcam, or RTSP stream
 
 These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.

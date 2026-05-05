@@ -42,6 +42,11 @@ ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as 
 | `minimum_iou_threshold`      | Minimum IoU to accept a track-detection match.                   | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                  |
 | `high_conf_det_threshold`    | Confidence threshold separating stage-1 from stage-2 detections. | 0.5-0.7 typical. Lower sends more detections to stage 1; higher relies more on stage-2 recovery.                             |
 
+!!! warning "Frame input is ignored by ByteTrack"
+
+    `ByteTrackTracker.update()` accepts `frame` for API consistency with other trackers, but ByteTrack does not use image/frame pixels.
+    If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+
 ## Run on video, webcam, or RTSP stream
 
 These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.
