@@ -9,6 +9,7 @@ from __future__ import annotations
 import inspect
 import re
 import types
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, ClassVar, Protocol, Union, get_args, get_origin
@@ -376,6 +377,23 @@ class BaseTracker(ABC):
             Alphabetically sorted list of tracker identifiers.
         """
         return sorted(cls._registry.keys())
+
+    def _warn_if_frame_unused(self, frame: np.ndarray | None) -> None:
+        """Emit a UserWarning when a frame is passed to a tracker that ignores it.
+
+        Subclasses that do not perform camera motion compensation should call this
+        at the top of their ``update()`` implementation.
+
+        Args:
+            frame: Value passed to ``update(frame=...)``.
+        """
+        if frame is not None:
+            warnings.warn(
+                f"{type(self).__name__}.update() received a frame argument"
+                " but does not use it.",
+                UserWarning,
+                stacklevel=3,
+            )
 
     @abstractmethod
     def update(

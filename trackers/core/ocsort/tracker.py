@@ -170,11 +170,15 @@ class OCSORTTracker(BaseTracker):
             detections: `sv.Detections` containing bounding boxes with shape
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
                 confidence scores.
+            frame: Current video frame. Accepted for API compatibility with
+                `BaseTracker` but not used by OC-SORT, which performs no
+                camera motion compensation.
 
         Returns:
             `sv.Detections` with `tracker_id` assigned for each detection.
                 Unmatched or immature tracks have `tracker_id` of `-1`.
         """
+        self._warn_if_frame_unused(frame)
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
