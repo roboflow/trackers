@@ -441,9 +441,7 @@ def _run_with_source(
                     detections = detections[mask]  # type: ignore[assignment]
 
                 # Run tracker
-                if hasattr(tracker, "set_frame"):
-                    tracker.set_frame(frame)
-                tracked = tracker.update(detections)
+                tracked = tracker.update(detections, frame)
 
                 # Filter by track ID
                 if track_id_filter is not None and len(tracked) > 0:

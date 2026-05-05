@@ -158,7 +158,9 @@ class OCSORTTracker(BaseTracker):
                 )
             )
 
-    def update(self, detections: sv.Detections) -> sv.Detections:
+    def update(
+        self, detections: sv.Detections, frame: np.ndarray | None = None
+    ) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
         Performs Kalman filter prediction, two-stage association using direction
         consistency and last-observation recovery, and initializes new tracks

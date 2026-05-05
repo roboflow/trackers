@@ -153,7 +153,9 @@ class SORTTracker(BaseTracker):
                 )
                 self.tracks.append(new_tracker)
 
-    def update(self, detections: sv.Detections) -> sv.Detections:
+    def update(
+        self, detections: sv.Detections, frame: np.ndarray | None = None
+    ) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
         Performs Kalman filter prediction, IoU-based association, and initializes
         new tracks for unmatched high-confidence detections.

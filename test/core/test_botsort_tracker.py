@@ -84,22 +84,21 @@ def test_botsort_tracker_supports_all_state_estimators() -> None:
 
 
 def test_botsort_update_without_frame_skips_cmc_silently() -> None:
-    """CMC enabled but set_frame not called must not raise and must track normally."""
+    """CMC enabled but frame=None must not raise and must track normally."""
     tracker = BoTSORTTracker(enable_cmc=True, minimum_consecutive_frames=1)
     for _ in range(3):
-        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=None)
 
     assert len(tracker.tracks) == 1
     assert result.tracker_id is not None
 
 
 def test_botsort_cmc_disabled_ignores_frame() -> None:
-    """When enable_cmc=False, set_frame is harmless."""
+    """When enable_cmc=False, passing frame to update is harmless."""
     tracker = BoTSORTTracker(enable_cmc=False, minimum_consecutive_frames=1)
     frame = _make_frame()
     for _ in range(3):
-        tracker.set_frame(frame)
-        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=frame)
 
     assert len(tracker.tracks) == 1
     assert result.tracker_id is not None
@@ -114,8 +113,7 @@ def test_botsort_update_with_frame_applies_cmc_without_error() -> None:
     )
     frame = _make_frame()
     for _ in range(5):
-        tracker.set_frame(frame)
-        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=frame)
 
     assert len(tracker.tracks) == 1
     assert result.tracker_id is not None
@@ -131,8 +129,7 @@ def test_botsort_cmc_reset_clears_cmc_state() -> None:
     )
     frame = _make_frame()
     for _ in range(3):
-        tracker.set_frame(frame)
-        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=frame)
 
     tracker.reset()
 

@@ -96,6 +96,7 @@ class ByteTrackTracker(BaseTracker):
     def update(
         self,
         detections: sv.Detections,
+        frame: np.ndarray | None = None,
     ) -> sv.Detections:
         """Update tracks state with new detections and return tracked objects.
         Performs Kalman filter prediction, two-stage association (high then low

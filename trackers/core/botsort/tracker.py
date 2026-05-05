@@ -81,8 +81,8 @@ class BoTSORTTracker(BaseTracker):
         - `maximum_frames_without_update` is computed as:
             int(frame_rate / 30.0 * lost_track_buffer)
             to maintain consistent “seconds” worth of buffer across different FPS.
-        - When CMC is enabled, call :meth:`set_frame` before each :meth:`update`
-          to supply the current video frame.
+        - When CMC is enabled, pass the current video frame via the ``frame``
+          argument of :meth:`update`.
     """
 
     tracker_id = "botsort"
@@ -143,24 +143,11 @@ class BoTSORTTracker(BaseTracker):
             if enable_cmc
             else None
         )
-        self._frame: np.ndarray | None = None
-
-    def set_frame(self, frame: np.ndarray | None) -> None:
-        """Set the current video frame for CMC.
-
-        Must be called before :meth:`update` when camera motion compensation
-        (CMC) is enabled. The frame is consumed during the next ``update()``
-        call and then cleared.
-
-        Args:
-            frame: Current video frame in BGR format (H, W, 3), or ``None``
-                to skip CMC for the upcoming frame.
-        """
-        self._frame = frame
 
     def update(
         self,
         detections: sv.Detections,
+        frame: np.ndarray | None = None,
     ) -> sv.Detections:
         """
         Update the tracker with detections from the current frame.
@@ -178,7 +165,7 @@ class BoTSORTTracker(BaseTracker):
             -1 unconfirmed).
 
         Notes:
-            - If CMC is enabled, call :meth:`set_frame` before this method so the
+            - If CMC is enabled, pass the current video frame via ``frame`` so the
               tracker can estimate a global affine transform and warp predicted
               track states before association.
         """
@@ -230,12 +217,11 @@ class BoTSORTTracker(BaseTracker):
                 unconfirmed_tracks.append(track)
 
         # CMC: apply to all predicted tracks before association
-        if self.enable_cmc and self.cmc is not None and self._frame is not None:
+        if self.enable_cmc and self.cmc is not None and frame is not None:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
-            H = self.cmc.estimate(self._frame, mask_boxes)
+            H = self.cmc.estimate(frame, mask_boxes)
             if H is not None:
                 self.apply_cmc_batch(H)
-        self._frame = None
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
