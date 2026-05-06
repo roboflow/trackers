@@ -359,27 +359,70 @@ class BoTSORTTracker(BaseTracker):
         Ps = np.array([trk.state_estimator.kf.P for trk in self.tracks])
 
         if is_xyxy:
-            states[:, 0:2] = states[:, 0:2] @ R.T + t
-            states[:, 2:4] = states[:, 2:4] @ R.T + t
-            states[:, 4:6] = states[:, 4:6] @ R.T
-            states[:, 6:8] = states[:, 6:8] @ R.T
+            # XYXY boxes must remain axis-aligned after CMC. For transforms with
+            # rotation/reflection/shear, applying the affine matrix only to the
+            # top-left and bottom-right corners can invert the box or produce
+            # invalid geometry. Transform all four corners, then rebuild the
+            # enclosing axis-aligned box with per-axis min/max.
+            x1 = states[:, 0]
+            y1 = states[:, 1]
+            x2 = states[:, 2]
+            y2 = states[:, 3]
+            corners = np.stack(
+                [
+                    np.stack([x1, y1], axis=1),
+                    np.stack([x2, y1], axis=1),
+                    np.stack([x2, y2], axis=1),
+                    np.stack([x1, y2], axis=1),
+                ],
+                axis=1,
+            )
+            transformed_corners = corners @ R.T + t
+            states[:, 0:2] = transformed_corners.min(axis=1)
+            states[:, 2:4] = transformed_corners.max(axis=1)
+            # Keep XYXY velocity ordering valid under mixed-axis transforms by
+            # applying the same corner-wise normalization to the paired velocity
+            # components.
+            vx1 = states[:, 4]
+            vy1 = states[:, 5]
+            vx2 = states[:, 6]
+            vy2 = states[:, 7]
+            velocity_corners = np.stack(
+                [
+                    np.stack([vx1, vy1], axis=1),
+                    np.stack([vx2, vy1], axis=1),
+                    np.stack([vx2, vy2], axis=1),
+                    np.stack([vx1, vy2], axis=1),
+                ],
+                axis=1,
+            )
+            transformed_velocity_corners = velocity_corners @ R.T
+            states[:, 4:6] = transformed_velocity_corners.min(axis=1)
+            states[:, 6:8] = transformed_velocity_corners.max(axis=1)
         else:
             # Batch-transform centre positions: x' = x @ R.T + t
             states[:, 0:2] = states[:, 0:2] @ R.T + t
             # Batch-transform centre velocities: v' = v @ R.T
             states[:, 4:6] = states[:, 4:6] @ R.T
 
-        A = np.eye(dim, dtype=np.float64)
+        A = None
         if is_xyxy:
-            A[0:2, 0:2] = R
-            A[2:4, 2:4] = R
-            A[4:6, 4:6] = R
-            A[6:8, 6:8] = R
+            
+            if np.isclose(R[0, 1], 0.0) and np.isclose(R[1, 0], 0.0):
+                A = np.eye(dim, dtype=np.float64)
+
+                A[0:2, 0:2] = R
+                A[2:4, 2:4] = R
+                A[4:6, 4:6] = R
+                A[6:8, 6:8] = R
         else:
+            A = np.eye(dim, dtype=np.float64)
+
             A[0:2, 0:2] = R
             A[4:6, 4:6] = R
 
-        Ps = A @ Ps @ A.T
+        if A is not None:
+            Ps = A @ Ps @ A.T
 
         for i, trk in enumerate(self.tracks):
             trk.state_estimator.kf.x = states[i].reshape(-1, 1)
