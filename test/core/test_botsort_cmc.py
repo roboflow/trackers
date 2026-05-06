@@ -96,9 +96,7 @@ class TestCMCReset:
         cmc.estimate(_bgr_frame(seed=1))  # second frame
 
         cmc.reset()
-        assert not cmc._initialized, (
-            f"[{method}] CMC must be uninitialized after reset"
-        )
+        assert not cmc._initialized, f"[{method}] CMC must be uninitialized after reset"
 
         H = cmc.estimate(_bgr_frame(seed=2))
         assert _is_near_identity(H), f"[{method}] Expected identity after reset:\n{H}"
@@ -384,9 +382,7 @@ class TestXYXYCovarianceUpdate:
         A[4:6, 4:6] = R_off
         A[6:8, 6:8] = R_off
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(
-            tracklet.state_estimator.kf.P, expected_P, atol=1e-9
-        )
+        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
 
     @pytest.mark.parametrize(
         "R_cross",
@@ -453,9 +449,7 @@ class TestXYXYCovarianceUpdate:
         A[4:6, 4:6] = R
         A[6:8, 6:8] = R
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(
-            tracklet.state_estimator.kf.P, expected_P, atol=1e-9
-        )
+        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
 
 
 class TestXYXYAxisAlignedTolerance:
@@ -481,9 +475,7 @@ class TestXYXYAxisAlignedTolerance:
         A[4:6, 4:6] = R
         A[6:8, 6:8] = R
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(
-            tracklet.state_estimator.kf.P, expected_P, atol=1e-9
-        )
+        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
 
     def test_xyxy_residual_above_atol_treated_as_cross_axis(self) -> None:
         """Cross-axis residual above 1e-6 must take the freeze branch."""
