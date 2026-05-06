@@ -407,7 +407,6 @@ class BoTSORTTracker(BaseTracker):
 
         A = None
         if is_xyxy:
-            
             if np.isclose(R[0, 1], 0.0) and np.isclose(R[1, 0], 0.0):
                 A = np.eye(dim, dtype=np.float64)
 
