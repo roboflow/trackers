@@ -241,3 +241,364 @@ def test_botsort_tracker_apply_cmc_batch_empty_list_is_noop() -> None:
     tracker = BoTSORTTracker()
     tracker.tracks = []
     tracker.apply_cmc_batch(H)  # must not raise
+
+
+# ==========================================================================
+# _xyxy_corner_min_max helper — direct unit tests
+# ==========================================================================
+
+from trackers.core.botsort.tracker import _xyxy_corner_min_max  # noqa: E402
+from trackers.utils.state_representations import (  # noqa: E402
+    XYXYStateEstimator,
+)
+
+
+def test_corner_min_max_identity_translation_only() -> None:
+    """Identity R with non-zero t must shift all corners by t."""
+    x1 = np.array([10.0])
+    y1 = np.array([20.0])
+    x2 = np.array([50.0])
+    y2 = np.array([80.0])
+    R = np.eye(2)
+    t = np.array([5.0, -3.0])
+
+    nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
+
+    np.testing.assert_allclose(
+        [nx1[0], ny1[0], nx2[0], ny2[0]], [15.0, 17.0, 55.0, 77.0]
+    )
+
+
+def test_corner_min_max_translation_none_skips_offset() -> None:
+    """When t=None, only the linear part R is applied (velocity contract)."""
+    x1 = np.array([0.0])
+    y1 = np.array([0.0])
+    x2 = np.array([1.0])
+    y2 = np.array([2.0])
+    R = np.eye(2)
+
+    nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, None)
+
+    np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [0.0, 0.0, 1.0, 2.0])
+
+
+def test_corner_min_max_90deg_rotation_recovers_axis_aligned_box() -> None:
+    """90° rotation of [0,0,2,4] gives axis-aligned enclosing [-4,0,0,2]."""
+    x1 = np.array([0.0])
+    y1 = np.array([0.0])
+    x2 = np.array([2.0])
+    y2 = np.array([4.0])
+    R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation
+
+    nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R)
+
+    # Original corners (0,0),(2,0),(2,4),(0,4) → rotated (0,0),(0,2),(-4,2),(-4,0)
+    np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [-4.0, 0.0, 0.0, 2.0])
+
+
+def test_corner_min_max_reflection_y_axis_swaps_x_endpoints() -> None:
+    """Reflection across y-axis: x→-x, output preserves min<max ordering."""
+    x1 = np.array([10.0])
+    y1 = np.array([20.0])
+    x2 = np.array([50.0])
+    y2 = np.array([80.0])
+    R = np.array([[-1.0, 0.0], [0.0, 1.0]])  # reflect across y-axis
+
+    nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R)
+
+    # Original x-range [10, 50] reflected → [-50, -10]; y unchanged
+    assert nx1[0] < nx2[0], f"x ordering broken: {nx1[0]} >= {nx2[0]}"
+    assert ny1[0] < ny2[0], f"y ordering broken: {ny1[0]} >= {ny2[0]}"
+    np.testing.assert_allclose(
+        [nx1[0], ny1[0], nx2[0], ny2[0]], [-50.0, 20.0, -10.0, 80.0]
+    )
+
+
+def test_corner_min_max_zero_size_box_yields_zero_size_output() -> None:
+    """A degenerate (point) box stays a point under any affine transform."""
+    x1 = np.array([5.0])
+    y1 = np.array([5.0])
+    x2 = np.array([5.0])
+    y2 = np.array([5.0])
+    R = np.array([[0.0, -1.0], [1.0, 0.0]])
+    t = np.array([1.0, 2.0])
+
+    nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
+
+    assert nx1[0] == nx2[0] and ny1[0] == ny2[0]
+
+
+def test_corner_min_max_negative_coordinates_preserved() -> None:
+    """Negative input coordinates must transform without sign-related artifacts."""
+    x1 = np.array([-50.0])
+    y1 = np.array([-30.0])
+    x2 = np.array([-10.0])
+    y2 = np.array([20.0])
+    R = np.eye(2)
+    t = np.array([100.0, 100.0])
+
+    nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
+
+    np.testing.assert_allclose(
+        [nx1[0], ny1[0], nx2[0], ny2[0]], [50.0, 70.0, 90.0, 120.0]
+    )
+
+
+def test_corner_min_max_batch_input_matches_per_element_loop() -> None:
+    """Vectorised batch call must equal applying the helper per element."""
+    x1 = np.array([0.0, 10.0, -5.0])
+    y1 = np.array([0.0, 20.0, -2.0])
+    x2 = np.array([2.0, 30.0, 5.0])
+    y2 = np.array([4.0, 40.0, 7.0])
+    R = np.array([[0.0, -1.0], [1.0, 0.0]])
+    t = np.array([1.0, 2.0])
+
+    bnx1, bny1, bnx2, bny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
+    expected = [
+        _xyxy_corner_min_max(
+            np.array([x1[i]]),
+            np.array([y1[i]]),
+            np.array([x2[i]]),
+            np.array([y2[i]]),
+            R,
+            t,
+        )
+        for i in range(3)
+    ]
+    np.testing.assert_allclose(bnx1, [e[0][0] for e in expected])
+    np.testing.assert_allclose(bny1, [e[1][0] for e in expected])
+    np.testing.assert_allclose(bnx2, [e[2][0] for e in expected])
+    np.testing.assert_allclose(bny2, [e[3][0] for e in expected])
+
+
+# ==========================================================================
+# XYXY-state CMC: covariance update guard
+# ==========================================================================
+
+
+def _xyxy_tracklet(bbox: np.ndarray) -> BoTSORTTracklet:
+    """Build a BoTSORTTracklet whose state is XYXYStateEstimator."""
+    return BoTSORTTracklet(bbox, state_estimator_class=XYXYStateEstimator)
+
+
+@pytest.mark.parametrize(
+    "R_off",
+    [
+        np.array([[1.0, 0.0], [0.0, 1.0]]),  # identity (axis-aligned)
+        np.array([[1.0, 0.0], [0.0, -1.0]]),  # axis-flip (axis-aligned)
+        np.array([[2.0, 0.0], [0.0, 0.5]]),  # axis-aligned scale
+    ],
+)
+def test_xyxy_axis_aligned_R_updates_covariance(R_off: np.ndarray) -> None:
+    """Axis-aligned R must propagate into P via A @ P @ A.T."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R_off
+    tracklet = _xyxy_tracklet(bbox)
+    P_before = tracklet.state_estimator.kf.P.copy()
+
+    tracklet.apply_cmc(H)
+
+    A = np.eye(8, dtype=np.float64)
+    A[0:2, 0:2] = R_off
+    A[2:4, 2:4] = R_off
+    A[4:6, 4:6] = R_off
+    A[6:8, 6:8] = R_off
+    expected_P = A @ P_before @ A.T
+    np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
+
+
+@pytest.mark.parametrize(
+    "R_cross",
+    [
+        np.array([[0.0, -1.0], [1.0, 0.0]]),  # 90° rotation
+        np.array([[1.0, 0.5], [0.0, 1.0]]),  # x-shear
+        np.array([[1.0, 0.0], [0.5, 1.0]]),  # y-shear
+        np.array(
+            [[np.cos(0.3), -np.sin(0.3)], [np.sin(0.3), np.cos(0.3)]]
+        ),  # small rot
+    ],
+)
+def test_xyxy_cross_axis_R_freezes_covariance(R_cross: np.ndarray) -> None:
+    """Cross-axis R must leave P untouched (A=None branch)."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R_cross
+    tracklet = _xyxy_tracklet(bbox)
+    P_before = tracklet.state_estimator.kf.P.copy()
+
+    tracklet.apply_cmc(H)
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
+
+
+@pytest.mark.parametrize(
+    "R_cross",
+    [
+        np.array([[0.0, -1.0], [1.0, 0.0]]),
+        np.array([[1.0, 0.5], [0.0, 1.0]]),
+    ],
+)
+def test_xyxy_cross_axis_R_freezes_covariance_batch_path(R_cross: np.ndarray) -> None:
+    """Batch path must also freeze P when R has cross-axis terms."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R_cross
+    tracklet = _xyxy_tracklet(bbox)
+    tracker = BoTSORTTracker()
+    tracker.tracks = [tracklet]
+    P_before = tracklet.state_estimator.kf.P.copy()
+
+    tracker.apply_cmc_batch(H)
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
+
+
+def test_xyxy_axis_aligned_R_updates_covariance_batch_path() -> None:
+    """Batch path must update P when R is axis-aligned."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    R = np.array([[1.0, 0.0], [0.0, -1.0]])
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R
+    tracklet = _xyxy_tracklet(bbox)
+    tracker = BoTSORTTracker()
+    tracker.tracks = [tracklet]
+    P_before = tracklet.state_estimator.kf.P.copy()
+
+    tracker.apply_cmc_batch(H)
+
+    A = np.eye(8, dtype=np.float64)
+    A[0:2, 0:2] = R
+    A[2:4, 2:4] = R
+    A[4:6, 4:6] = R
+    A[6:8, 6:8] = R
+    expected_P = A @ P_before @ A.T
+    np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
+
+
+# ==========================================================================
+# atol=1e-6 tolerance band for axis-aligned classification
+# ==========================================================================
+
+
+def test_xyxy_residual_below_atol_treated_as_axis_aligned() -> None:
+    """Cross-axis residual below 1e-6 must take the axis-aligned (P-update) branch."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    R = np.array([[1.0, 5e-7], [5e-7, 1.0]])  # within atol=1e-6
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R
+    tracklet = _xyxy_tracklet(bbox)
+    P_before = tracklet.state_estimator.kf.P.copy()
+
+    tracklet.apply_cmc(H)
+
+    # Branch was taken → P was multiplied by A, so it must differ slightly
+    # from the original (or remain near-equal but not strictly identical).
+    # Stronger contract: P matches A @ P_before @ A.T (not the freeze case).
+    A = np.eye(8, dtype=np.float64)
+    A[0:2, 0:2] = R
+    A[2:4, 2:4] = R
+    A[4:6, 4:6] = R
+    A[6:8, 6:8] = R
+    expected_P = A @ P_before @ A.T
+    np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
+
+
+def test_xyxy_residual_above_atol_treated_as_cross_axis() -> None:
+    """Cross-axis residual above 1e-6 must take the freeze branch."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    R = np.array([[1.0, 1e-3], [0.0, 1.0]])  # above atol=1e-6
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R
+    tracklet = _xyxy_tracklet(bbox)
+    P_before = tracklet.state_estimator.kf.P.copy()
+
+    tracklet.apply_cmc(H)
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
+
+
+# ==========================================================================
+# Batch vs single equivalence under non-translation transforms
+# ==========================================================================
+
+
+@pytest.mark.parametrize(
+    "R",
+    [
+        np.array([[0.0, -1.0], [1.0, 0.0]]),  # rotation
+        np.array([[-1.0, 0.0], [0.0, 1.0]]),  # reflection
+        np.array([[1.0, 0.5], [0.0, 1.0]]),  # shear
+        np.array([[2.0, 0.0], [0.0, 0.5]]),  # axis-aligned scale
+    ],
+)
+def test_xyxy_batch_matches_single_under_non_translation_R(R: np.ndarray) -> None:
+    """Batch CMC and per-track CMC must agree for any 2x2 R on XYXY state."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    H = np.array([[R[0, 0], R[0, 1], 7.0], [R[1, 0], R[1, 1], -2.0]], dtype=np.float32)
+    single = _xyxy_tracklet(bbox)
+    batched = _xyxy_tracklet(bbox)
+    tracker = BoTSORTTracker()
+    tracker.tracks = [batched]
+
+    single.apply_cmc(H)
+    tracker.apply_cmc_batch(H)
+
+    np.testing.assert_allclose(
+        single.state_estimator.kf.x, batched.state_estimator.kf.x, atol=1e-9
+    )
+    np.testing.assert_allclose(
+        single.state_estimator.kf.P, batched.state_estimator.kf.P, atol=1e-9
+    )
+
+
+# ==========================================================================
+# XYXY position state recovers axis-aligned enclosing box under rotation
+# ==========================================================================
+
+
+def test_xyxy_apply_cmc_90deg_rotation_state_is_axis_aligned() -> None:
+    """After 90° rotation, the post-CMC XYXY state must remain a valid box."""
+    bbox = np.array([0.0, 0.0, 2.0, 4.0], dtype=np.float32)
+    R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation about origin
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R
+    tracklet = _xyxy_tracklet(bbox)
+
+    tracklet.apply_cmc(H)
+
+    x = tracklet.state_estimator.kf.x.reshape(-1)
+    # Original corners (0,0),(2,0),(2,4),(0,4) rotate to (0,0),(0,2),(-4,2),(-4,0)
+    # → enclosing box [-4, 0, 0, 2]
+    np.testing.assert_allclose(
+        [x[0], x[1], x[2], x[3]], [-4.0, 0.0, 0.0, 2.0], atol=1e-9
+    )
+    assert x[0] < x[2], "x1 must remain < x2"
+    assert x[1] < x[3], "y1 must remain < y2"
+
+
+# ==========================================================================
+# Velocity components transform under non-translation R
+# ==========================================================================
+
+
+def test_xyxy_velocity_rotates_without_translation() -> None:
+    """Velocity entries (state[4:8]) must transform via R only, not R+t."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    tracklet = _xyxy_tracklet(bbox)
+    # Inject a known non-zero velocity quad: vx1=1, vy1=0, vx2=0, vy2=1
+    tracklet.state_estimator.kf.x[4, 0] = 1.0
+    tracklet.state_estimator.kf.x[5, 0] = 0.0
+    tracklet.state_estimator.kf.x[6, 0] = 0.0
+    tracklet.state_estimator.kf.x[7, 0] = 1.0
+    R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R
+    H[:2, 2] = np.array([100.0, 200.0])  # large t — must NOT bleed into velocity
+
+    tracklet.apply_cmc(H)
+
+    # Velocity corners (1,0),(0,0),(0,1),(1,1) rotate to (0,1),(0,0),(-1,0),(-1,1)
+    # → enclosing velocity box [-1, 0, 0, 1] (no translation applied)
+    v = tracklet.state_estimator.kf.x.reshape(-1)[4:8]
+    np.testing.assert_allclose(v, [-1.0, 0.0, 0.0, 1.0], atol=1e-9)
