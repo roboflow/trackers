@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from trackers.core.botsort._cmc_xyxy import xyxy_corner_min_max
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.converters import xyxy_to_xywh
 from trackers.utils.state_representations import (
@@ -231,22 +232,27 @@ class BoTSORTTracklet(BaseTracklet):
 
         x = kf.x.reshape(-1)
         if isinstance(self.state_estimator, XYXYStateEstimator):
-            x[0:2] = R @ x[0:2] + t
-            x[2:4] = R @ x[2:4] + t
-            x[4:6] = R @ x[4:6]
-            x[6:8] = R @ x[6:8]
+            x[0], x[1], x[2], x[3] = xyxy_corner_min_max(x[0], x[1], x[2], x[3], R, t)
+            x[4], x[5], x[6], x[7] = xyxy_corner_min_max(x[4], x[5], x[6], x[7], R)
         else:
             x[0:2] = R @ x[0:2] + t
             x[4:6] = R @ x[4:6]
         kf.x = x.reshape(-1, 1)
 
-        A = np.eye(kf.x.shape[0], dtype=np.float64)
+        A = None
         if isinstance(self.state_estimator, XYXYStateEstimator):
-            A[0:2, 0:2] = R
-            A[2:4, 2:4] = R
-            A[4:6, 4:6] = R
-            A[6:8, 6:8] = R
+            # atol=1e-6: matches the batch path tolerance for float32 CMC noise.
+            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(
+                R[1, 0], 0.0, atol=1e-6
+            ):
+                A = np.eye(kf.x.shape[0], dtype=np.float64)
+                A[0:2, 0:2] = R
+                A[2:4, 2:4] = R
+                A[4:6, 4:6] = R
+                A[6:8, 6:8] = R
         else:
+            A = np.eye(kf.x.shape[0], dtype=np.float64)
             A[0:2, 0:2] = R
             A[4:6, 4:6] = R
-        kf.P = A @ kf.P @ A.T
+        if A is not None:
+            kf.P = A @ kf.P @ A.T
