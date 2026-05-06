@@ -11,7 +11,6 @@ import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.botsort._cmc_xyxy import xyxy_corner_min_max
 from trackers.core.botsort.cmc import CMC, CMCConfig, CMCTMethod
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
@@ -21,6 +20,50 @@ from trackers.utils.state_representations import (
     XCYCWHStateEstimator,
     XYXYStateEstimator,
 )
+
+
+def _xyxy_corner_min_max(
+    x1: np.ndarray,
+    y1: np.ndarray,
+    x2: np.ndarray,
+    y2: np.ndarray,
+    R: np.ndarray,
+    t: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Transform four box corners via R/t and return the enclosing min/max.
+
+    Works for both batched inputs (shape ``(N,)``) and scalar inputs (shape
+    ``()`` or plain ``float``). The four corners are ``(x1,y1)``, ``(x2,y1)``,
+    ``(x2,y2)``, ``(x1,y2)``; after the affine transform the axis-aligned
+    bounding box of the transformed corners is returned.
+
+    Args:
+        x1: Left edge coordinate(s).
+        y1: Top edge coordinate(s).
+        x2: Right edge coordinate(s).
+        y2: Bottom edge coordinate(s).
+        R: 2x2 rotation/shear sub-matrix of the affine transform.
+        t: Optional 2-element translation vector.
+
+    Returns:
+        Tuple ``(new_x1, new_y1, new_x2, new_y2)`` — per-axis min and max of
+        the four transformed corners.
+    """
+    corners = np.stack(
+        [
+            np.stack([x1, y1], axis=-1),
+            np.stack([x2, y1], axis=-1),
+            np.stack([x2, y2], axis=-1),
+            np.stack([x1, y2], axis=-1),
+        ],
+        axis=-2,
+    )  # (..., 4, 2)
+    out = corners @ R.T
+    if t is not None:
+        out = out + t
+    lo = out.min(axis=-2)
+    hi = out.max(axis=-2)
+    return lo[..., 0], lo[..., 1], hi[..., 0], hi[..., 1]
 
 
 class BoTSORTTracker(BaseTracker):
@@ -377,24 +420,18 @@ class BoTSORTTracker(BaseTracker):
             # top-left and bottom-right corners can invert the box or produce
             # invalid geometry. Transform all four corners, then rebuild the
             # enclosing axis-aligned box with per-axis min/max.
-            (
-                states[:, 0],
-                states[:, 1],
-                states[:, 2],
-                states[:, 3],
-            ) = xyxy_corner_min_max(
-                states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
+            states[:, 0], states[:, 1], states[:, 2], states[:, 3] = (
+                _xyxy_corner_min_max(
+                    states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
+                )
             )
             # Keep XYXY velocity ordering valid under mixed-axis transforms by
             # applying the same corner-wise normalization to the paired velocity
             # components.
-            (
-                states[:, 4],
-                states[:, 5],
-                states[:, 6],
-                states[:, 7],
-            ) = xyxy_corner_min_max(
-                states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
+            states[:, 4], states[:, 5], states[:, 6], states[:, 7] = (
+                _xyxy_corner_min_max(
+                    states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
+                )
             )
         else:
             # Batch-transform centre positions: x' = x @ R.T + t

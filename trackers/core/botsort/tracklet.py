@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from trackers.core.botsort._cmc_xyxy import xyxy_corner_min_max
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.converters import xyxy_to_xywh
 from trackers.utils.state_representations import (
@@ -232,8 +231,22 @@ class BoTSORTTracklet(BaseTracklet):
 
         x = kf.x.reshape(-1)
         if isinstance(self.state_estimator, XYXYStateEstimator):
-            x[0], x[1], x[2], x[3] = xyxy_corner_min_max(x[0], x[1], x[2], x[3], R, t)
-            x[4], x[5], x[6], x[7] = xyxy_corner_min_max(x[4], x[5], x[6], x[7], R)
+            # Inline 4-corner stack + transform + min/max for both position
+            # (with translation) and velocity (without translation) so that
+            # XYXY ordering survives rotation/reflection/shear transforms.
+            pos_corners = np.array(
+                [[x[0], x[1]], [x[2], x[1]], [x[2], x[3]], [x[0], x[3]]]
+            )
+            pos_out = pos_corners @ R.T + t
+            x[0], x[1] = pos_out.min(axis=0)
+            x[2], x[3] = pos_out.max(axis=0)
+
+            vel_corners = np.array(
+                [[x[4], x[5]], [x[6], x[5]], [x[6], x[7]], [x[4], x[7]]]
+            )
+            vel_out = vel_corners @ R.T
+            x[4], x[5] = vel_out.min(axis=0)
+            x[6], x[7] = vel_out.max(axis=0)
         else:
             x[0:2] = R @ x[0:2] + t
             x[4:6] = R @ x[4:6]

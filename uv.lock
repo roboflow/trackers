@@ -4023,7 +4023,7 @@ wheels = [
 
 [[package]]
 name = "trackers"
-version = "2.3.0"
+version = "2.4.0rc0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
