@@ -409,14 +409,12 @@ class BoTSORTTracker(BaseTracker):
         if is_xyxy:
             if np.isclose(R[0, 1], 0.0) and np.isclose(R[1, 0], 0.0):
                 A = np.eye(dim, dtype=np.float64)
-
                 A[0:2, 0:2] = R
                 A[2:4, 2:4] = R
                 A[4:6, 4:6] = R
                 A[6:8, 6:8] = R
         else:
             A = np.eye(dim, dtype=np.float64)
-
             A[0:2, 0:2] = R
             A[4:6, 4:6] = R
 
