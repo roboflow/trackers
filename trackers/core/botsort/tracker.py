@@ -344,7 +344,19 @@ class BoTSORTTracker(BaseTracker):
         return result
 
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:
-        """Apply a 2x3 affine camera-motion transform to all tracklets at once."""
+        """Apply a 2x3 affine camera-motion transform to all tracklets at once.
+
+        For XYXY-state tracks, positions and velocities are updated via
+        four-corner enclosure so that axis-alignment is preserved under
+        rotation, reflection, and shear. The covariance matrix ``P`` is
+        updated with the block-diagonal rotation matrix only when ``R`` is
+        axis-aligned (off-diagonals < 1e-6). When ``R`` has cross-axis terms,
+        ``P`` is left unchanged — a conservative choice that avoids applying an
+        invalid block-diagonal approximation at the cost of stale uncertainty.
+
+        For XCYCWH-state tracks, only the centre position and velocity are
+        rotated; width/height and their velocities are not transformed.
+        """
         if H is None or len(self.tracks) == 0:
             return
 
