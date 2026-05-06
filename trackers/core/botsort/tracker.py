@@ -11,6 +11,7 @@ import supervision as sv
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
+from trackers.core.botsort._cmc_xyxy import xyxy_corner_min_max
 from trackers.core.botsort.cmc import CMC, CMCConfig, CMCTMethod
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
@@ -364,41 +365,25 @@ class BoTSORTTracker(BaseTracker):
             # top-left and bottom-right corners can invert the box or produce
             # invalid geometry. Transform all four corners, then rebuild the
             # enclosing axis-aligned box with per-axis min/max.
-            x1 = states[:, 0]
-            y1 = states[:, 1]
-            x2 = states[:, 2]
-            y2 = states[:, 3]
-            corners = np.stack(
-                [
-                    np.stack([x1, y1], axis=1),
-                    np.stack([x2, y1], axis=1),
-                    np.stack([x2, y2], axis=1),
-                    np.stack([x1, y2], axis=1),
-                ],
-                axis=1,
+            (
+                states[:, 0],
+                states[:, 1],
+                states[:, 2],
+                states[:, 3],
+            ) = xyxy_corner_min_max(
+                states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
             )
-            transformed_corners = corners @ R.T + t
-            states[:, 0:2] = transformed_corners.min(axis=1)
-            states[:, 2:4] = transformed_corners.max(axis=1)
             # Keep XYXY velocity ordering valid under mixed-axis transforms by
             # applying the same corner-wise normalization to the paired velocity
             # components.
-            vx1 = states[:, 4]
-            vy1 = states[:, 5]
-            vx2 = states[:, 6]
-            vy2 = states[:, 7]
-            velocity_corners = np.stack(
-                [
-                    np.stack([vx1, vy1], axis=1),
-                    np.stack([vx2, vy1], axis=1),
-                    np.stack([vx2, vy2], axis=1),
-                    np.stack([vx1, vy2], axis=1),
-                ],
-                axis=1,
+            (
+                states[:, 4],
+                states[:, 5],
+                states[:, 6],
+                states[:, 7],
+            ) = xyxy_corner_min_max(
+                states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
             )
-            transformed_velocity_corners = velocity_corners @ R.T
-            states[:, 4:6] = transformed_velocity_corners.min(axis=1)
-            states[:, 6:8] = transformed_velocity_corners.max(axis=1)
         else:
             # Batch-transform centre positions: x' = x @ R.T + t
             states[:, 0:2] = states[:, 0:2] @ R.T + t
