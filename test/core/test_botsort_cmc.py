@@ -42,11 +42,23 @@ def _make_cmc(method: str, **kwargs: object) -> CMC:
     raise AssertionError("unreachable")
 
 
-class TestCMCOutputShape:
-    """Output shape and dtype contract for CMC.estimate()."""
+def _xyxy_tracklet(bbox: np.ndarray) -> BoTSORTTracklet:
+    """Build a BoTSORTTracklet whose state is XYXYStateEstimator."""
+    return BoTSORTTracklet(bbox, state_estimator_class=XYXYStateEstimator)
+
+
+class TestCMCEstimateAcrossMethods:
+    """CMC.estimate() contract — parametrised over every supported method.
+
+    All tests instantiate CMC via `_make_cmc(method)` (skips when the method is
+    unavailable in the local OpenCV build) and feed it `_bgr_frame(...)` noise
+    frames; assertions cover the documented `estimate()` return contract:
+    shape (2, 3), dtype float32, identity on degenerate inputs, finite values
+    on real inputs.
+    """
 
     @pytest.mark.parametrize("method", ALL_METHODS)
-    def test_cmc_output_is_2x3_float32(self, method: str) -> None:
+    def test_output_is_2x3_float32(self, method: str) -> None:
         """estimate() must always return a (2, 3) float32 matrix."""
         cmc = _make_cmc(method)
         frame1 = _bgr_frame(seed=0)
@@ -57,12 +69,8 @@ class TestCMCOutputShape:
             assert H.shape == (2, 3), f"[{method}] Expected shape (2,3), got {H.shape}"
             assert H.dtype == np.float32, f"[{method}] Expected float32, got {H.dtype}"
 
-
-class TestCMCFirstFrame:
-    """First-frame returns identity."""
-
     @pytest.mark.parametrize("method", ALL_METHODS)
-    def test_cmc_first_frame_returns_identity(self, method: str) -> None:
+    def test_first_frame_returns_identity(self, method: str) -> None:
         """On the first frame there is no previous frame, so identity is returned."""
         cmc = _make_cmc(method)
         H = cmc.estimate(_bgr_frame(seed=42))
@@ -70,12 +78,8 @@ class TestCMCFirstFrame:
             f"[{method}] Expected identity on first frame:\n{H}"
         )
 
-
-class TestCMCNoneFrame:
-    """None frame returns identity."""
-
     @pytest.mark.parametrize("method", ALL_METHODS)
-    def test_cmc_none_frame_returns_identity(self, method: str) -> None:
+    def test_none_frame_returns_identity(self, method: str) -> None:
         """Passing None as frame_bgr must return identity without raising."""
         cmc = _make_cmc(method)
         H = cmc.estimate(cast(np.ndarray, None))
@@ -84,31 +88,21 @@ class TestCMCNoneFrame:
             f"[{method}] Expected identity for None frame:\n{H}"
         )
 
-
-class TestCMCReset:
-    """Reset restores first-frame behaviour."""
-
     @pytest.mark.parametrize("method", ALL_METHODS)
-    def test_cmc_reset_returns_identity_on_next_call(self, method: str) -> None:
+    def test_reset_returns_identity_on_next_call(self, method: str) -> None:
         """After reset(), the very next estimate() call returns identity."""
         cmc = _make_cmc(method)
         cmc.estimate(_bgr_frame(seed=0))  # initialise
         cmc.estimate(_bgr_frame(seed=1))  # second frame
 
         cmc.reset()
-        assert not cmc._initialized, (
-            f"[{method}] CMC must be uninitialized after reset"
-        )
+        assert not cmc._initialized, f"[{method}] CMC must be uninitialized after reset"
 
         H = cmc.estimate(_bgr_frame(seed=2))
         assert _is_near_identity(H), f"[{method}] Expected identity after reset:\n{H}"
 
-
-class TestCMCIdenticalFrames:
-    """Identical frames yield near-identity transform."""
-
     @pytest.mark.parametrize("method", ALL_METHODS)
-    def test_cmc_identical_frames_near_identity(self, method: str) -> None:
+    def test_identical_frames_near_identity(self, method: str) -> None:
         """Two identical frames should produce near-zero translation."""
         cmc = _make_cmc(method)
         frame = _bgr_frame(seed=99)
@@ -123,12 +117,8 @@ class TestCMCIdenticalFrames:
             f"[{method}] Expected near-zero translation for identical frames:\n{H}"
         )
 
-
-class TestCMCDifferentFrames:
-    """Non-trivial motion is handled gracefully."""
-
     @pytest.mark.parametrize("method", ALL_METHODS)
-    def test_cmc_different_frames_returns_finite_h(self, method: str) -> None:
+    def test_different_frames_returns_finite_h(self, method: str) -> None:
         """Two clearly different frames must return a finite (2,3) matrix."""
         cmc = _make_cmc(method, downscale=1)
         frame1 = _bgr_frame(seed=0)
@@ -140,12 +130,8 @@ class TestCMCDifferentFrames:
         assert H.shape == (2, 3), f"[{method}] Bad shape: {H.shape}"
         assert np.all(np.isfinite(H)), f"[{method}] H must contain only finite values"
 
-
-class TestCMCDownscale:
-    """Downscale: still returns valid transforms."""
-
     @pytest.mark.parametrize("method", ALL_METHODS)
-    def test_cmc_downscale_produces_valid_output(self, method: str) -> None:
+    def test_downscale_produces_valid_output(self, method: str) -> None:
         """downscale>1 must still return a finite (2,3) float32 transform."""
         cmc_ds1 = _make_cmc(method, downscale=1)
         cmc_ds2 = _make_cmc(method, downscale=2)
@@ -168,9 +154,15 @@ class TestCMCDownscale:
 
 
 class TestBoTSORTApplyCMCBatch:
-    """BoTSORTTracker.apply_cmc_batch()."""
+    """`BoTSORTTracker.apply_cmc_batch` against center-state tracklets.
 
-    def test_botsort_tracker_apply_cmc_batch_matches_single(self) -> None:
+    All tests build default `BoTSORTTracklet(bbox)` instances (center-state
+    estimator) and a `BoTSORTTracker` whose `tracks` list is set directly,
+    then verify the batch entry-point against the per-track `apply_cmc`
+    contract (equivalence, multi-tracklet, no-op cases).
+    """
+
+    def test_matches_single(self) -> None:
         """Batch CMC must match per-track apply_cmc for a single track."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         H = np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]], dtype=np.float32)
@@ -194,7 +186,7 @@ class TestBoTSORTApplyCMCBatch:
             atol=1e-6,
         )
 
-    def test_botsort_tracker_apply_cmc_batch_multiple_tracklets(self) -> None:
+    def test_multiple_tracklets(self) -> None:
         """Batch CMC applies the same transform to every tracklet."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         H = np.array([[1.0, 0.0, 8.0], [0.0, 1.0, -2.0]], dtype=np.float32)
@@ -213,7 +205,7 @@ class TestBoTSORTApplyCMCBatch:
                 s.state_estimator.kf.x, b.state_estimator.kf.x, atol=1e-6
             )
 
-    def test_botsort_tracker_apply_cmc_batch_none_is_noop(self) -> None:
+    def test_none_is_noop(self) -> None:
         """apply_cmc_batch with H=None must not change any tracklet state."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         tracklet = BoTSORTTracklet(bbox)
@@ -225,7 +217,7 @@ class TestBoTSORTApplyCMCBatch:
 
         np.testing.assert_array_equal(tracklet.state_estimator.kf.x, state_before)
 
-    def test_botsort_tracker_apply_cmc_batch_empty_list_is_noop(self) -> None:
+    def test_empty_list_is_noop(self) -> None:
         """apply_cmc_batch with an empty list must not raise."""
         H = np.eye(2, 3, dtype=np.float32)
         tracker = BoTSORTTracker()
@@ -234,9 +226,14 @@ class TestBoTSORTApplyCMCBatch:
 
 
 class TestXYXYCornerMinMax:
-    """_xyxy_corner_min_max helper — direct unit tests."""
+    """Direct unit tests on `_xyxy_corner_min_max(x1, y1, x2, y2, R, t=None)`.
 
-    def test_corner_min_max_identity_translation_only(self) -> None:
+    Each test passes raw 1-D NumPy arrays for the four corner channels and a
+    2x2 `R` (and optional 1-D `t`), then asserts on the four return arrays.
+    No tracklet, no Kalman state — just the pure helper contract.
+    """
+
+    def test_identity_translation_only(self) -> None:
         """Identity R with non-zero t must shift all corners by t."""
         x1 = np.array([10.0])
         y1 = np.array([20.0])
@@ -251,7 +248,7 @@ class TestXYXYCornerMinMax:
             [nx1[0], ny1[0], nx2[0], ny2[0]], [15.0, 17.0, 55.0, 77.0]
         )
 
-    def test_corner_min_max_translation_none_skips_offset(self) -> None:
+    def test_translation_none_skips_offset(self) -> None:
         """When t=None, only the linear part R is applied (velocity contract)."""
         x1 = np.array([0.0])
         y1 = np.array([0.0])
@@ -265,7 +262,7 @@ class TestXYXYCornerMinMax:
             [nx1[0], ny1[0], nx2[0], ny2[0]], [0.0, 0.0, 1.0, 2.0]
         )
 
-    def test_corner_min_max_90deg_rotation_recovers_axis_aligned_box(self) -> None:
+    def test_90deg_rotation_recovers_axis_aligned_box(self) -> None:
         """90° rotation of [0,0,2,4] gives axis-aligned enclosing [-4,0,0,2]."""
         x1 = np.array([0.0])
         y1 = np.array([0.0])
@@ -280,7 +277,7 @@ class TestXYXYCornerMinMax:
             [nx1[0], ny1[0], nx2[0], ny2[0]], [-4.0, 0.0, 0.0, 2.0]
         )
 
-    def test_corner_min_max_reflection_y_axis_swaps_x_endpoints(self) -> None:
+    def test_reflection_y_axis_swaps_x_endpoints(self) -> None:
         """Reflection across y-axis: x→-x, output preserves min<max ordering."""
         x1 = np.array([10.0])
         y1 = np.array([20.0])
@@ -297,7 +294,7 @@ class TestXYXYCornerMinMax:
             [nx1[0], ny1[0], nx2[0], ny2[0]], [-50.0, 20.0, -10.0, 80.0]
         )
 
-    def test_corner_min_max_zero_size_box_yields_zero_size_output(self) -> None:
+    def test_zero_size_box_yields_zero_size_output(self) -> None:
         """A degenerate (point) box stays a point under any affine transform."""
         x1 = np.array([5.0])
         y1 = np.array([5.0])
@@ -310,7 +307,7 @@ class TestXYXYCornerMinMax:
 
         assert nx1[0] == nx2[0] and ny1[0] == ny2[0]
 
-    def test_corner_min_max_negative_coordinates_preserved(self) -> None:
+    def test_negative_coordinates_preserved(self) -> None:
         """Negative input coordinates must transform without sign-related artifacts."""
         x1 = np.array([-50.0])
         y1 = np.array([-30.0])
@@ -325,7 +322,7 @@ class TestXYXYCornerMinMax:
             [nx1[0], ny1[0], nx2[0], ny2[0]], [50.0, 70.0, 90.0, 120.0]
         )
 
-    def test_corner_min_max_batch_input_matches_per_element_loop(self) -> None:
+    def test_batch_input_matches_per_element_loop(self) -> None:
         """Vectorised batch call must equal applying the helper per element."""
         x1 = np.array([0.0, 10.0, -5.0])
         y1 = np.array([0.0, 20.0, -2.0])
@@ -352,13 +349,15 @@ class TestXYXYCornerMinMax:
         np.testing.assert_allclose(bny2, [e[3][0] for e in expected])
 
 
-def _xyxy_tracklet(bbox: np.ndarray) -> BoTSORTTracklet:
-    """Build a BoTSORTTracklet whose state is XYXYStateEstimator."""
-    return BoTSORTTracklet(bbox, state_estimator_class=XYXYStateEstimator)
-
-
 class TestXYXYCovarianceUpdate:
-    """XYXY-state CMC: covariance update guard."""
+    """Covariance (P) update contract for XYXY-state tracklets under CMC.
+
+    All tests build an `_xyxy_tracklet([10, 20, 50, 80])`, snapshot
+    `kf.P`, construct an H matrix from a chosen 2x2 R block, apply CMC
+    (single via `tracklet.apply_cmc`, batch via `tracker.apply_cmc_batch`),
+    then assert P either propagates as `A @ P @ A.T` (axis-aligned R) or
+    is left untouched (cross-axis R).
+    """
 
     @pytest.mark.parametrize(
         "R_off",
@@ -368,7 +367,7 @@ class TestXYXYCovarianceUpdate:
             np.array([[2.0, 0.0], [0.0, 0.5]]),  # axis-aligned scale
         ],
     )
-    def test_xyxy_axis_aligned_R_updates_covariance(self, R_off: np.ndarray) -> None:
+    def test_axis_aligned_updates_p(self, R_off: np.ndarray) -> None:
         """Axis-aligned R must propagate into P via A @ P @ A.T."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         H = np.zeros((2, 3), dtype=np.float32)
@@ -384,9 +383,7 @@ class TestXYXYCovarianceUpdate:
         A[4:6, 4:6] = R_off
         A[6:8, 6:8] = R_off
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(
-            tracklet.state_estimator.kf.P, expected_P, atol=1e-9
-        )
+        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
 
     @pytest.mark.parametrize(
         "R_cross",
@@ -399,7 +396,7 @@ class TestXYXYCovarianceUpdate:
             ),  # small rot
         ],
     )
-    def test_xyxy_cross_axis_R_freezes_covariance(self, R_cross: np.ndarray) -> None:
+    def test_cross_axis_freezes_p(self, R_cross: np.ndarray) -> None:
         """Cross-axis R must leave P untouched (A=None branch)."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         H = np.zeros((2, 3), dtype=np.float32)
@@ -418,9 +415,7 @@ class TestXYXYCovarianceUpdate:
             np.array([[1.0, 0.5], [0.0, 1.0]]),
         ],
     )
-    def test_xyxy_cross_axis_R_freezes_covariance_batch_path(
-        self, R_cross: np.ndarray
-    ) -> None:
+    def test_cross_axis_freezes_p_batch_path(self, R_cross: np.ndarray) -> None:
         """Batch path must also freeze P when R has cross-axis terms."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         H = np.zeros((2, 3), dtype=np.float32)
@@ -434,7 +429,7 @@ class TestXYXYCovarianceUpdate:
 
         np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
 
-    def test_xyxy_axis_aligned_R_updates_covariance_batch_path(self) -> None:
+    def test_axis_aligned_updates_p_batch_path(self) -> None:
         """Batch path must update P when R is axis-aligned."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         R = np.array([[1.0, 0.0], [0.0, -1.0]])
@@ -453,15 +448,19 @@ class TestXYXYCovarianceUpdate:
         A[4:6, 4:6] = R
         A[6:8, 6:8] = R
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(
-            tracklet.state_estimator.kf.P, expected_P, atol=1e-9
-        )
+        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
 
 
 class TestXYXYAxisAlignedTolerance:
-    """atol=1e-6 tolerance band for axis-aligned classification."""
+    """Boundary tests on the `atol=1e-6` axis-aligned classifier in CMC.
 
-    def test_xyxy_residual_below_atol_treated_as_axis_aligned(self) -> None:
+    Both tests build the same `_xyxy_tracklet` and an R whose cross-axis
+    residual sits just below or just above 1e-6, then verify which branch
+    (P-update vs P-freeze) `tracklet.apply_cmc(H)` selected by inspecting
+    the post-call `kf.P`.
+    """
+
+    def test_residual_below_atol_treated_as_axis_aligned(self) -> None:
         """Cross-axis residual below 1e-6 takes axis-aligned (P-update) branch."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         R = np.array([[1.0, 5e-7], [5e-7, 1.0]])  # within atol=1e-6
@@ -481,11 +480,9 @@ class TestXYXYAxisAlignedTolerance:
         A[4:6, 4:6] = R
         A[6:8, 6:8] = R
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(
-            tracklet.state_estimator.kf.P, expected_P, atol=1e-9
-        )
+        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
 
-    def test_xyxy_residual_above_atol_treated_as_cross_axis(self) -> None:
+    def test_residual_above_atol_treated_as_cross_axis(self) -> None:
         """Cross-axis residual above 1e-6 must take the freeze branch."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         R = np.array([[1.0, 1e-3], [0.0, 1.0]])  # above atol=1e-6
@@ -499,85 +496,72 @@ class TestXYXYAxisAlignedTolerance:
         np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
 
 
-class TestXYXYBatchVsSingle:
-    """Batch vs single equivalence under non-translation transforms."""
+@pytest.mark.parametrize(
+    "R",
+    [
+        np.array([[0.0, -1.0], [1.0, 0.0]]),  # rotation
+        np.array([[-1.0, 0.0], [0.0, 1.0]]),  # reflection
+        np.array([[1.0, 0.5], [0.0, 1.0]]),  # shear
+        np.array([[2.0, 0.0], [0.0, 0.5]]),  # axis-aligned scale
+    ],
+)
+def test_xyxy_batch_matches_single_under_non_translation_R(R: np.ndarray) -> None:
+    """Batch CMC and per-track CMC must agree for any 2x2 R on XYXY state."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    H = np.array([[R[0, 0], R[0, 1], 7.0], [R[1, 0], R[1, 1], -2.0]], dtype=np.float32)
+    single = _xyxy_tracklet(bbox)
+    batched = _xyxy_tracklet(bbox)
+    tracker = BoTSORTTracker()
+    tracker.tracks = [batched]
 
-    @pytest.mark.parametrize(
-        "R",
-        [
-            np.array([[0.0, -1.0], [1.0, 0.0]]),  # rotation
-            np.array([[-1.0, 0.0], [0.0, 1.0]]),  # reflection
-            np.array([[1.0, 0.5], [0.0, 1.0]]),  # shear
-            np.array([[2.0, 0.0], [0.0, 0.5]]),  # axis-aligned scale
-        ],
+    single.apply_cmc(H)
+    tracker.apply_cmc_batch(H)
+
+    np.testing.assert_allclose(
+        single.state_estimator.kf.x, batched.state_estimator.kf.x, atol=1e-9
     )
-    def test_xyxy_batch_matches_single_under_non_translation_R(
-        self, R: np.ndarray
-    ) -> None:
-        """Batch CMC and per-track CMC must agree for any 2x2 R on XYXY state."""
-        bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
-        H = np.array(
-            [[R[0, 0], R[0, 1], 7.0], [R[1, 0], R[1, 1], -2.0]], dtype=np.float32
-        )
-        single = _xyxy_tracklet(bbox)
-        batched = _xyxy_tracklet(bbox)
-        tracker = BoTSORTTracker()
-        tracker.tracks = [batched]
-
-        single.apply_cmc(H)
-        tracker.apply_cmc_batch(H)
-
-        np.testing.assert_allclose(
-            single.state_estimator.kf.x, batched.state_estimator.kf.x, atol=1e-9
-        )
-        np.testing.assert_allclose(
-            single.state_estimator.kf.P, batched.state_estimator.kf.P, atol=1e-9
-        )
+    np.testing.assert_allclose(
+        single.state_estimator.kf.P, batched.state_estimator.kf.P, atol=1e-9
+    )
 
 
-class TestXYXYRotationState:
-    """XYXY position state recovers axis-aligned enclosing box under rotation."""
+def test_xyxy_apply_cmc_90deg_rotation_state_is_axis_aligned() -> None:
+    """After 90° rotation, the post-CMC XYXY state must remain a valid box."""
+    bbox = np.array([0.0, 0.0, 2.0, 4.0], dtype=np.float32)
+    R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation about origin
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R
+    tracklet = _xyxy_tracklet(bbox)
 
-    def test_xyxy_apply_cmc_90deg_rotation_state_is_axis_aligned(self) -> None:
-        """After 90° rotation, the post-CMC XYXY state must remain a valid box."""
-        bbox = np.array([0.0, 0.0, 2.0, 4.0], dtype=np.float32)
-        R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation about origin
-        H = np.zeros((2, 3), dtype=np.float32)
-        H[:2, :2] = R
-        tracklet = _xyxy_tracklet(bbox)
+    tracklet.apply_cmc(H)
 
-        tracklet.apply_cmc(H)
-
-        x = tracklet.state_estimator.kf.x.reshape(-1)
-        # Original corners (0,0),(2,0),(2,4),(0,4) rotate to (0,0),(0,2),(-4,2),(-4,0)
-        # → enclosing box [-4, 0, 0, 2]
-        np.testing.assert_allclose(
-            [x[0], x[1], x[2], x[3]], [-4.0, 0.0, 0.0, 2.0], atol=1e-9
-        )
-        assert x[0] < x[2], "x1 must remain < x2"
-        assert x[1] < x[3], "y1 must remain < y2"
+    x = tracklet.state_estimator.kf.x.reshape(-1)
+    # Original corners (0,0),(2,0),(2,4),(0,4) rotate to (0,0),(0,2),(-4,2),(-4,0)
+    # → enclosing box [-4, 0, 0, 2]
+    np.testing.assert_allclose(
+        [x[0], x[1], x[2], x[3]], [-4.0, 0.0, 0.0, 2.0], atol=1e-9
+    )
+    assert x[0] < x[2], "x1 must remain < x2"
+    assert x[1] < x[3], "y1 must remain < y2"
 
 
-class TestXYXYVelocityTransform:
-    """Velocity components transform under non-translation R."""
+def test_xyxy_velocity_rotates_without_translation() -> None:
+    """Velocity entries (state[4:8]) must transform via R only, not R+t."""
+    bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+    tracklet = _xyxy_tracklet(bbox)
+    # Inject a known non-zero velocity quad: vx1=1, vy1=0, vx2=0, vy2=1
+    tracklet.state_estimator.kf.x[4, 0] = 1.0
+    tracklet.state_estimator.kf.x[5, 0] = 0.0
+    tracklet.state_estimator.kf.x[6, 0] = 0.0
+    tracklet.state_estimator.kf.x[7, 0] = 1.0
+    R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation
+    H = np.zeros((2, 3), dtype=np.float32)
+    H[:2, :2] = R
+    H[:2, 2] = np.array([100.0, 200.0])  # large t — must NOT bleed into velocity
 
-    def test_xyxy_velocity_rotates_without_translation(self) -> None:
-        """Velocity entries (state[4:8]) must transform via R only, not R+t."""
-        bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
-        tracklet = _xyxy_tracklet(bbox)
-        # Inject a known non-zero velocity quad: vx1=1, vy1=0, vx2=0, vy2=1
-        tracklet.state_estimator.kf.x[4, 0] = 1.0
-        tracklet.state_estimator.kf.x[5, 0] = 0.0
-        tracklet.state_estimator.kf.x[6, 0] = 0.0
-        tracklet.state_estimator.kf.x[7, 0] = 1.0
-        R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation
-        H = np.zeros((2, 3), dtype=np.float32)
-        H[:2, :2] = R
-        H[:2, 2] = np.array([100.0, 200.0])  # large t — must NOT bleed into velocity
+    tracklet.apply_cmc(H)
 
-        tracklet.apply_cmc(H)
-
-        # Velocity corners (1,0),(0,0),(0,1),(1,1) rotate to (0,1),(0,0),(-1,0),(-1,1)
-        # → enclosing velocity box [-1, 0, 0, 1] (no translation applied)
-        v = tracklet.state_estimator.kf.x.reshape(-1)[4:8]
-        np.testing.assert_allclose(v, [-1.0, 0.0, 0.0, 1.0], atol=1e-9)
+    # Velocity corners (1,0),(0,0),(0,1),(1,1) rotate to (0,1),(0,0),(-1,0),(-1,1)
+    # → enclosing velocity box [-1, 0, 0, 1] (no translation applied)
+    v = tracklet.state_estimator.kf.x.reshape(-1)[4:8]
+    np.testing.assert_allclose(v, [-1.0, 0.0, 0.0, 1.0], atol=1e-9)
