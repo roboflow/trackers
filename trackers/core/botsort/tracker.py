@@ -407,7 +407,12 @@ class BoTSORTTracker(BaseTracker):
 
         A = None
         if is_xyxy:
-            if np.isclose(R[0, 1], 0.0) and np.isclose(R[1, 0], 0.0):
+            # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
+            # to 1e-6 residuals on off-diagonals even for pure-translation H;
+            # default atol=1e-8 misclassifies those as cross-axis transforms.
+            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(
+                R[1, 0], 0.0, atol=1e-6
+            ):
                 A = np.eye(dim, dtype=np.float64)
                 A[0:2, 0:2] = R
                 A[2:4, 2:4] = R
