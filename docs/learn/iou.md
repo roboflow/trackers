@@ -65,6 +65,7 @@ tracker = SORTTracker(
 \[
 \mathrm{IoU}(A, B) = \frac{|A \cap B|}{|A \cup B|}
 \]
+
 <figure class="iou-variant-figure">
   <img src="../../assets/IoU%20variants/IoU%20visualization.png" alt="GIoU visualization" loading="lazy" decoding="async"/>
 </figure>
@@ -207,7 +208,6 @@ v = \frac{4}{\pi^2}\!\left(\arctan\frac{w_A}{h_A} - \arctan\frac{w_B}{h_B}\right
 `v` measures aspect-ratio divergence; `α` scales it so the penalty is low when IoU
 is already high. On tracking benchmarks CIoU and DIoU behave similarly.
 
-
 ```python
 from trackers import OCSORTTracker
 from trackers.utils.iou import CIoU
@@ -328,11 +328,10 @@ SoccerNet uses perfect detections, and SportsMOT detections come from a strong
 detector, and both show the largest improvements. To test this, we run an additional
 experiment using ground-truth boxes from MOT17 and SportsMOT as tracker detections.
 
-| Dataset (GT-as-det) | IoU mean HOTA |                   GIoU mean Δ |                   DIoU mean Δ |                   CIoU mean Δ |                   BIoU mean Δ |
-| :------------------ | ------------: | ----------------------------: | ----------------------------: | ----------------------------: | ----------------------------: |
-| MOT17 val           |         97.17 | <span class="delta neutral">−0.05</span> | <span class="delta neutral">−0.07</span> | <span class="delta neutral">−0.05</span> |     <span class="delta pos">+0.31</span> |
-| SportsMOT val       |         87.18 |     <span class="delta pos">+0.47</span> |     <span class="delta pos">+1.09</span> |     <span class="delta pos">+1.06</span> |     <span class="delta pos">+0.46</span> |
-
+| Dataset (GT-as-det) | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
+| :------------------ | ------------: | ---------------------------------------: | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
+| MOT17 val           |         97.17 | <span class="delta neutral">−0.05</span> | <span class="delta neutral">−0.07</span> | <span class="delta neutral">−0.05</span> | <span class="delta pos">+0.31</span> |
+| SportsMOT val       |         87.18 |     <span class="delta pos">+0.47</span> |     <span class="delta pos">+1.09</span> |     <span class="delta pos">+1.06</span> | <span class="delta pos">+0.46</span> |
 
 With ground-truth detections, mean ΔHOTA increases for three of four variants on
 SportsMOT compared to YOLOX detections. On MOT17, gaps narrow overall: GIoU moves

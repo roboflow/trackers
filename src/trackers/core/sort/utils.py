@@ -15,7 +15,9 @@ from trackers.utils.iou import IoU
 T_SORTTracklet = TypeVar("T_SORTTracklet", bound="SORTTracklet")
 
 
-def _get_iou_matrix(tracklets: Sequence[SORTTracklet], detections: np.ndarray) -> np.ndarray:
+def _get_iou_matrix(
+    tracklets: Sequence[SORTTracklet], detections: np.ndarray
+) -> np.ndarray:
     """Compatibility helper used by SORT-family trackers for IoU matching."""
     if len(tracklets) == 0:
         tracklet_boxes = np.empty((0, 4))

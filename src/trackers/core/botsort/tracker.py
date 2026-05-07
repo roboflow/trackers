@@ -355,7 +355,9 @@ class BoTSORTTracker(BaseTracker):
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
-            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+            tracklet_boxes = np.array(
+                [tracklet.get_state_bbox() for tracklet in tracklets]
+            )
         return self.iou.compute(tracklet_boxes, detections)
 
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:
