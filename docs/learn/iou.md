@@ -1,9 +1,34 @@
+---
+description: Learn IoU, GIoU, DIoU, CIoU, and BIoU for object tracking association, with practical guidance on choosing metrics and thresholds.
+---
+
 # IoU API
 
-IoU variants are pluggable similarity metrics used during the detection-to-track
+IoU variants are pluggable similarity metrics used during detection-to-track
 association. You pass one of these classes to a tracker via the `iou` argument.
 
-## Quick Start
+**What you'll learn:**
+
+- What each IoU variant measures and when to use it
+- How score ranges affect `minimum_iou_threshold` tuning
+- How to configure IoU variants in any tracker
+- How IoU variants perform across common tracking benchmarks
+
+---
+
+## Install
+
+Get started by installing `trackers`.
+
+```text
+pip install trackers
+```
+
+For more options, see the [install guide](install.md).
+
+---
+
+## Quickstart
 
 ```python
 from trackers import SORTTracker
@@ -69,6 +94,12 @@ sort_biou = SORTTracker(
 
 ## Threshold Notes
 
+Set `minimum_iou_threshold` based on the score range of your chosen metric.
+
+- `IoU` and `BIoU` usually work with non-negative thresholds (for example, `0.2` to `0.5`).
+- `GIoU`, `DIoU`, and `CIoU` can produce negative scores, so negative thresholds are valid.
+- Tune thresholds per dataset and tracker; there is no universal best value.
+
 ## GIoU
 
 **Generalised IoU** ([Rezatofighi et al., 2019](https://arxiv.org/abs/1902.09630)) — penalises the gap inside the
@@ -101,7 +132,11 @@ tracker = OCSORTTracker(iou=GIoU(), minimum_iou_threshold=-0.3)
 | Best IoU  |    73.07 |          — |
 | Best GIoU |    89.31 | **+16.24** |
 
-Left: IoU. Right: GIoU. Camera movements introduce an unpredicted displacement, producing ID-switches when using IoU based association. GIoU helps to this by still giving a signal when there is no overlap by considering the size and position of the boxes are, which keeps most of the tracks that with IoU are confused or lost due to direction changes and non linear motion (e.g. tracks `5, 12 (left) / 13 (right)`).
+Left: IoU. Right: GIoU. Camera movements can introduce unexpected displacement,
+producing ID switches with IoU-based association. GIoU still provides a signal when
+there is no overlap by considering enclosing-box geometry, which helps preserve
+tracks that IoU would otherwise confuse or lose due to direction changes and
+non-linear motion (for example, tracks `5`, `12` on the left vs `13` on the right).
 
 <video width="100%" controls muted loop>
   <source src="../../assets/iou_vs_GIoU_v_0kUtTtmLaJA_c006.mp4" type="video/mp4">
@@ -140,7 +175,10 @@ tracker = OCSORTTracker(iou=DIoU(), minimum_iou_threshold=-0.3)
 | Best IoU  |    73.07 |          — |
 | Best DIoU |    86.53 | **+13.46** |
 
-Left: IoU. Right: DIoU. Highly non linear motion can make IoU drop to zero, so the Kalman prediction can fall in another object and produces a switch. The centre-distance term keeps a smoother score and preserves IDs more often (e.g. `tracks 3–5`).
+Left: IoU. Right: DIoU. Highly non-linear motion can make IoU drop to zero,
+causing the Kalman prediction to attach to another object and produce an ID switch.
+The centre-distance term keeps the score smoother and preserves IDs more often
+(for example, tracks `3–5`).
 
 <video width="100%" controls muted loop>
   <source src="../../assets/iou_vs_DIoU_v_0kUtTtmLaJA_c006.mp4" type="video/mp4">
@@ -279,9 +317,16 @@ For more information on the datasets, see: [dataset comparison](../trackers/comp
 | DanceTrack val |         50.27 |     <span class="delta neg">−0.80</span> |     <span class="delta neg">−0.34</span> | <span class="delta neutral">+0.05</span> | <span class="delta pos">+0.15</span> |
 | SoccerNet test |         83.21 |     <span class="delta pos">+1.57</span> |     <span class="delta pos">+2.82</span> |     <span class="delta pos">+2.76</span> | <span class="delta pos">+1.41</span> |
 
-Over SportsMOT and SoccerNet, all IoU variants perform better than standard IoU, with DIoU and CIoU being the strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In MOT17, standard IoU is the best one by a small margin (DIoU and CIoU match each other here). On DanceTrack, GIoU and DIoU underperform IoU, while CIoU and BIoU perform slightly better.
+Over SportsMOT and SoccerNet, all IoU variants outperform standard IoU, with DIoU
+and CIoU strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In
+MOT17, standard IoU is best by a small margin (DIoU and CIoU are similar). On
+DanceTrack, GIoU and DIoU underperform IoU, while CIoU and BIoU perform slightly better.
 
-What we find in these experiments is that IoU variants seem to give better performance depending on the task, performing visbly better on sports like football. We hypothesize that detection quality has an impact on IoU variants, because SoccerNet provides perfect detections, and SportsMOT has detections from a very accurate detector, and they are both the ones where we got the biggest increase. To check this, we run a new experiment, where we use the ground truths boxes from MOT17 and SportsMOT as the detections that are the input for the tracker. 
+These experiments suggest IoU variants provide task-dependent gains, with larger
+improvements on sports datasets. We hypothesize detection quality plays a major role:
+SoccerNet uses perfect detections, and SportsMOT detections come from a strong
+detector, and both show the largest improvements. To test this, we run an additional
+experiment using ground-truth boxes from MOT17 and SportsMOT as tracker detections.
 
 | Dataset (GT-as-det) | IoU mean HOTA |                   GIoU mean Δ |                   DIoU mean Δ |                   CIoU mean Δ |                   BIoU mean Δ |
 | :------------------ | ------------: | ----------------------------: | ----------------------------: | ----------------------------: | ----------------------------: |
@@ -289,9 +334,11 @@ What we find in these experiments is that IoU variants seem to give better perfo
 | SportsMOT val       |         87.18 |     <span class="delta pos">+0.47</span> |     <span class="delta pos">+1.09</span> |     <span class="delta pos">+1.06</span> |     <span class="delta pos">+0.46</span> |
 
 
-With GT detections, mean ΔHOTA increases for three of four variants on SportsMOT vs YOLOX detections; on MOT17, ΔHOTA  shrinks for GIoU (being better coming from a negative ΔHOTA), becomes slightly more negative for DIoU and CIoU and BIoU becomes positive on average, while other variants stay slightly below IoU. That is consistent with cleaner inputs: the Kalman predictions align better with detections, so association metrics that use more than plain overlap can help more.
-
-We observed that ΔHOTA increased for 3 out of 4 variants on SportsMOT (highlighting the benefit of IoU variants). On MOT17, the performance gap narrows, and in some cases BIoU yields a positive ΔHOTA (where it was previously negative). This suggests that higher quality detections can lead to more accurate Kalman filter estimates, and also enabling association metrics that incorporate additional information beyond intersection and union to provide better matches.
+With ground-truth detections, mean ΔHOTA increases for three of four variants on
+SportsMOT compared to YOLOX detections. On MOT17, gaps narrow overall: GIoU moves
+closer to IoU, DIoU and CIoU remain slightly below IoU, and BIoU becomes positive on
+average. This is consistent with cleaner inputs: Kalman predictions align better
+with detections, so richer association signals can help more.
 
 ---
 

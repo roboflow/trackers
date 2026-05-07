@@ -15,7 +15,7 @@ from trackers.core.botsort._cmc_xyxy import _xyxy_corner_min_max
 from trackers.core.botsort.cmc import CMC, CMCConfig, CMCTMethod
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-from trackers.core.sort.utils import _get_iou_matrix
+from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
@@ -77,6 +77,10 @@ class BoTSORTTracker(BaseTracker):
             behaviour on every other frame.
         state_estimator_class: State estimator class for tracklets. Defaults
             to ``XCYCWHStateEstimator``.
+        iou: IoU similarity metric instance to use for data association.
+            Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
+            subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
+            similarity is computed during association.
 
     Notes:
         - `maximum_frames_without_update` is computed as:
@@ -120,6 +124,7 @@ class BoTSORTTracker(BaseTracker):
         cmc_downscale: int = 2,
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
+        iou: BaseIoU | None = None,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -136,6 +141,7 @@ class BoTSORTTracker(BaseTracker):
         self.instant_first_frame_activation = instant_first_frame_activation
         self.tracks: list[BoTSORTTracklet] = []
         self.state_estimator_class = state_estimator_class
+        self.iou = iou if iou is not None else IoU()
         self.frame_id: int = 0
 
         self.enable_cmc = enable_cmc
@@ -228,7 +234,7 @@ class BoTSORTTracker(BaseTracker):
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = _get_iou_matrix(strack_pool, high_boxes)
+        iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
         iou_matrix = _fuse_score(iou_matrix, high_scores)
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
@@ -253,7 +259,7 @@ class BoTSORTTracker(BaseTracker):
             for i in unmatched_pool
             if strack_pool[i].time_since_update == 1
         ]
-        iou_matrix = _get_iou_matrix(remaining_tracked, low_boxes)
+        iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_second_assoc
         )
@@ -284,7 +290,7 @@ class BoTSORTTracker(BaseTracker):
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
 
-            iou_matrix = _get_iou_matrix(unconfirmed_tracks, uh_boxes)
+            iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
             iou_matrix = _fuse_score(iou_matrix, uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = (
                 self._get_associated_indices(
@@ -342,6 +348,15 @@ class BoTSORTTracker(BaseTracker):
         result = cast(sv.Detections, detections[idx])
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
+
+    def _get_iou_matrix(
+        self, tracklets: list[BoTSORTTracklet], detections: np.ndarray
+    ) -> np.ndarray:
+        if len(tracklets) == 0:
+            tracklet_boxes = np.empty((0, 4))
+        else:
+            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+        return self.iou.compute(tracklet_boxes, detections)
 
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:
         """Apply a 2x3 affine camera-motion transform to all tracklets at once.
