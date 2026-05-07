@@ -25,7 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **`SORTTracker.update()` no longer mutates its input `sv.Detections`** — previously assigned `tracker_id` on the caller's object and returned that same instance; now returns a fresh indexed copy, matching ByteTrack and OC-SORT ([#360](https://github.com/roboflow/trackers/pull/360)). Callers that relied on aliasing the input post-update must read `tracker_id` from the returned object.
 - **Per-frame spawn order is now deterministic** across SORT, ByteTrack, and OC-SORT — IDs assigned to detections that spawn in the same frame no longer depend on CPython set iteration order ([#361](https://github.com/roboflow/trackers/pull/361)). IDs from a recorded run are reproducible across machines but may differ from a v2.3.0 baseline.
-- **`Tracklet.update(None)` is no longer the contract for unmatched tracks** — trackers now handle missed associations inside `predict()` and `_get_alive_tracklets`. Subclasses that overrode tracklet update behaviour must move that logic into `predict()` ([#383](https://github.com/roboflow/trackers/pull/383), follow-up to [#376](https://github.com/roboflow/trackers/pull/376)).
+- **Internal tracklet update contract changed** *(subclassers of internal `*Tracklet` classes only — callers of the public `Tracker.update()` API are unaffected)* — internal tracklet classes (notably `OCSORTTracklet`) no longer accept `update(None)` for unmatched tracks; missed-association logic now lives in `predict()` and `_get_alive_tracklets`. Subclasses that overrode tracklet update behaviour must move that logic into `predict()` ([#383](https://github.com/roboflow/trackers/pull/383), follow-up to [#376](https://github.com/roboflow/trackers/pull/376)).
 
 ### 🌱 Changed
 
@@ -93,7 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### ⚠️ Breaking Changes
 
 - **DeepSort removed** — `DeepSortTracker` and all associated REID infrastructure removed from the package, docs, tests, and CI workflows. Projects using DeepSort must pin to `<2.1.0`.
-- **Python 3.9 dropped** — minimum supported version is now Python 3.10; type annotations updated to use built-in generics (`list[...]`, `dict[...]`) throughout the public API ([#187](https://github.com/roboflow/trackers/pull/187)).
+- **Python 3.9 dropped** — minimum supported version is now Python 3.10; type annotations updated to use built-in generics (`list[...]`, `dict[...]`) throughout the public API ([#200](https://github.com/roboflow/trackers/pull/200)).
 
 ### 🔧 Fixed
 
