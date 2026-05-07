@@ -3,7 +3,7 @@ name: Integration Tests
 on:
   pull_request:
     paths:
-      - 'trackers/eval/**'
+      - 'src/trackers/eval/**'
       - 'test/eval/**'
       - 'test/conftest.py'
 

@@ -3,8 +3,8 @@ name: Tracker Integration Tests
 on:
   pull_request:
     paths:
-      - 'trackers/core/**'
-      - 'trackers/utils/**'
+      - 'src/trackers/core/**'
+      - 'src/trackers/utils/**'
       - 'test/core/test_tracker_integration.py'
       - 'test/conftest.py'
       - 'test/data/tracker_expected_*.json'

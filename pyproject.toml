@@ -82,7 +82,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["trackers"]
+packages = ["src/trackers"]
 
 [tool.ruff]
 target-version = "py310"
@@ -172,7 +172,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.pytest.ini_options]
-pythonpath = "."
+pythonpath = "src"
 testpaths = ["test"]
 addopts = [
   "--doctest-modules",
@@ -189,6 +189,7 @@ ignore-words-list = "mot"
 
 [tool.mypy]
 python_version = "3.10"
+mypy_path = "src"
 plugins = ["numpy.typing.mypy_plugin"]
 
 [[tool.mypy.overrides]]
