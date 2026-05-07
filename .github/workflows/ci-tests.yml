@@ -30,6 +30,9 @@ jobs:
       - name: 🚀 Install Packages
         run: uv sync --frozen --group dev
 
+      - name: 🔥 Install torch and torchvision
+        run: uv pip install torch torchvision
+
       - name: 🧪 Run the Import test
         run: uv run python -c "import trackers"
 
