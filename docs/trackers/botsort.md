@@ -21,7 +21,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ## Watch It in Action
 
-<iframe width="100%" style="aspect-ratio: 16/9;" src="https://github.com/user-attachments/assets/c8fdc1df-7e3b-4d44-bad0-d08208ddc6a0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe title="BoT-SORT demo video" width="100%" style="aspect-ratio: 16/9;" src="https://github.com/user-attachments/assets/c8fdc1df-7e3b-4d44-bad0-d08208ddc6a0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ## Algorithm
 
