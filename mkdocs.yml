@@ -131,6 +131,7 @@ nav:
     - Track Objects: learn/track.md
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
+    - Tune Trackers: learn/tune.md
     - Detection Quality Matters: learn/detection-quality.md
     - State Estimators: learn/state-estimators.md
     - About: learn/about.md

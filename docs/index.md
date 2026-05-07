@@ -182,6 +182,14 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
 
+- **How to Tune Tracker Hyperparameters**
+
+    ---
+
+    Optimize tracker settings with Optuna to maximize HOTA, MOTA, or IDF1 on your dataset.
+
+    [:material-tune-variant: Read Tuning Guide](learn/tune.md)
+
 </div>
 
 ---
