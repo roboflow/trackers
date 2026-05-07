@@ -150,7 +150,7 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "F401"]
-"test/**" = ["S101"]  # Allow assert in tests
+"tests/**" = ["S101"]  # Allow assert in tests
 "trackers" = []
 
 [tool.ruff.lint.mccabe]
@@ -176,7 +176,8 @@ line-ending = "auto"
 
 [tool.pytest.ini_options]
 pythonpath = "src"
-testpaths = ["test"]
+testpaths = ["tests", "src"]
+norecursedirs = ["demo", ".git", ".tox", "dist", "build", "*.egg"]
 addopts = [
   "--doctest-modules",
   "--color=yes",

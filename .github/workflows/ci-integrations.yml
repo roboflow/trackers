@@ -1,17 +1,16 @@
-name: Tracker Integration Tests
+name: Integration Tests
 
 on:
   pull_request:
     paths:
       - 'src/trackers/core/**'
       - 'src/trackers/utils/**'
-      - 'test/core/test_tracker_integration.py'
-      - 'test/conftest.py'
-      - 'test/data/tracker_expected_*.json'
+      - 'src/trackers/eval/**'
+      - 'tests/**'
 
 jobs:
-  tracker-integration-tests:
-    name: Tracker Regression Validation
+  integration-tests:
+    name: Integration Validation
     timeout-minutes: 15
     runs-on: ubuntu-latest
 
@@ -28,5 +27,5 @@ jobs:
       - name: 🚀 Install Packages
         run: uv sync --frozen --group dev
 
-      - name: 🧪 Run Tracker Integration Tests
-        run: uv run pytest test/core/test_tracker_integration.py -m integration -v --tb=short
+      - name: 🧪 Run Integration Tests
+        run: uv run pytest -m integration -v --tb=short
