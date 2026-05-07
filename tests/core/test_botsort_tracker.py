@@ -16,6 +16,7 @@ test_trackers.py.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
@@ -58,21 +59,23 @@ class TestBoTSORTTrackerLifecycle:
         assert result.tracker_id is not None
         assert result.tracker_id[0] >= 0
 
-    def test_supports_all_state_estimators(self) -> None:
-        """BoTSORTTracker should construct and update with all estimator types."""
-        estimators: list[type[BaseStateEstimator]] = [
-            XCYCWHStateEstimator,
-            XYXYStateEstimator,
-            XCYCSRStateEstimator,
-        ]
-        for estimator in estimators:
-            tracker = BoTSORTTracker(
-                enable_cmc=False,
-                state_estimator_class=estimator,
-                minimum_consecutive_frames=1,
-            )
-            result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0), conf=0.9))
-            assert len(result) == 1
+    @pytest.mark.parametrize(
+        "estimator_class",
+        [XCYCWHStateEstimator, XYXYStateEstimator, XCYCSRStateEstimator],
+        ids=["xcycwh", "xyxy", "xcycsr"],
+    )
+    def test_supports_state_estimator(
+        self,
+        estimator_class: type[BaseStateEstimator],
+    ) -> None:
+        """BoTSORTTracker constructs and updates with any supported estimator."""
+        tracker = BoTSORTTracker(
+            enable_cmc=False,
+            state_estimator_class=estimator_class,
+            minimum_consecutive_frames=1,
+        )
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0), conf=0.9))
+        assert len(result) == 1
 
 
 class TestBoTSORTTrackerCMC:

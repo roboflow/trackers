@@ -145,12 +145,12 @@ class TestCMCEstimateAcrossMethods:
         cmc_ds2.estimate(frame1)
         H2 = cmc_ds2.estimate(frame2)
 
-        for label, H in [("downscale=1", H1), ("downscale=2", H2)]:
-            assert H.shape == (2, 3), f"[{method}/{label}] Bad shape: {H.shape}"
-            assert H.dtype == np.float32, f"[{method}/{label}] Bad dtype: {H.dtype}"
-            assert np.all(np.isfinite(H)), (
-                f"[{method}/{label}] H must contain only finite values"
-            )
+        assert H1.shape == (2, 3)
+        assert H1.dtype == np.float32
+        assert np.all(np.isfinite(H1))
+        assert H2.shape == (2, 3)
+        assert H2.dtype == np.float32
+        assert np.all(np.isfinite(H2))
 
 
 class TestBoTSORTApplyCMCBatch:

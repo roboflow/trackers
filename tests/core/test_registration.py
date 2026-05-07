@@ -170,6 +170,7 @@ class TestNormalizeType:
     def test_normalize_type(
         self, annotation: Any, default: Any, expected: type
     ) -> None:
+        """_normalize_type returns the expected base type for assorted annotations."""
         assert _normalize_type(annotation, default) == expected
 
 

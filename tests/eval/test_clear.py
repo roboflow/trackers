@@ -300,6 +300,7 @@ def test_compute_clear_metrics(
     threshold: float,
     expected: dict[str, Any],
 ) -> None:
+    """compute_clear_metrics produces the expected CLEAR-MOT counts across scenarios."""
     result = compute_clear_metrics(
         gt_ids, tracker_ids, similarity_scores, threshold=threshold
     )

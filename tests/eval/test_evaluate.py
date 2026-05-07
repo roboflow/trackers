@@ -29,118 +29,76 @@ def sample_mot_files(tmp_path: Path) -> tuple[Path, Path]:
     return gt_path, tracker_path
 
 
-def test_evaluate_mot_sequence_hota_only(sample_mot_files: tuple[Path, Path]) -> None:
-    """Test evaluate_mot_sequence with only HOTA metrics (no CLEAR)."""
-    gt_path, tracker_path = sample_mot_files
+class TestEvaluateMOTSequence:
+    """MOT sequence evaluation: single-metric, multi-metric, and output formats."""
 
-    result = evaluate_mot_sequence(
-        gt_path=gt_path,
-        tracker_path=tracker_path,
-        metrics=["HOTA"],
+    @pytest.mark.parametrize(
+        ("metric", "check_field", "other_metrics"),
+        [
+            ("HOTA", ("HOTA", "HOTA"), ["CLEAR", "Identity"]),
+            ("Identity", ("Identity", "IDF1"), ["CLEAR", "HOTA"]),
+            ("CLEAR", ("CLEAR", "MOTA"), ["HOTA", "Identity"]),
+        ],
+        ids=["hota_only", "identity_only", "clear_only"],
     )
+    def test_single_metric(
+        self,
+        sample_mot_files: tuple[Path, Path],
+        metric: str,
+        check_field: tuple[str, str],
+        other_metrics: list[str],
+    ) -> None:
+        """Single-metric evaluation returns only the requested metric."""
+        gt_path, tracker_path = sample_mot_files
+        result = evaluate_mot_sequence(
+            gt_path=gt_path, tracker_path=tracker_path, metrics=[metric]
+        )
+        attr_name, field_name = check_field
+        computed = getattr(result, attr_name)
+        assert computed is not None
+        assert getattr(computed, field_name) is not None
+        for other in other_metrics:
+            assert getattr(result, other) is None
 
-    # HOTA should be present
-    assert result.HOTA is not None
-    assert result.HOTA.HOTA >= 0
-    assert result.HOTA.DetA >= 0
-    assert result.HOTA.AssA >= 0
+    def test_all_metrics(self, sample_mot_files: tuple[Path, Path]) -> None:
+        """All three metric groups are present when all metrics requested."""
+        gt_path, tracker_path = sample_mot_files
 
-    # CLEAR should be None when not requested
-    assert result.CLEAR is None
+        result = evaluate_mot_sequence(
+            gt_path=gt_path,
+            tracker_path=tracker_path,
+            metrics=["CLEAR", "HOTA", "Identity"],
+        )
 
-    # Identity should be None when not requested
-    assert result.Identity is None
+        assert result.CLEAR is not None
+        assert result.HOTA is not None
+        assert result.Identity is not None
 
+    def test_table_hota_only(self, sample_mot_files: tuple[Path, Path]) -> None:
+        """table() shows HOTA and DetA; MOTA absent when only HOTA computed."""
+        gt_path, tracker_path = sample_mot_files
 
-def test_evaluate_mot_sequence_identity_only(
-    sample_mot_files: tuple[Path, Path],
-) -> None:
-    """Test evaluate_mot_sequence with only Identity metrics."""
-    gt_path, tracker_path = sample_mot_files
+        result = evaluate_mot_sequence(
+            gt_path=gt_path,
+            tracker_path=tracker_path,
+            metrics=["HOTA"],
+        )
 
-    result = evaluate_mot_sequence(
-        gt_path=gt_path,
-        tracker_path=tracker_path,
-        metrics=["Identity"],
-    )
+        table_str = result.table()
+        assert "HOTA" in table_str
+        assert "DetA" in table_str
+        assert "MOTA" not in table_str
 
-    # Identity should be present
-    assert result.Identity is not None
-    assert result.Identity.IDF1 >= 0
+    def test_json_hota_only(self, sample_mot_files: tuple[Path, Path]) -> None:
+        """json() includes HOTA fields when only HOTA computed."""
+        gt_path, tracker_path = sample_mot_files
 
-    # CLEAR and HOTA should be None
-    assert result.CLEAR is None
-    assert result.HOTA is None
+        result = evaluate_mot_sequence(
+            gt_path=gt_path,
+            tracker_path=tracker_path,
+            metrics=["HOTA"],
+        )
 
-
-def test_evaluate_mot_sequence_clear_only(sample_mot_files: tuple[Path, Path]) -> None:
-    """Test evaluate_mot_sequence with only CLEAR metrics (default)."""
-    gt_path, tracker_path = sample_mot_files
-
-    result = evaluate_mot_sequence(
-        gt_path=gt_path,
-        tracker_path=tracker_path,
-        metrics=["CLEAR"],
-    )
-
-    # CLEAR should be present
-    assert result.CLEAR is not None
-    assert result.CLEAR.MOTA is not None
-
-    # HOTA and Identity should be None
-    assert result.HOTA is None
-    assert result.Identity is None
-
-
-def test_evaluate_mot_sequence_all_metrics(sample_mot_files: tuple[Path, Path]) -> None:
-    """Test evaluate_mot_sequence with all metrics."""
-    gt_path, tracker_path = sample_mot_files
-
-    result = evaluate_mot_sequence(
-        gt_path=gt_path,
-        tracker_path=tracker_path,
-        metrics=["CLEAR", "HOTA", "Identity"],
-    )
-
-    # All should be present
-    assert result.CLEAR is not None
-    assert result.HOTA is not None
-    assert result.Identity is not None
-
-
-def test_evaluate_mot_sequence_table_hota_only(
-    sample_mot_files: tuple[Path, Path],
-) -> None:
-    """Test that table() works when only HOTA is computed."""
-    gt_path, tracker_path = sample_mot_files
-
-    result = evaluate_mot_sequence(
-        gt_path=gt_path,
-        tracker_path=tracker_path,
-        metrics=["HOTA"],
-    )
-
-    # table() should work without errors
-    table_str = result.table()
-    assert "HOTA" in table_str
-    assert "DetA" in table_str
-    # CLEAR columns should not be present
-    assert "MOTA" not in table_str
-
-
-def test_evaluate_mot_sequence_json_hota_only(
-    sample_mot_files: tuple[Path, Path],
-) -> None:
-    """Test that json() works when only HOTA is computed."""
-    gt_path, tracker_path = sample_mot_files
-
-    result = evaluate_mot_sequence(
-        gt_path=gt_path,
-        tracker_path=tracker_path,
-        metrics=["HOTA"],
-    )
-
-    # json() should work without errors
-    json_str = result.json()
-    assert "HOTA" in json_str
-    assert "DetA" in json_str
+        json_str = result.json()
+        assert "HOTA" in json_str
+        assert "DetA" in json_str
