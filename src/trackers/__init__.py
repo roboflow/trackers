@@ -25,16 +25,16 @@ from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr
 from trackers.utils.iou import BaseIoU, CIoU, DIoU, GIoU, IoU
 
 __all__ = [
-    "BoTSORTTracker",
     "BaseIoU",
+    "BoTSORTTracker",
     "ByteTrackTracker",
     "CIoU",
-    "DIoU",
-    "GIoU",
     "CoordinatesTransformation",
+    "DIoU",
     "Dataset",
     "DatasetAsset",
     "DatasetSplit",
+    "GIoU",
     "HomographyTransformation",
     "IdentityTransformation",
     "IoU",
