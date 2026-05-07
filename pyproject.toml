@@ -176,7 +176,8 @@ line-ending = "auto"
 
 [tool.pytest.ini_options]
 pythonpath = "src"
-testpaths = ["test"]
+testpaths = ["tests", "src"]
+norecursedirs = ["demo", ".git", ".tox", "dist", "build", "*.egg"]
 addopts = [
   "--doctest-modules",
   "--color=yes",
