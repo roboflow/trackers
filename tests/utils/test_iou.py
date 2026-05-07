@@ -35,6 +35,32 @@ def _torchvision_ciou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
     return torchvision.ops.complete_box_iou(t1, t2).numpy()
 
 
+def _reference_biou(
+    boxes_1: np.ndarray, boxes_2: np.ndarray, buffer_ratio: float = 0.1
+) -> np.ndarray:
+    """Independent BIoU reference: buffer boxes, then apply vanilla IoU."""
+    boxes_1_b = boxes_1.astype(np.float64, copy=True)
+    boxes_2_b = boxes_2.astype(np.float64, copy=True)
+
+    w1 = boxes_1_b[:, 2] - boxes_1_b[:, 0]
+    h1 = boxes_1_b[:, 3] - boxes_1_b[:, 1]
+    w2 = boxes_2_b[:, 2] - boxes_2_b[:, 0]
+    h2 = boxes_2_b[:, 3] - boxes_2_b[:, 1]
+
+    r = buffer_ratio
+    boxes_1_b[:, 0] -= r * w1
+    boxes_1_b[:, 1] -= r * h1
+    boxes_1_b[:, 2] += r * w1
+    boxes_1_b[:, 3] += r * h1
+
+    boxes_2_b[:, 0] -= r * w2
+    boxes_2_b[:, 1] -= r * h2
+    boxes_2_b[:, 2] += r * w2
+    boxes_2_b[:, 3] += r * h2
+
+    return _iou.compute(boxes_1_b, boxes_2_b).astype(np.float64)
+
+
 _iou = IoU()
 _biou = BIoU()
 _giou = GIoU()
@@ -42,98 +68,149 @@ _diou = DIoU()
 _ciou = CIoU()
 
 
-class TestGIoUAgainstTorchvision:
-    """Compare our GIoU against torchvision.ops.generalized_box_iou."""
+_TORCHVISION_COMPARISON_VARIANTS = [
+    pytest.param(_biou, _reference_biou, id="biou"),
+    pytest.param(_giou, _torchvision_giou, id="giou"),
+    pytest.param(_diou, _torchvision_diou, id="diou"),
+    pytest.param(_ciou, _torchvision_ciou, id="ciou"),
+]
 
-    def test_identical_boxes(self) -> None:
-        boxes = np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 40.0, 50.0]])
-        result = _giou.compute(boxes, boxes)
-        expected = _torchvision_giou(boxes, boxes)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        np.testing.assert_allclose(np.diag(result), 1.0, atol=1e-6)
-
-    def test_partial_overlap(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[5.0, 5.0, 15.0, 15.0]])
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_no_overlap_nearby(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[12.0, 0.0, 22.0, 10.0]])
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        assert result[0, 0] < 0, "GIoU should be negative for non-overlapping boxes"
-
-    def test_no_overlap_far_apart(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 1.0, 1.0]])
-        boxes_2 = np.array([[100.0, 100.0, 101.0, 101.0]])
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        assert result[0, 0] < -0.5, "GIoU should be very negative for distant boxes"
-
-    def test_one_box_enclosing_other(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 100.0, 100.0]])
-        boxes_2 = np.array([[25.0, 25.0, 75.0, 75.0]])
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_touching_boxes(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[10.0, 0.0, 20.0, 10.0]])
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_batch_n_by_m(self) -> None:
-        boxes_1 = np.array(
+_TORCHVISION_COMPARISON_CASES = [
+    pytest.param(
+        np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 40.0, 50.0]]),
+        np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 40.0, 50.0]]),
+        (2, 2),
+        True,
+        None,
+        id="identical_boxes",
+    ),
+    pytest.param(
+        np.array([[0.0, 0.0, 10.0, 10.0]]),
+        np.array([[5.0, 5.0, 15.0, 15.0]]),
+        (1, 1),
+        False,
+        None,
+        id="partial_overlap",
+    ),
+    pytest.param(
+        np.array([[0.0, 0.0, 10.0, 10.0]]),
+        np.array([[12.0, 0.0, 22.0, 10.0]]),
+        (1, 1),
+        False,
+        0.0,
+        id="no_overlap_nearby",
+    ),
+    pytest.param(
+        np.array([[0.0, 0.0, 1.0, 1.0]]),
+        np.array([[100.0, 100.0, 101.0, 101.0]]),
+        (1, 1),
+        False,
+        -0.5,
+        id="no_overlap_far_apart",
+    ),
+    pytest.param(
+        np.array([[0.0, 0.0, 100.0, 100.0]]),
+        np.array([[25.0, 25.0, 75.0, 75.0]]),
+        (1, 1),
+        False,
+        None,
+        id="one_box_enclosing_other",
+    ),
+    pytest.param(
+        np.array([[0.0, 0.0, 10.0, 10.0]]),
+        np.array([[10.0, 0.0, 20.0, 10.0]]),
+        (1, 1),
+        False,
+        None,
+        id="touching_boxes",
+    ),
+    pytest.param(
+        np.array(
             [
                 [0.0, 0.0, 10.0, 10.0],
                 [20.0, 20.0, 30.0, 30.0],
                 [50.0, 50.0, 80.0, 80.0],
             ]
-        )
-        boxes_2 = np.array(
+        ),
+        np.array(
             [
                 [5.0, 5.0, 15.0, 15.0],
                 [100.0, 100.0, 110.0, 110.0],
             ]
-        )
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
-        assert result.shape == (3, 2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_negative_coordinates(self) -> None:
-        boxes_1 = np.array([[-10.0, -10.0, 5.0, 5.0]])
-        boxes_2 = np.array([[-3.0, -3.0, 12.0, 12.0]])
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_various_aspect_ratios(self) -> None:
-        boxes_1 = np.array(
+        ),
+        (3, 2),
+        False,
+        None,
+        id="batch_n_by_m",
+    ),
+    pytest.param(
+        np.array([[-10.0, -10.0, 5.0, 5.0]]),
+        np.array([[-3.0, -3.0, 12.0, 12.0]]),
+        (1, 1),
+        False,
+        None,
+        id="negative_coordinates",
+    ),
+    pytest.param(
+        np.array(
             [
-                [0.0, 0.0, 100.0, 10.0],  # wide
-                [0.0, 0.0, 10.0, 100.0],  # tall
-                [0.0, 0.0, 50.0, 50.0],  # square
+                [0.0, 0.0, 100.0, 10.0],
+                [0.0, 0.0, 10.0, 100.0],
+                [0.0, 0.0, 50.0, 50.0],
             ]
-        )
-        boxes_2 = np.array(
+        ),
+        np.array(
             [
-                [10.0, 0.0, 60.0, 8.0],  # wide, offset
-                [2.0, 10.0, 12.0, 80.0],  # tall, offset
+                [10.0, 0.0, 60.0, 8.0],
+                [2.0, 10.0, 12.0, 80.0],
             ]
-        )
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
+        ),
+        (3, 2),
+        False,
+        None,
+        id="various_aspect_ratios",
+    ),
+]
 
-    def test_large_random_batch(self) -> None:
+
+class TestIoUVariantsAgainstTorchvision:
+    """Compare IoU variants against reference implementations."""
+
+    @pytest.mark.parametrize("ours, ref_or_baseline", _TORCHVISION_COMPARISON_VARIANTS)
+    @pytest.mark.parametrize(
+        "boxes_1, boxes_2, expected_shape, diag_one, upper_bound",
+        _TORCHVISION_COMPARISON_CASES,
+    )
+    def test_cases(
+        self,
+        ours,
+        ref_or_baseline,
+        boxes_1: np.ndarray,
+        boxes_2: np.ndarray,
+        expected_shape: tuple[int, int],
+        diag_one: bool,
+        upper_bound: float | None,
+    ) -> None:
+        """Validate variant-vs-reference parity across shared geometric scenarios.
+
+        `upper_bound` is used only for cases where the original tests expected
+        negative scores for non-overlapping boxes (GIoU/DIoU/CIoU).
+        BIoU is intentionally excluded from this check because buffered IoU is
+        IoU-like (non-negative) and can be zero or positive for such cases.
+        """
+        result = ours.compute(boxes_1, boxes_2)
+        expected = ref_or_baseline(boxes_1, boxes_2)
+        assert result.shape == expected_shape
+        np.testing.assert_allclose(result, expected, atol=1e-6)
+        if diag_one:
+            np.testing.assert_allclose(np.diag(result), 1.0, atol=1e-6)
+        # Negative upper-bound expectations are metric-specific to
+        # GIoU/DIoU/CIoU; they are not a valid invariant for BIoU.
+        if upper_bound is not None and ref_or_baseline is not _reference_biou:
+            assert result[0, 0] < upper_bound
+
+    @pytest.mark.parametrize("ours, ref_or_baseline", _TORCHVISION_COMPARISON_VARIANTS)
+    def test_large_random_batch(self, ours, ref_or_baseline) -> None:
         rng = np.random.default_rng(42)
         xy = rng.uniform(0, 500, size=(50, 2))
         wh = rng.uniform(5, 100, size=(50, 2))
@@ -143,8 +220,8 @@ class TestGIoUAgainstTorchvision:
         wh2 = rng.uniform(5, 100, size=(30, 2))
         boxes_2 = np.hstack([xy2, xy2 + wh2])
 
-        result = _giou.compute(boxes_1, boxes_2)
-        expected = _torchvision_giou(boxes_1, boxes_2)
+        result = ours.compute(boxes_1, boxes_2)
+        expected = ref_or_baseline(boxes_1, boxes_2)
         assert result.shape == (50, 30)
         np.testing.assert_allclose(result, expected, atol=1e-6)
 
@@ -174,220 +251,6 @@ class TestBIoUProperties:
     def test_invalid_negative_buffer_ratio(self) -> None:
         with pytest.raises(ValueError, match="buffer_ratio must be non-negative"):
             BIoU(buffer_ratio=-0.01)
-
-
-class TestDIoUAgainstTorchvision:
-    """Compare our DIoU against torchvision.ops.distance_box_iou."""
-
-    def test_identical_boxes(self) -> None:
-        boxes = np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 40.0, 50.0]])
-        result = _diou.compute(boxes, boxes)
-        expected = _torchvision_diou(boxes, boxes)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        np.testing.assert_allclose(np.diag(result), 1.0, atol=1e-6)
-
-    def test_partial_overlap(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[5.0, 5.0, 15.0, 15.0]])
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_no_overlap_nearby(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[12.0, 0.0, 22.0, 10.0]])
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        assert result[0, 0] < 0, "DIoU should be negative for this non-overlap"
-
-    def test_no_overlap_far_apart(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 1.0, 1.0]])
-        boxes_2 = np.array([[100.0, 100.0, 101.0, 101.0]])
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        assert result[0, 0] < -0.5, "DIoU should be very negative for distant boxes"
-
-    def test_one_box_enclosing_other(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 100.0, 100.0]])
-        boxes_2 = np.array([[25.0, 25.0, 75.0, 75.0]])
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_touching_boxes(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[10.0, 0.0, 20.0, 10.0]])
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_batch_n_by_m(self) -> None:
-        boxes_1 = np.array(
-            [
-                [0.0, 0.0, 10.0, 10.0],
-                [20.0, 20.0, 30.0, 30.0],
-                [50.0, 50.0, 80.0, 80.0],
-            ]
-        )
-        boxes_2 = np.array(
-            [
-                [5.0, 5.0, 15.0, 15.0],
-                [100.0, 100.0, 110.0, 110.0],
-            ]
-        )
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        assert result.shape == (3, 2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_negative_coordinates(self) -> None:
-        boxes_1 = np.array([[-10.0, -10.0, 5.0, 5.0]])
-        boxes_2 = np.array([[-3.0, -3.0, 12.0, 12.0]])
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_various_aspect_ratios(self) -> None:
-        boxes_1 = np.array(
-            [
-                [0.0, 0.0, 100.0, 10.0],  # wide
-                [0.0, 0.0, 10.0, 100.0],  # tall
-                [0.0, 0.0, 50.0, 50.0],  # square
-            ]
-        )
-        boxes_2 = np.array(
-            [
-                [10.0, 0.0, 60.0, 8.0],  # wide, offset
-                [2.0, 10.0, 12.0, 80.0],  # tall, offset
-            ]
-        )
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_large_random_batch(self) -> None:
-        rng = np.random.default_rng(42)
-        xy = rng.uniform(0, 500, size=(50, 2))
-        wh = rng.uniform(5, 100, size=(50, 2))
-        boxes_1 = np.hstack([xy, xy + wh])
-
-        xy2 = rng.uniform(0, 500, size=(30, 2))
-        wh2 = rng.uniform(5, 100, size=(30, 2))
-        boxes_2 = np.hstack([xy2, xy2 + wh2])
-
-        result = _diou.compute(boxes_1, boxes_2)
-        expected = _torchvision_diou(boxes_1, boxes_2)
-        assert result.shape == (50, 30)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-
-class TestCIoUAgainstTorchvision:
-    """Compare our CIoU against torchvision.ops.complete_box_iou."""
-
-    def test_identical_boxes(self) -> None:
-        boxes = np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 40.0, 50.0]])
-        result = _ciou.compute(boxes, boxes)
-        expected = _torchvision_ciou(boxes, boxes)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        np.testing.assert_allclose(np.diag(result), 1.0, atol=1e-6)
-
-    def test_partial_overlap(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[5.0, 5.0, 15.0, 15.0]])
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_no_overlap_nearby(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[12.0, 0.0, 22.0, 10.0]])
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        assert result[0, 0] < 0, "CIoU should be negative for this non-overlap"
-
-    def test_no_overlap_far_apart(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 1.0, 1.0]])
-        boxes_2 = np.array([[100.0, 100.0, 101.0, 101.0]])
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-        assert result[0, 0] < -0.5, "CIoU should be very negative for distant boxes"
-
-    def test_one_box_enclosing_other(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 100.0, 100.0]])
-        boxes_2 = np.array([[25.0, 25.0, 75.0, 75.0]])
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_touching_boxes(self) -> None:
-        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
-        boxes_2 = np.array([[10.0, 0.0, 20.0, 10.0]])
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_batch_n_by_m(self) -> None:
-        boxes_1 = np.array(
-            [
-                [0.0, 0.0, 10.0, 10.0],
-                [20.0, 20.0, 30.0, 30.0],
-                [50.0, 50.0, 80.0, 80.0],
-            ]
-        )
-        boxes_2 = np.array(
-            [
-                [5.0, 5.0, 15.0, 15.0],
-                [100.0, 100.0, 110.0, 110.0],
-            ]
-        )
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        assert result.shape == (3, 2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_negative_coordinates(self) -> None:
-        boxes_1 = np.array([[-10.0, -10.0, 5.0, 5.0]])
-        boxes_2 = np.array([[-3.0, -3.0, 12.0, 12.0]])
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_various_aspect_ratios(self) -> None:
-        boxes_1 = np.array(
-            [
-                [0.0, 0.0, 100.0, 10.0],  # wide
-                [0.0, 0.0, 10.0, 100.0],  # tall
-                [0.0, 0.0, 50.0, 50.0],  # square
-            ]
-        )
-        boxes_2 = np.array(
-            [
-                [10.0, 0.0, 60.0, 8.0],  # wide, offset
-                [2.0, 10.0, 12.0, 80.0],  # tall, offset
-            ]
-        )
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
-
-    def test_large_random_batch(self) -> None:
-        rng = np.random.default_rng(42)
-        xy = rng.uniform(0, 500, size=(50, 2))
-        wh = rng.uniform(5, 100, size=(50, 2))
-        boxes_1 = np.hstack([xy, xy + wh])
-
-        xy2 = rng.uniform(0, 500, size=(30, 2))
-        wh2 = rng.uniform(5, 100, size=(30, 2))
-        boxes_2 = np.hstack([xy2, xy2 + wh2])
-
-        result = _ciou.compute(boxes_1, boxes_2)
-        expected = _torchvision_ciou(boxes_1, boxes_2)
-        assert result.shape == (50, 30)
-        np.testing.assert_allclose(result, expected, atol=1e-6)
 
 
 class TestGIoUProperties:
