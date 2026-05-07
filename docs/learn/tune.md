@@ -150,8 +150,6 @@ with open("./results/bytetrack-best.json", "r", encoding="utf-8") as f:
 tracker = ByteTrackTracker(**best_params)
 ```
 
----
-
 ## CLI Reference
 
 All arguments accepted by `trackers tune`.
@@ -172,48 +170,48 @@ All arguments accepted by `trackers tune`.
   <tbody>
     <tr>
       <td><code>--tracker</code></td>
-      <td>Tracker ID to tune (for example: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>).</td>
+      <td>Tracker name to tune. Common values: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>.</td>
       <td>—</td>
     </tr>
     <tr>
       <td><code>--gt-dir</code></td>
-      <td>Directory containing ground-truth MOT files.</td>
+      <td>Directory with ground-truth MOT files (<code>{sequence}.txt</code>).</td>
       <td>—</td>
     </tr>
     <tr>
       <td><code>--detections-dir</code></td>
-      <td>Directory containing pre-computed detection MOT files.</td>
+      <td>Directory with detection MOT files (<code>{sequence}.txt</code>), one file per sequence.</td>
       <td>—</td>
     </tr>
     <tr>
       <td><code>--objective</code></td>
-      <td>Metric to maximize. Options: <code>MOTA</code>, <code>HOTA</code>, <code>IDF1</code>.</td>
+      <td>Metric to maximize: <code>MOTA</code>, <code>HOTA</code>, or <code>IDF1</code>.</td>
       <td><code>HOTA</code></td>
     </tr>
     <tr>
       <td><code>--n-trials</code></td>
-      <td>Number of Optuna trials.</td>
+      <td>Number of Optuna trials to run.</td>
       <td><code>100</code></td>
     </tr>
     <tr>
       <td><code>--metrics</code></td>
-      <td>Metric families to compute. Options: <code>CLEAR</code>, <code>HOTA</code>, <code>Identity</code>.</td>
+      <td>Metric families to compute: <code>CLEAR</code>, <code>HOTA</code>, <code>Identity</code>. The family required by <code>--objective</code> is added automatically.</td>
       <td><code>CLEAR</code></td>
     </tr>
     <tr>
       <td><code>--threshold</code></td>
-      <td>IoU threshold used by CLEAR and Identity matching.</td>
+      <td>IoU threshold used during evaluation matching for <code>CLEAR</code> and <code>Identity</code>. Higher values make scoring stricter, lower values make it more permissive.</td>
       <td><code>0.5</code></td>
     </tr>
     <tr>
       <td><code>--seqmap</code></td>
-      <td>Optional sequence list file; only listed sequences are tuned.</td>
-      <td>all sequences in detections dir</td>
+      <td>Optional path to a sequence map file. When set, only listed sequences are tuned.</td>
+      <td>all files in <code>--detections-dir</code></td>
     </tr>
     <tr>
-      <td><code>--output</code></td>
+      <td><code>--output</code>, <code>-o</code></td>
       <td>Path to save best parameters as JSON.</td>
-      <td>none</td>
+      <td>None</td>
     </tr>
   </tbody>
 </table>
