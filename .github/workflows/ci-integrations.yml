@@ -27,5 +27,8 @@ jobs:
       - name: 🚀 Install Packages
         run: uv sync --frozen --group dev
 
+      - name: 🔥 Install torch and torchvision
+        run: uv pip install torch torchvision
+
       - name: 🧪 Run Integration Tests
         run: uv run pytest -m integration -v --tb=short
