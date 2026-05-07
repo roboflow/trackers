@@ -106,7 +106,7 @@ uv sync --group dev
 2. **Doctests**: Run only doctests from docstrings:
 
     ```bash
-    uv run pytest --doctest-modules trackers/ --ignore=test/
+    uv run pytest --doctest-modules trackers/ --ignore=tests/
     ```
 
 3. **Integration Tests**: Validate eval parity and tracker correctness against TrackEval on real MOT datasets (~50MB download):
