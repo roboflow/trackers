@@ -25,6 +25,7 @@ import supervision as sv
 
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
+from trackers.utils.iou import BaseIoU
 
 from .shared_ids import ALL_TRACKER_IDS
 
@@ -48,6 +49,17 @@ def _detection(xyxy: tuple[float, float, float, float]) -> sv.Detections:
         confidence=np.array([0.95], dtype=np.float32),
         class_id=np.array([0], dtype=int),
     )
+
+
+class _TrackingIoU(BaseIoU):
+    """Test-double IoU that records non-empty compute calls."""
+
+    def __init__(self) -> None:
+        self.compute_calls = 0
+
+    def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+        self.compute_calls += 1
+        return np.ones((len(boxes_1), len(boxes_2)), dtype=np.float64)
 
 
 # ==========================================================================
@@ -97,6 +109,16 @@ def test_tracker_update_empty_does_not_mutate_input(tracker_id: str) -> None:
 
     assert dets.tracker_id is None, "update() must not assign tracker_id on empty input"
     assert result is not dets, "update() must return a new sv.Detections instance"
+
+
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+def test_tracker_uses_configured_iou_variant(tracker_id: str) -> None:
+    """Trackers should use the configured IoU implementation for matching."""
+    tracking_iou = _TrackingIoU()
+    tracker = _instantiate(tracker_id, minimum_consecutive_frames=1, iou=tracking_iou)
+    tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
+    tracker.update(_detection((105.0, 105.0, 205.0, 205.0)))
+    assert tracking_iou.compute_calls > 0
 
 
 # ==========================================================================
