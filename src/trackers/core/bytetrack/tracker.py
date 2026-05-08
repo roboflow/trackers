@@ -143,15 +143,9 @@ class ByteTrackTracker(BaseTracker):
         low_boxes = detection_boxes[low_indices]
 
         # Step 1: associate high-confidence detections to all tracks
-        predicted_boxes = (
-            np.array([t.get_state_bbox() for t in self.tracks])
-            if self.tracks
-            else np.empty((0, 4))
-        )
+        predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, high_boxes)
-        matched, unmatched_tracks, unmatched_high = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold
-        )
+        matched, unmatched_tracks, unmatched_high = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 
         for row, col in matched:
             track = self.tracks[row]
@@ -168,14 +162,10 @@ class ByteTrackTracker(BaseTracker):
 
         # Step 2: associate low-confidence detections to remaining tracks
         remaining_boxes = (
-            np.array([t.get_state_bbox() for t in remaining_tracks])
-            if remaining_tracks
-            else np.empty((0, 4))
+            np.array([t.get_state_bbox() for t in remaining_tracks]) if remaining_tracks else np.empty((0, 4))
         )
         iou_matrix = self.iou.compute(remaining_boxes, low_boxes)
-        matched, _, unmatched_low = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold
-        )
+        matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 
         for row, col in matched:
             track = remaining_tracks[row]

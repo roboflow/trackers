@@ -137,9 +137,7 @@ def _compute_iou_and_enclosing(
     inter_y1 = np.maximum(boxes_1[:, np.newaxis, 1], boxes_2[np.newaxis, :, 1])
     inter_x2 = np.minimum(boxes_1[:, np.newaxis, 2], boxes_2[np.newaxis, :, 2])
     inter_y2 = np.minimum(boxes_1[:, np.newaxis, 3], boxes_2[np.newaxis, :, 3])
-    intersection = np.maximum(inter_x2 - inter_x1, 0) * np.maximum(
-        inter_y2 - inter_y1, 0
-    )
+    intersection = np.maximum(inter_x2 - inter_x1, 0) * np.maximum(inter_y2 - inter_y1, 0)
 
     # Areas and union
     area_1 = (boxes_1[:, 2] - boxes_1[:, 0]) * (boxes_1[:, 3] - boxes_1[:, 1])
@@ -212,9 +210,7 @@ class DIoU(BaseIoU):
     _EPS = 1e-7
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
-        iou, _, _, _, enclosing_diagonal_sq = _compute_iou_and_enclosing(
-            boxes_1, boxes_2
-        )
+        iou, _, _, _, enclosing_diagonal_sq = _compute_iou_and_enclosing(boxes_1, boxes_2)
 
         cx1 = (boxes_1[:, 0] + boxes_1[:, 2]) / 2
         cy1 = (boxes_1[:, 1] + boxes_1[:, 3]) / 2
@@ -250,9 +246,7 @@ class CIoU(BaseIoU):
     _EPS = 1e-7
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
-        iou, _, _, _, enclosing_diagonal_sq = _compute_iou_and_enclosing(
-            boxes_1, boxes_2
-        )
+        iou, _, _, _, enclosing_diagonal_sq = _compute_iou_and_enclosing(boxes_1, boxes_2)
 
         cx1 = (boxes_1[:, 0] + boxes_1[:, 2]) / 2
         cy1 = (boxes_1[:, 1] + boxes_1[:, 3]) / 2
@@ -276,8 +270,6 @@ class CIoU(BaseIoU):
         w_gt = w2[np.newaxis, :]
         h_gt = h2[np.newaxis, :]
 
-        v = (4.0 / (np.pi**2)) * (
-            np.arctan(w_pred / h_pred) - np.arctan(w_gt / h_gt)
-        ) ** 2
+        v = (4.0 / (np.pi**2)) * (np.arctan(w_pred / h_pred) - np.arctan(w_gt / h_gt)) ** 2
         alpha = v / (1.0 - iou + v + self._EPS)
         return diou - alpha * v

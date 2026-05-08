@@ -188,11 +188,7 @@ class SORTTracker(BaseTracker):
         for tracklet in self.tracks:
             tracklet.predict()
 
-        predicted_boxes = (
-            np.array([t.get_state_bbox() for t in self.tracks])
-            if self.tracks
-            else np.empty((0, 4))
-        )
+        predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
 
         # Associate detections to tracklets based on IOU

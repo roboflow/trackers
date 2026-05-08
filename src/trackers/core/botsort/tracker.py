@@ -241,15 +241,9 @@ class BoTSORTTracker(BaseTracker):
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks, following the original ByteTrack).
         # No score fusing in second association.
-        remaining_tracked = [
-            strack_pool[i]
-            for i in unmatched_pool
-            if strack_pool[i].time_since_update == 1
-        ]
+        remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
         iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
-        matched, _, unmatched_low = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold_second_assoc
-        )
+        matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
             track = remaining_tracked[row]
@@ -327,15 +321,11 @@ class BoTSORTTracker(BaseTracker):
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
 
-    def _get_iou_matrix(
-        self, tracklets: list[BoTSORTTracklet], detections: np.ndarray
-    ) -> np.ndarray:
+    def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
-            tracklet_boxes = np.array(
-                [tracklet.get_state_bbox() for tracklet in tracklets]
-            )
+            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
         return self.iou.compute(tracklet_boxes, detections)
 
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:

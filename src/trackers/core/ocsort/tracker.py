@@ -214,9 +214,7 @@ class OCSORTTracker(BaseTracker):
 
         # 2nd chance association (OCR)
         if len(unmatched_detections) > 0 and len(unmatched_tracks) > 0:
-            last_observation_of_tracks = np.array(
-                [self.tracks[t].last_observation for t in unmatched_tracks]
-            )
+            last_observation_of_tracks = np.array([self.tracks[t].last_observation for t in unmatched_tracks])
             ocr_iou_matrix = self.iou.compute(
                 last_observation_of_tracks,
                 detection_boxes[unmatched_detections],
