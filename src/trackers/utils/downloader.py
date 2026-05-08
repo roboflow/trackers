@@ -82,10 +82,7 @@ def _download_file(
         actual = _compute_md5(destination)
         if actual != md5:
             destination.unlink(missing_ok=True)
-            raise RuntimeError(
-                f"MD5 checksum mismatch for {destination.name}: "
-                f"expected {md5}, got {actual}"
-            )
+            raise RuntimeError(f"MD5 checksum mismatch for {destination.name}: expected {md5}, got {actual}")
 
     return True
 

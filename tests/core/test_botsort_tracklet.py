@@ -76,9 +76,7 @@ def test_botsort_tracklet_larger_box_has_larger_process_noise() -> None:
     small_Q = np.diag(small.state_estimator.kf.Q)
     large_Q = np.diag(large.state_estimator.kf.Q)
 
-    assert np.all(large_Q > small_Q), (
-        "larger box must produce larger process noise diagonal"
-    )
+    assert np.all(large_Q > small_Q), "larger box must produce larger process noise diagonal"
 
 
 def test_botsort_tracklet_larger_box_has_larger_measurement_noise() -> None:
@@ -89,9 +87,7 @@ def test_botsort_tracklet_larger_box_has_larger_measurement_noise() -> None:
     small_R = np.diag(small.state_estimator.kf.R)
     large_R = np.diag(large.state_estimator.kf.R)
 
-    assert np.all(large_R > small_R), (
-        "larger box must produce larger measurement noise diagonal"
-    )
+    assert np.all(large_R > small_R), "larger box must produce larger measurement noise diagonal"
 
 
 # -------------------------------------------------------------------

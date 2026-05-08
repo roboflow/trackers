@@ -102,9 +102,7 @@ class HomographyTransformation(CoordinatesTransformation):
     def __init__(self, homography_matrix: np.ndarray) -> None:
         self.homography_matrix = np.array(homography_matrix, dtype=np.float64)
         if self.homography_matrix.shape != (3, 3):
-            raise ValueError(
-                f"Homography matrix must be 3x3, got {self.homography_matrix.shape}"
-            )
+            raise ValueError(f"Homography matrix must be 3x3, got {self.homography_matrix.shape}")
         self.inverse_homography_matrix = np.linalg.inv(self.homography_matrix)
 
     def _transform_points(self, points: np.ndarray, matrix: np.ndarray) -> np.ndarray:

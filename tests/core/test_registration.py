@@ -86,10 +86,7 @@ class TestParseDocstringArguments:
                     lost_track_buffer: `int` specifying number of frames
                         to buffer when track is lost.
                 """,
-                {
-                    "lost_track_buffer": "`int` specifying number of frames "
-                    "to buffer when track is lost."
-                },
+                {"lost_track_buffer": "`int` specifying number of frames to buffer when track is lost."},
             ),
             # param (type): format
             (
@@ -167,9 +164,7 @@ class TestNormalizeType:
             (Any, None, Any),
         ],
     )
-    def test_normalize_type(
-        self, annotation: Any, default: Any, expected: type
-    ) -> None:
+    def test_normalize_type(self, annotation: Any, default: Any, expected: type) -> None:
         """_normalize_type returns the expected base type for assorted annotations."""
         assert _normalize_type(annotation, default) == expected
 
@@ -306,13 +301,9 @@ class TestSearchSpaceValidation:
             OCSORTTracker,
             BoTSORTTracker,
         ):
-            init_params = set(inspect.signature(tracker_cls.__init__).parameters) - {
-                "self"
-            }
+            init_params = set(inspect.signature(tracker_cls.__init__).parameters) - {"self"}
             for key in tracker_cls.search_space:
-                assert key in init_params, (
-                    f"{tracker_cls.__name__}.search_space has invalid key: {key}"
-                )
+                assert key in init_params, f"{tracker_cls.__name__}.search_space has invalid key: {key}"
 
     def test_search_space_invalid_key_raises_value_error(self) -> None:
         """A tracker with search_space key not in __init__ raises ValueError."""
@@ -331,9 +322,7 @@ class TestSearchSpaceValidation:
                 def __init__(self) -> None:
                     pass
 
-                def update(
-                    self, detections: Any, frame: np.ndarray | None = None
-                ) -> Any:
+                def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
                     return detections
 
                 def reset(self) -> None:
@@ -354,10 +343,7 @@ class TestSearchSpaceValidation:
             def reset(self) -> None:
                 pass
 
-        assert (
-            not hasattr(MinimalTracker, "search_space")
-            or getattr(MinimalTracker, "search_space", None) is None
-        )
+        assert not hasattr(MinimalTracker, "search_space") or getattr(MinimalTracker, "search_space", None) is None
         assert "minimal" in BaseTracker._registered_trackers()
 
     def test_tracker_with_empty_search_space_works(self) -> None:
@@ -411,9 +397,7 @@ class TestSearchSpaceValidation:
             ),
         ],
     )
-    def test_invalid_search_space_value_schema_raises(
-        self, bad_spec: dict, match: str
-    ) -> None:
+    def test_invalid_search_space_value_schema_raises(self, bad_spec: dict, match: str) -> None:
         """Invalid search_space value dicts raise ValueError at class definition."""
         with pytest.raises(ValueError, match=match):
 
@@ -424,9 +408,7 @@ class TestSearchSpaceValidation:
                 def __init__(self, x: int = 0) -> None:
                     pass
 
-                def update(
-                    self, detections: Any, frame: np.ndarray | None = None
-                ) -> Any:
+                def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
                     return detections
 
                 def reset(self) -> None:

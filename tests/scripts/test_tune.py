@@ -31,17 +31,13 @@ class TestAddTuneSubparser:
         """Parsed args with only required flags."""
         parser, subparsers = _make_parser()
         add_tune_subparser(subparsers)
-        return parser.parse_args(
-            ["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"]
-        )
+        return parser.parse_args(["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"])
 
     def test_registers_tune_subcommand(self) -> None:
         """tune subcommand is accessible under the 'tune' name."""
         parser, subparsers = _make_parser()
         add_tune_subparser(subparsers)
-        args = parser.parse_args(
-            ["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"]
-        )
+        args = parser.parse_args(["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"])
         assert args.func is run_tune
 
     def test_required_args_parsed(self) -> None:
@@ -73,9 +69,7 @@ class TestAddTuneSubparser:
             ("output", None),
         ],
     )
-    def test_optional_defaults(
-        self, minimal_args: argparse.Namespace, flag: str, expected: object
-    ) -> None:
+    def test_optional_defaults(self, minimal_args: argparse.Namespace, flag: str, expected: object) -> None:
         """Optional arguments have correct defaults when omitted."""
         assert getattr(minimal_args, flag) == expected
 

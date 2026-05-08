@@ -158,9 +158,7 @@ class TestResolveClassFilter:
         assert result == [0, 2]
         assert "unicorn" in capsys.readouterr().err
 
-    def test_all_unknown_names_returns_none(
-        self, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_all_unknown_names_returns_none(self, capsys: pytest.CaptureFixture) -> None:
         result = _resolve_class_filter("unicorn,dragon", self.CLASS_NAMES)
         assert result is None
         assert "unicorn" in capsys.readouterr().err

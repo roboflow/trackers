@@ -61,9 +61,7 @@ class BoTSORTTracklet(BaseTracklet):
         w, h = float(measurement[2]), float(measurement[3])
         self._set_scale_aware_noise(w, h, initial=True)
 
-    def _set_scale_aware_noise(
-        self, w: float, h: float, *, initial: bool = False
-    ) -> None:
+    def _set_scale_aware_noise(self, w: float, h: float, *, initial: bool = False) -> None:
         sp, sv, sm = self._SIGMA_P, self._SIGMA_V, self._SIGMA_M
 
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
@@ -242,9 +240,7 @@ class BoTSORTTracklet(BaseTracklet):
         A = None
         if isinstance(self.state_estimator, XYXYStateEstimator):
             # atol=1e-6: matches the batch path tolerance for float32 CMC noise.
-            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(
-                R[1, 0], 0.0, atol=1e-6
-            ):
+            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(R[1, 0], 0.0, atol=1e-6):
                 A = np.eye(kf.x.shape[0], dtype=np.float64)
                 A[0:2, 0:2] = R
                 A[2:4, 2:4] = R

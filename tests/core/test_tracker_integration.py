@@ -46,9 +46,7 @@ def _run_tracker_on_flat_dataset(
     gt_dir = data_path / "gt"
 
     with open(seqmap_path) as f:
-        sequences = [
-            line.strip() for line in f if line.strip() and line.strip() != "name"
-        ]
+        sequences = [line.strip() for line in f if line.strip() and line.strip() != "name"]
 
     for seq_name in sequences:
         gt_file = gt_dir / f"{seq_name}.txt"

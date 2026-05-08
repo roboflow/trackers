@@ -23,23 +23,19 @@ if TYPE_CHECKING:
 # Test data URLs and folder names
 DATASETS: dict[str, tuple[str, str]] = {
     "sportsmot_flat": (
-        "https://storage.googleapis.com/com-roboflow-marketing/"
-        "trackers/sportsmot-flat-20260203.zip",
+        "https://storage.googleapis.com/com-roboflow-marketing/trackers/sportsmot-flat-20260203.zip",
         "sportsmot-flat",
     ),
     "sportsmot_mot17": (
-        "https://storage.googleapis.com/com-roboflow-marketing/"
-        "trackers/sportsmot-mot17-20260203.zip",
+        "https://storage.googleapis.com/com-roboflow-marketing/trackers/sportsmot-mot17-20260203.zip",
         "sportsmot-mot17",
     ),
     "dancetrack_flat": (
-        "https://storage.googleapis.com/com-roboflow-marketing/"
-        "trackers/dancetrack-flat-20260203.zip",
+        "https://storage.googleapis.com/com-roboflow-marketing/trackers/dancetrack-flat-20260203.zip",
         "dancetrack-flat",
     ),
     "dancetrack_mot17": (
-        "https://storage.googleapis.com/com-roboflow-marketing/"
-        "trackers/dancetrack-mot17-20260203.zip",
+        "https://storage.googleapis.com/com-roboflow-marketing/trackers/dancetrack-mot17-20260203.zip",
         "dancetrack-mot17",
     ),
 }
@@ -97,9 +93,7 @@ def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:
             break
         else:
             shutil.rmtree(cache_path, ignore_errors=True)
-            pytest.skip(
-                f"{dataset_key} extraction failed: expected_results.json not found"
-            )
+            pytest.skip(f"{dataset_key} extraction failed: expected_results.json not found")
 
     with open(expected_path) as f:
         return cache_path, json.load(f)

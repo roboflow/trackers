@@ -28,9 +28,7 @@ from trackers.utils.state_representations import (
 )
 
 
-def _detection(
-    xyxy: tuple[float, float, float, float], conf: float = 0.9
-) -> sv.Detections:
+def _detection(xyxy: tuple[float, float, float, float], conf: float = 0.9) -> sv.Detections:
     return sv.Detections(
         xyxy=np.array([xyxy], dtype=np.float32),
         confidence=np.array([conf], dtype=np.float32),
@@ -85,9 +83,7 @@ class TestBoTSORTTrackerCMC:
         """CMC enabled but frame=None must not raise and must track normally."""
         tracker = BoTSORTTracker(enable_cmc=True, minimum_consecutive_frames=1)
         for _ in range(3):
-            result = tracker.update(
-                _detection((100.0, 100.0, 200.0, 200.0)), frame=None
-            )
+            result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=None)
 
         assert len(tracker.tracks) == 1
         assert result.tracker_id is not None
@@ -97,9 +93,7 @@ class TestBoTSORTTrackerCMC:
         tracker = BoTSORTTracker(enable_cmc=False, minimum_consecutive_frames=1)
         frame = _make_frame()
         for _ in range(3):
-            result = tracker.update(
-                _detection((100.0, 100.0, 200.0, 200.0)), frame=frame
-            )
+            result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=frame)
 
         assert len(tracker.tracks) == 1
         assert result.tracker_id is not None
@@ -113,9 +107,7 @@ class TestBoTSORTTrackerCMC:
         )
         frame = _make_frame()
         for _ in range(5):
-            result = tracker.update(
-                _detection((100.0, 100.0, 200.0, 200.0)), frame=frame
-            )
+            result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=frame)
 
         assert len(tracker.tracks) == 1
         assert result.tracker_id is not None
@@ -135,6 +127,4 @@ class TestBoTSORTTrackerCMC:
         tracker.reset()
 
         assert tracker.cmc is not None
-        assert not tracker.cmc._initialized, (
-            "CMC must be uninitialized after tracker reset"
-        )
+        assert not tracker.cmc._initialized, "CMC must be uninitialized after tracker reset"

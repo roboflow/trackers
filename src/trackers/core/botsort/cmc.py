@@ -265,9 +265,7 @@ class CMC:
             )
         else:
             valid = ("orb", "sift", "sparseOptFlow", "ecc")
-            raise ValueError(
-                f"Unknown CMC method {self.cfg.method!r}. Valid options are: {valid}."
-            )
+            raise ValueError(f"Unknown CMC method {self.cfg.method!r}. Valid options are: {valid}.")
 
         self.frames_failed = 0
         self.reset()
@@ -293,9 +291,7 @@ class CMC:
         # shape (N,1,2) from goodFeaturesToTrack
         self._prev_points: np.ndarray | None = None
 
-    def estimate(
-        self, frame_bgr: np.ndarray, dets_xyxy: np.ndarray | None = None
-    ) -> np.ndarray:
+    def estimate(self, frame_bgr: np.ndarray, dets_xyxy: np.ndarray | None = None) -> np.ndarray:
         """
         Estimate global affine transform H (2x3) from previous frame to current frame.
 
@@ -324,9 +320,7 @@ class CMC:
         # fallback
         return np.eye(2, 3, dtype=np.float32)
 
-    def _estimate_feature_affine(
-        self, frame_bgr: np.ndarray, dets_xyxy: np.ndarray | None = None
-    ) -> np.ndarray:
+    def _estimate_feature_affine(self, frame_bgr: np.ndarray, dets_xyxy: np.ndarray | None = None) -> np.ndarray:
         """
         Feature affine estimation. ORB-based or SIFT-based
         (different initializations of self.detector, self.extractor and self.matcher for
@@ -390,12 +384,7 @@ class CMC:
             self._initialized = True
             return H_aff
 
-        if (
-            self._prev_desc is None
-            or desc is None
-            or len(desc) == 0
-            or self._prev_kps is None
-        ):
+        if self._prev_desc is None or desc is None or len(desc) == 0 or self._prev_kps is None:
             self._prev_kps = copy.copy(kps)
             self._prev_desc = None if desc is None else copy.copy(desc)
             return H_aff
@@ -406,9 +395,7 @@ class CMC:
             self._prev_desc = copy.copy(desc)
             return H_aff
 
-        max_spatial = self.cfg.max_spatial_distance_frac * np.array(
-            [W, H], dtype=np.float32
-        )
+        max_spatial = self.cfg.max_spatial_distance_frac * np.array([W, H], dtype=np.float32)
 
         prev_pts: list[np.ndarray] = []
         curr_pts: list[np.ndarray] = []
@@ -480,9 +467,7 @@ class CMC:
 
         # Downscale
         if self.downscale > 1:
-            frame = cv2.resize(
-                frame, (W_img // self.downscale, H_img // self.downscale)
-            )
+            frame = cv2.resize(frame, (W_img // self.downscale, H_img // self.downscale))
 
         # Find keypoints in current frame
         keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)
@@ -495,20 +480,14 @@ class CMC:
             return H_aff
 
         # If we don't have points, re-init
-        if (
-            self._prev_frame_gray is None
-            or self._prev_points is None
-            or keypoints is None
-        ):
+        if self._prev_frame_gray is None or self._prev_points is None or keypoints is None:
             self._prev_frame_gray = frame.copy()
             self._prev_points = copy.copy(keypoints)
             return H_aff
 
         # Optical flow correspondences
         # calcOpticalFlowPyrLK will throw or return nonsense if we give it None
-        matched, status, _err = cv2.calcOpticalFlowPyrLK(
-            self._prev_frame_gray, frame, self._prev_points, None
-        )
+        matched, status, _err = cv2.calcOpticalFlowPyrLK(self._prev_frame_gray, frame, self._prev_points, None)
 
         if status is None or matched is None:
             self._prev_frame_gray = frame.copy()
@@ -530,9 +509,7 @@ class CMC:
         curr_pts_np = np.array(curr_pts)
 
         # Find rigid matrix
-        if (np.size(prev_pts_np, 0) > 4) and (
-            np.size(prev_pts_np, 0) == np.size(curr_pts_np, 0)
-        ):
+        if (np.size(prev_pts_np, 0) > 4) and (np.size(prev_pts_np, 0) == np.size(curr_pts_np, 0)):
             H_est, _ = cv2.estimateAffinePartial2D(
                 prev_pts_np,
                 curr_pts_np,
@@ -590,9 +567,7 @@ class CMC:
 
         if self.downscale > 1:
             frame = cv2.GaussianBlur(frame, (3, 3), 1.5)
-            frame = cv2.resize(
-                frame, (W_img // self.downscale, H_img // self.downscale)
-            )
+            frame = cv2.resize(frame, (W_img // self.downscale, H_img // self.downscale))
 
         if not self._initialized:
             self._prev_frame_gray = frame.copy()

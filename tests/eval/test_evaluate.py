@@ -17,9 +17,7 @@ from trackers.eval import evaluate_mot_sequence
 def sample_mot_files(tmp_path: Path) -> tuple[Path, Path]:
     """Create sample GT and tracker MOT files for testing."""
     gt_content = "1,1,100,200,50,60,1,1\n1,2,150,250,40,50,1,1\n2,1,105,205,50,60,1,1\n"
-    tracker_content = (
-        "1,10,102,202,50,60,0.9,1\n1,20,152,252,40,50,0.8,1\n2,10,107,207,50,60,0.9,1\n"
-    )
+    tracker_content = "1,10,102,202,50,60,0.9,1\n1,20,152,252,40,50,0.8,1\n2,10,107,207,50,60,0.9,1\n"
 
     gt_path = tmp_path / "gt.txt"
     tracker_path = tmp_path / "tracker.txt"
@@ -50,9 +48,7 @@ class TestEvaluateMOTSequence:
     ) -> None:
         """Single-metric evaluation returns only the requested metric."""
         gt_path, tracker_path = sample_mot_files
-        result = evaluate_mot_sequence(
-            gt_path=gt_path, tracker_path=tracker_path, metrics=[metric]
-        )
+        result = evaluate_mot_sequence(gt_path=gt_path, tracker_path=tracker_path, metrics=[metric])
         attr_name, field_name = check_field
         computed = getattr(result, attr_name)
         assert computed is not None

@@ -114,23 +114,17 @@ class TestComputeIdentityMetrics:
         for key, value in expected.items():
             if key.endswith("_min"):
                 actual_key = key[:-4]
-                assert result[actual_key] >= value, (
-                    f"{actual_key} should be >= {value}, got {result[actual_key]}"
-                )
+                assert result[actual_key] >= value, f"{actual_key} should be >= {value}, got {result[actual_key]}"
             elif key.endswith("_max"):
                 actual_key = key[:-4]
-                assert result[actual_key] <= value, (
-                    f"{actual_key} should be <= {value}, got {result[actual_key]}"
-                )
+                assert result[actual_key] <= value, f"{actual_key} should be <= {value}, got {result[actual_key]}"
             else:
                 if isinstance(value, float):
                     assert result[key] == pytest.approx(value, abs=1e-6), (
                         f"{key} mismatch: expected {value}, got {result[key]}"
                     )
                 else:
-                    assert result[key] == value, (
-                        f"{key} mismatch: expected {value}, got {result[key]}"
-                    )
+                    assert result[key] == value, f"{key} mismatch: expected {value}, got {result[key]}"
 
     @pytest.mark.parametrize(
         ("threshold", "expected_idtp"),
@@ -149,9 +143,7 @@ class TestComputeIdentityMetrics:
         gt_ids = [np.array([0])]
         tracker_ids = [np.array([10])]
         similarity_scores = [np.array([[0.4]])]
-        result = compute_identity_metrics(
-            gt_ids, tracker_ids, similarity_scores, threshold=threshold
-        )
+        result = compute_identity_metrics(gt_ids, tracker_ids, similarity_scores, threshold=threshold)
         assert result["IDTP"] == expected_idtp
 
     def test_multi_frame_consistency(self) -> None:
@@ -226,7 +218,5 @@ class TestAggregateIdentityMetrics:
         assert agg["IDFN"] == expected_idfn
         assert agg["IDFP"] == expected_idfp
 
-        expected_idf1 = expected_idtp / max(
-            1.0, expected_idtp + 0.5 * expected_idfp + 0.5 * expected_idfn
-        )
+        expected_idf1 = expected_idtp / max(1.0, expected_idtp + 0.5 * expected_idfp + 0.5 * expected_idfn)
         assert agg["IDF1"] == pytest.approx(expected_idf1)

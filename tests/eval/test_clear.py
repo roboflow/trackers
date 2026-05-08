@@ -301,14 +301,10 @@ def test_compute_clear_metrics(
     expected: dict[str, Any],
 ) -> None:
     """compute_clear_metrics produces the expected CLEAR-MOT counts across scenarios."""
-    result = compute_clear_metrics(
-        gt_ids, tracker_ids, similarity_scores, threshold=threshold
-    )
+    result = compute_clear_metrics(gt_ids, tracker_ids, similarity_scores, threshold=threshold)
 
     for key, value in expected.items():
         if isinstance(value, float):
-            assert result[key] == pytest.approx(value), (
-                f"Mismatch for {key}: {result[key]} != {value}"
-            )
+            assert result[key] == pytest.approx(value), f"Mismatch for {key}: {result[key]} != {value}"
         else:
             assert result[key] == value, f"Mismatch for {key}: {result[key]} != {value}"

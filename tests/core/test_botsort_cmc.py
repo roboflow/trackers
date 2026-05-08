@@ -74,9 +74,7 @@ class TestCMCEstimateAcrossMethods:
         """On the first frame there is no previous frame, so identity is returned."""
         cmc = _make_cmc(method)
         H = cmc.estimate(_bgr_frame(seed=42))
-        assert _is_near_identity(H), (
-            f"[{method}] Expected identity on first frame:\n{H}"
-        )
+        assert _is_near_identity(H), f"[{method}] Expected identity on first frame:\n{H}"
 
     @pytest.mark.parametrize("method", ALL_METHODS)
     def test_none_frame_returns_identity(self, method: str) -> None:
@@ -84,9 +82,7 @@ class TestCMCEstimateAcrossMethods:
         cmc = _make_cmc(method)
         H = cmc.estimate(cast(np.ndarray, None))
         assert H.shape == (2, 3)
-        assert _is_near_identity(H), (
-            f"[{method}] Expected identity for None frame:\n{H}"
-        )
+        assert _is_near_identity(H), f"[{method}] Expected identity for None frame:\n{H}"
 
     @pytest.mark.parametrize("method", ALL_METHODS)
     def test_reset_returns_identity_on_next_call(self, method: str) -> None:
@@ -110,9 +106,7 @@ class TestCMCEstimateAcrossMethods:
         cmc.estimate(frame)  # first frame: stores state
         H = cmc.estimate(frame)  # same frame again
 
-        assert np.all(np.isfinite(H)), (
-            f"[{method}] H must be finite for identical frames"
-        )
+        assert np.all(np.isfinite(H)), f"[{method}] H must be finite for identical frames"
         assert abs(H[0, 2]) < 3.0 and abs(H[1, 2]) < 3.0, (
             f"[{method}] Expected near-zero translation for identical frames:\n{H}"
         )
@@ -201,9 +195,7 @@ class TestBoTSORTApplyCMCBatch:
         tracker.apply_cmc_batch(H)
 
         for s, b in zip(singles, batched):
-            np.testing.assert_allclose(
-                s.state_estimator.kf.x, b.state_estimator.kf.x, atol=1e-6
-            )
+            np.testing.assert_allclose(s.state_estimator.kf.x, b.state_estimator.kf.x, atol=1e-6)
 
     def test_none_is_noop(self) -> None:
         """apply_cmc_batch with H=None must not change any tracklet state."""
@@ -244,9 +236,7 @@ class TestXYXYCornerMinMax:
 
         nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
 
-        np.testing.assert_allclose(
-            [nx1[0], ny1[0], nx2[0], ny2[0]], [15.0, 17.0, 55.0, 77.0]
-        )
+        np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [15.0, 17.0, 55.0, 77.0])
 
     def test_translation_none_skips_offset(self) -> None:
         """When t=None, only the linear part R is applied (velocity contract)."""
@@ -258,9 +248,7 @@ class TestXYXYCornerMinMax:
 
         nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, None)
 
-        np.testing.assert_allclose(
-            [nx1[0], ny1[0], nx2[0], ny2[0]], [0.0, 0.0, 1.0, 2.0]
-        )
+        np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [0.0, 0.0, 1.0, 2.0])
 
     def test_90deg_rotation_recovers_axis_aligned_box(self) -> None:
         """90° rotation of [0,0,2,4] gives axis-aligned enclosing [-4,0,0,2]."""
@@ -273,9 +261,7 @@ class TestXYXYCornerMinMax:
         nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R)
 
         # Original corners (0,0),(2,0),(2,4),(0,4) → rotated (0,0),(0,2),(-4,2),(-4,0)
-        np.testing.assert_allclose(
-            [nx1[0], ny1[0], nx2[0], ny2[0]], [-4.0, 0.0, 0.0, 2.0]
-        )
+        np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [-4.0, 0.0, 0.0, 2.0])
 
     def test_reflection_y_axis_swaps_x_endpoints(self) -> None:
         """Reflection across y-axis: x→-x, output preserves min<max ordering."""
@@ -290,9 +276,7 @@ class TestXYXYCornerMinMax:
         # Original x-range [10, 50] reflected → [-50, -10]; y unchanged
         assert nx1[0] < nx2[0], f"x ordering broken: {nx1[0]} >= {nx2[0]}"
         assert ny1[0] < ny2[0], f"y ordering broken: {ny1[0]} >= {ny2[0]}"
-        np.testing.assert_allclose(
-            [nx1[0], ny1[0], nx2[0], ny2[0]], [-50.0, 20.0, -10.0, 80.0]
-        )
+        np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [-50.0, 20.0, -10.0, 80.0])
 
     def test_zero_size_box_yields_zero_size_output(self) -> None:
         """A degenerate (point) box stays a point under any affine transform."""
@@ -318,9 +302,7 @@ class TestXYXYCornerMinMax:
 
         nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
 
-        np.testing.assert_allclose(
-            [nx1[0], ny1[0], nx2[0], ny2[0]], [50.0, 70.0, 90.0, 120.0]
-        )
+        np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [50.0, 70.0, 90.0, 120.0])
 
     def test_batch_input_matches_per_element_loop(self) -> None:
         """Vectorised batch call must equal applying the helper per element."""
@@ -391,9 +373,7 @@ class TestXYXYCovarianceUpdate:
             np.array([[0.0, -1.0], [1.0, 0.0]]),  # 90° rotation
             np.array([[1.0, 0.5], [0.0, 1.0]]),  # x-shear
             np.array([[1.0, 0.0], [0.5, 1.0]]),  # y-shear
-            np.array(
-                [[np.cos(0.3), -np.sin(0.3)], [np.sin(0.3), np.cos(0.3)]]
-            ),  # small rot
+            np.array([[np.cos(0.3), -np.sin(0.3)], [np.sin(0.3), np.cos(0.3)]]),  # small rot
         ],
     )
     def test_cross_axis_freezes_p(self, R_cross: np.ndarray) -> None:
@@ -517,12 +497,8 @@ def test_xyxy_batch_matches_single_under_non_translation_R(R: np.ndarray) -> Non
     single.apply_cmc(H)
     tracker.apply_cmc_batch(H)
 
-    np.testing.assert_allclose(
-        single.state_estimator.kf.x, batched.state_estimator.kf.x, atol=1e-9
-    )
-    np.testing.assert_allclose(
-        single.state_estimator.kf.P, batched.state_estimator.kf.P, atol=1e-9
-    )
+    np.testing.assert_allclose(single.state_estimator.kf.x, batched.state_estimator.kf.x, atol=1e-9)
+    np.testing.assert_allclose(single.state_estimator.kf.P, batched.state_estimator.kf.P, atol=1e-9)
 
 
 def test_xyxy_apply_cmc_90deg_rotation_state_is_axis_aligned() -> None:
@@ -538,9 +514,7 @@ def test_xyxy_apply_cmc_90deg_rotation_state_is_axis_aligned() -> None:
     x = tracklet.state_estimator.kf.x.reshape(-1)
     # Original corners (0,0),(2,0),(2,4),(0,4) rotate to (0,0),(0,2),(-4,2),(-4,0)
     # → enclosing box [-4, 0, 0, 2]
-    np.testing.assert_allclose(
-        [x[0], x[1], x[2], x[3]], [-4.0, 0.0, 0.0, 2.0], atol=1e-9
-    )
+    np.testing.assert_allclose([x[0], x[1], x[2], x[3]], [-4.0, 0.0, 0.0, 2.0], atol=1e-9)
     assert x[0] < x[2], "x1 must remain < x2"
     assert x[1] < x[3], "y1 must remain < y2"
 

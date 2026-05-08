@@ -65,11 +65,7 @@ def _classify_source(source: str | Path | int) -> _SourceInfo:
 
     path = Path(source_str)
     if path.is_dir():
-        count = sum(
-            1
-            for p in path.iterdir()
-            if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
-        )
+        count = sum(1 for p in path.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS)
         return _SourceInfo(
             source_type="image_dir",
             total_frames=count if count > 0 else None,
@@ -174,13 +170,9 @@ class _TrackingProgress:
         """Whether the source has a known total frame count."""
         return self._source_info.total_frames is not None
 
-    def _resolve_final_state(
-        self, exc_type: type[BaseException] | None
-    ) -> tuple[str, str]:
+    def _resolve_final_state(self, exc_type: type[BaseException] | None) -> tuple[str, str]:
         """Return `(icon, suffix)` for the final printed line."""
-        is_real_error = exc_type is not None and not issubclass(
-            exc_type, KeyboardInterrupt
-        )
+        is_real_error = exc_type is not None and not issubclass(exc_type, KeyboardInterrupt)
 
         if is_real_error:
             return (_ICON_FAIL, "(source lost)")

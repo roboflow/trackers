@@ -143,27 +143,19 @@ class TestComputeHOTAMetrics:
         for key, value in expected.items():
             if key.endswith("_min"):
                 actual_key = key[:-4]
-                assert result[actual_key] >= value, (
-                    f"{actual_key} should be >= {value}, got {result[actual_key]}"
-                )
+                assert result[actual_key] >= value, f"{actual_key} should be >= {value}, got {result[actual_key]}"
             elif key.endswith("_max"):
                 actual_key = key[:-4]
-                assert result[actual_key] <= value, (
-                    f"{actual_key} should be <= {value}, got {result[actual_key]}"
-                )
+                assert result[actual_key] <= value, f"{actual_key} should be <= {value}, got {result[actual_key]}"
             elif key.endswith("_approx"):
                 actual_key = key[:-7]
                 assert result[actual_key] == pytest.approx(value, rel=0.01), (
                     f"{actual_key} should be ~{value}, got {result[actual_key]}"
                 )
             elif isinstance(value, float):
-                assert result[key] == pytest.approx(value), (
-                    f"Mismatch for {key}: {result[key]} != {value}"
-                )
+                assert result[key] == pytest.approx(value), f"Mismatch for {key}: {result[key]} != {value}"
             else:
-                assert result[key] == value, (
-                    f"Mismatch for {key}: {result[key]} != {value}"
-                )
+                assert result[key] == value, f"Mismatch for {key}: {result[key]} != {value}"
 
     def test_result_structure(self) -> None:
         """Result contains all float summary, integer count, and array fields."""

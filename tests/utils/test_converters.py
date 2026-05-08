@@ -138,9 +138,7 @@ class TestXCYCSRConversion:
         xyxy = np.array([[0.0, 0.0, 1.0, 1.0]])
         result = xyxy_to_xcycsr(xyxy)
         assert result.shape == (1, 4)
-        np.testing.assert_array_almost_equal(
-            result[0], np.array([0.5, 0.5, 1.0, 1.0]), decimal=5
-        )
+        np.testing.assert_array_almost_equal(result[0], np.array([0.5, 0.5, 1.0, 1.0]), decimal=5)
 
     def test_xyxy_to_xcycsr_empty(self) -> None:
         """An empty (0, 4) xyxy batch returns an empty (0, 4) xcycsr batch."""
@@ -218,9 +216,7 @@ class TestXCYCSRConversion:
         xcycsr = np.array([[0.5, 0.5, 1.0, 1.0]])
         result = xcycsr_to_xyxy(xcycsr)
         assert result.shape == (1, 4)
-        np.testing.assert_array_almost_equal(
-            result[0], np.array([0.0, 0.0, 1.0, 1.0]), decimal=5
-        )
+        np.testing.assert_array_almost_equal(result[0], np.array([0.0, 0.0, 1.0, 1.0]), decimal=5)
 
     def test_xcycsr_to_xyxy_empty(self) -> None:
         """An empty (0, 4) xcycsr batch returns an empty (0, 4) xyxy batch."""
