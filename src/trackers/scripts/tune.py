@@ -43,10 +43,7 @@ def add_tune_subparser(subparsers: argparse._SubParsersAction) -> None:
         type=Path,
         required=True,
         metavar="DIR",
-        help=(
-            "Directory containing pre-computed detection files in MOT flat "
-            "format (one {seq}.txt per sequence)."
-        ),
+        help=("Directory containing pre-computed detection files in MOT flat format (one {seq}.txt per sequence)."),
     )
     parser.add_argument(
         "--objective",

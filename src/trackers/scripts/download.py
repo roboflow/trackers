@@ -101,8 +101,7 @@ def _print_available() -> None:
 
         max_split_len = max(len(s) for s in splits_dict) if splits_dict else 0
         split_lines = [
-            f"{split:<{max_split_len}}   {', '.join(assets.keys())}"
-            for split, assets in splits_dict.items()
+            f"{split:<{max_split_len}}   {', '.join(assets.keys())}" for split, assets in splits_dict.items()
         ]
 
         body = f"{description}\n\n" + "\n".join(split_lines)

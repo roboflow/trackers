@@ -73,9 +73,7 @@ def _iter_image_folder_frames(
     *,
     extensions: frozenset[str] = IMAGE_EXTENSIONS,
 ) -> Iterator[tuple[int, np.ndarray]]:
-    images = sorted(
-        p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in extensions
-    )
+    images = sorted(p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in extensions)
 
     if not images:
         raise ValueError(f"No supported image files found in directory: {folder}")

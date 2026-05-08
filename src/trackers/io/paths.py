@@ -37,6 +37,4 @@ def _validate_output_path(path: Path, *, overwrite: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     if path.exists() and not overwrite:
-        raise FileExistsError(
-            f"Output file '{path}' already exists. Use --overwrite to replace."
-        )
+        raise FileExistsError(f"Output file '{path}' already exists. Use --overwrite to replace.")

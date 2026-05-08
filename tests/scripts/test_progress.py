@@ -78,9 +78,7 @@ class TestClassifySource:
         assert info.fps is not None
         assert info.fps > 0
 
-    def test_image_directory(
-        self, image_directory_factory: Callable[[int], Path]
-    ) -> None:
+    def test_image_directory(self, image_directory_factory: Callable[[int], Path]) -> None:
         directory = image_directory_factory(7)
         info = _classify_source(str(directory))
 
@@ -88,9 +86,7 @@ class TestClassifySource:
         assert info.total_frames == 7
         assert info.fps is None
 
-    def test_image_directory_path_object(
-        self, image_directory_factory: Callable[[int], Path]
-    ) -> None:
+    def test_image_directory_path_object(self, image_directory_factory: Callable[[int], Path]) -> None:
         directory = image_directory_factory(3)
         info = _classify_source(directory)
 

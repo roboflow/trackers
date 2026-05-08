@@ -83,9 +83,7 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(
-            annotated_frame, detections, labels=detections.tracker_id
-        )
+        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
 
         cv2.imshow("RF-DETR + OC-SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -123,9 +121,7 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(
-            annotated_frame, detections, labels=detections.tracker_id
-        )
+        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
 
         cv2.imshow("RF-DETR + OC-SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -163,9 +159,7 @@ These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>
         detections = tracker.update(detections)
 
         annotated_frame = box_annotator.annotate(frame_bgr, detections)
-        annotated_frame = label_annotator.annotate(
-            annotated_frame, detections, labels=detections.tracker_id
-        )
+        annotated_frame = label_annotator.annotate(annotated_frame, detections, labels=detections.tracker_id)
 
         cv2.imshow("RF-DETR + OC-SORT", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):

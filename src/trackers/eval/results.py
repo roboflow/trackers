@@ -258,9 +258,7 @@ class HOTAMetrics:
             _arrays=arrays,
         )
 
-    def to_dict(
-        self, include_arrays: bool = False, arrays_as_list: bool = True
-    ) -> dict[str, Any]:
+    def to_dict(self, include_arrays: bool = False, arrays_as_list: bool = True) -> dict[str, Any]:
         """Convert to dictionary representation.
 
         Args:
@@ -466,10 +464,7 @@ class BenchmarkResult:
         Returns:
             `BenchmarkResult` instance.
         """
-        sequences = {
-            name: SequenceResult.from_dict(seq_data)
-            for name, seq_data in data["sequences"].items()
-        }
+        sequences = {name: SequenceResult.from_dict(seq_data) for name, seq_data in data["sequences"].items()}
         aggregate = SequenceResult.from_dict(data["aggregate"])
         return cls(sequences=sequences, aggregate=aggregate)
 
@@ -544,9 +539,7 @@ class BenchmarkResult:
         return cls.from_dict(data)
 
 
-def _get_available_columns(
-    has_clear: bool = False, has_hota: bool = False, has_identity: bool = False
-) -> list[str]:
+def _get_available_columns(has_clear: bool = False, has_hota: bool = False, has_identity: bool = False) -> list[str]:
     """Get column names for the metrics that were computed.
 
     Returns all summary fields for each metric type that is available.
@@ -639,9 +632,7 @@ def _format_sequence_table(result: SequenceResult, columns: list[str]) -> str:
         col_widths[col] = max(len(col), len(formatted))
 
     # Build header
-    header = "Sequence".ljust(30) + "  ".join(
-        col.rjust(col_widths[col]) for col in columns
-    )
+    header = "Sequence".ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
     separator = "-" * len(header)
 
     # Build row
@@ -685,9 +676,7 @@ def _format_benchmark_table(
         col_widths[col] = max_width
 
     # Build header
-    header = "Sequence".ljust(30) + "  ".join(
-        col.rjust(col_widths[col]) for col in columns
-    )
+    header = "Sequence".ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
     separator = "-" * len(header)
 
     # Build rows

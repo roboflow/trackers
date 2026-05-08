@@ -159,8 +159,7 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
 
             if len(row) < 6:
                 raise ValueError(
-                    f"Invalid MOT format in {path}: expected at least 6 columns, "
-                    f"got {len(row)} in row: {row}"
+                    f"Invalid MOT format in {path}: expected at least 6 columns, got {len(row)} in row: {row}"
                 )
 
             try:
@@ -180,18 +179,12 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
         try:
             data = np.array(rows, dtype=np.float64)
         except ValueError as e:
-            raise ValueError(
-                f"Cannot convert data to float in {path}, frame {frame}"
-            ) from e
+            raise ValueError(f"Cannot convert data to float in {path}, frame {frame}") from e
 
         ids = data[:, 1].astype(np.intp)
         boxes = data[:, 2:6]
         confidences = data[:, 6] if data.shape[1] > 6 else np.ones(len(data))
-        classes = (
-            data[:, 7].astype(np.intp)
-            if data.shape[1] > 7
-            else np.ones(len(data), dtype=np.intp)
-        )
+        classes = data[:, 7].astype(np.intp) if data.shape[1] > 7 else np.ones(len(data), dtype=np.intp)
 
         result[frame] = _MOTFrameData(
             ids=ids,
@@ -235,9 +228,7 @@ def _build_id_mappings(
     for frame in range(1, num_frames + 1):
         if frame in ground_truth_data:
             valid_mask = ground_truth_data[frame].confidences > 0
-            unique_ground_truth_ids.update(
-                ground_truth_data[frame].ids[valid_mask].tolist()
-            )
+            unique_ground_truth_ids.update(ground_truth_data[frame].ids[valid_mask].tolist())
         if frame in tracker_data:
             confirmed_mask = tracker_data[frame].ids >= 0
             unique_tracker_ids.update(tracker_data[frame].ids[confirmed_mask].tolist())
@@ -245,12 +236,8 @@ def _build_id_mappings(
     sorted_ground_truth_ids = sorted(unique_ground_truth_ids)
     sorted_tracker_ids = sorted(unique_tracker_ids)
 
-    ground_truth_id_map = {
-        original_id: index for index, original_id in enumerate(sorted_ground_truth_ids)
-    }
-    tracker_id_map = {
-        original_id: index for index, original_id in enumerate(sorted_tracker_ids)
-    }
+    ground_truth_id_map = {original_id: index for index, original_id in enumerate(sorted_ground_truth_ids)}
+    tracker_id_map = {original_id: index for index, original_id in enumerate(sorted_tracker_ids)}
     return ground_truth_id_map, tracker_id_map
 
 
@@ -319,18 +306,12 @@ def _remove_distractor_matches(
     if not distractor_mask.any() or len(tracker_ids) == 0:
         return tracker_boxes, tracker_ids
 
-    distractor_iou_matrix = box_iou(
-        all_ground_truth_boxes, tracker_boxes, box_format="xywh"
-    )
+    distractor_iou_matrix = box_iou(all_ground_truth_boxes, tracker_boxes, box_format="xywh")
     distractor_iou_matrix[distractor_iou_matrix < _DISTRACTOR_IOU_THRESHOLD - EPS] = 0
 
-    matched_gt_indices, matched_tracker_indices = linear_sum_assignment(
-        -distractor_iou_matrix
-    )
+    matched_gt_indices, matched_tracker_indices = linear_sum_assignment(-distractor_iou_matrix)
 
-    actually_matched = (
-        distractor_iou_matrix[matched_gt_indices, matched_tracker_indices] > 0 + EPS
-    )
+    actually_matched = distractor_iou_matrix[matched_gt_indices, matched_tracker_indices] > 0 + EPS
     matched_gt_indices = matched_gt_indices[actually_matched]
     matched_tracker_indices = matched_tracker_indices[actually_matched]
 
@@ -373,9 +354,7 @@ def _prepare_mot_sequence(
         `_MOTSequenceData` containing prepared data ready for metric evaluation.
     """
     num_frames = _resolve_num_frames(ground_truth_data, tracker_data, num_frames)
-    ground_truth_id_map, tracker_id_map = _build_id_mappings(
-        ground_truth_data, tracker_data, num_frames
-    )
+    ground_truth_id_map, tracker_id_map = _build_id_mappings(ground_truth_data, tracker_data, num_frames)
 
     per_frame_ground_truth_ids: list[np.ndarray] = []
     per_frame_tracker_ids: list[np.ndarray] = []
@@ -384,13 +363,11 @@ def _prepare_mot_sequence(
     total_tracker_detections = 0
 
     for frame in range(1, num_frames + 1):
-        ground_truth_boxes, ground_truth_ids, all_boxes, distractor_mask = (
-            _extract_ground_truth_frame(ground_truth_data, frame)
+        ground_truth_boxes, ground_truth_ids, all_boxes, distractor_mask = _extract_ground_truth_frame(
+            ground_truth_data, frame
         )
         tracker_boxes, tracker_ids = _extract_tracker_frame(tracker_data, frame)
-        tracker_boxes, tracker_ids = _remove_distractor_matches(
-            all_boxes, distractor_mask, tracker_boxes, tracker_ids
-        )
+        tracker_boxes, tracker_ids = _remove_distractor_matches(all_boxes, distractor_mask, tracker_boxes, tracker_ids)
 
         remapped_ground_truth_ids = _remap_ids(ground_truth_ids, ground_truth_id_map)
         remapped_tracker_ids = _remap_ids(tracker_ids, tracker_id_map)
@@ -432,21 +409,10 @@ class _MOTOutput:
             x1, y1, x2, y2 = detections.xyxy[i]
             w, h = x2 - x1, y2 - y1
 
-            track_id = (
-                int(detections.tracker_id[i])
-                if detections.tracker_id is not None
-                else -1
-            )
-            conf = (
-                float(detections.confidence[i])
-                if detections.confidence is not None
-                else -1.0
-            )
+            track_id = int(detections.tracker_id[i]) if detections.tracker_id is not None else -1
+            conf = float(detections.confidence[i]) if detections.confidence is not None else -1.0
 
-            self._file.write(
-                f"{frame_idx},{track_id},{x1:.2f},{y1:.2f},{w:.2f},{h:.2f},"
-                f"{conf:.4f},-1,-1,-1\n"
-            )
+            self._file.write(f"{frame_idx},{track_id},{x1:.2f},{y1:.2f},{w:.2f},{h:.2f},{conf:.4f},-1,-1,-1\n")
 
     def __enter__(self) -> _MOTOutput:
         if self.path is not None:

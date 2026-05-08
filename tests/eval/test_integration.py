@@ -41,8 +41,7 @@ def test_evaluate_mot_sequences_sportsmot_flat(
 
     # Verify all sequences are evaluated
     assert len(result.sequences) == len(expected_results), (
-        f"Sequence count mismatch: got {len(result.sequences)}, "
-        f"expected {len(expected_results)}"
+        f"Sequence count mismatch: got {len(result.sequences)}, expected {len(expected_results)}"
     )
 
     # Verify each sequence matches expected results
@@ -53,9 +52,7 @@ def test_evaluate_mot_sequences_sportsmot_flat(
         expected_hota = expected_results[seq_name]["HOTA"]
         _verify_hota_metrics(seq_result.HOTA, expected_hota, f"sportsmot/{seq_name}")
         expected_identity = expected_results[seq_name]["Identity"]
-        _verify_identity_metrics(
-            seq_result.Identity, expected_identity, f"sportsmot/{seq_name}"
-        )
+        _verify_identity_metrics(seq_result.Identity, expected_identity, f"sportsmot/{seq_name}")
 
     # Verify aggregate metrics are computed correctly
     assert result.aggregate.sequence == "COMBINED"
@@ -79,25 +76,18 @@ def test_evaluate_mot_sequences_sportsmot_mot17(
 
     # Verify all sequences are evaluated
     assert len(result.sequences) == len(expected_results), (
-        f"Sequence count mismatch: got {len(result.sequences)}, "
-        f"expected {len(expected_results)}"
+        f"Sequence count mismatch: got {len(result.sequences)}, expected {len(expected_results)}"
     )
 
     # Verify each sequence matches expected results
     for seq_name, seq_result in result.sequences.items():
         assert seq_name in expected_results, f"Unexpected sequence: {seq_name}"
         expected_clear = expected_results[seq_name]["CLEAR"]
-        _verify_clear_metrics(
-            seq_result.CLEAR, expected_clear, f"sportsmot_mot17/{seq_name}"
-        )
+        _verify_clear_metrics(seq_result.CLEAR, expected_clear, f"sportsmot_mot17/{seq_name}")
         expected_hota = expected_results[seq_name]["HOTA"]
-        _verify_hota_metrics(
-            seq_result.HOTA, expected_hota, f"sportsmot_mot17/{seq_name}"
-        )
+        _verify_hota_metrics(seq_result.HOTA, expected_hota, f"sportsmot_mot17/{seq_name}")
         expected_identity = expected_results[seq_name]["Identity"]
-        _verify_identity_metrics(
-            seq_result.Identity, expected_identity, f"sportsmot_mot17/{seq_name}"
-        )
+        _verify_identity_metrics(seq_result.Identity, expected_identity, f"sportsmot_mot17/{seq_name}")
 
 
 @pytest.mark.integration
@@ -117,23 +107,18 @@ def test_evaluate_mot_sequences_dancetrack_flat(
 
     # Verify all sequences are evaluated
     assert len(result.sequences) == len(expected_results), (
-        f"Sequence count mismatch: got {len(result.sequences)}, "
-        f"expected {len(expected_results)}"
+        f"Sequence count mismatch: got {len(result.sequences)}, expected {len(expected_results)}"
     )
 
     # Verify each sequence matches expected results
     for seq_name, seq_result in result.sequences.items():
         assert seq_name in expected_results, f"Unexpected sequence: {seq_name}"
         expected_clear = expected_results[seq_name]["CLEAR"]
-        _verify_clear_metrics(
-            seq_result.CLEAR, expected_clear, f"dancetrack/{seq_name}"
-        )
+        _verify_clear_metrics(seq_result.CLEAR, expected_clear, f"dancetrack/{seq_name}")
         expected_hota = expected_results[seq_name]["HOTA"]
         _verify_hota_metrics(seq_result.HOTA, expected_hota, f"dancetrack/{seq_name}")
         expected_identity = expected_results[seq_name]["Identity"]
-        _verify_identity_metrics(
-            seq_result.Identity, expected_identity, f"dancetrack/{seq_name}"
-        )
+        _verify_identity_metrics(seq_result.Identity, expected_identity, f"dancetrack/{seq_name}")
 
 
 @pytest.mark.integration
@@ -154,25 +139,18 @@ def test_evaluate_mot_sequences_dancetrack_mot17(
 
     # Verify all sequences are evaluated
     assert len(result.sequences) == len(expected_results), (
-        f"Sequence count mismatch: got {len(result.sequences)}, "
-        f"expected {len(expected_results)}"
+        f"Sequence count mismatch: got {len(result.sequences)}, expected {len(expected_results)}"
     )
 
     # Verify each sequence matches expected results
     for seq_name, seq_result in result.sequences.items():
         assert seq_name in expected_results, f"Unexpected sequence: {seq_name}"
         expected_clear = expected_results[seq_name]["CLEAR"]
-        _verify_clear_metrics(
-            seq_result.CLEAR, expected_clear, f"dancetrack_mot17/{seq_name}"
-        )
+        _verify_clear_metrics(seq_result.CLEAR, expected_clear, f"dancetrack_mot17/{seq_name}")
         expected_hota = expected_results[seq_name]["HOTA"]
-        _verify_hota_metrics(
-            seq_result.HOTA, expected_hota, f"dancetrack_mot17/{seq_name}"
-        )
+        _verify_hota_metrics(seq_result.HOTA, expected_hota, f"dancetrack_mot17/{seq_name}")
         expected_identity = expected_results[seq_name]["Identity"]
-        _verify_identity_metrics(
-            seq_result.Identity, expected_identity, f"dancetrack_mot17/{seq_name}"
-        )
+        _verify_identity_metrics(seq_result.Identity, expected_identity, f"dancetrack_mot17/{seq_name}")
 
 
 def _resolve_mot17_dirs(data_path: Path) -> tuple[Path, Path]:
@@ -196,9 +174,7 @@ def _resolve_mot17_dirs(data_path: Path) -> tuple[Path, Path]:
     # Find the matching tracker data directory
     tracker_split = tracker_root / gt_splits[0].name
     tracker_names = [d for d in tracker_split.iterdir() if d.is_dir()]
-    assert len(tracker_names) == 1, (
-        f"Expected one tracker dir in {tracker_split}, got {tracker_names}"
-    )
+    assert len(tracker_names) == 1, f"Expected one tracker dir in {tracker_split}, got {tracker_names}"
     tracker_dir = tracker_names[0] / "data"
 
     return gt_dir, tracker_dir
@@ -224,8 +200,7 @@ def _verify_clear_metrics(
         computed_val = getattr(computed, metric)
         expected_val = expected[metric]
         assert computed_val == expected_val, (
-            f"{context}: {metric} mismatch - "
-            f"got {computed_val}, expected {expected_val}"
+            f"{context}: {metric} mismatch - got {computed_val}, expected {expected_val}"
         )
 
     # Float metrics: both values should be fractions (0-1)
@@ -236,8 +211,7 @@ def _verify_clear_metrics(
         computed_val = getattr(computed, metric)
         expected_val = expected[metric]
         assert computed_val == pytest.approx(expected_val, rel=1e-4, abs=1e-4), (
-            f"{context}: {metric} mismatch - "
-            f"got {computed_val}, expected {expected_val}"
+            f"{context}: {metric} mismatch - got {computed_val}, expected {expected_val}"
         )
 
 
@@ -260,8 +234,7 @@ def _verify_hota_metrics(
         computed_val = getattr(computed, metric)
         expected_val = expected[metric]
         assert computed_val == pytest.approx(expected_val, rel=1e-4, abs=1e-4), (
-            f"{context}: {metric} mismatch - "
-            f"got {computed_val}, expected {expected_val}"
+            f"{context}: {metric} mismatch - got {computed_val}, expected {expected_val}"
         )
 
 
@@ -285,8 +258,7 @@ def _verify_identity_metrics(
         computed_val = getattr(computed, metric)
         expected_val = expected[metric]
         assert computed_val == expected_val, (
-            f"{context}: {metric} mismatch - "
-            f"got {computed_val}, expected {expected_val}"
+            f"{context}: {metric} mismatch - got {computed_val}, expected {expected_val}"
         )
 
     # Float metrics with tolerance
@@ -297,6 +269,5 @@ def _verify_identity_metrics(
         computed_val = getattr(computed, metric)
         expected_val = expected[metric]
         assert computed_val == pytest.approx(expected_val, rel=1e-4, abs=1e-4), (
-            f"{context}: {metric} mismatch - "
-            f"got {computed_val}, expected {expected_val}"
+            f"{context}: {metric} mismatch - got {computed_val}, expected {expected_val}"
         )

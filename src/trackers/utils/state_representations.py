@@ -341,8 +341,5 @@ def create_state_estimator(
     """
     cls = _REPR_MAP.get(state_repr, None)
     if cls is None:
-        raise ValueError(
-            f"Unknown state representation: {state_repr!r}. "
-            f"Available: {list(_REPR_MAP.keys())}"
-        )
+        raise ValueError(f"Unknown state representation: {state_repr!r}. Available: {list(_REPR_MAP.keys())}")
     return cls(bbox)

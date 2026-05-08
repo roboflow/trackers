@@ -118,10 +118,7 @@ class MotionEstimator:
 
         current_features = self._find_features(grayscale)
 
-        if (
-            self._previous_features is None
-            or len(self._previous_features) < _MIN_POINTS_FOR_HOMOGRAPHY
-        ):
+        if self._previous_features is None or len(self._previous_features) < _MIN_POINTS_FOR_HOMOGRAPHY:
             self._previous_grayscale = grayscale
             self._previous_features = current_features
             return self._get_current_transformation()

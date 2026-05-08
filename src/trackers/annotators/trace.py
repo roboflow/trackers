@@ -87,15 +87,11 @@ class MotionAwareTraceAnnotator:
         thickness: int = 2,
         color_lookup: ColorLookup | None = None,
     ) -> None:
-        self.color: Color | ColorPalette = (
-            color if color is not None else ColorPalette.DEFAULT
-        )
+        self.color: Color | ColorPalette = color if color is not None else ColorPalette.DEFAULT
         self.position: Position = position if position is not None else Position.CENTER
         self.trace_length = trace_length
         self.thickness = thickness
-        self.color_lookup: ColorLookup = (
-            color_lookup if color_lookup is not None else ColorLookup.TRACK
-        )
+        self.color_lookup: ColorLookup = color_lookup if color_lookup is not None else ColorLookup.TRACK
 
         self._trajectories: dict[int, list[tuple[float, float]]] = defaultdict(list)
 
@@ -175,11 +171,7 @@ class MotionAwareTraceAnnotator:
                 color=self.color,
                 detections=detections,
                 detection_idx=detection_idx,
-                color_lookup=(
-                    self.color_lookup
-                    if custom_color_lookup is None
-                    else custom_color_lookup
-                ),
+                color_lookup=(self.color_lookup if custom_color_lookup is None else custom_color_lookup),
             )
 
             world_points = np.array(trajectory, dtype=np.float32)

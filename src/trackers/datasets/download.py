@@ -50,9 +50,7 @@ def _resolve_splits(
 
     for split_name in split:
         if split_name not in splits_dict:
-            raise ValueError(
-                f"Invalid split '{split_name}' for dataset '{dataset_name}'"
-            )
+            raise ValueError(f"Invalid split '{split_name}' for dataset '{dataset_name}'")
     return split
 
 
@@ -70,11 +68,7 @@ def _resolve_assets(
     selected: dict[str, dict[str, Any]] = {}
     for asset_type in requested_assets:
         if asset_type not in available_assets:
-            raise ValueError(
-                f"Asset '{asset_type}' not available for "
-                f"split '{split_name}' in dataset"
-                f" '{dataset_name}'"
-            )
+            raise ValueError(f"Asset '{asset_type}' not available for split '{split_name}' in dataset '{dataset_name}'")
         selected[asset_type] = available_assets[asset_type]
     return selected
 
@@ -143,9 +137,7 @@ def download_dataset(
         _DATASETS[dataset_key]["splits"],
     )
 
-    splits = _resolve_splits(
-        _normalize_list(split), splits_dict, dataset_name=dataset_key.value
-    )
+    splits = _resolve_splits(_normalize_list(split), splits_dict, dataset_name=dataset_key.value)
     requested_assets = _normalize_list(asset)
 
     for split_name in splits:
