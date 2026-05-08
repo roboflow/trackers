@@ -9,7 +9,7 @@ description: BoT-SORT extends ByteTrack with camera motion compensation and conf
 
 BoT-SORT extends [ByteTrack](bytetrack.md) with camera motion compensation (CMC) to handle moving cameras and dynamic scenes. It keeps ByteTrack's two-stage association strategy (high-confidence matching followed by low-confidence recovery), but first applies a frame-to-frame geometric transform estimated from optical flow so predictions are compared in the correct camera coordinate frame. This reduces missed matches and ID-switches when camera ego-motion causes apparent object jumps. BoT-SORT also combines IoU similarity with detection confidence during association and uses stricter track confirmation logic for more stable identities.
 
-## Comparison
+## How does BoT-SORT compare to other trackers?
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
