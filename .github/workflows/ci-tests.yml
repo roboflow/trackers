@@ -28,10 +28,7 @@ jobs:
           prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
-        run: uv sync --frozen --group dev
-
-      - name: 🔥 Install torch and torchvision
-        run: uv pip install torch torchvision
+        run: uv sync --frozen --group dev --group ci-tests
 
       - name: 🧪 Run the Import test
         run: uv run python -c "import trackers"

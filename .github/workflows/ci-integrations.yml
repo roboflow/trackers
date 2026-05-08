@@ -25,10 +25,8 @@ jobs:
           activate-environment: true
 
       - name: 🚀 Install Packages
-        run: uv sync --frozen --group dev
+        run: uv sync --frozen --group dev --group ci-tests
 
-      - name: 🔥 Install torch and torchvision
-        run: uv pip install torch torchvision
 
       - name: 🧪 Run Integration Tests
         run: uv run pytest -m integration -v --tb=short
