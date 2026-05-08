@@ -13,9 +13,7 @@ import numpy as np
 import supervision as sv
 
 
-def _speed_direction_batch(
-    track_boxes: np.ndarray, detection_boxes: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
+def _speed_direction_batch(track_boxes: np.ndarray, detection_boxes: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Compute normalized direction vectors from track centers to detection centers.
 
     For each (track, detection) pair, computes the unit vector pointing from the

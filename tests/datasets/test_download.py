@@ -43,9 +43,7 @@ _SAMPLE_ASSETS = _SAMPLE_SPLITS["train"]
         ("sportsmot", Dataset.SPORTSMOT),
     ],
 )
-def test_resolve_dataset_with_valid_input(
-    dataset: str | Dataset, expected: Dataset
-) -> None:
+def test_resolve_dataset_with_valid_input(dataset: str | Dataset, expected: Dataset) -> None:
     assert _resolve_dataset(dataset) is expected
 
 
@@ -76,9 +74,7 @@ def test_resolve_dataset_rejects_unknown(dataset: str) -> None:
         ([], []),
     ],
 )
-def test_resolve_splits_with_valid_input(
-    split: list[str] | None, expected: list[str]
-) -> None:
+def test_resolve_splits_with_valid_input(split: list[str] | None, expected: list[str]) -> None:
     result = _resolve_splits(split, _SAMPLE_SPLITS, dataset_name="mot17")
     assert result == expected
 

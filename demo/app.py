@@ -458,9 +458,7 @@ def track(
     frame_gen = frames_from_source(video_path)
 
     with sv.VideoSink(output_path, video_info=video_info) as sink:
-        for frame_idx, frame in tqdm(
-            frame_gen, total=total_frames, desc="Processing video..."
-        ):
+        for frame_idx, frame in tqdm(frame_gen, total=total_frames, desc="Processing video..."):
             predictions = detection_model(frame)
             if predictions:
                 detections = predictions[0].to_supervision()

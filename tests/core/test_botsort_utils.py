@@ -77,49 +77,37 @@ class TestGetAliveTrackers:
     def test_active_immature_track_survives(self) -> None:
         """A track updated this frame survives even with 1 successful update."""
         track = _make_tracklet(success_updates=1, time_since=0)
-        alive = get_alive_tracklets(
-            [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
-        )
+        alive = get_alive_tracklets([track], minimum_consecutive_frames=3, maximum_frames_without_update=30)
         assert alive == [track]
 
     def test_mature_lost_track_survives_within_buffer(self) -> None:
         """A mature track lost for a few frames survives inside the buffer."""
         track = _make_tracklet(success_updates=3, time_since=5)
-        alive = get_alive_tracklets(
-            [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
-        )
+        alive = get_alive_tracklets([track], minimum_consecutive_frames=3, maximum_frames_without_update=30)
         assert alive == [track]
 
     def test_immature_lost_track_dies(self) -> None:
         """An immature track that has been lost must be removed."""
         track = _make_tracklet(success_updates=1, time_since=5)
-        alive = get_alive_tracklets(
-            [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
-        )
+        alive = get_alive_tracklets([track], minimum_consecutive_frames=3, maximum_frames_without_update=30)
         assert alive == []
 
     def test_mature_track_dies_past_buffer(self) -> None:
         """Even a mature track must die once it exceeds the lost buffer."""
         track = _make_tracklet(success_updates=5, time_since=31)
-        alive = get_alive_tracklets(
-            [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
-        )
+        alive = get_alive_tracklets([track], minimum_consecutive_frames=3, maximum_frames_without_update=30)
         assert alive == []
 
     def test_buffer_boundary_exactly_at_limit(self) -> None:
         """time_since_update == maximum_frames_without_update is past the limit."""
         track = _make_tracklet(success_updates=3, time_since=30)
-        alive = get_alive_tracklets(
-            [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
-        )
+        alive = get_alive_tracklets([track], minimum_consecutive_frames=3, maximum_frames_without_update=30)
         assert alive == []
 
     def test_buffer_boundary_one_under_limit(self) -> None:
         """time_since_update == maximum_frames_without_update - 1 survives."""
         track = _make_tracklet(success_updates=3, time_since=29)
-        alive = get_alive_tracklets(
-            [track], minimum_consecutive_frames=3, maximum_frames_without_update=30
-        )
+        alive = get_alive_tracklets([track], minimum_consecutive_frames=3, maximum_frames_without_update=30)
         assert alive == [track]
 
     def test_mixed_tracks_partial_survival(self) -> None:
@@ -137,7 +125,5 @@ class TestGetAliveTrackers:
             lost_immature,
             dead_mature,
         ]
-        alive = get_alive_tracklets(
-            tracks, minimum_consecutive_frames=3, maximum_frames_without_update=30
-        )
+        alive = get_alive_tracklets(tracks, minimum_consecutive_frames=3, maximum_frames_without_update=30)
         assert alive == [active_mature, active_immature, lost_mature]

@@ -127,11 +127,7 @@ class ByteTrackTracker(BaseTracker):
             tracker.predict()
 
         detection_boxes = detections.xyxy
-        confidences = (
-            detections.confidence
-            if detections.confidence is not None
-            else np.zeros(len(detections))
-        )
+        confidences = detections.confidence if detections.confidence is not None else np.zeros(len(detections))
 
         # Split indices by confidence threshold (no sv.Detections slicing)
         high_mask = confidences >= self.high_conf_det_threshold
@@ -142,16 +138,13 @@ class ByteTrackTracker(BaseTracker):
 
         # Step 1: associate high-confidence detections to all tracks
         iou_matrix = _get_iou_matrix(self.tracks, high_boxes)
-        matched, unmatched_tracks, unmatched_high = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold
-        )
+        matched, unmatched_tracks, unmatched_high = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 
         for row, col in matched:
             track = self.tracks[row]
             track.update(high_boxes[col])
             if (
-                track.number_of_successful_consecutive_updates
-                >= self.minimum_consecutive_frames
+                track.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
             ):
                 track.tracker_id = ByteTrackTracklet.get_next_tracker_id()
@@ -170,8 +163,7 @@ class ByteTrackTracker(BaseTracker):
             track = remaining_tracks[row]
             track.update(low_boxes[col])
             if (
-                track.number_of_successful_consecutive_updates
-                >= self.minimum_consecutive_frames
+                track.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
             ):
                 track.tracker_id = ByteTrackTracklet.get_next_tracker_id()
@@ -232,16 +224,14 @@ class ByteTrackTracker(BaseTracker):
                 detection.
             unmatched_detections: Sorted list of detection indices not matched
                 to any track.
-        """  # noqa: E501
+        """
         matched_indices = []
         n_tracks, n_detections = similarity_matrix.shape
         unmatched_tracks = set(range(n_tracks))
         unmatched_detections = set(range(n_detections))
 
         if n_tracks > 0 and n_detections > 0:
-            row_indices, col_indices = linear_sum_assignment(
-                similarity_matrix, maximize=True
-            )
+            row_indices, col_indices = linear_sum_assignment(similarity_matrix, maximize=True)
             for row, col in zip(row_indices, col_indices):
                 if similarity_matrix[row, col] >= min_similarity_thresh:
                     matched_indices.append((row, col))

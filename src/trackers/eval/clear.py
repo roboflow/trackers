@@ -193,10 +193,7 @@ def compute_clear_metrics(
 
         # Build score matrix with IDSW prioritization (ref: clear.py:78-82)
         # Add 1000 bonus for continuing previous association to minimize ID switches
-        score_mat = (
-            tracker_ids_t[np.newaxis, :]
-            == prev_timestep_tracker_id[gt_indices_t[:, np.newaxis]]
-        )
+        score_mat = tracker_ids_t[np.newaxis, :] == prev_timestep_tracker_id[gt_indices_t[:, np.newaxis]]
         score_mat = 1000 * score_mat + similarity
         score_mat[similarity < threshold - EPS] = 0
 
@@ -216,9 +213,7 @@ def compute_clear_metrics(
         # Compute ID switches (ref: clear.py:94-97)
         # IDSW occurs when GT was previously matched to a different tracker
         prev_matched_tracker_ids = prev_tracker_id[matched_gt_indices]
-        is_idsw = ~np.isnan(prev_matched_tracker_ids) & np.not_equal(
-            matched_tracker_ids_t, prev_matched_tracker_ids
-        )
+        is_idsw = ~np.isnan(prev_matched_tracker_ids) & np.not_equal(matched_tracker_ids_t, prev_matched_tracker_ids)
         idsw += int(np.sum(is_idsw))
 
         # Update per-GT counters

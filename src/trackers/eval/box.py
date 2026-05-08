@@ -168,9 +168,7 @@ def _calculate_box_ious(
 
     # Intersection: max of left edges to min of right edges
     # min_[..., 2] is min of x1 values, max_[..., 0] is max of x0 values
-    intersection = np.maximum(min_[..., 2] - max_[..., 0], 0) * np.maximum(
-        min_[..., 3] - max_[..., 1], 0
-    )
+    intersection = np.maximum(min_[..., 2] - max_[..., 0], 0) * np.maximum(min_[..., 3] - max_[..., 1], 0)
 
     # Area of boxes1
     area1 = (boxes1[..., 2] - boxes1[..., 0]) * (boxes1[..., 3] - boxes1[..., 1])
@@ -179,9 +177,7 @@ def _calculate_box_ious(
         # IoA: Intersection over Area of boxes1
         ioas = np.zeros_like(intersection)
         valid_mask = area1 > 0 + EPS
-        ioas[valid_mask, :] = (
-            intersection[valid_mask, :] / area1[valid_mask][:, np.newaxis]
-        )
+        ioas[valid_mask, :] = intersection[valid_mask, :] / area1[valid_mask][:, np.newaxis]
         return ioas
     else:
         # IoU: Intersection over Union

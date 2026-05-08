@@ -299,9 +299,7 @@ class OCSORTTracklet(BaseTracklet):
         Returns:
             Integer tracker ID, or -1 for immature tracks.
         """
-        is_mature = (
-            self.number_of_successful_consecutive_updates >= minimum_consecutive_frames
-        )
+        is_mature = self.number_of_successful_consecutive_updates >= minimum_consecutive_frames
         if frame_count <= minimum_consecutive_frames:
             if self.time_since_update == 0:
                 if self.tracker_id == -1:

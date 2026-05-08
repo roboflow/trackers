@@ -54,12 +54,9 @@ def _get_alive_tracklets(
         # is never reset. So tracker_id != -1 is the sticky "confirmed"
         # signal we want here.
         is_mature = tracklet.tracker_id != -1 or (
-            tracklet.number_of_successful_consecutive_updates
-            >= minimum_consecutive_frames
+            tracklet.number_of_successful_consecutive_updates >= minimum_consecutive_frames
         )
         is_active = tracklet.time_since_update == 0
-        if tracklet.time_since_update < maximum_frames_without_update and (
-            is_mature or is_active
-        ):
+        if tracklet.time_since_update < maximum_frames_without_update and (is_mature or is_active):
             alive_tracklets.append(tracklet)
     return alive_tracklets

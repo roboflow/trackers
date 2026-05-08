@@ -56,9 +56,7 @@ def _call_botsort(
 ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
     """Call BoTSORTTracker._get_associated_indices with default similarity threshold."""
     tracker = BoTSORTTracker(enable_cmc=False)
-    matched, unmatched_tracks, unmatched_detections = tracker._get_associated_indices(
-        iou_matrix, 0.1
-    )
+    matched, unmatched_tracks, unmatched_detections = tracker._get_associated_indices(iou_matrix, 0.1)
     return matched, unmatched_tracks, unmatched_detections
 
 
@@ -71,9 +69,7 @@ _TRACKER_CALL_FNS: list[
     pytest.param(_call_botsort, id="botsort"),
 ]
 
-CallFn = Callable[
-    [int, int, np.ndarray], tuple[list[tuple[int, int]], list[int], list[int]]
-]
+CallFn = Callable[[int, int, np.ndarray], tuple[list[tuple[int, int]], list[int], list[int]]]
 
 
 class TestGetAssociatedIndicesSortedOutput:
@@ -100,9 +96,7 @@ class TestGetAssociatedIndicesSortedOutput:
         iou_matrix = np.zeros((n_tracks, n_detections))
         iou_matrix[1, 2] = 0.9  # only match: track 1 ↔ detection 2
 
-        _, unmatched_tracks, unmatched_detections = call_fn(
-            n_tracks, n_detections, iou_matrix
-        )
+        _, unmatched_tracks, unmatched_detections = call_fn(n_tracks, n_detections, iou_matrix)
 
         assert unmatched_tracks == [0, 2, 3]
         assert unmatched_detections == [0, 1, 3, 4]
@@ -119,9 +113,7 @@ def test_all_trackers_associated_indices_are_deterministically_sorted(
     similarity_matrix = np.zeros((n_tracks, n_detections), dtype=np.float32)
     similarity_matrix[1, 2] = 0.9
 
-    _, unmatched_tracks, unmatched_detections = call_fn(
-        n_tracks, n_detections, similarity_matrix
-    )
+    _, unmatched_tracks, unmatched_detections = call_fn(n_tracks, n_detections, similarity_matrix)
 
     assert unmatched_tracks == [0, 2, 3]
     assert unmatched_detections == [0, 1, 3, 4]

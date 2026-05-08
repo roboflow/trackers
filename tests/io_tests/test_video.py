@@ -133,8 +133,7 @@ class TestFramesFromSourceVideo:
 
             mean_pixel_value = frame.mean()
             assert abs(mean_pixel_value - expected) < VIDEO_COMPRESSION_TOLERANCE, (
-                f"Frame {frame_id}: expected ~{expected}, "
-                f"got mean {mean_pixel_value:.1f}"
+                f"Frame {frame_id}: expected ~{expected}, got mean {mean_pixel_value:.1f}"
             )
 
     def test_reads_single_frame_video(self, video_factory) -> None:
@@ -152,9 +151,7 @@ class TestFramesFromSourceVideo:
 class TestFramesFromSourceImageDirectory:
     def test_reads_images_in_alphabetical_order(self, image_directory_factory) -> None:
         num_frames = 7
-        directory = image_directory_factory(
-            n_frames=num_frames, filename_pattern="{:04d}.png"
-        )
+        directory = image_directory_factory(n_frames=num_frames, filename_pattern="{:04d}.png")
         frames = list(frames_from_source(directory))
 
         assert len(frames) == num_frames
@@ -168,9 +165,7 @@ class TestFramesFromSourceImageDirectory:
 
     def test_reads_prefixed_filenames(self, image_directory_factory) -> None:
         num_frames = 4
-        directory = image_directory_factory(
-            n_frames=num_frames, filename_pattern="frame_{:05d}.png"
-        )
+        directory = image_directory_factory(n_frames=num_frames, filename_pattern="frame_{:05d}.png")
         frames = list(frames_from_source(directory))
 
         assert len(frames) == num_frames
@@ -198,15 +193,11 @@ class TestFramesFromSourceErrors:
         with pytest.raises(ValueError, match="No supported image files"):
             list(frames_from_source(empty_directory))
 
-    def test_non_image_files_raises_value_error(
-        self, directory_with_non_image_files
-    ) -> None:
+    def test_non_image_files_raises_value_error(self, directory_with_non_image_files) -> None:
         with pytest.raises(ValueError, match="No supported image files"):
             list(frames_from_source(directory_with_non_image_files))
 
-    def test_corrupted_image_raises_os_error(
-        self, directory_with_corrupted_image
-    ) -> None:
+    def test_corrupted_image_raises_os_error(self, directory_with_corrupted_image) -> None:
         with pytest.raises(OSError, match="Failed to read image"):
             list(frames_from_source(directory_with_corrupted_image))
 

@@ -158,9 +158,7 @@ class SORTTracker(BaseTracker):
                 )
                 self.tracks.append(new_tracker)
 
-    def update(
-        self, detections: sv.Detections, frame: np.ndarray | None = None
-    ) -> sv.Detections:
+    def update(self, detections: sv.Detections, frame: np.ndarray | None = None) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
         Performs Kalman filter prediction, IoU-based association, and initializes
         new tracks for unmatched high-confidence detections.
@@ -181,9 +179,7 @@ class SORTTracker(BaseTracker):
             result.tracker_id = np.array([], dtype=int)
             return result
 
-        detection_boxes = (
-            detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
-        )
+        detection_boxes = detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
 
         for tracklet in self.tracks:
             tracklet.predict()
@@ -191,8 +187,8 @@ class SORTTracker(BaseTracker):
         iou_matrix = _get_iou_matrix(self.tracks, detection_boxes)
 
         # Associate detections to tracklets based on IOU
-        matched_indices, _unmatched_tracklets, unmatched_detections = (
-            self._get_associated_indices(iou_matrix, detection_boxes)
+        matched_indices, _unmatched_tracklets, unmatched_detections = self._get_associated_indices(
+            iou_matrix, detection_boxes
         )
 
         # Update matched tracklets and record the det_idx -> tracklet mapping
@@ -201,11 +197,7 @@ class SORTTracker(BaseTracker):
             self.tracks[row].update(detection_boxes[col])
             matched_tracklet_for_det[col] = self.tracks[row]
 
-        confidences = (
-            detections.confidence
-            if detections.confidence is not None
-            else np.ones(len(detections))
-        )
+        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
         # Remove dead tracklets
@@ -225,11 +217,7 @@ class SORTTracker(BaseTracker):
 
         # Return a fresh sv.Detections rather than mutating the caller's object,
         # matching the aliasing semantics of ByteTrack and OC-SORT.
-        result = (
-            sv.Detections.empty()
-            if len(detections) == 0
-            else detections[np.arange(len(detections))]
-        )
+        result = sv.Detections.empty() if len(detections) == 0 else detections[np.arange(len(detections))]
         result.tracker_id = tracker_ids
         return result
 
