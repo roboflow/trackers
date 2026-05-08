@@ -7,8 +7,6 @@
 from collections.abc import Sequence
 from typing import TypeVar
 
-import numpy as np
-
 from trackers.core.sort.tracklet import SORTTracklet
 
 T_SORTTracklet = TypeVar("T_SORTTracklet", bound="SORTTracklet")
