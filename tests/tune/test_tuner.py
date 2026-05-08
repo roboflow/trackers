@@ -69,9 +69,7 @@ def _make_benchmark_result(
         else None
     )
     identity_metrics = (
-        IdentityMetrics(IDF1=idf1, IDR=0.7, IDP=0.8, IDTP=90, IDFN=15, IDFP=10)
-        if idf1 is not None
-        else None
+        IdentityMetrics(IDF1=idf1, IDR=0.7, IDP=0.8, IDTP=90, IDFN=15, IDFP=10) if idf1 is not None else None
     )
     return BenchmarkResult(
         sequences={},
@@ -186,9 +184,7 @@ class TestTunerInit:
     ) -> None:
         """Tuner auto-adds the metric family required by the objective."""
         gt_dir, det_dir = _setup_dirs(tmp_path)
-        tuner = Tuner(
-            "bytetrack", gt_dir, det_dir, metrics=initial_metrics, objective=objective
-        )
+        tuner = Tuner("bytetrack", gt_dir, det_dir, metrics=initial_metrics, objective=objective)
         assert tuner._metrics == expected_metrics
 
     def test_objective_normalized_to_uppercase(self, tmp_path: Path) -> None:
@@ -259,9 +255,7 @@ class TestRunTrackerOnDetections:
         # Two detections in frame 1, one in frame 3 — frame 2 is intentionally
         # absent so the code path feeding sv.Detections.empty() is exercised.
         det_content = (
-            "1,-1,10,20,100,80,0.90,-1,-1,-1\n"
-            "1,-1,200,150,80,60,0.85,-1,-1,-1\n"
-            "3,-1,15,25,100,80,0.88,-1,-1,-1\n"
+            "1,-1,10,20,100,80,0.90,-1,-1,-1\n1,-1,200,150,80,60,0.85,-1,-1,-1\n3,-1,15,25,100,80,0.88,-1,-1,-1\n"
         )
         det_path = tmp_path / "seq.txt"
         pred_path = tmp_path / "pred.txt"

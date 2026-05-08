@@ -82,9 +82,7 @@ class _TrackingIoU(BaseIoU):
     ],
     ids=["single_detection", "two_detections"],
 )
-def test_tracker_update_does_not_mutate_input(
-    tracker_id: str, xyxy: np.ndarray, confidence: np.ndarray
-) -> None:
+def test_tracker_update_does_not_mutate_input(tracker_id: str, xyxy: np.ndarray, confidence: np.ndarray) -> None:
     """update() must not assign tracker_id on the caller's sv.Detections."""
     tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     dets = sv.Detections(xyxy=xyxy)
@@ -226,9 +224,7 @@ def test_track_expires_after_buffer(tracker_id: str) -> None:
     for _ in range(buffer + 5):
         tracker.update(sv.Detections.empty())
 
-    assert len(tracker.tracks) == 0, (
-        "track should be pruned after maximum_frames_without_update empty frames"
-    )
+    assert len(tracker.tracks) == 0, "track should be pruned after maximum_frames_without_update empty frames"
 
 
 @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
@@ -244,9 +240,7 @@ def test_time_since_update_advances_for_unmatched(tracker_id: str) -> None:
         tracker.update(sv.Detections.empty())
 
     assert len(tracker.tracks) == 1, "track is still within lost buffer"
-    assert tracker.tracks[0].time_since_update == 5, (
-        "time_since_update should reflect 5 missed frames"
-    )
+    assert tracker.tracks[0].time_since_update == 5, "time_since_update should reflect 5 missed frames"
 
 
 @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
@@ -264,9 +258,7 @@ def test_track_survives_short_occlusion(tracker_id: str) -> None:
         tracker.update(sv.Detections.empty())
 
     assert len(tracker.tracks) == 1
-    assert tracker.tracks[0].tracker_id == confirmed_id, (
-        "confirmed track must survive a short gap"
-    )
+    assert tracker.tracks[0].tracker_id == confirmed_id, "confirmed track must survive a short gap"
 
 
 # ==========================================================================
@@ -306,9 +298,7 @@ def test_tracked_objects_exposes_mature_track(tracker_id: str) -> None:
     assert len(exposed) == 1
     assert exposed.tracker_id[0] != -1
     pred = exposed.xyxy[0]
-    assert np.allclose(pred, np.array(bbox), atol=10.0), (
-        f"predicted box {pred} drifted far from input {bbox}"
-    )
+    assert np.allclose(pred, np.array(bbox), atol=10.0), f"predicted box {pred} drifted far from input {bbox}"
     assert exposed.confidence is None
     assert exposed.class_id is None
     assert exposed.xyxy.dtype == np.float32

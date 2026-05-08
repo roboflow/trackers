@@ -253,9 +253,7 @@ def _add_tracker_params(group: argparse._ArgumentGroup) -> None:
             }
 
             if param_info.param_type is bool:
-                kwargs["action"] = (
-                    "store_false" if param_info.default_value else "store_true"
-                )
+                kwargs["action"] = "store_false" if param_info.default_value else "store_true"
             else:
                 kwargs["type"] = param_info.param_type
                 kwargs["metavar"] = param_info.param_type.__name__.upper()
@@ -287,9 +285,7 @@ def run_track(args: argparse.Namespace) -> int:
 
     # Validate output paths
     if args.output:
-        _validate_output_path(
-            _resolve_video_output_path(args.output), overwrite=args.overwrite
-        )
+        _validate_output_path(_resolve_video_output_path(args.output), overwrite=args.overwrite)
     if args.mot_output:
         _validate_output_path(args.mot_output, overwrite=args.overwrite)
 
@@ -547,8 +543,7 @@ def _resolve_class_filter(
                 class_filter.append(name_to_id[token])
             else:
                 print(
-                    f"Warning: class '{token}' not found in model class "
-                    "list, skipping.",
+                    f"Warning: class '{token}' not found in model class list, skipping.",
                     file=sys.stderr,
                 )
     return class_filter if class_filter else None
@@ -605,9 +600,7 @@ def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Dete
     return detections
 
 
-def _extract_tracker_params(
-    tracker_id: str, args: argparse.Namespace
-) -> dict[str, object]:
+def _extract_tracker_params(tracker_id: str, args: argparse.Namespace) -> dict[str, object]:
     """Extract tracker parameters from CLI args.
 
     Args:

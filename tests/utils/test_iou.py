@@ -35,9 +35,7 @@ def _torchvision_ciou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
     return torchvision.ops.complete_box_iou(t1, t2).numpy()
 
 
-def _reference_biou(
-    boxes_1: np.ndarray, boxes_2: np.ndarray, buffer_ratio: float = 0.1
-) -> np.ndarray:
+def _reference_biou(boxes_1: np.ndarray, boxes_2: np.ndarray, buffer_ratio: float = 0.1) -> np.ndarray:
     """Independent BIoU reference: buffer boxes, then apply vanilla IoU."""
     boxes_1_b = boxes_1.astype(np.float64, copy=True)
     boxes_2_b = boxes_2.astype(np.float64, copy=True)
@@ -230,12 +228,8 @@ class TestBIoUProperties:
     """Verify behavior of Buffered IoU."""
 
     def test_buffer_zero_matches_iou(self) -> None:
-        boxes_1 = np.array(
-            [[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 35.0, 40.0]], dtype=np.float64
-        )
-        boxes_2 = np.array(
-            [[5.0, 5.0, 15.0, 15.0], [50.0, 50.0, 60.0, 60.0]], dtype=np.float64
-        )
+        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 35.0, 40.0]], dtype=np.float64)
+        boxes_2 = np.array([[5.0, 5.0, 15.0, 15.0], [50.0, 50.0, 60.0, 60.0]], dtype=np.float64)
         biou0 = BIoU(buffer_ratio=0.0).compute(boxes_1, boxes_2)
         iou = _iou.compute(boxes_1, boxes_2).astype(np.float64)
         np.testing.assert_allclose(biou0, iou, atol=1e-10)

@@ -7,23 +7,9 @@
 from collections.abc import Sequence
 from typing import TypeVar
 
-import numpy as np
-
 from trackers.core.sort.tracklet import SORTTracklet
-from trackers.utils.iou import IoU
 
 T_SORTTracklet = TypeVar("T_SORTTracklet", bound="SORTTracklet")
-
-
-def _get_iou_matrix(
-    tracklets: Sequence[SORTTracklet], detections: np.ndarray
-) -> np.ndarray:
-    """Compatibility helper used by SORT-family trackers for IoU matching."""
-    if len(tracklets) == 0:
-        tracklet_boxes = np.empty((0, 4))
-    else:
-        tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
-    return IoU().compute(tracklet_boxes, detections)
 
 
 def _get_alive_tracklets(
@@ -56,8 +42,6 @@ def _get_alive_tracklets(
     for tracklet in tracklets:
         is_mature = tracklet.number_of_successful_updates >= minimum_consecutive_frames
         is_active = tracklet.time_since_update == 0
-        if tracklet.time_since_update < maximum_frames_without_update and (
-            is_mature or is_active
-        ):
+        if tracklet.time_since_update < maximum_frames_without_update and (is_mature or is_active):
             alive_tracklets.append(tracklet)
     return alive_tracklets

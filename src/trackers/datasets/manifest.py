@@ -54,14 +54,9 @@ class DatasetAsset(str, Enum):
     DETECTIONS = "detections"
 
 
-_BASE_MOT17_URL = (
-    "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/mot17-v2"
-)
+_BASE_MOT17_URL = "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/mot17-v2"
 
-_BASE_SPORTSMOT_URL = (
-    "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/"
-    "sportsmot-v1"
-)
+_BASE_SPORTSMOT_URL = "https://storage.googleapis.com/com-roboflow-marketing/trackers/datasets/sportsmot-v1"
 
 _DATASETS: dict[Dataset, dict[str, Any]] = {
     Dataset.MOT17: {

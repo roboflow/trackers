@@ -19,9 +19,7 @@ class BaseTracklet(ABC):
 
     count_id: int = 0
 
-    def __init__(
-        self, bbox: np.ndarray, state_estimator_class: type[BaseStateEstimator]
-    ) -> None:
+    def __init__(self, bbox: np.ndarray, state_estimator_class: type[BaseStateEstimator]) -> None:
         self.age = 0
         self.state_estimator: BaseStateEstimator = state_estimator_class(bbox)
 

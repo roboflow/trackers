@@ -26,13 +26,18 @@ def _make_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]
 
 
 class TestAddTuneSubparser:
+    @pytest.fixture
+    def minimal_args(self) -> argparse.Namespace:
+        """Parsed args with only required flags."""
+        parser, subparsers = _make_parser()
+        add_tune_subparser(subparsers)
+        return parser.parse_args(["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"])
+
     def test_registers_tune_subcommand(self) -> None:
         """tune subcommand is accessible under the 'tune' name."""
         parser, subparsers = _make_parser()
         add_tune_subparser(subparsers)
-        args = parser.parse_args(
-            ["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"]
-        )
+        args = parser.parse_args(["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"])
         assert args.func is run_tune
 
     def test_required_args_parsed(self) -> None:
@@ -64,23 +69,13 @@ class TestAddTuneSubparser:
             ("output", None),
         ],
     )
-    def test_optional_defaults(self, flag: str, expected: object) -> None:
+    def test_optional_defaults(self, minimal_args: argparse.Namespace, flag: str, expected: object) -> None:
         """Optional arguments have correct defaults when omitted."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        args = parser.parse_args(
-            ["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"]
-        )
-        assert getattr(args, flag) == expected
+        assert getattr(minimal_args, flag) == expected
 
-    def test_metrics_default(self) -> None:
+    def test_metrics_default(self, minimal_args: argparse.Namespace) -> None:
         """--metrics defaults to ['CLEAR'] when not supplied."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        args = parser.parse_args(
-            ["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"]
-        )
-        assert args.metrics == ["CLEAR"]
+        assert minimal_args.metrics == ["CLEAR"]
 
     def test_output_flag_short_form(self) -> None:
         """-o is an alias for --output."""

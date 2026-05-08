@@ -125,9 +125,7 @@ def compute_identity_metrics(
                 gt_indices = np.array([gt_id_to_idx[int(id_)] for id_ in gt_ids_t])
                 gt_id_count[gt_indices] += 1
             if len(tracker_ids_t) > 0:
-                tr_indices = np.array(
-                    [tracker_id_to_idx[int(id_)] for id_ in tracker_ids_t]
-                )
+                tr_indices = np.array([tracker_id_to_idx[int(id_)] for id_ in tracker_ids_t])
                 tracker_id_count[tr_indices] += 1
             continue
 
@@ -139,9 +137,7 @@ def compute_identity_metrics(
         # Count potential matches (similarity >= threshold) (ref: identity.py:55-57)
         matches_mask = similarity >= threshold
         match_idx_gt, match_idx_tracker = np.nonzero(matches_mask)
-        potential_matches_count[
-            gt_indices[match_idx_gt], tr_indices[match_idx_tracker]
-        ] += 1
+        potential_matches_count[gt_indices[match_idx_gt], tr_indices[match_idx_tracker]] += 1
 
         # Count detections per ID (ref: identity.py:60-61)
         gt_id_count[gt_indices] += 1

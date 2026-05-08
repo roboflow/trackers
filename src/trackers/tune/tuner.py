@@ -87,22 +87,19 @@ class Tuner:
             self._optuna = _optuna
         except ImportError as exc:
             raise ImportError(
-                "Error: optuna is required for hyperparameter tuning. "
-                "Install it with: pip install 'trackers[tune]'"
+                "Error: optuna is required for hyperparameter tuning. Install it with: pip install 'trackers[tune]'"
             ) from exc
 
         tracker_info = BaseTracker._lookup_tracker(tracker_id)
         if tracker_info is None:
             raise ValueError(
-                f"Tracker {tracker_id!r} is not registered. "
-                f"Available trackers: {BaseTracker._registered_trackers()}"
+                f"Tracker {tracker_id!r} is not registered. Available trackers: {BaseTracker._registered_trackers()}"
             )
 
         search_space = tracker_info.tracker_class.search_space
         if not search_space:
             raise ValueError(
-                f"Tracker {tracker_id!r} does not define a search_space. "
-                "Add a search_space ClassVar to enable tuning."
+                f"Tracker {tracker_id!r} does not define a search_space. Add a search_space ClassVar to enable tuning."
             )
 
         self._tracker_id = tracker_id
@@ -147,8 +144,7 @@ class Tuner:
         ]
         if missing_detection_files:
             raise FileNotFoundError(
-                "Missing detection files for selected sequences: "
-                + ", ".join(missing_detection_files)
+                "Missing detection files for selected sequences: " + ", ".join(missing_detection_files)
             )
 
         missing_gt_files = [
@@ -157,10 +153,7 @@ class Tuner:
             if not (self._gt_dir / f"{seq_name}.txt").is_file()
         ]
         if missing_gt_files:
-            raise FileNotFoundError(
-                "Missing ground-truth files for selected sequences: "
-                + ", ".join(missing_gt_files)
-            )
+            raise FileNotFoundError("Missing ground-truth files for selected sequences: " + ", ".join(missing_gt_files))
 
     def _objective(self, trial: optuna.Trial) -> float:
         """Sample hyperparameters, run tracker over all sequences, return metric.
@@ -183,10 +176,7 @@ class Tuner:
             elif stype == "choice":
                 params[name] = trial.suggest_categorical(name, spec["options"])
             else:
-                raise ValueError(
-                    f"Unknown search_space type: {stype!r}. "
-                    "Valid types: 'randint', 'uniform', 'choice'"
-                )
+                raise ValueError(f"Unknown search_space type: {stype!r}. Valid types: 'randint', 'uniform', 'choice'")
 
         # Pass only sampled parameters so tracker __init__ defaults apply naturally.
         tracker = self._tracker_info.tracker_class(**params)
@@ -252,11 +242,7 @@ def _discover_sequences(
     detections_dir = Path(detections_dir)
     if seqmap is not None:
         lines = Path(seqmap).read_text().splitlines()
-        return [
-            ln.strip()
-            for ln in lines
-            if ln.strip() and not ln.startswith("#") and ln.strip().lower() != "name"
-        ]
+        return [ln.strip() for ln in lines if ln.strip() and not ln.startswith("#") and ln.strip().lower() != "name"]
     return sorted(p.stem for p in detections_dir.glob("*.txt"))
 
 

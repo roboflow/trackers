@@ -67,7 +67,7 @@ tracker = SORTTracker(
 \]
 
 <figure class="iou-variant-figure">
-  <img src="../../assets/IoU%20variants/IoU%20visualization.png" alt="GIoU visualization" loading="lazy" decoding="async"/>
+  <img src="../../assets/IoU%20variants/IoU%20visualization.png" alt="IoU visualization" loading="lazy" decoding="async"/>
 </figure>
 Scores are `0` (no overlap) to `1` (perfect overlap). Because it returns `0` whenever
 boxes do not intersect, the tracker gets no gradient to recover a lost track; a

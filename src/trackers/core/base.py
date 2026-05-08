@@ -45,9 +45,7 @@ class TrackerInfo:
 
 # Pattern: leading whitespace, optional backticks, param name (supports dotted),
 # optional (type info), colon, and captures description
-_PARAM_START_PATTERN = re.compile(
-    r"^\s*`?(\w+(?:\.\w+)*)`?\s*(?:\([^)]*\))?\s*:\s*(.*)$"
-)
+_PARAM_START_PATTERN = re.compile(r"^\s*`?(\w+(?:\.\w+)*)`?\s*(?:\([^)]*\))?\s*:\s*(.*)$")
 
 
 def _parse_docstring_arguments(docstring: str) -> dict[str, str]:
@@ -191,18 +189,14 @@ def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
     # Check __init__ docstring first, then fall back to class docstring
     init_doc = cls.__init__.__doc__ or ""  # type: ignore[misc]
     class_doc = cls.__doc__ or ""
-    param_docs = _parse_docstring_arguments(init_doc) or _parse_docstring_arguments(
-        class_doc
-    )
+    param_docs = _parse_docstring_arguments(init_doc) or _parse_docstring_arguments(class_doc)
 
     params: dict[str, ParameterInfo] = {}
     for name, param in sig.parameters.items():
         if name == "self":
             continue
 
-        default = (
-            param.default if param.default is not inspect.Parameter.empty else None
-        )
+        default = param.default if param.default is not inspect.Parameter.empty else None
 
         annotation = type_hints.get(name, Any)
         param_type = _normalize_type(annotation, default)
@@ -213,9 +207,7 @@ def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
 
         description = param_docs.get(name, "")
 
-        params[name] = ParameterInfo(
-            param_type=param_type, default_value=default, description=description
-        )
+        params[name] = ParameterInfo(param_type=param_type, default_value=default, description=description)
 
     return params
 
@@ -223,9 +215,7 @@ def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
 _VALID_SPACE_TYPES: frozenset[str] = frozenset({"randint", "uniform", "choice"})
 
 
-def _validate_search_space_entry(
-    cls_name: str, key: str, spec: Any, init_params: set[str]
-) -> None:
+def _validate_search_space_entry(cls_name: str, key: str, spec: Any, init_params: set[str]) -> None:
     if key not in init_params:
         raise ValueError(
             f"{cls_name}: search_space key {key!r} is not a "
@@ -233,14 +223,10 @@ def _validate_search_space_entry(
             f"Valid parameters: {sorted(init_params)}"
         )
     if not isinstance(spec, dict):
-        raise ValueError(
-            f"{cls_name}: search_space[{key!r}] must be a dict, "
-            f"got {type(spec).__name__!r}"
-        )
+        raise ValueError(f"{cls_name}: search_space[{key!r}] must be a dict, got {type(spec).__name__!r}")
     if "type" not in spec:
         raise ValueError(
-            f"{cls_name}: search_space[{key!r}] missing required "
-            f"key 'type'. Valid types: {sorted(_VALID_SPACE_TYPES)}"
+            f"{cls_name}: search_space[{key!r}] missing required key 'type'. Valid types: {sorted(_VALID_SPACE_TYPES)}"
         )
     if spec["type"] not in _VALID_SPACE_TYPES:
         raise ValueError(
@@ -251,10 +237,7 @@ def _validate_search_space_entry(
     space_type = spec["type"]
     if space_type == "choice":
         if "options" not in spec:
-            raise ValueError(
-                f"{cls_name}: search_space[{key!r}] with type 'choice' "
-                f"missing required key 'options'"
-            )
+            raise ValueError(f"{cls_name}: search_space[{key!r}] with type 'choice' missing required key 'options'")
         opts = spec["options"]
         if isinstance(opts, (str, bytes)):
             raise ValueError(
@@ -265,31 +248,19 @@ def _validate_search_space_entry(
             n_opts = len(opts)
         except TypeError as exc:
             raise ValueError(
-                f"{cls_name}: search_space[{key!r}]['options'] must be "
-                f"a sized sequence, got {type(opts).__name__!r}"
+                f"{cls_name}: search_space[{key!r}]['options'] must be a sized sequence, got {type(opts).__name__!r}"
             ) from exc
         if n_opts < 1:
-            raise ValueError(
-                f"{cls_name}: search_space[{key!r}]['options'] must be "
-                f"non-empty, got {opts!r}"
-            )
+            raise ValueError(f"{cls_name}: search_space[{key!r}]['options'] must be non-empty, got {opts!r}")
         return
 
     if "range" not in spec:
-        raise ValueError(
-            f"{cls_name}: search_space[{key!r}] missing required key 'range'"
-        )
+        raise ValueError(f"{cls_name}: search_space[{key!r}] missing required key 'range'")
     rng = spec["range"]
     if not (hasattr(rng, "__len__") and len(rng) == 2):
-        raise ValueError(
-            f"{cls_name}: search_space[{key!r}]['range'] must be "
-            f"a 2-element sequence, got {rng!r}"
-        )
+        raise ValueError(f"{cls_name}: search_space[{key!r}]['range'] must be a 2-element sequence, got {rng!r}")
     if rng[0] >= rng[1]:
-        raise ValueError(
-            f"{cls_name}: search_space[{key!r}]['range'] must "
-            f"have low < high, got {rng!r}"
-        )
+        raise ValueError(f"{cls_name}: search_space[{key!r}]['range'] must have low < high, got {rng!r}")
 
 
 class TrackletProtocol(Protocol):
@@ -341,9 +312,7 @@ class BaseTracker(ABC):
         # Validate search_space keys match __init__ parameters (search_space optional)
         search_space = getattr(cls, "search_space", None)
         if search_space is not None and len(search_space) > 0:
-            init_params = {
-                n for n in inspect.signature(cls.__init__).parameters if n != "self"
-            }
+            init_params = {n for n in inspect.signature(cls.__init__).parameters if n != "self"}
             for key, spec in search_space.items():
                 _validate_search_space_entry(cls.__name__, key, spec, init_params)
 
@@ -392,8 +361,7 @@ class BaseTracker(ABC):
         """
         if frame is not None:
             warnings.warn(
-                f"{type(self).__name__}.update() received a frame argument"
-                " but does not use it.",
+                f"{type(self).__name__}.update() received a frame argument but does not use it.",
                 UserWarning,
                 stacklevel=3,
             )

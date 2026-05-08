@@ -83,9 +83,7 @@ def evaluate_mot_sequence(
     # Validate metrics
     for metric in metrics:
         if metric not in SUPPORTED_METRICS:
-            raise ValueError(
-                f"Unsupported metric: {metric}. Supported metrics: {SUPPORTED_METRICS}"
-            )
+            raise ValueError(f"Unsupported metric: {metric}. Supported metrics: {SUPPORTED_METRICS}")
 
     gt_path = Path(gt_path)
     tracker_path = Path(tracker_path)
@@ -334,16 +332,10 @@ def _discover_sequences(
         List of sequence names.
     """
     if data_format == "flat":
-        return sorted(
-            p.stem for p in gt_dir.glob("*.txt") if not p.name.startswith(".")
-        )
+        return sorted(p.stem for p in gt_dir.glob("*.txt") if not p.name.startswith("."))
     else:
         # MOT format: gt_dir/{seq}/gt/gt.txt
-        return sorted(
-            p.parent.parent.name
-            for p in gt_dir.glob("*/gt/gt.txt")
-            if not p.name.startswith(".")
-        )
+        return sorted(p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.name.startswith("."))
 
 
 def _get_paths(
@@ -403,15 +395,9 @@ def _aggregate_metrics(
     identity_agg: IdentityMetrics | None = None
 
     if "CLEAR" in metrics:
-        clear_seq_metrics = [
-            seq.CLEAR.to_dict()
-            for seq in sequence_results.values()
-            if seq.CLEAR is not None
-        ]
+        clear_seq_metrics = [seq.CLEAR.to_dict() for seq in sequence_results.values() if seq.CLEAR is not None]
         if clear_seq_metrics:
-            clear_agg = CLEARMetrics.from_dict(
-                aggregate_clear_metrics(clear_seq_metrics)
-            )
+            clear_agg = CLEARMetrics.from_dict(aggregate_clear_metrics(clear_seq_metrics))
 
     if "HOTA" in metrics:
         hota_seq_metrics = [
@@ -423,15 +409,9 @@ def _aggregate_metrics(
             hota_agg = HOTAMetrics.from_dict(aggregate_hota_metrics(hota_seq_metrics))
 
     if "Identity" in metrics:
-        identity_seq_metrics = [
-            seq.Identity.to_dict()
-            for seq in sequence_results.values()
-            if seq.Identity is not None
-        ]
+        identity_seq_metrics = [seq.Identity.to_dict() for seq in sequence_results.values() if seq.Identity is not None]
         if identity_seq_metrics:
-            identity_agg = IdentityMetrics.from_dict(
-                aggregate_identity_metrics(identity_seq_metrics)
-            )
+            identity_agg = IdentityMetrics.from_dict(aggregate_identity_metrics(identity_seq_metrics))
 
     return SequenceResult(
         sequence="COMBINED",

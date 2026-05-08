@@ -133,9 +133,7 @@ class BoTSORTTracker(BaseTracker):
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold_first_assoc = minimum_iou_threshold_first_assoc
         self.minimum_iou_threshold_second_assoc = minimum_iou_threshold_second_assoc
-        self.minimum_iou_threshold_unconfirmed_assoc = (
-            minimum_iou_threshold_unconfirmed_assoc
-        )
+        self.minimum_iou_threshold_unconfirmed_assoc = minimum_iou_threshold_unconfirmed_assoc
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
         self.instant_first_frame_activation = instant_first_frame_activation
@@ -145,11 +143,7 @@ class BoTSORTTracker(BaseTracker):
         self.frame_id: int = 0
 
         self.enable_cmc = enable_cmc
-        self.cmc = (
-            CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale))
-            if enable_cmc
-            else None
-        )
+        self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
 
     def update(
         self,
@@ -192,11 +186,7 @@ class BoTSORTTracker(BaseTracker):
             tracker.predict()
 
         detection_boxes = detections.xyxy
-        confidences = (
-            detections.confidence
-            if detections.confidence is not None
-            else np.ones(len(detections))
-        )
+        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
 
         # Split indices into high / low / discarded by confidence
         high_mask = confidences >= self.high_conf_det_threshold
@@ -243,10 +233,7 @@ class BoTSORTTracker(BaseTracker):
         for row, col in matched:
             track = strack_pool[row]
             track.update(high_boxes[col])
-            if (
-                track.number_of_successful_updates >= self.minimum_consecutive_frames
-                and track.tracker_id == -1
-            ):
+            if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
                 track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
             out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(track.tracker_id)
@@ -254,23 +241,14 @@ class BoTSORTTracker(BaseTracker):
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks, following the original ByteTrack).
         # No score fusing in second association.
-        remaining_tracked = [
-            strack_pool[i]
-            for i in unmatched_pool
-            if strack_pool[i].time_since_update == 1
-        ]
+        remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
         iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
-        matched, _, unmatched_low = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold_second_assoc
-        )
+        matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
             track = remaining_tracked[row]
             track.update(low_boxes[col])
-            if (
-                track.number_of_successful_updates >= self.minimum_consecutive_frames
-                and track.tracker_id == -1
-            ):
+            if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
                 track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
             out_det_indices.append(int(low_indices[col]))
             out_tracker_ids.append(track.tracker_id)
@@ -292,21 +270,15 @@ class BoTSORTTracker(BaseTracker):
 
             iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
             iou_matrix = _fuse_score(iou_matrix, uh_scores)
-            matched_uc, unmatched_uc_indices, remaining_uh = (
-                self._get_associated_indices(
-                    iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
-                )
+            matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
+                iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
             )
 
             for row, col in matched_uc:
                 track = unconfirmed_tracks[row]
                 orig_high_idx = unmatched_high_list[col]
                 track.update(high_boxes[orig_high_idx])
-                if (
-                    track.number_of_successful_updates
-                    >= self.minimum_consecutive_frames
-                    and track.tracker_id == -1
-                ):
+                if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
                     track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
                 out_det_indices.append(int(high_indices[orig_high_idx]))
                 out_tracker_ids.append(track.tracker_id)
@@ -349,15 +321,11 @@ class BoTSORTTracker(BaseTracker):
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
 
-    def _get_iou_matrix(
-        self, tracklets: list[BoTSORTTracklet], detections: np.ndarray
-    ) -> np.ndarray:
+    def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
-            tracklet_boxes = np.array(
-                [tracklet.get_state_bbox() for tracklet in tracklets]
-            )
+            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
         return self.iou.compute(tracklet_boxes, detections)
 
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:
@@ -394,18 +362,14 @@ class BoTSORTTracker(BaseTracker):
             # top-left and bottom-right corners can invert the box or produce
             # invalid geometry. Transform all four corners, then rebuild the
             # enclosing axis-aligned box with per-axis min/max.
-            states[:, 0], states[:, 1], states[:, 2], states[:, 3] = (
-                _xyxy_corner_min_max(
-                    states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
-                )
+            states[:, 0], states[:, 1], states[:, 2], states[:, 3] = _xyxy_corner_min_max(
+                states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
             )
             # Keep XYXY velocity ordering valid under mixed-axis transforms by
             # applying the same corner-wise normalization to the paired velocity
             # components.
-            states[:, 4], states[:, 5], states[:, 6], states[:, 7] = (
-                _xyxy_corner_min_max(
-                    states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
-                )
+            states[:, 4], states[:, 5], states[:, 6], states[:, 7] = _xyxy_corner_min_max(
+                states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
             )
         else:
             # Batch-transform centre positions: x' = x @ R.T + t
@@ -418,9 +382,7 @@ class BoTSORTTracker(BaseTracker):
             # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
             # to 1e-6 residuals on off-diagonals even for pure-translation H;
             # default atol=1e-8 misclassifies those as cross-axis transforms.
-            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(
-                R[1, 0], 0.0, atol=1e-6
-            ):
+            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(R[1, 0], 0.0, atol=1e-6):
                 A = np.eye(dim, dtype=np.float64)
                 A[0:2, 0:2] = R
                 A[2:4, 2:4] = R
@@ -468,9 +430,7 @@ class BoTSORTTracker(BaseTracker):
         unmatched_detections = set(range(n_detections))
 
         if n_tracks > 0 and n_detections > 0:
-            row_indices, col_indices = linear_sum_assignment(
-                similarity_matrix, maximize=True
-            )
+            row_indices, col_indices = linear_sum_assignment(similarity_matrix, maximize=True)
             for row, col in zip(row_indices, col_indices):
                 if similarity_matrix[row, col] >= min_similarity_thresh:
                     matched_indices.append((row, col))

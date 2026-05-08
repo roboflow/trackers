@@ -87,9 +87,7 @@ class TestRunDownload:
             assert rc == 0
             mock_print.assert_called_once()
 
-    def test_missing_dataset_exits_with_error(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_missing_dataset_exits_with_error(self, capsys: pytest.CaptureFixture[str]) -> None:
         """No dataset and no --list prints error to stderr and returns 1."""
         args = _parse_args(["download"])
         rc = _run_download(args)
@@ -105,13 +103,9 @@ class TestRunDownload:
             ("train,val,test", ["train", "val", "test"]),
         ],
     )
-    def test_split_comma_parsing(
-        self, split_arg: str, expected_splits: list[str]
-    ) -> None:
+    def test_split_comma_parsing(self, split_arg: str, expected_splits: list[str]) -> None:
         """--split values are split on commas and whitespace-stripped."""
-        args = _parse_args(
-            ["download", "mot17", "--split", split_arg, "--asset", "annotations"]
-        )
+        args = _parse_args(["download", "mot17", "--split", split_arg, "--asset", "annotations"])
 
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
             rc = _run_download(args)
@@ -132,13 +126,9 @@ class TestRunDownload:
             ("train,,val", ["train", "", "val"]),
         ],
     )
-    def test_split_comma_parsing_boundary(
-        self, split_arg: str, expected_splits: list[str]
-    ) -> None:
+    def test_split_comma_parsing_boundary(self, split_arg: str, expected_splits: list[str]) -> None:
         """--split handles malformed comma inputs gracefully."""
-        args = _parse_args(
-            ["download", "mot17", "--split", split_arg, "--asset", "annotations"]
-        )
+        args = _parse_args(["download", "mot17", "--split", split_arg, "--asset", "annotations"])
 
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
             rc = _run_download(args)
@@ -159,13 +149,9 @@ class TestRunDownload:
             ("frames,annotations,detections", ["frames", "annotations", "detections"]),
         ],
     )
-    def test_asset_comma_parsing(
-        self, asset_arg: str, expected_assets: list[str]
-    ) -> None:
+    def test_asset_comma_parsing(self, asset_arg: str, expected_assets: list[str]) -> None:
         """--asset values are split on commas and whitespace-stripped."""
-        args = _parse_args(
-            ["download", "sportsmot", "--split", "train", "--asset", asset_arg]
-        )
+        args = _parse_args(["download", "sportsmot", "--split", "train", "--asset", asset_arg])
 
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
             rc = _run_download(args)
@@ -221,9 +207,7 @@ class TestRunDownload:
 
     def test_split_with_spaces_stripped(self) -> None:
         """--split with spaces around commas strips whitespace."""
-        args = _parse_args(
-            ["download", "mot17", "--split", "train , val", "--asset", "annotations"]
-        )
+        args = _parse_args(["download", "mot17", "--split", "train , val", "--asset", "annotations"])
 
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
             rc = _run_download(args)
