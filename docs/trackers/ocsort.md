@@ -23,6 +23,10 @@ For comparisons with other trackers, plus dataset context and evaluation details
 | SportsMOT | 71.7 | 71.4 | 95.0 |
 | SoccerNet | 78.4 | 72.6 | 94.1 |
 
+## Watch It in Action
+
+<iframe title="OC-SORT demo video" width="100%" style="aspect-ratio: 16/9;" src="https://github.com/user-attachments/assets/9ccae3a0-9dc2-4c9c-b9cf-ff6e3982b147" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 ## How does OC-SORT work?
 
 OC-SORT extends [SORT](sort.md) with three observation-centric mechanisms that address the linear motion assumption's failures during occlusion and non-linear trajectories. It retains the same Kalman filter and Hungarian algorithm backbone but adds corrections that use stored observations rather than relying solely on the filter's predicted state.

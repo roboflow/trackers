@@ -20,6 +20,10 @@ For comparisons with other trackers, plus dataset context and evaluation details
 | SportsMOT | 73.0 | 72.5 | 96.4 |
 | SoccerNet | 84.0 | 78.1 | 97.8 |
 
+## Watch It in Action
+
+<iframe title="ByteTrack demo video" width="100%" style="aspect-ratio: 16/9;" src="https://github.com/user-attachments/assets/9c9736c9-ca78-48b3-b3c4-46d3e904dbb3" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 ## How does ByteTrack work?
 
 ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as [SORT](sort.md) but changes how detections are associated to tracks. Instead of discarding low-confidence detections, ByteTrack uses a two-stage matching strategy that recovers valid objects the detector scored low due to occlusion, blur, or partial visibility.

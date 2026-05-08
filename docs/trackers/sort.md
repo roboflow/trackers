@@ -8,7 +8,7 @@ description: SORT (Simple Online and Realtime Tracking) uses a Kalman filter and
 
 ## What is SORT?
 
-SORT is a classic online, tracking-by-detection method that predicts object motion with a Kalman filter and matches predicted tracks to detections using the Hungarian algorithm based on Intersection over Union (IoU). The tracker uses only geometric cues from bounding boxes, without appearance features, so it runs extremely fast and scales to hundreds of frames per second on typical hardware. Detections from a strong CNN detector feed SORT, which updates each track’s state via a constant velocity motion model and prunes stale tracks. Because SORT lacks explicit re-identification or appearance cues, it can suffer identity switches and fragmented tracks under long occlusions or heavy crowding.
+SORT is a classic online, tracking-by-detection method that predicts object motion with a Kalman filter and matches predicted tracks to detections using the Hungarian algorithm based on Intersection over Union (IoU). The tracker uses only geometric cues from bounding boxes, without appearance features, so it runs extremely fast and scales to hundreds of frames per second on typical hardware. Detections from a strong CNN detector feed SORT, which updates each track's state via a constant velocity motion model and prunes stale tracks. Because SORT lacks explicit re-identification or appearance cues, it can suffer identity switches and fragmented tracks under long occlusions or heavy crowding.
 
 ## How does SORT compare to other trackers?
 
@@ -19,6 +19,10 @@ For comparisons with other trackers, plus dataset context and evaluation details
 |   MOT17   | 58.4 | 69.9 | 67.2 |
 | SportsMOT | 70.9 | 68.9 | 95.7 |
 | SoccerNet | 81.6 | 76.2 | 95.1 |
+
+## Watch It in Action
+
+<iframe title="SORT demo video" width="100%" style="aspect-ratio: 16/9;" src="https://github.com/user-attachments/assets/98c73178-cb7d-4cdd-88b0-fda68b09fd80" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ## How does SORT work?
 
