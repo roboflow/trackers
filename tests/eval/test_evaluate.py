@@ -57,6 +57,9 @@ class TestEvaluateMOTSequence:
         computed = getattr(result, attr_name)
         assert computed is not None
         assert getattr(computed, field_name) is not None
+        if metric == "HOTA":
+            assert computed.DetA is not None
+            assert computed.AssA is not None
         for other in other_metrics:
             assert getattr(result, other) is None
 
