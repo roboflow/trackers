@@ -64,6 +64,9 @@ class ByteTrackTracker(BaseTracker):
             Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
             subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
             similarity is computed during the association step.
+            Passing ``None`` (the default) is equivalent to ``IoU()`` and is
+            provided for backward compatibility with existing code that did not
+            supply an ``iou`` argument.
     """
 
     tracker_id = "bytetrack"
