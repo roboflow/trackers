@@ -47,7 +47,7 @@ tracker = SORTTracker(
 | `IoU`   | `[0, 1]`    | Default — strong baseline for most scenes                              |
 | `GIoU`  | `[-1, 1]`   | Scenes where boxes frequently lose overlap (occlusion, re-entry)       |
 | `DIoU`  | `[-1, 1]`   | Fast-moving objects; centre-distance signal without aspect sensitivity |
-| `CIoU`  | `(−2, 1]`   | Same as DIoU plus aspect-ratio consistency                             |
+| `CIoU`  | `[-1, 1]`   | Same as DIoU plus aspect-ratio consistency                             |
 | `BIoU`  | `[0, 1]`    | Very small or very fast objects where raw boxes rarely overlap         |
 
 **Formula Summary** (`A, B` boxes, `C` enclosing box, `d` center distance, `c` enclosing diagonal):
