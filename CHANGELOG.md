@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🚀 Added
+
+- **Pluggable IoU variants** — `iou=` parameter on all four trackers (`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, `BoTSORTTracker`) accepts any `BaseIoU` subclass. Built-in variants: `IoU` (standard), `GIoU`, `DIoU`, `CIoU`, `BIoU` (Buffered IoU) ([#403](https://github.com/roboflow/trackers/pull/403)).
+- **`BaseIoU` ABC** in `trackers.utils.iou` — defines the `compute(boxes_1, boxes_2)` contract; subclass and override `_compute` to implement a custom similarity metric ([#403](https://github.com/roboflow/trackers/pull/403)).
+- **`normalize_for_fusion` on `BaseIoU`** — signed variants (GIoU, DIoU, CIoU) override this to shift `[-1, 1]` → `[0, 1]` before BoT-SORT score fusion, preventing ranking inversion ([#403](https://github.com/roboflow/trackers/pull/403)).
+
+### 🔧 Fixed
+
+- **BoT-SORT score fusion with signed IoU** — `_fuse_score` multiplied raw negative IoU values by confidence, inverting track ranking for GIoU/DIoU/CIoU; `normalize_for_fusion` now normalises similarity before fusion ([#403](https://github.com/roboflow/trackers/pull/403)).
+- **Non-finite box coordinates crash `linear_sum_assignment`** — `BaseIoU.compute` now raises `ValueError` with a clear message for NaN/inf inputs instead of propagating invalid entries into SciPy ([#403](https://github.com/roboflow/trackers/pull/403)).
+- **OC-SORT Observation-Centric Recovery** now uses standard `IoU` per the paper, independent of the configured `iou=` variant ([#403](https://github.com/roboflow/trackers/pull/403)).
+- **Eager division warnings on zero-area boxes** — IoU helper switched from `np.where` (eager) to `np.divide(..., where=...)` (lazy), suppressing `RuntimeWarning` under strict NumPy error settings ([#403](https://github.com/roboflow/trackers/pull/403)).
+- **CLI argparse crash on `BaseIoU` parameter** — `iou=` is now excluded from argparse auto-discovery; the variant must be set programmatically ([#403](https://github.com/roboflow/trackers/pull/403)).
+
+---
+
 ## [2.4.0] — 2026-05-06
 
 ### 🚀 Added

@@ -164,9 +164,7 @@ class ByteTrackTracker(BaseTracker):
         remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
 
         # Step 2: associate low-confidence detections to remaining tracks
-        remaining_boxes = (
-            np.array([t.get_state_bbox() for t in remaining_tracks]) if remaining_tracks else np.empty((0, 4))
-        )
+        remaining_boxes = predicted_boxes[unmatched_tracks] if unmatched_tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(remaining_boxes, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 
