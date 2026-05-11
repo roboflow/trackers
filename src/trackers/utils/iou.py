@@ -9,7 +9,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import numpy as np
-import supervision as sv
 
 
 class BaseIoU(ABC):
@@ -21,6 +20,23 @@ class BaseIoU(ABC):
 
     The resulting matrix is used as a cost/similarity signal in the
     Hungarian algorithm during the data association step.
+
+    Examples:
+        Subclass BaseIoU to create a custom metric::
+
+            class MyIoU(BaseIoU):
+                def _compute(
+                    self, boxes_1: np.ndarray, boxes_2: np.ndarray
+                ) -> np.ndarray:
+                    return np.ones((len(boxes_1), len(boxes_2)))
+
+            metric = MyIoU()
+            matrix = metric.compute(np.array([[0, 0, 10, 10]]), np.array([[5, 5, 15, 15]]))
+
+    Note:
+        Subclasses must override :meth:`_compute`, **not** :meth:`compute`.
+        Overriding ``compute`` directly bypasses the empty-input guard which
+        returns a zero matrix when either input has zero rows.
     """
 
     def compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
@@ -36,7 +52,16 @@ class BaseIoU(ABC):
         Returns:
             ``(N, M)`` similarity matrix where entry ``(i, j)`` is the
             similarity between ``boxes_1[i]`` and ``boxes_2[j]``.
+
+        Note:
+            Input boxes are assumed well-formed (``x1 <= x2`` and
+            ``y1 <= y2``). No validation is performed; malformed boxes
+            produce undefined output.
         """
+        if not np.isfinite(boxes_1).all():
+            raise ValueError("boxes_1 contains non-finite values (NaN or inf)")
+        if not np.isfinite(boxes_2).all():
+            raise ValueError("boxes_2 contains non-finite values (NaN or inf)")
         if len(boxes_1) == 0 or len(boxes_2) == 0:
             return np.zeros((len(boxes_1), len(boxes_2)), dtype=np.float64)
         return self._compute(boxes_1, boxes_2)
@@ -55,6 +80,23 @@ class BaseIoU(ABC):
             ``(N, M)`` similarity matrix.
         """
 
+    def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
+        """Normalize similarity values for score fusion in BoT-SORT association.
+
+        By default returns the matrix unchanged. Signed variants (GIoU, DIoU,
+        CIoU) override this to shift ``[-1, 1]`` scores into ``[0, 1]`` via
+        ``(matrix + 1) / 2`` so that score fusion preserves ranking for both
+        overlapping and non-overlapping box pairs.
+
+        Args:
+            similarity_matrix: ``(N, M)`` similarity matrix from :meth:`compute`.
+
+        Returns:
+            ``(N, M)`` matrix suitable for element-wise multiplication with
+            detection confidence scores.
+        """
+        return similarity_matrix
+
 
 class IoU(BaseIoU):
     """Standard Intersection over Union.
@@ -62,9 +104,19 @@ class IoU(BaseIoU):
     Computes the ratio of the intersection area to the union area for
     every pair of boxes. Values range from 0 (no overlap) to 1 (perfect
     overlap). This is the classic metric used in SORT.
+
+    Examples:
+        >>> import numpy as np
+        >>> metric = IoU()
+        >>> boxes_a = np.array([[0.0, 0.0, 10.0, 10.0]])
+        >>> boxes_b = np.array([[5.0, 5.0, 15.0, 15.0]])
+        >>> metric.compute(boxes_a, boxes_b)
+        array([[0.14285714]])
     """
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+        import supervision as sv
+
         return sv.box_iou_batch(boxes_1, boxes_2)
 
 
@@ -86,14 +138,37 @@ class BIoU(BaseIoU):
     ``buffer_ratio=0`` recovers standard IoU exactly.
 
     Reference: https://arxiv.org/pdf/2211.14317
+
+    Examples:
+        Buffer expands boxes before computing IoU — useful when detections
+        are slightly outside the track's predicted region::
+
+            >>> import numpy as np
+            >>> metric = BIoU(buffer_ratio=0.1)
+            >>> boxes_a = np.array([[0.0, 0.0, 10.0, 10.0]])
+            >>> boxes_b = np.array([[11.0, 0.0, 21.0, 10.0]])
+            >>> float(metric.compute(boxes_a, boxes_b)[0, 0]) > 0
+            True
     """
 
     def __init__(self, buffer_ratio: float = 0.1) -> None:
+        """Initialise BIoU with a configurable buffer ratio.
+
+        Args:
+            buffer_ratio: Non-negative relative margin to expand each box
+                before computing IoU. ``0`` recovers standard IoU exactly;
+                larger values tolerate wider localization gaps.
+
+        Raises:
+            ValueError: If ``buffer_ratio`` is negative.
+        """
         if buffer_ratio < 0:
             raise ValueError(f"buffer_ratio must be non-negative, got {buffer_ratio}")
         self.buffer_ratio = buffer_ratio
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+        import supervision as sv
+
         if self.buffer_ratio == 0:
             return sv.box_iou_batch(boxes_1, boxes_2)
 
@@ -144,7 +219,12 @@ def _compute_iou_and_enclosing(
     area_2 = (boxes_2[:, 2] - boxes_2[:, 0]) * (boxes_2[:, 3] - boxes_2[:, 1])
     union = area_1[:, np.newaxis] + area_2[np.newaxis, :] - intersection
 
-    iou = np.where(union > 0, intersection / union, 0.0)
+    iou = np.divide(
+        intersection,
+        union,
+        out=np.zeros(intersection.shape, dtype=np.float64),
+        where=union > 0,
+    )
 
     # Smallest enclosing box C
     enc_x1 = np.minimum(boxes_1[:, np.newaxis, 0], boxes_2[np.newaxis, :, 0])
@@ -172,18 +252,33 @@ class GIoU(BaseIoU):
     Values are in ``[-1, 1]``: near -1 for far-apart boxes, 1 for perfect overlap.
 
     Reference: https://arxiv.org/abs/1902.09630
+
+    Examples:
+        GIoU is negative for non-overlapping boxes, providing gradient signal
+        unavailable from standard IoU::
+
+            >>> import numpy as np
+            >>> metric = GIoU()
+            >>> boxes_a = np.array([[0.0, 0.0, 1.0, 1.0]])
+            >>> boxes_b = np.array([[5.0, 5.0, 6.0, 6.0]])
+            >>> float(metric.compute(boxes_a, boxes_b)[0, 0]) < 0
+            True
     """
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
         iou, _, union, enclosing_area, _ = _compute_iou_and_enclosing(boxes_1, boxes_2)
 
-        giou = iou - np.where(
-            enclosing_area > 0,
-            (enclosing_area - union) / enclosing_area,
-            0.0,
+        penalty = np.divide(
+            enclosing_area - union,
+            enclosing_area,
+            out=np.zeros(enclosing_area.shape, dtype=np.float64),
+            where=enclosing_area > 0,
         )
 
-        return giou
+        return iou - penalty
+
+    def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
+        return (similarity_matrix + 1.0) / 2.0
 
 
 class DIoU(BaseIoU):
@@ -205,6 +300,16 @@ class DIoU(BaseIoU):
     Values typically lie in ``[-1, 1]`` for well-formed boxes.
 
     Reference: https://arxiv.org/abs/1911.08287
+
+    Examples:
+        DIoU penalizes center distance, so concentric boxes score 1.0::
+
+            >>> import numpy as np
+            >>> metric = DIoU()
+            >>> boxes_a = np.array([[0.0, 0.0, 4.0, 4.0]])
+            >>> boxes_b = np.array([[1.0, 1.0, 3.0, 3.0]])
+            >>> float(metric.compute(boxes_a, boxes_b)[0, 0]) <= 1.0
+            True
     """
 
     _EPS = 1e-7
@@ -224,6 +329,9 @@ class DIoU(BaseIoU):
         denom = enclosing_diagonal_sq + self._EPS
         return iou - center_dist_sq / denom
 
+    def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
+        return (similarity_matrix + 1.0) / 2.0
+
 
 class CIoU(BaseIoU):
     """Complete Intersection over Union (Zheng et al., 2019).
@@ -237,10 +345,23 @@ class CIoU(BaseIoU):
     ``alpha = v / (1 - IoU + v + epsilon)``.
 
     So **CIoU ≤ DIoU ≤ IoU** when widths and heights are positive.
-    Scores are at most 1; unlike plain IoU they can fall **below** -1 when the
-    aspect-ratio penalty is large.
+    Scores are in ``[-1, 1]``, matching the range of
+    :func:`torchvision.ops.complete_box_iou`.
 
     Reference: https://arxiv.org/abs/1911.08287
+
+    Examples:
+        CIoU adds an aspect-ratio penalty to DIoU, so CIoU <= DIoU::
+
+            >>> import numpy as np
+            >>> metric_d = DIoU()
+            >>> metric_c = CIoU()
+            >>> boxes_a = np.array([[0.0, 0.0, 10.0, 5.0]])
+            >>> boxes_b = np.array([[8.0, 3.0, 15.0, 8.0]])
+            >>> lhs = float(metric_c.compute(boxes_a, boxes_b)[0, 0])
+            >>> rhs = float(metric_d.compute(boxes_a, boxes_b)[0, 0]) + 1e-6
+            >>> lhs <= rhs
+            True
     """
 
     _EPS = 1e-7
@@ -274,5 +395,8 @@ class CIoU(BaseIoU):
         safe_h_gt = np.maximum(h_gt, self._EPS)
 
         v = (4.0 / (np.pi**2)) * (np.arctan(w_pred / safe_h_pred) - np.arctan(w_gt / safe_h_gt)) ** 2
-        alpha = v / (1.0 - iou + v + self._EPS)
+        alpha = np.divide(v, 1.0 - iou + v, out=np.zeros_like(v), where=(1.0 - iou + v) > 0)
         return diou - alpha * v
+
+    def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
+        return (similarity_matrix + 1.0) / 2.0
