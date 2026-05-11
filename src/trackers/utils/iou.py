@@ -111,7 +111,7 @@ class IoU(BaseIoU):
         >>> boxes_a = np.array([[0.0, 0.0, 10.0, 10.0]])
         >>> boxes_b = np.array([[5.0, 5.0, 15.0, 15.0]])
         >>> metric.compute(boxes_a, boxes_b)
-        array([[0.14285714]])
+        array([[0.14285715]], dtype=float32)
     """
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
