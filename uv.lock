@@ -4048,13 +4048,11 @@ build = [
     { name = "twine" },
     { name = "wheel" },
 ]
-ci-tests = [
-    { name = "torch" },
-    { name = "torchvision" },
-]
 dev = [
     { name = "pre-commit" },
     { name = "pytest" },
+    { name = "torch" },
+    { name = "torchvision" },
     { name = "uv" },
 ]
 docs = [
@@ -4090,13 +4088,11 @@ build = [
     { name = "twine", specifier = ">=5.1.1" },
     { name = "wheel", specifier = ">=0.40" },
 ]
-ci-tests = [
-    { name = "torch" },
-    { name = "torchvision" },
-]
 dev = [
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.3" },
+    { name = "torch" },
+    { name = "torchvision" },
     { name = "uv", specifier = ">=0.4.20" },
 ]
 docs = [

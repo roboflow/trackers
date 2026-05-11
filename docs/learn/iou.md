@@ -283,8 +283,6 @@ For each `(dataset, tracker)` pair, we keep the `state_estimator` with the highe
 
 For more information on the datasets, see: [dataset comparison](../trackers/comparison.md).
 
-<!-- Positive value  = green, negative = red,  |delta| < 0.1 = yellow  -->
-
 <style>
   .iou-variant-figure {
     margin: 0.75rem auto 1.1rem;
@@ -299,23 +297,14 @@ For more information on the datasets, see: [dataset comparison](../trackers/comp
     display: block;
     margin-inline: auto;
   }
-  .delta {
-    display: inline-block;
-    padding: 1px 6px;
-    border-radius: 6px;
-    font-variant-numeric: tabular-nums;
-  }
-  .delta.pos { background: rgba(46, 125, 50, 0.16); }
-  .delta.neg { background: rgba(198, 40, 40, 0.16); }
-  .delta.neutral { background: rgba(251, 192, 45, 0.22); }
 </style>
 
 | Dataset        | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
-| :------------- | ------------: | ---------------------------------------: | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
-| MOT17 val      |         38.09 | <span class="delta neutral">−0.09</span> | <span class="delta neutral">−0.04</span> | <span class="delta neutral">−0.04</span> | <span class="delta neg">−0.28</span> |
-| SportsMOT val  |         80.21 |     <span class="delta pos">+0.65</span> |     <span class="delta pos">+0.95</span> |     <span class="delta pos">+0.88</span> | <span class="delta pos">+0.36</span> |
-| DanceTrack val |         50.27 |     <span class="delta neg">−0.80</span> |     <span class="delta neg">−0.34</span> | <span class="delta neutral">+0.05</span> | <span class="delta pos">+0.15</span> |
-| SoccerNet test |         83.21 |     <span class="delta pos">+1.57</span> |     <span class="delta pos">+2.82</span> |     <span class="delta pos">+2.76</span> | <span class="delta pos">+1.41</span> |
+| :------------- | ----------: | ----------: | ----------: | ----------: | ----------: |
+| MOT17 val      |         38.09 | **−0.09** | **−0.04** | **−0.04** | **−0.28** |
+| SportsMOT val  |         80.21 |     **+0.65** |     **+0.95** |     **+0.88** | **+0.36** |
+| DanceTrack val |         50.27 |     **−0.80** |     **−0.34** | **+0.05** | **+0.15** |
+| SoccerNet test |         83.21 |     **+1.57** |     **+2.82** |     **+2.76** | **+1.41** |
 
 Over SportsMOT and SoccerNet, all IoU variants outperform standard IoU, with DIoU
 and CIoU strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In
@@ -329,9 +318,9 @@ detector, and both show the largest improvements. To test this, we run an additi
 experiment using ground-truth boxes from MOT17 and SportsMOT as tracker detections.
 
 | Dataset (GT-as-det) | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
-| :------------------ | ------------: | ---------------------------------------: | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
-| MOT17 val           |         97.17 | <span class="delta neutral">−0.05</span> | <span class="delta neutral">−0.07</span> | <span class="delta neutral">−0.05</span> | <span class="delta pos">+0.31</span> |
-| SportsMOT val       |         87.18 |     <span class="delta pos">+0.47</span> |     <span class="delta pos">+1.09</span> |     <span class="delta pos">+1.06</span> | <span class="delta pos">+0.46</span> |
+| :------------------ | ----------: | ----------: | ----------: | ----------: | ----------: |
+| MOT17 val           |         97.17 | **−0.05** | **−0.07** | **−0.05** | **+0.31** |
+| SportsMOT val       |         87.18 |     **+0.47** |     **+1.09** |     **+1.06** | **+0.46** |
 
 With ground-truth detections, mean ΔHOTA increases for three of four variants on
 SportsMOT compared to YOLOX detections. On MOT17, gaps narrow overall: GIoU moves
