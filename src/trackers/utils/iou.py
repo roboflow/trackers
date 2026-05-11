@@ -273,8 +273,6 @@ class CIoU(BaseIoU):
         safe_h_pred = np.maximum(h_pred, self._EPS)
         safe_h_gt = np.maximum(h_gt, self._EPS)
 
-        v = (4.0 / (np.pi**2)) * (
-            np.arctan(w_pred / safe_h_pred) - np.arctan(w_gt / safe_h_gt)
-        ) ** 2
+        v = (4.0 / (np.pi**2)) * (np.arctan(w_pred / safe_h_pred) - np.arctan(w_gt / safe_h_gt)) ** 2
         alpha = v / (1.0 - iou + v + self._EPS)
         return diou - alpha * v
