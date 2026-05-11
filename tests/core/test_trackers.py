@@ -150,9 +150,7 @@ def test_bytetrack_calls_iou_in_low_confidence_branch() -> None:
     )
     tracker.update(frame2)
 
-    assert spy.compute_calls > calls_before, (
-        "ByteTrack should call iou.compute during low-confidence association"
-    )
+    assert spy.compute_calls > calls_before, "ByteTrack should call iou.compute during low-confidence association"
 
 
 @pytest.mark.parametrize(
@@ -187,7 +185,7 @@ def test_fuse_score_ordering_preserved_for_signed_iou() -> None:
     # After normalization, pair A should score higher than pair B
     assert fused[0, 0] > fused[0, 1], (
         "normalize_for_fusion + _fuse_score must preserve GIoU ranking: "
-        f"pair A ({fused[0,0]:.3f}) should > pair B ({fused[0,1]:.3f})"
+        f"pair A ({fused[0, 0]:.3f}) should > pair B ({fused[0, 1]:.3f})"
     )
 
 
