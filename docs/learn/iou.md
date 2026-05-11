@@ -299,12 +299,12 @@ For more information on the datasets, see: [dataset comparison](../trackers/comp
   }
 </style>
 
-| Dataset        | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
-| :------------- | ----------: | ----------: | ----------: | ----------: | ----------: |
-| MOT17 val      |         38.09 | **−0.09** | **−0.04** | **−0.04** | **−0.28** |
-| SportsMOT val  |         80.21 |     **+0.65** |     **+0.95** |     **+0.88** | **+0.36** |
-| DanceTrack val |         50.27 |     **−0.80** |     **−0.34** | **+0.05** | **+0.15** |
-| SoccerNet test |         83.21 |     **+1.57** |     **+2.82** |     **+2.76** | **+1.41** |
+| Dataset        | IoU mean HOTA | GIoU mean Δ | DIoU mean Δ | CIoU mean Δ | BIoU mean Δ |
+| :------------- | ------------: | ----------: | ----------: | ----------: | ----------: |
+| MOT17 val      |         38.09 |   **−0.09** |   **−0.04** |   **−0.04** |   **−0.28** |
+| SportsMOT val  |         80.21 |   **+0.65** |   **+0.95** |   **+0.88** |   **+0.36** |
+| DanceTrack val |         50.27 |   **−0.80** |   **−0.34** |   **+0.05** |   **+0.15** |
+| SoccerNet test |         83.21 |   **+1.57** |   **+2.82** |   **+2.76** |   **+1.41** |
 
 Over SportsMOT and SoccerNet, all IoU variants outperform standard IoU, with DIoU
 and CIoU strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In
@@ -317,10 +317,10 @@ SoccerNet uses perfect detections, and SportsMOT detections come from a strong
 detector, and both show the largest improvements. To test this, we run an additional
 experiment using ground-truth boxes from MOT17 and SportsMOT as tracker detections.
 
-| Dataset (GT-as-det) | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
-| :------------------ | ----------: | ----------: | ----------: | ----------: | ----------: |
-| MOT17 val           |         97.17 | **−0.05** | **−0.07** | **−0.05** | **+0.31** |
-| SportsMOT val       |         87.18 |     **+0.47** |     **+1.09** |     **+1.06** | **+0.46** |
+| Dataset (GT-as-det) | IoU mean HOTA | GIoU mean Δ | DIoU mean Δ | CIoU mean Δ | BIoU mean Δ |
+| :------------------ | ------------: | ----------: | ----------: | ----------: | ----------: |
+| MOT17 val           |         97.17 |   **−0.05** |   **−0.07** |   **−0.05** |   **+0.31** |
+| SportsMOT val       |         87.18 |   **+0.47** |   **+1.09** |   **+1.06** |   **+0.46** |
 
 With ground-truth detections, mean ΔHOTA increases for three of four variants on
 SportsMOT compared to YOLOX detections. On MOT17, gaps narrow overall: GIoU moves
