@@ -28,7 +28,7 @@ jobs:
           prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
-        run: uv sync --frozen --group dev --group ci_tests
+        run: uv sync --frozen --group dev
 
       - name: 🧪 Run the Import test
         run: uv run python -c "import trackers"

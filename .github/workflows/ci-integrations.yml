@@ -25,7 +25,7 @@ jobs:
           activate-environment: true
 
       - name: 🚀 Install Packages
-        run: uv sync --frozen --group dev --group ci_tests
+        run: uv sync --frozen --group dev
 
 
       - name: 🧪 Run Integration Tests

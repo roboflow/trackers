@@ -55,8 +55,6 @@ dev = [
     "uv>=0.4.20",
     "pytest>=8.3.3",
     "pre-commit>=4.2.0",
-]
-ci_tests = [
     "torch",
     "torchvision",
 ]
