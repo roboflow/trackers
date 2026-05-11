@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import torch
-import torchvision
+
+torch = pytest.importorskip("torch")
+torchvision = pytest.importorskip("torchvision")
 
 from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU
 
