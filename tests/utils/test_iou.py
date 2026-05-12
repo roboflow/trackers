@@ -12,7 +12,7 @@ import pytest
 torch = pytest.importorskip("torch")
 torchvision = pytest.importorskip("torchvision")
 
-from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU
+from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU  # noqa: E402
 
 
 def _torchvision_giou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
