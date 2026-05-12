@@ -7,21 +7,21 @@
 
 from __future__ import annotations
 
-import argparse
 import sys
-from contextlib import nullcontext
+from contextlib import nullcontext, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import jsonargparse
 import numpy as np
 import supervision as sv
 
 from trackers import frames_from_source
+from trackers.cli.progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.core.base import BaseTracker
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
-from trackers.scripts.progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.utils.device import _best_device
 
 if TYPE_CHECKING:
@@ -52,13 +52,13 @@ COLOR_PALETTE = sv.ColorPalette.from_hex(
 )
 
 
-def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_track_subparser(subparsers: Any) -> None:
     """Add the track subcommand to the argument parser."""
     parser = subparsers.add_parser(
         "track",
         help="Track objects in video using detection and tracking.",
         description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=jsonargparse.DefaultHelpFormatter,
     )
 
     # Source options
@@ -235,7 +235,7 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
     parser.set_defaults(func=run_track)
 
 
-def _add_tracker_params(group: argparse._ArgumentGroup) -> None:
+def _add_tracker_params(group: Any) -> None:
     """Add tracker-specific parameters from registry to argument group."""
     for tracker_id in BaseTracker._registered_trackers():
         info = BaseTracker._lookup_tracker(tracker_id)
@@ -258,14 +258,11 @@ def _add_tracker_params(group: argparse._ArgumentGroup) -> None:
                 kwargs["type"] = param_info.param_type
                 kwargs["metavar"] = param_info.param_type.__name__.upper()
 
-            try:
+            with suppress(Exception):
                 group.add_argument(arg_name, **kwargs)
-            except argparse.ArgumentError:
-                # Parameter already added by another tracker
-                pass
 
 
-def run_track(args: argparse.Namespace) -> int:
+def run_track(args: jsonargparse.Namespace) -> int:
     """Execute the track command."""
     needs_frames = args.output or args.display
 
@@ -333,7 +330,7 @@ def run_track(args: argparse.Namespace) -> int:
 
 
 def _run_frameless(
-    args: argparse.Namespace,
+    args: jsonargparse.Namespace,
     detections_data: dict | None,
     class_filter: list[int] | None,
     track_id_filter: list[int] | None,
@@ -382,8 +379,8 @@ def _run_frameless(
 
 
 def _run_with_source(
-    args: argparse.Namespace,
-    model,
+    args: jsonargparse.Namespace,
+    model: AnyModel | None,
     detections_data: dict | None,
     class_names: list[str],
     class_filter: list[int] | None,
@@ -600,7 +597,7 @@ def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Dete
     return detections
 
 
-def _extract_tracker_params(tracker_id: str, args: argparse.Namespace) -> dict[str, object]:
+def _extract_tracker_params(tracker_id: str, args: jsonargparse.Namespace) -> dict[str, object]:
     """Extract tracker parameters from CLI args.
 
     Args:

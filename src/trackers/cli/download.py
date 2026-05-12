@@ -7,9 +7,10 @@
 
 from __future__ import annotations
 
-import argparse
 import sys
+from typing import Any
 
+import jsonargparse
 from rich.console import Console
 from rich.panel import Panel
 
@@ -17,14 +18,13 @@ from trackers.datasets.download import _DEFAULT_CACHE_DIR, _DEFAULT_OUTPUT_DIR
 from trackers.datasets.manifest import _DATASETS
 
 
-def add_download_subparser(
-    subparsers: argparse._SubParsersAction,
-) -> None:
+def add_download_subparser(subparsers: Any) -> None:
     """Add the download subcommand to the argument parser."""
     parser = subparsers.add_parser(
         "download",
         help="Download benchmark tracking datasets.",
         description="Download tracking datasets from the official trackers bucket.",
+        formatter_class=jsonargparse.DefaultHelpFormatter,
     )
 
     parser.add_argument(
@@ -62,7 +62,7 @@ def add_download_subparser(
     parser.set_defaults(func=_run_download)
 
 
-def _run_download(args: argparse.Namespace) -> int:
+def _run_download(args: jsonargparse.Namespace) -> int:
     """Execute the download subcommand."""
     if args.list:
         _print_available()

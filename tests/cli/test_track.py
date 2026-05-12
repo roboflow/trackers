@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 import supervision as sv
 
-from trackers.scripts.track import (
+from trackers.cli.track import (
     _format_labels,
     _init_annotators,
     _resolve_class_filter,

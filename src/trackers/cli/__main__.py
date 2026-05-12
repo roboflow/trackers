@@ -7,9 +7,10 @@
 
 from __future__ import annotations
 
-import argparse
 import sys
 import warnings
+
+import jsonargparse
 
 
 def main() -> int:
@@ -21,7 +22,7 @@ def main() -> int:
         stacklevel=2,
     )
 
-    parser = argparse.ArgumentParser(
+    parser = jsonargparse.ArgumentParser(
         prog="trackers",
         description="Command-line tools for multi-object tracking.",
         epilog="For more information, visit: https://github.com/roboflow/trackers",
@@ -31,18 +32,23 @@ def main() -> int:
         action="store_true",
         help="Show version and exit.",
     )
+    parser.add_argument(
+        "--config",
+        action="config",
+        help="Path to a YAML/JSON config file with default argument values.",
+    )
 
-    subparsers = parser.add_subparsers(
+    subparsers = parser.add_subparsers(  # type: ignore[var-annotated]
         dest="command",
         title="commands",
         description="Available commands:",
     )
 
     # Import and register subcommands
-    from trackers.scripts.download import add_download_subparser
-    from trackers.scripts.eval import add_eval_subparser
-    from trackers.scripts.track import add_track_subparser
-    from trackers.scripts.tune import add_tune_subparser
+    from trackers.cli.download import add_download_subparser
+    from trackers.cli.eval import add_eval_subparser
+    from trackers.cli.track import add_track_subparser
+    from trackers.cli.tune import add_tune_subparser
 
     add_download_subparser(subparsers)
     add_eval_subparser(subparsers)

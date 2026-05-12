@@ -7,19 +7,21 @@
 
 from __future__ import annotations
 
-import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import Any
+
+import jsonargparse
 
 
-def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_eval_subparser(subparsers: Any) -> None:
     """Add the eval subcommand to the argument parser."""
     parser = subparsers.add_parser(
         "eval",
         help="Evaluate tracker predictions against ground truth.",
         description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=jsonargparse.DefaultHelpFormatter,
     )
 
     # Single sequence mode
@@ -96,7 +98,7 @@ def add_eval_subparser(subparsers: argparse._SubParsersAction) -> None:
     parser.set_defaults(func=run_eval)
 
 
-def run_eval(args: argparse.Namespace) -> int:
+def run_eval(args: jsonargparse.Namespace) -> int:
     """Execute the eval command."""
     # Configure logging to show detection info
     logging.basicConfig(

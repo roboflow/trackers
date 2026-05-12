@@ -11,12 +11,12 @@ from unittest.mock import patch
 
 import pytest
 
-from trackers.datasets.download import _DEFAULT_CACHE_DIR, _DEFAULT_OUTPUT_DIR
-from trackers.scripts.download import (
+from trackers.cli.download import (
     _print_available,
     _run_download,
     add_download_subparser,
 )
+from trackers.datasets.download import _DEFAULT_CACHE_DIR, _DEFAULT_OUTPUT_DIR
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
@@ -73,7 +73,7 @@ class TestRunDownload:
         """--list calls _print_available and returns 0."""
         args = _parse_args(["download", "--list"])
 
-        with patch("trackers.scripts.download._print_available") as mock_print:
+        with patch("trackers.cli.download._print_available") as mock_print:
             rc = _run_download(args)
             assert rc == 0
             mock_print.assert_called_once()
@@ -82,7 +82,7 @@ class TestRunDownload:
         """--list wins over dataset positional."""
         args = _parse_args(["download", "mot17", "--list"])
 
-        with patch("trackers.scripts.download._print_available") as mock_print:
+        with patch("trackers.cli.download._print_available") as mock_print:
             rc = _run_download(args)
             assert rc == 0
             mock_print.assert_called_once()

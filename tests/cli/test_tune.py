@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""CLI-level tests for trackers/scripts/tune.py."""
+"""CLI-level tests for trackers/cli/tune.py."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from trackers.scripts.tune import add_tune_subparser, run_tune, tune
+from trackers.cli.tune import add_tune_subparser, run_tune, tune
 
 
 def _make_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
@@ -197,7 +197,7 @@ class TestRunTune:
             seqmap=None,
             output=output_path,
         )
-        with patch("trackers.scripts.tune.tune", return_value=0) as mock_tune:
+        with patch("trackers.cli.tune.tune", return_value=0) as mock_tune:
             result = run_tune(args)
         assert result == 0
         mock_tune.assert_called_once_with(

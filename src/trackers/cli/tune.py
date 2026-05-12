@@ -7,13 +7,15 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
+
+import jsonargparse
 
 
-def add_tune_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_tune_subparser(subparsers: Any) -> None:
     """Add the tune subcommand to the argument parser."""
     parser = subparsers.add_parser(
         "tune",
@@ -22,7 +24,7 @@ def add_tune_subparser(subparsers: argparse._SubParsersAction) -> None:
             "Run Optuna-based hyperparameter optimisation for a registered "
             "tracker using pre-computed detections and ground-truth MOT files."
         ),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=jsonargparse.DefaultHelpFormatter,
     )
 
     parser.add_argument(
@@ -91,7 +93,7 @@ def add_tune_subparser(subparsers: argparse._SubParsersAction) -> None:
     parser.set_defaults(func=run_tune)
 
 
-def run_tune(args: argparse.Namespace) -> int:
+def run_tune(args: jsonargparse.Namespace) -> int:
     """Execute the tune command."""
     return tune(
         tracker=args.tracker,
