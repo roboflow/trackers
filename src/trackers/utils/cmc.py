@@ -7,14 +7,17 @@
 import copy
 import logging
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import cv2
 import numpy as np
 
+if TYPE_CHECKING:
+    from trackers.utils.state_representations import BaseStateEstimator  # for cmc.apply_batch type checking
+
 logger = logging.getLogger("trackers.cmc")
 
-CMCTMethod = Literal["orb", "sift", "sparseOptFlow", "ecc"]
+CMCMethod = Literal["orb", "sift", "sparseOptFlow", "ecc"]
 
 
 @dataclass
@@ -157,7 +160,7 @@ class CMCConfig:
             A value of 1 matches the current implementation.
     """
 
-    method: CMCTMethod = "sparseOptFlow"
+    method: CMCMethod = "sparseOptFlow"
     downscale: int = 2
 
     # Shared ORB and SIFT parameters (_estimate_feature_affine)
@@ -197,10 +200,22 @@ class CMCConfig:
 
 class CMC:
     """
-    Camera motion compensation estimator and track state warper.
+    Camera motion compensation estimator.
 
-    Typical usage in the tracker loop:
-        H = cmc.estimate(frame_bgr, mask_boxes_xyxy)
+    Estimates a global 2D affine transform H (2x3) between consecutive frames.
+    Designed to be tracker-agnostic: any tracker that receives a raw video frame
+    alongside detections can instantiate ``CMC``, call ``estimate()`` each frame
+    to obtain ``H``, and then apply ``H`` to its own predicted track states.
+
+    Typical usage in a tracker loop::
+
+        cmc = CMC(CMCConfig(method="sparseOptFlow"))
+
+        for frame, detections in video:
+            H = cmc.estimate(frame, detections.xyxy)
+            # apply H to your tracker's predicted state here
+            tracker.apply_cmc(H)
+            tracker.associate(detections)
 
     Internal state:
         - Keeps previous-frame features / points depending on the chosen method.
@@ -209,7 +224,7 @@ class CMC:
     Notes:
         - H maps points from previous frame coordinates to current frame coordinates.
         - This class does not perform any drawing/visualization; it only estimates
-        transforms.
+          transforms.
     """
 
     def __init__(self, cfg: CMCConfig | None = None) -> None:
@@ -604,3 +619,137 @@ class CMC:
         self._prev_frame_gray = frame.copy()
 
         return H_aff
+
+    @staticmethod
+    def apply_to_xyxy(
+        x1: np.ndarray,
+        y1: np.ndarray,
+        x2: np.ndarray,
+        y2: np.ndarray,
+        R: np.ndarray,
+        t: np.ndarray | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Transform four box corners via R/t and return the enclosing min/max.
+
+        Works for both batched inputs (shape ``(N,)``) and scalar inputs (shape
+        ``()`` or plain ``float``). The four corners are ``(x1,y1)``, ``(x2,y1)``,
+        ``(x2,y2)``, ``(x1,y2)``; after the affine transform the axis-aligned
+        bounding box of the transformed corners is returned.
+
+        Transforming only two corners can invert the box or produce invalid geometry
+        under rotation or reflection; transforming all four corners and taking the
+        enclosing axis-aligned box always yields a valid result.
+
+        Args:
+            x1: Left edge coordinate(s).
+            y1: Top edge coordinate(s).
+            x2: Right edge coordinate(s).
+            y2: Bottom edge coordinate(s).
+            R: 2x2 rotation/shear sub-matrix of the affine transform.
+            t: Optional 2-element translation vector.
+
+        Returns:
+            Tuple ``(new_x1, new_y1, new_x2, new_y2)`` — per-axis min and max of
+            the four transformed corners.
+        """
+        corners = np.stack(
+            [
+                np.stack([x1, y1], axis=-1),
+                np.stack([x2, y1], axis=-1),
+                np.stack([x2, y2], axis=-1),
+                np.stack([x1, y2], axis=-1),
+            ],
+            axis=-2,
+        )  # (..., 4, 2)
+        out = corners @ R.T
+        if t is not None:
+            out = out + t
+        lo = out.min(axis=-2)
+        hi = out.max(axis=-2)
+        return lo[..., 0], lo[..., 1], hi[..., 0], hi[..., 1]
+
+    @staticmethod
+    def apply_batch(H: np.ndarray | None, tracklets: list) -> None:
+        """Apply a 2x3 affine camera-motion transform to a list of tracklets in place.
+
+        Dispatches to the appropriate state-representation logic based on the first
+        tracklet's state estimator type. All tracklets in the list must share the
+        same state representation.
+
+        For XYXY-state tracks, positions and velocities are updated via four-corner
+        enclosure (``CMC.apply_to_xyxy``) so that axis-alignment is preserved under
+        rotation, reflection, and shear. The covariance matrix ``P`` is updated with
+        the block-diagonal rotation matrix only when ``R`` is axis-aligned
+        (off-diagonals < 1e-6). When ``R`` has cross-axis terms, ``P`` is left
+        unchanged — a conservative choice that avoids applying an invalid
+        block-diagonal approximation at the cost of stale uncertainty.
+
+        For XCYCWH-state tracks, only the centre position and velocity are rotated;
+        width/height and their velocities are not transformed.
+
+        Args:
+            H: 2x3 affine transform matrix returned by ``CMC.estimate()``. If
+                ``None``, this method is a no-op.
+            tracklets: List of tracklet objects. Each must expose a
+                ``state_estimator`` attribute with a ``kf.x`` (state vector) and
+                ``kf.P`` (covariance matrix).
+        """
+        from trackers.utils.state_representations import XYXYStateEstimator
+
+        if H is None or len(tracklets) == 0:
+            return
+
+        R = H[:2, :2].astype(np.float64)
+        t = H[:2, 2].astype(np.float64)
+
+        first_estimator: BaseStateEstimator = tracklets[0].state_estimator
+        dim = first_estimator.kf.x.shape[0]
+        is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
+
+        # Stack states (N, dim) and covariances (N, dim, dim)
+        states = np.array([trk.state_estimator.kf.x.reshape(-1) for trk in tracklets])
+        Ps = np.array([trk.state_estimator.kf.P for trk in tracklets])
+
+        if is_xyxy:
+            # XYXY boxes must remain axis-aligned after CMC. For transforms with
+            # rotation/reflection/shear, applying the affine matrix only to the
+            # top-left and bottom-right corners can invert the box or produce
+            # invalid geometry. Transform all four corners, then rebuild the
+            # enclosing axis-aligned box with per-axis min/max.
+            states[:, 0], states[:, 1], states[:, 2], states[:, 3] = CMC.apply_to_xyxy(
+                states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
+            )
+            # Keep XYXY velocity ordering valid under mixed-axis transforms by
+            # applying the same corner-wise normalization to the paired velocity
+            # components.
+            states[:, 4], states[:, 5], states[:, 6], states[:, 7] = CMC.apply_to_xyxy(
+                states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
+            )
+        else:
+            # Batch-transform centre positions: x' = x @ R.T + t
+            states[:, 0:2] = states[:, 0:2] @ R.T + t
+            # Batch-transform centre velocities: v' = v @ R.T
+            states[:, 4:6] = states[:, 4:6] @ R.T
+
+        A = None
+        if is_xyxy:
+            # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
+            # to 1e-6 residuals on off-diagonals even for pure-translation H;
+            # default atol=1e-8 misclassifies those as cross-axis transforms.
+            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(R[1, 0], 0.0, atol=1e-6):
+                A = np.eye(dim, dtype=np.float64)
+                A[0:2, 0:2] = R
+                A[2:4, 2:4] = R
+                A[4:6, 4:6] = R
+                A[6:8, 6:8] = R
+        else:
+            A = np.eye(dim, dtype=np.float64)
+            A[0:2, 0:2] = R
+            A[4:6, 4:6] = R
+
+        if A is not None:
+            Ps = A @ Ps @ A.T
+
+        for i, trk in enumerate(tracklets):
+            trk.state_estimator.kf.x = states[i].reshape(-1, 1)
+            trk.state_estimator.kf.P = Ps[i]

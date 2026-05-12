@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from trackers.core.botsort._cmc_xyxy import _xyxy_corner_min_max
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.cmc import CMC
 from trackers.utils.converters import xyxy_to_xywh
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -230,8 +230,8 @@ class BoTSORTTracklet(BaseTracklet):
 
         x = kf.x.reshape(-1)
         if isinstance(self.state_estimator, XYXYStateEstimator):
-            x[0], x[1], x[2], x[3] = _xyxy_corner_min_max(x[0], x[1], x[2], x[3], R, t)
-            x[4], x[5], x[6], x[7] = _xyxy_corner_min_max(x[4], x[5], x[6], x[7], R)
+            x[0], x[1], x[2], x[3] = CMC.apply_to_xyxy(x[0], x[1], x[2], x[3], R, t)
+            x[4], x[5], x[6], x[7] = CMC.apply_to_xyxy(x[4], x[5], x[6], x[7], R)
         else:
             x[0:2] = R @ x[0:2] + t
             x[4:6] = R @ x[4:6]
