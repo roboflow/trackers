@@ -47,7 +47,7 @@ tracker = SORTTracker(
 | `IoU`   | `[0, 1]`    | Default — strong baseline for most scenes                              |
 | `GIoU`  | `[-1, 1]`   | Scenes where boxes frequently lose overlap (occlusion, re-entry)       |
 | `DIoU`  | `[-1, 1]`   | Fast-moving objects; centre-distance signal without aspect sensitivity |
-| `CIoU`  | `(−2, 1]`   | Same as DIoU plus aspect-ratio consistency                             |
+| `CIoU`  | `[-1, 1]`   | Same as DIoU plus aspect-ratio consistency                             |
 | `BIoU`  | `[0, 1]`    | Very small or very fast objects where raw boxes rarely overlap         |
 
 **Formula Summary** (`A, B` boxes, `C` enclosing box, `d` center distance, `c` enclosing diagonal):
@@ -140,7 +140,7 @@ tracks that IoU would otherwise confuse or lose due to direction changes and
 non-linear motion (for example, tracks `5`, `12` on the left vs `13` on the right).
 
 <video width="100%" controls muted loop>
-  <source src="../../assets/iou_vs_GIoU_v_0kUtTtmLaJA_c006.mp4" type="video/mp4">
+  <source src="https://github.com/user-attachments/assets/dd38120d-ebbe-4705-8140-fcf24bc8ce99" type="video/mp4">
 </video>
 
 ---
@@ -182,7 +182,7 @@ The centre-distance term keeps the score smoother and preserves IDs more often
 (for example, tracks `3–5`).
 
 <video width="100%" controls muted loop>
-  <source src="../../assets/iou_vs_DIoU_v_0kUtTtmLaJA_c006.mp4" type="video/mp4">
+  <source src="https://github.com/user-attachments/assets/011f6cfa-a2be-4109-8326-a98bcae4ed93" type="video/mp4">
 </video>
 
 ---
@@ -225,7 +225,7 @@ tracker = OCSORTTracker(iou=CIoU(), minimum_iou_threshold=-0.3)
 Left: IoU. Right: CIoU. In this example, CIoU is capable of perfectly keeping the track of the ball, which is explained by the fact that the ball is a small and fast moving object, with roughly constant aspect ratio, where CIoU’s distance + aspect terms help more than overlap alone.
 
 <video width="100%" controls muted loop>
-  <source src="../../assets/snmot_122_botsort_iou_vs_CIoU_web.mp4" type="video/mp4">
+  <source src="https://github.com/user-attachments/assets/48cb3d28-7cbf-4551-96da-4a8f9b43306c" type="video/mp4">
 </video>
 
 ---
@@ -270,7 +270,7 @@ temporarily produce non-overlapping boxes between frames. The buffer closes
 that gap and keeps the same ID. (e.g. tracks 7 and 8).
 
 <video width="100%" controls muted loop>
-  <source src="../../assets/iou_vs_BIoU_v_9MHDmAMxO5I_c004.mp4" type="video/mp4">
+  <source src="https://github.com/user-attachments/assets/9a74a27b-0470-4cd8-b545-0507a0d2b053" type="video/mp4">
 </video>
 
 ---
@@ -282,8 +282,6 @@ For each `(dataset, tracker)` pair, we keep the `state_estimator` with the highe
 `ΔHOTA = HOTA(variant) − HOTA(IoU)` over trackers (same split; thresholds tuned per experiment).
 
 For more information on the datasets, see: [dataset comparison](../trackers/comparison.md).
-
-<!-- Positive value  = green, negative = red,  |delta| < 0.1 = yellow  -->
 
 <style>
   .iou-variant-figure {
@@ -299,23 +297,14 @@ For more information on the datasets, see: [dataset comparison](../trackers/comp
     display: block;
     margin-inline: auto;
   }
-  .delta {
-    display: inline-block;
-    padding: 1px 6px;
-    border-radius: 6px;
-    font-variant-numeric: tabular-nums;
-  }
-  .delta.pos { background: rgba(46, 125, 50, 0.16); }
-  .delta.neg { background: rgba(198, 40, 40, 0.16); }
-  .delta.neutral { background: rgba(251, 192, 45, 0.22); }
 </style>
 
-| Dataset        | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
-| :------------- | ------------: | ---------------------------------------: | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
-| MOT17 val      |         38.09 | <span class="delta neutral">−0.09</span> | <span class="delta neutral">−0.04</span> | <span class="delta neutral">−0.04</span> | <span class="delta neg">−0.28</span> |
-| SportsMOT val  |         80.21 |     <span class="delta pos">+0.65</span> |     <span class="delta pos">+0.95</span> |     <span class="delta pos">+0.88</span> | <span class="delta pos">+0.36</span> |
-| DanceTrack val |         50.27 |     <span class="delta neg">−0.80</span> |     <span class="delta neg">−0.34</span> | <span class="delta neutral">+0.05</span> | <span class="delta pos">+0.15</span> |
-| SoccerNet test |         83.21 |     <span class="delta pos">+1.57</span> |     <span class="delta pos">+2.82</span> |     <span class="delta pos">+2.76</span> | <span class="delta pos">+1.41</span> |
+| Dataset        | IoU mean HOTA | GIoU mean Δ | DIoU mean Δ | CIoU mean Δ | BIoU mean Δ |
+| :------------- | ------------: | ----------: | ----------: | ----------: | ----------: |
+| MOT17 val      |         38.09 |   **−0.09** |   **−0.04** |   **−0.04** |   **−0.28** |
+| SportsMOT val  |         80.21 |   **+0.65** |   **+0.95** |   **+0.88** |   **+0.36** |
+| DanceTrack val |         50.27 |   **−0.80** |   **−0.34** |   **+0.05** |   **+0.15** |
+| SoccerNet test |         83.21 |   **+1.57** |   **+2.82** |   **+2.76** |   **+1.41** |
 
 Over SportsMOT and SoccerNet, all IoU variants outperform standard IoU, with DIoU
 and CIoU strongest on SoccerNet and DIoU slightly ahead of CIoU on SportsMOT. In
@@ -328,10 +317,10 @@ SoccerNet uses perfect detections, and SportsMOT detections come from a strong
 detector, and both show the largest improvements. To test this, we run an additional
 experiment using ground-truth boxes from MOT17 and SportsMOT as tracker detections.
 
-| Dataset (GT-as-det) | IoU mean HOTA |                              GIoU mean Δ |                              DIoU mean Δ |                              CIoU mean Δ |                          BIoU mean Δ |
-| :------------------ | ------------: | ---------------------------------------: | ---------------------------------------: | ---------------------------------------: | -----------------------------------: |
-| MOT17 val           |         97.17 | <span class="delta neutral">−0.05</span> | <span class="delta neutral">−0.07</span> | <span class="delta neutral">−0.05</span> | <span class="delta pos">+0.31</span> |
-| SportsMOT val       |         87.18 |     <span class="delta pos">+0.47</span> |     <span class="delta pos">+1.09</span> |     <span class="delta pos">+1.06</span> | <span class="delta pos">+0.46</span> |
+| Dataset (GT-as-det) | IoU mean HOTA | GIoU mean Δ | DIoU mean Δ | CIoU mean Δ | BIoU mean Δ |
+| :------------------ | ------------: | ----------: | ----------: | ----------: | ----------: |
+| MOT17 val           |         97.17 |   **−0.05** |   **−0.07** |   **−0.05** |   **+0.31** |
+| SportsMOT val       |         87.18 |   **+0.47** |   **+1.09** |   **+1.06** |   **+0.46** |
 
 With ground-truth detections, mean ΔHOTA increases for three of four variants on
 SportsMOT compared to YOLOX detections. On MOT17, gaps narrow overall: GIoU moves

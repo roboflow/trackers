@@ -81,6 +81,9 @@ class BoTSORTTracker(BaseTracker):
             Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
             subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
             similarity is computed during association.
+            Passing ``None`` (the default) is equivalent to ``IoU()`` and is
+            provided for backward compatibility with existing code that did not
+            supply an ``iou`` argument.
 
     Notes:
         - `maximum_frames_without_update` is computed as:
@@ -225,7 +228,7 @@ class BoTSORTTracker(BaseTracker):
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
         iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
-        iou_matrix = _fuse_score(iou_matrix, high_scores)
+        iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
         )
@@ -269,7 +272,7 @@ class BoTSORTTracker(BaseTracker):
             uh_scores = high_scores[unmatched_high_list]
 
             iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
-            iou_matrix = _fuse_score(iou_matrix, uh_scores)
+            iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
             )

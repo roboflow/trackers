@@ -24,7 +24,10 @@ import pytest
 import supervision as sv
 
 from trackers.core.base import BaseTracker
+from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
+from trackers.core.ocsort.tracker import OCSORTTracker
+from trackers.core.sort.tracker import SORTTracker
 from trackers.utils.iou import BaseIoU
 
 from .shared_ids import ALL_TRACKER_IDS
@@ -117,6 +120,73 @@ def test_tracker_uses_configured_iou_variant(tracker_id: str) -> None:
     tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
     tracker.update(_detection((105.0, 105.0, 205.0, 205.0)))
     assert tracking_iou.compute_calls > 0
+
+
+def test_bytetrack_calls_iou_in_low_confidence_branch() -> None:
+    """ByteTrack must call the configured IoU in its low-confidence association branch."""
+    from trackers import ByteTrackTracker
+
+    spy = _TrackingIoU()
+    tracker = ByteTrackTracker(
+        iou=spy,
+        track_activation_threshold=0.5,
+        minimum_consecutive_frames=1,
+    )
+
+    # Frame 1: establish a confirmed track with high confidence
+    frame1 = sv.Detections(
+        xyxy=np.array([[0.0, 0.0, 50.0, 50.0]]),
+        confidence=np.array([0.9]),
+    )
+    tracker.update(frame1)
+
+    calls_before = spy.compute_calls
+
+    # Frame 2: same position but LOW confidence (below track_activation_threshold)
+    # This should trigger the low-confidence association branch
+    frame2 = sv.Detections(
+        xyxy=np.array([[2.0, 2.0, 52.0, 52.0]]),
+        confidence=np.array([0.3]),  # below threshold -> low-conf branch
+    )
+    tracker.update(frame2)
+
+    assert spy.compute_calls > calls_before, "ByteTrack should call iou.compute during low-confidence association"
+
+
+@pytest.mark.parametrize(
+    "tracker_cls",
+    [SORTTracker, ByteTrackTracker, OCSORTTracker, BoTSORTTracker],
+)
+def test_default_iou_is_standard_iou(tracker_cls) -> None:
+    """Tracker(iou=None) must default to a standard IoU instance."""
+    from trackers.utils.iou import IoU
+
+    tracker = tracker_cls()
+    assert isinstance(tracker.iou, IoU), (
+        f"{tracker_cls.__name__}: expected iou=IoU() by default, got {type(tracker.iou)}"
+    )
+
+
+def test_fuse_score_ordering_preserved_for_signed_iou() -> None:
+    """_fuse_score via normalize_for_fusion must preserve ranking for signed variants."""
+    from trackers.core.botsort.utils import _fuse_score
+    from trackers.utils.iou import GIoU
+
+    # Two pairs: pair A has better GIoU than pair B
+    # Pair A: slight negative overlap region -> GIoU = -0.3
+    # Pair B: further apart -> GIoU = -0.8
+    iou_matrix = np.array([[-0.3, -0.8]])  # shape (1, 2)
+    scores = np.array([0.9, 0.9])  # equal scores — ordering must come from IoU
+
+    metric = GIoU()
+    normalized = metric.normalize_for_fusion(iou_matrix)
+    fused = _fuse_score(normalized, scores)
+
+    # After normalization, pair A should score higher than pair B
+    assert fused[0, 0] > fused[0, 1], (
+        "normalize_for_fusion + _fuse_score must preserve GIoU ranking: "
+        f"pair A ({fused[0, 0]:.3f}) should > pair B ({fused[0, 1]:.3f})"
+    )
 
 
 # ==========================================================================

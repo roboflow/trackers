@@ -64,6 +64,9 @@ class ByteTrackTracker(BaseTracker):
             Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
             subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
             similarity is computed during the association step.
+            Passing ``None`` (the default) is equivalent to ``IoU()`` and is
+            provided for backward compatibility with existing code that did not
+            supply an ``iou`` argument.
     """
 
     tracker_id = "bytetrack"
@@ -161,9 +164,7 @@ class ByteTrackTracker(BaseTracker):
         remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
 
         # Step 2: associate low-confidence detections to remaining tracks
-        remaining_boxes = (
-            np.array([t.get_state_bbox() for t in remaining_tracks]) if remaining_tracks else np.empty((0, 4))
-        )
+        remaining_boxes = predicted_boxes[unmatched_tracks] if unmatched_tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(remaining_boxes, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 

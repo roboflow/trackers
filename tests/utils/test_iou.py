@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import torch
-import torchvision
 
-from trackers.utils.iou import BIoU, CIoU, DIoU, GIoU, IoU
+torch = pytest.importorskip("torch")
+torchvision = pytest.importorskip("torchvision")
+
+from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU
 
 
 def _torchvision_giou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
@@ -246,6 +247,29 @@ class TestBIoUProperties:
         with pytest.raises(ValueError, match="buffer_ratio must be non-negative"):
             BIoU(buffer_ratio=-0.01)
 
+    def test_biou_monotonic_in_buffer_ratio(self) -> None:
+        """Larger buffer ratio yields equal-or-higher BIoU for near-miss boxes."""
+        boxes_a = np.array([[0.0, 0.0, 10.0, 10.0]])
+        boxes_b = np.array([[11.0, 0.0, 21.0, 10.0]])  # 1px gap — no overlap at ratio=0
+        ratios = [0.0, 0.05, 0.1, 0.2, 0.5]
+        scores = [float(BIoU(r).compute(boxes_a, boxes_b)[0, 0]) for r in ratios]
+        # Each step should be >= the previous (monotone non-decreasing)
+        for i in range(len(scores) - 1):
+            assert scores[i] <= scores[i + 1] + 1e-9, f"Not monotone at ratios {ratios[i]}/{ratios[i + 1]}"
+
+    def test_biou_zero_ratio_matches_iou(self) -> None:
+        """BIoU(buffer_ratio=0) should equal standard IoU for all box pairs."""
+        rng = np.random.default_rng(42)
+        boxes_a = rng.uniform(0, 100, (10, 4))
+        boxes_a[:, 2:] += boxes_a[:, :2]  # ensure x2>x1, y2>y1
+        boxes_b = rng.uniform(0, 100, (8, 4))
+        boxes_b[:, 2:] += boxes_b[:, :2]
+        np.testing.assert_allclose(
+            BIoU(0.0).compute(boxes_a, boxes_b),
+            IoU().compute(boxes_a, boxes_b),
+            atol=1e-6,
+        )
+
 
 class TestGIoUProperties:
     """Verify mathematical properties of GIoU."""
@@ -402,3 +426,37 @@ class TestEmptyArrayHandling:
         boxes_2 = np.empty((0, 4))
         result = iou_instance.compute(boxes_1, boxes_2)
         assert result.shape == (0, 0)
+
+
+class TestDegenerateInputs:
+    """Pin behavior of BaseIoU.compute on edge-case inputs."""
+
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    def test_nan_coordinates_raise(self, metric: BaseIoU) -> None:
+        boxes_a = np.array([[0.0, 0.0, np.nan, 10.0]])
+        boxes_b = np.array([[5.0, 5.0, 15.0, 15.0]])
+        with pytest.raises(ValueError, match="non-finite"):
+            metric.compute(boxes_a, boxes_b)
+
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    def test_inf_coordinates_raise(self, metric: BaseIoU) -> None:
+        boxes_a = np.array([[0.0, 0.0, np.inf, 10.0]])
+        boxes_b = np.array([[5.0, 5.0, 15.0, 15.0]])
+        with pytest.raises(ValueError, match="non-finite"):
+            metric.compute(boxes_a, boxes_b)
+
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    def test_zero_area_box_returns_finite(self, metric: BaseIoU) -> None:
+        boxes_a = np.array([[5.0, 5.0, 5.0, 5.0]])  # zero-area
+        boxes_b = np.array([[0.0, 0.0, 10.0, 10.0]])
+        result = metric.compute(boxes_a, boxes_b)
+        assert np.isfinite(result).all(), "Zero-area box should yield finite similarity"
+
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU()])
+    def test_inverted_coords_gives_zero_or_negative_similarity(self, metric: BaseIoU) -> None:
+        # x2 < x1 — degenerate box; result should not crash
+        boxes_a = np.array([[10.0, 0.0, 0.0, 10.0]])  # inverted x
+        boxes_b = np.array([[0.0, 0.0, 10.0, 10.0]])
+        result = metric.compute(boxes_a, boxes_b)
+        assert result.shape == (1, 1)
+        assert np.isfinite(result).all(), "Inverted-coord box should not produce NaN/inf"

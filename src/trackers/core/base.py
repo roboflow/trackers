@@ -11,6 +11,7 @@ import re
 import types
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, ClassVar, Protocol, Union, get_args, get_origin
 
@@ -29,6 +30,23 @@ class ParameterInfo:
     param_type: type
     default_value: Any
     description: str
+
+
+class TrackerParameters(dict[str, ParameterInfo]):
+    """Tracker parameter mapping with CLI-only filtering for IoU metrics."""
+
+    def items(self) -> Iterator[tuple[str, ParameterInfo]]:  # type: ignore[override]
+        try:
+            from trackers.utils.iou import BaseIoU
+        except ImportError:
+            yield from super().items()
+            return
+
+        for name, param_info in super().items():
+            param_type = param_info.param_type
+            if isinstance(param_type, type) and issubclass(param_type, BaseIoU):
+                continue
+            yield name, param_info
 
 
 @dataclass
@@ -320,7 +338,7 @@ class BaseTracker(ABC):
         if tracker_id is not None:
             BaseTracker._registry[tracker_id] = TrackerInfo(
                 tracker_class=cls,
-                parameters=_extract_params_from_init(cls),
+                parameters=TrackerParameters(_extract_params_from_init(cls)),
             )
 
     @classmethod

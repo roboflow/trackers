@@ -67,6 +67,9 @@ class OCSORTTracker(BaseTracker):
             Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
             subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
             similarity is computed during the association step.
+            Passing ``None`` (the default) is equivalent to ``IoU()`` and is
+            provided for backward compatibility with existing code that did not
+            supply an ``iou`` argument.
     """
 
     tracker_id = "ocsort"
@@ -215,7 +218,8 @@ class OCSORTTracker(BaseTracker):
         # 2nd chance association (OCR)
         if len(unmatched_detections) > 0 and len(unmatched_tracks) > 0:
             last_observation_of_tracks = np.array([self.tracks[t].last_observation for t in unmatched_tracks])
-            ocr_iou_matrix = self.iou.compute(
+            # OCR uses standard IoU per the OC-SORT paper (configured variant applies to the primary OCM pass only).
+            ocr_iou_matrix = IoU().compute(
                 last_observation_of_tracks,
                 detection_boxes[unmatched_detections],
             )
