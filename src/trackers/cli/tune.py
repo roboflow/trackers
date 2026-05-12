@@ -7,10 +7,11 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import click
+
+from trackers.cli._options import metrics_option, output_option, seqmap_option, threshold_option
 
 
 @click.command("tune")
@@ -40,31 +41,10 @@ import click
 @click.option(
     "--n-trials", "n_trials", type=int, default=100, metavar="N", help="Number of Optuna trials to run. Default: 100."
 )
-@click.option(
-    "--metrics",
-    multiple=True,
-    default=("CLEAR",),
-    type=click.Choice(["CLEAR", "HOTA", "Identity"]),
-    help="Metric families to compute. Default: CLEAR.",
-)
-@click.option(
-    "--threshold", type=float, default=0.5, help="IoU threshold for CLEAR and Identity matching. Default: 0.5."
-)
-@click.option(
-    "--seqmap",
-    type=click.Path(path_type=Path),
-    default=None,
-    metavar="PATH",
-    help="Sequence map file listing sequences to evaluate.",
-)
-@click.option(
-    "-o",
-    "--output",
-    type=click.Path(path_type=Path),
-    default=None,
-    metavar="PATH",
-    help="Output file for best parameters (JSON format).",
-)
+@metrics_option
+@threshold_option
+@seqmap_option
+@output_option("Output file for best parameters (JSON format).")
 def tune_command(
     tracker_id: str,
     gt_dir: Path,
@@ -89,7 +69,7 @@ def tune_command(
         output=output,
     )
     if rc != 0:
-        sys.exit(rc)
+        raise click.exceptions.Exit(rc)
 
 
 def tune(
@@ -138,28 +118,28 @@ def tune(
             seqmap=seqmap,
         )
     except (ValueError, ImportError, FileNotFoundError) as e:
-        print(str(e), file=sys.stderr)
+        click.echo(str(e), err=True)
         return 1
 
     try:
         best_params = tuner.run()
     except Exception as e:
-        print(f"Error during tuning: {e}", file=sys.stderr)
+        click.echo(f"Error during tuning: {e}", err=True)
         return 1
 
-    print(f"\nBest parameters for {tracker}:")
+    click.echo(f"\nBest parameters for {tracker}:")
     for name, value in best_params.items():
-        print(f"  {name}: {value}")
+        click.echo(f"  {name}: {value}")
     if tuner.study is not None:
-        print(f"\nBest {objective}: {tuner.study.best_value:.4f}")
+        click.echo(f"\nBest {objective}: {tuner.study.best_value:.4f}")
 
     if output:
         try:
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_text(json.dumps(best_params, indent=2))
         except OSError as e:
-            print(f"Error writing output: {e}", file=sys.stderr)
+            click.echo(f"Error writing output: {e}", err=True)
             return 1
-        print(f"\nResults saved to: {output}")
+        click.echo(f"\nResults saved to: {output}")
 
     return 0

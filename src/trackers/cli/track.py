@@ -78,7 +78,7 @@ def _make_tracker_param_callback(param_name: str) -> click.types.FuncParamType:
 )
 @click.option(
     "--model",
-    default=DEFAULT_MODEL,
+    default=None,
     metavar="ID",
     help=(
         f"Model ID for detection. Pretrained: rfdetr-nano, rfdetr-base, etc."
@@ -154,7 +154,7 @@ def _make_tracker_param_callback(param_name: str) -> click.types.FuncParamType:
 def track_command(
     ctx: click.Context,
     source: str | None,
-    model: str,
+    model: str | None,
     detections: Path | None,
     model_confidence: float,
     model_device: str,
@@ -185,6 +185,9 @@ def track_command(
     if model is not None and detections is not None:
         raise click.UsageError("--model and --detections are mutually exclusive.")
 
+    if model is None and detections is None:
+        model = DEFAULT_MODEL
+
     if output:
         _validate_output_path(_resolve_video_output_path(output), overwrite=overwrite)
     if mot_output:
@@ -195,7 +198,11 @@ def track_command(
         detections_data = load_mot_file(detections)
         class_names: list[str] = []
     else:
-        inference_model = _init_model(model, device=model_device, api_key=model_api_key)
+        inference_model = _init_model(
+            model if model is not None else DEFAULT_MODEL,
+            device=model_device,
+            api_key=model_api_key,
+        )
         detections_data = None
         class_names = getattr(inference_model, "class_names", [])
 
@@ -238,8 +245,15 @@ def track_command(
         sys.exit(rc)
 
 
+_CLI_PRIMITIVE_TYPES: frozenset[type] = frozenset({int, float, str, bool})
+
+
 def _add_tracker_params(cmd: click.Command) -> None:
     """Append dynamic tracker parameters from registry to a click Command.
+
+    Only parameters with primitive CLI-friendly types (int, float, str, bool)
+    are added; class-type defaults would cause click to invoke the class with
+    no arguments at parse time.
 
     Args:
         cmd: Click command to extend with tracker-specific options.
@@ -252,6 +266,8 @@ def _add_tracker_params(cmd: click.Command) -> None:
         for param_name, param_info in info.parameters.items():
             opt_name = f"--tracker.{param_name}"
             if param_name in existing_names:
+                continue
+            if param_info.param_type not in _CLI_PRIMITIVE_TYPES:
                 continue
             existing_names.add(param_name)
 
@@ -320,7 +336,7 @@ def _run_frameless(
         Exit code: 0 on success, 1 on error.
     """
     if detections_data is None or not detections_data:
-        print("Error: No detections found in file.", file=sys.stderr)
+        click.echo("Error: No detections found in file.", err=True)
         return 1
 
     total_frames = max(detections_data.keys())
@@ -507,7 +523,7 @@ def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
         try:
             track_ids.append(int(token))
         except ValueError:
-            print(f"Warning: '{token}' is not a valid track ID, skipping.", file=sys.stderr)
+            click.echo(f"Warning: '{token}' is not a valid track ID, skipping.", err=True)
     return track_ids if track_ids else None
 
 
@@ -549,7 +565,7 @@ def _resolve_class_filter(
             if token in name_to_id:
                 class_filter.append(name_to_id[token])
             else:
-                print(f"Warning: class '{token}' not found in model class list, skipping.", file=sys.stderr)
+                click.echo(f"Warning: class '{token}' not found in model class list, skipping.", err=True)
     return class_filter if class_filter else None
 
 
@@ -572,12 +588,9 @@ def _init_model(
     try:
         from inference_models import AutoModel
     except ImportError as e:
-        print(
-            "Error: inference-models is required for model-based detection.\n"
-            "Install with: pip install 'trackers[detection]'",
-            file=sys.stderr,
-        )
-        raise SystemExit(1) from e
+        raise click.ClickException(
+            "inference-models is required for model-based detection.\nInstall with: pip install 'trackers[detection]'"
+        ) from e
 
     resolved_device = _best_device() if device == DEFAULT_DEVICE else device
 

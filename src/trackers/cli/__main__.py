@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import logging
+import sys
 import warnings
 
 import click
@@ -20,8 +22,11 @@ from trackers.cli.tune import tune_command
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.version_option(package_name="trackers", prog_name="trackers")
-def cli() -> None:
+@click.option("-v", "--verbose", count=True, help="Increase log verbosity (-v INFO, -vv DEBUG).")
+def cli(verbose: int) -> None:
     """Command-line tools for multi-object tracking."""
+    level = {0: logging.WARNING, 1: logging.INFO}.get(verbose, logging.DEBUG)
+    logging.basicConfig(level=level, format="%(message)s", handlers=[logging.StreamHandler(sys.stderr)])
 
 
 cli.add_command(track_command, "track")

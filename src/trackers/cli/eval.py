@@ -6,12 +6,12 @@
 
 from __future__ import annotations
 
-import logging
-import sys
 from pathlib import Path
 from typing import cast
 
 import click
+
+from trackers.cli._options import metrics_option, output_option, seqmap_option, threshold_option
 
 
 @click.command("eval")
@@ -44,37 +44,13 @@ import click
     metavar="DIR",
     help="Directory containing tracker prediction files.",
 )
-@click.option(
-    "--seqmap",
-    type=click.Path(path_type=Path),
-    default=None,
-    metavar="PATH",
-    help="Sequence map file listing sequences to evaluate.",
-)
-@click.option(
-    "--metrics",
-    multiple=True,
-    default=("CLEAR",),
-    type=click.Choice(["CLEAR", "HOTA", "Identity"]),
-    help="Metrics to compute. Repeat flag for multiple: --metrics CLEAR --metrics HOTA. Default: CLEAR.",
-)
-@click.option(
-    "--threshold",
-    type=float,
-    default=0.5,
-    help="IoU threshold for CLEAR and Identity matching. Default: 0.5",
-)
+@seqmap_option
+@metrics_option
+@threshold_option
 @click.option(
     "--columns", multiple=True, default=(), metavar="COL", help="Metric columns to display. Default: auto-selected."
 )
-@click.option(
-    "-o",
-    "--output",
-    type=click.Path(path_type=Path),
-    default=None,
-    metavar="PATH",
-    help="Output file for results (JSON format).",
-)
+@output_option("Output file for results (JSON format).")
 def eval_command(
     gt: Path | None,
     tracker_path: Path | None,
@@ -87,8 +63,6 @@ def eval_command(
     output: Path | None,
 ) -> None:
     """Evaluate tracker predictions against ground truth."""
-    logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler(sys.stderr)])
-
     single_mode = gt is not None and tracker_path is not None
     benchmark_mode = gt_dir is not None and tracker_dir is not None
 

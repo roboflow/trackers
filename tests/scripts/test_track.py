@@ -11,13 +11,34 @@ from typing import ClassVar
 import numpy as np
 import pytest
 import supervision as sv
+from click.testing import CliRunner
 
+from trackers.cli.__main__ import cli
 from trackers.cli.track import (
     _format_labels,
     _init_annotators,
     _resolve_class_filter,
     _resolve_track_id_filter,
 )
+
+
+class TestTrackCommandCLI:
+    """Smoke tests for the `track` CLI command via CliRunner."""
+
+    def test_help_exits_cleanly(self) -> None:
+        """--help must exit 0 and not raise a TypeError from class-type defaults."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["track", "--help"])
+        assert result.exit_code == 0, result.output
+        assert "ABCMETA" not in result.output
+
+    def test_missing_source_and_detections_raises_usage_error(self) -> None:
+        """Omitting --source and --detections must raise UsageError, not TypeError."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["track"])
+        assert result.exit_code != 0
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+        assert "source" in result.output.lower() or "usage" in result.output.lower()
 
 
 class TestInitAnnotators:
