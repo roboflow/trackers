@@ -909,6 +909,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../learn/iou/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IoU Variants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../learn/about/" class="md-nav__link">
         
   
@@ -1969,12 +1997,34 @@ detections to existing tracks. Higher values require more overlap.</p>
             <td>
               <div class="doc-md-description">
                 <p>State estimator class to use for Kalman filter.
-Defaults to <code>XYXYStateEstimator</code>. Can also use
-<code>XCYCSRStateEstimator</code> for center-based representation.</p>
+<code>XCYCSRStateEstimator</code> for center-based representation or
+<code>XYXYStateEstimator</code> for corner-based representation.</p>
               </div>
             </td>
             <td>
                   <code><span title="trackers.utils.state_representations.XYXYStateEstimator">XYXYStateEstimator</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iou</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.utils.iou.BaseIoU&lt;/code&gt;" href="../../learn/iou/#trackers.utils.iou.BaseIoU">BaseIoU</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>IoU similarity metric instance to use for data association.
+Defaults to standard <code>IoU</code>. Can be replaced with any <code>BaseIoU</code>
+subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
+similarity is computed during the association step.
+Passing <code>None</code> (the default) is equivalent to <code>IoU()</code> and is
+provided for backward compatibility with existing code that did not
+supply an <code>iou</code> argument.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
             </td>
           </tr>
       </tbody>
@@ -2322,6 +2372,28 @@ Defaults to <code>XYXYStateEstimator</code>. Can also use
             </td>
             <td>
                   <code><span title="trackers.utils.state_representations.XYXYStateEstimator">XYXYStateEstimator</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iou</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.utils.iou.BaseIoU&lt;/code&gt;" href="../../learn/iou/#trackers.utils.iou.BaseIoU">BaseIoU</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>IoU similarity metric instance to use for data association.
+Defaults to standard <code>IoU</code>. Can be replaced with any <code>BaseIoU</code>
+subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
+similarity is computed during the association step.
+Passing <code>None</code> (the default) is equivalent to <code>IoU()</code> and is
+provided for backward compatibility with existing code that did not
+supply an <code>iou</code> argument.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
             </td>
           </tr>
       </tbody>
@@ -2676,6 +2748,28 @@ Defaults to <code>XCYCSRStateEstimator</code>. Can also use
             </td>
             <td>
                   <code><span title="trackers.utils.state_representations.XCYCSRStateEstimator">XCYCSRStateEstimator</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iou</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.utils.iou.BaseIoU&lt;/code&gt;" href="../../learn/iou/#trackers.utils.iou.BaseIoU">BaseIoU</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>IoU similarity metric instance to use for data association.
+Defaults to standard <code>IoU</code>. Can be replaced with any <code>BaseIoU</code>
+subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
+similarity is computed during the association step.
+Passing <code>None</code> (the default) is equivalent to <code>IoU()</code> and is
+provided for backward compatibility with existing code that did not
+supply an <code>iou</code> argument.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
             </td>
           </tr>
       </tbody>
