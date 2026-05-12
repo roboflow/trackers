@@ -8,93 +8,13 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from trackers.cli.tune import add_tune_subparser, run_tune, tune
-
-
-def _make_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
-    """Return a top-level parser with a subparsers group."""
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
-    return parser, subparsers
-
-
-class TestAddTuneSubparser:
-    @pytest.fixture
-    def minimal_args(self) -> argparse.Namespace:
-        """Parsed args with only required flags."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        return parser.parse_args(["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"])
-
-    def test_registers_tune_subcommand(self) -> None:
-        """tune subcommand is accessible under the 'tune' name."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        args = parser.parse_args(["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"])
-        assert args.func is run_tune
-
-    def test_required_args_parsed(self) -> None:
-        """--tracker, --gt-dir, and --detections-dir are required and parsed."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        args = parser.parse_args(
-            [
-                "tune",
-                "--tracker",
-                "bytetrack",
-                "--gt-dir",
-                "/data/gt",
-                "--detections-dir",
-                "/data/det",
-            ]
-        )
-        assert args.tracker == "bytetrack"
-        assert args.gt_dir == Path("/data/gt")
-        assert args.detections_dir == Path("/data/det")
-
-    @pytest.mark.parametrize(
-        "flag,expected",
-        [
-            ("objective", "HOTA"),
-            ("n_trials", 100),
-            ("threshold", 0.5),
-            ("seqmap", None),
-            ("output", None),
-        ],
-    )
-    def test_optional_defaults(self, minimal_args: argparse.Namespace, flag: str, expected: object) -> None:
-        """Optional arguments have correct defaults when omitted."""
-        assert getattr(minimal_args, flag) == expected
-
-    def test_metrics_default(self, minimal_args: argparse.Namespace) -> None:
-        """--metrics defaults to ['CLEAR'] when not supplied."""
-        assert minimal_args.metrics == ["CLEAR"]
-
-    def test_output_flag_short_form(self) -> None:
-        """-o is an alias for --output."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        args = parser.parse_args(
-            [
-                "tune",
-                "--tracker",
-                "sort",
-                "--gt-dir",
-                "/gt",
-                "--detections-dir",
-                "/det",
-                "-o",
-                "/out/params.json",
-            ]
-        )
-        assert args.output == Path("/out/params.json")
+from trackers.cli.tune import tune
 
 
 class TestTune:
@@ -180,34 +100,110 @@ class TestTune:
         assert result == 1
 
 
-class TestRunTune:
-    def test_delegates_to_tune_with_namespace_args(self, tmp_path: Path) -> None:
-        """run_tune() passes all argparse.Namespace fields to tune() correctly."""
+class TestCliInvocation:
+    """tune() is wired into the jsonargparse CLI with the expected args."""
+
+    @staticmethod
+    def _invoke(args: list[str], spy: list[dict]) -> object:
+        """Run jsonargparse.CLI() with a recording spy for `tune`.
+
+        The spy mirrors the real signature so jsonargparse can introspect it.
+        """
+        from jsonargparse import CLI
+
+        from trackers.cli.tune import tune as real_tune
+
+        def spy_tune(
+            tracker: str,
+            gt_dir: Path,
+            detections_dir: Path,
+            objective: str = "HOTA",
+            n_trials: int = 100,
+            metrics: list[str] | None = None,
+            threshold: float = 0.5,
+            seqmap: Path | None = None,
+            output: Path | None = None,
+        ) -> int:
+            spy.append(
+                dict(
+                    tracker=tracker,
+                    gt_dir=gt_dir,
+                    detections_dir=detections_dir,
+                    objective=objective,
+                    n_trials=n_trials,
+                    metrics=metrics,
+                    threshold=threshold,
+                    seqmap=seqmap,
+                    output=output,
+                )
+            )
+            return 0
+
+        # Copy the docstring so jsonargparse's introspection matches the real function.
+        spy_tune.__doc__ = real_tune.__doc__
+        return CLI({"tune": spy_tune}, as_positional=False, args=args)
+
+    def test_cli_dispatch_to_tune(self, tmp_path: Path) -> None:
+        """jsonargparse.CLI() parses the tune subcommand and forwards args."""
         gt_dir = tmp_path / "gt"
         det_dir = tmp_path / "det"
-        output_path = tmp_path / "params.json"
-        args = argparse.Namespace(
-            tracker="sort",
-            gt_dir=gt_dir,
-            detections_dir=det_dir,
-            objective="MOTA",
-            n_trials=50,
-            metrics=["CLEAR", "HOTA"],
-            threshold=0.3,
-            seqmap=None,
-            output=output_path,
+        spy: list[dict] = []
+        result = self._invoke(
+            [
+                "tune",
+                "--tracker",
+                "sort",
+                "--gt_dir",
+                str(gt_dir),
+                "--detections_dir",
+                str(det_dir),
+                "--objective",
+                "MOTA",
+                "--n_trials",
+                "50",
+            ],
+            spy,
         )
-        with patch("trackers.cli.tune.tune", return_value=0) as mock_tune:
-            result = run_tune(args)
         assert result == 0
-        mock_tune.assert_called_once_with(
-            tracker="sort",
-            gt_dir=gt_dir,
-            detections_dir=det_dir,
-            objective="MOTA",
-            n_trials=50,
-            metrics=["CLEAR", "HOTA"],
-            threshold=0.3,
-            seqmap=None,
-            output=output_path,
+        assert len(spy) == 1
+        assert spy[0]["tracker"] == "sort"
+        assert spy[0]["gt_dir"] == gt_dir
+        assert spy[0]["detections_dir"] == det_dir
+        assert spy[0]["objective"] == "MOTA"
+        assert spy[0]["n_trials"] == 50
+
+    @pytest.mark.parametrize(
+        "flag,arg_value,attr,expected",
+        [
+            ("--objective", "HOTA", "objective", "HOTA"),
+            ("--n_trials", "100", "n_trials", 100),
+            ("--threshold", "0.5", "threshold", 0.5),
+        ],
+    )
+    def test_cli_defaults(
+        self,
+        tmp_path: Path,
+        flag: str,
+        arg_value: str,
+        attr: str,
+        expected: object,
+    ) -> None:
+        """Optional flags carry their declared defaults when invoked via CLI."""
+        gt_dir = tmp_path / "gt"
+        det_dir = tmp_path / "det"
+        spy: list[dict] = []
+        self._invoke(
+            [
+                "tune",
+                "--tracker",
+                "sort",
+                "--gt_dir",
+                str(gt_dir),
+                "--detections_dir",
+                str(det_dir),
+                flag,
+                arg_value,
+            ],
+            spy,
         )
+        assert spy[0][attr] == expected

@@ -5,12 +5,12 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+"""``trackers download`` subcommand — fetch benchmark tracking datasets."""
+
 from __future__ import annotations
 
 import sys
-from typing import Any
 
-import jsonargparse
 from rich.console import Console
 from rich.panel import Panel
 
@@ -18,72 +18,51 @@ from trackers.datasets.download import _DEFAULT_CACHE_DIR, _DEFAULT_OUTPUT_DIR
 from trackers.datasets.manifest import _DATASETS
 
 
-def add_download_subparser(subparsers: Any) -> None:
-    """Add the download subcommand to the argument parser."""
-    parser = subparsers.add_parser(
-        "download",
-        help="Download benchmark tracking datasets.",
-        description="Download tracking datasets from the official trackers bucket.",
-        formatter_class=jsonargparse.DefaultHelpFormatter,
-    )
+def download(
+    dataset: str | None = None,
+    split: str | None = None,
+    asset: str | None = None,
+    output: str = _DEFAULT_OUTPUT_DIR,
+    cache_dir: str = _DEFAULT_CACHE_DIR,
+    list_available: bool = False,
+) -> int:
+    """Download benchmark tracking datasets from the official trackers bucket.
 
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List available datasets, splits, and asset types.",
-    )
-    parser.add_argument(
-        "dataset",
-        nargs="?",
-        help="Dataset name (e.g. mot17, sportsmot).",
-    )
-    parser.add_argument(
-        "--split",
-        help="Comma-separated splits to download (e.g. train,val,test). "
-        "If omitted, all available splits are downloaded.",
-    )
-    parser.add_argument(
-        "--asset",
-        help="Comma-separated assets to download: annotations,frames,detections. "
-        "If omitted, all available assets are downloaded.",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        default=_DEFAULT_OUTPUT_DIR,
-        help="Output directory (default: current directory).",
-    )
-    parser.add_argument(
-        "--cache-dir",
-        default=_DEFAULT_CACHE_DIR,
-        help="Cache directory for downloaded ZIPs (default: ~/.cache/trackers).",
-    )
+    Args:
+        dataset: Dataset name (e.g. ``mot17``, ``sportsmot``). Required unless
+            ``list_available`` is set.
+        split: Comma-separated splits to download (e.g. ``train,val,test``).
+            ``None`` selects every available split.
+        asset: Comma-separated assets to download (``annotations,frames,detections``).
+            ``None`` selects every available asset.
+        output: Output directory. Defaults to the current working directory.
+        cache_dir: Cache directory for downloaded ZIPs.
+        list_available: When ``True``, print the available datasets, splits, and
+            asset types, then exit.
 
-    parser.set_defaults(func=_run_download)
-
-
-def _run_download(args: jsonargparse.Namespace) -> int:
-    """Execute the download subcommand."""
-    if args.list:
+    Returns:
+        Exit code: ``0`` on success, ``1`` on error.
+    """
+    if list_available:
         _print_available()
         return 0
 
-    if not args.dataset:
-        print("Please specify a dataset name or use --list.", file=sys.stderr)
+    if not dataset:
+        print("Please specify a dataset name or use --list_available.", file=sys.stderr)
         return 1
 
     from trackers.datasets.download import download_dataset
 
-    split_list = [s.strip() for s in args.split.split(",")] if args.split else None
-    asset_list = [a.strip() for a in args.asset.split(",")] if args.asset else None
+    split_list = [s.strip() for s in split.split(",")] if split else None
+    asset_list = [a.strip() for a in asset.split(",")] if asset else None
 
     try:
         download_dataset(
-            dataset=args.dataset,
+            dataset=dataset,
             split=split_list,
             asset=asset_list,
-            output=args.output,
-            cache_dir=args.cache_dir,
+            output=output,
+            cache_dir=cache_dir,
         )
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

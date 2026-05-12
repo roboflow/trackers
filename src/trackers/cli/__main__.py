@@ -5,71 +5,35 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+"""Command-line entry point for the trackers package."""
+
 from __future__ import annotations
 
 import sys
 import warnings
 
-import jsonargparse
+from jsonargparse import CLI
+
+from trackers.cli.download import download
+from trackers.cli.eval import eval_cmd
+from trackers.cli.track import track
+from trackers.cli.tune import tune
 
 
 def main() -> int:
-    """Main entry point for the trackers CLI."""
-    # Beta warning
+    """Dispatch to track / eval / tune / download via jsonargparse CLI."""
     warnings.warn(
         "The trackers CLI is in beta. APIs may change in future releases.",
         UserWarning,
         stacklevel=2,
     )
-
-    parser = jsonargparse.ArgumentParser(
+    rc = CLI(
+        {"track": track, "eval": eval_cmd, "tune": tune, "download": download},
+        as_positional=False,
         prog="trackers",
         description="Command-line tools for multi-object tracking.",
-        epilog="For more information, visit: https://github.com/roboflow/trackers",
     )
-    parser.add_argument(
-        "--version",
-        action="store_true",
-        help="Show version and exit.",
-    )
-    parser.add_argument(
-        "--config",
-        action="config",
-        help="Path to a YAML/JSON config file with default argument values.",
-    )
-
-    subparsers = parser.add_subparsers(  # type: ignore[var-annotated]
-        dest="command",
-        title="commands",
-        description="Available commands:",
-    )
-
-    # Import and register subcommands
-    from trackers.cli.download import add_download_subparser
-    from trackers.cli.eval import add_eval_subparser
-    from trackers.cli.track import add_track_subparser
-    from trackers.cli.tune import add_tune_subparser
-
-    add_download_subparser(subparsers)
-    add_eval_subparser(subparsers)
-    add_track_subparser(subparsers)
-    add_tune_subparser(subparsers)
-
-    # Parse arguments
-    args = parser.parse_args()
-
-    if args.version:
-        from importlib.metadata import version
-
-        print(f"trackers {version('trackers')}")
-        return 0
-
-    if args.command is None:
-        parser.print_help()
-        return 0
-
-    # Execute the command
-    return args.func(args)
+    return int(rc) if rc is not None else 0
 
 
 if __name__ == "__main__":
