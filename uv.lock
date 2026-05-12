@@ -4026,6 +4026,7 @@ name = "trackers"
 version = "2.4.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "requests" },
@@ -4069,6 +4070,7 @@ mypy-types = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.0" },
     { name = "inference-models", marker = "extra == 'detection'", specifier = ">=0.19.0" },
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "opencv-python", specifier = ">=4.8.0" },

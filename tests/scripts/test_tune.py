@@ -4,100 +4,150 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""CLI-level tests for trackers/scripts/tune.py."""
+"""CLI-level tests for trackers/cli/tune.py."""
 
 from __future__ import annotations
 
-import argparse
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from click.testing import CliRunner
 
-from trackers.scripts.tune import add_tune_subparser, run_tune, tune
-
-
-def _make_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
-    """Return a top-level parser with a subparsers group."""
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
-    return parser, subparsers
+from trackers.cli.__main__ import cli
+from trackers.cli.tune import tune
 
 
-class TestAddTuneSubparser:
-    @pytest.fixture
-    def minimal_args(self) -> argparse.Namespace:
-        """Parsed args with only required flags."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        return parser.parse_args(["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"])
+class TestTuneCommand:
+    """Click CLI surface for the tune subcommand."""
 
-    def test_registers_tune_subcommand(self) -> None:
-        """tune subcommand is accessible under the 'tune' name."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        args = parser.parse_args(["tune", "--tracker", "sort", "--gt-dir", "/gt", "--detections-dir", "/det"])
-        assert args.func is run_tune
+    def test_missing_required_args_exits_nonzero(self) -> None:
+        """tune without required flags exits with a non-zero code."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["tune"])
+        assert result.exit_code != 0
 
-    def test_required_args_parsed(self) -> None:
-        """--tracker, --gt-dir, and --detections-dir are required and parsed."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        args = parser.parse_args(
+    def test_tracker_flag_accepted(self, tmp_path: Path) -> None:
+        """--tracker, --gt-dir, --detections-dir are parsed without error when Tuner raises."""
+        gt_dir = tmp_path / "gt"
+        gt_dir.mkdir()
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["tune", "--tracker", "bytetrack", "--gt-dir", str(gt_dir), "--detections-dir", str(det_dir)],
+        )
+        # bytetrack with empty dirs → exit 1 from tune(), not a click error
+        assert result.exit_code in (0, 1)
+
+    @pytest.mark.parametrize("objective", ["MOTA", "HOTA", "IDF1"])
+    def test_objective_choices_accepted(self, tmp_path: Path, objective: str) -> None:
+        """Valid --objective values are accepted (exit comes from Tuner, not click)."""
+        gt_dir = tmp_path / "gt"
+        gt_dir.mkdir()
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
             [
                 "tune",
                 "--tracker",
                 "bytetrack",
                 "--gt-dir",
-                "/data/gt",
+                str(gt_dir),
                 "--detections-dir",
-                "/data/det",
-            ]
+                str(det_dir),
+                "--objective",
+                objective,
+            ],
         )
-        assert args.tracker == "bytetrack"
-        assert args.gt_dir == Path("/data/gt")
-        assert args.detections_dir == Path("/data/det")
+        assert result.exit_code in (0, 1)
 
-    @pytest.mark.parametrize(
-        "flag,expected",
-        [
-            ("objective", "HOTA"),
-            ("n_trials", 100),
-            ("threshold", 0.5),
-            ("seqmap", None),
-            ("output", None),
-        ],
-    )
-    def test_optional_defaults(self, minimal_args: argparse.Namespace, flag: str, expected: object) -> None:
-        """Optional arguments have correct defaults when omitted."""
-        assert getattr(minimal_args, flag) == expected
-
-    def test_metrics_default(self, minimal_args: argparse.Namespace) -> None:
-        """--metrics defaults to ['CLEAR'] when not supplied."""
-        assert minimal_args.metrics == ["CLEAR"]
-
-    def test_output_flag_short_form(self) -> None:
-        """-o is an alias for --output."""
-        parser, subparsers = _make_parser()
-        add_tune_subparser(subparsers)
-        args = parser.parse_args(
+    def test_invalid_objective_rejected(self, tmp_path: Path) -> None:
+        """Unknown --objective value exits with click usage error (code 2)."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
             [
                 "tune",
                 "--tracker",
-                "sort",
+                "bytetrack",
                 "--gt-dir",
-                "/gt",
+                str(tmp_path),
                 "--detections-dir",
-                "/det",
-                "-o",
-                "/out/params.json",
-            ]
+                str(tmp_path),
+                "--objective",
+                "UNKNOWN",
+            ],
         )
-        assert args.output == Path("/out/params.json")
+        assert result.exit_code == 2
+
+    def test_n_trials_flag(self, tmp_path: Path) -> None:
+        """--n-trials is forwarded to tune()."""
+        gt_dir = tmp_path / "gt"
+        gt_dir.mkdir()
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        mock_tuner = MagicMock()
+        mock_tuner.run.return_value = {"high_thresh": 0.6}
+        mock_tuner.study = None
+        runner = CliRunner()
+        with patch("trackers.tune.Tuner", return_value=mock_tuner) as mock_cls:
+            runner.invoke(
+                cli,
+                [
+                    "tune",
+                    "--tracker",
+                    "bytetrack",
+                    "--gt-dir",
+                    str(gt_dir),
+                    "--detections-dir",
+                    str(det_dir),
+                    "--n-trials",
+                    "50",
+                ],
+            )
+        _, kwargs = mock_cls.call_args
+        assert kwargs.get("n_trials") == 50
+
+    def test_output_flag_writes_json(self, tmp_path: Path) -> None:
+        """-o writes best parameters to a JSON file."""
+        gt_dir = tmp_path / "gt"
+        gt_dir.mkdir()
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        output_path = tmp_path / "params.json"
+        best = {"high_thresh": 0.6}
+        mock_tuner = MagicMock()
+        mock_tuner.run.return_value = best
+        mock_tuner.study = None
+        runner = CliRunner()
+        with patch("trackers.tune.Tuner", return_value=mock_tuner):
+            result = runner.invoke(
+                cli,
+                [
+                    "tune",
+                    "--tracker",
+                    "bytetrack",
+                    "--gt-dir",
+                    str(gt_dir),
+                    "--detections-dir",
+                    str(det_dir),
+                    "-o",
+                    str(output_path),
+                ],
+            )
+        assert result.exit_code == 0
+        assert output_path.exists()
+        assert json.loads(output_path.read_text()) == best
 
 
 class TestTune:
+    """Unit tests for the tune() helper function (no CLI layer)."""
+
     def test_returns_1_on_invalid_tracker(self, tmp_path: Path) -> None:
         """Invalid tracker ID causes tune() to return exit code 1."""
         gt_dir = tmp_path / "gt"
@@ -113,7 +163,6 @@ class TestTune:
         gt_dir.mkdir()
         det_dir = tmp_path / "det"
         det_dir.mkdir()
-        # bytetrack is registered; empty det_dir → FileNotFoundError via Tuner
         result = tune("bytetrack", gt_dir, det_dir)
         assert result == 1
 
@@ -121,10 +170,7 @@ class TestTune:
         """ImportError (e.g. optuna not installed) causes tune() to return 1."""
         gt_dir = tmp_path / "gt"
         det_dir = tmp_path / "det"
-        with patch(
-            "trackers.tune.Tuner",
-            side_effect=ImportError("optuna is required"),
-        ):
+        with patch("trackers.tune.Tuner", side_effect=ImportError("optuna is required")):
             result = tune("bytetrack", gt_dir, det_dir)
         assert result == 1
 
@@ -178,36 +224,3 @@ class TestTune:
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
             result = tune("bytetrack", gt_dir, det_dir)
         assert result == 1
-
-
-class TestRunTune:
-    def test_delegates_to_tune_with_namespace_args(self, tmp_path: Path) -> None:
-        """run_tune() passes all argparse.Namespace fields to tune() correctly."""
-        gt_dir = tmp_path / "gt"
-        det_dir = tmp_path / "det"
-        output_path = tmp_path / "params.json"
-        args = argparse.Namespace(
-            tracker="sort",
-            gt_dir=gt_dir,
-            detections_dir=det_dir,
-            objective="MOTA",
-            n_trials=50,
-            metrics=["CLEAR", "HOTA"],
-            threshold=0.3,
-            seqmap=None,
-            output=output_path,
-        )
-        with patch("trackers.scripts.tune.tune", return_value=0) as mock_tune:
-            result = run_tune(args)
-        assert result == 0
-        mock_tune.assert_called_once_with(
-            tracker="sort",
-            gt_dir=gt_dir,
-            detections_dir=det_dir,
-            objective="MOTA",
-            n_trials=50,
-            metrics=["CLEAR", "HOTA"],
-            threshold=0.3,
-            seqmap=None,
-            output=output_path,
-        )

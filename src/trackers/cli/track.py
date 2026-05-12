@@ -1,0 +1,719 @@
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
+from __future__ import annotations
+
+import sys
+from contextlib import nullcontext
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import click
+import numpy as np
+import supervision as sv
+
+from trackers import frames_from_source
+from trackers.cli.progress import _classify_source, _SourceInfo, _TrackingProgress
+from trackers.core.base import BaseTracker
+from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
+from trackers.io.paths import _resolve_video_output_path, _validate_output_path
+from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
+from trackers.utils.device import _best_device
+
+if TYPE_CHECKING:
+    from inference_models import AnyModel
+
+DEFAULT_MODEL = "rfdetr-nano"
+DEFAULT_TRACKER = "bytetrack"
+DEFAULT_CONFIDENCE = 0.5
+DEFAULT_DEVICE = "auto"
+
+COLOR_PALETTE = sv.ColorPalette.from_hex(
+    [
+        "#ffff00",
+        "#ff9b00",
+        "#ff8080",
+        "#ff66b2",
+        "#ff66ff",
+        "#b266ff",
+        "#9999ff",
+        "#3399ff",
+        "#66ffff",
+        "#33ff99",
+        "#66ff66",
+        "#99ff00",
+    ]
+)
+
+
+def _make_tracker_param_callback(param_name: str) -> click.types.FuncParamType:
+    """Return a click callback that stores the value in ctx.obj under param_name.
+
+    Args:
+        param_name: Key to store under in ctx.obj dict.
+
+    Returns:
+        Click callback function.
+
+    Examples:
+        >>> cb = _make_tracker_param_callback("min_score")
+        >>> callable(cb)
+        True
+    """
+
+    def _cb(ctx: click.Context, param: click.Parameter, value: object) -> object:
+        d = ctx.ensure_object(dict)
+        d[param_name] = value
+        return value
+
+    return _cb
+
+
+@click.command("track")
+@click.option(
+    "--source", default=None, metavar="PATH", help="Video file, webcam index (0), RTSP URL, or image directory."
+)
+@click.option(
+    "--model",
+    default=DEFAULT_MODEL,
+    metavar="ID",
+    help=(
+        f"Model ID for detection. Pretrained: rfdetr-nano, rfdetr-base, etc."
+        f" Custom: workspace/project/version. Default: {DEFAULT_MODEL}"
+    ),
+)
+@click.option(
+    "--detections",
+    type=click.Path(path_type=Path),
+    default=None,
+    metavar="PATH",
+    help="Load pre-computed detections from MOT format file.",
+)
+@click.option(
+    "--model.confidence",
+    "model_confidence",
+    type=float,
+    default=DEFAULT_CONFIDENCE,
+    metavar="FLOAT",
+    help=f"Detection confidence threshold. Default: {DEFAULT_CONFIDENCE}",
+)
+@click.option(
+    "--model.device",
+    "model_device",
+    default=DEFAULT_DEVICE,
+    metavar="DEVICE",
+    help=f"Device: auto, cpu, cuda, cuda:0, mps. Default: {DEFAULT_DEVICE}",
+)
+@click.option(
+    "--model.api_key", "model_api_key", default=None, metavar="KEY", help="Roboflow API key for custom models."
+)
+@click.option(
+    "--classes",
+    default=None,
+    metavar="NAMES_OR_IDS",
+    help="Filter by class names or IDs (comma-separated, e.g., person,car).",
+)
+@click.option(
+    "--track_ids", default=None, metavar="IDS", help="Filter output by track IDs (comma-separated, e.g., 1,3,5)"
+)
+@click.option(
+    "--tracker",
+    default=DEFAULT_TRACKER,
+    metavar="ID",
+    help=f"Tracking algorithm. Default: {DEFAULT_TRACKER}",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output",
+    type=click.Path(path_type=Path),
+    default=None,
+    metavar="PATH",
+    help="Output video file path.",
+)
+@click.option(
+    "--mot-output",
+    "mot_output",
+    type=click.Path(path_type=Path),
+    default=None,
+    metavar="PATH",
+    help="Output MOT format file path.",
+)
+@click.option("--overwrite", is_flag=True, help="Overwrite existing output files.")
+@click.option("--display", is_flag=True, help="Show preview window.")
+@click.option("--show-boxes/--no-boxes", "show_boxes", default=True, help="Draw bounding boxes. Default: True")
+@click.option("--show-masks", "show_masks", is_flag=True, help="Draw segmentation masks (seg models only).")
+@click.option("--show-labels", "show_labels", is_flag=True, help="Show class labels.")
+@click.option("--show-ids/--no-ids", "show_ids", default=True, help="Show track IDs. Default: True")
+@click.option("--show-confidence", "show_confidence", is_flag=True, help="Show confidence scores.")
+@click.option("--show-trajectories", "show_trajectories", is_flag=True, help="Draw track trajectories.")
+@click.pass_context
+def track_command(
+    ctx: click.Context,
+    source: str | None,
+    model: str,
+    detections: Path | None,
+    model_confidence: float,
+    model_device: str,
+    model_api_key: str | None,
+    classes: str | None,
+    track_ids: str | None,
+    tracker: str,
+    output: Path | None,
+    mot_output: Path | None,
+    overwrite: bool,
+    display: bool,
+    show_boxes: bool,
+    show_masks: bool,
+    show_labels: bool,
+    show_ids: bool,
+    show_confidence: bool,
+    show_trajectories: bool,
+) -> None:
+    """Track objects in video using detection and tracking."""
+    needs_frames = output or display
+
+    if source is None and not detections:
+        raise click.UsageError("--source is required when not using --detections.")
+
+    if needs_frames and source is None:
+        raise click.UsageError("--source is required when using --output or --display.")
+
+    if model is not None and detections is not None:
+        raise click.UsageError("--model and --detections are mutually exclusive.")
+
+    if output:
+        _validate_output_path(_resolve_video_output_path(output), overwrite=overwrite)
+    if mot_output:
+        _validate_output_path(mot_output, overwrite=overwrite)
+
+    if detections:
+        inference_model = None
+        detections_data = load_mot_file(detections)
+        class_names: list[str] = []
+    else:
+        inference_model = _init_model(model, device=model_device, api_key=model_api_key)
+        detections_data = None
+        class_names = getattr(inference_model, "class_names", [])
+
+    class_filter = _resolve_class_filter(classes, class_names)
+    track_id_filter = _resolve_track_id_filter(track_ids)
+
+    tracker_params = _extract_tracker_params_from_ctx(tracker, ctx)
+    mot_tracker = _init_tracker(tracker, **tracker_params)
+
+    if source is not None:
+        rc = _run_with_source(
+            source=source,
+            mot_tracker=mot_tracker,
+            inference_model=inference_model,
+            detections_data=detections_data,
+            class_names=class_names,
+            class_filter=class_filter,
+            track_id_filter=track_id_filter,
+            model_confidence=model_confidence,
+            output=output,
+            mot_output=mot_output,
+            display=display,
+            show_boxes=show_boxes,
+            show_masks=show_masks,
+            show_labels=show_labels,
+            show_ids=show_ids,
+            show_confidence=show_confidence,
+            show_trajectories=show_trajectories,
+        )
+    else:
+        rc = _run_frameless(
+            detections_data=detections_data,
+            class_filter=class_filter,
+            track_id_filter=track_id_filter,
+            mot_tracker=mot_tracker,
+            mot_output=mot_output,
+        )
+
+    if rc != 0:
+        sys.exit(rc)
+
+
+def _add_tracker_params(cmd: click.Command) -> None:
+    """Append dynamic tracker parameters from registry to a click Command.
+
+    Args:
+        cmd: Click command to extend with tracker-specific options.
+    """
+    existing_names = {p.name for p in cmd.params}
+    for tracker_id in BaseTracker._registered_trackers():
+        info = BaseTracker._lookup_tracker(tracker_id)
+        if info is None:
+            continue
+        for param_name, param_info in info.parameters.items():
+            opt_name = f"--tracker.{param_name}"
+            if param_name in existing_names:
+                continue
+            existing_names.add(param_name)
+
+            if param_info.param_type is bool:
+                if param_info.default_value:
+                    decls = [f"--tracker.{param_name}/--no-tracker.{param_name}"]
+                else:
+                    decls = [opt_name]
+                opt = click.Option(
+                    decls,
+                    default=param_info.default_value,
+                    expose_value=False,
+                    callback=_make_tracker_param_callback(param_name),
+                    help=f"{param_info.description} Default: {param_info.default_value}",
+                )
+            else:
+                opt = click.Option(
+                    [opt_name],
+                    type=param_info.param_type,
+                    default=param_info.default_value,
+                    metavar=param_info.param_type.__name__.upper(),
+                    expose_value=False,
+                    callback=_make_tracker_param_callback(param_name),
+                    help=f"{param_info.description} Default: {param_info.default_value}",
+                )
+            cmd.params.append(opt)
+
+
+_add_tracker_params(track_command)
+
+
+def _extract_tracker_params_from_ctx(tracker_id: str, ctx: click.Context) -> dict[str, object]:
+    """Extract tracker parameters collected by dynamic option callbacks.
+
+    Args:
+        tracker_id: Registered tracker name.
+        ctx: Click context carrying values set by dynamic callbacks in ctx.obj.
+
+    Returns:
+        Dictionary of tracker parameters with non-None values.
+    """
+    info = BaseTracker._lookup_tracker(tracker_id)
+    if info is None:
+        return {}
+    obj = ctx.obj or {}
+    return {name: obj[name] for name in info.parameters if name in obj and obj[name] is not None}
+
+
+def _run_frameless(
+    detections_data: dict | None,
+    class_filter: list[int] | None,
+    track_id_filter: list[int] | None,
+    mot_tracker: BaseTracker,
+    mot_output: Path | None,
+) -> int:
+    """Run tracking from pre-computed detections without frame source.
+
+    Args:
+        detections_data: Pre-loaded MOT detections keyed by frame index.
+        class_filter: Class IDs to keep, or None for all.
+        track_id_filter: Track IDs to keep in output, or None for all.
+        mot_tracker: Initialised tracker instance.
+        mot_output: Output path for MOT-format file, or None.
+
+    Returns:
+        Exit code: 0 on success, 1 on error.
+    """
+    if detections_data is None or not detections_data:
+        print("Error: No detections found in file.", file=sys.stderr)
+        return 1
+
+    total_frames = max(detections_data.keys())
+    source_info = _SourceInfo(source_type="video", total_frames=total_frames)
+
+    try:
+        with (
+            _MOTOutput(mot_output) as mot,
+            _TrackingProgress(source_info) as progress,
+        ):
+            interrupted = False
+            for frame_idx in range(1, total_frames + 1):
+                if frame_idx in detections_data:
+                    frame_detections = _mot_frame_to_detections(detections_data[frame_idx])
+                else:
+                    frame_detections = sv.Detections.empty()
+
+                if class_filter is not None and len(frame_detections) > 0:
+                    mask = np.isin(frame_detections.class_id, class_filter)
+                    frame_detections = frame_detections[mask]  # type: ignore[assignment]
+
+                tracked = mot_tracker.update(frame_detections)
+
+                if track_id_filter is not None and len(tracked) > 0:
+                    if tracked.tracker_id is not None:
+                        mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
+                        tracked = tracked[mask]
+
+                mot.write(frame_idx, tracked)
+                progress.update()
+
+            progress.complete(interrupted=interrupted)
+
+    except KeyboardInterrupt:
+        pass
+
+    return 0
+
+
+def _run_with_source(
+    source: str,
+    mot_tracker: BaseTracker,
+    inference_model: AnyModel | None,
+    detections_data: dict | None,
+    class_names: list[str],
+    class_filter: list[int] | None,
+    track_id_filter: list[int] | None,
+    model_confidence: float,
+    output: Path | None,
+    mot_output: Path | None,
+    display: bool,
+    show_boxes: bool,
+    show_masks: bool,
+    show_labels: bool,
+    show_ids: bool,
+    show_confidence: bool,
+    show_trajectories: bool,
+) -> int:
+    """Run tracking with a frame source (video, webcam, images).
+
+    Args:
+        source: Path, webcam index, or RTSP URL.
+        mot_tracker: Initialised tracker instance.
+        inference_model: Detection model, or None when using pre-computed detections.
+        detections_data: Pre-loaded MOT detections, or None when using model.
+        class_names: Class names for label display.
+        class_filter: Class IDs to keep, or None for all.
+        track_id_filter: Track IDs to keep in output, or None for all.
+        model_confidence: Confidence threshold for detection filtering.
+        output: Output video path, or None.
+        mot_output: Output MOT-format path, or None.
+        display: Whether to show live preview window.
+        show_boxes: Draw bounding boxes.
+        show_masks: Draw segmentation masks.
+        show_labels: Show class labels on tracks.
+        show_ids: Show track IDs on tracks.
+        show_confidence: Show detection confidence scores.
+        show_trajectories: Draw track trajectories.
+
+    Returns:
+        Exit code: 0 on success.
+    """
+    frame_gen = frames_from_source(source)
+    source_info = _classify_source(source)
+
+    annotators, label_annotator = _init_annotators(
+        show_boxes=show_boxes,
+        show_masks=show_masks,
+        show_labels=show_labels,
+        show_ids=show_ids,
+        show_confidence=show_confidence,
+    )
+    trace_annotator = None
+    if show_trajectories:
+        trace_annotator = sv.TraceAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK)
+
+    display_ctx = _DisplayWindow() if display else nullcontext()
+
+    try:
+        with (
+            _VideoOutput(output, fps=source_info.fps or _DEFAULT_OUTPUT_FPS) as video,
+            _MOTOutput(mot_output) as mot,
+            display_ctx as disp,
+            _TrackingProgress(source_info) as progress,
+        ):
+            interrupted = False
+            for frame_idx, frame in frame_gen:
+                if inference_model is not None:
+                    frame_detections = _run_model(inference_model, frame, model_confidence)
+                elif detections_data is not None and frame_idx in detections_data:
+                    frame_detections = _mot_frame_to_detections(detections_data[frame_idx])
+                else:
+                    frame_detections = sv.Detections.empty()
+
+                if class_filter is not None and len(frame_detections) > 0:
+                    mask = np.isin(frame_detections.class_id, class_filter)
+                    frame_detections = frame_detections[mask]  # type: ignore[assignment]
+
+                tracked = mot_tracker.update(frame_detections, frame)
+
+                if track_id_filter is not None and len(tracked) > 0:
+                    if tracked.tracker_id is not None:
+                        mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
+                        tracked = tracked[mask]
+
+                mot.write(frame_idx, tracked)
+                progress.update()
+
+                if display or output:
+                    annotated = frame.copy()
+                    if trace_annotator is not None:
+                        annotated = trace_annotator.annotate(annotated, tracked)
+                    for annotator in annotators:
+                        annotated = annotator.annotate(annotated, tracked)
+                    if label_annotator is not None:
+                        labeled = tracked[tracked.tracker_id != -1]
+                        labels = _format_labels(
+                            labeled,
+                            class_names,
+                            show_ids=show_ids,
+                            show_labels=show_labels,
+                            show_confidence=show_confidence,
+                        )
+                        annotated = label_annotator.annotate(annotated, labeled, labels)
+
+                    video.write(annotated)
+
+                    if disp is not None:
+                        disp.show(annotated)
+                        if disp.quit_requested:
+                            interrupted = True
+                            break
+
+            progress.complete(interrupted=interrupted)
+
+    except KeyboardInterrupt:
+        pass
+
+    return 0
+
+
+def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
+    """Resolve a comma-separated ``--track-ids`` value to a list of integer IDs.
+
+    Args:
+        track_ids_arg: Raw ``--track-ids`` string (e.g. ``"1,3,5"``). ``None``
+            means no filter.
+
+    Returns:
+        List of integer track IDs, or ``None`` when no valid filter remains.
+
+    Examples:
+        >>> _resolve_track_id_filter(None) is None
+        True
+        >>> _resolve_track_id_filter("1,3,5")
+        [1, 3, 5]
+    """
+    if not track_ids_arg:
+        return None
+
+    track_ids: list[int] = []
+    for token in track_ids_arg.split(","):
+        token = token.strip()
+        try:
+            track_ids.append(int(token))
+        except ValueError:
+            print(f"Warning: '{token}' is not a valid track ID, skipping.", file=sys.stderr)
+    return track_ids if track_ids else None
+
+
+def _resolve_class_filter(
+    classes_arg: str | None,
+    class_names: list[str],
+) -> list[int] | None:
+    """Resolve a comma-separated ``--classes`` value to a list of integer IDs.
+
+    Each token is checked independently: if it parses as an ``int`` it is used
+    directly as a class ID; otherwise it is looked up by name in *class_names*.
+    Unknown names are printed as warnings and skipped.
+
+    Args:
+        classes_arg: Raw ``--classes`` string (e.g. ``"person,car"`` or
+            ``"0,2"`` or ``"person,2"``). ``None`` means no filter.
+        class_names: Ordered list of class names where the index equals the
+            class ID (as provided by the model).
+
+    Returns:
+        List of integer class IDs, or ``None`` when no valid filter remains.
+
+    Examples:
+        >>> _resolve_class_filter(None, ["person", "car"]) is None
+        True
+        >>> _resolve_class_filter("person,car", ["person", "car"])
+        [0, 1]
+    """
+    if not classes_arg:
+        return None
+
+    requested = [token.strip() for token in classes_arg.split(",")]
+    name_to_id = {name: i for i, name in enumerate(class_names)}
+    class_filter: list[int] = []
+    for token in requested:
+        try:
+            class_filter.append(int(token))
+        except ValueError:
+            if token in name_to_id:
+                class_filter.append(name_to_id[token])
+            else:
+                print(f"Warning: class '{token}' not found in model class list, skipping.", file=sys.stderr)
+    return class_filter if class_filter else None
+
+
+def _init_model(
+    model_id: str,
+    *,
+    device: str = DEFAULT_DEVICE,
+    api_key: str | None = None,
+) -> AnyModel:
+    """Load detection model via inference-models.
+
+    Args:
+        model_id: Model identifier (e.g., 'rfdetr-nano' or 'workspace/project/version').
+        device: Device to load model on ('auto', 'cpu', 'cuda', 'mps').
+        api_key: Roboflow API key for custom models.
+
+    Returns:
+        Loaded model instance.
+    """
+    try:
+        from inference_models import AutoModel
+    except ImportError as e:
+        print(
+            "Error: inference-models is required for model-based detection.\n"
+            "Install with: pip install 'trackers[detection]'",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from e
+
+    resolved_device = _best_device() if device == DEFAULT_DEVICE else device
+
+    return AutoModel.from_pretrained(model_id, api_key=api_key, device=resolved_device)
+
+
+def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Detections:
+    """Run model inference and return sv.Detections.
+
+    Args:
+        model: Loaded detection model.
+        frame: BGR image array.
+        confidence: Minimum confidence threshold.
+
+    Returns:
+        Filtered detections.
+    """
+    predictions = model(frame)
+    if not predictions:
+        return sv.Detections.empty()
+
+    detections = predictions[0].to_supervision()
+
+    if len(detections) > 0 and detections.confidence is not None:
+        mask = detections.confidence >= confidence
+        detections = detections[mask]
+
+    return detections
+
+
+def _init_tracker(tracker_id: str, **kwargs: object) -> BaseTracker:
+    """Create tracker instance from registry.
+
+    Args:
+        tracker_id: Registered tracker name (e.g., 'bytetrack', 'sort').
+        **kwargs: Tracker-specific parameters.
+
+    Returns:
+        Initialized tracker instance.
+
+    Raises:
+        ValueError: If tracker_id is not registered.
+    """
+    info = BaseTracker._lookup_tracker(tracker_id)
+    if info is None:
+        available = ", ".join(BaseTracker._registered_trackers())
+        raise ValueError(f"Unknown tracker: '{tracker_id}'. Available: {available}")
+
+    return info.tracker_class(**kwargs)
+
+
+def _init_annotators(
+    show_boxes: bool = False,
+    show_masks: bool = False,
+    show_labels: bool = False,
+    show_ids: bool = False,
+    show_confidence: bool = False,
+) -> tuple[list, sv.LabelAnnotator | None]:
+    """Initialize supervision annotators based on display options.
+
+    Args:
+        show_boxes: Create BoxAnnotator.
+        show_masks: Create MaskAnnotator.
+        show_labels: Include class labels (triggers LabelAnnotator).
+        show_ids: Include track IDs (triggers LabelAnnotator).
+        show_confidence: Include confidence scores (triggers LabelAnnotator).
+
+    Returns:
+        Tuple of (annotators list, label_annotator or None).
+        Label annotator is separate because it needs custom labels per frame.
+    """
+    annotators: list = []
+    label_annotator: sv.LabelAnnotator | None = None
+
+    if show_boxes:
+        annotators.append(sv.BoxAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK))
+
+    if show_masks:
+        annotators.append(sv.MaskAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK))
+
+    if show_labels or show_ids or show_confidence:
+        label_annotator = sv.LabelAnnotator(
+            color=COLOR_PALETTE,
+            text_color=sv.Color.BLACK,
+            text_position=sv.Position.TOP_LEFT,
+            color_lookup=sv.ColorLookup.TRACK,
+        )
+
+    return annotators, label_annotator
+
+
+def _format_labels(
+    detections: sv.Detections,
+    class_names: list[str],
+    *,
+    show_ids: bool = False,
+    show_labels: bool = False,
+    show_confidence: bool = False,
+) -> list[str]:
+    """Generate label strings for each detection.
+
+    Args:
+        detections: Detections to generate labels for.
+        class_names: List of class names for lookup.
+        show_ids: Include tracker IDs in labels.
+        show_labels: Include class names in labels.
+        show_confidence: Include confidence scores in labels.
+
+    Returns:
+        List of label strings, one per detection.
+
+    Examples:
+        >>> import numpy as np
+        >>> import supervision as sv
+        >>> dets = sv.Detections(xyxy=np.array([[0., 0., 1., 1.]]))
+        >>> _format_labels(dets, [])
+        ['']
+    """
+    labels = []
+
+    for i in range(len(detections)):
+        parts = []
+
+        if show_ids and detections.tracker_id is not None:
+            parts.append(f"#{int(detections.tracker_id[i])}")
+
+        if show_labels and detections.class_id is not None:
+            class_id = int(detections.class_id[i])
+            if class_names and 0 <= class_id < len(class_names):
+                parts.append(class_names[class_id])
+            else:
+                parts.append(str(class_id))
+
+        if show_confidence and detections.confidence is not None:
+            parts.append(f"{detections.confidence[i]:.2f}")
+
+        labels.append(" ".join(parts))
+
+    return labels
