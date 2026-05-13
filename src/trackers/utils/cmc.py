@@ -202,19 +202,23 @@ class CMC:
     """
     Camera motion compensation estimator.
 
-    Estimates a global 2D affine transform H (2x3) between consecutive frames.
+    Estimates a global 2D affine transform H (2x3) between consecutive frames and
+    provides helpers to apply that transform to predicted track states.
+
     Designed to be tracker-agnostic: any tracker that receives a raw video frame
     alongside detections can instantiate ``CMC``, call ``estimate()`` each frame
-    to obtain ``H``, and then apply ``H`` to its own predicted track states.
+    to obtain ``H``, then apply ``H`` (for example via ``CMC.apply_batch``) before
+    association.
 
     Typical usage in a tracker loop::
 
         cmc = CMC(CMCConfig(method="sparseOptFlow"))
 
         for frame, detections in video:
+            for trk in tracker.tracks:
+                trk.predict()
             H = cmc.estimate(frame, detections.xyxy)
-            # apply H to your tracker's predicted state here
-            tracker.apply_cmc(H)
+            CMC.apply_batch(H, tracker.tracks)
             tracker.associate(detections)
 
     Internal state:
@@ -223,8 +227,8 @@ class CMC:
 
     Notes:
         - H maps points from previous frame coordinates to current frame coordinates.
-        - This class does not perform any drawing/visualization; it only estimates
-          transforms.
+        - This class does not perform any drawing/visualization; it estimates motion
+          and applies affine warps to Kalman states when using ``apply_batch``.
     """
 
     def __init__(self, cfg: CMCConfig | None = None) -> None:
