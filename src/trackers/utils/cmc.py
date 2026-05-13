@@ -4,16 +4,20 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from __future__ import annotations
+
 import copy
 import logging
 from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 import cv2
 import numpy as np
 
 if TYPE_CHECKING:
-    from trackers.utils.state_representations import BaseStateEstimator  # for cmc.apply_batch type checking
+    from trackers.utils.base_tracklet import BaseTracklet
+    from trackers.utils.state_representations import BaseStateEstimator
 
 logger = logging.getLogger("trackers.cmc")
 
@@ -205,21 +209,21 @@ class CMC:
     Estimates a global 2D affine transform H (2x3) between consecutive frames and
     provides helpers to apply that transform to predicted track states.
 
-    Designed to be tracker-agnostic: any tracker that receives a raw video frame
-    alongside detections can instantiate ``CMC``, call ``estimate()`` each frame
-    to obtain ``H``, then apply ``H`` (for example via ``CMC.apply_batch``) before
-    association.
+    The ``estimate()`` method returns a 2x3 affine matrix ``H`` each frame. Pass it to
+    ``CMC.apply_batch`` or ``BoTSORTTracklet.apply_cmc`` to warp Kalman states before
+    data association. ``apply_batch`` is BoT-SORT-specific and requires tracklets with
+    a ``state_estimator.kf`` attribute; see :meth:`apply_batch` for details.
 
-    Typical usage in a tracker loop::
+    Typical usage (integrating CMC into a tracker loop)::
 
         cmc = CMC(CMCConfig(method="sparseOptFlow"))
 
-        for frame, detections in video:
+        for frame_bgr, detections in video:
             for trk in tracker.tracks:
                 trk.predict()
-            H = cmc.estimate(frame, detections.xyxy)
+            H = cmc.estimate(frame_bgr, detections.xyxy)
             CMC.apply_batch(H, tracker.tracks)
-            tracker.associate(detections)
+            # then run data association …
 
     Internal state:
         - Keeps previous-frame features / points depending on the chosen method.
@@ -323,6 +327,14 @@ class CMC:
         Returns:
             Affine transform matrix of shape (2, 3), dtype float32.
             Identity if not enough correspondences or if not initialized yet.
+
+        Examples:
+            >>> import numpy as np
+            >>> cmc = CMC(CMCConfig(method="sparseOptFlow"))
+            >>> frame = np.zeros((240, 320, 3), dtype=np.uint8)
+            >>> H = cmc.estimate(frame)  # first frame always returns identity
+            >>> H.shape
+            (2, 3)
         """
         if frame_bgr is None:
             return np.eye(2, 3, dtype=np.float32)
@@ -625,7 +637,7 @@ class CMC:
         return H_aff
 
     @staticmethod
-    def apply_to_xyxy(
+    def warp_xyxy_corners(
         x1: np.ndarray,
         y1: np.ndarray,
         x2: np.ndarray,
@@ -633,28 +645,41 @@ class CMC:
         R: np.ndarray,
         t: np.ndarray | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Transform four box corners via R/t and return the enclosing min/max.
+        """Transform four box corners via R/t and return the enclosing axis-aligned box.
 
-        Works for both batched inputs (shape ``(N,)``) and scalar inputs (shape
-        ``()`` or plain ``float``). The four corners are ``(x1,y1)``, ``(x2,y1)``,
-        ``(x2,y2)``, ``(x1,y2)``; after the affine transform the axis-aligned
-        bounding box of the transformed corners is returned.
+        Takes per-axis coordinate arrays (not a packed (N, 4) array) and returns
+        per-axis result arrays of the same shape. The four corners are
+        ``(x1, y1)``, ``(x2, y1)``, ``(x2, y2)``, ``(x1, y2)``; after the affine
+        transform the axis-aligned bounding box of the transformed corners is returned.
 
         Transforming only two corners can invert the box or produce invalid geometry
         under rotation or reflection; transforming all four corners and taking the
         enclosing axis-aligned box always yields a valid result.
 
         Args:
-            x1: Left edge coordinate(s).
-            y1: Top edge coordinate(s).
-            x2: Right edge coordinate(s).
-            y2: Bottom edge coordinate(s).
+            x1: Left edge coordinate(s) as a NumPy scalar (shape ``()``) or 1-D
+                array (shape ``(N,)``).
+            y1: Top edge coordinate(s), same shape as ``x1``.
+            x2: Right edge coordinate(s), same shape as ``x1``.
+            y2: Bottom edge coordinate(s), same shape as ``x1``.
             R: 2x2 rotation/shear sub-matrix of the affine transform.
             t: Optional 2-element translation vector.
 
         Returns:
-            Tuple ``(new_x1, new_y1, new_x2, new_y2)`` — per-axis min and max of
-            the four transformed corners.
+            Tuple ``(new_x1, new_y1, new_x2, new_y2)`` -- per-axis min and max of
+            the four transformed corners, same shape as inputs.
+
+        Examples:
+            >>> import numpy as np
+            >>> R = np.eye(2, dtype=np.float64)
+            >>> t = np.array([5.0, -3.0])
+            >>> x1 = np.array([10.0, 20.0])
+            >>> y1 = np.array([20.0, 30.0])
+            >>> x2 = np.array([50.0, 60.0])
+            >>> y2 = np.array([80.0, 90.0])
+            >>> nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
+            >>> nx1.tolist()
+            [15.0, 25.0]
         """
         corners = np.stack(
             [
@@ -673,20 +698,25 @@ class CMC:
         return lo[..., 0], lo[..., 1], hi[..., 0], hi[..., 1]
 
     @staticmethod
-    def apply_batch(H: np.ndarray | None, tracklets: list) -> None:
-        """Apply a 2x3 affine camera-motion transform to a list of tracklets in place.
+    def apply_batch(H: np.ndarray | None, tracklets: Sequence[BaseTracklet]) -> None:
+        """Apply a 2x3 affine camera-motion transform to a list of BoT-SORT tracklets.
 
-        Dispatches to the appropriate state-representation logic based on the first
-        tracklet's state estimator type. All tracklets in the list must share the
-        same state representation.
+        .. note::
+            This method is BoT-SORT-specific. It requires each tracklet to expose a
+            ``state_estimator`` with a ``kf.x`` state-vector column (``(dim, 1)``) and
+            ``kf.P`` covariance matrix, matching the layout of
+            ``XCYCWHStateEstimator`` / ``XYXYStateEstimator``. Passing arbitrary
+            tracklets without this layout will raise ``AttributeError`` at runtime.
+
+        All tracklets in the list must share the same state representation type.
+        Pass a heterogeneous list and ``TypeError`` is raised immediately.
 
         For XYXY-state tracks, positions and velocities are updated via four-corner
-        enclosure (``CMC.apply_to_xyxy``) so that axis-alignment is preserved under
+        enclosure (``CMC.warp_xyxy_corners``) so that axis-alignment is preserved under
         rotation, reflection, and shear. The covariance matrix ``P`` is updated with
         the block-diagonal rotation matrix only when ``R`` is axis-aligned
         (off-diagonals < 1e-6). When ``R`` has cross-axis terms, ``P`` is left
-        unchanged — a conservative choice that avoids applying an invalid
-        block-diagonal approximation at the cost of stale uncertainty.
+        unchanged.
 
         For XCYCWH-state tracks, only the centre position and velocity are rotated;
         width/height and their velocities are not transformed.
@@ -694,9 +724,20 @@ class CMC:
         Args:
             H: 2x3 affine transform matrix returned by ``CMC.estimate()``. If
                 ``None``, this method is a no-op.
-            tracklets: List of tracklet objects. Each must expose a
-                ``state_estimator`` attribute with a ``kf.x`` (state vector) and
-                ``kf.P`` (covariance matrix).
+            tracklets: Homogeneous list of BoT-SORT tracklets, each with a
+                ``state_estimator.kf.x`` state vector and ``kf.P`` covariance.
+
+        Raises:
+            TypeError: If tracklets in the list have different state estimator types.
+
+        Examples:
+            >>> import numpy as np
+            >>> from trackers.core.botsort.tracklet import BoTSORTTracklet
+            >>> bbox = np.array([10.0, 20.0, 50.0, 80.0])
+            >>> track = BoTSORTTracklet(bbox)
+            >>> H = np.eye(2, 3, dtype=np.float32)
+            >>> CMC.apply_batch(H, [track])  # identity H -- state unchanged
+            >>> CMC.apply_batch(None, [track])  # None H -- no-op
         """
         from trackers.utils.state_representations import XYXYStateEstimator
 
@@ -707,6 +748,12 @@ class CMC:
         t = H[:2, 2].astype(np.float64)
 
         first_estimator: BaseStateEstimator = tracklets[0].state_estimator
+        if not all(type(t.state_estimator) is type(first_estimator) for t in tracklets):
+            mismatch = next(t for t in tracklets if type(t.state_estimator) is not type(first_estimator))
+            raise TypeError(
+                f"CMC.apply_batch requires homogeneous state types; "
+                f"got {type(first_estimator).__name__!r} and {type(mismatch.state_estimator).__name__!r}."
+            )
         dim = first_estimator.kf.x.shape[0]
         is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
 
@@ -720,13 +767,13 @@ class CMC:
             # top-left and bottom-right corners can invert the box or produce
             # invalid geometry. Transform all four corners, then rebuild the
             # enclosing axis-aligned box with per-axis min/max.
-            states[:, 0], states[:, 1], states[:, 2], states[:, 3] = CMC.apply_to_xyxy(
+            states[:, 0], states[:, 1], states[:, 2], states[:, 3] = CMC.warp_xyxy_corners(
                 states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
             )
             # Keep XYXY velocity ordering valid under mixed-axis transforms by
             # applying the same corner-wise normalization to the paired velocity
             # components.
-            states[:, 4], states[:, 5], states[:, 6], states[:, 7] = CMC.apply_to_xyxy(
+            states[:, 4], states[:, 5], states[:, 6], states[:, 7] = CMC.warp_xyxy_corners(
                 states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
             )
         else:

@@ -8,6 +8,7 @@ from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
+from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -407,3 +408,20 @@ class BoTSORTTracker(BaseTracker):
         BoTSORTTracklet.count_id = 0
         if self.cmc is not None:
             self.cmc.reset()
+
+    @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
+    def apply_cmc_batch(self, H: np.ndarray | None) -> None:
+        """Apply CMC to all active tracks.
+
+        .. deprecated:: 2.5
+            Use CMC.apply_batch(H, self.tracks) directly.
+
+        Args:
+            H: 2x3 affine transform matrix returned by CMC.estimate().
+                If None, this method is a no-op.
+
+        Examples:
+            >>> tracker = BoTSORTTracker()
+            >>> tracker.apply_cmc_batch(None)  # no-op
+        """
+        CMC.apply_batch(H, self.tracks)

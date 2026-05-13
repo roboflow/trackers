@@ -206,9 +206,20 @@ class TestCMCApplyBatch:
         H = np.eye(2, 3, dtype=np.float32)
         CMC.apply_batch(H, [])  # must not raise
 
+    def test_mixed_state_list_raises(self) -> None:
+        """Heterogeneous state estimator types must raise TypeError immediately."""
+        bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+        H = np.eye(2, 3, dtype=np.float32)
+
+        xcycwh_track = BoTSORTTracklet(bbox)
+        xyxy_track = _xyxy_tracklet(bbox)
+
+        with pytest.raises(TypeError, match="homogeneous"):
+            CMC.apply_batch(H, [xcycwh_track, xyxy_track])
+
 
 class TestCMCApplyToXYXY:
-    """Direct unit tests on `CMC.apply_to_xyxy(x1, y1, x2, y2, R, t=None)`.
+    """Direct unit tests on `CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t=None)`.
 
     Each test passes raw 1-D NumPy arrays for the four corner channels and a
     2x2 `R` (and optional 1-D `t`), then asserts on the four return arrays.
@@ -224,7 +235,7 @@ class TestCMCApplyToXYXY:
         R = np.eye(2)
         t = np.array([5.0, -3.0])
 
-        nx1, ny1, nx2, ny2 = CMC.apply_to_xyxy(x1, y1, x2, y2, R, t)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
 
         np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [15.0, 17.0, 55.0, 77.0])
 
@@ -236,7 +247,7 @@ class TestCMCApplyToXYXY:
         y2 = np.array([2.0])
         R = np.eye(2)
 
-        nx1, ny1, nx2, ny2 = CMC.apply_to_xyxy(x1, y1, x2, y2, R, None)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, None)
 
         np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [0.0, 0.0, 1.0, 2.0])
 
@@ -248,7 +259,7 @@ class TestCMCApplyToXYXY:
         y2 = np.array([4.0])
         R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation
 
-        nx1, ny1, nx2, ny2 = CMC.apply_to_xyxy(x1, y1, x2, y2, R)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R)
 
         # Original corners (0,0),(2,0),(2,4),(0,4) → rotated (0,0),(0,2),(-4,2),(-4,0)
         np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [-4.0, 0.0, 0.0, 2.0])
@@ -261,7 +272,7 @@ class TestCMCApplyToXYXY:
         y2 = np.array([80.0])
         R = np.array([[-1.0, 0.0], [0.0, 1.0]])  # reflect across y-axis
 
-        nx1, ny1, nx2, ny2 = CMC.apply_to_xyxy(x1, y1, x2, y2, R)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R)
 
         # Original x-range [10, 50] reflected → [-50, -10]; y unchanged
         assert nx1[0] < nx2[0], f"x ordering broken: {nx1[0]} >= {nx2[0]}"
@@ -277,7 +288,7 @@ class TestCMCApplyToXYXY:
         R = np.array([[0.0, -1.0], [1.0, 0.0]])
         t = np.array([1.0, 2.0])
 
-        nx1, ny1, nx2, ny2 = CMC.apply_to_xyxy(x1, y1, x2, y2, R, t)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
 
         assert nx1[0] == nx2[0] and ny1[0] == ny2[0]
 
@@ -290,7 +301,7 @@ class TestCMCApplyToXYXY:
         R = np.eye(2)
         t = np.array([100.0, 100.0])
 
-        nx1, ny1, nx2, ny2 = CMC.apply_to_xyxy(x1, y1, x2, y2, R, t)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
 
         np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [50.0, 70.0, 90.0, 120.0])
 
@@ -303,9 +314,9 @@ class TestCMCApplyToXYXY:
         R = np.array([[0.0, -1.0], [1.0, 0.0]])
         t = np.array([1.0, 2.0])
 
-        bnx1, bny1, bnx2, bny2 = CMC.apply_to_xyxy(x1, y1, x2, y2, R, t)
+        bnx1, bny1, bnx2, bny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
         expected = [
-            CMC.apply_to_xyxy(
+            CMC.warp_xyxy_corners(
                 np.array([x1[i]]),
                 np.array([y1[i]]),
                 np.array([x2[i]]),
@@ -523,3 +534,36 @@ def test_xyxy_velocity_rotates_without_translation() -> None:
     # → enclosing velocity box [-1, 0, 0, 1] (no translation applied)
     v = tracklet.state_estimator.kf.x.reshape(-1)[4:8]
     np.testing.assert_allclose(v, [-1.0, 0.0, 0.0, 1.0], atol=1e-9)
+
+
+class TestCMCApplyBatchAdversarial:
+    """Adversarial H inputs to CMC.apply_batch.
+
+    Covers wrong-shape H (should raise) and non-finite H values
+    (should propagate to state without raising).
+    """
+
+    def test_wrong_shape_h_raises(self) -> None:
+        """H with (2,2) shape must raise when the translation column is accessed."""
+        bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+        track = BoTSORTTracklet(bbox)
+        H_bad = np.eye(2, 2, dtype=np.float32)
+
+        with pytest.raises((IndexError, ValueError)):
+            CMC.apply_batch(H_bad, [track])
+
+    @pytest.mark.parametrize(
+        "fill_val",
+        [float("nan"), float("inf"), float("-inf")],
+        ids=["nan", "inf", "-inf"],
+    )
+    def test_non_finite_h_propagates_to_state(self, fill_val: float) -> None:
+        """Non-finite H values must propagate into track state without raising."""
+        bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+        track = BoTSORTTracklet(bbox)
+        H_bad = np.full((2, 3), fill_val, dtype=np.float32)
+
+        CMC.apply_batch(H_bad, [track])  # must not raise
+
+        state = track.state_estimator.kf.x.reshape(-1)
+        assert not np.all(np.isfinite(state)), "Non-finite H must propagate to track state"
