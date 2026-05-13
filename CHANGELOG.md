@@ -8,9 +8,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🚀 Added
 
-- **`CMC`, `CMCConfig`, `CMCMethod` exported from top-level `trackers` package** — import directly with `from trackers import CMC` ([#414](https://github.com/roboflow/trackers/pull/414)).
-- **`CMC.warp_xyxy_corners` static method** — vectorised four-corner affine helper; replaces the internal `apply_to_xyxy` name ([#414](https://github.com/roboflow/trackers/pull/414)).
-- **`CMC.apply_batch` homogeneity guard** — raises `TypeError` immediately when the tracklet list contains mixed state-estimator types, preventing silent state corruption ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **Pluggable IoU variants** — `iou=` parameter on all four trackers (`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, `BoTSORTTracker`) accepts any `BaseIoU` subclass. Built-in variants: `IoU` (standard), `GIoU`, `DIoU`, `CIoU`, `BIoU` (Buffered IoU) ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **`BaseIoU` ABC** in `trackers.utils.iou` — defines the `compute(boxes_1, boxes_2)` contract; subclass and override `_compute` to implement a custom similarity metric ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **`normalize_for_fusion` on `BaseIoU`** — signed variants (GIoU, DIoU, CIoU) override this to shift `[-1, 1]` → `[0, 1]` before BoT-SORT score fusion, preventing ranking inversion ([#403](https://github.com/roboflow/trackers/pull/403)).
@@ -24,6 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🌱 Changed
 
+- **`CMC`, `CMCConfig`, `CMCMethod` moved to `trackers.utils.cmc` and re-exported from top-level `trackers` package** — import directly with `from trackers import CMC`; old `trackers.core.botsort.cmc` path kept as a deprecated shim ([#414](https://github.com/roboflow/trackers/pull/414)).
+- **`CMC.warp_xyxy_corners`** — `apply_to_xyxy` renamed to `warp_xyxy_corners`; old name kept as a deprecated wrapper until v3.0 ([#414](https://github.com/roboflow/trackers/pull/414)).
+- **`CMC.apply_batch` homogeneity guard** — now raises `TypeError` immediately when the tracklet list contains mixed state-estimator types, preventing silent state corruption ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`BoTSORTTracklet.apply_cmc` delegates to `CMC.apply_batch`** — per-track and batch paths now share identical code; behaviour is unchanged ([#414](https://github.com/roboflow/trackers/pull/414)).
 
 ### 🔧 Fixed
