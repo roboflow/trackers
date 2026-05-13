@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import cv2
 import numpy as np
+from deprecate import deprecated
 
 if TYPE_CHECKING:
     from trackers.utils.base_tracklet import BaseTracklet
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("trackers.cmc")
 
 CMCMethod = Literal["orb", "sift", "sparseOptFlow", "ecc"]
+CMCTMethod = CMCMethod  # back-compat alias; use CMCMethod. Removed in v3.0.
 
 
 @dataclass
@@ -696,6 +698,54 @@ class CMC:
         lo = out.min(axis=-2)
         hi = out.max(axis=-2)
         return lo[..., 0], lo[..., 1], hi[..., 0], hi[..., 1]
+
+    @staticmethod
+    @deprecated(
+        target=warp_xyxy_corners.__func__,  # type: ignore[attr-defined]
+        deprecated_in="2.5",
+        remove_in="3.0",
+    )
+    def apply_to_xyxy(  # type: ignore[empty-body]
+        x1: np.ndarray,
+        y1: np.ndarray,
+        x2: np.ndarray,
+        y2: np.ndarray,
+        R: np.ndarray,
+        t: np.ndarray | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Deprecated alias for :meth:`CMC.warp_xyxy_corners`.
+
+        .. deprecated:: 2.5
+            Renamed to :meth:`CMC.warp_xyxy_corners`. This wrapper forwards all
+            calls to the new name and will be removed in v3.0.
+
+        Args:
+            x1: Left edge coordinate(s).
+            y1: Top edge coordinate(s).
+            x2: Right edge coordinate(s).
+            y2: Bottom edge coordinate(s).
+            R: 2x2 rotation/shear sub-matrix of the affine transform.
+            t: Optional 2-element translation vector.
+
+        Returns:
+            Tuple ``(new_x1, new_y1, new_x2, new_y2)`` -- see
+            :meth:`CMC.warp_xyxy_corners` for full details.
+
+        Examples:
+            >>> import numpy as np
+            >>> import warnings
+            >>> R = np.eye(2, dtype=np.float64)
+            >>> t = np.array([5.0, -3.0])
+            >>> x1 = np.array([10.0, 20.0])
+            >>> y1 = np.array([20.0, 30.0])
+            >>> x2 = np.array([50.0, 60.0])
+            >>> y2 = np.array([80.0, 90.0])
+            >>> with warnings.catch_warnings():
+            ...     warnings.simplefilter("ignore")
+            ...     nx1, _, _, _ = CMC.apply_to_xyxy(x1, y1, x2, y2, R, t)
+            >>> nx1.tolist()
+            [15.0, 25.0]
+        """
 
     @staticmethod
     def apply_batch(H: np.ndarray | None, tracklets: Sequence[BaseTracklet]) -> None:
