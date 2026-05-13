@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import copy
 import logging
-from dataclasses import dataclass
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 import cv2
