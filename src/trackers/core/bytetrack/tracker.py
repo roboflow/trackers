@@ -41,6 +41,14 @@ class ByteTrackTracker(BaseTracker):
     Additionally, the motion-only secondary association may lead to erroneous matches
     in scenes with similar moving objects.
 
+    Note:
+        When input detections carry no confidence (`detections.confidence is
+        None`), ByteTrack falls back to a single-stage IoU match equivalent to
+        SORT — every detection is treated as fully confident, so the
+        low-confidence recovery stage is bypassed. Pass per-detection
+        confidences to exercise the two-stage matching this class otherwise
+        provides.
+
     Args:
         lost_track_buffer: `int` specifying number of frames to buffer when a
             track is lost. Increasing this value enhances occlusion handling but
