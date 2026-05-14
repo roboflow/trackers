@@ -40,7 +40,7 @@ def __getattr__(name: str) -> object:
         warnings.warn(
             f"Importing {name!r} from 'trackers.core.botsort.cmc' is deprecated and will "
             "be removed in v3.0.  Use 'from trackers.utils.cmc import ...' instead.",
-            DeprecationWarning,
+            FutureWarning,
             stacklevel=2,
         )
         return _symbols[name]
