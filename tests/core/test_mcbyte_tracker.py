@@ -14,9 +14,7 @@ import supervision as sv
 from trackers.core.mcbyte.tracker import McByteTracker
 
 
-def _detection(
-    xyxy: tuple[float, float, float, float], conf: float = 0.9
-) -> sv.Detections:
+def _detection(xyxy: tuple[float, float, float, float], conf: float = 0.9) -> sv.Detections:
     return sv.Detections(
         xyxy=np.array([xyxy], dtype=np.float32),
         confidence=np.array([conf], dtype=np.float32),

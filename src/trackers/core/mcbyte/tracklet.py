@@ -61,9 +61,7 @@ class McByteTracklet(BaseTracklet):
         w, h = float(measurement[2]), float(measurement[3])
         self._set_scale_aware_noise(w, h, initial=True)
 
-    def _set_scale_aware_noise(
-        self, w: float, h: float, *, initial: bool = False
-    ) -> None:
+    def _set_scale_aware_noise(self, w: float, h: float, *, initial: bool = False) -> None:
         sp, sv, sm = self._SIGMA_P, self._SIGMA_V, self._SIGMA_M
 
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
