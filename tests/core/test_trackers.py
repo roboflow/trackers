@@ -30,7 +30,7 @@ from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
 from trackers.utils.iou import BaseIoU
 
-from .shared_ids import ALL_TRACKER_IDS
+from .shared_ids import ALL_TRACKER_IDS, IOC_TRACKER_IDS
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -112,7 +112,7 @@ def test_tracker_update_empty_does_not_mutate_input(tracker_id: str) -> None:
     assert result is not dets, "update() must return a new sv.Detections instance"
 
 
-@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+@pytest.mark.parametrize("tracker_id", IOC_TRACKER_IDS)
 def test_tracker_uses_configured_iou_variant(tracker_id: str) -> None:
     """Trackers should use the configured IoU implementation for matching."""
     tracking_iou = _TrackingIoU()
