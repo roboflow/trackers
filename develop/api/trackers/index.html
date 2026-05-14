@@ -2239,6 +2239,16 @@ Additionally, the motion-only secondary association may lead to erroneous matche
 in scenes with similar moving objects.</p>
 
 
+<details class="note" open>
+  <summary>Note</summary>
+  <p>When input detections carry no confidence (<code>detections.confidence is
+None</code>), ByteTrack falls back to a single-stage IoU match equivalent to
+SORT — every detection is treated as fully confident, so the
+low-confidence recovery stage is bypassed. Pass per-detection
+confidences to exercise the two-stage matching this class otherwise
+provides.</p>
+</details>
+
 <p><span class="doc-section-title">Parameters:</span></p>
     <table>
       <thead>
@@ -2458,7 +2468,10 @@ confidence), and initializes new tracks for unmatched detections.</p>
               <div class="doc-md-description">
                 <p><code>sv.Detections</code> containing bounding boxes with shape
 <code>(N, 4)</code> in <code>(x_min, y_min, x_max, y_max)</code> format and optional
-confidence scores.</p>
+confidence scores. When <code>detections.confidence is None</code>, all
+detections are treated as confidence <code>1.0</code> — they bypass the
+low-confidence stage and any unmatched boxes can spawn new
+tracks regardless of <code>track_activation_threshold</code>.</p>
               </div>
             </td>
             <td>
