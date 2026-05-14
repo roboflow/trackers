@@ -143,15 +143,44 @@ def test_no_confidence_detections_can_spawn_confirmed_tracks(tracker_id: str) ->
     raise AssertionError(f"{tracker_id} did not confirm any track for confidence=None detections")
 
 
-def test_bytetrack_no_confidence_matches_explicit_ones_confidence() -> None:
-    """ByteTrack should treat confidence=None the same as all-ones confidence."""
+@pytest.mark.parametrize(
+    "xyxy_boxes",
+    [
+        np.array([[100.0, 100.0, 200.0, 200.0]], dtype=np.float32),
+        np.array(
+            [
+                [100.0, 100.0, 200.0, 200.0],
+                [400.0, 400.0, 500.0, 500.0],
+            ],
+            dtype=np.float32,
+        ),
+        np.array(
+            [
+                [10.0, 10.0, 60.0, 60.0],
+                [200.0, 200.0, 260.0, 260.0],
+                [500.0, 500.0, 560.0, 560.0],
+            ],
+            dtype=np.float32,
+        ),
+    ],
+    ids=["single_box", "two_boxes", "three_boxes_non_overlapping"],
+)
+def test_bytetrack_no_confidence_matches_explicit_ones_confidence(xyxy_boxes: np.ndarray) -> None:
+    """ByteTrack treats confidence=None the same as all-ones across multi-box batches.
+
+    The batched scenarios exercise the high/low split machinery in
+    `ByteTrackTracker.update()` that single-box equivalence cannot trigger; a
+    regression that mis-buckets `confidence=None` in a multi-detection batch
+    would still pass single-box equality but would diverge here.
+    """
     no_confidence_tracker = ByteTrackTracker(minimum_consecutive_frames=1)
     explicit_confidence_tracker = ByteTrackTracker(minimum_consecutive_frames=1)
-    detection_without_confidence = _no_confidence_detection((100.0, 100.0, 200.0, 200.0))
+    class_ids = np.zeros(len(xyxy_boxes), dtype=int)
+    detection_without_confidence = sv.Detections(xyxy=xyxy_boxes.copy(), class_id=class_ids.copy())
     detection_with_ones_confidence = sv.Detections(
-        xyxy=detection_without_confidence.xyxy.copy(),
-        confidence=np.ones(len(detection_without_confidence), dtype=np.float32),
-        class_id=detection_without_confidence.class_id.copy(),
+        xyxy=xyxy_boxes.copy(),
+        confidence=np.ones(len(xyxy_boxes), dtype=np.float32),
+        class_id=class_ids.copy(),
     )
 
     no_confidence_tracker.reset()
@@ -164,6 +193,56 @@ def test_bytetrack_no_confidence_matches_explicit_ones_confidence() -> None:
         assert no_confidence_result.tracker_id is not None
         assert explicit_confidence_result.tracker_id is not None
         np.testing.assert_array_equal(no_confidence_result.tracker_id, explicit_confidence_result.tracker_id)
+        np.testing.assert_array_equal(no_confidence_result.xyxy, explicit_confidence_result.xyxy)
+
+
+def test_bytetrack_no_confidence_spawns_tracks_below_activation_threshold() -> None:
+    """confidence=None must route every detection to Stage 1 even when explicit-low-conf would not spawn.
+
+    Asserts the actual semantic of treating `None` as 1.0: explicit
+    confidences that fall under `track_activation_threshold` get suppressed
+    in the low-confidence branch, but the same boxes with `confidence=None`
+    still produce confirmed tracker IDs.
+    """
+    activation_threshold = 0.6
+    xyxy_boxes = np.array(
+        [
+            [100.0, 100.0, 200.0, 200.0],
+            [400.0, 400.0, 500.0, 500.0],
+        ],
+        dtype=np.float32,
+    )
+    class_ids = np.zeros(len(xyxy_boxes), dtype=int)
+    detection_without_confidence = sv.Detections(xyxy=xyxy_boxes.copy(), class_id=class_ids.copy())
+    detection_with_low_confidence = sv.Detections(
+        xyxy=xyxy_boxes.copy(),
+        confidence=np.array([0.2, 0.3], dtype=np.float32),
+        class_id=class_ids.copy(),
+    )
+
+    no_confidence_tracker = ByteTrackTracker(
+        minimum_consecutive_frames=1,
+        track_activation_threshold=activation_threshold,
+        high_conf_det_threshold=activation_threshold,
+    )
+    low_confidence_tracker = ByteTrackTracker(
+        minimum_consecutive_frames=1,
+        track_activation_threshold=activation_threshold,
+        high_conf_det_threshold=activation_threshold,
+    )
+
+    no_confidence_tracker.reset()
+    low_confidence_tracker.reset()
+    for _ in range(4):
+        no_confidence_result = no_confidence_tracker.update(detection_without_confidence)
+        low_confidence_result = low_confidence_tracker.update(detection_with_low_confidence)
+
+    assert no_confidence_result.tracker_id is not None
+    assert low_confidence_result.tracker_id is not None
+    assert np.all(no_confidence_result.tracker_id >= 0), "confidence=None should spawn confirmed tracks for every box"
+    assert np.all(low_confidence_result.tracker_id < 0), (
+        "explicit low confidence below activation threshold should NOT spawn tracks"
+    )
 
 
 def test_bytetrack_calls_iou_in_low_confidence_branch() -> None:
