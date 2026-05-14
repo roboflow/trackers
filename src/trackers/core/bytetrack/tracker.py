@@ -115,7 +115,10 @@ class ByteTrackTracker(BaseTracker):
         Args:
             detections: `sv.Detections` containing bounding boxes with shape
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
-                confidence scores.
+                confidence scores. When `detections.confidence is None`, all
+                detections are treated as confidence `1.0` — they bypass the
+                low-confidence stage and any unmatched boxes can spawn new
+                tracks regardless of `track_activation_threshold`.
             frame: Ignored by ByteTrack. If provided (not `None`), a warning is
                 emitted.
 
