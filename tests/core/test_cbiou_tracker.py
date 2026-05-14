@@ -135,9 +135,7 @@ class TestCBIoUAssociationTolerance:
 
         # CBIoU's confirmed ID on frame 2 must equal the one it assigned on frame 1
         cbiou_frame1 = cbiou.tracks[0].tracker_id
-        assert cbiou_ids[0] == cbiou_frame1, (
-            "CBIoU should reuse the existing track ID, not spawn a new one"
-        )
+        assert cbiou_ids[0] == cbiou_frame1, "CBIoU should reuse the existing track ID, not spawn a new one"
 
         # BoTSORT with standard IoU: boxes don't overlap, so old track goes lost
         # and a new unconfirmed track is spawned (tracker_id == -1 or a fresh ID)
@@ -145,9 +143,7 @@ class TestCBIoUAssociationTolerance:
         # The important behavioral difference: BoTSORT should NOT continue the
         # original track (it can't see the gap-crossing detection as a match)
         if len(botsort_ids) > 0:
-            botsort_frame1_track_id = next(
-                (t.tracker_id for t in botsort.tracks), None
-            )
+            botsort_frame1_track_id = next((t.tracker_id for t in botsort.tracks), None)
             # Original BoTSORT track should be gone or unmatched
             assert botsort_ids[0] != cbiou_frame1 or botsort_ids[0] == -1, (
                 "BoTSORT standard IoU should not have matched the near-miss box"
@@ -177,8 +173,7 @@ class TestCBIoUAssociationTolerance:
             r_botsort = botsort.update(det)
             # Both should produce the same number of outputs
             assert len(r_cbiou) == len(r_botsort), (
-                f"CBIoU(buffer=0) and BoTSORT(no CMC) diverged: "
-                f"cbiou={len(r_cbiou)}, botsort={len(r_botsort)}"
+                f"CBIoU(buffer=0) and BoTSORT(no CMC) diverged: cbiou={len(r_cbiou)}, botsort={len(r_botsort)}"
             )
 
 
