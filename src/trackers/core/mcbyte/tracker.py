@@ -21,6 +21,12 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
 )
+from trackers.core.mcbyte.mask_manager import MaskManager
+from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
+from trackers.core.mcbyte.masks.dummy import (
+    DummyBoxMaskGenerator,
+    DummyIdentityMaskPropagator,
+)
 
 
 class McByteTracker(BaseTracker):
@@ -42,6 +48,8 @@ class McByteTracker(BaseTracker):
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
+        enable_mask_manager: bool = False,
+        mask_manager: MaskManager | None = None,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -61,6 +69,17 @@ class McByteTracker(BaseTracker):
 
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
+
+        self.mask_manager = mask_manager
+        if self.mask_manager is None and enable_mask_manager:
+            self.mask_manager = MaskManager(
+                mask_generator=DummyBoxMaskGenerator(),
+                mask_propagator=DummyIdentityMaskPropagator(),
+            )
+
+        self._previous_frame: np.ndarray | None = None
+        self._previous_tracklets: list[TrackletSnapshot] = []
+        self._last_mask_output: MaskOutput | None = None
 
     def update(
         self,
@@ -90,9 +109,24 @@ class McByteTracker(BaseTracker):
         """
         self.frame_id += 1
 
+        # For the convenience and better understanding. McByte processes uses previous 
+        # frame and current frame. It is better to keep the method argument as "frame",
+        # as in case of the other trackers.
+        current_frame = frame
+
+        if self.mask_manager is not None and current_frame is not None:
+            self._last_mask_output = self.mask_manager.get_updated_masks(
+                frame=current_frame,
+                previous_frame=self._previous_frame,
+                previous_tracklets=self._previous_tracklets,
+            )
+        else:
+            self._last_mask_output = None
+       
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
+            self._store_previous_mask_inputs(current_frame, result)
             return result
 
         out_det_indices: list[int] = []
@@ -132,9 +166,9 @@ class McByteTracker(BaseTracker):
                 unconfirmed_tracks.append(track)
 
         # CMC: apply to all predicted tracks before association
-        if self.enable_cmc and self.cmc is not None and frame is not None:
+        if self.enable_cmc and self.cmc is not None and current_frame is not None:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
-            H = self.cmc.estimate(frame, mask_boxes)
+            H = self.cmc.estimate(current_frame, mask_boxes)
             CMC.apply_batch(H, self.tracks)
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
@@ -230,12 +264,36 @@ class McByteTracker(BaseTracker):
         if not out_det_indices:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
+            self._store_previous_mask_inputs(current_frame, result)
             return result
 
         idx = np.array(out_det_indices)
         result = cast(sv.Detections, detections[idx])
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
+        self._store_previous_mask_inputs(current_frame, result)
         return result
+    
+    def _store_previous_mask_inputs(
+        self,
+        frame: np.ndarray | None,
+        detections: sv.Detections,
+    ) -> None:
+        """Store current tracker output for mask preparation on the next frame."""
+        self._previous_frame = None if frame is None else frame.copy()
+        self._previous_tracklets = []
+
+        if detections.tracker_id is None:
+            return
+
+        for xyxy, tracker_id in zip(detections.xyxy, detections.tracker_id):
+            if tracker_id < 0:
+                continue
+            self._previous_tracklets.append(
+                TrackletSnapshot(
+                    tracker_id=int(tracker_id),
+                    xyxy=xyxy.copy(),
+                )
+            )
 
     def _get_iou_matrix(self, tracklets: list[McByteTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:
