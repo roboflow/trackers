@@ -581,6 +581,20 @@ wheels = [
 ]
 
 [[package]]
+name = "defopt"
+version = "7.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "docutils" },
+    { name = "sphinxcontrib-napoleon" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3a/53/89e5eaa8e775cef5b66254365f51c389ca167b0fa96713b722824708b720/defopt-7.0.0.tar.gz", hash = "sha256:d7ac98810005880717e1df62527fd35dfe083f551b6d4fb5da0b25f608e8ef4c", size = 44527, upload-time = "2025-06-15T21:42:35.073Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/be/03e94203daf8653bb402936820ac762064b4ef6079daab47581506c187c7/defopt-7.0.0-py3-none-any.whl", hash = "sha256:88b6747561d803e3fc020b9080fd0aa6a300927f64167c76d95544495f1a8307", size = 17795, upload-time = "2025-06-19T06:48:48.835Z" },
+]
+
+[[package]]
 name = "defusedxml"
 version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2301,6 +2315,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pockets"
+version = "0.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/df/8e/0601097cfcce2e8c2297db5080e9719f549c2bd4b94420ddc8d3f848bbca/pockets-0.9.1.tar.gz", hash = "sha256:9320f1a3c6f7a9133fe3b571f283bcf3353cd70249025ae8d618e40e9f7e92b3", size = 24993, upload-time = "2019-11-02T14:46:19.433Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/2f/a4583c70fbd8cd04910e2884bcc2bdd670e884061f7b4d70bc13e632a993/pockets-0.9.1-py2.py3-none-any.whl", hash = "sha256:68597934193c08a08eb2bf6a1d85593f627c22f9b065cc727a4f03f669d96d86", size = 26263, upload-time = "2019-11-02T14:46:17.814Z" },
+]
+
+[[package]]
 name = "portalocker"
 version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3651,6 +3677,19 @@ wheels = [
 ]
 
 [[package]]
+name = "sphinxcontrib-napoleon"
+version = "0.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pockets" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fa/eb/ad89500f4cee83187596e07f43ad561f293e8e6e96996005c3319653b89f/sphinxcontrib-napoleon-0.7.tar.gz", hash = "sha256:407382beed396e9f2d7f3043fad6afda95719204a1e1a231ac865f40abcbfcf8", size = 21232, upload-time = "2018-09-23T14:16:47.272Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/f2/6b7627dfe7b4e418e295e254bb15c3a6455f11f8c0ad0d43113f678049c3/sphinxcontrib_napoleon-0.7-py2.py3-none-any.whl", hash = "sha256:711e41a3974bdf110a484aec4c1a556799eb0b3f3b897521a018ad7e2db13fef", size = 17151, upload-time = "2018-09-23T14:16:45.548Z" },
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.49"
 source = { registry = "https://pypi.org/simple" }
@@ -4026,6 +4065,7 @@ name = "trackers"
 version = "2.4.0"
 source = { editable = "." }
 dependencies = [
+    { name = "defopt" },
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "requests" },
@@ -4071,6 +4111,7 @@ mypy-types = [
 
 [package.metadata]
 requires-dist = [
+    { name = "defopt", specifier = ">=7.0.0" },
     { name = "inference-models", marker = "extra == 'detection'", specifier = ">=0.19.0" },
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "opencv-python", specifier = ">=4.8.0" },
