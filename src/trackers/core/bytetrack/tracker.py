@@ -136,7 +136,7 @@ class ByteTrackTracker(BaseTracker):
             tracker.predict()
 
         detection_boxes = detections.xyxy
-        confidences = detections.confidence if detections.confidence is not None else np.zeros(len(detections))
+        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
 
         # Split indices by confidence threshold (no sv.Detections slicing)
         high_mask = confidences >= self.high_conf_det_threshold

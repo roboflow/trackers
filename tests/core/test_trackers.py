@@ -54,6 +54,13 @@ def _detection(xyxy: tuple[float, float, float, float]) -> sv.Detections:
     )
 
 
+def _no_confidence_detection(xyxy: tuple[float, float, float, float]) -> sv.Detections:
+    return sv.Detections(
+        xyxy=np.array([xyxy], dtype=np.float32),
+        class_id=np.array([0], dtype=int),
+    )
+
+
 class _TrackingIoU(BaseIoU):
     """Test-double IoU that records non-empty compute calls."""
 
@@ -120,6 +127,43 @@ def test_tracker_uses_configured_iou_variant(tracker_id: str) -> None:
     tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
     tracker.update(_detection((105.0, 105.0, 205.0, 205.0)))
     assert tracking_iou.compute_calls > 0
+
+
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+def test_no_confidence_detections_can_spawn_confirmed_tracks(tracker_id: str) -> None:
+    """Missing confidence should behave like usable detections, not suppress tracking."""
+    tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
+    detection = _no_confidence_detection((100.0, 100.0, 200.0, 200.0))
+
+    for _ in range(4):
+        result = tracker.update(detection)
+        if result.tracker_id is not None and np.any(result.tracker_id >= 0):
+            return
+
+    raise AssertionError(f"{tracker_id} did not confirm any track for confidence=None detections")
+
+
+def test_bytetrack_no_confidence_matches_explicit_ones_confidence() -> None:
+    """ByteTrack should treat confidence=None the same as all-ones confidence."""
+    no_confidence_tracker = ByteTrackTracker(minimum_consecutive_frames=1)
+    explicit_confidence_tracker = ByteTrackTracker(minimum_consecutive_frames=1)
+    detection_without_confidence = _no_confidence_detection((100.0, 100.0, 200.0, 200.0))
+    detection_with_ones_confidence = sv.Detections(
+        xyxy=detection_without_confidence.xyxy.copy(),
+        confidence=np.ones(len(detection_without_confidence), dtype=np.float32),
+        class_id=detection_without_confidence.class_id.copy(),
+    )
+
+    no_confidence_tracker.reset()
+    no_confidence_results = [no_confidence_tracker.update(detection_without_confidence) for _ in range(4)]
+    explicit_confidence_tracker.reset()
+    explicit_confidence_results = [explicit_confidence_tracker.update(detection_with_ones_confidence) for _ in range(4)]
+
+    for no_confidence_result, explicit_confidence_result in zip(no_confidence_results, explicit_confidence_results):
+        assert len(no_confidence_result) == len(explicit_confidence_result)
+        assert no_confidence_result.tracker_id is not None
+        assert explicit_confidence_result.tracker_id is not None
+        np.testing.assert_array_equal(no_confidence_result.tracker_id, explicit_confidence_result.tracker_id)
 
 
 def test_bytetrack_calls_iou_in_low_confidence_branch() -> None:
