@@ -15,6 +15,7 @@ from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
+from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -187,7 +188,7 @@ class BoTSORTTracker(BaseTracker):
             tracker.predict()
 
         detection_boxes = detections.xyxy
-        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
+        confidences = default_confidences(detections)
 
         # Split indices into high / low / discarded by confidence
         high_mask = confidences >= self.high_conf_det_threshold
