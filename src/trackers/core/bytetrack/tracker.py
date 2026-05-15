@@ -50,12 +50,13 @@ class ByteTrackTracker(BaseTracker):
         provides.
 
     Args:
-        lost_track_buffer: `int` specifying number of frames to buffer when a
-            track is lost. Increasing this value enhances occlusion handling but
-            may increase ID switching for disappearing objects.
+        lost_track_buffer: Non-negative `int` specifying number of 30 FPS frames
+            to buffer when a track is lost. `0` deletes a confirmed track on the
+            first missed frame. Increasing this value enhances occlusion
+            handling but may increase ID switching for disappearing objects.
         frame_rate: `float` specifying video frame rate in frames per second.
-            Used to scale the lost track buffer for consistent tracking across
-            different frame rates.
+            Must be positive. Used to scale the lost track buffer for consistent
+            tracking across different frame rates.
         track_activation_threshold: `float` specifying minimum detection
             confidence to create new tracks. Higher values reduce false
             positives but may miss low-confidence objects.
@@ -99,10 +100,10 @@ class ByteTrackTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
         iou: BaseIoU | None = None,
     ) -> None:
-        # Calculate maximum frames without update based on lost_track_buffer and
-        # frame_rate. This scales the buffer based on the frame rate to ensure
-        # consistent time-based tracking across different frame rates.
-        self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
+        self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
+            lost_track_buffer=lost_track_buffer,
+            frame_rate=frame_rate,
+        )
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold

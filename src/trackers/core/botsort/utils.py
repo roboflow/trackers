@@ -19,9 +19,9 @@ def get_alive_tracklets(
     """
     Remove dead or immature lost tracklets and return alive ones.
 
-    A tracklet is kept if it is within ``maximum_frames_without_update`` **and**
-    it is either mature (enough successful updates) or was just updated this
-    frame.
+    A tracklet is kept if it has been missed for at most
+    ``maximum_frames_without_update`` frames **and** it is either mature
+    (enough successful updates) or was just updated this frame.
 
     Args:
         tracklets: List of BoTSORTTracklet objects.
@@ -37,7 +37,7 @@ def get_alive_tracklets(
     for tracker in tracklets:
         is_mature = tracker.number_of_successful_updates >= minimum_consecutive_frames
         is_active = tracker.time_since_update == 0
-        if tracker.time_since_update < maximum_frames_without_update and (is_mature or is_active):
+        if tracker.time_since_update <= maximum_frames_without_update and (is_mature or is_active):
             alive_tracklets.append(tracker)
     return alive_tracklets
 

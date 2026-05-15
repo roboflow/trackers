@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import inspect
+import math
 import re
 import types
 import warnings
@@ -318,6 +319,20 @@ class BaseTracker(ABC):
     # list[ConcreteTracklet] in subclasses rejects list[TrackletProtocol] base.
     tracks: list[Any]
     maximum_frames_without_update: int
+
+    @staticmethod
+    def _compute_maximum_frames_without_update(
+        lost_track_buffer: int,
+        frame_rate: float,
+    ) -> int:
+        """Scale positive lost-track buffers without changing explicit zero-buffer configs."""
+        if lost_track_buffer < 0:
+            raise ValueError("lost_track_buffer must be greater than or equal to 0")
+        if not math.isfinite(frame_rate) or frame_rate <= 0:
+            raise ValueError("frame_rate must be a finite positive value")
+        if lost_track_buffer == 0:
+            return 0
+        return max(1, math.ceil(frame_rate / 30.0 * lost_track_buffer))
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.

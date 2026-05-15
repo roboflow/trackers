@@ -44,10 +44,11 @@ class BoTSORTTracker(BaseTracker):
       9) Remove tracks that have been lost for too long
 
     Args:
-        lost_track_buffer: Time buffer (in frames at 30 FPS) for keeping lost tracks
-            alive before deletion. This is scaled by `frame_rate`.
+        lost_track_buffer: Non-negative time buffer (in frames at 30 FPS) for
+            keeping lost tracks alive before deletion. `0` deletes a confirmed
+            track on the first missed frame. This is scaled by `frame_rate`.
         frame_rate: Video frame rate used to scale the lost track buffer to
-            time-like behavior.
+            time-like behavior. Must be positive.
         track_activation_threshold: Minimum detection confidence to spawn a new
             track.
         minimum_consecutive_frames: Number of successful updates required before
@@ -85,9 +86,9 @@ class BoTSORTTracker(BaseTracker):
             supply an ``iou`` argument.
 
     Notes:
-        - `maximum_frames_without_update` is computed as:
-            int(frame_rate / 30.0 * lost_track_buffer)
-            to maintain consistent “seconds” worth of buffer across different FPS.
+        - Positive `maximum_frames_without_update` values are scaled by
+          ``frame_rate`` and rounded up to at least one missed frame. Explicit
+          zero-buffer configurations remain zero.
         - When CMC is enabled, pass the current video frame via the ``frame``
           argument of :meth:`update`.
     """
@@ -128,10 +129,10 @@ class BoTSORTTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
     ) -> None:
-        # Calculate maximum frames without update based on lost_track_buffer and
-        # frame_rate. This scales the buffer based on the frame rate to ensure
-        # consistent time-based tracking across different frame rates.
-        self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
+        self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
+            lost_track_buffer=lost_track_buffer,
+            frame_rate=frame_rate,
+        )
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold_first_assoc = minimum_iou_threshold_first_assoc
         self.minimum_iou_threshold_second_assoc = minimum_iou_threshold_second_assoc
