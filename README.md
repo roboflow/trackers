@@ -44,7 +44,7 @@ For more options, see the [install guide](https://trackers.roboflow.com/develop/
 
 ## Quick Start
 
-Add tracking to your existing detection pipeline in a few lines. Every tracker shares the same `update(detections, image)` interface, so switching algorithms later is a one-line change. The example below uses `inference` as the detector — swap it for any detector that returns `supervision.Detections`.
+Add tracking to your existing detection pipeline in a few lines. Every tracker shares the same `update(detections, frame=None)` interface, so switching algorithms later is a one-line change. The example below uses `inference` as the detector — swap it for any detector that returns `supervision.Detections`.
 
 ```python
 import cv2
