@@ -17,8 +17,6 @@ class BaseTracklet(ABC):
     Provides common interface and attributes for tracklet management.
     """
 
-    count_id: int = 0
-
     def __init__(self, bbox: np.ndarray, state_estimator_class: type[BaseStateEstimator]) -> None:
         self.age = 0
         self.state_estimator: BaseStateEstimator = state_estimator_class(bbox)
@@ -26,12 +24,6 @@ class BaseTracklet(ABC):
         self.tracker_id = -1
         self.time_since_update = 0
         self.number_of_successful_consecutive_updates = 0
-
-    @classmethod
-    def get_next_tracker_id(cls) -> int:
-        next_id = cls.count_id
-        cls.count_id += 1
-        return next_id
 
     @abstractmethod
     def update(self, bbox: np.ndarray) -> None:

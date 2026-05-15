@@ -54,6 +54,14 @@ def _detection(xyxy: tuple[float, float, float, float]) -> sv.Detections:
     )
 
 
+def _detections(xyxy: list[tuple[float, float, float, float]]) -> sv.Detections:
+    return sv.Detections(
+        xyxy=np.array(xyxy, dtype=np.float32),
+        confidence=np.full(len(xyxy), 0.95, dtype=np.float32),
+        class_id=np.zeros(len(xyxy), dtype=int),
+    )
+
+
 def _no_confidence_detection(xyxy: tuple[float, float, float, float]) -> sv.Detections:
     return sv.Detections(
         xyxy=np.array([xyxy], dtype=np.float32),
@@ -347,6 +355,37 @@ def test_reset_clears_tracks_and_restarts_ids(tracker_id: str) -> None:
     confirmed_ids = [t.tracker_id for t in tracker.tracks if t.tracker_id >= 0]
     assert len(confirmed_ids) > 0
     assert min(confirmed_ids) == 0
+
+
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+def test_tracker_instances_do_not_share_id_allocators(tracker_id: str) -> None:
+    """Resetting one tracker instance must not make another instance reuse a live ID."""
+    tracker_a = _instantiate(tracker_id, minimum_consecutive_frames=1)
+    tracker_b = _instantiate(tracker_id, minimum_consecutive_frames=1)
+    tracker_a.reset()
+
+    first_det = _detection((100.0, 100.0, 200.0, 200.0))
+    two_dets = _detections(
+        [
+            (100.0, 100.0, 200.0, 200.0),
+            (400.0, 400.0, 500.0, 500.0),
+        ]
+    )
+
+    _run_until_confirmed(tracker_a, first_det)
+    confirmed_ids = [int(t.tracker_id) for t in tracker_a.tracks if t.tracker_id >= 0]
+    assert confirmed_ids == [0]
+
+    tracker_b.reset()
+
+    for _ in range(4):
+        tracker_a.update(two_dets)
+        confirmed_ids = [int(t.tracker_id) for t in tracker_a.tracks if t.tracker_id >= 0]
+        if len(confirmed_ids) >= 2:
+            assert len(confirmed_ids) == len(set(confirmed_ids))
+            return
+
+    raise AssertionError("expected tracker A to confirm a second simultaneous track")
 
 
 # ==========================================================================

@@ -414,6 +414,16 @@ class BaseTracker(ABC):
         """
         pass
 
+    def _reset_id_allocator(self) -> None:
+        """Restart this tracker instance's ID allocation from zero."""
+        self._next_track_id = 0
+
+    def _allocate_tracker_id(self) -> int:
+        """Return the next tracker ID from this tracker instance."""
+        next_track_id = getattr(self, "_next_track_id", 0)
+        self._next_track_id = next_track_id + 1
+        return next_track_id
+
     @property
     def tracked_objects(self) -> sv.Detections:
         """All confirmed alive tracks with Kalman-predicted bounding boxes.
