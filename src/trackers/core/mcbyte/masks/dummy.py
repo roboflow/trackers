@@ -64,9 +64,7 @@ class DummyIdentityMaskPropagator(MaskPropagator):
             masks=None if mask_output.masks is None else mask_output.masks.copy(),
             tracklet_mask_dict=mask_output.tracklet_mask_dict.copy(),
             mask_avg_prob_dict=(
-                None
-                if mask_output.mask_avg_prob_dict is None
-                else mask_output.mask_avg_prob_dict.copy()
+                None if mask_output.mask_avg_prob_dict is None else mask_output.mask_avg_prob_dict.copy()
             ),
         )
 
@@ -81,8 +79,6 @@ class DummyIdentityMaskPropagator(MaskPropagator):
             masks=None if self._mask_output.masks is None else self._mask_output.masks.copy(),
             tracklet_mask_dict=self._mask_output.tracklet_mask_dict.copy(),
             mask_avg_prob_dict=(
-                None
-                if self._mask_output.mask_avg_prob_dict is None
-                else self._mask_output.mask_avg_prob_dict.copy()
+                None if self._mask_output.mask_avg_prob_dict is None else self._mask_output.mask_avg_prob_dict.copy()
             ),
         )

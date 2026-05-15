@@ -12,6 +12,12 @@ from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
+from trackers.core.mcbyte.mask_manager import MaskManager
+from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
+from trackers.core.mcbyte.masks.dummy import (
+    DummyBoxMaskGenerator,
+    DummyIdentityMaskPropagator,
+)
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.core.mcbyte.utils import _fuse_score, get_alive_tracklets
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
@@ -20,12 +26,6 @@ from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
-)
-from trackers.core.mcbyte.mask_manager import MaskManager
-from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
-from trackers.core.mcbyte.masks.dummy import (
-    DummyBoxMaskGenerator,
-    DummyIdentityMaskPropagator,
 )
 
 
@@ -109,7 +109,7 @@ class McByteTracker(BaseTracker):
         """
         self.frame_id += 1
 
-        # For the convenience and better understanding. McByte processes uses previous 
+        # For the convenience and better understanding. McByte processes uses previous
         # frame and current frame. It is better to keep the method argument as "frame",
         # as in case of the other trackers.
         current_frame = frame
@@ -122,7 +122,7 @@ class McByteTracker(BaseTracker):
             )
         else:
             self._last_mask_output = None
-       
+
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
@@ -272,7 +272,7 @@ class McByteTracker(BaseTracker):
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         self._store_previous_mask_inputs(current_frame, result)
         return result
-    
+
     def _store_previous_mask_inputs(
         self,
         frame: np.ndarray | None,

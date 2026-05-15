@@ -20,7 +20,7 @@ class MaskManager:
     """Manage McByte mask generation and propagation.
 
     The manager follows the original McByte timing: masks for the current frame
-    are prepared before association, but they are initialized/updated from tracker 
+    are prepared before association, but they are initialized/updated from tracker
     outputs produced on the previous frame.
     """
 
