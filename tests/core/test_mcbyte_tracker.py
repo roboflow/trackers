@@ -4,8 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-# tests/core/mcbyte/test_mcbyte_tracker.py
-
 from __future__ import annotations
 
 import numpy as np
@@ -26,8 +24,9 @@ def _make_frame(h: int = 480, w: int = 640, seed: int = 42) -> np.ndarray:
     return rng.integers(0, 255, (h, w, 3), dtype=np.uint8)
 
 
-def test_mcbyte_instantiates_sets_frame_and_updates_with_sparse_opt_flow_cmc() -> None:
-    """McByteTracker can run one basic CMC-enabled tracking sequence."""
+def test_mcbyte_instantiates_and_updates_with_frame_and_sparse_opt_flow_cmc_returns_ids(
+) -> None:
+    """McByteTracker can update with a frame and CMC enabled, returning track IDs."""
     tracker = McByteTracker(
         enable_cmc=True,
         cmc_method="sparseOptFlow",
