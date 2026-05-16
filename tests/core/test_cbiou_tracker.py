@@ -60,7 +60,6 @@ class TestCBIoUConstruction:
         assert tracker.iou_first.buffer_ratio == pytest.approx(0.1)
         assert tracker.iou_second.buffer_ratio == pytest.approx(0.3)
 
-
     def test_cmc_disabled(self) -> None:
         tracker = CBIoUTracker()
         assert tracker.enable_cmc is False
@@ -121,7 +120,7 @@ class TestCBIoUAssociationTolerance:
 
         cbiou.update(_detection(box_a))
         botsort.update(_detection(box_a))
-        
+
         # Frame 2: detection slightly outside A — CBIoU buffer closes the gap
         cbiou_result = cbiou.update(_detection(box_b))
         botsort_result = botsort.update(_detection(box_b))
