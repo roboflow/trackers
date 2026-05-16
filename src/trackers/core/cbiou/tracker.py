@@ -4,65 +4,67 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.utils.iou import BIoU
 from trackers.utils.state_representations import BaseStateEstimator, XCYCWHStateEstimator
 
 
 class CBIoUTracker(BoTSORTTracker):
-    """BoT-SORT with CMC disabled and Buffered IoU (BIoU) association.
+    """Cascaded-Buffered IoU (C-BIoU) tracker.
 
-    CBIoU is identical to :class:`~trackers.core.botsort.tracker.BoTSORTTracker`
-    with two fixed differences:
+    Implements the matching strategy from Yang et al., *Hard To Track Objects with
+    Irregular Motions and Similar Appearances? Make It Easier by Buffering the
+    Matching Space*, WACV 2023
+    ([paper](https://openaccess.thecvf.com/content/WACV2023/papers/Yang_Hard_To_Track_Objects_With_Irregular_Motions_and_Similar_Appearances_WACV_2023_paper.pdf)).
 
-    1. **Camera Motion Compensation is permanently off.** This makes the
-       tracker faster and avoids relying on frame pixel data, which is
-       convenient when only detection files are available (e.g. standard
-       MOT benchmarks).
-    2. **BIoU replaces standard IoU** for all association steps. Each
-       bounding box is expanded by ``buffer_ratio`` relative to its own
-       width/height before IoU is computed, giving the matcher more
-       tolerance for small localization gaps between the Kalman prediction
-       and the incoming detection.
+    The paper proposes **Buffered IoU (BIoU)** — expanding boxes by a proportional
+    margin before computing overlap — and **cascaded matching** with a small buffer
+    scale ``b1`` followed by a larger scale ``b2`` (typically ``b1 < b2``; e.g.
+    0.7 and 1.0 on SoccerNet in the paper).
+
+    Each association step uses its own ``buffer_ratio``:
+
+    * ``buffer_ratio_first`` — first pass (high-confidence detections vs tracks;
+      paper: small ``b1``).
+    * ``buffer_ratio_second`` — second pass (low-confidence detections;
+      paper: large ``b2``).
+
+    The ByteTrack-style unconfirmed-track step (leftover high-confidence
+    detections vs tentative tracks) reuses **b1** (``iou_first``); it is not a
+    separate paper hyperparameter.
+
+    Camera motion compensation is not used (detection-only / MOT-file workflows).
 
     Args:
-        lost_track_buffer: Time buffer (in frames at 30 FPS) for keeping
-            lost tracks alive before deletion. Scaled by ``frame_rate``.
+        lost_track_buffer: Time buffer (in frames at 30 FPS) for keeping lost
+            tracks alive before deletion. Scaled by ``frame_rate``.
         frame_rate: Video frame rate used to scale the lost track buffer.
-        track_activation_threshold: Minimum detection confidence to spawn
-            a new track.
+        track_activation_threshold: Minimum detection confidence to spawn a
+            new track.
         minimum_consecutive_frames: Number of successful updates required
             before assigning a stable track ID.
-        minimum_iou_threshold_first_assoc: Minimum fused similarity to
-            accept an association during the first association step.
-        minimum_iou_threshold_second_assoc: Minimum fused similarity to
-            accept an association during the second association step.
-        minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity
-            to accept a match between an unconfirmed track and a remaining
-            high-confidence detection.
-        high_conf_det_threshold: Confidence threshold that splits
-            detections into high / low confidence groups.
-        instant_first_frame_activation: If ``True`` (default), tracks
-            spawned on the very first frame receive a real tracker ID
-            immediately.
-        state_estimator_class: State estimator class for tracklets.
-            Defaults to ``XCYCWHStateEstimator``.
-        buffer_ratio: Non-negative relative margin by which each bounding
-            box is expanded before IoU is computed. ``0.0`` recovers
-            standard IoU exactly; larger values tolerate wider localization
-            gaps. Forwarded to :class:`~trackers.utils.iou.BIoU`.
-
-    Notes:
-        - CMC parameters (``enable_cmc``, ``cmc_method``, ``cmc_downscale``)
-          are intentionally absent from this class's signature — CMC is
-          always disabled.
-        - Passing a ``frame`` argument to :meth:`update` emits a
-          ``UserWarning`` because no CMC processing takes place.
+        minimum_iou_threshold_first_assoc: Minimum fused similarity for the
+            first association step.
+        minimum_iou_threshold_second_assoc: Minimum fused similarity for the
+            second association step.
+        minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity for
+            the unconfirmed association step.
+        high_conf_det_threshold: Confidence threshold splitting high / low
+            detections.
+        instant_first_frame_activation: If ``True``, first-frame tracks receive
+            a real ID immediately.
+        state_estimator_class: Kalman state representation for tracklets.
+        buffer_ratio_first: Buffer scale ``b1`` for the first BIoU pass. Should
+            be **less than** ``buffer_ratio_second`` (``b1 < b2``) per the paper.
+        buffer_ratio_second: Buffer scale ``b2`` for the second BIoU pass. Should
+            be **greater than** ``buffer_ratio_first``.
     """
 
     tracker_id = "cbiou"
@@ -76,8 +78,9 @@ class CBIoUTracker(BoTSORTTracker):
             "range": [0.05, 0.7],
         },
         "high_conf_det_threshold": {"type": "uniform", "range": [0.3, 0.8]},
-        "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
-        "buffer_ratio": {"type": "uniform", "range": [0.0, 0.5]},
+        "minimum_consecutive_frames": {"type": "randint", "range": [1, 3]},
+        "buffer_ratio_first": {"type": "uniform", "range": [0.0, 0.7]},
+        "buffer_ratio_second": {"type": "uniform", "range": [0.0, 0.7]},
     }
 
     def __init__(
@@ -92,7 +95,8 @@ class CBIoUTracker(BoTSORTTracker):
         high_conf_det_threshold: float = 0.6,
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
-        buffer_ratio: float = 0.1,
+        buffer_ratio_first: float = 0.3,
+        buffer_ratio_second: float = 0.5,
     ) -> None:
         super().__init__(
             lost_track_buffer=lost_track_buffer,
@@ -106,25 +110,176 @@ class CBIoUTracker(BoTSORTTracker):
             enable_cmc=False,
             instant_first_frame_activation=instant_first_frame_activation,
             state_estimator_class=state_estimator_class,
-            iou=BIoU(buffer_ratio=buffer_ratio),
         )
-        self.buffer_ratio = buffer_ratio
+        self.iou_first = BIoU(buffer_ratio=buffer_ratio_first)
+        self.iou_second = BIoU(buffer_ratio=buffer_ratio_second)
+        self.buffer_ratio_first = buffer_ratio_first
+        self.buffer_ratio_second = buffer_ratio_second
+
+    def _biou_matrix(
+        self,
+        tracklets: list[BoTSORTTracklet],
+        boxes: np.ndarray,
+        iou: BIoU,
+    ) -> np.ndarray:
+        if len(tracklets) == 0:
+            track_boxes = np.empty((0, 4))
+        else:
+            track_boxes = np.array([t.get_state_bbox() for t in tracklets])
+        return iou.compute(track_boxes, boxes)
 
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
     ) -> sv.Detections:
-        """Update the tracker with detections from the current frame.
+        """Update the C-BIoU tracker with detections from the current frame.
+
+        Runs the association pipeline with a distinct BIoU instance per step
+        (cascaded buffers per Yang et al., WACV 2023). Does not use frames or CMC.
 
         Args:
             detections: Supervision detections for the current frame.
-            frame: Unused — CBIoU never performs CMC. Passing a non-``None``
-                value emits a ``UserWarning``.
+            frame: Unused. Emits a ``UserWarning`` if provided.
 
         Returns:
-            New ``sv.Detections`` with ``tracker_id`` assigned for each
-            detection.
+            Detections with ``tracker_id`` assigned.
         """
         self._warn_if_frame_unused(frame)
-        return super().update(detections=detections, frame=None)
+        self.frame_id += 1
+
+        if len(self.tracks) == 0 and len(detections) == 0:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
+
+        out_det_indices: list[int] = []
+        out_tracker_ids: list[int] = []
+
+        # Predict new locations for existing tracks
+        for tracker in self.tracks:
+            tracker.predict()
+
+        detection_boxes = detections.xyxy
+        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
+
+        # Split detections into high / low / discarded by confidence
+        high_mask = confidences >= self.high_conf_det_threshold
+        low_mask = (confidences > 0.1) & (~high_mask)
+        high_indices = np.where(high_mask)[0]
+        low_indices = np.where(low_mask)[0]
+        high_boxes = detection_boxes[high_indices]
+        low_boxes = detection_boxes[low_indices]
+        high_scores = confidences[high_indices]
+
+        # Split tracks into confirmed, unconfirmed, and lost.
+        # After predict(), time_since_update == 1 means "tracked"; > 1 means "lost".
+        confirmed_tracks: list[BoTSORTTracklet] = []
+        unconfirmed_tracks: list[BoTSORTTracklet] = []
+        lost_tracks: list[BoTSORTTracklet] = []
+        for track in self.tracks:
+            if track.time_since_update > 1:
+                lost_tracks.append(track)
+            elif track.number_of_successful_updates >= self.minimum_consecutive_frames:
+                confirmed_tracks.append(track)
+            else:
+                unconfirmed_tracks.append(track)
+
+        # Step 1: associate high-confidence detections to confirmed + lost tracks.
+        # Paper b1 (small buffer); BIoU fused with detection scores.
+        strack_pool = confirmed_tracks + lost_tracks
+        iou_matrix = self._biou_matrix(strack_pool, high_boxes, self.iou_first)
+        iou_matrix = _fuse_score(self.iou_first.normalize_for_fusion(iou_matrix), high_scores)
+        matched, unmatched_pool, unmatched_high = self._get_associated_indices(
+            iou_matrix, self.minimum_iou_threshold_first_assoc
+        )
+
+        for row, col in matched:
+            track = strack_pool[row]
+            track.update(high_boxes[col])
+            if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
+                track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+            out_det_indices.append(int(high_indices[col]))
+            out_tracker_ids.append(track.tracker_id)
+
+        # Step 2: associate low-confidence detections to remaining *tracked* tracks
+        # only (excluding lost tracks). Paper b2 (large buffer); no score fusion.
+        remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
+        iou_matrix = self._biou_matrix(remaining_tracked, low_boxes, self.iou_second)
+        matched, _, unmatched_low = self._get_associated_indices(
+            iou_matrix, self.minimum_iou_threshold_second_assoc
+        )
+
+        for row, col in matched:
+            track = remaining_tracked[row]
+            track.update(low_boxes[col])
+            if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
+                track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+            out_det_indices.append(int(low_indices[col]))
+            out_tracker_ids.append(track.tracker_id)
+
+        # Unmatched low-confidence detections (output with tracker_id=-1)
+        for det_local_idx in sorted(unmatched_low):
+            out_det_indices.append(int(low_indices[det_local_idx]))
+            out_tracker_ids.append(-1)
+
+        # Step 3: match unconfirmed tracks with remaining unmatched high-confidence
+        # detections (ByteTrack lifecycle; reuses b1 / iou_first, not a paper parameter).
+        # Unmatched unconfirmed tracks are removed (not kept as lost).
+        unmatched_high_list = sorted(unmatched_high)
+        unmatched_uc_indices: list[int] = list(range(len(unconfirmed_tracks)))
+
+        if len(unconfirmed_tracks) > 0 and len(unmatched_high_list) > 0:
+            uh_boxes = high_boxes[unmatched_high_list]
+            uh_scores = high_scores[unmatched_high_list]
+            iou_matrix = self._biou_matrix(unconfirmed_tracks, uh_boxes, self.iou_first) 
+            iou_matrix = _fuse_score(self.iou_first.normalize_for_fusion(iou_matrix), uh_scores)
+            matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
+                iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
+            )
+
+            for row, col in matched_uc:
+                track = unconfirmed_tracks[row]
+                orig_high_idx = unmatched_high_list[col]
+                track.update(high_boxes[orig_high_idx])
+                if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
+                    track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+                out_det_indices.append(int(high_indices[orig_high_idx]))
+                out_tracker_ids.append(track.tracker_id)
+
+            # Only remaining unmatched high-conf dets proceed to spawning
+            unmatched_high = [unmatched_high_list[i] for i in remaining_uh]
+
+        # Remove unmatched unconfirmed tracks (following original ByteTrack)
+        if len(unmatched_uc_indices) > 0:
+            remove_ids = {id(unconfirmed_tracks[i]) for i in unmatched_uc_indices}
+            self.tracks = [t for t in self.tracks if id(t) not in remove_ids]
+
+        # Spawn new tracks from unmatched high-confidence detections
+        self._spawn_new_tracks(
+            detection_boxes,
+            confidences,
+            unmatched_high,
+            high_indices,
+            out_det_indices,
+            out_tracker_ids,
+            is_first_frame=(self.frame_id == 1),
+        )
+
+        # Kill lost tracks
+        self.tracks = get_alive_tracklets(
+            tracklets=self.tracks,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
+        )
+
+        if not out_det_indices:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
+
+        # Build final detections
+        idx = np.array(out_det_indices)
+        result = cast(sv.Detections, detections[idx])
+        result.tracker_id = np.array(out_tracker_ids, dtype=int)
+        return result

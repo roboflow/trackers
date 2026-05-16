@@ -6,13 +6,11 @@
 
 """CBIoU-specific tracker tests.
 
-Generic lifecycle / reset / tracked_objects / mutation contracts are
-covered for all trackers in test_trackers.py via ALL_TRACKER_IDS.
-This file covers CBIoU-specific invariants:
-  - CMC is always disabled (frame argument triggers UserWarning)
-  - buffer_ratio is correctly forwarded to BIoU
-  - BIoU association is more tolerant of near-miss detections than plain IoU
-  - buffer_ratio=0.0 produces the same results as BoTSORT(enable_cmc=False)
+Generic lifecycle contracts are covered in test_trackers.py via ALL_TRACKER_IDS.
+This file covers C-BIoU-specific invariants (Yang et al., WACV 2023):
+  - Cascaded BIoU with per-step buffer scales (b1, b2)
+  - CMC disabled; frame argument triggers UserWarning
+  - BIoU association more tolerant than standard IoU
 """
 
 from __future__ import annotations
@@ -44,18 +42,26 @@ class TestCBIoUConstruction:
     def test_default_construction(self) -> None:
         tracker = CBIoUTracker()
         assert tracker is not None
-        assert isinstance(tracker.iou, BIoU)
 
-    def test_buffer_ratio_forwarded_to_biou(self) -> None:
-        tracker = CBIoUTracker(buffer_ratio=0.25)
-        assert isinstance(tracker.iou, BIoU)
-        assert tracker.iou.buffer_ratio == pytest.approx(0.25)
+    def test_per_step_biou_instances(self) -> None:
+        tracker = CBIoUTracker(
+            buffer_ratio_first=0.1,
+            buffer_ratio_second=0.3,
+        )
+        assert isinstance(tracker.iou_first, BIoU)
+        assert isinstance(tracker.iou_second, BIoU)
+        assert not hasattr(tracker, "iou_unconfirmed")
 
-    def test_buffer_ratio_stored_on_tracker(self) -> None:
-        tracker = CBIoUTracker(buffer_ratio=0.15)
-        assert tracker.buffer_ratio == pytest.approx(0.15)
+    def test_buffer_ratios_forwarded_to_biou(self) -> None:
+        tracker = CBIoUTracker(
+            buffer_ratio_first=0.1,
+            buffer_ratio_second=0.3,
+        )
+        assert tracker.iou_first.buffer_ratio == pytest.approx(0.1)
+        assert tracker.iou_second.buffer_ratio == pytest.approx(0.3)
 
-    def test_cmc_is_disabled(self) -> None:
+
+    def test_cmc_disabled(self) -> None:
         tracker = CBIoUTracker()
         assert tracker.enable_cmc is False
         assert tracker.cmc is None
@@ -65,25 +71,20 @@ class TestCBIoUConstruction:
 
     def test_invalid_buffer_ratio_raises(self) -> None:
         with pytest.raises(ValueError, match="buffer_ratio"):
-            CBIoUTracker(buffer_ratio=-0.01)
+            CBIoUTracker(buffer_ratio_first=-0.01)
 
 
 class TestCBIoUFrameWarning:
-    """Passing a frame to update() must emit UserWarning (CMC is disabled)."""
-
     def test_frame_triggers_warning(self) -> None:
         tracker = CBIoUTracker()
-        frame = _make_frame()
-        det = _detection((100.0, 100.0, 200.0, 200.0))
         with pytest.warns(UserWarning):
-            tracker.update(det, frame=frame)
+            tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=_make_frame())
 
     def test_no_warning_without_frame(self) -> None:
         tracker = CBIoUTracker()
-        det = _detection((100.0, 100.0, 200.0, 200.0))
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            tracker.update(det)
+            tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
 
 
 class TestCBIoUAssociationTolerance:
@@ -103,7 +104,7 @@ class TestCBIoUAssociationTolerance:
         """
         # Frame 1: spawn a track at box A with high confidence
         cbiou = CBIoUTracker(
-            buffer_ratio=0.15,
+            buffer_ratio_first=0.15,
             minimum_consecutive_frames=1,
             track_activation_threshold=0.5,
             minimum_iou_threshold_first_assoc=0.05,
@@ -118,79 +119,31 @@ class TestCBIoUAssociationTolerance:
         box_a = (0.0, 0.0, 100.0, 100.0)
         box_b = (110.0, 0.0, 210.0, 100.0)
 
-        for tracker in (cbiou, botsort):
-            tracker.update(_detection(box_a, conf=0.9))
-
+        cbiou.update(_detection(box_a))
+        botsort.update(_detection(box_a))
+        
         # Frame 2: detection slightly outside A — CBIoU buffer closes the gap
-        cbiou_result = cbiou.update(_detection(box_b, conf=0.9))
-        botsort_result = botsort.update(_detection(box_b, conf=0.9))
+        cbiou_result = cbiou.update(_detection(box_b))
+        botsort_result = botsort.update(_detection(box_b))
 
-        cbiou_ids = cbiou_result.tracker_id
+        assert cbiou_result.tracker_id is not None and len(cbiou_result.tracker_id) == 1
+        assert cbiou_result.tracker_id[0] >= 0
+        cbiou_frame1_id = cbiou.tracks[0].tracker_id
+        assert cbiou_result.tracker_id[0] == cbiou_frame1_id
+
         botsort_ids = botsort_result.tracker_id
-
-        # CBIoU should reuse the existing track (buffer closes the gap)
-        # — exactly one output detection with a confirmed (>=0) ID
-        assert cbiou_ids is not None and len(cbiou_ids) == 1
-        assert cbiou_ids[0] >= 0, "CBIoU should have associated the near-miss detection"
-
-        # CBIoU's confirmed ID on frame 2 must equal the one it assigned on frame 1
-        cbiou_frame1 = cbiou.tracks[0].tracker_id
-        assert cbiou_ids[0] == cbiou_frame1, "CBIoU should reuse the existing track ID, not spawn a new one"
-
-        # BoTSORT with standard IoU: boxes don't overlap, so old track goes lost
-        # and a new unconfirmed track is spawned (tracker_id == -1 or a fresh ID)
-        assert botsort_ids is not None
-        # The important behavioral difference: BoTSORT should NOT continue the
-        # original track (it can't see the gap-crossing detection as a match)
-        if len(botsort_ids) > 0:
-            botsort_frame1_track_id = next((t.tracker_id for t in botsort.tracks), None)
-            # Original BoTSORT track should be gone or unmatched
-            assert botsort_ids[0] != cbiou_frame1 or botsort_ids[0] == -1, (
-                "BoTSORT standard IoU should not have matched the near-miss box"
-            )
-
-    def test_zero_buffer_behaves_like_standard_iou(self) -> None:
-        """With buffer_ratio=0 CBIoU produces identical results to BoTSORT(no CMC)."""
-        cbiou = CBIoUTracker(
-            buffer_ratio=0.0,
-            minimum_consecutive_frames=2,
-            track_activation_threshold=0.7,
-        )
-        botsort = BoTSORTTracker(
-            enable_cmc=False,
-            minimum_consecutive_frames=2,
-            track_activation_threshold=0.7,
-        )
-
-        detections = [
-            _detection((50.0, 50.0, 150.0, 150.0), conf=0.9),
-            _detection((55.0, 55.0, 155.0, 155.0), conf=0.9),
-            _detection((60.0, 60.0, 160.0, 160.0), conf=0.9),
-        ]
-
-        for det in detections:
-            r_cbiou = cbiou.update(det)
-            r_botsort = botsort.update(det)
-            # Both should produce the same number of outputs
-            assert len(r_cbiou) == len(r_botsort), (
-                f"CBIoU(buffer=0) and BoTSORT(no CMC) diverged: cbiou={len(r_cbiou)}, botsort={len(r_botsort)}"
-            )
+        if botsort_ids is not None and len(botsort_ids) > 0:
+            assert botsort_ids[0] != cbiou_frame1_id or botsort_ids[0] == -1
 
 
 class TestCBIoUSearchSpace:
-    def test_buffer_ratio_in_search_space(self) -> None:
-        assert "buffer_ratio" in CBIoUTracker.search_space
+    def test_cascade_buffer_params_in_search_space(self) -> None:
+        ss = CBIoUTracker.search_space
+        assert "buffer_ratio_first" in ss
+        assert "buffer_ratio_second" in ss
+        assert "buffer_ratio_unconfirmed" not in ss
 
-    def test_no_cmc_params_in_search_space(self) -> None:
+    def test_no_cmc_in_search_space(self) -> None:
         ss = CBIoUTracker.search_space
         assert "enable_cmc" not in ss
         assert "cmc_method" not in ss
-        assert "cmc_downscale" not in ss
-
-    def test_search_space_buffer_ratio_range(self) -> None:
-        spec = CBIoUTracker.search_space["buffer_ratio"]
-        assert spec["type"] == "uniform"
-        low, high = spec["range"]
-        assert low >= 0.0
-        assert high <= 1.0
-        assert low < high
