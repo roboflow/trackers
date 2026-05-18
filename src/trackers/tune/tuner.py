@@ -56,15 +56,10 @@ class Tuner:
             ``"HOTA"``, ``"IDF1"``). Case-insensitive. Defaults to
             ``"MOTA"``.
         n_trials: Number of Optuna trials to run. Defaults to ``100``.
-        seed: Random seed for Optuna's TPE sampler. When set, repeated runs with
-            the same data and ``n_trials`` sample the same hyperparameters
-            (excluding the deterministic baseline trial when
-            ``enqueue_defaults=True``). Defaults to ``None`` (non-deterministic).
         enqueue_defaults: When ``True`` (default), the first trial evaluates a
             baseline parameter set before Optuna samples further combinations.
             For each ``search_space`` key, the baseline uses the tracker's
-            ``__init__`` default. Counts toward
-            ``n_trials``.
+            ``__init__`` default. Counts toward ``n_trials``.
         fixed_params: Tracker ``__init__`` kwargs held constant for every trial
             (including the baseline). Overrides ``search_space`` for the same
             key. Use for options you do not want tuned, e.g.
@@ -74,6 +69,10 @@ class Tuner:
             from ``{images_dir}/{sequence}/img1/{frame:06d}.jpg`` (also tries
             other common extensions) and passed to ``tracker.update(..., frame=)``.
             Required when ``fixed_params`` sets ``enable_cmc=True``.
+        seed: Random seed for Optuna's TPE sampler. When set, repeated runs with
+            the same data and ``n_trials`` sample the same hyperparameters
+            (excluding the deterministic baseline trial when
+            ``enqueue_defaults=True``). Defaults to ``None`` (non-deterministic).
         threshold: IoU threshold forwarded to ``evaluate_mot_sequences``.
             Defaults to ``0.5``.
         seqmap: Optional path to a sequence map file. When provided only the
@@ -110,10 +109,10 @@ class Tuner:
         metrics: list[str] | None = None,
         objective: str = "MOTA",
         n_trials: int = 100,
-        seed: int | None = None,
         enqueue_defaults: bool = True,
         fixed_params: dict[str, Any] | None = None,
         images_dir: str | Path | None = None,
+        seed: int | None = None,
         threshold: float = 0.5,
         seqmap: str | Path | None = None,
     ) -> None:

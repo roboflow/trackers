@@ -173,9 +173,9 @@ def tune(
             Default: CLEAR.
         threshold: IoU threshold for CLEAR and Identity matching.
         seqmap: Sequence map file listing sequences to evaluate.
+        enqueue_defaults: Whether to run a baseline trial before sampling.
         fixed_params: Tracker kwargs held constant for every trial.
         images_dir: MOT image root for frame-based features (e.g. CMC).
-        enqueue_defaults: Whether to run a baseline trial before sampling.
         seed: Random seed for Optuna's TPE sampler.
         output: Output file path for best parameters (JSON format).
 
@@ -195,12 +195,12 @@ def tune(
             metrics=metrics,
             objective=objective,
             n_trials=n_trials,
-            threshold=threshold,
-            seqmap=seqmap,
+            enqueue_defaults=enqueue_defaults,
             fixed_params=fixed_params,
             images_dir=images_dir,
-            enqueue_defaults=enqueue_defaults,
             seed=seed,
+            threshold=threshold,
+            seqmap=seqmap,
         )
     except (ValueError, ImportError, FileNotFoundError) as e:
         print(str(e), file=sys.stderr)
