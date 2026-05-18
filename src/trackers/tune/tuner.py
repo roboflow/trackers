@@ -370,8 +370,14 @@ def _discover_sequences(
     return sorted(p.stem for p in detections_dir.glob("*.txt"))
 
 
-def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) -> np.ndarray | None:
-    """Load one MOT ``img1`` frame, or return ``None`` when the file is missing."""
+def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) -> np.ndarray:
+    """Load one MOT ``img1`` frame.
+
+    Raises:
+        FileNotFoundError: When no file matches ``{frame_idx:06d}`` under
+            ``{images_dir}/{seq_name}/img1/``.
+        OSError: When a matching file exists but cannot be decoded.
+    """
     frame_dir = images_dir / seq_name / "img1"
     stem = f"{frame_idx:06d}"
     for ext in _MOT_FRAME_EXTENSIONS:
@@ -381,7 +387,11 @@ def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) ->
             if frame is None:
                 raise OSError(f"Failed to decode image: {path}")
             return frame
-    return None
+    extensions = ", ".join(_MOT_FRAME_EXTENSIONS)
+    raise FileNotFoundError(
+        f"MOT frame image not found for sequence {seq_name!r}, frame {frame_idx}: "
+        f"expected {frame_dir / stem}{{ext}} with ext in ({extensions})"
+    )
 
 
 def _run_tracker_on_detections(

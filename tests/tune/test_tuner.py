@@ -424,6 +424,33 @@ class TestTunerRun:
         assert len(reset_calls) == 2  # 1 trial * 2 sequences
 
 
+class TestLoadMotSequenceFrame:
+    def test_raises_when_frame_image_missing(self, tmp_path: Path) -> None:
+        from trackers.tune.tuner import _load_mot_sequence_frame
+
+        images_dir = tmp_path / "images"
+        (images_dir / "seq_a" / "img1").mkdir(parents=True)
+
+        with pytest.raises(FileNotFoundError, match=r"seq_a.*frame 1"):
+            _load_mot_sequence_frame(images_dir, "seq_a", 1)
+
+    def test_loads_frame_with_supported_extension(self, tmp_path: Path) -> None:
+        import cv2
+        import numpy as np
+
+        from trackers.tune.tuner import _load_mot_sequence_frame
+
+        images_dir = tmp_path / "images"
+        frame_dir = images_dir / "seq_a" / "img1"
+        frame_dir.mkdir(parents=True)
+        image_path = frame_dir / "000001.jpg"
+        cv2.imwrite(str(image_path), np.zeros((8, 8, 3), dtype=np.uint8))
+
+        frame = _load_mot_sequence_frame(images_dir, "seq_a", 1)
+
+        assert frame.shape == (8, 8, 3)
+
+
 class TestRunTrackerOnDetections:
     """End-to-end tests for the _run_tracker_on_detections helper."""
 
@@ -467,3 +494,23 @@ class TestRunTrackerOnDetections:
         _run_tracker_on_detections(tracker, det_path, pred_path)
 
         assert pred_path.exists()
+
+    def test_raises_when_images_dir_set_but_frame_missing(self, tmp_path: Path) -> None:
+        from trackers import SORTTracker
+        from trackers.tune.tuner import _run_tracker_on_detections
+
+        det_path = tmp_path / "sparse.txt"
+        pred_path = tmp_path / "pred.txt"
+        det_path.write_text("1,-1,10,20,100,80,0.90,-1,-1,-1\n")
+        images_dir = tmp_path / "images"
+        (images_dir / "seq" / "img1").mkdir(parents=True)
+
+        tracker = SORTTracker()
+        with pytest.raises(FileNotFoundError, match=r"seq.*frame 1"):
+            _run_tracker_on_detections(
+                tracker,
+                det_path,
+                pred_path,
+                images_dir=images_dir,
+                seq_name="seq",
+            )
