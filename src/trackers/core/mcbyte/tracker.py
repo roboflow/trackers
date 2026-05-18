@@ -30,6 +30,39 @@ from trackers.utils.state_representations import (
 
 
 class McByteTracker(BaseTracker):
+    """McByte-style multi-object tracker.
+
+    This tracker currently provides the initial McByte integration skeleton,
+    built on top of IoU association, Kalman-filter-based tracklets, optional camera 
+    motion compensation, and optional mask-manager infrastructure.
+
+    Args:
+        lost_track_buffer: Time buffer, in frames at 30 FPS, for keeping lost
+            tracks alive before deletion. This value is scaled by ``frame_rate``.
+        frame_rate: Video frame rate used to scale ``lost_track_buffer``.
+        track_activation_threshold: Minimum confidence required to spawn a new
+            track.
+        minimum_consecutive_frames: Number of successful updates required before
+            assigning a stable track ID.
+        minimum_iou_threshold_first_assoc: Minimum similarity threshold for the
+            first association stage.
+        minimum_iou_threshold_second_assoc: Minimum similarity threshold for the
+            second association stage.
+        minimum_iou_threshold_unconfirmed_assoc: Minimum similarity threshold for
+            matching unconfirmed tracks.
+        high_conf_det_threshold: Confidence threshold used to split detections
+            into high- and low-confidence groups.
+        enable_cmc: Whether to enable camera motion compensation.
+        cmc_method: Camera motion compensation method.
+        cmc_downscale: Downscale factor used by camera motion compensation.
+        instant_first_frame_activation: Whether tracks spawned on the first frame
+            receive confirmed IDs immediately.
+        state_estimator_class: State estimator class used by McByte tracklets.
+        iou: IoU implementation used for association.
+        enable_mask_manager: Whether to create the default dummy mask manager.
+        mask_manager: Optional custom mask manager instance.
+    """
+
     tracker_id = "mcbyte"
 
     def __init__(
@@ -279,21 +312,28 @@ class McByteTracker(BaseTracker):
         detections: sv.Detections,
     ) -> None:
         """Store current tracker output for mask preparation on the next frame."""
-        self._previous_frame = None if frame is None else frame.copy()
+        self._previous_frame = None
         self._previous_tracklets = []
 
-        if detections.tracker_id is None:
+        if self.mask_manager is None or frame is None or detections.tracker_id is None:
             return
 
+        previous_tracklets = []
         for xyxy, tracker_id in zip(detections.xyxy, detections.tracker_id):
             if tracker_id < 0:
                 continue
-            self._previous_tracklets.append(
+            previous_tracklets.append(
                 TrackletSnapshot(
                     tracker_id=int(tracker_id),
                     xyxy=xyxy.copy(),
                 )
             )
+
+        if len(previous_tracklets) == 0:
+            return
+
+        self._previous_frame = frame.copy()
+        self._previous_tracklets = previous_tracklets
 
     def _get_iou_matrix(self, tracklets: list[McByteTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:
@@ -374,12 +414,18 @@ class McByteTracker(BaseTracker):
                 out_tracker_ids.append(tracklet.tracker_id)
 
     def reset(self) -> None:
-        """Reset tracker state by clearing all tracks and resetting ID counter.
-        Call this method when switching to a new video or scene.
+        """Reset tracker state by clearing all tracks, resetting ID counter, camera 
+        motion compensation and mask manager. Call this method when switching to a new 
+        video or scene.
         """
         self.tracks = []
         self.frame_id = 0
         McByteTracklet.count_id = 0
+        self._previous_frame = None
+        self._previous_tracklets = []
+        self._last_mask_output = None
+        if self.mask_manager is not None:
+            self.mask_manager.reset()
         if self.cmc is not None:
             self.cmc.reset()
 

@@ -48,25 +48,25 @@ class MaskManager:
 
         No masks are returned until at least one previous frame and previous
         tracker output are available.
+
+        If a propagator is configured, masks are initialized from the previous
+        frame and propagated to the current frame. If propagation is unavailable
+        or fails, ``None`` is returned to avoid using stale or misaligned masks.
         """
         if previous_frame is None or len(previous_tracklets) == 0:
             return None
 
-        if not self._initialized or self.mask_propagator is None:
+        if self.mask_propagator is None:
+            return None
+
+        if not self._initialized:
             mask_output = self.mask_generator.generate(previous_frame, previous_tracklets)
+            self.mask_propagator.initialize(previous_frame, mask_output)
             self._initialized = True
-
-            if self.mask_propagator is not None:
-                self.mask_propagator.initialize(previous_frame, mask_output)
-                propagated_output = self.mask_propagator.propagate(frame)
-                return propagated_output if propagated_output is not None else mask_output
-
-            return mask_output
 
         propagated_output = self.mask_propagator.propagate(frame)
         if propagated_output is not None:
             return propagated_output
 
-        mask_output = self.mask_generator.generate(previous_frame, previous_tracklets)
-        self.mask_propagator.initialize(previous_frame, mask_output)
-        return mask_output
+        self._initialized = False
+        return None

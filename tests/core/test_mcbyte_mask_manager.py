@@ -59,7 +59,7 @@ def test_dummy_box_mask_generator_fills_detection_box() -> None:
     assert output.masks.sum() == 20 * 20
 
 
-def test_mask_manager_returns_none_without_previous_inputs() -> None:
+def test_mask_manager_returns_none_without_previous_frame_or_tracklets() -> None:
     manager = MaskManager(
         mask_generator=DummyBoxMaskGenerator(),
         mask_propagator=DummyIdentityMaskPropagator(),
@@ -74,7 +74,7 @@ def test_mask_manager_returns_none_without_previous_inputs() -> None:
     assert output is None
 
 
-def test_mask_manager_generates_masks_from_previous_frame_inputs() -> None:
+def test_mask_manager_returns_none_without_propagator() -> None:
     manager = MaskManager(
         mask_generator=DummyBoxMaskGenerator(),
         mask_propagator=None,
@@ -91,11 +91,7 @@ def test_mask_manager_generates_masks_from_previous_frame_inputs() -> None:
         ],
     )
 
-    assert output is not None
-    assert output.masks is not None
-    assert output.tracklet_mask_dict == {3: 0}
-    assert output.masks.shape == (1, 100, 120)
-    assert output.masks.sum() == 20 * 24
+    assert output is None
 
 
 def test_mask_manager_uses_propagator_after_initialization() -> None:
