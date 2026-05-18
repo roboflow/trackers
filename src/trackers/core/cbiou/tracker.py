@@ -206,9 +206,7 @@ class CBIoUTracker(BoTSORTTracker):
         # only (excluding lost tracks). Paper b2 (large buffer); no score fusion.
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
         iou_matrix = self._biou_matrix(remaining_tracked, low_boxes, self.iou_second)
-        matched, _, unmatched_low = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold_second_assoc
-        )
+        matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
             track = remaining_tracked[row]
@@ -232,7 +230,7 @@ class CBIoUTracker(BoTSORTTracker):
         if len(unconfirmed_tracks) > 0 and len(unmatched_high_list) > 0:
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
-            iou_matrix = self._biou_matrix(unconfirmed_tracks, uh_boxes, self.iou_first) 
+            iou_matrix = self._biou_matrix(unconfirmed_tracks, uh_boxes, self.iou_first)
             iou_matrix = _fuse_score(self.iou_first.normalize_for_fusion(iou_matrix), uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
