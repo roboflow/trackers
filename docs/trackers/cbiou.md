@@ -20,6 +20,29 @@ C-BIoU follows the same tracking-by-detection backbone as [BoT-SORT](botsort.md)
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
 
+Measured with this library (YOLOX detections on MOT17 and SportsMOT test; oracle detections on SoccerNet test and DanceTrack val). Default buffers: 
+`buffer_ratio_first=0.3`, `buffer_ratio_second=0.5`.
+
+=== "Default parameters"
+
+|  Dataset  |   HOTA   |   IDF1   |   MOTA   |
+| :-------: | :------: | :------: | :------: |
+|   MOT17   |   63.0   |   79.1   |   77.4   |
+| SportsMOT |   73.1   |   72.6   |   96.7   |
+| SoccerNet |   82.6   |   76.6   |   97.0   |
+| DanceTrack |  53.8   |   53.8   |   90.1   |
+
+=== "Tuned parameters"
+
+Tuned with Optuna (`trackers_cbiou_tuning.ipynb`): MOT17 val-half, SportsMOT val, SoccerNet train, DanceTrack train; evaluated on the splits below.
+
+|  Dataset  |   HOTA   |   IDF1   |   MOTA   |
+| :-------: | :------: | :------: | :------: |
+|   MOT17   |   63.0   |   79.1   |   77.2   |
+| SportsMOT |   72.5   |   72.2   |   96.9   |
+| SoccerNet |   85.5   |   79.6   |   99.3   |
+| DanceTrack |  53.3   |   54.4   |   89.2   |
+
 C-BIoU is aimed at sports and dance scenes with irregular motion and similar-looking objects (SoccerNet, DanceTrack, SportsMOT), where the paper reports strong gains over SORT-style baselines.
 
 ## Algorithm
