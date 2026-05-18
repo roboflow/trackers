@@ -33,7 +33,7 @@ class McByteTracker(BaseTracker):
     """McByte-style multi-object tracker.
 
     This tracker currently provides the initial McByte integration skeleton,
-    built on top of IoU association, Kalman-filter-based tracklets, optional camera 
+    built on top of IoU association, Kalman-filter-based tracklets, optional camera
     motion compensation, and optional mask-manager infrastructure.
 
     Args:
@@ -414,8 +414,8 @@ class McByteTracker(BaseTracker):
                 out_tracker_ids.append(tracklet.tracker_id)
 
     def reset(self) -> None:
-        """Reset tracker state by clearing all tracks, resetting ID counter, camera 
-        motion compensation and mask manager. Call this method when switching to a new 
+        """Reset tracker state by clearing all tracks, resetting ID counter, camera
+        motion compensation and mask manager. Call this method when switching to a new
         video or scene.
         """
         self.tracks = []
