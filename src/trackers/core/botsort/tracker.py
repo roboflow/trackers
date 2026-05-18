@@ -104,7 +104,6 @@ class BoTSORTTracker(BaseTracker):
         },
         "high_conf_det_threshold": {"type": "uniform", "range": [0.3, 0.8]},
         "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
-        "enable_cmc": {"type": "categorical", "choices": [False]},
         "cmc_downscale": {"type": "randint", "range": [1, 4]},
     }
 
