@@ -13,6 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.bytetrack.utils import _get_alive_tracklets
+from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -39,6 +40,14 @@ class ByteTrackTracker(BaseTracker):
     detector quality, with performance drops in noisy or low-resolution inputs.
     Additionally, the motion-only secondary association may lead to erroneous matches
     in scenes with similar moving objects.
+
+    Note:
+        When input detections carry no confidence (`detections.confidence is
+        None`), ByteTrack falls back to a single-stage IoU match equivalent to
+        SORT — every detection is treated as fully confident, so the
+        low-confidence recovery stage is bypassed. Pass per-detection
+        confidences to exercise the two-stage matching this class otherwise
+        provides.
 
     Args:
         lost_track_buffer: `int` specifying number of frames to buffer when a
@@ -114,7 +123,10 @@ class ByteTrackTracker(BaseTracker):
         Args:
             detections: `sv.Detections` containing bounding boxes with shape
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
-                confidence scores.
+                confidence scores. When `detections.confidence is None`, all
+                detections are treated as confidence `1.0` — they bypass the
+                low-confidence stage and any unmatched boxes can spawn new
+                tracks regardless of `track_activation_threshold`.
             frame: Ignored by ByteTrack. If provided (not `None`), a warning is
                 emitted.
 
@@ -136,7 +148,7 @@ class ByteTrackTracker(BaseTracker):
             tracker.predict()
 
         detection_boxes = detections.xyxy
-        confidences = detections.confidence if detections.confidence is not None else np.zeros(len(detections))
+        confidences = default_confidences(detections)
 
         # Split indices by confidence threshold (no sv.Detections slicing)
         high_mask = confidences >= self.high_conf_det_threshold

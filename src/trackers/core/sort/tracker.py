@@ -13,6 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.core.sort.utils import _get_alive_tracklets
+from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -199,7 +200,7 @@ class SORTTracker(BaseTracker):
             self.tracks[row].update(detection_boxes[col])
             matched_tracklet_for_det[col] = self.tracks[row]
 
-        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
+        confidences = default_confidences(detections)
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
         # Remove dead tracklets
