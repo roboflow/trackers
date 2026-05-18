@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -19,7 +19,7 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
-from trackers.tune.tuner import Tuner, _default_trial_params, _extract_metric
+from trackers.tune.tuner import Tuner, _create_optuna_study, _default_trial_params, _extract_metric
 
 optuna = pytest.importorskip("optuna")
 
@@ -255,6 +255,62 @@ class TestTunerInit:
         gt_dir, det_dir = _setup_dirs(tmp_path)
         tuner = Tuner("bytetrack", gt_dir, det_dir, objective="mota")
         assert tuner._objective_metric == "MOTA"
+
+
+class TestTunerSeed:
+    def test_create_optuna_study_uses_seeded_sampler(self) -> None:
+        with patch.object(optuna, "create_study", wraps=optuna.create_study) as mock_create:
+            study = _create_optuna_study(optuna, "bytetrack", 42)
+        sampler = mock_create.call_args.kwargs["sampler"]
+        assert isinstance(sampler, optuna.samplers.TPESampler)
+        assert isinstance(study.sampler, optuna.samplers.TPESampler)
+
+    def test_create_optuna_study_without_seed_uses_default_sampler(self) -> None:
+        with patch.object(optuna, "create_study", wraps=optuna.create_study) as mock_create:
+            study = _create_optuna_study(optuna, "bytetrack", None)
+        assert "sampler" not in mock_create.call_args.kwargs
+        assert study.sampler is not None
+
+    def test_tuner_passes_seed_to_study(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        mock_study = MagicMock()
+        with (
+            patch("trackers.tune.tuner._create_optuna_study", return_value=mock_study) as mock_create,
+            patch(
+                "trackers.tune.tuner.evaluate_mot_sequences",
+                return_value=_make_benchmark_result(),
+            ),
+            patch("trackers.tune.tuner._run_tracker_on_detections"),
+        ):
+            tuner = Tuner("bytetrack", gt_dir, det_dir, n_trials=1, seed=7, enqueue_defaults=False)
+            tuner.run()
+        mock_create.assert_called_once_with(tuner._optuna, "bytetrack", 7)
+
+    def test_same_seed_reproduces_sampled_trials(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        trial_params_runs: list[list[dict]] = []
+
+        for _ in range(2):
+            with (
+                patch(
+                    "trackers.tune.tuner.evaluate_mot_sequences",
+                    return_value=_make_benchmark_result(),
+                ),
+                patch("trackers.tune.tuner._run_tracker_on_detections"),
+            ):
+                tuner = Tuner(
+                    "bytetrack",
+                    gt_dir,
+                    det_dir,
+                    n_trials=4,
+                    seed=42,
+                    enqueue_defaults=False,
+                )
+                tuner.run()
+            assert tuner.study is not None
+            trial_params_runs.append([dict(t.params) for t in tuner.study.trials])
+
+        assert trial_params_runs[0] == trial_params_runs[1]
 
 
 class TestTunerRun:

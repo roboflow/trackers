@@ -98,6 +98,13 @@ def add_tune_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Skip the baseline trial that uses tracker/search_space defaults.",
     )
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Random seed for Optuna sampling (reproducible hyperparameter trials).",
+    )
+    parser.add_argument(
         "--output",
         "-o",
         type=Path,
@@ -133,6 +140,7 @@ def run_tune(args: argparse.Namespace) -> int:
         fixed_params=fixed_params,
         images_dir=args.images_dir,
         enqueue_defaults=not args.no_enqueue_defaults,
+        seed=args.seed,
         output=args.output,
     )
 
@@ -149,6 +157,7 @@ def tune(
     fixed_params: dict | None = None,
     images_dir: Path | None = None,
     enqueue_defaults: bool = True,
+    seed: int | None = None,
     output: Path | None = None,
 ) -> int:
     """Tune tracker hyperparameters using Optuna.
@@ -167,6 +176,7 @@ def tune(
         fixed_params: Tracker kwargs held constant for every trial.
         images_dir: MOT image root for frame-based features (e.g. CMC).
         enqueue_defaults: Whether to run a baseline trial before sampling.
+        seed: Random seed for Optuna's TPE sampler.
         output: Output file path for best parameters (JSON format).
 
     Returns:
@@ -190,6 +200,7 @@ def tune(
             fixed_params=fixed_params,
             images_dir=images_dir,
             enqueue_defaults=enqueue_defaults,
+            seed=seed,
         )
     except (ValueError, ImportError, FileNotFoundError) as e:
         print(str(e), file=sys.stderr)

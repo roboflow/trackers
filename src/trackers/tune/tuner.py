@@ -56,6 +56,10 @@ class Tuner:
             ``"HOTA"``, ``"IDF1"``). Case-insensitive. Defaults to
             ``"MOTA"``.
         n_trials: Number of Optuna trials to run. Defaults to ``100``.
+        seed: Random seed for Optuna's TPE sampler. When set, repeated runs with
+            the same data and ``n_trials`` sample the same hyperparameters
+            (excluding the deterministic baseline trial when
+            ``enqueue_defaults=True``). Defaults to ``None`` (non-deterministic).
         enqueue_defaults: When ``True`` (default), the first trial evaluates a
             baseline parameter set before Optuna samples further combinations.
             For each ``search_space`` key, the baseline uses the tracker's
@@ -106,6 +110,7 @@ class Tuner:
         metrics: list[str] | None = None,
         objective: str = "MOTA",
         n_trials: int = 100,
+        seed: int | None = None,
         enqueue_defaults: bool = True,
         fixed_params: dict[str, Any] | None = None,
         images_dir: str | Path | None = None,
@@ -148,6 +153,7 @@ class Tuner:
         self._metrics = list(metrics) if metrics else ["CLEAR"]
         self._objective_metric = objective.upper()
         self._n_trials = n_trials
+        self._seed = seed
         self._enqueue_defaults = enqueue_defaults
         self._default_trial_params: dict[str, Any] | None = None
         if enqueue_defaults:
@@ -274,14 +280,26 @@ class Tuner:
             with ``fixed_params`` so the result can be passed directly to the
             tracker constructor.
         """
-        self.study = self._optuna.create_study(
-            direction="maximize",
-            study_name=f"trackers-tune-{self._tracker_id}",
-        )
+        self.study = _create_optuna_study(self._optuna, self._tracker_id, self._seed)
         if self._default_trial_params is not None:
             self.study.enqueue_trial({**self._default_trial_params, **self._fixed_params})
         self.study.optimize(self._objective, n_trials=self._n_trials)
         return {**dict(self.study.best_params), **self._fixed_params}
+
+
+def _create_optuna_study(
+    optuna_module: Any,
+    tracker_id: str,
+    seed: int | None,
+) -> Any:
+    """Create an Optuna study, optionally with a seeded TPE sampler."""
+    kwargs: dict[str, Any] = {
+        "direction": "maximize",
+        "study_name": f"trackers-tune-{tracker_id}",
+    }
+    if seed is not None:
+        kwargs["sampler"] = optuna_module.samplers.TPESampler(seed=seed)
+    return optuna_module.create_study(**kwargs)
 
 
 def _validate_tracker_init_params(tracker_class: type[BaseTracker], params: dict[str, Any]) -> None:

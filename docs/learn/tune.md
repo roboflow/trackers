@@ -137,6 +137,7 @@ For detections, use `id=-1`. For more details on the format and evaluation workf
         objective="HOTA",
         metrics=["CLEAR", "HOTA", "Identity"],
         n_trials=50,
+        seed=42,
     )
 
     best_params = tuner.run()
@@ -257,6 +258,11 @@ All arguments accepted by `trackers tune`.
       <td><code>--seqmap</code></td>
       <td>Optional path to a sequence map file. When set, only listed sequences are tuned.</td>
       <td>all files in <code>--detections-dir</code></td>
+    </tr>
+    <tr>
+      <td><code>--seed</code></td>
+      <td>Random seed for Optuna's TPE sampler (reproducible sampled trials).</td>
+      <td>None</td>
     </tr>
     <tr>
       <td><code>--output</code>, <code>-o</code></td>

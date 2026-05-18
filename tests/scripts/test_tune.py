@@ -198,6 +198,7 @@ class TestRunTune:
             fixed_params=None,
             images_dir=None,
             no_enqueue_defaults=False,
+            seed=None,
             output=output_path,
         )
         with patch("trackers.scripts.tune.tune", return_value=0) as mock_tune:
@@ -215,5 +216,6 @@ class TestRunTune:
             fixed_params=None,
             images_dir=None,
             enqueue_defaults=True,
+            seed=None,
             output=output_path,
         )
