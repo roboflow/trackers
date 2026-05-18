@@ -8,10 +8,13 @@
 
 from __future__ import annotations
 
+import inspect
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import cv2
+import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker
@@ -21,6 +24,8 @@ from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 
 if TYPE_CHECKING:
     import optuna
+
+_MOT_FRAME_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
 
 
 class Tuner:
@@ -51,6 +56,20 @@ class Tuner:
             ``"HOTA"``, ``"IDF1"``). Case-insensitive. Defaults to
             ``"MOTA"``.
         n_trials: Number of Optuna trials to run. Defaults to ``100``.
+        enqueue_defaults: When ``True`` (default), the first trial evaluates a
+            baseline parameter set before Optuna samples further combinations.
+            For each ``search_space`` key, the baseline uses the tracker's
+            ``__init__`` default. Counts toward
+            ``n_trials``.
+        fixed_params: Tracker ``__init__`` kwargs held constant for every trial
+            (including the baseline). Overrides ``search_space`` for the same
+            key. Use for options you do not want tuned, e.g.
+            ``{"enable_cmc": False}`` or ``{"lost_track_buffer": 30}``.
+            Keys in ``fixed_params`` are not sampled by Optuna.
+        images_dir: Optional MOT-style image root. When set, frames are loaded
+            from ``{images_dir}/{sequence}/img1/{frame:06d}.jpg`` (also tries
+            other common extensions) and passed to ``tracker.update(..., frame=)``.
+            Required when ``fixed_params`` sets ``enable_cmc=True``.
         threshold: IoU threshold forwarded to ``evaluate_mot_sequences``.
             Defaults to ``0.5``.
         seqmap: Optional path to a sequence map file. When provided only the
@@ -68,6 +87,15 @@ class Tuner:
                 n_trials=50,
             )
             best_params = tuner.run()
+
+        Tune BoTSORT without camera motion compensation::
+
+            tuner = Tuner(
+                tracker_id="botsort",
+                gt_dir="data/gt/",
+                detections_dir="data/det/",
+                fixed_params={"enable_cmc": False},
+            )
     """
 
     def __init__(
@@ -78,6 +106,9 @@ class Tuner:
         metrics: list[str] | None = None,
         objective: str = "MOTA",
         n_trials: int = 100,
+        enqueue_defaults: bool = True,
+        fixed_params: dict[str, Any] | None = None,
+        images_dir: str | Path | None = None,
         threshold: float = 0.5,
         seqmap: str | Path | None = None,
     ) -> None:
@@ -104,12 +135,33 @@ class Tuner:
 
         self._tracker_id = tracker_id
         self._tracker_info = tracker_info
+        self._fixed_params = dict(fixed_params) if fixed_params else {}
+        _validate_tracker_init_params(self._tracker_info.tracker_class, self._fixed_params)
+
         self._search_space: dict[str, dict] = search_space
+        self._tunable_search_space: dict[str, dict] = {
+            name: spec for name, spec in search_space.items() if name not in self._fixed_params
+        }
         self._gt_dir = Path(gt_dir)
         self._detections_dir = Path(detections_dir)
+        self._images_dir = Path(images_dir) if images_dir is not None else None
         self._metrics = list(metrics) if metrics else ["CLEAR"]
         self._objective_metric = objective.upper()
         self._n_trials = n_trials
+        self._enqueue_defaults = enqueue_defaults
+        self._default_trial_params: dict[str, Any] | None = None
+        if enqueue_defaults:
+            self._default_trial_params = _default_trial_params(
+                self._tracker_info.tracker_class,
+                self._search_space,
+            )
+
+        if self._fixed_params.get("enable_cmc") is True and self._images_dir is None:
+            raise ValueError(
+                "fixed_params sets enable_cmc=True but images_dir was not provided. "
+                "Pass images_dir pointing at MOT sequence folders (…/{sequence}/img1/) "
+                "so CMC can read frames, or set enable_cmc=False."
+            )
 
         # Auto-add the metric family required by the chosen objective so
         # callers don't need to remember the mapping themselves.
@@ -155,6 +207,10 @@ class Tuner:
         if missing_gt_files:
             raise FileNotFoundError("Missing ground-truth files for selected sequences: " + ", ".join(missing_gt_files))
 
+    def _build_tracker(self, trial_params: dict[str, Any]) -> BaseTracker:
+        """Instantiate the tracker from sampled and fixed parameters."""
+        return self._tracker_info.tracker_class(**trial_params, **self._fixed_params)
+
     def _objective(self, trial: optuna.Trial) -> float:
         """Sample hyperparameters, run tracker over all sequences, return metric.
 
@@ -165,7 +221,7 @@ class Tuner:
             Scalar metric value for this trial.
         """
         params: dict[str, Any] = {}
-        for name, spec in self._search_space.items():
+        for name, spec in self._tunable_search_space.items():
             stype = spec["type"]
             if stype == "randint":
                 low, high = spec["range"]
@@ -178,8 +234,7 @@ class Tuner:
             else:
                 raise ValueError(f"Unknown search_space type: {stype!r}. Valid types: 'randint', 'uniform', 'choice'")
 
-        # Pass only sampled parameters so tracker __init__ defaults apply naturally.
-        tracker = self._tracker_info.tracker_class(**params)
+        tracker = self._build_tracker(params)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_dir = Path(tmp_dir)
@@ -187,15 +242,19 @@ class Tuner:
                 tracker.reset()
                 det_path = self._detections_dir / f"{seq_name}.txt"
                 pred_path = output_dir / f"{seq_name}.txt"
-                _run_tracker_on_detections(tracker, det_path, pred_path)
-
-            seqmap = getattr(self, "_seqmap", None)
-            if seqmap is None:
-                seqmap = output_dir / "seqmap.txt"
-                seqmap.write_text(
-                    "\n".join(self._sequences) + "\n",
-                    encoding="utf-8",
+                _run_tracker_on_detections(
+                    tracker,
+                    det_path,
+                    pred_path,
+                    images_dir=self._images_dir,
+                    seq_name=seq_name,
                 )
+
+            seqmap = output_dir / "seqmap.txt"
+            seqmap.write_text(
+                "\n".join(self._sequences) + "\n",
+                encoding="utf-8",
+            )
 
             result: BenchmarkResult = evaluate_mot_sequences(
                 gt_dir=self._gt_dir,
@@ -211,15 +270,63 @@ class Tuner:
         """Create an Optuna study, run trials, and return the best parameters.
 
         Returns:
-            Dictionary mapping each ``search_space`` parameter name to its
-            best value found across all trials.
+            Dictionary mapping ``search_space`` parameter names to their best values, merged
+            with ``fixed_params`` so the result can be passed directly to the
+            tracker constructor.
         """
         self.study = self._optuna.create_study(
             direction="maximize",
             study_name=f"trackers-tune-{self._tracker_id}",
         )
+        if self._default_trial_params is not None:
+            self.study.enqueue_trial({**self._default_trial_params, **self._fixed_params})
         self.study.optimize(self._objective, n_trials=self._n_trials)
-        return dict(self.study.best_params)
+        return {**dict(self.study.best_params), **self._fixed_params}
+
+
+def _validate_tracker_init_params(tracker_class: type[BaseTracker], params: dict[str, Any]) -> None:
+    """Ensure ``params`` keys are valid ``__init__`` parameter names."""
+    if not params:
+        return
+    init_params = {n for n in inspect.signature(tracker_class.__init__).parameters if n != "self"}  # type: ignore[misc]
+    unknown = set(params) - init_params
+    if unknown:
+        raise ValueError(
+            f"Unknown tracker parameter(s) {sorted(unknown)!r} for {tracker_class.__name__}. "
+            f"Valid parameters: {sorted(init_params)}"
+        )
+
+
+def _default_trial_params(
+    tracker_class: type[BaseTracker],
+    search_space: dict[str, dict],
+) -> dict[str, Any]:
+    """Build the parameter dict for the enqueued baseline trial.
+
+    Uses each ``search_space`` key's ``__init__`` default.
+
+    Args:
+        tracker_class: Registered tracker class.
+        search_space: Hyperparameter search space for the tracker.
+
+    Returns:
+        Mapping of search-space parameter names to trial values.
+
+    Raises:
+        ValueError: If a baseline cannot be resolved for any key.
+    """
+    sig = inspect.signature(tracker_class.__init__)  # type: ignore[misc]
+    params: dict[str, Any] = {}
+    for name, spec in search_space.items():
+        param = sig.parameters.get(name)
+        if param is None:
+            raise ValueError(f"search_space key {name!r} is not a parameter of {tracker_class.__name__}.__init__")
+        if param.default is inspect.Parameter.empty:
+            raise ValueError(
+                f"Cannot enqueue default trial for {tracker_class.__name__}: parameter {name!r} has no __init__ default"
+            )
+        params[name] = param.default
+    return params
 
 
 def _discover_sequences(
@@ -246,10 +353,27 @@ def _discover_sequences(
     return sorted(p.stem for p in detections_dir.glob("*.txt"))
 
 
+def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) -> np.ndarray | None:
+    """Load one MOT ``img1`` frame, or return ``None`` when the file is missing."""
+    frame_dir = images_dir / seq_name / "img1"
+    stem = f"{frame_idx:06d}"
+    for ext in _MOT_FRAME_EXTENSIONS:
+        path = frame_dir / f"{stem}{ext}"
+        if path.is_file():
+            frame = cv2.imread(str(path))
+            if frame is None:
+                raise OSError(f"Failed to decode image: {path}")
+            return frame
+    return None
+
+
 def _run_tracker_on_detections(
     tracker: BaseTracker,
     det_path: Path,
     pred_path: Path,
+    *,
+    images_dir: Path | None = None,
+    seq_name: str | None = None,
 ) -> None:
     """Run a tracker on a MOT detection file and write predictions.
 
@@ -261,6 +385,8 @@ def _run_tracker_on_detections(
         tracker: Tracker instance already reset for this sequence.
         det_path: Path to the MOT-format detection file.
         pred_path: Destination path for the MOT-format prediction file.
+        images_dir: Optional MOT image root for ``{seq}/img1/`` frames.
+        seq_name: Sequence name used with ``images_dir``.
     """
     det_data = load_mot_file(det_path)
     max_frame = max(det_data.keys())
@@ -271,8 +397,10 @@ def _run_tracker_on_detections(
                 dets = _mot_frame_to_detections(det_data[frame_idx])
             else:
                 dets = sv.Detections.empty()
-            # TODO: Add frame reading to tuner class
-            tracked = tracker.update(dets)
+            frame: np.ndarray | None = None
+            if images_dir is not None and seq_name is not None:
+                frame = _load_mot_sequence_frame(images_dir, seq_name, frame_idx)
+            tracked = tracker.update(dets, frame=frame)
             mot_out.write(frame_idx, tracked)
 
 

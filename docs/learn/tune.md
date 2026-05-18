@@ -32,6 +32,56 @@ For more options, see the [install guide](install.md).
 
 The tuner needs matching MOT files for ground truth and detections.
 
+By default, the **first trial** evaluates a baseline parameter set before Optuna
+samples further combinations. That trial counts toward `--n-trials` / `n_trials`.
+Set `enqueue_defaults=False` on `Tuner` to disable this behavior.
+
+For each `search_space` key, the baseline uses the tracker's default
+when it lies within the search space.
+
+Options that are not tuned (or differ from `__init__`) are set with
+`fixed_params` on `Tuner`. They apply to every trial, including the baseline,
+override the same key in `search_space` if present, and are returned from
+`run()` merged into the best parameter dict.
+
+=== "Python"
+
+    ```python
+    from trackers.tune import Tuner
+
+    # Detection-only BoTSORT (no frames, CMC off)
+    tuner = Tuner(
+        tracker_id="botsort",
+        gt_dir="./data/gt",
+        detections_dir="./data/detections",
+        fixed_params={"enable_cmc": False},
+        n_trials=50,
+    )
+
+    # BoTSORT with CMC (MOT-style images required)
+    tuner = Tuner(
+        tracker_id="botsort",
+        gt_dir="./data/gt",
+        detections_dir="./data/detections",
+        images_dir="./data/images",
+        fixed_params={"enable_cmc": True},
+        n_trials=50,
+    )
+    ```
+
+=== "CLI"
+
+    ```text
+    trackers tune \
+        --tracker botsort \
+        --gt-dir ./data/gt \
+        --detections-dir ./data/detections \
+        --fixed-params '{"enable_cmc": false}'
+    ```
+
+Images are read from `{images_dir}/{sequence}/img1/{frame:06d}.jpg` (and
+common alternatives such as `.png`).
+
 ```text
 data
 ├── gt

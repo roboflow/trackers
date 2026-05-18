@@ -81,6 +81,23 @@ def add_tune_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Sequence map file listing sequences to evaluate.",
     )
     parser.add_argument(
+        "--fixed-params",
+        type=str,
+        metavar="JSON",
+        help=("JSON object of tracker kwargs held fixed for every trial (e.g. '{\"enable_cmc\": false}')."),
+    )
+    parser.add_argument(
+        "--images-dir",
+        type=Path,
+        metavar="DIR",
+        help="MOT image root ({sequence}/img1/) for trackers that need frames (e.g. BoTSORT CMC).",
+    )
+    parser.add_argument(
+        "--no-enqueue-defaults",
+        action="store_true",
+        help="Skip the baseline trial that uses tracker/search_space defaults.",
+    )
+    parser.add_argument(
         "--output",
         "-o",
         type=Path,
@@ -93,6 +110,17 @@ def add_tune_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 def run_tune(args: argparse.Namespace) -> int:
     """Execute the tune command."""
+    fixed_params = None
+    if args.fixed_params is not None:
+        try:
+            fixed_params = json.loads(args.fixed_params)
+        except json.JSONDecodeError as e:
+            print(f"Invalid --fixed-params JSON: {e}", file=sys.stderr)
+            return 1
+        if not isinstance(fixed_params, dict):
+            print("--fixed-params must be a JSON object", file=sys.stderr)
+            return 1
+
     return tune(
         tracker=args.tracker,
         gt_dir=args.gt_dir,
@@ -102,6 +130,9 @@ def run_tune(args: argparse.Namespace) -> int:
         metrics=args.metrics,
         threshold=args.threshold,
         seqmap=args.seqmap,
+        fixed_params=fixed_params,
+        images_dir=args.images_dir,
+        enqueue_defaults=not args.no_enqueue_defaults,
         output=args.output,
     )
 
@@ -115,6 +146,9 @@ def tune(
     metrics: list[str] | None = None,
     threshold: float = 0.5,
     seqmap: Path | None = None,
+    fixed_params: dict | None = None,
+    images_dir: Path | None = None,
+    enqueue_defaults: bool = True,
     output: Path | None = None,
 ) -> int:
     """Tune tracker hyperparameters using Optuna.
@@ -130,6 +164,9 @@ def tune(
             Default: CLEAR.
         threshold: IoU threshold for CLEAR and Identity matching.
         seqmap: Sequence map file listing sequences to evaluate.
+        fixed_params: Tracker kwargs held constant for every trial.
+        images_dir: MOT image root for frame-based features (e.g. CMC).
+        enqueue_defaults: Whether to run a baseline trial before sampling.
         output: Output file path for best parameters (JSON format).
 
     Returns:
@@ -150,6 +187,9 @@ def tune(
             n_trials=n_trials,
             threshold=threshold,
             seqmap=seqmap,
+            fixed_params=fixed_params,
+            images_dir=images_dir,
+            enqueue_defaults=enqueue_defaults,
         )
     except (ValueError, ImportError, FileNotFoundError) as e:
         print(str(e), file=sys.stderr)

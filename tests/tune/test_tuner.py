@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
+from trackers import ByteTrackTracker
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
@@ -18,7 +19,7 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
-from trackers.tune.tuner import Tuner, _extract_metric
+from trackers.tune.tuner import Tuner, _default_trial_params, _extract_metric
 
 optuna = pytest.importorskip("optuna")
 
@@ -115,6 +116,68 @@ def test_extract_metric_raises(metric: str) -> None:
         _extract_metric(result, metric)
 
 
+class TestDefaultTrialParams:
+    def test_bytetrack_defaults_match_init(self) -> None:
+        assert ByteTrackTracker.search_space is not None
+        defaults = _default_trial_params(ByteTrackTracker, ByteTrackTracker.search_space)
+        assert defaults["lost_track_buffer"] == 30
+        assert defaults["track_activation_threshold"] == 0.7
+        assert defaults["minimum_iou_threshold"] == 0.1
+        assert defaults["high_conf_det_threshold"] == 0.6
+        assert defaults["minimum_consecutive_frames"] == 2
+
+
+class TestTunerFixedParams:
+    def test_fixed_params_merged_into_best_result(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+
+        with (
+            patch(
+                "trackers.tune.tuner.evaluate_mot_sequences",
+                return_value=_make_benchmark_result(),
+            ),
+            patch("trackers.tune.tuner._run_tracker_on_detections"),
+        ):
+            tuner = Tuner(
+                "bytetrack",
+                gt_dir,
+                det_dir,
+                n_trials=1,
+                enqueue_defaults=False,
+                fixed_params={"frame_rate": 25.0},
+            )
+            best = tuner.run()
+
+        assert best["frame_rate"] == 25.0
+
+    def test_raises_when_enable_cmc_without_images(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        with pytest.raises(ValueError, match=r"images_dir"):
+            Tuner(
+                "botsort",
+                gt_dir,
+                det_dir,
+                fixed_params={"enable_cmc": True},
+            )
+
+    def test_raises_on_unknown_fixed_param(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        with pytest.raises(ValueError, match=r"Unknown tracker parameter"):
+            Tuner("bytetrack", gt_dir, det_dir, fixed_params={"not_a_param": 1})
+
+    def test_fixed_params_excluded_from_tunable_search_space(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner(
+            "bytetrack",
+            gt_dir,
+            det_dir,
+            fixed_params={"lost_track_buffer": 42},
+        )
+        assert "lost_track_buffer" in tuner._search_space
+        assert "lost_track_buffer" not in tuner._tunable_search_space
+        assert tuner._fixed_params["lost_track_buffer"] == 42
+
+
 class TestTunerInit:
     def test_raises_for_unknown_tracker(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
@@ -195,6 +258,67 @@ class TestTunerInit:
 
 
 class TestTunerRun:
+    def test_run_enqueues_defaults_as_first_trial(self, tmp_path: Path) -> None:
+        assert ByteTrackTracker.search_space is not None
+        expected_defaults = _default_trial_params(ByteTrackTracker, ByteTrackTracker.search_space)
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+
+        with (
+            patch(
+                "trackers.tune.tuner.evaluate_mot_sequences",
+                return_value=_make_benchmark_result(),
+            ),
+            patch("trackers.tune.tuner._run_tracker_on_detections"),
+        ):
+            tuner = Tuner("bytetrack", gt_dir, det_dir, n_trials=2)
+            tuner.run()
+
+        assert tuner.study is not None
+        assert dict(tuner.study.trials[0].params) == expected_defaults
+        assert len(tuner.study.trials) == 2
+
+    def test_run_enqueues_fixed_params_on_baseline(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        enqueue_mock = patch.object(optuna.Study, "enqueue_trial")
+
+        with (
+            patch(
+                "trackers.tune.tuner.evaluate_mot_sequences",
+                return_value=_make_benchmark_result(),
+            ),
+            patch("trackers.tune.tuner._run_tracker_on_detections"),
+            enqueue_mock as mock_enqueue,
+        ):
+            tuner = Tuner(
+                "bytetrack",
+                gt_dir,
+                det_dir,
+                n_trials=1,
+                fixed_params={"frame_rate": 20.0},
+            )
+            tuner.run()
+
+        enqueued = mock_enqueue.call_args[0][0]
+        assert enqueued["frame_rate"] == 20.0
+        assert enqueued["lost_track_buffer"] == 30
+
+    def test_run_without_enqueue_defaults_skips_default_trial(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+
+        with (
+            patch(
+                "trackers.tune.tuner.evaluate_mot_sequences",
+                return_value=_make_benchmark_result(),
+            ),
+            patch("trackers.tune.tuner._run_tracker_on_detections"),
+        ):
+            tuner = Tuner("bytetrack", gt_dir, det_dir, n_trials=1, enqueue_defaults=False)
+            assert tuner._default_trial_params is None
+            tuner.run()
+
+        assert tuner.study is not None
+        assert len(tuner.study.trials) == 1
+
     def test_run_returns_dict_with_search_space_keys(self, tmp_path: Path) -> None:
         from trackers import ByteTrackTracker
 
