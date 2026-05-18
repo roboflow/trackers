@@ -333,7 +333,8 @@ class TestTunerRun:
         assert dict(tuner.study.trials[0].params) == expected_defaults
         assert len(tuner.study.trials) == 2
 
-    def test_run_enqueues_fixed_params_on_baseline(self, tmp_path: Path) -> None:
+    def test_run_baseline_enqueue_excludes_fixed_params(self, tmp_path: Path) -> None:
+        """Baseline enqueue only includes tunable search_space keys, not fixed_params."""
         gt_dir, det_dir = _setup_dirs(tmp_path)
         enqueue_mock = patch.object(optuna.Study, "enqueue_trial")
 
@@ -350,13 +351,14 @@ class TestTunerRun:
                 gt_dir,
                 det_dir,
                 n_trials=1,
-                fixed_params={"frame_rate": 20.0},
+                fixed_params={"frame_rate": 20.0, "lost_track_buffer": 42},
             )
             tuner.run()
 
         enqueued = mock_enqueue.call_args[0][0]
-        assert enqueued["frame_rate"] == 20.0
-        assert enqueued["lost_track_buffer"] == 30
+        assert "frame_rate" not in enqueued  # not in search_space
+        assert "lost_track_buffer" not in enqueued  # fixed → excluded from sampling
+        assert enqueued["track_activation_threshold"] == 0.7
 
     def test_run_without_enqueue_defaults_skips_default_trial(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)

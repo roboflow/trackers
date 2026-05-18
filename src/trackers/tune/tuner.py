@@ -281,7 +281,15 @@ class Tuner:
         """
         self.study = _create_optuna_study(self._optuna, self._tracker_id, self._seed)
         if self._default_trial_params is not None:
-            self.study.enqueue_trial({**self._default_trial_params, **self._fixed_params})
+            # Only enqueue tunable keys; fixed_params are applied in _build_tracker and
+            # are not passed to trial.suggest_* (avoids Optuna "not used" warnings).
+            self.study.enqueue_trial(
+                {
+                    name: value
+                    for name, value in self._default_trial_params.items()
+                    if name in self._tunable_search_space
+                }
+            )
         self.study.optimize(self._objective, n_trials=self._n_trials)
         return {**dict(self.study.best_params), **self._fixed_params}
 
