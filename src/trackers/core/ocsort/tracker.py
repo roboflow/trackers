@@ -13,6 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.ocsort.utils import _build_direction_consistency_matrix_batch
+from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -189,7 +190,7 @@ class OCSORTTracker(BaseTracker):
             detections = detections[detections.confidence >= self.high_conf_det_threshold]
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
-        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
+        confidences = default_confidences(detections)
 
         # Collect (detection_index, tracker_id) pairs; assembled into
         # the output sv.Detections once at the end.
