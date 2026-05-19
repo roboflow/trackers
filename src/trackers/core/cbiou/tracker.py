@@ -8,7 +8,7 @@ from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
-
+from trackers.utils.detections import default_confidences
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
@@ -161,7 +161,7 @@ class CBIoUTracker(BoTSORTTracker):
             tracker.predict()
 
         detection_boxes = detections.xyxy
-        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
+        confidences = default_confidences(detections)
 
         # Split detections into high / low / discarded by confidence
         high_mask = confidences >= self.high_conf_det_threshold
