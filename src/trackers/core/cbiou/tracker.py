@@ -8,10 +8,11 @@ from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
-from trackers.utils.detections import default_confidences
+
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
+from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BIoU
 from trackers.utils.state_representations import BaseStateEstimator, XCYCWHStateEstimator
 
