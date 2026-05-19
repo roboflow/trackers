@@ -1,7 +1,7 @@
 ---
 title: C-BIoU — Cascaded-Buffered IoU Tracker | Trackers
 comments: true
-description: "C-BIoU improves association under fast motion and similar appearances by matching with Buffered IoU instead of plain IoU, using a BoT-SORT-style pipeline without camera motion compensation."
+description: C-BIoU improves association under fast motion and similar appearances by matching with Buffered IoU instead of plain IoU, using a BoT-SORT-style pipeline without camera motion compensation.
 ---
 
 # C-BIoU (Cascaded-Buffered IoU)
@@ -14,11 +14,11 @@ C-BIoU builds on the same tracking pipeline as [ByteTrack](bytetrack.md) and [Bo
 
 For comparisons with other trackers, plus default and tuned parameters, see the [tracker comparison](comparison.md) page.
 
-|  Dataset  | HOTA | IDF1 | MOTA |
-| :-------: | :--: | :--: | :--: |
-|   MOT17   | 63.0 | 79.1 | 77.4 |
-| SportsMOT | 73.1 | 72.6 | 96.7 |
-| SoccerNet | 82.6 | 76.6 | 97.0 |
+|  Dataset   | HOTA | IDF1 | MOTA |
+| :--------: | :--: | :--: | :--: |
+|   MOT17    | 63.0 | 79.1 | 77.4 |
+| SportsMOT  | 73.1 | 72.6 | 96.7 |
+| SoccerNet  | 82.6 | 76.6 | 97.0 |
 | DanceTrack | 53.8 | 53.8 | 90.1 |
 
 ## How does C-BIoU work?
