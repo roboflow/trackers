@@ -22,7 +22,6 @@ import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.utils.iou import BIoU
 
