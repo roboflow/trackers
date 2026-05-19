@@ -141,14 +141,6 @@ class TestCBIoUZeroBufferEquivalence:
     """With buffer_ratio=0, BIoU recovers IoU; C-BIoU should match BoT-SORT (no CMC)."""
 
     def test_zero_buffer_matches_botsort_without_cmc(self) -> None:
-        shared_kwargs = {
-            "minimum_consecutive_frames": 1,
-            "track_activation_threshold": 0.5,
-            "minimum_iou_threshold_first_assoc": 0.3,
-            "minimum_iou_threshold_second_assoc": 0.3,
-            "minimum_iou_threshold_unconfirmed_assoc": 0.3,
-            "high_conf_det_threshold": 0.6,
-        }
         detections = [
             _detection((0.0, 0.0, 50.0, 50.0)),
             _detection((5.0, 5.0, 55.0, 55.0)),
@@ -158,16 +150,28 @@ class TestCBIoUZeroBufferEquivalence:
         ]
 
         def run_tracker(tracker: CBIoUTracker | BoTSORTTracker) -> list[sv.Detections]:
-            BoTSORTTracklet.count_id = 0
             tracker.reset()
             return [tracker.update(det) for det in detections]
 
         cbiou = CBIoUTracker(
             buffer_ratio_first=0.0,
             buffer_ratio_second=0.0,
-            **shared_kwargs,
+            minimum_consecutive_frames=1,
+            track_activation_threshold=0.5,
+            minimum_iou_threshold_first_assoc=0.3,
+            minimum_iou_threshold_second_assoc=0.3,
+            minimum_iou_threshold_unconfirmed_assoc=0.3,
+            high_conf_det_threshold=0.6,
         )
-        botsort = BoTSORTTracker(enable_cmc=False, **shared_kwargs)
+        botsort = BoTSORTTracker(
+            enable_cmc=False,
+            minimum_consecutive_frames=1,
+            track_activation_threshold=0.5,
+            minimum_iou_threshold_first_assoc=0.3,
+            minimum_iou_threshold_second_assoc=0.3,
+            minimum_iou_threshold_unconfirmed_assoc=0.3,
+            high_conf_det_threshold=0.6,
+        )
 
         cbiou_results = run_tracker(cbiou)
         botsort_results = run_tracker(botsort)
