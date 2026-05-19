@@ -22,6 +22,7 @@ import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.utils.iou import BIoU
 
@@ -98,7 +99,7 @@ class TestCBIoUAssociationTolerance:
         Box A: [0, 0, 100, 100]  (100x100)
         Box B: [110, 0, 210, 100]  (gap of 10px = 10% of width)
         With buffer_ratio=0.15 each side expands by 15px, so A becomes
-        [-15, -15, 115, 115] and B becomes [93.5, -15, 226.5, 115] —
+        [-15, -15, 115, 115] and B becomes [95, -15, 225, 115] —
         they now overlap.
         """
         # Frame 1: spawn a track at box A with high confidence
@@ -120,6 +121,7 @@ class TestCBIoUAssociationTolerance:
 
         cbiou.update(_detection(box_a))
         botsort.update(_detection(box_a))
+        botsort_frame1_track_id = next((t.tracker_id for t in botsort.tracks), None)
 
         # Frame 2: detection slightly outside A — CBIoU buffer closes the gap
         cbiou_result = cbiou.update(_detection(box_b))
@@ -131,8 +133,61 @@ class TestCBIoUAssociationTolerance:
         assert cbiou_result.tracker_id[0] == cbiou_frame1_id
 
         botsort_ids = botsort_result.tracker_id
-        if botsort_ids is not None and len(botsort_ids) > 0:
-            assert botsort_ids[0] != cbiou_frame1_id or botsort_ids[0] == -1
+        if botsort_ids is not None and len(botsort_ids) > 0 and botsort_frame1_track_id is not None:
+            assert botsort_ids[0] != botsort_frame1_track_id
+
+
+class TestCBIoUZeroBufferEquivalence:
+    """With buffer_ratio=0, BIoU recovers IoU; C-BIoU should match BoT-SORT (no CMC)."""
+
+    def test_zero_buffer_matches_botsort_without_cmc(self) -> None:
+        shared_kwargs = {
+            "minimum_consecutive_frames": 1,
+            "track_activation_threshold": 0.5,
+            "minimum_iou_threshold_first_assoc": 0.3,
+            "minimum_iou_threshold_second_assoc": 0.3,
+            "minimum_iou_threshold_unconfirmed_assoc": 0.3,
+            "high_conf_det_threshold": 0.6,
+        }
+        detections = [
+            _detection((0.0, 0.0, 50.0, 50.0)),
+            _detection((5.0, 5.0, 55.0, 55.0)),
+            _detection((100.0, 100.0, 150.0, 150.0)),
+            _detection((105.0, 105.0, 155.0, 155.0)),
+            _detection((8.0, 8.0, 58.0, 58.0)),
+        ]
+
+        def run_tracker(tracker: CBIoUTracker | BoTSORTTracker) -> list[sv.Detections]:
+            BoTSORTTracklet.count_id = 0
+            tracker.reset()
+            return [tracker.update(det) for det in detections]
+
+        cbiou = CBIoUTracker(
+            buffer_ratio_first=0.0,
+            buffer_ratio_second=0.0,
+            **shared_kwargs,
+        )
+        botsort = BoTSORTTracker(enable_cmc=False, **shared_kwargs)
+
+        cbiou_results = run_tracker(cbiou)
+        botsort_results = run_tracker(botsort)
+
+        for frame_idx, (r_cbiou, r_botsort) in enumerate(zip(cbiou_results, botsort_results)):
+            assert len(r_cbiou) == len(r_botsort), (
+                f"frame {frame_idx}: CBIoU(buffer=0) and BoTSORT(no CMC) returned different "
+                f"detection counts ({len(r_cbiou)} vs {len(r_botsort)})"
+            )
+            np.testing.assert_array_equal(
+                r_cbiou.tracker_id,
+                r_botsort.tracker_id,
+                err_msg=f"frame {frame_idx}: different tracker IDs",
+            )
+            if len(r_cbiou) > 0:
+                np.testing.assert_allclose(
+                    r_cbiou.xyxy,
+                    r_botsort.xyxy,
+                    err_msg=f"frame {frame_idx}: different boxes",
+                )
 
 
 class TestCBIoUSearchSpace:
