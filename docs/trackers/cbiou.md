@@ -1,51 +1,27 @@
 ---
-title: C-BIoU: Cascaded-Buffered IoU Tracker | Trackers
+title: C-BIoU — Cascaded-Buffered IoU Tracker | Trackers
 comments: true
-description: Cascaded-Buffered IoU (C-BIoU) tracker from Yang et al. (WACV 2023). Cascaded BIoU matching with buffer scales b1 and b2 (b1 < b2) for irregular motion and similar appearances.
+description: "C-BIoU improves association under fast motion and similar appearances by matching with Buffered IoU instead of plain IoU, using a BoT-SORT-style pipeline without camera motion compensation."
 ---
 
 # C-BIoU (Cascaded-Buffered IoU)
 
-## Overview
+## What is C-BIoU?
 
-**C-BIoU** implements the tracker from Yang et al., [*Hard To Track Objects with Irregular Motions and Similar Appearances? Make It Easier by Buffering the Matching Space*](https://openaccess.thecvf.com/content/WACV2023/papers/Yang_Hard_To_Track_Objects_With_Irregular_Motions_and_Similar_Appearances_WACV_2023_paper.pdf) (WACV 2023).
-
-The core idea is **Buffered IoU (BIoU)**: before computing overlap, each bounding box is expanded by a margin proportional to its width and height. That widens the matching space so tracks and detections can be associated even when raw boxes barely touch or miss due to fast motion or detector jitter.
-
-The paper uses **cascaded matching** with two buffer scales: **b1** (small, first pass) and **b2** (large, second pass on remaining unmatched pairs). You should keep **b1 < b2**. On SoccerNet, the authors report grid-searching **b1 = 0.7** and **b2 = 1.0** (with a BIoU match threshold of **0.01** on that dataset). In this library, `buffer_ratio_first` is **b1** and `buffer_ratio_second` is **b2**.
-
-C-BIoU follows the same tracking-by-detection backbone as [BoT-SORT](botsort.md) (Kalman prediction, two-stage high/low confidence association, unconfirmed matching) but **does not use camera motion compensation**. Only detection boxes are required, which suits MOT-benchmark and file-based workflows.
+C-BIoU builds on the same tracking pipeline as [ByteTrack](bytetrack.md) and [BoT-SORT](botsort.md) but replaces plain IoU with **Buffered IoU (BIoU)**, expanding boxes before overlap is computed so tracks and detections can still match when motion is fast or boxes barely align. It runs two association passes with a small buffer first and a larger buffer second (`buffer_ratio_first` and `buffer_ratio_second`), and does not use camera motion compensation, so only bounding boxes are required. C-BIoU is a strong fit for sports and dance footage where objects move irregularly and look alike.
 
 ## How does C-BIoU compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
+For comparisons with other trackers, plus default and tuned parameters, see the [tracker comparison](comparison.md) page.
 
-Measured with this library (YOLOX detections on MOT17 and SportsMOT test; oracle detections on SoccerNet test and DanceTrack val). Default buffers: 
-`buffer_ratio_first=0.3`, `buffer_ratio_second=0.5`.
+|  Dataset  | HOTA | IDF1 | MOTA |
+| :-------: | :--: | :--: | :--: |
+|   MOT17   | 63.0 | 79.1 | 77.4 |
+| SportsMOT | 73.1 | 72.6 | 96.7 |
+| SoccerNet | 82.6 | 76.6 | 97.0 |
+| DanceTrack | 53.8 | 53.8 | 90.1 |
 
-=== "Default parameters"
-
-|  Dataset  |   HOTA   |   IDF1   |   MOTA   |
-| :-------: | :------: | :------: | :------: |
-|   MOT17   |   63.0   |   79.1   |   77.4   |
-| SportsMOT |   73.1   |   72.6   |   96.7   |
-| SoccerNet |   82.6   |   76.6   |   97.0   |
-| DanceTrack |  53.8   |   53.8   |   90.1   |
-
-=== "Tuned parameters"
-
-Tuned with Optuna (`trackers_cbiou_tuning.ipynb`): MOT17 val-half, SportsMOT val, SoccerNet train, DanceTrack train; evaluated on the splits below.
-
-|  Dataset  |   HOTA   |   IDF1   |   MOTA   |
-| :-------: | :------: | :------: | :------: |
-|   MOT17   |   63.0   |   79.1   |   77.2   |
-| SportsMOT |   72.5   |   72.2   |   96.9   |
-| SoccerNet |   85.5   |   79.6   |   99.3   |
-| DanceTrack |  53.3   |   54.4   |   89.2   |
-
-C-BIoU is aimed at sports and dance scenes with irregular motion and similar-looking objects (SoccerNet, DanceTrack, SportsMOT), where the paper reports strong gains over SORT-style baselines.
-
-## Algorithm
+## How does C-BIoU work?
 
 C-BIoU keeps the [ByteTrack](bytetrack.md)-style association pipeline used in [BoT-SORT](botsort.md) but replaces plain IoU with **cascaded Buffered IoU** at each association step.
 
@@ -92,10 +68,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     from rfdetr import RFDETRMedium
     from trackers import CBIoUTracker
 
-    tracker = CBIoUTracker(
-        buffer_ratio_first=0.3,
-        buffer_ratio_second=0.5,
-    )
+    tracker = CBIoUTracker()
     model = RFDETRMedium()
 
     box_annotator = sv.BoxAnnotator()
@@ -137,10 +110,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     from rfdetr import RFDETRMedium
     from trackers import CBIoUTracker
 
-    tracker = CBIoUTracker(
-        buffer_ratio_first=0.3,
-        buffer_ratio_second=0.5,
-    )
+    tracker = CBIoUTracker()
     model = RFDETRMedium()
 
     box_annotator = sv.BoxAnnotator()
@@ -182,10 +152,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     from rfdetr import RFDETRMedium
     from trackers import CBIoUTracker
 
-    tracker = CBIoUTracker(
-        buffer_ratio_first=0.3,
-        buffer_ratio_second=0.5,
-    )
+    tracker = CBIoUTracker()
     model = RFDETRMedium()
 
     box_annotator = sv.BoxAnnotator()

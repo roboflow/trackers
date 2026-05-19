@@ -51,7 +51,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     | ByteTrack |   60.5   |   72.7   |   76.1   |
     |  OC-SORT  |   62.0   |   76.5   |   77.3   |
     | BoT-SORT  | **63.8** |   78.7   | **79.4** |
-    |  C-BIoU   |   63.0   | **79.1** |   77.2   |
+    |  C-BIoU   |   63.0   | **79.1** |   77.4   |
 
     Tuned configuration for each tracker.
 
@@ -89,15 +89,15 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
       cmc_method: sparseOptFlow
 
     C-BIoU:
-      lost_track_buffer: 52
+      lost_track_buffer: 30
       minimum_consecutive_frames: 2
-      minimum_iou_threshold_first_assoc: 0.26
-      minimum_iou_threshold_second_assoc: 0.69
-      minimum_iou_threshold_unconfirmed_assoc: 0.18
-      high_conf_det_threshold: 0.57
-      track_activation_threshold: 0.56
-      buffer_ratio_first: 0.14
-      buffer_ratio_second: 0.47
+      minimum_iou_threshold_first_assoc: 0.2
+      minimum_iou_threshold_second_assoc: 0.5
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
+      high_conf_det_threshold: 0.6
+      track_activation_threshold: 0.7
+      buffer_ratio_first: 0.3
+      buffer_ratio_second: 0.5
       enable_cmc: false
     ```
 
@@ -137,7 +137,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     | ByteTrack |   73.3   |   73.5   |   95.9   |
     |  OC-SORT  |   74.0   | **75.4** |   95.6   |
     | BoT-SORT  | **74.1** |   74.0   | **96.9** |
-    |  C-BIoU   |   72.5   |   72.2   | **96.9** |
+    |  C-BIoU   |   73.1   |   72.6   |   96.7   |
 
     Tuned configuration for each tracker.
 
@@ -175,15 +175,15 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       cmc_method: sparseOptFlow
 
     C-BIoU:
-      lost_track_buffer: 89
+      lost_track_buffer: 30
       minimum_consecutive_frames: 2
-      minimum_iou_threshold_first_assoc: 0.16
-      minimum_iou_threshold_second_assoc: 0.38
-      minimum_iou_threshold_unconfirmed_assoc: 0.42
-      high_conf_det_threshold: 0.57
-      track_activation_threshold: 0.53
-      buffer_ratio_first: 0.55
-      buffer_ratio_second: 0.04
+      minimum_iou_threshold_first_assoc: 0.2
+      minimum_iou_threshold_second_assoc: 0.5
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
+      high_conf_det_threshold: 0.6
+      track_activation_threshold: 0.7
+      buffer_ratio_first: 0.3
+      buffer_ratio_second: 0.5
       enable_cmc: false
     ```
 
@@ -223,8 +223,8 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |   SORT    |   84.2   |   78.2   |   98.2   |
     | ByteTrack |   84.0   |   78.1   |   98.2   |
     |  OC-SORT  |   82.9   |   77.9   |   96.8   |
-    | BoT-SORT  |   85.0   | **79.7** |   97.2   |
-    |  C-BIoU   | **85.5** |   79.6   | **99.3** |
+    | BoT-SORT  |   85.0   |   79.7   |   97.2   |
+    |  C-BIoU   | **85.7** | **80.0** | **99.3** |
 
     Tuned configuration for each tracker.
 
@@ -262,15 +262,15 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       cmc_method: sparseOptFlow
 
     C-BIoU:
-      lost_track_buffer: 21
-      minimum_consecutive_frames: 1
-      minimum_iou_threshold_first_assoc: 0.10
-      minimum_iou_threshold_second_assoc: 0.42
-      minimum_iou_threshold_unconfirmed_assoc: 0.47
-      high_conf_det_threshold: 0.38
-      track_activation_threshold: 0.26
-      buffer_ratio_first: 0.70
-      buffer_ratio_second: 0.12
+      lost_track_buffer: 43
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.05
+      minimum_iou_threshold_second_assoc: 0.46
+      minimum_iou_threshold_unconfirmed_assoc: 0.27
+      high_conf_det_threshold: 0.40
+      track_activation_threshold: 0.48
+      buffer_ratio_first: 0.68
+      buffer_ratio_second: 0.50
       enable_cmc: false
     ```
 
@@ -314,10 +314,10 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   50.6   |   49.6   |   84.3   |
-    | ByteTrack |   53.2   | **54.6** |   86.8   |
+    | ByteTrack |   53.2   |   54.6   |   86.8   |
     |  OC-SORT  |   52.0   |   51.8   |   87.2   |
-    | BoT-SORT  | **53.5** |   54.0   |   86.5   |
-    |  C-BIoU   |   53.3   |   54.4   | **89.2** |
+    | BoT-SORT  |   53.5   |   54.0   |   86.5   |
+    |  C-BIoU   | **54.6** | **57.0** | **89.6** |
 
     Tuned configuration for each tracker.
 
@@ -355,15 +355,15 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       cmc_method: sparseOptFlow
 
     C-BIoU:
-      lost_track_buffer: 42
+      lost_track_buffer: 53
       minimum_consecutive_frames: 2
-      minimum_iou_threshold_first_assoc: 0.09
-      minimum_iou_threshold_second_assoc: 0.15
-      minimum_iou_threshold_unconfirmed_assoc: 0.45
-      high_conf_det_threshold: 0.38
-      track_activation_threshold: 0.84
+      minimum_iou_threshold_first_assoc: 0.11
+      minimum_iou_threshold_second_assoc: 0.57
+      minimum_iou_threshold_unconfirmed_assoc: 0.30
+      high_conf_det_threshold: 0.36
+      track_activation_threshold: 0.83
       buffer_ratio_first: 0.23
-      buffer_ratio_second: 0.47
+      buffer_ratio_second: 0.33
       enable_cmc: false
     ```
 
@@ -377,9 +377,10 @@ detector following the ByteTrack procedure). The source is noted per dataset abo
 
 ### Tuning
 
-Best parameters per tracker and dataset were found via grid search, selecting the
-configuration with the highest HOTA. Tuning and evaluation always use separate data
-splits to reflect real-world usage:
+Best parameters per tracker and dataset were found via grid search (SORT, ByteTrack,
+OC-SORT, BoT-SORT) or Optuna (`n_trials=100`, objective HOTA, trial 0 = defaults for
+C-BIoU), selecting the configuration with the highest HOTA on the tune split. Tuning and
+evaluation always use separate data splits to reflect real-world usage:
 
 - Train + validation + test: tune on validation, report on test.
 - Train + validation: tune on train, report on validation.
