@@ -271,7 +271,6 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       track_activation_threshold: 0.48
       buffer_ratio_first: 0.68
       buffer_ratio_second: 0.50
-      enable_cmc: false
     ```
 
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
@@ -364,7 +363,6 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       track_activation_threshold: 0.83
       buffer_ratio_first: 0.23
       buffer_ratio_second: 0.33
-      enable_cmc: false
     ```
 
 ## Methodology
