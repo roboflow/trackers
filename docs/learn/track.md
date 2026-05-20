@@ -93,14 +93,14 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 === "CLI"
 
-    Select a tracker with `--tracker` and tune its behavior with `--tracker.*` arguments.
+    Select a tracker with `--tracker` and tune its behavior with `--tracker-params key=value` arguments.
 
     ```text
     trackers track \
         --source source.mp4 \
         --tracker bytetrack \
-        --tracker.lost_track_buffer 60 \
-        --tracker.minimum_consecutive_frames 5
+        --tracker-params lost_track_buffer=60 \
+        --tracker-params minimum_consecutive_frames=5
     ```
 
 === "Python"
@@ -357,6 +357,11 @@ All arguments accepted by the `trackers track` command.
       <td>none</td>
     </tr>
     <tr>
+      <td><code>--detections</code></td>
+      <td>Path to a pre-computed MOT-format detections file. When set, skips the detection model and feeds detections directly to the tracker. Mutually exclusive with <code>--detection.model</code>.</td>
+      <td>—</td>
+    </tr>
+    <tr>
       <td><code>--detection.model</code></td>
       <td>Model identifier. Pretrained: <code>rfdetr-nano</code>, <code>rfdetr-small</code>, <code>rfdetr-medium</code>, <code>rfdetr-large</code>. Segmentation: <code>rfdetr-seg-*</code>.</td>
       <td><code>rfdetr-nano</code></td>
@@ -392,24 +397,9 @@ All arguments accepted by the `trackers track` command.
       <td><code>bytetrack</code></td>
     </tr>
     <tr>
-      <td><code>--tracker.lost_track_buffer</code></td>
-      <td>Frames to retain a track without detections. Higher values improve occlusion handling but risk ID drift.</td>
-      <td><code>30</code></td>
-    </tr>
-    <tr>
-      <td><code>--tracker.track_activation_threshold</code></td>
-      <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives.</td>
-      <td><code>0.25</code></td>
-    </tr>
-    <tr>
-      <td><code>--tracker.minimum_consecutive_frames</code></td>
-      <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
-      <td><code>3</code></td>
-    </tr>
-    <tr>
-      <td><code>--tracker.minimum_iou_threshold</code></td>
-      <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
-      <td><code>0.3</code></td>
+      <td><code>--tracker-params</code></td>
+      <td>Tracker hyperparameters as <code>key=value</code> pairs. Repeat the flag for each parameter. Example: <code>--tracker-params lost_track_buffer=60 --tracker-params minimum_consecutive_frames=5</code>. Available keys depend on the selected tracker.</td>
+      <td>tracker defaults</td>
     </tr>
     <tr>
       <td><code>--show.display</code></td>
