@@ -12,12 +12,22 @@ from __future__ import annotations
 import sys
 import warnings
 
-from jsonargparse import CLI
+from jsonargparse import CLI, ActionYesNo, ArgumentParser
 
 from trackers.cli.download import download
 from trackers.cli.eval import eval_cmd
 from trackers.cli.track import track
 from trackers.cli.tune import tune
+
+
+class _BoolFlagParser(ArgumentParser):
+    """Render plain ``bool`` fields as ``--flag`` / ``--no-flag`` pairs."""
+
+    def add_argument(self, *args, **kwargs):  # type: ignore[override]
+        if kwargs.get("type") is bool:
+            kwargs.pop("type")
+            kwargs["action"] = ActionYesNo(yes_prefix="", no_prefix="no-")
+        return super().add_argument(*args, **kwargs)
 
 
 def main() -> int:
@@ -32,6 +42,7 @@ def main() -> int:
         as_positional=False,
         prog="trackers",
         description="Command-line tools for multi-object tracking.",
+        parser_class=_BoolFlagParser,
     )
     return int(rc) if rc is not None else 0
 
