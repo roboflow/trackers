@@ -261,8 +261,8 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   45.0   |   39.0   |   80.6   |
     | ByteTrack |   50.2   |   49.9   |   86.2   |
-    |  OC-SORT  | **51.8** | **50.9** | **87.3** |
-    | BoT-SORT  |   50.5   |   49.2   |   85.1   |
+    |  OC-SORT  |   51.8   |   50.9   |   87.3   |
+    | BoT-SORT  | **53.9*  | **53.3** | **90.1 **|
 
 === "Tuned"
 
@@ -271,9 +271,9 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   50.6   |   49.6   |   84.3   |
-    | ByteTrack | **53.2** | **54.6** |   86.8   |
+    | ByteTrack |   53.2   | **54.6** |   86.8   |
     |  OC-SORT  |   52.0   |   51.8   | **87.2** |
-    | BoT-SORT  | **53.5** | **54.0** |   86.5   |
+    | BoT-SORT  | **53.5** |   54.0   |   86.5   |
 
     Tuned configuration for each tracker.
 
