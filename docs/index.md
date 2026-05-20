@@ -41,11 +41,11 @@ Point at a video, webcam, RTSP stream, or image directory. Get tracked output.
 ```bash
 trackers track \
     --source video.mp4 \
-    --output output.mp4 \
-    --model rfdetr-medium \
+    --out.output output.mp4 \
+    --detection.model rfdetr-medium \
     --tracker bytetrack \
-    --show-labels \
-    --show-trajectories
+    --show.labels \
+    --show.trajectories
 ```
 
 For all CLI options, see the [tracking guide](learn/track.md).
@@ -86,10 +86,10 @@ Benchmark your tracker against ground truth with standard MOT metrics.
 
 ```text
 trackers eval \
-    --gt-dir ./data/mot17/val \
-    --tracker-dir results \
-    --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1
+    --gt_dir ./data/mot17/val \
+    --tracker_dir results \
+    --metrics '[CLEAR,HOTA,Identity]' \
+    --columns '[MOTA,HOTA,IDF1]'
 ```
 
 ```
@@ -130,7 +130,7 @@ For detailed benchmarks and tuned configurations, see the [tracker comparison](t
 Pull benchmark datasets for evaluation with a single command.
 
 ```bash
-trackers download mot17 \
+trackers download --dataset mot17 \
     --split val \
     --asset annotations,detections
 ```

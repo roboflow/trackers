@@ -65,11 +65,11 @@ For detections, use `id=-1`. For more details on the format and evaluation workf
     ```text
     trackers tune \
         --tracker bytetrack \
-        --gt-dir ./data/gt \
-        --detections-dir ./data/detections \
+        --gt_dir ./data/gt \
+        --detections_dir ./data/detections \
         --objective HOTA \
-        --metrics CLEAR HOTA Identity \
-        --n-trials 50 \
+        --metrics '[CLEAR,HOTA,Identity]' \
+        --n_trials 50 \
         --output ./results/bytetrack-best.json
     ```
 
@@ -111,8 +111,8 @@ MOT17-09-FRCNN
     ```text
     trackers tune \
         --tracker bytetrack \
-        --gt-dir ./data/gt \
-        --detections-dir ./data/detections \
+        --gt_dir ./data/gt \
+        --detections_dir ./data/detections \
         --seqmap ./seqmap.txt
     ```
 
@@ -174,12 +174,12 @@ All arguments accepted by `trackers tune`.
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--gt-dir</code></td>
+      <td><code>--gt_dir</code></td>
       <td>Directory with ground-truth MOT files (<code>{sequence}.txt</code>).</td>
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--detections-dir</code></td>
+      <td><code>--detections_dir</code></td>
       <td>Directory with detection MOT files (<code>{sequence}.txt</code>), one file per sequence.</td>
       <td>—</td>
     </tr>
@@ -189,7 +189,7 @@ All arguments accepted by `trackers tune`.
       <td><code>HOTA</code></td>
     </tr>
     <tr>
-      <td><code>--n-trials</code></td>
+      <td><code>--n_trials</code></td>
       <td>Number of Optuna trials to run.</td>
       <td><code>100</code></td>
     </tr>
@@ -206,10 +206,10 @@ All arguments accepted by `trackers tune`.
     <tr>
       <td><code>--seqmap</code></td>
       <td>Optional path to a sequence map file. When set, only listed sequences are tuned.</td>
-      <td>all files in <code>--detections-dir</code></td>
+      <td>all files in <code>--detections_dir</code></td>
     </tr>
     <tr>
-      <td><code>--output</code>, <code>-o</code></td>
+      <td><code>--output</code></td>
       <td>Path to save best parameters as JSON.</td>
       <td>None</td>
     </tr>
