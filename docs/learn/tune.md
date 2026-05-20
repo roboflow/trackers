@@ -32,6 +32,57 @@ For more options, see the [install guide](install.md).
 
 The tuner needs matching MOT files for ground truth and detections.
 
+By default, the **first trial** evaluates a baseline parameter set before Optuna
+samples further combinations. That trial counts toward `--n-trials` / `n_trials`.
+Set `enqueue_defaults=False` on `Tuner` to disable this behavior.
+
+For each `search_space` key, the baseline uses the tracker's default
+when it lies within the search space.
+
+Options that are not tuned (or differ from `__init__`) are set with
+`fixed_params` on `Tuner`. They apply to every trial, including the baseline,
+override the same key in `search_space` if present, and are returned from
+`run()` merged into the best parameter dict.
+
+=== "Python"
+
+    ```python
+    from trackers.tune import Tuner
+
+    # Detection-only BoTSORT (no frames, CMC off)
+    tuner = Tuner(
+        tracker_id="botsort",
+        gt_dir="./data/gt",
+        detections_dir="./data/detections",
+        fixed_params={"enable_cmc": False},
+        n_trials=50,
+    )
+
+    # BoTSORT with CMC (MOT-style images required)
+    tuner = Tuner(
+        tracker_id="botsort",
+        gt_dir="./data/gt",
+        detections_dir="./data/detections",
+        images_dir="./data/images",
+        fixed_params={"enable_cmc": True},
+        n_trials=50,
+    )
+    ```
+
+=== "CLI"
+
+    ```text
+    trackers tune \
+        --tracker botsort \
+        --gt-dir ./data/gt \
+        --detections-dir ./data/detections \
+        --fixed-params '{"enable_cmc": false}'
+    ```
+
+Images are read from `{images_dir}/{sequence}/img1/` using MOT-style stems:
+6-digit (`000001.jpg`, MOT17/SportsMOT) or 8-digit (`00000001.jpg`, DanceTrack),
+plus common extensions (`.jpg`, `.png`, …).
+
 ```text
 data
 ├── gt
@@ -87,6 +138,7 @@ For detections, use `id=-1`. For more details on the format and evaluation workf
         objective="HOTA",
         metrics=["CLEAR", "HOTA", "Identity"],
         n_trials=50,
+        seed=42,
     )
 
     best_params = tuner.run()
@@ -207,6 +259,11 @@ All arguments accepted by `trackers tune`.
       <td><code>--seqmap</code></td>
       <td>Optional path to a sequence map file. When set, only listed sequences are tuned.</td>
       <td>all files in <code>--detections-dir</code></td>
+    </tr>
+    <tr>
+      <td><code>--seed</code></td>
+      <td>Random seed for Optuna's TPE sampler (reproducible sampled trials).</td>
+      <td>None</td>
     </tr>
     <tr>
       <td><code>--output</code>, <code>-o</code></td>
