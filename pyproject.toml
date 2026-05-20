@@ -41,7 +41,7 @@ dependencies = [
     "opencv-python>=4.8.0",
     "rich>=13.0.0",
     "requests>=2.28.0",
-    "jsonargparse>=4.48.0",
+    "jsonargparse[signatures]>=4.48.0",
 ]
 
 [project.optional-dependencies]

@@ -55,6 +55,91 @@ COLOR_PALETTE = sv.ColorPalette.from_hex(
 
 
 @dataclass
+class DetectionOptions:
+    """Detection model and inference settings.
+
+    Attributes:
+        model: Model ID (e.g. ``rfdetr-nano``) or
+            ``workspace/project/version`` for a Roboflow custom model.
+            Ignored when ``detections`` is set.
+        detections: Path to a pre-computed MOT-format detections file.
+            Mutually exclusive with ``model``; supply one or the other.
+        confidence: Detection confidence threshold.
+        device: Inference device: ``auto``, ``cpu``, ``cuda``, ``cuda:0``,
+            ``mps``.
+        api_key: Roboflow API key (required for private custom models).
+    """
+
+    model: str = DEFAULT_MODEL
+    detections: Path | None = None
+    confidence: float = DEFAULT_CONFIDENCE
+    device: str = DEFAULT_DEVICE
+    api_key: str | None = None
+
+
+@dataclass
+class FilteringOptions:
+    """Detection and track filters.
+
+    Attributes:
+        classes: Comma-separated class names or IDs to keep
+            (e.g. ``person,car`` or ``0,2``).
+        track_ids: Comma-separated track IDs to keep in the output
+            (e.g. ``1,3,5``).
+    """
+
+    classes: str | None = None
+    track_ids: str | None = None
+
+
+@dataclass
+class OutputOptions:
+    """Output paths and write options.
+
+    Attributes:
+        output: Annotated-video output path.
+        mot_output: MOT-format predictions output path.
+        overwrite: Overwrite existing output files without prompting.
+    """
+
+    output: Path | None = None
+    mot_output: Path | None = None
+    overwrite: bool = False
+
+
+@dataclass
+class VisualizationOptions:
+    """Live preview and display settings.
+
+    Attributes:
+        display: Show a live preview window during tracking.
+    """
+
+    display: bool = False
+
+
+@dataclass
+class ShowOptions:
+    """Annotation elements to draw on each frame.
+
+    Attributes:
+        boxes: Draw bounding boxes around detections.
+        masks: Draw segmentation masks (segmentation models only).
+        labels: Draw class labels.
+        ids: Draw track IDs.
+        confidence: Draw detection confidence scores.
+        trajectories: Draw track trajectory trails.
+    """
+
+    boxes: bool = True
+    masks: bool = False
+    labels: bool = False
+    ids: bool = True
+    confidence: bool = False
+    trajectories: bool = False
+
+
+@dataclass
 class TrackerParams:
     """Optional tracker-specific parameters.
 
@@ -99,61 +184,50 @@ class TrackerParams:
 
 def track(
     source: str | None = None,
-    model: str = DEFAULT_MODEL,
-    detections: Path | None = None,
-    confidence: float = DEFAULT_CONFIDENCE,
-    device: str = DEFAULT_DEVICE,
-    api_key: str | None = None,
-    classes: str | None = None,
-    track_ids: str | None = None,
+    detection: DetectionOptions = DetectionOptions(),
+    filters: FilteringOptions = FilteringOptions(),
     tracker: str = DEFAULT_TRACKER,
     tracker_params: TrackerParams | None = None,
-    output: Path | None = None,
-    mot_output: Path | None = None,
-    overwrite: bool = False,
-    display: bool = False,
-    show_boxes: bool = True,
-    show_masks: bool = False,
-    show_labels: bool = False,
-    show_ids: bool = True,
-    show_confidence: bool = False,
-    show_trajectories: bool = False,
+    out: OutputOptions = OutputOptions(),
+    vis: VisualizationOptions = VisualizationOptions(),
+    show: ShowOptions = ShowOptions(),
 ) -> int:
     """Run detection and tracking over a video, webcam, RTSP, or image directory.
 
     Args:
         source: Video file, webcam index (e.g. ``"0"``), RTSP URL, or image
-            directory. Required unless ``detections`` is supplied.
-        model: Detection model ID (e.g. ``rfdetr-nano``) or
-            ``workspace/project/version`` for a Roboflow custom model.
-        detections: Path to a pre-computed MOT-format detections file. Mutually
-            exclusive with ``model``.
-        confidence: Detection confidence threshold.
-        device: Inference device: ``auto``, ``cpu``, ``cuda``, ``cuda:0``,
-            ``mps``.
-        api_key: Roboflow API key for custom models.
-        classes: Comma-separated class names or IDs to keep
-            (e.g. ``person,car``).
-        track_ids: Comma-separated track IDs to keep in the output
-            (e.g. ``1,3,5``).
+            directory. Required unless ``detection.detections`` is supplied.
+        detection: Detection model and inference options.
+        filters: Class and track-ID filters applied to detections and tracks.
         tracker: Tracking algorithm ID. Discoverable via
             ``BaseTracker._registered_trackers()``.
-        tracker_params: Optional tracker parameters; only fields matching the
-            chosen tracker's ``__init__`` are forwarded.
-        output: Output annotated-video path.
-        mot_output: Output MOT-format predictions path.
-        overwrite: Overwrite existing output files.
-        display: Show a preview window during tracking.
-        show_boxes: Draw bounding boxes.
-        show_masks: Draw segmentation masks (segmentation models only).
-        show_labels: Draw class labels.
-        show_ids: Draw track IDs.
-        show_confidence: Draw confidence scores.
-        show_trajectories: Draw track trajectories (trails).
+        tracker_params: Optional tracker parameter overrides; only fields
+            matching the chosen tracker's ``__init__`` are forwarded.
+        out: Output path and overwrite options.
+        vis: Live preview and display options.
+        show: Annotation elements to draw on each frame.
 
     Returns:
         Exit code: ``0`` on success, ``1`` on validation error.
     """
+    model = detection.model
+    detections = detection.detections
+    confidence = detection.confidence
+    device = detection.device
+    api_key = detection.api_key
+    classes = filters.classes
+    track_ids = filters.track_ids
+    output = out.output
+    mot_output = out.mot_output
+    overwrite = out.overwrite
+    display = vis.display
+    show_boxes = show.boxes
+    show_masks = show.masks
+    show_labels = show.labels
+    show_ids = show.ids
+    show_confidence = show.confidence
+    show_trajectories = show.trajectories
+
     needs_frames = output is not None or display
 
     if source is None and detections is None:
