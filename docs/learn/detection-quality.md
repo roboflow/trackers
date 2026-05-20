@@ -70,7 +70,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
         --detection.model yolo26n-640 \
         --tracker bytetrack \
         --filters.classes person \
-        --out.mot_output results/yolo26n/MOT17-13-FRCNN.txt
+        --out.mot_results results/yolo26n/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -82,7 +82,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
             --detection.model yolo26n-640 \
             --tracker bytetrack \
             --filters.classes person \
-            --out.mot_output results/yolo26n/$seq.txt
+            --out.mot_results results/yolo26n/$seq.txt
     done
     ```
 
@@ -101,7 +101,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
         --detection.model rfdetr-nano \
         --tracker bytetrack \
         --filters.classes person \
-        --out.mot_output results/rfdetr-nano/MOT17-13-FRCNN.txt
+        --out.mot_results results/rfdetr-nano/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -113,7 +113,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
             --detection.model rfdetr-nano \
             --tracker bytetrack \
             --filters.classes person \
-            --out.mot_output results/rfdetr-nano/$seq.txt
+            --out.mot_results results/rfdetr-nano/$seq.txt
     done
     ```
 
@@ -132,7 +132,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
         --detection.model rfdetr-medium \
         --tracker bytetrack \
         --filters.classes person \
-        --out.mot_output results/rfdetr-medium/MOT17-13-FRCNN.txt
+        --out.mot_results results/rfdetr-medium/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -144,7 +144,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
             --detection.model rfdetr-medium \
             --tracker bytetrack \
             --filters.classes person \
-            --out.mot_output results/rfdetr-medium/$seq.txt
+            --out.mot_results results/rfdetr-medium/$seq.txt
     done
     ```
 

@@ -98,12 +98,12 @@ class OutputOptions:
 
     Attributes:
         output: Annotated-video output path.
-        mot_output: MOT-format predictions output path.
+        mot_results: MOT-format predictions output path.
         overwrite: Overwrite existing output files without prompting.
     """
 
     output: Path | None = None
-    mot_output: Path | None = None
+    mot_results: Path | None = None
     overwrite: bool = False
 
 
@@ -218,7 +218,7 @@ def track(
     classes = filters.classes
     track_ids = filters.track_ids
     output = out.output
-    mot_output = out.mot_output
+    mot_results = out.mot_results
     overwrite = out.overwrite
     display = vis.display
     show_boxes = show.boxes
@@ -239,8 +239,8 @@ def track(
 
     if output:
         _validate_output_path(_resolve_video_output_path(output), overwrite=overwrite)
-    if mot_output:
-        _validate_output_path(mot_output, overwrite=overwrite)
+    if mot_results:
+        _validate_output_path(mot_results, overwrite=overwrite)
 
     if detections is not None:
         model_obj: AnyModel | None = None
@@ -266,7 +266,7 @@ def track(
             track_id_filter=track_id_filter,
             tracker=tracker_obj,
             output=output,
-            mot_output=mot_output,
+            mot_results=mot_results,
             display=display,
             show_boxes=show_boxes,
             show_masks=show_masks,
@@ -281,7 +281,7 @@ def track(
         class_filter=class_filter,
         track_id_filter=track_id_filter,
         tracker=tracker_obj,
-        mot_output=mot_output,
+        mot_results=mot_results,
     )
 
 
@@ -291,7 +291,7 @@ def _run_frameless(
     class_filter: list[int] | None,
     track_id_filter: list[int] | None,
     tracker: BaseTracker,
-    mot_output: Path | None,
+    mot_results: Path | None,
 ) -> int:
     """Run tracking from pre-computed detections without a frame source."""
     if not detections_data:
@@ -302,7 +302,7 @@ def _run_frameless(
     source_info = _SourceInfo(source_type="video", total_frames=total_frames)
 
     try:
-        with _MOTOutput(mot_output) as mot, _TrackingProgress(source_info) as progress:
+        with _MOTOutput(mot_results) as mot, _TrackingProgress(source_info) as progress:
             for frame_idx in range(1, total_frames + 1):
                 if frame_idx in detections_data:
                     dets = _mot_frame_to_detections(detections_data[frame_idx])
@@ -340,7 +340,7 @@ def _run_with_source(
     track_id_filter: list[int] | None,
     tracker: BaseTracker,
     output: Path | None,
-    mot_output: Path | None,
+    mot_results: Path | None,
     display: bool,
     show_boxes: bool,
     show_masks: bool,
@@ -368,7 +368,7 @@ def _run_with_source(
     try:
         with (
             _VideoOutput(output, fps=source_info.fps or _DEFAULT_OUTPUT_FPS) as video,
-            _MOTOutput(mot_output) as mot,
+            _MOTOutput(mot_results) as mot,
             display_ctx as display_win,
             _TrackingProgress(source_info) as progress,
         ):
