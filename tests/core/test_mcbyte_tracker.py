@@ -41,3 +41,43 @@ def test_mcbyte_instantiates_and_updates_with_frame_and_sparse_opt_flow_cmc_retu
     assert result.tracker_id is not None
     assert result.tracker_id[0] >= 0
     assert len(tracker.tracks) == 1
+
+
+def test_mcbyte_reset_clears_mask_state() -> None:
+    """reset() clears tracker and mask-manager temporal state."""
+    tracker = McByteTracker(
+        enable_cmc=False,
+        enable_mask_manager=True,
+        minimum_consecutive_frames=1,
+    )
+
+    frame = _make_frame()
+
+    tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
+    tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
+
+    assert tracker._previous_frame is not None
+    assert len(tracker._previous_tracklets) == 1
+    assert tracker._last_mask_output is not None
+
+    tracker.reset()
+
+    assert tracker._previous_frame is None
+    assert tracker._previous_tracklets == []
+    assert tracker._last_mask_output is None
+
+
+def test_mcbyte_does_not_store_previous_frame_without_mask_manager() -> None:
+    """McByteTracker avoids frame copies when mask manager is disabled."""
+    tracker = McByteTracker(
+        enable_cmc=False,
+        enable_mask_manager=False,
+        minimum_consecutive_frames=1,
+    )
+
+    frame = _make_frame()
+
+    tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
+
+    assert tracker._previous_frame is None
+    assert tracker._previous_tracklets == []
