@@ -17,7 +17,7 @@ import defopt as _defopt
 # to dotted form ``--prefix.name`` on the generated argparse parser. Groups
 # are derived from the leading underscore-separated token of each parameter
 # in ``track()`` (e.g. ``detection_confidence`` → group ``detection``).
-_GROUPS = frozenset({"detection", "filters", "out", "show"})
+_GROUPS = frozenset({"detection", "filters", "out", "show", "tracker"})
 
 _orig_create_parser = _defopt._create_parser
 

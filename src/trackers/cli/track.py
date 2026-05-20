@@ -61,7 +61,21 @@ def track(
     filters_classes: str | None = None,
     filters_track_ids: str | None = None,
     tracker: str = DEFAULT_TRACKER,
-    tracker_params: list[str] | None = None,
+    tracker_lost_track_buffer: int | None = None,
+    tracker_frame_rate: float | None = None,
+    tracker_track_activation_threshold: float | None = None,
+    tracker_minimum_consecutive_frames: int | None = None,
+    tracker_minimum_iou_threshold: float | None = None,
+    tracker_high_conf_det_threshold: float | None = None,
+    tracker_minimum_iou_threshold_first_assoc: float | None = None,
+    tracker_minimum_iou_threshold_second_assoc: float | None = None,
+    tracker_minimum_iou_threshold_unconfirmed_assoc: float | None = None,
+    tracker_enable_cmc: bool | None = None,
+    tracker_cmc_method: str | None = None,
+    tracker_cmc_downscale: int | None = None,
+    tracker_instant_first_frame_activation: bool | None = None,
+    tracker_direction_consistency_weight: float | None = None,
+    tracker_delta_t: int | None = None,
     out_output: Path | None = None,
     out_mot_results: Path | None = None,
     out_overwrite: bool = False,
@@ -75,6 +89,10 @@ def track(
 ) -> int:
     """Track objects in video using detection and tracking.
 
+    Tracker-specific parameters are exposed as ``--tracker.<param>`` flags.
+    Each flag defaults to ``None`` (meaning "use the tracker's own default");
+    only flags the user supplies are forwarded to the tracker constructor.
+
     Args:
         source: Video file, webcam index (0), RTSP URL, or image directory.
         detection_model: Model ID for detection (e.g. rfdetr-nano, rfdetr-base, workspace/project/version).
@@ -84,9 +102,30 @@ def track(
         detection_api_key: Roboflow API key for custom models.
         filters_classes: Filter by class names or IDs (comma-separated, e.g. person,car).
         filters_track_ids: Filter output by track IDs (comma-separated, e.g. 1,3,5).
-        tracker: Tracking algorithm ID.
-        tracker_params: Tracker-specific parameters as key=value pairs
-            (e.g. --tracker-params min_hits=3 --tracker-params det_thresh=0.6).
+        tracker: Tracking algorithm ID (``bytetrack``, ``sort``, ``ocsort``, ``botsort``).
+        tracker_lost_track_buffer: Frames a lost track is kept before deletion. Common to all trackers.
+        tracker_frame_rate: Source frame rate used by the tracker for time-based logic. Common to all trackers.
+        tracker_track_activation_threshold: Detection confidence to start a new track. Applies to ``bytetrack``,
+            ``sort``, ``botsort``.
+        tracker_minimum_consecutive_frames: Frames a new track must be matched before being confirmed. Common to
+            all trackers.
+        tracker_minimum_iou_threshold: IoU threshold for association. Applies to ``bytetrack``, ``sort``, ``ocsort``.
+        tracker_high_conf_det_threshold: High-confidence detection threshold for the first association pass.
+            Applies to ``bytetrack``, ``ocsort``, ``botsort``.
+        tracker_minimum_iou_threshold_first_assoc: IoU threshold for the first association pass. Applies to
+            ``botsort`` only.
+        tracker_minimum_iou_threshold_second_assoc: IoU threshold for the second association pass. Applies to
+            ``botsort`` only.
+        tracker_minimum_iou_threshold_unconfirmed_assoc: IoU threshold for unconfirmed-track association.
+            Applies to ``botsort`` only.
+        tracker_enable_cmc: Enable camera-motion compensation. Applies to ``botsort`` only.
+        tracker_cmc_method: Camera-motion compensation method (e.g. ``sparseOptFlow``). Applies to ``botsort`` only.
+        tracker_cmc_downscale: Frame downscale factor used by CMC. Applies to ``botsort`` only.
+        tracker_instant_first_frame_activation: Activate tracks immediately on the first frame. Applies to
+            ``botsort`` only.
+        tracker_direction_consistency_weight: Weight of the direction-consistency term during association.
+            Applies to ``ocsort`` only.
+        tracker_delta_t: Frame gap used for OC-SORT's observation-centric update. Applies to ``ocsort`` only.
         out_output: Output video file path.
         out_mot_results: Output MOT format file path.
         out_overwrite: Overwrite existing output files.
@@ -145,7 +184,27 @@ def track(
     class_filter = _resolve_class_filter(filters_classes, class_names)
     track_id_filter = _resolve_track_id_filter(filters_track_ids)
 
-    tracker_kwargs = _parse_tracker_params(tracker_params, tracker)
+    tracker_kwargs: dict[str, object] = {
+        k: v
+        for k, v in {
+            "lost_track_buffer": tracker_lost_track_buffer,
+            "frame_rate": tracker_frame_rate,
+            "track_activation_threshold": tracker_track_activation_threshold,
+            "minimum_consecutive_frames": tracker_minimum_consecutive_frames,
+            "minimum_iou_threshold": tracker_minimum_iou_threshold,
+            "high_conf_det_threshold": tracker_high_conf_det_threshold,
+            "minimum_iou_threshold_first_assoc": tracker_minimum_iou_threshold_first_assoc,
+            "minimum_iou_threshold_second_assoc": tracker_minimum_iou_threshold_second_assoc,
+            "minimum_iou_threshold_unconfirmed_assoc": tracker_minimum_iou_threshold_unconfirmed_assoc,
+            "enable_cmc": tracker_enable_cmc,
+            "cmc_method": tracker_cmc_method,
+            "cmc_downscale": tracker_cmc_downscale,
+            "instant_first_frame_activation": tracker_instant_first_frame_activation,
+            "direction_consistency_weight": tracker_direction_consistency_weight,
+            "delta_t": tracker_delta_t,
+        }.items()
+        if v is not None
+    }
     tracker_obj = _init_tracker(tracker, **tracker_kwargs)
 
     if source is not None:
@@ -176,63 +235,6 @@ def track(
             tracker=tracker_obj,
             out_mot_results=out_mot_results,
         )
-
-
-def _parse_tracker_params(
-    params: list[str] | None,
-    tracker_id: str,
-) -> dict[str, object]:
-    """Parse tracker_params list of key=value strings into a typed dict.
-
-    Args:
-        params: List of ``key=value`` strings from CLI (e.g. ``["min_hits=3"]``).
-        tracker_id: Registered tracker name used for type coercion.
-
-    Returns:
-        Mapping of parameter names to typed values.
-
-    Examples:
-        >>> _parse_tracker_params(None, "bytetrack")
-        {}
-        >>> _parse_tracker_params([], "bytetrack")
-        {}
-    """
-    if not params:
-        return {}
-
-    info = BaseTracker._lookup_tracker(tracker_id)
-    result: dict[str, object] = {}
-
-    for kv in params:
-        if "=" not in kv:
-            print(
-                f"Warning: ignoring malformed tracker param '{kv}' (expected key=value).",
-                file=sys.stderr,
-            )
-            continue
-        key, _, raw_val = kv.partition("=")
-        key = key.strip()
-        raw_val = raw_val.strip()
-
-        if info and key in info.parameters:
-            param_info = info.parameters[key]
-            try:
-                if param_info.param_type is bool:
-                    value: object = raw_val.lower() not in ("0", "false", "no", "off")
-                else:
-                    value = param_info.param_type(raw_val)
-            except (ValueError, TypeError):
-                print(
-                    f"Warning: cannot convert '{raw_val}' to {param_info.param_type.__name__} for '{key}', skipping.",
-                    file=sys.stderr,
-                )
-                continue
-        else:
-            value = raw_val
-
-        result[key] = value
-
-    return result
 
 
 def _run_frameless(

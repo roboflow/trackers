@@ -11,7 +11,6 @@ from trackers.cli.track import (  # noqa: F401
     _init_annotators,
     _init_model,
     _init_tracker,
-    _parse_tracker_params,
     _resolve_class_filter,
     _resolve_track_id_filter,
     _run_frameless,

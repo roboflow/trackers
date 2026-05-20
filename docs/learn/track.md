@@ -93,14 +93,14 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 === "CLI"
 
-    Select a tracker with `--tracker` and tune its behavior with `--tracker-params key=value` arguments.
+    Select a tracker with `--tracker` and tune its behavior with per-parameter `--tracker.<name>` flags.
 
     ```text
     trackers track \
         --source source.mp4 \
         --tracker bytetrack \
-        --tracker-params lost_track_buffer=60 \
-        --tracker-params minimum_consecutive_frames=5
+        --tracker.lost-track-buffer 60 \
+        --tracker.minimum-consecutive-frames 5
     ```
 
 === "Python"
@@ -397,9 +397,32 @@ All arguments accepted by the `trackers track` command.
       <td><code>bytetrack</code></td>
     </tr>
     <tr>
-      <td><code>--tracker-params</code></td>
-      <td>Tracker hyperparameters as <code>key=value</code> pairs. Repeat the flag for each parameter. Example: <code>--tracker-params lost_track_buffer=60 --tracker-params minimum_consecutive_frames=5</code>. Available keys depend on the selected tracker.</td>
-      <td>tracker defaults</td>
+      <td><code>--tracker.lost-track-buffer</code></td>
+      <td>Number of frames a lost track is kept before deletion. Applies to all trackers.</td>
+      <td>tracker default</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.frame-rate</code></td>
+      <td>Source frame rate used by the tracker for time-based logic. Applies to all trackers.</td>
+      <td>tracker default</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.track-activation-threshold</code></td>
+      <td>Detection confidence required to start a new track. Applies to <code>bytetrack</code>, <code>sort</code>, <code>botsort</code>.</td>
+      <td>tracker default</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.minimum-consecutive-frames</code></td>
+      <td>Frames a new track must be matched before being confirmed. Applies to all trackers.</td>
+      <td>tracker default</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.minimum-iou-threshold</code></td>
+      <td>IoU threshold for detection-to-track association. Applies to <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>.</td>
+      <td>tracker default</td>
+    </tr>
+    <tr>
+      <td colspan="3"><em>Algorithm-specific flags also exist (e.g. <code>--tracker.high-conf-det-threshold</code>, <code>--tracker.enable-cmc</code>/<code>--tracker.no-enable-cmc</code>, <code>--tracker.cmc-method</code>, <code>--tracker.delta-t</code>); each only takes effect when the selected <code>--tracker</code> exposes that parameter. Unset flags fall back to the tracker's own defaults.</em></td>
     </tr>
     <tr>
       <td><code>--show.display</code></td>
