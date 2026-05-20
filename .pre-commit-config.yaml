@@ -39,7 +39,7 @@ repos:
       - id: mixed-line-ending
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+    rev: v0.15.13
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -63,7 +63,7 @@ repos:
           - tomli
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v2.0.0'
+    rev: 'v2.1.0'
     hooks:
       - id: mypy
         additional_dependencies: [numpy,types-aiofiles]
