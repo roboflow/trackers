@@ -10,11 +10,7 @@ import numpy as np
 
 from trackers.core.mcbyte.mask_manager import MaskManager
 from trackers.core.mcbyte.masks import TrackletSnapshot
-
-from trackers.core.mcbyte.masks.dummy import (
-    DummyBoxMaskGenerator,
-    DummyIdentityMaskPropagator
-)
+from trackers.core.mcbyte.masks.dummy import DummyBoxMaskGenerator, DummyIdentityMaskPropagator
 
 
 def _make_frame(h: int = 100, w: int = 120) -> np.ndarray:
