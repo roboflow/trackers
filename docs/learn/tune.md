@@ -79,8 +79,9 @@ override the same key in `search_space` if present, and are returned from
         --fixed-params '{"enable_cmc": false}'
     ```
 
-Images are read from `{images_dir}/{sequence}/img1/{frame:06d}.jpg` (and
-common alternatives such as `.png`).
+Images are read from `{images_dir}/{sequence}/img1/` using MOT-style stems:
+6-digit (`000001.jpg`, MOT17/SportsMOT) or 8-digit (`00000001.jpg`, DanceTrack),
+plus common extensions (`.jpg`, `.png`, …).
 
 ```text
 data

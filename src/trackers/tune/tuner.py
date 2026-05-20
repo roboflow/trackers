@@ -13,19 +13,28 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import cv2
 import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker
 from trackers.eval.evaluate import evaluate_mot_sequences
 from trackers.eval.results import BenchmarkResult
+from trackers.io.frames import load_mot_frame_image
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 
 if TYPE_CHECKING:
     import optuna
 
-_MOT_FRAME_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
+
+def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) -> np.ndarray:
+    """Load one MOT ``img1`` frame from ``{images_dir}/{seq_name}/img1/``."""
+    frame_dir = images_dir / seq_name / "img1"
+    try:
+        return load_mot_frame_image(frame_dir, frame_idx)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            f"MOT frame image not found for sequence {seq_name!r}, frame {frame_idx}: expected under {frame_dir}"
+        ) from exc
 
 
 class Tuner:
@@ -66,9 +75,10 @@ class Tuner:
             ``{"enable_cmc": False}`` or ``{"lost_track_buffer": 30}``.
             Keys in ``fixed_params`` are not sampled by Optuna.
         images_dir: Optional MOT-style image root. When set, frames are loaded
-            from ``{images_dir}/{sequence}/img1/{frame:06d}.jpg`` (also tries
-            other common extensions) and passed to ``tracker.update(..., frame=)``.
-            Required when ``fixed_params`` sets ``enable_cmc=True``.
+            from ``{images_dir}/{sequence}/img1/`` using 6- or 8-digit MOT
+            stems (and common image extensions) and passed to
+            ``tracker.update(..., frame=)``. Required when ``fixed_params``
+            sets ``enable_cmc=True``.
         seed: Random seed for Optuna's TPE sampler. When set, repeated runs with
             the same data and ``n_trials`` sample the same hyperparameters
             (excluding the deterministic baseline trial when
@@ -376,30 +386,6 @@ def _discover_sequences(
         lines = Path(seqmap).read_text().splitlines()
         return [ln.strip() for ln in lines if ln.strip() and not ln.startswith("#") and ln.strip().lower() != "name"]
     return sorted(p.stem for p in detections_dir.glob("*.txt"))
-
-
-def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) -> np.ndarray:
-    """Load one MOT ``img1`` frame.
-
-    Raises:
-        FileNotFoundError: When no file matches ``{frame_idx:06d}`` under
-            ``{images_dir}/{seq_name}/img1/``.
-        OSError: When a matching file exists but cannot be decoded.
-    """
-    frame_dir = images_dir / seq_name / "img1"
-    stem = f"{frame_idx:06d}"
-    for ext in _MOT_FRAME_EXTENSIONS:
-        path = frame_dir / f"{stem}{ext}"
-        if path.is_file():
-            frame = cv2.imread(str(path))
-            if frame is None:
-                raise OSError(f"Failed to decode image: {path}")
-            return frame
-    extensions = ", ".join(_MOT_FRAME_EXTENSIONS)
-    raise FileNotFoundError(
-        f"MOT frame image not found for sequence {seq_name!r}, frame {frame_idx}: "
-        f"expected {frame_dir / stem}{{ext}} with ext in ({extensions})"
-    )
 
 
 def _run_tracker_on_detections(

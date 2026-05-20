@@ -452,6 +452,22 @@ class TestLoadMotSequenceFrame:
 
         assert frame.shape == (8, 8, 3)
 
+    def test_loads_eight_digit_dancetrack_frame(self, tmp_path: Path) -> None:
+        import cv2
+        import numpy as np
+
+        from trackers.tune.tuner import _load_mot_sequence_frame
+
+        images_dir = tmp_path / "images"
+        frame_dir = images_dir / "dancetrack0001" / "img1"
+        frame_dir.mkdir(parents=True)
+        image_path = frame_dir / "00000001.jpg"
+        cv2.imwrite(str(image_path), np.zeros((8, 8, 3), dtype=np.uint8))
+
+        frame = _load_mot_sequence_frame(images_dir, "dancetrack0001", 1)
+
+        assert frame.shape == (8, 8, 3)
+
 
 class TestRunTrackerOnDetections:
     """End-to-end tests for the _run_tracker_on_detections helper."""
