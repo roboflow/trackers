@@ -43,22 +43,39 @@ def _dotted_create_parser(funcs: object, opts: object) -> ArgumentParser:
 def _rewrite_dotted(parser: ArgumentParser) -> None:
     """Rewrite ``--prefix-name`` options to ``--prefix.name`` in-place.
 
-    Recurses into subparsers so subcommands ("track", "eval", ...) are all
-    rewritten. Only options whose first token is in ``_GROUPS`` are touched.
+    Handles both positive flags (``--show-ids`` → ``--show.ids``) and boolean
+    negation flags (``--no-show-ids`` → ``--show.no-ids``). Also updates
+    ``action.negative_option_strings`` so ``_BooleanOptionalAction`` True/False
+    detection keeps working after the rename.
+
+    Recurses into subparsers so all subcommands are rewritten.
 
     Args:
         parser: An argparse parser (root or subparser) to rewrite.
     """
     new_map: dict[str, Action] = {}
     for opt, action in list(parser._option_string_actions.items()):
-        if opt.startswith("--"):
-            bare = opt[2:]
+        if not opt.startswith("--"):
+            continue
+        bare = opt[2:]
+        new_opt: str | None = None
+        if bare.startswith("no-"):
+            # Negation: --no-<group>-<rest> → --<group>.no-<rest>
+            after_no = bare[3:]
+            prefix, sep, rest = after_no.partition("-")
+            if sep and prefix in _GROUPS and rest:
+                new_opt = f"--{prefix}.no-{rest}"
+        else:
+            # Positive: --<group>-<rest> → --<group>.<rest>
             prefix, sep, rest = bare.partition("-")
             if sep and prefix in _GROUPS and rest:
                 new_opt = f"--{prefix}.{rest}"
-                action.option_strings = [new_opt if s == opt else s for s in action.option_strings]
-                new_map[new_opt] = action
-                del parser._option_string_actions[opt]
+        if new_opt is not None:
+            action.option_strings = [new_opt if s == opt else s for s in action.option_strings]
+            if hasattr(action, "negative_option_strings"):
+                action.negative_option_strings = [new_opt if s == opt else s for s in action.negative_option_strings]
+            new_map[new_opt] = action
+            del parser._option_string_actions[opt]
     parser._option_string_actions.update(new_map)
     for action in parser._actions:
         if hasattr(action, "_name_parser_map"):
