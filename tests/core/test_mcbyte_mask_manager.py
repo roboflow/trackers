@@ -9,10 +9,11 @@ from __future__ import annotations
 import numpy as np
 
 from trackers.core.mcbyte.mask_manager import MaskManager
-from trackers.core.mcbyte.masks import (
+from trackers.core.mcbyte.masks import TrackletSnapshot
+
+from trackers.core.mcbyte.masks.dummy import (
     DummyBoxMaskGenerator,
-    DummyIdentityMaskPropagator,
-    TrackletSnapshot,
+    DummyIdentityMaskPropagator
 )
 
 
