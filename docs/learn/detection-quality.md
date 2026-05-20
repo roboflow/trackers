@@ -66,10 +66,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     ```bash
     trackers track \
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
-        --model yolo26n-640 \
+        --detection.model yolo26n-640 \
         --tracker bytetrack \
-        --classes person \
-        --mot-output results/yolo26n/MOT17-13-FRCNN.txt
+        --filters.classes person \
+        --out.mot-results results/yolo26n/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -78,10 +78,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     for seq in MOT17-02-FRCNN MOT17-04-FRCNN MOT17-05-FRCNN MOT17-09-FRCNN MOT17-10-FRCNN MOT17-11-FRCNN MOT17-13-FRCNN; do
         trackers track \
             --source ./data/mot17/val/$seq/img1 \
-            --model yolo26n-640 \
+            --detection.model yolo26n-640 \
             --tracker bytetrack \
-            --classes person \
-            --mot-output results/yolo26n/$seq.txt
+            --filters.classes person \
+            --out.mot-results results/yolo26n/$seq.txt
     done
     ```
 
@@ -97,10 +97,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     ```bash
     trackers track \
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
-        --model rfdetr-nano \
+        --detection.model rfdetr-nano \
         --tracker bytetrack \
-        --classes person \
-        --mot-output results/rfdetr-nano/MOT17-13-FRCNN.txt
+        --filters.classes person \
+        --out.mot-results results/rfdetr-nano/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -109,10 +109,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     for seq in MOT17-02-FRCNN MOT17-04-FRCNN MOT17-05-FRCNN MOT17-09-FRCNN MOT17-10-FRCNN MOT17-11-FRCNN MOT17-13-FRCNN; do
         trackers track \
             --source ./data/mot17/val/$seq/img1 \
-            --model rfdetr-nano \
+            --detection.model rfdetr-nano \
             --tracker bytetrack \
-            --classes person \
-            --mot-output results/rfdetr-nano/$seq.txt
+            --filters.classes person \
+            --out.mot-results results/rfdetr-nano/$seq.txt
     done
     ```
 
@@ -128,10 +128,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     ```bash
     trackers track \
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
-        --model rfdetr-medium \
+        --detection.model rfdetr-medium \
         --tracker bytetrack \
-        --classes person \
-        --mot-output results/rfdetr-medium/MOT17-13-FRCNN.txt
+        --filters.classes person \
+        --out.mot-results results/rfdetr-medium/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -140,10 +140,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     for seq in MOT17-02-FRCNN MOT17-04-FRCNN MOT17-05-FRCNN MOT17-09-FRCNN MOT17-10-FRCNN MOT17-11-FRCNN MOT17-13-FRCNN; do
         trackers track \
             --source ./data/mot17/val/$seq/img1 \
-            --model rfdetr-medium \
+            --detection.model rfdetr-medium \
             --tracker bytetrack \
-            --classes person \
-            --mot-output results/rfdetr-medium/$seq.txt
+            --filters.classes person \
+            --out.mot-results results/rfdetr-medium/$seq.txt
     done
     ```
 

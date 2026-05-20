@@ -53,19 +53,19 @@ COLOR_PALETTE = sv.ColorPalette.from_hex(
 
 def track(
     source: str | None = None,
-    model: str = DEFAULT_MODEL,
+    detection_model: str = DEFAULT_MODEL,
     detections: Path | None = None,
-    model_confidence: float = DEFAULT_CONFIDENCE,
-    model_device: str = DEFAULT_DEVICE,
-    model_api_key: str | None = None,
-    classes: str | None = None,
-    track_ids: str | None = None,
+    detection_confidence: float = DEFAULT_CONFIDENCE,
+    detection_device: str = DEFAULT_DEVICE,
+    detection_api_key: str | None = None,
+    filters_classes: str | None = None,
+    filters_track_ids: str | None = None,
     tracker: str = DEFAULT_TRACKER,
     tracker_params: list[str] | None = None,
-    output: Path | None = None,
-    mot_output: Path | None = None,
-    overwrite: bool = False,
-    display: bool = False,
+    out_output: Path | None = None,
+    out_mot_results: Path | None = None,
+    out_overwrite: bool = False,
+    show_display: bool = False,
     show_boxes: bool = True,
     show_masks: bool = False,
     show_labels: bool = False,
@@ -77,20 +77,20 @@ def track(
 
     Args:
         source: Video file, webcam index (0), RTSP URL, or image directory.
-        model: Model ID for detection (e.g. rfdetr-nano, rfdetr-base, workspace/project/version).
-        detections: Load pre-computed detections from MOT format file (mutually exclusive with model).
-        model_confidence: Detection confidence threshold.
-        model_device: Device to run model on (auto, cpu, cuda, cuda:0, mps).
-        model_api_key: Roboflow API key for custom models.
-        classes: Filter by class names or IDs (comma-separated, e.g. person,car).
-        track_ids: Filter output by track IDs (comma-separated, e.g. 1,3,5).
+        detection_model: Model ID for detection (e.g. rfdetr-nano, rfdetr-base, workspace/project/version).
+        detections: Load pre-computed detections from MOT format file (mutually exclusive with detection model).
+        detection_confidence: Detection confidence threshold.
+        detection_device: Device to run model on (auto, cpu, cuda, cuda:0, mps).
+        detection_api_key: Roboflow API key for custom models.
+        filters_classes: Filter by class names or IDs (comma-separated, e.g. person,car).
+        filters_track_ids: Filter output by track IDs (comma-separated, e.g. 1,3,5).
         tracker: Tracking algorithm ID.
         tracker_params: Tracker-specific parameters as key=value pairs
             (e.g. --tracker-params min_hits=3 --tracker-params det_thresh=0.6).
-        output: Output video file path.
-        mot_output: Output MOT format file path.
-        overwrite: Overwrite existing output files.
-        display: Show preview window.
+        out_output: Output video file path.
+        out_mot_results: Output MOT format file path.
+        out_overwrite: Overwrite existing output files.
+        show_display: Show preview window.
         show_boxes: Draw bounding boxes.
         show_masks: Draw segmentation masks (segmentation models only).
         show_labels: Show class labels.
@@ -101,7 +101,7 @@ def track(
     Returns:
         Exit code: 0 on success, 1 on error.
     """
-    needs_frames = output or display
+    needs_frames = out_output or show_display
 
     if source is None and not detections:
         print(
@@ -110,24 +110,24 @@ def track(
         )
         return 1
 
-    if model != DEFAULT_MODEL and detections is not None:
+    if detection_model != DEFAULT_MODEL and detections is not None:
         print(
-            "Error: --model and --detections are mutually exclusive.",
+            "Error: --detection.model and --detections are mutually exclusive.",
             file=sys.stderr,
         )
         return 1
 
     if needs_frames and source is None:
         print(
-            "Error: --source is required when using --output or --display.",
+            "Error: --source is required when using --out.output or --show.display.",
             file=sys.stderr,
         )
         return 1
 
-    if output:
-        _validate_output_path(_resolve_video_output_path(output), overwrite=overwrite)
-    if mot_output:
-        _validate_output_path(mot_output, overwrite=overwrite)
+    if out_output:
+        _validate_output_path(_resolve_video_output_path(out_output), overwrite=out_overwrite)
+    if out_mot_results:
+        _validate_output_path(out_mot_results, overwrite=out_overwrite)
 
     if detections:
         loaded_model = None
@@ -135,15 +135,15 @@ def track(
         class_names: list[str] = []
     else:
         loaded_model = _init_model(
-            model,
-            device=model_device,
-            api_key=model_api_key,
+            detection_model,
+            device=detection_device,
+            api_key=detection_api_key,
         )
         detections_data = None
         class_names = getattr(loaded_model, "class_names", [])
 
-    class_filter = _resolve_class_filter(classes, class_names)
-    track_id_filter = _resolve_track_id_filter(track_ids)
+    class_filter = _resolve_class_filter(filters_classes, class_names)
+    track_id_filter = _resolve_track_id_filter(filters_track_ids)
 
     tracker_kwargs = _parse_tracker_params(tracker_params, tracker)
     tracker_obj = _init_tracker(tracker, **tracker_kwargs)
@@ -157,10 +157,10 @@ def track(
             class_filter=class_filter,
             track_id_filter=track_id_filter,
             tracker=tracker_obj,
-            output=output,
-            mot_output=mot_output,
-            display=display,
-            model_confidence=model_confidence,
+            out_output=out_output,
+            out_mot_results=out_mot_results,
+            show_display=show_display,
+            detection_confidence=detection_confidence,
             show_boxes=show_boxes,
             show_masks=show_masks,
             show_labels=show_labels,
@@ -174,7 +174,7 @@ def track(
             class_filter=class_filter,
             track_id_filter=track_id_filter,
             tracker=tracker_obj,
-            mot_output=mot_output,
+            out_mot_results=out_mot_results,
         )
 
 
@@ -240,7 +240,7 @@ def _run_frameless(
     class_filter: list[int] | None,
     track_id_filter: list[int] | None,
     tracker: BaseTracker,
-    mot_output: Path | None,
+    out_mot_results: Path | None,
 ) -> int:
     """Run tracking from pre-computed detections without a frame source."""
     if detections_data is None or not detections_data:
@@ -252,7 +252,7 @@ def _run_frameless(
 
     try:
         with (
-            _MOTOutput(mot_output) as mot,
+            _MOTOutput(out_mot_results) as mot,
             _TrackingProgress(source_info) as progress,
         ):
             interrupted = False
@@ -292,10 +292,10 @@ def _run_with_source(
     class_filter: list[int] | None,
     track_id_filter: list[int] | None,
     tracker: BaseTracker,
-    output: Path | None,
-    mot_output: Path | None,
-    display: bool,
-    model_confidence: float,
+    out_output: Path | None,
+    out_mot_results: Path | None,
+    show_display: bool,
+    detection_confidence: float,
     show_boxes: bool,
     show_masks: bool,
     show_labels: bool,
@@ -321,22 +321,22 @@ def _run_with_source(
             color_lookup=sv.ColorLookup.TRACK,
         )
 
-    display_ctx = _DisplayWindow() if display else nullcontext()
+    display_ctx = _DisplayWindow() if show_display else nullcontext()
 
     try:
         with (
             _VideoOutput(
-                output,
+                out_output,
                 fps=source_info.fps or _DEFAULT_OUTPUT_FPS,
             ) as video,
-            _MOTOutput(mot_output) as mot,
+            _MOTOutput(out_mot_results) as mot,
             display_ctx as display_win,
             _TrackingProgress(source_info) as progress,
         ):
             interrupted = False
             for frame_idx, frame in frame_gen:
                 if loaded_model is not None:
-                    dets = _run_model(loaded_model, frame, model_confidence)
+                    dets = _run_model(loaded_model, frame, detection_confidence)
                 elif detections_data is not None and frame_idx in detections_data:
                     dets = _mot_frame_to_detections(detections_data[frame_idx])
                 else:
@@ -356,7 +356,7 @@ def _run_with_source(
                 mot.write(frame_idx, tracked)
                 progress.update()
 
-                if display or output:
+                if show_display or out_output:
                     annotated = frame.copy()
                     if trace_annotator is not None:
                         annotated = trace_annotator.annotate(annotated, tracked)
@@ -390,10 +390,10 @@ def _run_with_source(
 
 
 def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
-    """Resolve a comma-separated ``--track-ids`` value to a list of integer IDs.
+    """Resolve a comma-separated ``--filters.track-ids`` value to a list of integer IDs.
 
     Args:
-        track_ids_arg: Raw ``--track-ids`` string (e.g. ``"1,3,5"``). ``None``
+        track_ids_arg: Raw ``--filters.track-ids`` string (e.g. ``"1,3,5"``). ``None``
             means no filter.
 
     Returns:
@@ -425,14 +425,14 @@ def _resolve_class_filter(
     classes_arg: str | None,
     class_names: list[str],
 ) -> list[int] | None:
-    """Resolve a comma-separated ``--classes`` value to a list of integer class IDs.
+    """Resolve a comma-separated ``--filters.classes`` value to a list of integer class IDs.
 
     Each token is checked independently: if it parses as an ``int`` it is used
     directly as a class ID; otherwise it is looked up by name in *class_names*.
     Unknown names are printed as warnings and skipped.
 
     Args:
-        classes_arg: Raw ``--classes`` string (e.g. ``"person,car"`` or
+        classes_arg: Raw ``--filters.classes`` string (e.g. ``"person,car"`` or
             ``"0,2"`` or ``"person,2"``). ``None`` means no filter.
         class_names: Ordered list of class names where the index equals the
             class ID (as provided by the model).

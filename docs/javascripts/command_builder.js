@@ -80,17 +80,17 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const prefix = state.modelType === "segmentation" ? "rfdetr-seg-" : "rfdetr-";
-    parts.push(`--model ${prefix}${state.modelSize}`);
+    parts.push(`--detection.model ${prefix}${state.modelSize}`);
 
     if (state.showModelOptions) {
       if (state.confidence !== defaults.confidence && isValidDecimal01(state.confidence, 0.05)) {
-        parts.push(`--model.confidence ${state.confidence}`);
+        parts.push(`--detection.confidence ${state.confidence}`);
       }
       if (state.device !== "auto") {
-        parts.push(`--model.device ${state.device}`);
+        parts.push(`--detection.device ${state.device}`);
       }
       if (state.classes && isValidClasses(state.classes)) {
-        parts.push(`--classes ${state.classes}`);
+        parts.push(`--filters.classes ${state.classes}`);
       }
     }
 
@@ -120,19 +120,19 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    if (state.display) parts.push("--display");
-    if (!state.showBoxes) parts.push("--no-boxes");
-    if (state.showMasks) parts.push("--show-masks");
-    if (state.showConfidence) parts.push("--show-confidence");
-    if (state.showLabels) parts.push("--show-labels");
-    if (!state.showIds) parts.push("--no-ids");
-    if (state.showTrajectories) parts.push("--show-trajectories");
+    if (state.display) parts.push("--show.display");
+    if (!state.showBoxes) parts.push("--no-show-boxes");
+    if (state.showMasks) parts.push("--show.masks");
+    if (state.showConfidence) parts.push("--show.confidence");
+    if (state.showLabels) parts.push("--show.labels");
+    if (!state.showIds) parts.push("--no-show-ids");
+    if (state.showTrajectories) parts.push("--show.trajectories");
 
     const outputValue = state.output.trim();
     if (outputValue) {
-      parts.push(`--output ${outputValue}`);
+      parts.push(`--out.output ${outputValue}`);
       if (state.overwrite) {
-        parts.push("--overwrite");
+        parts.push("--out.overwrite");
       }
     }
 

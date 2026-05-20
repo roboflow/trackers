@@ -49,7 +49,7 @@ Read frames from video files, webcams, RTSP streams, or image directories. Each 
     Track objects with one command. Uses RF-DETR Nano and ByteTrack by default.
 
     ```text
-    trackers track --source source.mp4 --output output.mp4
+    trackers track --source source.mp4 --out.output output.mp4
     ```
 
 === "Python"
@@ -139,15 +139,15 @@ Trackers don't detect objects—they link detections across frames. A detection 
 
 === "CLI"
 
-    Configure detection with `--model.*` arguments. Filter by confidence and class before tracking.
+    Configure detection with `--detection.*` arguments. Filter by confidence and class before tracking.
 
     ```text
     trackers track \
         --source source.mp4 \
-        --model rfdetr-medium \
-        --model.confidence 0.3 \
-        --model.device cuda \
-        --classes person,car
+        --detection.model rfdetr-medium \
+        --detection.confidence 0.3 \
+        --detection.device cuda \
+        --filters.classes person,car
     ```
 
 === "Python"
@@ -188,10 +188,10 @@ Visualization renders tracking results for debugging, demos, and qualitative eva
     ```text
     trackers track \
         --source source.mp4 \
-        --display \
-        --show-labels \
-        --show-confidence \
-        --show-trajectories
+        --show.display \
+        --show.labels \
+        --show.confidence \
+        --show.trajectories
     ```
 
 === "Python"
@@ -274,7 +274,7 @@ Save tracking results as annotated video files or display them in real time.
     Specify an output path to save annotated video.
 
     ```text
-    trackers track --source source.mp4 --output output.mp4 --overwrite
+    trackers track --source source.mp4 --out.output output.mp4 --out.overwrite
     ```
 
 === "Python"
@@ -342,38 +342,48 @@ All arguments accepted by the `trackers track` command.
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--output</code></td>
+      <td><code>--out.output</code></td>
       <td>Path for output video. If a directory is given, saves as <code>output.mp4</code> inside it.</td>
       <td>none</td>
     </tr>
     <tr>
-      <td><code>--overwrite</code></td>
+      <td><code>--out.overwrite</code></td>
       <td>Allow overwriting existing output files. Without this flag, existing files cause an error.</td>
       <td><code>false</code></td>
     </tr>
     <tr>
-      <td><code>--model</code></td>
+      <td><code>--out.mot-results</code></td>
+      <td>Output path for tracker results in MOT format (per-frame detections with IDs).</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--detection.model</code></td>
       <td>Model identifier. Pretrained: <code>rfdetr-nano</code>, <code>rfdetr-small</code>, <code>rfdetr-medium</code>, <code>rfdetr-large</code>. Segmentation: <code>rfdetr-seg-*</code>.</td>
       <td><code>rfdetr-nano</code></td>
     </tr>
     <tr>
-      <td><code>--model.confidence</code></td>
+      <td><code>--detection.confidence</code></td>
       <td>Minimum confidence threshold. Lower values increase recall but may add noise.</td>
       <td><code>0.5</code></td>
     </tr>
     <tr>
-      <td><code>--model.device</code></td>
+      <td><code>--detection.device</code></td>
       <td>Compute device. Options: <code>auto</code>, <code>cpu</code>, <code>cuda</code>, <code>cuda:0</code>, <code>mps</code>.</td>
       <td><code>auto</code></td>
     </tr>
     <tr>
-      <td><code>--model.api_key</code></td>
+      <td><code>--detection.api-key</code></td>
       <td>Roboflow API key for custom hosted models.</td>
       <td>none</td>
     </tr>
     <tr>
-      <td><code>--classes</code></td>
+      <td><code>--filters.classes</code></td>
       <td>Comma-separated class names or IDs to track. Example: <code>person,car</code> or <code>0,2</code>.</td>
+      <td>all</td>
+    </tr>
+    <tr>
+      <td><code>--filters.track-ids</code></td>
+      <td>Comma-separated track IDs to keep in output. Example: <code>1,3,5</code>.</td>
       <td>all</td>
     </tr>
     <tr>
@@ -402,37 +412,37 @@ All arguments accepted by the `trackers track` command.
       <td><code>0.3</code></td>
     </tr>
     <tr>
-      <td><code>--display</code></td>
+      <td><code>--show.display</code></td>
       <td>Opens a live preview window. Press <code>q</code> or <code>ESC</code> to quit.</td>
       <td><code>false</code></td>
     </tr>
     <tr>
-      <td><code>--show-boxes</code></td>
+      <td><code>--show.boxes</code></td>
       <td>Draw bounding boxes around tracked objects.</td>
       <td><code>true</code></td>
     </tr>
     <tr>
-      <td><code>--show-masks</code></td>
+      <td><code>--show.masks</code></td>
       <td>Draw segmentation masks. Only available with <code>rfdetr-seg-*</code> models.</td>
       <td><code>false</code></td>
     </tr>
     <tr>
-      <td><code>--show-confidence</code></td>
+      <td><code>--show.confidence</code></td>
       <td>Show detection confidence scores in labels.</td>
       <td><code>false</code></td>
     </tr>
     <tr>
-      <td><code>--show-labels</code></td>
+      <td><code>--show.labels</code></td>
       <td>Show class names in labels.</td>
       <td><code>false</code></td>
     </tr>
     <tr>
-      <td><code>--show-ids</code></td>
+      <td><code>--show.ids</code></td>
       <td>Show tracker IDs in labels.</td>
       <td><code>true</code></td>
     </tr>
     <tr>
-      <td><code>--show-trajectories</code></td>
+      <td><code>--show.trajectories</code></td>
       <td>Draw motion trails showing recent positions of each track.</td>
       <td><code>false</code></td>
     </tr>
