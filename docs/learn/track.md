@@ -402,6 +402,11 @@ All arguments accepted by the `trackers track` command.
       <td><code>0.3</code></td>
     </tr>
     <tr>
+      <td><code>--tracker_params.iou_variant</code></td>
+      <td>IoU similarity metric for data association. Options: <code>iou</code>, <code>giou</code>, <code>diou</code>, <code>ciou</code>, <code>biou</code>. Applies to all trackers.</td>
+      <td><code>iou</code></td>
+    </tr>
+    <tr>
       <td><code>--vis.display</code></td>
       <td>Opens a live preview window. Press <code>q</code> or <code>ESC</code> to quit.</td>
       <td><code>false</code></td>
