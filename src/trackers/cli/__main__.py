@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import warnings
 from argparse import Action, ArgumentParser
@@ -105,6 +106,7 @@ def main() -> int:
         {"track": track, "eval": eval_cmd, "tune": tune, "download": download},
         argv=sys.argv[1:],
         cli_options="all",
+        parsers={dict: json.loads},
         version=version("trackers"),
         short={"out-output": "o"},
     )

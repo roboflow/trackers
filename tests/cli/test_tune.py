@@ -81,3 +81,44 @@ class TestTune:
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
             result = tune("bytetrack", tmp_path / "gt", tmp_path / "det")
         assert result == 1
+
+    def test_fixed_params_forwarded_to_tuner(self, tmp_path: Path) -> None:
+        """fixed_params dict is passed through to Tuner constructor."""
+        mock_tuner = MagicMock()
+        mock_tuner.run.return_value = {}
+        mock_tuner.study = None
+        with patch("trackers.tune.Tuner", return_value=mock_tuner) as mock_cls:
+            tune("bytetrack", tmp_path / "gt", tmp_path / "det", fixed_params={"enable_cmc": False})
+        _, kwargs = mock_cls.call_args
+        assert kwargs["fixed_params"] == {"enable_cmc": False}
+
+    def test_images_dir_forwarded_to_tuner(self, tmp_path: Path) -> None:
+        """images_dir Path is passed through to Tuner constructor."""
+        mock_tuner = MagicMock()
+        mock_tuner.run.return_value = {}
+        mock_tuner.study = None
+        images = tmp_path / "images"
+        with patch("trackers.tune.Tuner", return_value=mock_tuner) as mock_cls:
+            tune("bytetrack", tmp_path / "gt", tmp_path / "det", images_dir=images)
+        _, kwargs = mock_cls.call_args
+        assert kwargs["images_dir"] == images
+
+    def test_enqueue_defaults_false_forwarded_to_tuner(self, tmp_path: Path) -> None:
+        """enqueue_defaults=False is passed through to Tuner constructor."""
+        mock_tuner = MagicMock()
+        mock_tuner.run.return_value = {}
+        mock_tuner.study = None
+        with patch("trackers.tune.Tuner", return_value=mock_tuner) as mock_cls:
+            tune("bytetrack", tmp_path / "gt", tmp_path / "det", enqueue_defaults=False)
+        _, kwargs = mock_cls.call_args
+        assert kwargs["enqueue_defaults"] is False
+
+    def test_seed_forwarded_to_tuner(self, tmp_path: Path) -> None:
+        """seed integer is passed through to Tuner constructor."""
+        mock_tuner = MagicMock()
+        mock_tuner.run.return_value = {}
+        mock_tuner.study = None
+        with patch("trackers.tune.Tuner", return_value=mock_tuner) as mock_cls:
+            tune("bytetrack", tmp_path / "gt", tmp_path / "det", seed=42)
+        _, kwargs = mock_cls.call_args
+        assert kwargs["seed"] == 42
