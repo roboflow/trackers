@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from trackers.core.botsort._cmc_xyxy import _xyxy_corner_min_max
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.cmc import CMC
 from trackers.utils.converters import xyxy_to_xywh
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -210,45 +210,20 @@ class BoTSORTTracklet(BaseTracklet):
     def apply_cmc(self, H: np.ndarray | None) -> None:
         """Apply a 2x3 affine camera-motion transform **in place**.
 
-        The transform follows the convention ``x' = R @ x + t`` where
-        ``R = H[:2, :2]`` and ``t = H[:2, 2]``.
+        Delegates to :meth:`CMC.apply_batch` with ``[self]`` as the
+        tracklet list. See that method for full documentation of the
+        transform convention, state-representation handling, and covariance
+        update rules.
 
-        For the XCYCWH state ``[xc, yc, w, h, vxc, vyc, vw, vh]``:
-          * Centre position ``[xc, yc]``  → ``R @ [xc, yc] + t``
-          * Centre velocity ``[vxc, vyc]`` → ``R @ [vxc, vyc]``
-          * Width / height and their velocities are **not** transformed.
+        Args:
+            H: 2x3 affine transform matrix. If ``None``, this is a no-op.
 
-        The covariance ``P`` is updated as ``P = A @ P @ A.T`` where ``A``
-        embeds ``R`` in the position and velocity blocks.
+        Examples:
+            >>> import numpy as np
+            >>> bbox = np.array([10.0, 20.0, 50.0, 80.0])
+            >>> tracklet = BoTSORTTracklet(bbox)
+            >>> H = np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]], dtype=np.float32)
+            >>> tracklet.apply_cmc(H)
+            >>> tracklet.apply_cmc(None)  # no-op
         """
-        if H is None:
-            return
-
-        kf = self.state_estimator.kf
-        R = H[:2, :2].astype(np.float64)
-        t = H[:2, 2].astype(np.float64)
-
-        x = kf.x.reshape(-1)
-        if isinstance(self.state_estimator, XYXYStateEstimator):
-            x[0], x[1], x[2], x[3] = _xyxy_corner_min_max(x[0], x[1], x[2], x[3], R, t)
-            x[4], x[5], x[6], x[7] = _xyxy_corner_min_max(x[4], x[5], x[6], x[7], R)
-        else:
-            x[0:2] = R @ x[0:2] + t
-            x[4:6] = R @ x[4:6]
-        kf.x = x.reshape(-1, 1)
-
-        A = None
-        if isinstance(self.state_estimator, XYXYStateEstimator):
-            # atol=1e-6: matches the batch path tolerance for float32 CMC noise.
-            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(R[1, 0], 0.0, atol=1e-6):
-                A = np.eye(kf.x.shape[0], dtype=np.float64)
-                A[0:2, 0:2] = R
-                A[2:4, 2:4] = R
-                A[4:6, 4:6] = R
-                A[6:8, 6:8] = R
-        else:
-            A = np.eye(kf.x.shape[0], dtype=np.float64)
-            A[0:2, 0:2] = R
-            A[4:6, 4:6] = R
-        if A is not None:
-            kf.P = A @ kf.P @ A.T
+        CMC.apply_batch(H, [self])

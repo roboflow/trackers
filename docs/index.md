@@ -1,7 +1,7 @@
 ---
 title: Quickstart — Multi-Object Tracking in Python | Trackers
 comments: true
-description: Get started with Roboflow Trackers — install SORT, ByteTrack, and OC-SORT, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.
+description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, and BoT-SORT, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.
 ---
 
 <div align="center">

@@ -8,22 +8,17 @@ from typing import ClassVar
 
 import numpy as np
 import supervision as sv
-from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.core.sort.utils import _get_alive_tracklets
+from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
 )
-
-
-@deprecated(target=None, deprecated_in="0.4", remove_in="1.0")
-def _access_trackers(self_: "SORTTracker") -> "list[SORTTracklet]":
-    return self_.tracks
 
 
 class SORTTracker(BaseTracker):
@@ -108,7 +103,7 @@ class SORTTracker(BaseTracker):
     @property
     def trackers(self) -> list[SORTTracklet]:
         """Deprecated: use tracks instead."""
-        return _access_trackers(self)
+        return self.tracks
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
@@ -205,7 +200,7 @@ class SORTTracker(BaseTracker):
             self.tracks[row].update(detection_boxes[col])
             matched_tracklet_for_det[col] = self.tracks[row]
 
-        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
+        confidences = default_confidences(detections)
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
         # Remove dead tracklets

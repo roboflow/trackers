@@ -54,6 +54,13 @@ def _detection(xyxy: tuple[float, float, float, float]) -> sv.Detections:
     )
 
 
+def _no_confidence_detection(xyxy: tuple[float, float, float, float]) -> sv.Detections:
+    return sv.Detections(
+        xyxy=np.array([xyxy], dtype=np.float32),
+        class_id=np.array([0], dtype=int),
+    )
+
+
 class _TrackingIoU(BaseIoU):
     """Test-double IoU that records non-empty compute calls."""
 
@@ -120,6 +127,122 @@ def test_tracker_uses_configured_iou_variant(tracker_id: str) -> None:
     tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
     tracker.update(_detection((105.0, 105.0, 205.0, 205.0)))
     assert tracking_iou.compute_calls > 0
+
+
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+def test_no_confidence_detections_can_spawn_confirmed_tracks(tracker_id: str) -> None:
+    """Missing confidence should behave like usable detections, not suppress tracking."""
+    tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
+    detection = _no_confidence_detection((100.0, 100.0, 200.0, 200.0))
+
+    for _ in range(4):
+        result = tracker.update(detection)
+        if result.tracker_id is not None and np.any(result.tracker_id >= 0):
+            return
+
+    raise AssertionError(f"{tracker_id} did not confirm any track for confidence=None detections")
+
+
+@pytest.mark.parametrize(
+    "xyxy_boxes",
+    [
+        np.array([[100.0, 100.0, 200.0, 200.0]], dtype=np.float32),
+        np.array(
+            [
+                [100.0, 100.0, 200.0, 200.0],
+                [400.0, 400.0, 500.0, 500.0],
+            ],
+            dtype=np.float32,
+        ),
+        np.array(
+            [
+                [10.0, 10.0, 60.0, 60.0],
+                [200.0, 200.0, 260.0, 260.0],
+                [500.0, 500.0, 560.0, 560.0],
+            ],
+            dtype=np.float32,
+        ),
+    ],
+    ids=["single_box", "two_boxes", "three_boxes_non_overlapping"],
+)
+def test_bytetrack_no_confidence_matches_explicit_ones_confidence(xyxy_boxes: np.ndarray) -> None:
+    """ByteTrack treats confidence=None the same as all-ones across multi-box batches.
+
+    The batched scenarios exercise the high/low split machinery in
+    `ByteTrackTracker.update()` that single-box equivalence cannot trigger; a
+    regression that mis-buckets `confidence=None` in a multi-detection batch
+    would still pass single-box equality but would diverge here.
+    """
+    no_confidence_tracker = ByteTrackTracker(minimum_consecutive_frames=1)
+    explicit_confidence_tracker = ByteTrackTracker(minimum_consecutive_frames=1)
+    class_ids = np.zeros(len(xyxy_boxes), dtype=int)
+    detection_without_confidence = sv.Detections(xyxy=xyxy_boxes.copy(), class_id=class_ids.copy())
+    detection_with_ones_confidence = sv.Detections(
+        xyxy=xyxy_boxes.copy(),
+        confidence=np.ones(len(xyxy_boxes), dtype=np.float32),
+        class_id=class_ids.copy(),
+    )
+
+    no_confidence_tracker.reset()
+    no_confidence_results = [no_confidence_tracker.update(detection_without_confidence) for _ in range(4)]
+    explicit_confidence_tracker.reset()
+    explicit_confidence_results = [explicit_confidence_tracker.update(detection_with_ones_confidence) for _ in range(4)]
+
+    for no_confidence_result, explicit_confidence_result in zip(no_confidence_results, explicit_confidence_results):
+        assert len(no_confidence_result) == len(explicit_confidence_result)
+        assert no_confidence_result.tracker_id is not None
+        assert explicit_confidence_result.tracker_id is not None
+        np.testing.assert_array_equal(no_confidence_result.tracker_id, explicit_confidence_result.tracker_id)
+        np.testing.assert_array_equal(no_confidence_result.xyxy, explicit_confidence_result.xyxy)
+
+
+def test_bytetrack_no_confidence_spawns_tracks_below_activation_threshold() -> None:
+    """confidence=None must route every detection to Stage 1 even when explicit-low-conf would not spawn.
+
+    Asserts the actual semantic of treating `None` as 1.0: explicit
+    confidences that fall under `track_activation_threshold` get suppressed
+    in the low-confidence branch, but the same boxes with `confidence=None`
+    still produce confirmed tracker IDs.
+    """
+    activation_threshold = 0.6
+    xyxy_boxes = np.array(
+        [
+            [100.0, 100.0, 200.0, 200.0],
+            [400.0, 400.0, 500.0, 500.0],
+        ],
+        dtype=np.float32,
+    )
+    class_ids = np.zeros(len(xyxy_boxes), dtype=int)
+    detection_without_confidence = sv.Detections(xyxy=xyxy_boxes.copy(), class_id=class_ids.copy())
+    detection_with_low_confidence = sv.Detections(
+        xyxy=xyxy_boxes.copy(),
+        confidence=np.array([0.2, 0.3], dtype=np.float32),
+        class_id=class_ids.copy(),
+    )
+
+    no_confidence_tracker = ByteTrackTracker(
+        minimum_consecutive_frames=1,
+        track_activation_threshold=activation_threshold,
+        high_conf_det_threshold=activation_threshold,
+    )
+    low_confidence_tracker = ByteTrackTracker(
+        minimum_consecutive_frames=1,
+        track_activation_threshold=activation_threshold,
+        high_conf_det_threshold=activation_threshold,
+    )
+
+    no_confidence_tracker.reset()
+    low_confidence_tracker.reset()
+    for _ in range(4):
+        no_confidence_result = no_confidence_tracker.update(detection_without_confidence)
+        low_confidence_result = low_confidence_tracker.update(detection_with_low_confidence)
+
+    assert no_confidence_result.tracker_id is not None
+    assert low_confidence_result.tracker_id is not None
+    assert np.all(no_confidence_result.tracker_id >= 0), "confidence=None should spawn confirmed tracks for every box"
+    assert np.all(low_confidence_result.tracker_id < 0), (
+        "explicit low confidence below activation threshold should NOT spawn tracks"
+    )
 
 
 def test_bytetrack_calls_iou_in_low_confidence_branch() -> None:
