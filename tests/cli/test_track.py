@@ -194,3 +194,34 @@ class TestResolveTrackIdFilter:
         result = _resolve_track_id_filter("abc,def")
         assert result is None
         assert "abc" in capsys.readouterr().err
+
+
+class TestTrackerParamSync:
+    """Guard that all primitive tracker params are exposed in track()."""
+
+    _CLI_TYPES: ClassVar[tuple[type, ...]] = (int, float, str, bool)
+
+    def test_all_cli_tracker_params_in_track_signature(self) -> None:
+        """Every primitive-typed tracker registry param must appear as tracker_<name> in track()."""
+        import inspect
+
+        from trackers.cli.track import track
+        from trackers.core.base import BaseTracker
+
+        sig_params = set(inspect.signature(track).parameters)
+        missing: list[str] = []
+
+        for tracker_id in BaseTracker._registered_trackers():
+            info = BaseTracker._lookup_tracker(tracker_id)
+            if info is None:
+                continue
+            for param_name, param_info in info.parameters.items():
+                if param_info.param_type not in self._CLI_TYPES:
+                    continue
+                expected = f"tracker_{param_name}"
+                if expected not in sig_params:
+                    missing.append(f"{tracker_id}.{param_name} → {expected}")
+
+        assert not missing, "These tracker params are missing from track() signature:\n" + "\n".join(
+            f"  {m}" for m in missing
+        )

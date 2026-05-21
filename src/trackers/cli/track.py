@@ -53,7 +53,7 @@ COLOR_PALETTE = sv.ColorPalette.from_hex(
 
 def track(
     source: str | None = None,
-    detection_model: str = DEFAULT_MODEL,
+    detection_model: str | None = None,
     detections: Path | None = None,
     detection_confidence: float = DEFAULT_CONFIDENCE,
     detection_device: str = DEFAULT_DEVICE,
@@ -95,7 +95,8 @@ def track(
 
     Args:
         source: Video file, webcam index (0), RTSP URL, or image directory.
-        detection_model: Model ID for detection (e.g. rfdetr-nano, rfdetr-base, workspace/project/version).
+        detection_model: Model ID for detection (e.g. rfdetr-nano, rfdetr-base,
+            workspace/project/version). Default: rfdetr-nano.
         detections: Load pre-computed detections from MOT format file (mutually exclusive with detection model).
         detection_confidence: Detection confidence threshold.
         detection_device: Device to run model on (auto, cpu, cuda, cuda:0, mps).
@@ -149,7 +150,7 @@ def track(
         )
         return 1
 
-    if detection_model != DEFAULT_MODEL and detections is not None:
+    if detection_model is not None and detections is not None:
         print(
             "Error: --detection.model and --detections are mutually exclusive.",
             file=sys.stderr,
@@ -174,7 +175,7 @@ def track(
         class_names: list[str] = []
     else:
         loaded_model = _init_model(
-            detection_model,
+            detection_model or DEFAULT_MODEL,
             device=detection_device,
             api_key=detection_api_key,
         )
