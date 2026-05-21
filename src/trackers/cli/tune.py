@@ -23,6 +23,10 @@ def tune(
     metrics: list[str] | None = None,
     threshold: float = 0.5,
     seqmap: Path | None = None,
+    fixed_params: dict | None = None,
+    images_dir: Path | None = None,
+    enqueue_defaults: bool = True,
+    seed: int | None = None,
     output: Path | None = None,
 ) -> int:
     """Tune tracker hyperparameters using Optuna.
@@ -40,6 +44,13 @@ def tune(
             ``objective`` is added automatically if missing.
         threshold: IoU threshold for CLEAR and Identity matching.
         seqmap: Sequence map file listing sequences to evaluate.
+        fixed_params: Tracker ``__init__`` kwargs held constant across all
+            trials (e.g. ``{"enable_cmc": False}``).
+        images_dir: MOT-style image root for frame-based features such as CMC.
+            Frames are read from ``{images_dir}/{sequence}/img1/``.
+        enqueue_defaults: When ``True`` (default), the first trial evaluates
+            the tracker's default parameters before Optuna sampling begins.
+        seed: Random seed for Optuna's TPE sampler for reproducible runs.
         output: Output JSON file for best parameters.
 
     Returns:
@@ -60,6 +71,10 @@ def tune(
             n_trials=n_trials,
             threshold=threshold,
             seqmap=seqmap,
+            fixed_params=fixed_params,
+            images_dir=images_dir,
+            enqueue_defaults=enqueue_defaults,
+            seed=seed,
         )
     except (ValueError, ImportError, FileNotFoundError) as e:
         print(str(e), file=sys.stderr)

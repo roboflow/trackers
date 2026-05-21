@@ -134,6 +134,7 @@ nav:
     - Tune Trackers: learn/tune.md
     - Detection Quality Matters: learn/detection-quality.md
     - State Estimators: learn/state-estimators.md
+    - IoU Variants: learn/iou.md
     - About: learn/about.md
   - Trackers:
     - Comparison: trackers/comparison.md

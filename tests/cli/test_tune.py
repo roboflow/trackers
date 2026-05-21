@@ -122,6 +122,10 @@ class TestCliInvocation:
             metrics: list[str] | None = None,
             threshold: float = 0.5,
             seqmap: Path | None = None,
+            fixed_params: dict | None = None,
+            images_dir: Path | None = None,
+            enqueue_defaults: bool = True,
+            seed: int | None = None,
             output: Path | None = None,
         ) -> int:
             spy.append(
@@ -134,6 +138,10 @@ class TestCliInvocation:
                     metrics=metrics,
                     threshold=threshold,
                     seqmap=seqmap,
+                    fixed_params=fixed_params,
+                    images_dir=images_dir,
+                    enqueue_defaults=enqueue_defaults,
+                    seed=seed,
                     output=output,
                 )
             )

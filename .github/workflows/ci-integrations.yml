@@ -27,5 +27,6 @@ jobs:
       - name: 🚀 Install Packages
         run: uv sync --frozen --group dev
 
+
       - name: 🧪 Run Integration Tests
         run: uv run pytest -m integration -v --tb=short

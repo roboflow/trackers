@@ -8,24 +8,17 @@ from typing import ClassVar
 
 import numpy as np
 import supervision as sv
-from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.sort.tracklet import SORTTracklet
-from trackers.core.sort.utils import (
-    _get_alive_tracklets,
-    _get_iou_matrix,
-)
+from trackers.core.sort.utils import _get_alive_tracklets
+from trackers.utils.detections import default_confidences
+from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
 )
-
-
-@deprecated(target=None, deprecated_in="0.4", remove_in="1.0")
-def _access_trackers(self_: "SORTTracker") -> "list[SORTTracklet]":
-    return self_.tracks
 
 
 class SORTTracker(BaseTracker):
@@ -64,8 +57,15 @@ class SORTTracker(BaseTracker):
         minimum_iou_threshold: `float` specifying IoU threshold for associating
             detections to existing tracks. Higher values require more overlap.
         state_estimator_class: State estimator class to use for Kalman filter.
-            Defaults to `XYXYStateEstimator`. Can also use
-            `XCYCSRStateEstimator` for center-based representation.
+            `XCYCSRStateEstimator` for center-based representation or
+            `XYXYStateEstimator` for corner-based representation.
+        iou: IoU similarity metric instance to use for data association.
+            Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
+            subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
+            similarity is computed during the association step.
+            Passing ``None`` (the default) is equivalent to ``IoU()`` and is
+            provided for backward compatibility with existing code that did not
+            supply an ``iou`` argument.
     """
 
     tracker_id = "sort"
@@ -85,6 +85,7 @@ class SORTTracker(BaseTracker):
         minimum_consecutive_frames: int = 3,
         minimum_iou_threshold: float = 0.3,
         state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
+        iou: BaseIoU | None = None,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -94,6 +95,7 @@ class SORTTracker(BaseTracker):
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
         self.state_estimator_class = state_estimator_class
+        self.iou = iou if iou is not None else IoU()
 
         # Active tracklets
         self.tracks: list[SORTTracklet] = []
@@ -101,7 +103,7 @@ class SORTTracker(BaseTracker):
     @property
     def trackers(self) -> list[SORTTracklet]:
         """Deprecated: use tracks instead."""
-        return _access_trackers(self)
+        return self.tracks
 
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
@@ -184,7 +186,8 @@ class SORTTracker(BaseTracker):
         for tracklet in self.tracks:
             tracklet.predict()
 
-        iou_matrix = _get_iou_matrix(self.tracks, detection_boxes)
+        predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
+        iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
 
         # Associate detections to tracklets based on IOU
         matched_indices, _unmatched_tracklets, unmatched_detections = self._get_associated_indices(
@@ -197,7 +200,7 @@ class SORTTracker(BaseTracker):
             self.tracks[row].update(detection_boxes[col])
             matched_tracklet_for_det[col] = self.tracks[row]
 
-        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
+        confidences = default_confidences(detections)
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
         # Remove dead tracklets

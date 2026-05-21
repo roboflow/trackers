@@ -7,11 +7,7 @@
 from collections.abc import Sequence
 from typing import TypeVar
 
-import numpy as np
-import supervision as sv
-
 from trackers.core.sort.tracklet import SORTTracklet
-from trackers.utils.base_tracklet import BaseTracklet
 
 T_SORTTracklet = TypeVar("T_SORTTracklet", bound="SORTTracklet")
 
@@ -49,28 +45,3 @@ def _get_alive_tracklets(
         if tracklet.time_since_update < maximum_frames_without_update and (is_mature or is_active):
             alive_tracklets.append(tracklet)
     return alive_tracklets
-
-
-def _get_iou_matrix(tracks: Sequence[BaseTracklet], detection_boxes: np.ndarray) -> np.ndarray:
-    """
-    Build IOU cost matrix between detections and predicted bounding boxes
-
-    Args:
-        tracks: List of BaseTracklet objects.
-        detection_boxes: Detected bounding boxes in the
-            form [x1, y1, x2, y2].
-
-    Returns:
-        IOU cost matrix.
-    """
-    predicted_boxes = np.array([t.get_state_bbox() for t in tracks])
-    if len(predicted_boxes) == 0 and len(tracks) > 0:
-        # Handle case where get_state_bbox might return empty array
-        predicted_boxes = np.zeros((len(tracks), 4), dtype=np.float32)
-
-    if len(tracks) > 0 and len(detection_boxes) > 0:
-        iou_matrix = sv.box_iou_batch(predicted_boxes, detection_boxes)
-    else:
-        iou_matrix = np.zeros((len(tracks), len(detection_boxes)), dtype=np.float32)
-
-    return iou_matrix

@@ -15,6 +15,7 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pytest
 
 if TYPE_CHECKING:
@@ -41,6 +42,18 @@ DATASETS: dict[str, tuple[str, str]] = {
 }
 
 CACHE_DIR = Path.home() / ".cache" / "trackers-test"
+
+
+@pytest.fixture(autouse=True)
+def reset_random_seeds() -> None:
+    """Reset numpy random state before each test for reproducibility."""
+    np.random.seed(42)
+    try:
+        import torch
+
+        torch.manual_seed(42)
+    except ImportError:
+        pass
 
 
 def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:

@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import numpy as np
-import supervision as sv
 
 
 def _speed_direction_batch(track_boxes: np.ndarray, detection_boxes: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -101,31 +100,3 @@ def _build_direction_consistency_matrix_batch(
     angle_diff_cost = velocity_mask * angle_diff_cost
 
     return angle_diff_cost.astype(np.float32)
-
-
-def _get_iou_matrix(track_boxes: np.ndarray, detection_boxes: np.ndarray) -> np.ndarray:
-    """Build IoU matrix between track and detection bounding boxes.
-
-    Computes pairwise Intersection over Union (IoU) scores used as the primary
-    cost metric for Hungarian algorithm association in SORT-family trackers.
-
-    Args:
-        track_boxes: `np.ndarray` of shape `(n_tracks, 4)` containing track
-            bounding boxes in `[x1, y1, x2, y2]` format. Typically predicted
-            positions from Kalman filter or last observations.
-        detection_boxes: `np.ndarray` of shape `(n_detections, 4)` containing
-            detection bounding boxes in `[x1, y1, x2, y2]` format from the
-            current frame.
-
-    Returns:
-        `np.ndarray` of shape `(n_tracks, n_detections)` containing IoU scores
-            in range `[0, 1]`. Higher values indicate greater overlap between
-            track and detection boxes.
-    """
-    n_tracks = track_boxes.shape[0]
-    n_detections = detection_boxes.shape[0]
-    if n_tracks > 0 and n_detections > 0:
-        iou_matrix = sv.box_iou_batch(track_boxes, detection_boxes)
-    else:
-        iou_matrix = np.zeros((n_tracks, n_detections), dtype=np.float32)
-    return iou_matrix

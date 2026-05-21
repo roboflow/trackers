@@ -8,18 +8,18 @@ from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
+from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.botsort._cmc_xyxy import _xyxy_corner_min_max
-from trackers.core.botsort.cmc import CMC, CMCConfig, CMCTMethod
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-from trackers.core.sort.utils import _get_iou_matrix
+from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
+from trackers.utils.detections import default_confidences
+from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
-    XYXYStateEstimator,
 )
 
 
@@ -67,8 +67,7 @@ class BoTSORTTracker(BaseTracker):
             - low confidence:  confidence < threshold
         enable_cmc: Whether to enable camera motion compensation (CMC).
         cmc_method: CMC method string passed into `CMCConfig(method=...)`.
-            Supported values depend on `CMC` (e.g. "orb", "sift", "sparseOptFlow",
-            "ecc"). See CMCConfig.
+            Supported values: "orb", "sift", "sparseOptFlow", "ecc". See CMCConfig.
         cmc_downscale: Downscale factor used inside CMC for speed/robustness.
         instant_first_frame_activation: If ``True`` (default), tracks spawned on
             the very first frame receive a real tracker ID immediately. If ``False``,
@@ -77,6 +76,13 @@ class BoTSORTTracker(BaseTracker):
             behaviour on every other frame.
         state_estimator_class: State estimator class for tracklets. Defaults
             to ``XCYCWHStateEstimator``.
+        iou: IoU similarity metric instance to use for data association.
+            Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
+            subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
+            similarity is computed during association.
+            Passing ``None`` (the default) is equivalent to ``IoU()`` and is
+            provided for backward compatibility with existing code that did not
+            supply an ``iou`` argument.
 
     Notes:
         - `maximum_frames_without_update` is computed as:
@@ -99,10 +105,6 @@ class BoTSORTTracker(BaseTracker):
         "high_conf_det_threshold": {"type": "uniform", "range": [0.3, 0.8]},
         "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
         "cmc_downscale": {"type": "randint", "range": [1, 4]},
-        "enable_cmc": {
-            "type": "choice",
-            "options": [False],
-        },  # CMC disabled for tuner class until frame reading is added to tuner #
     }
 
     def __init__(
@@ -116,10 +118,11 @@ class BoTSORTTracker(BaseTracker):
         minimum_iou_threshold_unconfirmed_assoc: float = 0.3,
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
-        cmc_method: CMCTMethod = "sparseOptFlow",
+        cmc_method: CMCMethod = "sparseOptFlow",
         cmc_downscale: int = 2,
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
+        iou: BaseIoU | None = None,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -134,6 +137,7 @@ class BoTSORTTracker(BaseTracker):
         self.instant_first_frame_activation = instant_first_frame_activation
         self.tracks: list[BoTSORTTracklet] = []
         self.state_estimator_class = state_estimator_class
+        self.iou = iou if iou is not None else IoU()
         self.frame_id: int = 0
 
         self.enable_cmc = enable_cmc
@@ -180,7 +184,7 @@ class BoTSORTTracker(BaseTracker):
             tracker.predict()
 
         detection_boxes = detections.xyxy
-        confidences = detections.confidence if detections.confidence is not None else np.ones(len(detections))
+        confidences = default_confidences(detections)
 
         # Split indices into high / low / discarded by confidence
         high_mask = confidences >= self.high_conf_det_threshold
@@ -212,14 +216,13 @@ class BoTSORTTracker(BaseTracker):
         if self.enable_cmc and self.cmc is not None and frame is not None:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(frame, mask_boxes)
-            if H is not None:
-                self.apply_cmc_batch(H)
+            CMC.apply_batch(H, self.tracks)
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = _get_iou_matrix(strack_pool, high_boxes)
-        iou_matrix = _fuse_score(iou_matrix, high_scores)
+        iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
+        iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
         )
@@ -236,7 +239,7 @@ class BoTSORTTracker(BaseTracker):
         # only (excluding lost tracks, following the original ByteTrack).
         # No score fusing in second association.
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
-        iou_matrix = _get_iou_matrix(remaining_tracked, low_boxes)
+        iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
@@ -262,8 +265,8 @@ class BoTSORTTracker(BaseTracker):
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
 
-            iou_matrix = _get_iou_matrix(unconfirmed_tracks, uh_boxes)
-            iou_matrix = _fuse_score(iou_matrix, uh_scores)
+            iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
+            iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
             )
@@ -315,77 +318,12 @@ class BoTSORTTracker(BaseTracker):
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
 
-    def apply_cmc_batch(self, H: np.ndarray | None) -> None:
-        """Apply a 2x3 affine camera-motion transform to all tracklets at once.
-
-        For XYXY-state tracks, positions and velocities are updated via
-        four-corner enclosure so that axis-alignment is preserved under
-        rotation, reflection, and shear. The covariance matrix ``P`` is
-        updated with the block-diagonal rotation matrix only when ``R`` is
-        axis-aligned (off-diagonals < 1e-6). When ``R`` has cross-axis terms,
-        ``P`` is left unchanged — a conservative choice that avoids applying an
-        invalid block-diagonal approximation at the cost of stale uncertainty.
-
-        For XCYCWH-state tracks, only the centre position and velocity are
-        rotated; width/height and their velocities are not transformed.
-        """
-        if H is None or len(self.tracks) == 0:
-            return
-
-        R = H[:2, :2].astype(np.float64)
-        t = H[:2, 2].astype(np.float64)
-
-        first_estimator = self.tracks[0].state_estimator
-        dim = first_estimator.kf.x.shape[0]
-        is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
-
-        # Stack states (N, dim) and covariances (N, dim, dim)
-        states = np.array([trk.state_estimator.kf.x.reshape(-1) for trk in self.tracks])
-        Ps = np.array([trk.state_estimator.kf.P for trk in self.tracks])
-
-        if is_xyxy:
-            # XYXY boxes must remain axis-aligned after CMC. For transforms with
-            # rotation/reflection/shear, applying the affine matrix only to the
-            # top-left and bottom-right corners can invert the box or produce
-            # invalid geometry. Transform all four corners, then rebuild the
-            # enclosing axis-aligned box with per-axis min/max.
-            states[:, 0], states[:, 1], states[:, 2], states[:, 3] = _xyxy_corner_min_max(
-                states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
-            )
-            # Keep XYXY velocity ordering valid under mixed-axis transforms by
-            # applying the same corner-wise normalization to the paired velocity
-            # components.
-            states[:, 4], states[:, 5], states[:, 6], states[:, 7] = _xyxy_corner_min_max(
-                states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
-            )
+    def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
+        if len(tracklets) == 0:
+            tracklet_boxes = np.empty((0, 4))
         else:
-            # Batch-transform centre positions: x' = x @ R.T + t
-            states[:, 0:2] = states[:, 0:2] @ R.T + t
-            # Batch-transform centre velocities: v' = v @ R.T
-            states[:, 4:6] = states[:, 4:6] @ R.T
-
-        A = None
-        if is_xyxy:
-            # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
-            # to 1e-6 residuals on off-diagonals even for pure-translation H;
-            # default atol=1e-8 misclassifies those as cross-axis transforms.
-            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(R[1, 0], 0.0, atol=1e-6):
-                A = np.eye(dim, dtype=np.float64)
-                A[0:2, 0:2] = R
-                A[2:4, 2:4] = R
-                A[4:6, 4:6] = R
-                A[6:8, 6:8] = R
-        else:
-            A = np.eye(dim, dtype=np.float64)
-            A[0:2, 0:2] = R
-            A[4:6, 4:6] = R
-
-        if A is not None:
-            Ps = A @ Ps @ A.T
-
-        for i, trk in enumerate(self.tracks):
-            trk.state_estimator.kf.x = states[i].reshape(-1, 1)
-            trk.state_estimator.kf.P = Ps[i]
+            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+        return self.iou.compute(tracklet_boxes, detections)
 
     def _get_associated_indices(
         self,
@@ -467,3 +405,20 @@ class BoTSORTTracker(BaseTracker):
         BoTSORTTracklet.count_id = 0
         if self.cmc is not None:
             self.cmc.reset()
+
+    @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
+    def apply_cmc_batch(self, H: np.ndarray | None) -> None:
+        """Apply CMC to all active tracks.
+
+        .. deprecated:: 2.5
+            Use CMC.apply_batch(H, self.tracks) directly.
+
+        Args:
+            H: 2x3 affine transform matrix returned by CMC.estimate().
+                If None, this method is a no-op.
+
+        Examples:
+            >>> tracker = BoTSORTTracker()
+            >>> tracker.apply_cmc_batch(None)  # no-op
+        """
+        CMC.apply_batch(H, self.tracks)

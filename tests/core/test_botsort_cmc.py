@@ -14,9 +14,8 @@ import cv2
 import numpy as np
 import pytest
 
-from trackers.core.botsort.cmc import CMC, CMCConfig
-from trackers.core.botsort.tracker import BoTSORTTracker, _xyxy_corner_min_max
 from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.utils.cmc import CMC, CMCConfig
 from trackers.utils.state_representations import XYXYStateEstimator
 
 # All supported CMC methods.
@@ -147,13 +146,12 @@ class TestCMCEstimateAcrossMethods:
         assert np.all(np.isfinite(H2))
 
 
-class TestBoTSORTApplyCMCBatch:
-    """`BoTSORTTracker.apply_cmc_batch` against center-state tracklets.
+class TestCMCApplyBatch:
+    """`CMC.apply_batch` against center-state tracklets.
 
     All tests build default `BoTSORTTracklet(bbox)` instances (center-state
-    estimator) and a `BoTSORTTracker` whose `tracks` list is set directly,
-    then verify the batch entry-point against the per-track `apply_cmc`
-    contract (equivalence, multi-tracklet, no-op cases).
+    estimator) and verify the batch entry-point against the per-track
+    `apply_cmc` contract (equivalence, multi-tracklet, no-op cases).
     """
 
     def test_matches_single(self) -> None:
@@ -163,11 +161,9 @@ class TestBoTSORTApplyCMCBatch:
 
         single = BoTSORTTracklet(bbox)
         batched = BoTSORTTracklet(bbox)
-        tracker = BoTSORTTracker()
-        tracker.tracks = [batched]
 
         single.apply_cmc(H)
-        tracker.apply_cmc_batch(H)
+        CMC.apply_batch(H, [batched])
 
         np.testing.assert_allclose(
             single.state_estimator.kf.x,
@@ -187,38 +183,43 @@ class TestBoTSORTApplyCMCBatch:
 
         singles = [BoTSORTTracklet(bbox) for _ in range(3)]
         batched = [BoTSORTTracklet(bbox) for _ in range(3)]
-        tracker = BoTSORTTracker()
-        tracker.tracks = batched
 
         for t in singles:
             t.apply_cmc(H)
-        tracker.apply_cmc_batch(H)
+        CMC.apply_batch(H, batched)
 
         for s, b in zip(singles, batched):
             np.testing.assert_allclose(s.state_estimator.kf.x, b.state_estimator.kf.x, atol=1e-6)
 
     def test_none_is_noop(self) -> None:
-        """apply_cmc_batch with H=None must not change any tracklet state."""
+        """CMC.apply_batch with H=None must not change any tracklet state."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         tracklet = BoTSORTTracklet(bbox)
-        tracker = BoTSORTTracker()
-        tracker.tracks = [tracklet]
         state_before = tracklet.state_estimator.kf.x.copy()
 
-        tracker.apply_cmc_batch(None)
+        CMC.apply_batch(None, [tracklet])
 
         np.testing.assert_array_equal(tracklet.state_estimator.kf.x, state_before)
 
     def test_empty_list_is_noop(self) -> None:
-        """apply_cmc_batch with an empty list must not raise."""
+        """CMC.apply_batch with an empty list must not raise."""
         H = np.eye(2, 3, dtype=np.float32)
-        tracker = BoTSORTTracker()
-        tracker.tracks = []
-        tracker.apply_cmc_batch(H)  # must not raise
+        CMC.apply_batch(H, [])  # must not raise
+
+    def test_mixed_state_list_raises(self) -> None:
+        """Heterogeneous state estimator types must raise TypeError immediately."""
+        bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+        H = np.eye(2, 3, dtype=np.float32)
+
+        xcycwh_track = BoTSORTTracklet(bbox)
+        xyxy_track = _xyxy_tracklet(bbox)
+
+        with pytest.raises(TypeError, match="homogeneous"):
+            CMC.apply_batch(H, [xcycwh_track, xyxy_track])
 
 
-class TestXYXYCornerMinMax:
-    """Direct unit tests on `_xyxy_corner_min_max(x1, y1, x2, y2, R, t=None)`.
+class TestCMCApplyToXYXY:
+    """Direct unit tests on `CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t=None)`.
 
     Each test passes raw 1-D NumPy arrays for the four corner channels and a
     2x2 `R` (and optional 1-D `t`), then asserts on the four return arrays.
@@ -234,7 +235,7 @@ class TestXYXYCornerMinMax:
         R = np.eye(2)
         t = np.array([5.0, -3.0])
 
-        nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
 
         np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [15.0, 17.0, 55.0, 77.0])
 
@@ -246,7 +247,7 @@ class TestXYXYCornerMinMax:
         y2 = np.array([2.0])
         R = np.eye(2)
 
-        nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, None)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, None)
 
         np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [0.0, 0.0, 1.0, 2.0])
 
@@ -258,7 +259,7 @@ class TestXYXYCornerMinMax:
         y2 = np.array([4.0])
         R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation
 
-        nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R)
 
         # Original corners (0,0),(2,0),(2,4),(0,4) → rotated (0,0),(0,2),(-4,2),(-4,0)
         np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [-4.0, 0.0, 0.0, 2.0])
@@ -271,7 +272,7 @@ class TestXYXYCornerMinMax:
         y2 = np.array([80.0])
         R = np.array([[-1.0, 0.0], [0.0, 1.0]])  # reflect across y-axis
 
-        nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R)
 
         # Original x-range [10, 50] reflected → [-50, -10]; y unchanged
         assert nx1[0] < nx2[0], f"x ordering broken: {nx1[0]} >= {nx2[0]}"
@@ -287,7 +288,7 @@ class TestXYXYCornerMinMax:
         R = np.array([[0.0, -1.0], [1.0, 0.0]])
         t = np.array([1.0, 2.0])
 
-        nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
 
         assert nx1[0] == nx2[0] and ny1[0] == ny2[0]
 
@@ -300,7 +301,7 @@ class TestXYXYCornerMinMax:
         R = np.eye(2)
         t = np.array([100.0, 100.0])
 
-        nx1, ny1, nx2, ny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
+        nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
 
         np.testing.assert_allclose([nx1[0], ny1[0], nx2[0], ny2[0]], [50.0, 70.0, 90.0, 120.0])
 
@@ -313,9 +314,9 @@ class TestXYXYCornerMinMax:
         R = np.array([[0.0, -1.0], [1.0, 0.0]])
         t = np.array([1.0, 2.0])
 
-        bnx1, bny1, bnx2, bny2 = _xyxy_corner_min_max(x1, y1, x2, y2, R, t)
+        bnx1, bny1, bnx2, bny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
         expected = [
-            _xyxy_corner_min_max(
+            CMC.warp_xyxy_corners(
                 np.array([x1[i]]),
                 np.array([y1[i]]),
                 np.array([x2[i]]),
@@ -401,11 +402,9 @@ class TestXYXYCovarianceUpdate:
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R_cross
         tracklet = _xyxy_tracklet(bbox)
-        tracker = BoTSORTTracker()
-        tracker.tracks = [tracklet]
         P_before = tracklet.state_estimator.kf.P.copy()
 
-        tracker.apply_cmc_batch(H)
+        CMC.apply_batch(H, [tracklet])
 
         np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
 
@@ -416,11 +415,9 @@ class TestXYXYCovarianceUpdate:
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R
         tracklet = _xyxy_tracklet(bbox)
-        tracker = BoTSORTTracker()
-        tracker.tracks = [tracklet]
         P_before = tracklet.state_estimator.kf.P.copy()
 
-        tracker.apply_cmc_batch(H)
+        CMC.apply_batch(H, [tracklet])
 
         A = np.eye(8, dtype=np.float64)
         A[0:2, 0:2] = R
@@ -486,16 +483,14 @@ class TestXYXYAxisAlignedTolerance:
     ],
 )
 def test_xyxy_batch_matches_single_under_non_translation_R(R: np.ndarray) -> None:
-    """Batch CMC and per-track CMC must agree for any 2x2 R on XYXY state."""
+    """CMC.apply_batch and per-track apply_cmc must agree for any 2x2 R on XYXY state."""
     bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
     H = np.array([[R[0, 0], R[0, 1], 7.0], [R[1, 0], R[1, 1], -2.0]], dtype=np.float32)
     single = _xyxy_tracklet(bbox)
     batched = _xyxy_tracklet(bbox)
-    tracker = BoTSORTTracker()
-    tracker.tracks = [batched]
 
     single.apply_cmc(H)
-    tracker.apply_cmc_batch(H)
+    CMC.apply_batch(H, [batched])
 
     np.testing.assert_allclose(single.state_estimator.kf.x, batched.state_estimator.kf.x, atol=1e-9)
     np.testing.assert_allclose(single.state_estimator.kf.P, batched.state_estimator.kf.P, atol=1e-9)
@@ -539,3 +534,36 @@ def test_xyxy_velocity_rotates_without_translation() -> None:
     # → enclosing velocity box [-1, 0, 0, 1] (no translation applied)
     v = tracklet.state_estimator.kf.x.reshape(-1)[4:8]
     np.testing.assert_allclose(v, [-1.0, 0.0, 0.0, 1.0], atol=1e-9)
+
+
+class TestCMCApplyBatchAdversarial:
+    """Adversarial H inputs to CMC.apply_batch.
+
+    Covers wrong-shape H (should raise) and non-finite H values
+    (should propagate to state without raising).
+    """
+
+    def test_wrong_shape_h_raises(self) -> None:
+        """H with (2,2) shape must raise when the translation column is accessed."""
+        bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+        track = BoTSORTTracklet(bbox)
+        H_bad = np.eye(2, 2, dtype=np.float32)
+
+        with pytest.raises((IndexError, ValueError)):
+            CMC.apply_batch(H_bad, [track])
+
+    @pytest.mark.parametrize(
+        "fill_val",
+        [float("nan"), float("inf"), float("-inf")],
+        ids=["nan", "inf", "-inf"],
+    )
+    def test_non_finite_h_propagates_to_state(self, fill_val: float) -> None:
+        """Non-finite H values must propagate into track state without raising."""
+        bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
+        track = BoTSORTTracklet(bbox)
+        H_bad = np.full((2, 3), fill_val, dtype=np.float32)
+
+        CMC.apply_batch(H_bad, [track])  # must not raise
+
+        state = track.state_estimator.kf.x.reshape(-1)
+        assert not np.all(np.isfinite(state)), "Non-finite H must propagate to track state"
