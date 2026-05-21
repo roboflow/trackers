@@ -400,3 +400,37 @@ class CIoU(BaseIoU):
 
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
         return (similarity_matrix + 1.0) / 2.0
+
+
+_VARIANTS: dict[str, type[BaseIoU]] = {
+    "iou": IoU,
+    "giou": GIoU,
+    "diou": DIoU,
+    "ciou": CIoU,
+    "biou": BIoU,
+}
+
+
+def variant_from_name(name: str) -> BaseIoU:
+    """Resolve a variant name (case-insensitive) to a default-constructed instance.
+
+    Args:
+        name: One of ``iou``, ``giou``, ``diou``, ``ciou``, ``biou``
+            (case-insensitive).
+
+    Returns:
+        A default-constructed instance of the matching :class:`BaseIoU` subclass.
+
+    Raises:
+        ValueError: If ``name`` does not match any known variant.
+
+    Examples:
+        >>> isinstance(variant_from_name("giou"), GIoU)
+        True
+        >>> isinstance(variant_from_name("BIOU"), BIoU)
+        True
+    """
+    try:
+        return _VARIANTS[name.lower()]()
+    except KeyError as exc:
+        raise ValueError(f"Unknown IoU variant {name!r}. Valid: {sorted(_VARIANTS)}") from exc

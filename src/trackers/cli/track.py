@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import sys
+import warnings
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -25,15 +26,7 @@ from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
 from trackers.utils.device import _best_device
-from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU
-
-_IOU_VARIANTS: dict[str, type[BaseIoU]] = {
-    "iou": IoU,
-    "giou": GIoU,
-    "diou": DIoU,
-    "ciou": CIoU,
-    "biou": BIoU,
-}
+from trackers.utils.iou import variant_from_name
 
 if TYPE_CHECKING:
     from inference_models import AnyModel
@@ -558,12 +551,15 @@ def _init_tracker(tracker_id: str, params: TrackerParams | None) -> BaseTracker:
     iou_variant = raw.pop("iou_variant", None)
     accepted = set(info.parameters)
     kwargs = {k: v for k, v in raw.items() if v is not None and k in accepted}
-    if iou_variant is not None and "iou" in accepted:
-        iou_cls = _IOU_VARIANTS.get(iou_variant.lower())
-        if iou_cls is None:
-            valid = ", ".join(_IOU_VARIANTS)
-            raise ValueError(f"Unknown iou_variant '{iou_variant}'. Valid: {valid}")
-        kwargs["iou"] = iou_cls()
+    if iou_variant is not None:
+        if "iou" in accepted:
+            kwargs["iou"] = variant_from_name(iou_variant)
+        else:
+            warnings.warn(
+                f"Tracker '{tracker_id}' does not support iou_variant; '{iou_variant}' will be ignored.",
+                UserWarning,
+                stacklevel=2,
+            )
     return info.tracker_class(**kwargs)
 
 
