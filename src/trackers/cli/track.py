@@ -264,7 +264,7 @@ def _run_frameless(
                 else:
                     dets = sv.Detections.empty()
 
-                if class_filter is not None and len(dets) > 0:
+                if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
                     mask = np.isin(dets.class_id, class_filter)
                     dets = dets[mask]  # type: ignore[assignment]
 
@@ -273,7 +273,7 @@ def _run_frameless(
                 if track_id_filter is not None and len(tracked) > 0:
                     if tracked.tracker_id is not None:
                         mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
-                        tracked = tracked[mask]
+                        tracked = tracked[mask]  # type: ignore[assignment]
 
                 mot.write(frame_idx, tracked)
                 progress.update()
@@ -344,7 +344,7 @@ def _run_with_source(
                 else:
                     dets = sv.Detections.empty()
 
-                if class_filter is not None and len(dets) > 0:
+                if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
                     mask = np.isin(dets.class_id, class_filter)
                     dets = dets[mask]  # type: ignore[assignment]
 
@@ -353,7 +353,7 @@ def _run_with_source(
                 if track_id_filter is not None and len(tracked) > 0:
                     if tracked.tracker_id is not None:
                         mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
-                        tracked = tracked[mask]
+                        tracked = tracked[mask]  # type: ignore[assignment]
 
                 mot.write(frame_idx, tracked)
                 progress.update()
@@ -365,7 +365,7 @@ def _run_with_source(
                     for annotator in annotators:
                         annotated = annotator.annotate(annotated, tracked)
                     if label_annotator is not None:
-                        labeled = tracked[tracked.tracker_id != -1]
+                        labeled: sv.Detections = tracked[tracked.tracker_id != -1]  # type: ignore[assignment]
                         labels = _format_labels(
                             labeled,
                             class_names,
@@ -373,7 +373,7 @@ def _run_with_source(
                             show_labels=show_labels,
                             show_confidence=show_confidence,
                         )
-                        annotated = label_annotator.annotate(annotated, labeled, labels)
+                        annotated = label_annotator.annotate(annotated, labeled, labels)  # type: ignore[assignment,arg-type]
 
                     video.write(annotated)
 
