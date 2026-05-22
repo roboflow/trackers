@@ -27,8 +27,7 @@ class CBIoUTracker(BoTSORTTracker):
 
     The paper proposes **Buffered IoU (BIoU)** — expanding boxes by a proportional
     margin before computing overlap — and **cascaded matching** with a small buffer
-    scale ``b1`` followed by a larger scale ``b2`` (typically ``b1 < b2``; e.g.
-    0.7 and 1.0 on SoccerNet in the paper).
+    scale ``b1`` followed by a larger scale ``b2`` (typically ``b1 < b2``).
 
     Each association step uses its own ``buffer_ratio``:
 
@@ -38,8 +37,7 @@ class CBIoUTracker(BoTSORTTracker):
       paper: large ``b2``).
 
     The ByteTrack-style unconfirmed-track step (leftover high-confidence
-    detections vs tentative tracks) reuses **b1** (``iou_first``); it is not a
-    separate paper hyperparameter.
+    detections vs tentative tracks) reuses **b1** (``iou_first``).
 
     Camera motion compensation is not used (detection-only / MOT-file workflows).
 
@@ -62,9 +60,9 @@ class CBIoUTracker(BoTSORTTracker):
         instant_first_frame_activation: If ``True``, first-frame tracks receive
             a real ID immediately.
         state_estimator_class: Kalman state representation for tracklets.
-        buffer_ratio_first: Buffer scale ``b1`` for the first BIoU pass. Should
+        buffer_ratio_first: Buffer scale ``b1`` for the first BIoU pass. It is suggested to
             be **less than** ``buffer_ratio_second`` (``b1 < b2``) per the paper.
-        buffer_ratio_second: Buffer scale ``b2`` for the second BIoU pass. Should
+        buffer_ratio_second: Buffer scale ``b2`` for the second BIoU pass. It is suggested to
             be **greater than** ``buffer_ratio_first``.
     """
 
@@ -223,7 +221,7 @@ class CBIoUTracker(BoTSORTTracker):
             out_tracker_ids.append(-1)
 
         # Step 3: match unconfirmed tracks with remaining unmatched high-confidence
-        # detections (ByteTrack lifecycle; reuses b1 / iou_first, not a paper parameter).
+        # detections (ByteTrack lifecycle; reuses b1 / iou_first).
         # Unmatched unconfirmed tracks are removed (not kept as lost).
         unmatched_high_list = sorted(unmatched_high)
         unmatched_uc_indices: list[int] = list(range(len(unconfirmed_tracks)))
