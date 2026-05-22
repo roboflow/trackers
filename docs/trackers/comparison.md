@@ -262,7 +262,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |   SORT    |   45.0   |   39.0   |   80.6   |
     | ByteTrack |   50.2   |   49.9   |   86.2   |
     |  OC-SORT  |   51.8   |   50.9   |   87.3   |
-    | BoT-SORT  | **53.9*  | **53.3** | **90.1 **|
+    | BoT-SORT  | **53.9** | **53.4** | **90.1** |
 
 === "Tuned"
 
@@ -272,8 +272,8 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   50.6   |   49.6   |   84.3   |
     | ByteTrack |   53.2   | **54.6** |   86.8   |
-    |  OC-SORT  |   52.0   |   51.8   | **87.2** |
-    | BoT-SORT  | **53.5** |   54.0   |   86.5   |
+    |  OC-SORT  |   52.0   |   51.8   |   87.2   |
+    | BoT-SORT  | **54.4** | **54.6** | **90.0** |
 
     Tuned configuration for each tracker.
 
@@ -300,13 +300,13 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       delta_t: 1
 
     BoT-SORT:
-      lost_track_buffer: 60
+      lost_track_buffer: 30
       minimum_consecutive_frames: 2
       minimum_iou_threshold_first_assoc: 0.1
       minimum_iou_threshold_second_assoc: 0.5
-      minimum_iou_threshold_unconfirmed_assoc: 0.2
-      high_conf_det_threshold: 0.6
-      track_activation_threshold: 0.7
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
+      high_conf_det_threshold: 0.5
+      track_activation_threshold: 0.6
       enable_cmc: true
       cmc_method: sparseOptFlow
     ```
