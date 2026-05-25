@@ -190,13 +190,13 @@ class TrackerParams:
 
 def track(
     source: str | None = None,
-    detection: DetectionOptions = DetectionOptions(),
-    filters: FilteringOptions = FilteringOptions(),
+    detection: DetectionOptions | None = None,
+    filters: FilteringOptions | None = None,
     tracker: str = DEFAULT_TRACKER,
     tracker_params: TrackerParams | None = None,
-    out: OutputOptions = OutputOptions(),
-    vis: VisualizationOptions = VisualizationOptions(),
-    show: ShowOptions = ShowOptions(),
+    out: OutputOptions | None = None,
+    vis: VisualizationOptions | None = None,
+    show: ShowOptions | None = None,
 ) -> int:
     """Run detection and tracking over a video, webcam, RTSP, or image directory.
 
@@ -216,6 +216,16 @@ def track(
     Returns:
         Exit code: ``0`` on success, ``1`` on validation error.
     """
+    if detection is None:
+        detection = DetectionOptions()
+    if filters is None:
+        filters = FilteringOptions()
+    if out is None:
+        out = OutputOptions()
+    if vis is None:
+        vis = VisualizationOptions()
+    if show is None:
+        show = ShowOptions()
     model = detection.model
     detections = detection.detections
     confidence = detection.confidence
