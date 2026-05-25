@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Format a MOT prediction directory for Codabench submission.
 
 Steps applied in order:
@@ -73,7 +79,9 @@ def zip_dir(pred_dir: Path, out_zip: Path) -> Path:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--dataset", choices=DATASETS, required=True)
-    p.add_argument("--pred-dir", type=Path, required=True, help="Directory of MOT prediction txt files (modified in place).")
+    p.add_argument(
+        "--pred-dir", type=Path, required=True, help="Directory of MOT prediction txt files (modified in place)."
+    )
     p.add_argument("--out-zip", type=Path, required=True)
     args = p.parse_args(argv)
 

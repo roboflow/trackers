@@ -1,3 +1,9 @@
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Benchmark dataset layout: paths, splits, Codabench targets.
 
 Single source of truth shared by all benchmark scripts. Not a CLI.
@@ -5,9 +11,9 @@ Single source of truth shared by all benchmark scripts. Not a CLI.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 BENCHMARK_ROOT = Path(__file__).resolve().parents[1]
 

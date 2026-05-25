@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Aggregate per-dataset eval/Codabench score JSONs into a single doc-style markdown table.
 
 Looks under ``<output-dir>/<tracker>/<dataset>/<config>/`` (config ∈ {default, tuned}) for:
@@ -13,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 from datasets import DATASETS, LABELS, job_dir
