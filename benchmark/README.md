@@ -63,7 +63,7 @@ Point `DATA_ROOT` at the folder that directly contains `mot17/`, `sportsmot/`, e
 ```
 $DATA_ROOT/
   mot17/MOT17_yolox_dets/{val,test}/...
-  mot17/TrackEval/data/gt/MOT17_yolox_val/train_val/...  
+  mot17/TrackEval/data/gt/MOT17_yolox_val/train_val/...
   mot17/{val,test}/<seq>/img1/...              # BoT-SORT CMC only
   sportsmot/sportsmot_yolox_dets/{val,test}/...
   sportsmot/TrackEval/data/gt/sportsmot/val/...
@@ -75,12 +75,12 @@ $DATA_ROOT/
   soccernet/soccernet_data/tracking/{train,test}/...
 ```
 
-| Source | Assets |
-|---|---|
-| MOT17 | `trackers download mot17`; YOLOX dets replicated locally using the [ByteTrack](https://github.com/ifzhang/ByteTrack/tree/main#data-preparation) detector setup (not their pre-packaged det zips) |
-| SportsMOT | `trackers download sportsmot`; YOLOX dets replicated locally using the [SportsMOT](https://github.com/MCG-NJU/SportsMOT) detector setup |
-| DanceTrack | [DanceTrack](https://github.com/DanceTrack/DanceTrack) frames/GT; uses YOLOX dets |
-| SoccerNet-tracking | [soccer-net.org](https://www.soccer-net.org/data) (2022 tracking); oracle (ground-truth) detections |
+| Source             | Assets                                                                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MOT17              | `trackers download mot17`; YOLOX dets replicated locally using the [ByteTrack](https://github.com/ifzhang/ByteTrack/tree/main#data-preparation) detector setup (not their pre-packaged det zips) |
+| SportsMOT          | `trackers download sportsmot`; YOLOX dets replicated locally using the [SportsMOT](https://github.com/MCG-NJU/SportsMOT) detector setup                                                          |
+| DanceTrack         | [DanceTrack](https://github.com/DanceTrack/DanceTrack) frames/GT; uses YOLOX dets                                                                                                                |
+| SoccerNet-tracking | [soccer-net.org](https://www.soccer-net.org/data) (2022 tracking); oracle (ground-truth) detections                                                                                              |
 
 MOT17, SportsMOT, and DanceTrack use YOLOX model detections produced in-house, following each benchmark’s published detector configuration. SoccerNet uses oracle boxes from the dataset. See [`docs/trackers/comparison.md`](../docs/trackers/comparison.md#detections).
 
