@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Filter MOT17 validation GT to the frame range covered by YOLOX val detections.
 
 Public YOLOX val detections for MOT17 cover only part of each sequence. The full
