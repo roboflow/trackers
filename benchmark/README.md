@@ -17,14 +17,14 @@ cd benchmark
 export DATA_ROOT="/path/to/your/datasets"  
 export CODABENCH_TOKEN="<your-token>"       # see Codabench below
 
-make data-check
-make benchmark-default TRACKER=bytetrack
-make benchmark-tuned TRACKER=bytetrack N_TRIALS=50
+make data-check # check datasets in the expected format
+make benchmark-default TRACKER=bytetrack # benchmark default parameters
+make benchmark-tuned TRACKER=bytetrack N_TRIALS=50 # tune and benchmark
 ```
 
 Results: `benchmark_outputs/<tracker>/tables.md` and `summary.json`.
 
-Run **default** and **tuned** on separate days — Codabench limits submissions per phase. SoccerNet is scored locally and does not count toward that limit.
+Run **default** and **tuned** on separate days: Codabench limits daily submissions. SoccerNet is scored locally and does not count toward that limit.
 
 ## Codabench
 
@@ -46,7 +46,7 @@ curl -s -X POST https://www.codabench.org/api/api-token-auth/ \
 export CODABENCH_TOKEN="<your-token>"
 ```
 
-Treat `CODABENCH_TOKEN` as a secret — do not publish it. See [Codabench API docs](https://www.codabench.org/api/docs/) if the request fails.
+Treat `CODABENCH_TOKEN` as a secret, do not publish it. See [Codabench API docs](https://www.codabench.org/api/docs/) if the request fails.
 
 If tracking finished but upload failed (daily limit or pending approval), re-submit the zip without re-running track:
 
@@ -79,10 +79,10 @@ $DATA_ROOT/
 |---|---|
 | MOT17 | `trackers download mot17`; YOLOX dets replicated locally using the [ByteTrack](https://github.com/ifzhang/ByteTrack/tree/main#data-preparation) detector setup (not their pre-packaged det zips) |
 | SportsMOT | `trackers download sportsmot`; YOLOX dets replicated locally using the [SportsMOT](https://github.com/MCG-NJU/SportsMOT) detector setup |
-| DanceTrack | [DanceTrack](https://github.com/DanceTrack/DanceTrack) / [OC-SORT dets](https://github.com/noahcao/OC_SORT) |
-| SoccerNet-tracking | [soccer-net.org](https://www.soccer-net.org/data) (2022 tracking) |
+| DanceTrack | [DanceTrack](https://github.com/DanceTrack/DanceTrack) frames/GT; uses YOLOX dets |
+| SoccerNet-tracking | [soccer-net.org](https://www.soccer-net.org/data) (2022 tracking); oracle (ground-truth) detections |
 
-MOT17 and SportsMOT use model detections produced in-house with YOLOX, following each benchmark’s published detector configuration — the same approach described in [`docs/trackers/comparison.md`](../docs/trackers/comparison.md#detections).
+MOT17, SportsMOT, and DanceTrack use YOLOX model detections produced in-house, following each benchmark’s published detector configuration. SoccerNet uses oracle boxes from the dataset. See [`docs/trackers/comparison.md`](../docs/trackers/comparison.md#detections).
 
 ```bash
 make data-check DATA_ROOT="/path/to/datasets"

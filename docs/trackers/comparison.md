@@ -9,11 +9,11 @@ This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, and BoT-SO
 
 !!! info "Benchmark version"
 
-    Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT) or ground-truth oracle boxes (SoccerNet, DanceTrack). Parameters were tuned via grid search on held-out splits. See [Methodology](#methodology) for details.
+    Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits. See [Methodology](#methodology) for details.
 
 !!! note "Benchmark methodology"
 
-    Results measured using YOLOX detections (MOT17, SportsMOT) or oracle ground-truth boxes (SoccerNet, DanceTrack) with default and grid-searched parameters. Performance varies across detectors — see [Detection Quality Matters](../learn/detection-quality.md) for the impact of detector quality on tracking metrics.
+    Results measured using YOLOX detections (MOT17, SportsMOT, DanceTrack) or oracle ground-truth boxes (SoccerNet) with default and grid-searched parameters. Performance varies across detectors — see [Detection Quality Matters](../learn/detection-quality.md) for the impact of detector quality on tracking metrics.
 
 ## [MOT17](https://arxiv.org/abs/1603.00831)
 
@@ -251,7 +251,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 !!! info
 
     Parameters were tuned on the train set. Results are reported on the
-    validation set. This dataset provides oracle (ground-truth) detections.
+    validation set. Detections come from a YOLOX model.
 
 === "Default"
 
