@@ -63,7 +63,7 @@ Point `DATA_ROOT` at the folder that directly contains `mot17/`, `sportsmot/`, e
 ```
 $DATA_ROOT/
   mot17/MOT17_yolox_dets/{val,test}/...
-  mot17/TrackEval/data/gt/MOT17_yolox_val/train_val/...
+  mot17/TrackEval/data/gt/MOT17_yolox_val/train_val/...  
   mot17/{val,test}/<seq>/img1/...              # BoT-SORT CMC only
   sportsmot/sportsmot_yolox_dets/{val,test}/...
   sportsmot/TrackEval/data/gt/sportsmot/val/...
@@ -83,6 +83,18 @@ $DATA_ROOT/
 | SoccerNet-tracking | [soccer-net.org](https://www.soccer-net.org/data) (2022 tracking); oracle (ground-truth) detections |
 
 MOT17, SportsMOT, and DanceTrack use YOLOX model detections produced in-house, following each benchmark’s published detector configuration. SoccerNet uses oracle boxes from the dataset. See [`docs/trackers/comparison.md`](../docs/trackers/comparison.md#detections).
+
+### MOT17 validation ground truth
+
+YOLOX validation detections for MOT17 cover only the benchmark validation frame range for each sequence—not every frame in the official training labels. Tuning on the full MOT17 GT under `TrackEval/data/gt/MOT17/train_val/` misaligns detection and label frame indices.
+
+After YOLOX val detections and MOT17 GT are in place, run once from `benchmark/`:
+
+```bash
+python scripts/align_mot17_val_gt.py --data-root "$DATA_ROOT"
+```
+
+This filters each sequence’s `gt.txt` to the frame range present in `MOT17_yolox_dets/val/MOT17-XX_val.txt` and writes the result to `mot17/TrackEval/data/gt/MOT17_yolox_val/train_val/`. MOT17 tuning uses that tree.
 
 ```bash
 make data-check DATA_ROOT="/path/to/datasets"
@@ -173,6 +185,7 @@ BoT-SORT sets `FIXED_PARAMS={"enable_cmc": true}` and uses frame directories whe
 
 ## Notes
 
+- **MOT17 validation GT.** YOLOX val detections span a subset of frames per sequence; run `scripts/align_mot17_val_gt.py` before tuning so labels match detection indices.
 - **Tracking bypasses `trackers track`.** `scripts/track_split.py` loads the registry directly (workaround for a shared CLI parameter bug; see issue/PR). ByteTrack/SORT/OC-SORT never receive `--images-dir` during tune.
 - **MOT17 server format.** `scripts/mot_format.py` triplicates `MOT17-XX.txt` into FRCNN/SDP/DPM files and stubs missing sequences for Codabench.
 - **Resuming.** Steps are independent. Re-run `collect` after late uploads; use `upload` to submit an existing zip without re-tracking.
