@@ -259,7 +259,11 @@ def track(
 
     class_filter = _resolve_class_filter(classes, class_names)
     track_id_filter = _resolve_track_id_filter(track_ids)
-    tracker_obj = _init_tracker(tracker, tracker_params)
+    try:
+        tracker_obj = _init_tracker(tracker, tracker_params)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
     if source is not None:
         return _run_with_source(
