@@ -105,17 +105,6 @@ def _put_presigned_url(url: str, data: bytes, *, content_type: str = "applicatio
         conn.close()
 
 
-def fetch_token(base_url: str, username: str, password: str) -> str:
-    _, payload = _request(
-        method="POST",
-        url=f"{base_url.rstrip('/')}/api/api-token-auth/",
-        json_body={"username": username, "password": password},
-    )
-    if not isinstance(payload, dict) or "token" not in payload:
-        raise RuntimeError(f"Unexpected token response: {payload!r}")
-    return str(payload["token"])
-
-
 def can_make_submission(base_url: str, token: str, phase_id: int) -> tuple[bool, str]:
     _, payload = _request(
         method="GET",
@@ -360,14 +349,9 @@ def resolve_token(args: argparse.Namespace) -> str:
     token = os.environ.get("CODABENCH_TOKEN", "").strip()
     if token:
         return token
-    username = args.username or os.environ.get("CODABENCH_USERNAME", "").strip()
-    password = args.password or os.environ.get("CODABENCH_PASSWORD", "").strip()
-    if username and password:
-        return fetch_token(args.base_url, username, password)
     raise RuntimeError(
-        "Missing API token. Set CODABENCH_TOKEN or pass --token, "
-        "or set CODABENCH_USERNAME and CODABENCH_PASSWORD. "
-        "Create a token via POST /api/api-token-auth/ (see Codabench API docs)."
+        "Missing API token. Set CODABENCH_TOKEN or pass --token. "
+        "Request a token via POST /api/api-token-auth/ (see benchmark/README.md)."
     )
 
 
@@ -402,8 +386,6 @@ def main(argv: list[str] | None = None) -> int:
         help="Codabench base URL.",
     )
     p.add_argument("--token", help="API token (or env CODABENCH_TOKEN).")
-    p.add_argument("--username", help="Username for token auth (or env CODABENCH_USERNAME).")
-    p.add_argument("--password", help="Password for token auth (or env CODABENCH_PASSWORD).")
     p.add_argument("--description", default="", help="Optional submission description.")
     p.add_argument(
         "--dataset-name",
@@ -434,6 +416,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Leaderboard columns to print when finished (default: HOTA IDF1 MOTA).",
     )
     p.add_argument("--dry-run", action="store_true", help="Check eligibility only; do not upload.")
+    p.add_argument(
+        "--output",
+        type=Path,
+        help="Optional path to write a JSON summary (status, scores, submission_id, competition_id, phase).",
+    )
     args = p.parse_args(argv)
 
     metric_keys = tuple(args.metrics)
@@ -502,6 +489,26 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Done → id={sub_id} status={submission.get('status')}")
     if sub_id is not None:
         print(f"  https://www.codabench.org/competitions/{comp_id}/")
+
+    if args.output is not None:
+        try:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(
+                json.dumps(
+                    {
+                        "submission_id": sub_id,
+                        "competition_id": comp_id,
+                        "phase_id": args.phase,
+                        "status": submission.get("status"),
+                        "scores": extract_metric_scores(submission, metric_keys),
+                    },
+                    indent=2,
+                )
+            )
+            print(f"  saved → {args.output}")
+        except OSError as exc:
+            print(f"warn: could not write {args.output}: {exc}", file=sys.stderr)
+
     return 0 if str(submission.get("status", "")).lower() == "finished" else 1
 
 
