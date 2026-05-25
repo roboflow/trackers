@@ -20,9 +20,7 @@ import json
 import os
 import sys
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -36,6 +34,12 @@ TERMINAL_STATUSES = {"finished", "failed", "cancelled", "none"}
 #   dancetrack: competition 14885, phase 24635
 DEFAULT_COMPETITION_ID = 10049
 DEFAULT_PHASE_ID = 16382
+
+
+def _validate_http_url(url: str) -> None:
+    scheme = urllib.parse.urlparse(url).scheme
+    if scheme not in ("http", "https"):
+        raise RuntimeError(f"Unsupported URL scheme: {scheme!r}")
 
 
 def _request(
@@ -54,20 +58,29 @@ def _request(
     if json_body is not None:
         body = json.dumps(json_body).encode()
         hdrs.setdefault("Content-Type", "application/json")
-    req = urllib.request.Request(url, data=body, headers=hdrs, method=method)
+    _validate_http_url(url)
+    parsed = urllib.parse.urlparse(url)
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+
+    conn_class = http.client.HTTPSConnection if parsed.scheme == "https" else http.client.HTTPConnection
+    conn = conn_class(parsed.netloc, timeout=120)
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            raw = resp.read()
-            status = resp.status
-    except urllib.error.HTTPError as exc:
-        raw = exc.read()
-        status = exc.code
+        conn.request(method, path, body=body, headers=hdrs)
+        resp = conn.getresponse()
+        raw = resp.read()
+        status = resp.status
+    except OSError as exc:
+        raise RuntimeError(f"{method} {url} failed: {exc}") from exc
+    finally:
+        conn.close()
+
+    if status >= 400:
         detail = raw.decode(errors="replace")
         if detail.lstrip().startswith("<!DOCTYPE") or detail.lstrip().startswith("<html"):
             detail = f"{detail[:200].strip()}... (HTML error page — check API URL/auth)"
-        raise RuntimeError(f"{method} {url} → HTTP {status}: {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"{method} {url} failed: {exc}") from exc
+        raise RuntimeError(f"{method} {url} → HTTP {status}: {detail}")
 
     if not raw:
         return status, None
