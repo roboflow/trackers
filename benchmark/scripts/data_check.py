@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Walk the expected ``data/`` layout and print what's present vs missing per dataset.
 
 Use this before running ``make benchmark`` to verify the manual data setup. The
@@ -24,7 +30,9 @@ def _check(label: str, path: Path | None, *, required: bool) -> bool:
 
 
 def check_dataset(data_root: Path, dataset: str) -> bool:
-    splits = sorted({TUNE_SPLIT[dataset], EVAL_SPLIT[dataset], *([SUBMIT_SPLIT[dataset]] if dataset in SUBMIT_SPLIT else [])})
+    splits = sorted(
+        {TUNE_SPLIT[dataset], EVAL_SPLIT[dataset], *([SUBMIT_SPLIT[dataset]] if dataset in SUBMIT_SPLIT else [])}
+    )
     print(f"\n[{dataset}]")
     ok = True
     for split in splits:
@@ -51,7 +59,14 @@ def main(argv: list[str] | None = None) -> int:
     all_ok = True
     for dataset in datasets:
         all_ok &= check_dataset(args.data_root, dataset)
-    print("\n" + ("All required assets found." if all_ok else "Some required assets missing — see README for download instructions."))
+    print(
+        "\n"
+        + (
+            "All required assets found."
+            if all_ok
+            else "Some required assets missing — see README for download instructions."
+        )
+    )
     return 0 if all_ok else 1
 
 

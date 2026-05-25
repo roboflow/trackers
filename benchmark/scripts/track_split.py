@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Run one tracker over a prepared MOT detection directory and write MOT predictions.
 
 This script intentionally bypasses the `trackers track` CLI for two reasons:
@@ -89,7 +95,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     params = _resolve_params(args.tracker, params_file=args.params)
-    images_dir = split_paths(args.data_root, args.dataset, args.split).images_dir if needs_frames(args.tracker, params) else None
+    images_dir = (
+        split_paths(args.data_root, args.dataset, args.split).images_dir if needs_frames(args.tracker, params) else None
+    )
     if images_dir is not None and not images_dir.is_dir():
         print(f"missing frames for CMC: {images_dir}", file=sys.stderr)
         return 1

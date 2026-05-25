@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Upload a submission zip to a Codabench competition phase.
 
 Uses Codabench's REST API (token auth + 3-step file upload). See:
@@ -98,9 +104,7 @@ def _put_presigned_url(url: str, data: bytes, *, content_type: str = "applicatio
         raw = resp.read()
         if resp.status >= 400:
             detail = raw.decode(errors="replace")
-            raise RuntimeError(
-                f"PUT presigned upload → HTTP {resp.status}: {detail}"
-            )
+            raise RuntimeError(f"PUT presigned upload → HTTP {resp.status}: {detail}")
     finally:
         conn.close()
 
@@ -147,10 +151,7 @@ def upload_submission(
 
     bundle_bytes = zip_path.read_bytes()
     if dry_run:
-        print(
-            f"Dry run: would upload {zip_path.name} ({len(bundle_bytes)} bytes) "
-            f"to phase {phase_id} on {base_url}"
-        )
+        print(f"Dry run: would upload {zip_path.name} ({len(bundle_bytes)} bytes) to phase {phase_id} on {base_url}")
         return {"dry_run": True, "phase": phase_id, "zip": str(zip_path)}
 
     _, data_record = _request(
@@ -198,9 +199,7 @@ def get_submission_details(*, base_url: str, token: str, submission_id: int) -> 
         token=token,
     )
     if not isinstance(payload, dict):
-        raise RuntimeError(
-            f"Unexpected /api/submissions/{submission_id}/get_details/ response: {payload!r}"
-        )
+        raise RuntimeError(f"Unexpected /api/submissions/{submission_id}/get_details/ response: {payload!r}")
     return payload
 
 
@@ -213,9 +212,7 @@ def print_submission_failure_logs(
 ) -> None:
     """Best-effort scrape of scoring logs after a failed submission."""
     try:
-        details = get_submission_details(
-            base_url=base_url, token=token, submission_id=submission_id
-        )
+        details = get_submission_details(base_url=base_url, token=token, submission_id=submission_id)
     except RuntimeError as exc:
         print(f"  logs unavailable: {exc}", flush=True)
         return
@@ -303,9 +300,7 @@ def poll_submission(
     last_status = ""
 
     while True:
-        submission = get_submission(
-            base_url=base_url, token=token, submission_id=submission_id
-        )
+        submission = get_submission(base_url=base_url, token=token, submission_id=submission_id)
         status = str(submission.get("status", ""))
         status_lc = status.lower()
 
@@ -326,17 +321,14 @@ def poll_submission(
             elif submission.get("status_details"):
                 print(f"  details → {submission['status_details']}")
             if status_lc == "failed":
-                print_submission_failure_logs(
-                    base_url=base_url, token=token, submission_id=submission_id
-                )
+                print_submission_failure_logs(base_url=base_url, token=token, submission_id=submission_id)
             return submission
 
         elapsed = time.monotonic() - start
         remaining = timeout_seconds - elapsed
         if remaining <= 0:
             raise RuntimeError(
-                f"Timed out after {timeout_seconds:.0f}s waiting for submission "
-                f"{submission_id} (last status: {status})"
+                f"Timed out after {timeout_seconds:.0f}s waiting for submission {submission_id} (last status: {status})"
             )
 
         time.sleep(min(wait, remaining))
@@ -443,9 +435,7 @@ def main(argv: list[str] | None = None) -> int:
                     metric_keys=metric_keys,
                 )
             else:
-                submission = get_submission(
-                    base_url=args.base_url, token=token, submission_id=sub_id
-                )
+                submission = get_submission(base_url=args.base_url, token=token, submission_id=sub_id)
                 scores = extract_metric_scores(submission, metric_keys)
                 if scores:
                     parts = ", ".join(f"{k}={scores[k]:.3f}" for k in metric_keys if k in scores)
