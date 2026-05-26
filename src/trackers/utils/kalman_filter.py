@@ -109,6 +109,7 @@ class KalmanFilter:
         if self._F_builder is None or self._Q_builder is None:
             return
 
+        # First predict, or a different dt than the last predict and not 1.
         if self._cached_dt is None:
             if dt != 1.0:
                 self.F = self._F_builder(dt)
