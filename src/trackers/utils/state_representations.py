@@ -91,9 +91,7 @@ class BaseStateEstimator(ABC):
         # Acceleration variance per kinematic coordinate, used by `build_Q`.
         # Updated in `set_kf_covariances` whenever Q is supplied so that
         # the back-calibration tracks any tracklet-specific tuning.
-        self._sigma_a2: np.ndarray = np.ones(
-            self._n_kinematic_dims(), dtype=np.float64
-        )
+        self._sigma_a2: np.ndarray = np.ones(self._n_kinematic_dims(), dtype=np.float64)
         # Diagonal entries of Q for *non-kinematic* state dimensions
         # (e.g. the aspect-ratio random walk in XCYCSR). Captured from any
         # caller-supplied Q so `build_Q(dt)` does not overwrite them.
@@ -246,9 +244,7 @@ class BaseStateEstimator(ABC):
                 raise ValueError(f"Q must have shape {expected_shape}; got {Q.shape}.")
             self.kf.Q = Q
             _, vel_idx = self._kinematic_indices()
-            self._sigma_a2 = np.asarray(
-                [float(Q[v, v]) for v in vel_idx], dtype=np.float64
-            )
+            self._sigma_a2 = np.asarray([float(Q[v, v]) for v in vel_idx], dtype=np.float64)
             self._extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
         if P is not None:
             expected_shape = (self.kf.dim_x, self.kf.dim_x)

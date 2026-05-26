@@ -52,11 +52,11 @@ Under all of these, motion predictions drift by the same factor as the timing er
 
 ```python
 tracker = ByteTrackTracker(
-    frame_rate=30.0,                      # REQUIRED. Reference FPS used as prior;
-                                          # must be > 0 even in dynamic mode.
-    lost_track_buffer=30,                 # interpreted as buffer in frames AT 30 FPS reference
-    maximum_time_without_update=None,     # NEW: override above in seconds
-    process_noise_scale=1.0,              # NEW: scalar to scale σ_a² globally
+    frame_rate=30.0,  # REQUIRED. Reference FPS used as prior;
+    # must be > 0 even in dynamic mode.
+    lost_track_buffer=30,  # interpreted as buffer in frames AT 30 FPS reference
+    maximum_time_without_update=None,  # NEW: override above in seconds
+    process_noise_scale=1.0,  # NEW: scalar to scale σ_a² globally
     # ... existing params unchanged
 )
 ```
@@ -68,17 +68,17 @@ tracker = ByteTrackTracker(
 ```python
 detections = tracker.update(
     detections,
-    frame=frame_image,        # already exists, unchanged (BoT-SORT CMC)
-    timestamp=t_seconds,      # NEW: monotonic float seconds; default None
+    frame=frame_image,  # already exists, unchanged (BoT-SORT CMC)
+    timestamp=t_seconds,  # NEW: monotonic float seconds; default None
 )
 ```
 
 Two operating modes — mirroring the FraMOT [known FPS / unknown FPS] split:
 
-| Mode | `frame_rate` | `timestamp` per update | Behavior |
-|------|--------------|------------------------|----------|
-| **Fixed** (default, backward‑compatible) | e.g. `30.0` | `None` | `dt = 1/frame_rate` every step → identical to today |
-| **Dynamic** | reference for Q calibration | `float` seconds | `dt = t − t_prev`. We trust the caller's timestamps and apply no upper clamp (see §4.6). Internal guard: `dt ≤ 0` (duplicate / non‑monotonic timestamp) is treated as a no‑op predict and emits a one‑time warning. |
+| Mode                                     | `frame_rate`                | `timestamp` per update | Behavior                                                                                                                                                                                                            |
+| ---------------------------------------- | --------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Fixed** (default, backward‑compatible) | e.g. `30.0`                 | `None`                 | `dt = 1/frame_rate` every step → identical to today                                                                                                                                                                 |
+| **Dynamic**                              | reference for Q calibration | `float` seconds        | `dt = t − t_prev`. We trust the caller's timestamps and apply no upper clamp (see §4.6). Internal guard: `dt ≤ 0` (duplicate / non‑monotonic timestamp) is treated as a no‑op predict and emits a one‑time warning. |
 
 On the first call with a timestamp, `t_prev` is initialised to that timestamp and `dt = 1/frame_rate` is used (so the first step does not depend on a non‑existent previous timestamp). Subsequent `None` timestamps after a non‑`None` one emit a one‑time warning and fall back to `dt = 1/frame_rate`.
 
@@ -126,13 +126,13 @@ The two are physically distinct stories but numerically interchangeable when `σ
 **Why a constant `Q` fails when `Δt` varies.** Position uncertainty in DWNA scales as `Δt⁴`. Numerically:
 
 | Δt (s) | Position term `σ_a² · Δt⁴/4` (relative to Δt=1) |
-|--------|--------------------------------------------------|
-| 1/60   | 7.7e‑6 |
-| 1/30   | 1.2e‑4 |
-| 1/10   | 1e‑2   |
-| 1/2    | 0.0625 |
-| 1      | 1      |
-| 2      | 16     |
+| ------ | ----------------------------------------------- |
+| 1/60   | 7.7e‑6                                          |
+| 1/30   | 1.2e‑4                                          |
+| 1/10   | 1e‑2                                            |
+| 1/2    | 0.0625                                          |
+| 1      | 1                                               |
+| 2      | 16                                              |
 
 Keeping `Q` constant across this range is physically incorrect. The OC‑SORT paper documents the failure mode analytically: *"the scale of the noise of direction estimation is negatively correlated to the time difference between the two observation points, i.e. Δt … the choice of Δt requires a trade‑off"* ([Cao et al., 2023, §4](https://arxiv.org/abs/2203.14360)). The empirical mirror is in APPTracker, where lost‑track buffer must shrink with frame‑skip ratio to keep tracking accuracy up ([Zhou et al., 2022, Table 5](https://infzhou.github.io/folder/Zhou_APPTracker_Improving_Tracking_Multiple_Objects_in_Low-Frame-Rate_Videos_MM_2022.pdf)).
 
@@ -154,12 +154,12 @@ The off‑diagonal coupling terms `Q[i, i+4] = σ_a² · Δt³/2` are *new* — 
 
 We switch `age` and `time_since_update` to **seconds** (`float`). Each frame‑count threshold gets a `*_seconds` counterpart, derived from existing parameters so users can ignore the change:
 
-| Today (frames) | New canonical (seconds) | Conversion |
-|----------------|-------------------------|------------|
-| `maximum_frames_without_update` | `maximum_time_without_update` | `lost_track_buffer / 30.0` |
-| `minimum_consecutive_frames` | `minimum_consecutive_observations` | unchanged — this is a *count of detections*, not time |
-| BoT‑SORT lost‑gate `tsu > 1` | `tsu > one_frame_period` | `one_frame_period = 1.0 / frame_rate` |
-| OC‑SORT `delta_t = 3` | `delta_t_seconds = 3 / 30.0 = 0.1 s` | rescaled at init |
+| Today (frames)                  | New canonical (seconds)              | Conversion                                            |
+| ------------------------------- | ------------------------------------ | ----------------------------------------------------- |
+| `maximum_frames_without_update` | `maximum_time_without_update`        | `lost_track_buffer / 30.0`                            |
+| `minimum_consecutive_frames`    | `minimum_consecutive_observations`   | unchanged — this is a *count of detections*, not time |
+| BoT‑SORT lost‑gate `tsu > 1`    | `tsu > one_frame_period`             | `one_frame_period = 1.0 / frame_rate`                 |
+| OC‑SORT `delta_t = 3`           | `delta_t_seconds = 3 / 30.0 = 0.1 s` | rescaled at init                                      |
 
 This matches the APPTracker empirical finding that buffer‑in‑seconds is roughly invariant across frame skips.
 
@@ -179,8 +179,8 @@ This is a deliberate choice. The only public knob would have been a per‑step u
 
 The one defensive guard we *do* keep is implementation‑level and has no public parameter:
 
-| Case | Policy |
-|------|--------|
+| Case                                                                  | Policy                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `dt ≤ 0` (duplicate timestamp, non‑monotonic input, clock wraparound) | Treat the call as a **no‑op predict** (skip `F`/`Q` application; do not advance `time_since_update`); association proceeds against the unchanged prior. Emit a `UserWarning` the first time it occurs per tracker instance. This avoids div‑by‑zero in OC‑SORT velocity and negative diagonals in `Q`. |
 
 Rationale for the no‑op rather than a tunable threshold: `dt ≤ 0` is always an upstream bug, never a regime the user wants to tune. Skipping the predict step is the correct response regardless of any threshold value, so exposing it would only invite misconfiguration.
@@ -191,25 +191,25 @@ Rationale for the no‑op rather than a tunable threshold: `dt ≤ 0` is always 
 
 The table is split by PR so reviewers can see the minimal‑viable scope at a glance. "MVP" = lands in PRs 1–3; "deferred" = only lands if the §6 decision gate passes.
 
-| Concern | File(s) | PR | Change |
-|---------|---------|----|--------|
-| KF F/Q builders | `src/trackers/utils/kalman_filter.py` | **PR 1 (MVP)** | extend `predict(dt)`; cache `(F, Q)` by `dt` |
-| State estimators | `src/trackers/utils/state_representations.py` | **PR 1 (MVP)** | add `build_F(dt)`, `build_Q(dt)` for **all three** (XYXY, XCYCSR, XCYCWH); back‑calibrate today's σ² magnitudes |
-| Tracklet base | `src/trackers/utils/base_tracklet.py` | **PR 1 (MVP, dt plumbing)** + **PR 2 (MVP, seconds counter)** | `predict(dt)` in PR 1; new `time_since_update_seconds` parallel field in PR 2 (existing integer `time_since_update` kept for OC‑SORT/BoT‑SORT) |
-| Base tracker | `src/trackers/core/base.py` | **PR 2 (MVP)** | `update(..., timestamp=None)`; `_compute_dt`; `dt ≤ 0` no‑op + warn |
-| SORT | `src/trackers/core/sort/{tracker,utils}.py` | **PR 2 (MVP)** | thread `dt` into tracklet `predict`; switch pruning to `time_since_update_seconds`; new `maximum_time_without_update` kwarg |
-| ByteTrack | `src/trackers/core/bytetrack/{tracker,utils}.py` | **PR 2 (MVP)** | same as SORT |
-| Benchmark sweep | `benchmark/scripts/dynamic_fps_sweep.py` (new), existing harness | **PR 3 (MVP)** | frame‑skip sweep on MOT17 + SportsMOT; Static vs. Dynamic plots |
-| OC‑SORT (warning only) | `src/trackers/core/ocsort/tracker.py` | **PR 2 (MVP)** | accept `timestamp` kwarg but emit one‑time warning and fall back to `dt = 1/frame_rate` |
-| BoT‑SORT (warning only) | `src/trackers/core/botsort/tracker.py` | **PR 2 (MVP)** | same as OC‑SORT |
-| BoT‑SORT (real wiring) | `src/trackers/core/botsort/{tracker,tracklet,utils}.py` | **PR 5 (deferred)** | `tsu_seconds > one_frame_period`; drop the PR 2 warning; combine size‑scaled σ² with `Δt`‑polynomial |
-| OC‑SORT (real wiring) | `src/trackers/core/ocsort/{tracker,tracklet,utils}.py` | **PR 6 (deferred)** | observations keyed by timestamp; `delta_t_seconds`; ORU sub‑step rule; velocity per‑second |
-| CLI | `src/trackers/scripts/track.py` | **PR 7 (deferred)** | derive `timestamp = cap.get(CAP_PROP_POS_MSEC)/1000` when `--tracker.dynamic_dt true` |
-| Demo | `demo/app.py` | **PR 7 (deferred)** | wire `frame_rate` and timestamps from `source_info` |
-| Tuner | `src/trackers/tune/*` | **PR 7 (deferred)** | optionally include `maximum_time_without_update` in the search space |
-| Tests | `tests/utils/test_kalman_filter.py`, per‑tracker tests | **PR 1–2 (MVP)** | back‑compat: `predict(1.0)` matches old numbers; equivalent‑timing test; frame‑skip equivalence test |
-| Docs (this file) | `docs/design/dynamic-frame-rate.md` | every PR | revised as decisions are made |
-| Per‑tracker docs | `docs/trackers/*.md` | after PR 4 verdict | "Variable frame rate" section per tracker (only for trackers that actually support it) |
+| Concern                 | File(s)                                                          | PR                                                            | Change                                                                                                                                         |
+| ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| KF F/Q builders         | `src/trackers/utils/kalman_filter.py`                            | **PR 1 (MVP)**                                                | extend `predict(dt)`; cache `(F, Q)` by `dt`                                                                                                   |
+| State estimators        | `src/trackers/utils/state_representations.py`                    | **PR 1 (MVP)**                                                | add `build_F(dt)`, `build_Q(dt)` for **all three** (XYXY, XCYCSR, XCYCWH); back‑calibrate today's σ² magnitudes                                |
+| Tracklet base           | `src/trackers/utils/base_tracklet.py`                            | **PR 1 (MVP, dt plumbing)** + **PR 2 (MVP, seconds counter)** | `predict(dt)` in PR 1; new `time_since_update_seconds` parallel field in PR 2 (existing integer `time_since_update` kept for OC‑SORT/BoT‑SORT) |
+| Base tracker            | `src/trackers/core/base.py`                                      | **PR 2 (MVP)**                                                | `update(..., timestamp=None)`; `_compute_dt`; `dt ≤ 0` no‑op + warn                                                                            |
+| SORT                    | `src/trackers/core/sort/{tracker,utils}.py`                      | **PR 2 (MVP)**                                                | thread `dt` into tracklet `predict`; switch pruning to `time_since_update_seconds`; new `maximum_time_without_update` kwarg                    |
+| ByteTrack               | `src/trackers/core/bytetrack/{tracker,utils}.py`                 | **PR 2 (MVP)**                                                | same as SORT                                                                                                                                   |
+| Benchmark sweep         | `benchmark/scripts/dynamic_fps_sweep.py` (new), existing harness | **PR 3 (MVP)**                                                | frame‑skip sweep on MOT17 + SportsMOT; Static vs. Dynamic plots                                                                                |
+| OC‑SORT (warning only)  | `src/trackers/core/ocsort/tracker.py`                            | **PR 2 (MVP)**                                                | accept `timestamp` kwarg but emit one‑time warning and fall back to `dt = 1/frame_rate`                                                        |
+| BoT‑SORT (warning only) | `src/trackers/core/botsort/tracker.py`                           | **PR 2 (MVP)**                                                | same as OC‑SORT                                                                                                                                |
+| BoT‑SORT (real wiring)  | `src/trackers/core/botsort/{tracker,tracklet,utils}.py`          | **PR 5 (deferred)**                                           | `tsu_seconds > one_frame_period`; drop the PR 2 warning; combine size‑scaled σ² with `Δt`‑polynomial                                           |
+| OC‑SORT (real wiring)   | `src/trackers/core/ocsort/{tracker,tracklet,utils}.py`           | **PR 6 (deferred)**                                           | observations keyed by timestamp; `delta_t_seconds`; ORU sub‑step rule; velocity per‑second                                                     |
+| CLI                     | `src/trackers/scripts/track.py`                                  | **PR 7 (deferred)**                                           | derive `timestamp = cap.get(CAP_PROP_POS_MSEC)/1000` when `--tracker.dynamic_dt true`                                                          |
+| Demo                    | `demo/app.py`                                                    | **PR 7 (deferred)**                                           | wire `frame_rate` and timestamps from `source_info`                                                                                            |
+| Tuner                   | `src/trackers/tune/*`                                            | **PR 7 (deferred)**                                           | optionally include `maximum_time_without_update` in the search space                                                                           |
+| Tests                   | `tests/utils/test_kalman_filter.py`, per‑tracker tests           | **PR 1–2 (MVP)**                                              | back‑compat: `predict(1.0)` matches old numbers; equivalent‑timing test; frame‑skip equivalence test                                           |
+| Docs (this file)        | `docs/design/dynamic-frame-rate.md`                              | every PR                                                      | revised as decisions are made                                                                                                                  |
+| Per‑tracker docs        | `docs/trackers/*.md`                                             | after PR 4 verdict                                            | "Variable frame rate" section per tracker (only for trackers that actually support it)                                                         |
 
 ### 5.2 Backward compatibility
 
@@ -232,6 +232,7 @@ The rollout is split into a **minimum‑viable spike** (PRs 1–3) that proves o
 **Goal:** make the KF capable of advancing state by an arbitrary `Δt`, while leaving every existing call site behaving byte‑for‑byte identically.
 
 **Files touched:**
+
 - `src/trackers/utils/kalman_filter.py` — add `predict(dt: float = 1.0)`; cache `(F, Q)` keyed by `dt` to avoid rebuilding every step.
 - `src/trackers/utils/state_representations.py` — for **all three** estimators (XYXY, XCYCSR, XCYCWH), add `build_F(dt)` and `build_Q(dt)` using the DWNA formula (§4.2). Back‑calibrate `σ_a²` per estimator so that `build_Q(1/frame_rate)` matches today's `Q` on the velocity diagonal (§4.3, §8). (Doing all three at once is essentially free — same template applied three times — and keeps later PRs from re‑touching this file.)
 - `src/trackers/utils/base_tracklet.py` — `predict(dt: float = 1.0)` forwards `dt` to the estimator.
@@ -239,6 +240,7 @@ The rollout is split into a **minimum‑viable spike** (PRs 1–3) that proves o
 **Public API change:** none. Default `dt=1.0` everywhere → every existing caller behaves identically.
 
 **Tests:**
+
 - `predict(1.0)` produces numerically identical `x` and `P` to the current code for a fixed input sequence (parametrize over all three estimators).
 - Synthetic 1D constant‑velocity trajectory `p_k = p_0 + v · t_k` with non‑uniform timestamps converges in position and velocity error (sanity check that `F(Δt)` / `Q(Δt)` are wired correctly).
 
@@ -249,6 +251,7 @@ The rollout is split into a **minimum‑viable spike** (PRs 1–3) that proves o
 **Goal:** thread `timestamp` from `update()` down to `predict(dt)` and replace SORT and ByteTrack's frame‑counted lifetime threshold with a time‑denominated one. **OC‑SORT and BoT‑SORT are explicitly left unchanged** (they keep their integer frame counters and will silently ignore `timestamp` if passed, emitting a one‑time warning).
 
 **Files touched:**
+
 - `src/trackers/utils/base_tracklet.py` — add a parallel `time_since_update_seconds: float` field accumulated as `+= dt` in `predict(dt)`. Keep the existing integer `time_since_update` so OC‑SORT/BoT‑SORT remain byte‑identical.
 - `src/trackers/core/base.py` — `update(..., timestamp: float | None = None)`; `_compute_dt(timestamp)` helper; track `_last_timestamp` per tracker instance; first‑call bootstrap with `dt = 1/frame_rate`; `dt ≤ 0` → no‑op + warn once (§4.6).
 - `src/trackers/core/sort/tracker.py` + `src/trackers/core/sort/utils.py` — derive `maximum_time_without_update = lost_track_buffer / 30.0` at init; expose new optional `maximum_time_without_update` kwarg as override; switch `_get_alive_tracklets` comparison to seconds.
@@ -256,10 +259,12 @@ The rollout is split into a **minimum‑viable spike** (PRs 1–3) that proves o
 - `src/trackers/core/ocsort/*` + `src/trackers/core/botsort/*` — **untouched**. Their `update()` accepts `timestamp` but emits a `UserWarning("dynamic dt not yet supported for OC‑SORT; falling back to Fixed mode")` on first non‑`None` `timestamp` and proceeds with `dt = 1/frame_rate`.
 
 **Public API change:**
+
 - New optional kwarg `timestamp: float | None = None` on `BaseTracker.update`.
 - New optional kwarg `maximum_time_without_update: float | None = None` on SORT and ByteTrack constructors.
 
 **Tests:**
+
 - Backwards compatibility: SORT and ByteTrack with `timestamp=None` produce identical tracks to today on the existing benchmark fixtures (within strict numerical tolerance).
 - "Equivalent timing" test: a synthetic video of constant‑velocity boxes generates identical tracks whether you feed (a) every frame at 30 FPS with no timestamps, or (b) every frame at 30 FPS with `timestamp = frame_idx / 30.0`. The two paths should agree to ≤ 1e‑6.
 - "Frame‑skip equivalence" test: feeding every 3rd frame with correct timestamps from a 30 FPS source produces results numerically close to feeding the same frames to a 10 FPS instance (validates that `dt` is doing real work).
@@ -271,11 +276,12 @@ The rollout is split into a **minimum‑viable spike** (PRs 1–3) that proves o
 **Goal:** quantify whether dynamic‑dt actually helps. **This is where the project lives or dies.**
 
 **Files touched:**
+
 - `benchmark/scripts/` — add a `frame_skip` flag to the existing benchmark harness so it can sample every Nth frame of MOT17 / SportsMOT and feed the surviving frames to the tracker with the correct timestamps.
 - New script `benchmark/scripts/dynamic_fps_sweep.py` — runs SORT and ByteTrack in two modes:
-  1. **Static**: tracker constructed with `frame_rate = source_fps / n_d`; timestamps not passed; today's behaviour rescaled.
-  2. **Dynamic**: tracker constructed with `frame_rate = source_fps` (the *original* rate as prior); timestamps from sampled frame indices passed per update.
-  …for `n_d ∈ {1, 2, 3, 6, 10}` on MOT17‑val and SportsMOT‑val.
+    1. **Static**: tracker constructed with `frame_rate = source_fps / n_d`; timestamps not passed; today's behaviour rescaled.
+    2. **Dynamic**: tracker constructed with `frame_rate = source_fps` (the *original* rate as prior); timestamps from sampled frame indices passed per update.
+        …for `n_d ∈ {1, 2, 3, 6, 10}` on MOT17‑val and SportsMOT‑val.
 - `docs/trackers/comparison.md` — append a "Variable frame rate" section with the resulting plots (HOTA / IDF1 / MOTA vs. `n_d`, Static vs. Dynamic curves).
 
 **Public API change:** none.
@@ -290,11 +296,11 @@ The rollout is split into a **minimum‑viable spike** (PRs 1–3) that proves o
 
 After PR 3 lands, we read the plots and pick **exactly one** of:
 
-| Verdict | Trigger | Next step |
-|---------|---------|-----------|
-| **Useful**     | Dynamic mode improves HOTA or IDF1 by ≥ 1 point at `n_d ≥ 3` on at least one dataset, without regressing the `n_d = 1` baseline | Proceed to PR 5–7 (OC‑SORT, BoT‑SORT, CLI). |
-| **Inconclusive** | Mixed results, < 1 point delta, or sensitive to hyperparameters | Run an OC‑SORT pilot (smaller version of PR 5 scope) before committing to the full follow‑up. |
-| **Not useful** | Dynamic mode matches or underperforms Static across the sweep | Stop. Keep PR 1 in main (it's a clean no‑op refactor); revert PR 2 or hide it behind a feature flag. Document the negative result in `docs/design/dynamic-frame-rate.md`. |
+| Verdict          | Trigger                                                                                                                         | Next step                                                                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Useful**       | Dynamic mode improves HOTA or IDF1 by ≥ 1 point at `n_d ≥ 3` on at least one dataset, without regressing the `n_d = 1` baseline | Proceed to PR 5–7 (OC‑SORT, BoT‑SORT, CLI).                                                                                                                               |
+| **Inconclusive** | Mixed results, < 1 point delta, or sensitive to hyperparameters                                                                 | Run an OC‑SORT pilot (smaller version of PR 5 scope) before committing to the full follow‑up.                                                                             |
+| **Not useful**   | Dynamic mode matches or underperforms Static across the sweep                                                                   | Stop. Keep PR 1 in main (it's a clean no‑op refactor); revert PR 2 or hide it behind a feature flag. Document the negative result in `docs/design/dynamic-frame-rate.md`. |
 
 This is the **only mandatory decision gate** in the plan. Everything below is conditional on a "Useful" verdict.
 

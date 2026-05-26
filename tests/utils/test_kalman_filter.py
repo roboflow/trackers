@@ -114,9 +114,7 @@ def test_build_F_is_constant_velocity(estimator_cls: type[BaseStateEstimator]) -
     n = est.kf.dim_x
     for v in vel_idx:
         for j in range(n):
-            assert F1[v, j] == F2[v, j] == F_half[v, j], (
-                f"velocity row {v} col {j} changed across dt"
-            )
+            assert F1[v, j] == F2[v, j] == F_half[v, j], f"velocity row {v} col {j} changed across dt"
 
     # The kinematic coupling F[p, v] scales with dt
     for p, v in zip(pos_idx, vel_idx):
@@ -225,9 +223,7 @@ def test_synthetic_cv_trajectory_recovers_velocity_under_variable_dt() -> None:
         return np.array([[1.0, dt], [0.0, 1.0]], dtype=np.float64)
 
     def Q_builder(dt: float) -> np.ndarray:
-        return sigma_a2 * np.array(
-            [[dt**4 / 4.0, dt**3 / 2.0], [dt**3 / 2.0, dt**2]], dtype=np.float64
-        )
+        return sigma_a2 * np.array([[dt**4 / 4.0, dt**3 / 2.0], [dt**3 / 2.0, dt**2]], dtype=np.float64)
 
     kf.set_motion_model_builders(F_builder, Q_builder)
 
@@ -243,13 +239,9 @@ def test_synthetic_cv_trajectory_recovers_velocity_under_variable_dt() -> None:
 
     # After 200 noisy observations spanning ~50 s, the filter should be very
     # close to the truth.
-    assert abs(float(kf.x[1, 0]) - true_v) < 0.1, (
-        f"velocity estimate off: {kf.x[1, 0]} vs {true_v}"
-    )
+    assert abs(float(kf.x[1, 0]) - true_v) < 0.1, f"velocity estimate off: {kf.x[1, 0]} vs {true_v}"
     expected_p = true_p0 + true_v * t
-    assert abs(float(kf.x[0, 0]) - expected_p) < 1.0, (
-        f"position estimate off: {kf.x[0, 0]} vs {expected_p}"
-    )
+    assert abs(float(kf.x[0, 0]) - expected_p) < 1.0, f"position estimate off: {kf.x[0, 0]} vs {expected_p}"
 
 
 def test_frame_skip_equivalence_under_dt_one() -> None:
