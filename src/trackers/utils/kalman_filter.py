@@ -13,6 +13,7 @@ from numpy.typing import NDArray
 
 FBuilder = Callable[[float], NDArray[np.float64]]
 QBuilder = Callable[[float], NDArray[np.float64]]
+MotionModelSync = Callable[[float], None]
 
 
 class KalmanFilter:
@@ -22,11 +23,10 @@ class KalmanFilter:
     general-purpose implementation that can be used by any tracker.
 
     Variable time-step support (opt-in):
-        Call `set_motion_model_builders` to register `F_builder` and
-        `Q_builder` callables. That flips on time-aware prediction: `predict(dt)`
-        rebuilds `self.F` and `self.Q` whenever `dt` differs from the last
-        value used. When builders are not registered, `predict(dt)` ignores
-        `dt` and uses the stored `F`/`Q` as-is — the backward-compatible path.
+        Call `set_motion_model_builders` to install dt-aware F/Q rebuilding.
+        Until then, `predict(dt)` uses the stored `F`/`Q` matrices regardless
+        of `dt` — the backward-compatible path for callers that never register
+        builders.
 
     Attributes:
         dim_x: Dimension of state vector.
@@ -83,34 +83,38 @@ class KalmanFilter:
 
         self._I: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
 
-        # Time-parameterized motion model (opt-in via set_motion_model_builders).
-        self._motion_model_builders_enabled: bool = False
-        self._F_builder: FBuilder | None = None
-        self._Q_builder: QBuilder | None = None
-        # `_cached_dt is None` means no time-aware predict has run yet, so
-        # the stored F/Q are still the caller-supplied "reference" matrices.
-        self._cached_dt: float | None = None
+        # No-op until set_motion_model_builders installs dt-aware syncing.
+        self._sync_motion_model: MotionModelSync = lambda _dt: None
 
     def set_motion_model_builders(
         self,
         F_builder: FBuilder,
         Q_builder: QBuilder,
     ) -> None:
-        """Register time-parameterized F and Q builders for variable-dt predict.
+        """Install dt-aware F/Q rebuilding for subsequent `predict(dt)` calls.
 
-        After registration, `predict(dt)` will rebuild `self.F` and `self.Q`
-        from the builders whenever `dt` changes. Until the first call with a
-        non-default `dt`, the stored F/Q are preserved unchanged — meaning
-        callers that never opt into variable-dt predict get byte-for-byte
-        backward compatible behaviour.
+        The first `predict(1.0)` preserves caller-supplied reference `F`/`Q`.
+        Any other `dt`, or a later change in `dt`, rebuilds from the builders.
 
         Args:
             F_builder: Callable mapping `dt -> F(dt)` (dim_x, dim_x).
             Q_builder: Callable mapping `dt -> Q(dt)` (dim_x, dim_x).
         """
-        self._F_builder = F_builder
-        self._Q_builder = Q_builder
-        self._motion_model_builders_enabled = True
+        cached_dt: float | None = None
+
+        def sync(dt: float) -> None:
+            nonlocal cached_dt
+            if cached_dt is None:
+                if dt != 1.0:
+                    self.F = F_builder(dt)
+                    self.Q = Q_builder(dt)
+                cached_dt = dt
+            elif dt != cached_dt:
+                self.F = F_builder(dt)
+                self.Q = Q_builder(dt)
+                cached_dt = dt
+
+        self._sync_motion_model = sync
 
     def predict(self, dt: float = 1.0) -> None:
         """Predict next state (prior) using the state transition model.
@@ -119,32 +123,12 @@ class KalmanFilter:
             x = F @ x
             P = F @ P @ F.T + Q
 
-        If time-parameterized builders are registered (see
-        `set_motion_model_builders`), `F` and `Q` are rebuilt from the
-        builders when `dt` differs from the last `dt` used. The very first
-        call is treated specially: if `dt == 1.0` and no prior time-aware
-        call has happened, the stored `F`/`Q` are kept (preserving the
-        caller's reference calibration); any other `dt` triggers a rebuild
-        and from that point on every `dt` change rebuilds F and Q.
-
         Args:
             dt: Time elapsed since the last predict, in seconds. Default
                 `1.0` corresponds to the implicit "one frame per call"
                 semantics used everywhere before this change.
         """
-        if self._motion_model_builders_enabled:
-            assert self._F_builder is not None and self._Q_builder is not None
-            if self._cached_dt is None:
-                # First time-aware predict. Preserve stored F/Q only if dt is
-                # the default; otherwise honour the builders from step one.
-                if dt != 1.0:
-                    self.F = self._F_builder(dt)
-                    self.Q = self._Q_builder(dt)
-                self._cached_dt = dt
-            elif dt != self._cached_dt:
-                self.F = self._F_builder(dt)
-                self.Q = self._Q_builder(dt)
-                self._cached_dt = dt
+        self._sync_motion_model(dt)
 
         self.x = self.F @ self.x
         self.P = self.F @ self.P @ self.F.T + self.Q
