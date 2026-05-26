@@ -13,7 +13,6 @@ from numpy.typing import NDArray
 
 FBuilder = Callable[[float], NDArray[np.float64]]
 QBuilder = Callable[[float], NDArray[np.float64]]
-MotionModelSync = Callable[[float], None]
 
 
 class KalmanFilter:
@@ -83,8 +82,10 @@ class KalmanFilter:
 
         self._I: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
 
-        # No-op until set_motion_model_builders installs dt-aware syncing.
-        self._sync_motion_model: MotionModelSync = lambda _dt: None
+        self._F_builder: FBuilder | None = None
+        self._Q_builder: QBuilder | None = None
+        # None until the first dt-aware predict; then holds the last dt used.
+        self._cached_dt: float | None = None
 
     def set_motion_model_builders(
         self,
@@ -100,21 +101,23 @@ class KalmanFilter:
             F_builder: Callable mapping `dt -> F(dt)` (dim_x, dim_x).
             Q_builder: Callable mapping `dt -> Q(dt)` (dim_x, dim_x).
         """
-        cached_dt: float | None = None
+        self._F_builder = F_builder
+        self._Q_builder = Q_builder
+        self._cached_dt = None
 
-        def sync(dt: float) -> None:
-            nonlocal cached_dt
-            if cached_dt is None:
-                if dt != 1.0:
-                    self.F = F_builder(dt)
-                    self.Q = Q_builder(dt)
-                cached_dt = dt
-            elif dt != cached_dt:
-                self.F = F_builder(dt)
-                self.Q = Q_builder(dt)
-                cached_dt = dt
+    def _sync_motion_model(self, dt: float) -> None:
+        if self._F_builder is None or self._Q_builder is None:
+            return
 
-        self._sync_motion_model = sync
+        if self._cached_dt is None:
+            if dt != 1.0:
+                self.F = self._F_builder(dt)
+                self.Q = self._Q_builder(dt)
+            self._cached_dt = dt
+        elif dt != self._cached_dt:
+            self.F = self._F_builder(dt)
+            self.Q = self._Q_builder(dt)
+            self._cached_dt = dt
 
     def predict(self, dt: float = 1.0) -> None:
         """Predict next state (prior) using the state transition model.
