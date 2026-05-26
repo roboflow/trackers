@@ -4,6 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+import warnings
 from typing import ClassVar
 
 import numpy as np
@@ -110,6 +111,7 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+        self._timestamp_mode_warned: bool = False
 
     def _get_associated_indices(
         self,
@@ -163,7 +165,12 @@ class OCSORTTracker(BaseTracker):
                 )
             )
 
-    def update(self, detections: sv.Detections, frame: np.ndarray | None = None) -> sv.Detections:
+    def update(
+        self,
+        detections: sv.Detections,
+        frame: np.ndarray | None = None,
+        timestamp: float | None = None,
+    ) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
         Performs Kalman filter prediction, two-stage association using direction
         consistency and last-observation recovery, and initializes new tracks
@@ -175,12 +182,25 @@ class OCSORTTracker(BaseTracker):
                 confidence scores.
             frame: Ignored by OC-SORT. If provided (not `None`), a warning is
                 emitted.
+            timestamp: Absolute time of the current frame in seconds. OC-SORT
+                does not yet support variable-rate prediction; if provided, a
+                one-time warning is emitted and the tracker continues in
+                fixed-rate mode.
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
             Unmatched or immature tracks have tracker_id of -1.
         """
         self._warn_if_frame_unused(frame)
+        if timestamp is not None and not self._timestamp_mode_warned:
+            warnings.warn(
+                "OCSORTTracker does not yet support variable frame-rate via timestamp. "
+                "The timestamp argument is ignored and fixed-rate mode is used. "
+                "Variable-rate support for OC-SORT is planned for a future release.",
+                UserWarning,
+                stacklevel=2,
+            )
+            self._timestamp_mode_warned = True
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
@@ -270,6 +290,7 @@ class OCSORTTracker(BaseTracker):
         self.tracks = []
         self.frame_count = 0
         OCSORTTracklet.count_id = 0
+        self._timestamp_mode_warned = False
 
     def _prune_expired_tracklets(self) -> list[OCSORTTracklet]:
         """Remove tracklets that have been lost for too long.

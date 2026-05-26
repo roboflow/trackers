@@ -25,6 +25,7 @@ class BaseTracklet(ABC):
 
         self.tracker_id = -1
         self.time_since_update = 0
+        self.time_since_update_seconds: float = 0.0
         self.number_of_successful_consecutive_updates = 0
 
     @classmethod
@@ -50,9 +51,9 @@ class BaseTracklet(ABC):
         """Predict next bounding box position and advance missed-frame state.
 
         Propagates the Kalman filter and increments `time_since_update` (and
-        `age`) on every call — matched or unmatched. Subclasses that track
-        consecutive-update counters must also reset them here when
-        `time_since_update > 0` before incrementing.
+        `age`) on every call — matched or unmatched. Subclasses must also
+        increment `time_since_update_seconds` by `dt` and reset it to `0.0`
+        in their `update()` method alongside `time_since_update`.
 
         Args:
             dt: Time elapsed since the last predict, in seconds. Default

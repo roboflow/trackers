@@ -87,15 +87,20 @@ class SORTTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
         iou: BaseIoU | None = None,
     ) -> None:
-        # Calculate maximum frames without update based on lost_track_buffer and
-        # frame_rate. This scales the buffer based on the frame rate to ensure
-        # consistent time-based tracking across different frame rates.
+        # `lost_track_buffer` is defined at 30 FPS; scale to actual frame_rate
+        # for frame-count pruning, and convert to seconds for time-based pruning.
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
+        self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+
+        # Dynamic frame-rate state
+        self._frame_rate: float = frame_rate
+        self._last_timestamp: float | None = None
+        self._dt_nonmonotonic_warned: bool = False
 
         # Active tracklets
         self.tracks: list[SORTTracklet] = []
@@ -160,7 +165,12 @@ class SORTTracker(BaseTracker):
                 )
                 self.tracks.append(new_tracker)
 
-    def update(self, detections: sv.Detections, frame: np.ndarray | None = None) -> sv.Detections:
+    def update(
+        self,
+        detections: sv.Detections,
+        frame: np.ndarray | None = None,
+        timestamp: float | None = None,
+    ) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
         Performs Kalman filter prediction, IoU-based association, and initializes
         new tracks for unmatched high-confidence detections.
@@ -170,12 +180,16 @@ class SORTTracker(BaseTracker):
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
                 confidence scores.
             frame: Ignored by SORT. If provided (not `None`), a warning is emitted.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``dt = 1 / frame_rate``).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
             Unmatched or immature tracks have tracker_id of -1.
         """
         self._warn_if_frame_unused(frame)
+        dt = self._compute_dt(timestamp)
+
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
@@ -183,8 +197,9 @@ class SORTTracker(BaseTracker):
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
 
-        for tracklet in self.tracks:
-            tracklet.predict()
+        if dt > 0:
+            for tracklet in self.tracks:
+                tracklet.predict(dt)
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
@@ -203,11 +218,12 @@ class SORTTracker(BaseTracker):
         confidences = default_confidences(detections)
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
-        # Remove dead tracklets
+        # Remove dead tracklets (use time-based budget when timestamps are active)
         self.tracks = _get_alive_tracklets(
             self.tracks,
             self.minimum_consecutive_frames,
             self.maximum_frames_without_update,
+            self.maximum_time_without_update if self._last_timestamp is not None else None,
         )
 
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
@@ -230,3 +246,5 @@ class SORTTracker(BaseTracker):
         """
         self.tracks = []
         SORTTracklet.count_id = 0
+        self._last_timestamp = None
+        self._dt_nonmonotonic_warned = False

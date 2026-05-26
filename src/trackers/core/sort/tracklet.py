@@ -35,6 +35,7 @@ class SORTTracklet(BaseTracklet):
         """
         self.state_estimator.update(bbox)
         self.time_since_update = 0
+        self.time_since_update_seconds = 0.0
         self.number_of_successful_updates += 1
 
     def predict(self, dt: float = 1.0) -> np.ndarray:
@@ -55,6 +56,7 @@ class SORTTracklet(BaseTracklet):
         """
         self.state_estimator.predict(dt)
         self.time_since_update += 1
+        self.time_since_update_seconds += dt
         self.age += 1
         return self.state_estimator.state_to_bbox()
 

@@ -384,11 +384,61 @@ class BaseTracker(ABC):
                 stacklevel=3,
             )
 
+    def _compute_dt(self, timestamp: float | None) -> float:
+        """Compute per-step ``dt`` (seconds) from an optional wall-clock timestamp.
+
+        Must be called once per ``update()`` invocation. On the very first call
+        with a non-None timestamp the method bootstraps with ``1 / frame_rate``
+        so the first predict step behaves identically to the fixed-rate path.
+
+        Subclasses that use this helper must initialise the following attributes
+        in their ``__init__``::
+
+            self._frame_rate: float          # reference FPS, e.g. 30.0
+            self._last_timestamp: float | None = None
+            self._dt_nonmonotonic_warned: bool = False
+
+        Args:
+            timestamp: Absolute time of the current frame in seconds, or
+                ``None`` to use fixed-rate mode (returns ``1 / frame_rate``).
+
+        Returns:
+            Positive ``dt`` to pass to ``tracklet.predict(dt)``, or ``0.0``
+            when the timestamp is non-positive / non-monotonic (caller should
+            skip the predict step for this frame).
+        """
+        if timestamp is None:
+            # Fixed-rate mode: preserve backward-compat dt=1.0 (one frame unit).
+            return 1.0
+
+        last: float | None = self._last_timestamp  # type: ignore[attr-defined]
+        self._last_timestamp = timestamp  # type: ignore[attr-defined]
+
+        if last is None:
+            # Bootstrap: first timestamped call uses reference step (1 / frame_rate
+            # seconds) so the first predict is consistent with fixed-rate behaviour.
+            return 1.0 / self._frame_rate  # type: ignore[attr-defined]
+
+        dt = timestamp - last
+        if dt <= 0:
+            if not self._dt_nonmonotonic_warned:  # type: ignore[attr-defined]
+                warnings.warn(
+                    f"{type(self).__name__}: non-positive dt={dt:.6f}s from "
+                    "non-monotonic timestamp. Skipping predict for this step. "
+                    "Further occurrences will be silenced.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                self._dt_nonmonotonic_warned = True  # type: ignore[attr-defined]
+            return 0.0
+        return dt
+
     @abstractmethod
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        timestamp: float | None = None,
     ) -> sv.Detections:
         """Process new detections and assign track IDs.
 
@@ -399,6 +449,11 @@ class BaseTracker(ABC):
             detections: Current frame detections with xyxy, confidence, class_id.
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
                 Used by trackers with camera motion compensation (e.g. BoTSORT).
+            timestamp: Absolute time of the current frame in seconds, or
+                ``None`` to keep fixed-rate behaviour (``dt = 1 / frame_rate``).
+                When provided, the tracker derives ``dt`` from consecutive
+                timestamps and passes it to each tracklet's Kalman predict step,
+                enabling robust variable frame-rate tracking.
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each
