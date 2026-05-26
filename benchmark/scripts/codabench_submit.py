@@ -286,8 +286,9 @@ def get_submission(
             wait = min(10.0 * (2**attempt), 60.0)
             print(f"  transient API error, retry in {wait:.0f}s: {exc}", flush=True)
             time.sleep(wait)
-    assert last_exc is not None
-    raise last_exc
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError(f"Failed to fetch submission {submission_id}")
 
 
 def extract_metric_scores(
@@ -401,13 +402,19 @@ def main(argv: list[str] | None = None) -> int:
         "--phase",
         type=int,
         default=int(os.environ.get("CODABENCH_PHASE", str(DEFAULT_PHASE_ID))),
-        help="Codabench phase id (e.g. mot17: 16382, sportsmot: 21402, dancetrack: 24635; see scripts/datasets.py CODABENCH).",
+        help=(
+            "Codabench phase id (e.g. mot17: 16382, sportsmot: 21402, dancetrack: 24635; "
+            "see scripts/datasets.py CODABENCH)."
+        ),
     )
     p.add_argument(
         "--competition-id",
         type=int,
         default=int(os.environ.get("CODABENCH_COMPETITION", str(DEFAULT_COMPETITION_ID))),
-        help="Codabench competition id for result URL (e.g. mot17: 10049, sportsmot: 13077, dancetrack: 14885; see scripts/datasets.py CODABENCH).",
+        help=(
+            "Codabench competition id for result URL "
+            "(e.g. mot17: 10049, sportsmot: 13077, dancetrack: 14885; see scripts/datasets.py CODABENCH)."
+        ),
     )
     p.add_argument(
         "--base-url",
