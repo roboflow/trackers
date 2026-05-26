@@ -22,13 +22,11 @@ class KalmanFilter:
     general-purpose implementation that can be used by any tracker.
 
     Variable time-step support (opt-in):
-        Callers can register `F_builder` and `Q_builder` callables via
-        `set_motion_model_builders`. When both are registered, `predict(dt)`
-        will rebuild `self.F` and `self.Q` from the builders whenever `dt`
-        differs from the last `dt` it was called with. When no builders are
-        registered, `predict(dt)` ignores `dt` and uses the stored `F`/`Q`
-        as-is — this is the byte-for-byte backward-compatible path for any
-        caller that has not opted in.
+        Call `set_motion_model_builders` to register `F_builder` and
+        `Q_builder` callables. That flips on time-aware prediction: `predict(dt)`
+        rebuilds `self.F` and `self.Q` whenever `dt` differs from the last
+        value used. When builders are not registered, `predict(dt)` ignores
+        `dt` and uses the stored `F`/`Q` as-is — the backward-compatible path.
 
     Attributes:
         dim_x: Dimension of state vector.
@@ -85,8 +83,8 @@ class KalmanFilter:
 
         self._I: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
 
-        # Optional time-parameterized motion model. When both builders are
-        # registered, predict(dt) rebuilds F and Q for arbitrary dt.
+        # Time-parameterized motion model (opt-in via set_motion_model_builders).
+        self._motion_model_builders_enabled: bool = False
         self._F_builder: FBuilder | None = None
         self._Q_builder: QBuilder | None = None
         # `_cached_dt is None` means no time-aware predict has run yet, so
@@ -112,6 +110,7 @@ class KalmanFilter:
         """
         self._F_builder = F_builder
         self._Q_builder = Q_builder
+        self._motion_model_builders_enabled = True
 
     def predict(self, dt: float = 1.0) -> None:
         """Predict next state (prior) using the state transition model.
@@ -133,7 +132,8 @@ class KalmanFilter:
                 `1.0` corresponds to the implicit "one frame per call"
                 semantics used everywhere before this change.
         """
-        if self._F_builder is not None and self._Q_builder is not None:
+        if self._motion_model_builders_enabled:
+            assert self._F_builder is not None and self._Q_builder is not None
             if self._cached_dt is None:
                 # First time-aware predict. Preserve stored F/Q only if dt is
                 # the default; otherwise honour the builders from step one.
