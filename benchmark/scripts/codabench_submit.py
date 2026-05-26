@@ -407,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
         "--competition-id",
         type=int,
         default=int(os.environ.get("CODABENCH_COMPETITION", str(DEFAULT_COMPETITION_ID))),
-        help="Codabench competition id for result URL (mot17: 10049, sportsmot: 13077).",
+        help="Codabench competition id for result URL; see benchmark/scripts/datasets.py for supported dataset competition ids (including MOT17, SportsMOT, and DanceTrack).",
     )
     p.add_argument(
         "--base-url",
