@@ -20,7 +20,8 @@ the merged dict is filtered to the tracker's `__init__` signature.
 Usage (see Makefile for the wiring):
 
     python track_split.py --tracker sort --dataset mot17 --split val \
-        --prep-dir ./benchmark_prep --output-dir ./benchmark_outputs/sort/mot17/default \
+        --data-root ./data --prep-dir ./benchmark_prep \
+        --output-dir ./benchmark_outputs/sort/mot17/default \
         [--params best_params.json]
 """
 
