@@ -27,6 +27,7 @@ from typing import Any
 
 DEFAULT_METRICS = ("HOTA", "IDF1", "MOTA")
 TERMINAL_STATUSES = {"finished", "failed", "cancelled", "none"}
+_TRANSIENT_HTTP_STATUSES = frozenset({502, 503, 504})
 
 # Known test-server presets (Makefile sets these via CODABENCH_* env vars):
 #   mot17:      competition 10049, phase 16382
@@ -255,15 +256,38 @@ def print_submission_failure_logs(
     print(f"  logs →\n{text}", flush=True)
 
 
-def get_submission(*, base_url: str, token: str, submission_id: int) -> dict[str, Any]:
-    _, payload = _request(
-        method="GET",
-        url=f"{base_url.rstrip('/')}/api/submissions/{submission_id}/",
-        token=token,
-    )
-    if not isinstance(payload, dict):
-        raise RuntimeError(f"Unexpected /api/submissions/{submission_id}/ response: {payload!r}")
-    return payload
+def _is_transient_http_error(exc: BaseException) -> bool:
+    msg = str(exc)
+    return any(f"HTTP {code}" in msg for code in _TRANSIENT_HTTP_STATUSES)
+
+
+def get_submission(
+    *,
+    base_url: str,
+    token: str,
+    submission_id: int,
+    max_retries: int = 6,
+) -> dict[str, Any]:
+    last_exc: RuntimeError | None = None
+    for attempt in range(max_retries):
+        try:
+            _, payload = _request(
+                method="GET",
+                url=f"{base_url.rstrip('/')}/api/submissions/{submission_id}/",
+                token=token,
+            )
+            if not isinstance(payload, dict):
+                raise RuntimeError(f"Unexpected /api/submissions/{submission_id}/ response: {payload!r}")
+            return payload
+        except RuntimeError as exc:
+            last_exc = exc
+            if attempt + 1 >= max_retries or not _is_transient_http_error(exc):
+                raise
+            wait = min(10.0 * (2**attempt), 60.0)
+            print(f"  transient API error, retry in {wait:.0f}s: {exc}", flush=True)
+            time.sleep(wait)
+    assert last_exc is not None
+    raise last_exc
 
 
 def extract_metric_scores(

@@ -5,23 +5,31 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Aggregate per-dataset eval/Codabench score JSONs into a single doc-style markdown table.
+"""Aggregate benchmark score JSONs into markdown tables.
 
-Looks under ``<output-dir>/<tracker>/<dataset>/<config>/`` (config ∈ {default, tuned}) for:
+Two layouts (mirroring ``docs/trackers/comparison.md``):
 
-  - ``eval.json``    → from `trackers eval --output ...` (SoccerNet local eval)
-  - ``codabench.json`` → from `codabench_submit.py --output ...` (MOT17/SportsMOT/DanceTrack)
+1. **Per tracker** (``--tracker``): rows = datasets, columns = HOTA/IDF1/MOTA.
+   Writes ``<output-dir>/<tracker>/tables.md``.
 
-Writes ``<output-dir>/<tracker>/tables.md`` and ``<output-dir>/<tracker>/summary.json``.
+2. **Per dataset** (``--compare-dataset`` + ``--trackers``): rows = trackers.
+   Writes ``<output-dir>/comparison/<dataset>/tables.md``.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from datasets import DATASETS, LABELS, job_dir
+from datasets import (
+    COMPARISON_TRACKERS,
+    DATASETS,
+    LABELS,
+    TRACKER_LABELS,
+    job_dir,
+)
 
 _CONFIGS = ("default", "tuned")
 _TARGETS = ("HOTA", "IDF1", "MOTA")
@@ -60,54 +68,121 @@ def _row_scores(out_dir: Path, tracker: str, dataset: str, config: str) -> dict[
     return None
 
 
-def _format_table(rows: list[tuple[str, dict[str, float] | None]]) -> str:
-    header = "|  Dataset  | HOTA | IDF1 | MOTA |"
-    sep = "| :-------: | :--: | :--: | :--: |"
+def _format_table(
+    rows: list[tuple[str, dict[str, float] | None]],
+    *,
+    row_header: str,
+    row_width: int,
+) -> str:
+    header = f"|  {row_header}  |   HOTA   |   IDF1   |   MOTA   |"
+    sep = "| :-------: | :------: | :------: | :------: |"
     body = []
     for label, scores in rows:
+        label_cell = f"{label:^{row_width}}"
         if scores is None:
-            body.append(f"| {label:^9} |  —   |  —   |  —   |")
+            body.append(f"| {label_cell} |   —    |   —    |   —    |")
         else:
-            cells = " | ".join(f"{scores.get(k, float('nan')):4.1f}" if k in scores else "  — " for k in _TARGETS)
-            body.append(f"| {label:^9} | {cells} |")
+            hota = f"{scores['HOTA']:6.1f}" if "HOTA" in scores else "  —   "
+            idf1 = f"{scores['IDF1']:6.1f}" if "IDF1" in scores else "  —   "
+            mota = f"{scores['MOTA']:6.1f}" if "MOTA" in scores else "  —   "
+            body.append(f"| {label_cell} | {hota} | {idf1} | {mota} |")
     return "\n".join([header, sep, *body])
 
 
-def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--tracker", required=True)
-    p.add_argument("--output-dir", type=Path, required=True)
-    p.add_argument("--datasets", default=",".join(DATASETS), help="Comma-separated subset; default=all.")
-    args = p.parse_args(argv)
-
-    datasets = [d.strip() for d in args.datasets.split(",") if d.strip()]
+def _collect_tracker(out_dir: Path, tracker: str, datasets: list[str]) -> int:
     summary: dict[str, dict[str, dict[str, float] | None]] = {}
     sections: list[str] = []
 
     for config in _CONFIGS:
         rows = []
         any_present = False
-        for d in datasets:
-            scores = _row_scores(args.output_dir, args.tracker, d, config)
-            rows.append((LABELS.get(d, d), scores))
-            summary.setdefault(d, {})[config] = scores
+        for dataset in datasets:
+            scores = _row_scores(out_dir, tracker, dataset, config)
+            rows.append((LABELS.get(dataset, dataset), scores))
+            summary.setdefault(dataset, {})[config] = scores
             if scores is not None:
                 any_present = True
         if not any_present:
             continue
         title = "Default parameters" if config == "default" else "Tuned parameters"
-        sections.append(f"## {title}\n\n{_format_table(rows)}\n")
+        sections.append(f"## {title}\n\n{_format_table(rows, row_header='Dataset', row_width=9)}\n")
 
-    out = args.output_dir / args.tracker
+    out = out_dir / tracker
     out.mkdir(parents=True, exist_ok=True)
-    md = f"# {args.tracker} benchmark\n\n" + ("\n".join(sections) if sections else "_No scores found yet._\n")
+    md = f"# {tracker} benchmark\n\n" + ("\n".join(sections) if sections else "_No scores found yet._\n")
     (out / "tables.md").write_text(md)
-    (out / "summary.json").write_text(json.dumps({"tracker": args.tracker, "datasets": summary}, indent=2))
+    (out / "summary.json").write_text(json.dumps({"tracker": tracker, "datasets": summary}, indent=2))
 
     print(md)
     print(f"saved → {out / 'tables.md'}")
     print(f"saved → {out / 'summary.json'}")
     return 0 if sections else 1
+
+
+def _collect_comparison(out_dir: Path, dataset: str, trackers: list[str]) -> int:
+    if dataset not in DATASETS:
+        print(f"unknown dataset: {dataset!r}", file=sys.stderr)
+        return 1
+
+    summary: dict[str, dict[str, dict[str, float] | None]] = {}
+    sections: list[str] = []
+    dataset_label = LABELS.get(dataset, dataset)
+
+    for config in _CONFIGS:
+        rows = []
+        any_present = False
+        for tracker in trackers:
+            label = TRACKER_LABELS.get(tracker, tracker)
+            scores = _row_scores(out_dir, tracker, dataset, config)
+            rows.append((label, scores))
+            summary.setdefault(tracker, {})[config] = scores
+            if scores is not None:
+                any_present = True
+        if not any_present:
+            continue
+        title = "Default parameters" if config == "default" else "Tuned parameters"
+        sections.append(f"## {title}\n\n{_format_table(rows, row_header='Tracker', row_width=9)}\n")
+
+    out = out_dir / "comparison" / dataset
+    out.mkdir(parents=True, exist_ok=True)
+    md = f"# {dataset_label} — tracker comparison\n\n" + (
+        "\n".join(sections) if sections else "_No scores found yet._\n"
+    )
+    (out / "tables.md").write_text(md)
+    (out / "summary.json").write_text(
+        json.dumps({"dataset": dataset, "trackers": summary}, indent=2),
+    )
+
+    print(md)
+    print(f"saved → {out / 'tables.md'}")
+    print(f"saved → {out / 'summary.json'}")
+    return 0 if sections else 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--output-dir", type=Path, required=True)
+    p.add_argument("--tracker", help="Single tracker — rows are datasets (default collect mode).")
+    p.add_argument("--datasets", default=",".join(DATASETS), help="Comma-separated subset; default=all.")
+    p.add_argument(
+        "--compare-dataset",
+        help="One dataset — rows are trackers (comparison.md layout). Requires --trackers.",
+    )
+    p.add_argument(
+        "--trackers",
+        default=",".join(COMPARISON_TRACKERS),
+        help="Comma-separated tracker ids for --compare-dataset.",
+    )
+    args = p.parse_args(argv)
+
+    if args.compare_dataset:
+        trackers = [t.strip() for t in args.trackers.split(",") if t.strip()]
+        return _collect_comparison(args.output_dir, args.compare_dataset, trackers)
+
+    if not args.tracker:
+        p.error("pass --tracker or --compare-dataset")
+    datasets = [d.strip() for d in args.datasets.split(",") if d.strip()]
+    return _collect_tracker(args.output_dir, args.tracker, datasets)
 
 
 if __name__ == "__main__":

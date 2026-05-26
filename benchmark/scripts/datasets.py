@@ -20,6 +20,16 @@ BENCHMARK_ROOT = Path(__file__).resolve().parents[1]
 DATASETS = ("mot17", "sportsmot", "soccernet", "dancetrack")
 LABELS = {"mot17": "MOT17", "sportsmot": "SportsMOT", "soccernet": "SoccerNet", "dancetrack": "DanceTrack"}
 
+# Trackers shown side-by-side in docs/trackers/comparison.md — single source of truth for
+# Makefile (via `datasets.py --field comparison_trackers`) and collect.py.
+COMPARISON_TRACKERS = ("sort", "bytetrack", "ocsort", "botsort")
+TRACKER_LABELS = {
+    "sort": "SORT",
+    "bytetrack": "ByteTrack",
+    "ocsort": "OC-SORT",
+    "botsort": "BoT-SORT",
+}
+
 # Per-dataset splits used by the benchmark workflow.
 TUNE_SPLIT = {"soccernet": "train", "dancetrack": "train", "sportsmot": "val", "mot17": "val"}
 EVAL_SPLIT = {"soccernet": "test", "dancetrack": "val", "sportsmot": "val", "mot17": "val"}
@@ -135,14 +145,36 @@ def _print_field(data_root: Path, dataset: str, split: str, what: str) -> str:
     return "" if value is None else str(value)
 
 
+_GLOBAL_FIELDS = {
+    "comparison_trackers": lambda _root: " ".join(COMPARISON_TRACKERS),
+    "comparison_trackers_csv": lambda _root: ",".join(COMPARISON_TRACKERS),
+    "datasets": lambda _root: " ".join(DATASETS),
+    "datasets_csv": lambda _root: ",".join(DATASETS),
+}
+_LAYOUT_FIELDS = ("det_dir", "gt_dir", "images_dir", "seqmap")
+
+
+def _print_global(data_root: Path, field: str) -> str:
+    return _GLOBAL_FIELDS[field](data_root)
+
+
 # Tiny CLI so the Makefile can query layout values without duplicating paths.
 if __name__ == "__main__":
     import argparse
 
     p = argparse.ArgumentParser(description="Print one layout field (used by Makefile).")
-    p.add_argument("--data-root", type=Path, required=True)
-    p.add_argument("--dataset", required=True)
-    p.add_argument("--split", required=True)
-    p.add_argument("--field", choices=["det_dir", "gt_dir", "images_dir", "seqmap"], required=True)
+    p.add_argument("--data-root", type=Path, default=BENCHMARK_ROOT / "data")
+    p.add_argument("--dataset")
+    p.add_argument("--split")
+    p.add_argument(
+        "--field",
+        choices=[*_LAYOUT_FIELDS, *_GLOBAL_FIELDS],
+        required=True,
+    )
     args = p.parse_args()
-    print(_print_field(args.data_root, args.dataset, args.split, args.field))
+    if args.field in _GLOBAL_FIELDS:
+        print(_print_global(args.data_root, args.field))
+    else:
+        if not args.dataset or not args.split:
+            p.error(f"--dataset and --split are required for --field {args.field!r}")
+        print(_print_field(args.data_root, args.dataset, args.split, args.field))

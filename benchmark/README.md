@@ -22,7 +22,10 @@ make benchmark-default TRACKER=bytetrack # benchmark default parameters
 make benchmark-tuned TRACKER=bytetrack N_TRIALS=50 # tune and benchmark
 ```
 
-Results: `benchmark_outputs/<tracker>/tables.md` and `summary.json`.
+Results:
+
+- Single tracker: `benchmark_outputs/<tracker>/tables.md` (rows = datasets)
+- One dataset, all trackers: `benchmark_outputs/comparison/<dataset>/tables.md` (rows = trackers, same layout as [`comparison.md`](../docs/trackers/comparison.md))
 
 Run **default** and **tuned** on separate days: Codabench limits daily submissions. SoccerNet is scored locally and does not count toward that limit.
 
@@ -48,13 +51,15 @@ export CODABENCH_TOKEN="<your-token>"
 
 Treat `CODABENCH_TOKEN` as a secret, do not publish it. See [Codabench API docs](https://www.codabench.org/api/docs/) if the request fails.
 
-If tracking finished but upload failed (daily limit or pending approval), re-submit the zip without re-running track:
+If tracking finished but upload or polling failed (daily limit, pending approval, transient 502), recover without re-tracking:
 
 ```bash
 make upload TRACKER=bytetrack DATASET=mot17 CONFIG=tuned CODABENCH_TOKEN=...
 ```
 
 Then `make collect TRACKER=bytetrack` to refresh the table.
+
+or  `make collect-comparison DATASET=dancetrack` to refresh the comparison table.
 
 ## Data setup
 
@@ -69,7 +74,7 @@ $DATA_ROOT/
   sportsmot/TrackEval/data/gt/sportsmot/val/...
   dancetrack/dancetrack_yolox_dets/{train,val,test}/...
   dancetrack/TrackEval/data/gt/dancetrack/{train,val}/...
-  dancetrack/{train,val,test}_images/...       # BoT-SORT CMC (test optional)
+  dancetrack/{train,val,test}_images/...       # BoT-SORT CMC (all three splits for tune + test submit)
   soccernet/SoccerNet_dets/...
   soccernet/TrackEval/data/gt/SoccerNet_tracking/...
   soccernet/soccernet_data/tracking/{train,test}/...
@@ -123,15 +128,19 @@ Run from `benchmark/`. Pass variables on the command line or export them first (
 | `track-default`     | Track test split with registry defaults, then score (`TRACKER=`, `DATASET=`)               |
 | `track-tuned`       | Track test split with `best_params.json`, then score (`TRACKER=`, `DATASET=`)              |
 | `upload`            | Upload an existing `submission.zip` (`TRACKER=`, `DATASET=`, `CONFIG=default` or `tuned`)  |
-| `benchmark-default` | `prep-all` → track-default on all datasets → `collect`                                     |
-| `benchmark-tuned`   | `prep-all` → tune + track-tuned on all datasets → `collect`                                |
+| `poll`              | Poll an existing Codabench submission for scores (`SUBMISSION_ID=`, `TRACKER=`, `DATASET=`, `CONFIG=`) |
+| `benchmark-default` | Prep → track-default → tables. One `DATASET` → all four trackers + comparison table |
+| `benchmark-tuned`   | Prep → tune + track-tuned → tables. One `DATASET` → all four trackers + comparison table |
 | `benchmark`         | Full pipeline; set `BENCHMARK_CONFIG` to `default`, `tuned`, or `all` (default: `default`) |
-| `collect`           | Rebuild `tables.md` from existing score JSONs (`TRACKER=`)                                 |
+| `benchmark-comparison-default` | Shorthand: `benchmark-default` with `TRACKERS=all` on one `DATASET=` |
+| `benchmark-comparison-tuned`   | Shorthand: `benchmark-tuned` with `TRACKERS=all` on one `DATASET=` |
+| `collect`           | Rebuild per-tracker `tables.md` (`TRACKER=`, optional `DATASETS=`) |
+| `collect-comparison`| Rebuild comparison table for one dataset (`DATASET=dancetrack`) |
 | `clean`             | Remove `benchmark_prep/` and `benchmark_outputs/`                                          |
 
 ## Usage
 
-Full pipeline (runs `prep-all`, then `collect`):
+Full pipeline (all four datasets, single tracker):
 
 ```bash
 make benchmark-default TRACKER=bytetrack CODABENCH_TOKEN=...
@@ -145,6 +154,22 @@ make benchmark-tuned TRACKER=bytetrack N_TRIALS=5 \
 
 # Both passes in one command (may hit daily limits)
 make benchmark BENCHMARK_CONFIG=all TRACKER=bytetrack CODABENCH_TOKEN=...
+```
+
+One dataset, all trackers (comparison table like `docs/trackers/comparison.md`):
+
+```bash
+# Runs all comparison trackers (see scripts/datasets.py → COMPARISON_TRACKERS) on DanceTrack test; writes
+# benchmark_outputs/comparison/dancetrack/tables.md
+make benchmark-default DATASETS=dancetrack CODABENCH_TOKEN=...
+
+make benchmark-tuned DATASETS=dancetrack N_TRIALS=50 CODABENCH_TOKEN=...
+
+# Same, explicit form
+make benchmark-comparison-default DATASET=dancetrack CODABENCH_TOKEN=...
+
+# Rebuild comparison table from existing score JSONs only
+make collect-comparison DATASET=dancetrack
 ```
 
 Skip datasets (partial run or resume):
@@ -169,7 +194,8 @@ make clean
 
 | Variable           | Default               | Purpose                                     |
 | ------------------ | --------------------- | ------------------------------------------- |
-| `TRACKER`          | `sort`                | `sort`, `bytetrack`, `ocsort`, `botsort`, … |
+| `TRACKER`          | `sort`                | Single tracker when `DATASETS` lists more than one dataset |
+| `TRACKERS`         | —                     | Space-separated list, or `all` (see `COMPARISON_TRACKERS` in `scripts/datasets.py`). When `DATASETS` is a single dataset, defaults to all comparison trackers |
 | `DATA_ROOT`        | `./data`              | Raw dataset tree                            |
 | `DATASET`          | `mot17`               | Single-dataset targets                      |
 | `DATASETS`         | all four              | Space-separated subset for `benchmark*`     |
