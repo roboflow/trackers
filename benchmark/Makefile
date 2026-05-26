@@ -14,6 +14,7 @@ SHELL     := /bin/bash
 ROOT      := $(CURDIR)
 REPO_ROOT := $(abspath $(ROOT)/..)
 PYTHON    ?= python
+UV        ?= uv
 
 DATA_ROOT  ?= $(ROOT)/data
 PREP_DIR   ?= $(ROOT)/benchmark_prep
@@ -110,7 +111,7 @@ help:
 	@echo "Codabench upload requires CODABENCH_TOKEN. See README for data setup."
 
 setup:
-	$(PYTHON) -m pip install -e "$(REPO_ROOT)[tune]"
+	$(UV) pip install -e "$(REPO_ROOT)[tune]"
 
 data-check:
 	@$(PYTHON) scripts/data_check.py --data-root "$(DATA_ROOT)"
@@ -226,8 +227,8 @@ benchmark:
 	@case "$(BENCHMARK_CONFIG)" in default|tuned|all) ;; \
 	  *) echo "Set BENCHMARK_CONFIG=default, tuned, or all (or use benchmark-default / benchmark-tuned)"; exit 1;; \
 	esac
-	@if [ -z "$(CODABENCH_TOKEN)" ]; then \
-	  echo "ERROR: CODABENCH_TOKEN must be set (required for mot17, sportsmot, dancetrack)."; exit 1; \
+	@if [ -n "$(strip $(filter $(CODABENCH_DATASETS),$(DATASETS)))" ] && [ -z "$(CODABENCH_TOKEN)" ]; then \
+	  echo "ERROR: CODABENCH_TOKEN must be set (required for: $(filter $(CODABENCH_DATASETS),$(DATASETS)))."; exit 1; \
 	fi
 	@for d in $(DATASETS); do \
 	  echo "===== prep [$$d] ====="; \

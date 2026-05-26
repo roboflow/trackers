@@ -15,7 +15,11 @@ Output layout (under ``--prep-dir``):
 
 Run via the Makefile (``make prep``) or directly:
 
-    python prep_data.py --dataset mot17 --split val --data-root ./data --prep-dir ./benchmark_prep
+    python prep_data.py --dataset mot17 --split all --data-root ./data --prep-dir ./benchmark_prep
+    python prep_data.py --dataset mot17 --split tune --data-root ./data --prep-dir ./benchmark_prep
+
+``--split`` accepts logical names (``tune`` / ``eval`` / ``submit`` / ``all``), not vendor split
+folders like ``val`` or ``test``, those are resolved per dataset in ``datasets.py``.
 """
 
 from __future__ import annotations

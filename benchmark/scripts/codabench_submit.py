@@ -401,13 +401,13 @@ def main(argv: list[str] | None = None) -> int:
         "--phase",
         type=int,
         default=int(os.environ.get("CODABENCH_PHASE", str(DEFAULT_PHASE_ID))),
-        help="Codabench phase id (mot17: 16382, sportsmot: 21402).",
+        help="Codabench phase id (e.g. mot17: 16382, sportsmot: 21402, dancetrack: 24635; see scripts/datasets.py CODABENCH).",
     )
     p.add_argument(
         "--competition-id",
         type=int,
         default=int(os.environ.get("CODABENCH_COMPETITION", str(DEFAULT_COMPETITION_ID))),
-        help="Codabench competition id for result URL (mot17: 10049, sportsmot: 13077).",
+        help="Codabench competition id for result URL (e.g. mot17: 10049, sportsmot: 13077, dancetrack: 14885; see scripts/datasets.py CODABENCH).",
     )
     p.add_argument(
         "--base-url",
