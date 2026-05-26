@@ -59,7 +59,7 @@ make upload TRACKER=bytetrack DATASET=mot17 CONFIG=tuned CODABENCH_TOKEN=...
 
 Then `make collect TRACKER=bytetrack` to refresh the table.
 
-or  `make collect-comparison DATASET=dancetrack` to refresh the comparison table.
+or `make collect-comparison DATASET=dancetrack` to refresh the comparison table.
 
 ## Data setup
 
@@ -118,25 +118,25 @@ make data-check DATA_ROOT="/path/to/datasets"
 
 Run from `benchmark/`. Pass variables on the command line or export them first (`DATA_ROOT`, `CODABENCH_TOKEN`, …).
 
-| Target              | Description                                                                                |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| `setup`             | Install `trackers[tune]` from the repo root                                                |
-| `data-check`        | Print present/missing assets under `DATA_ROOT`                                             |
-| `prep`              | Prep one dataset (`DATASET=…`) into `benchmark_prep/`                                      |
-| `prep-all`          | Prep all four datasets                                                                     |
-| `tune`              | Optuna search → `best_params.json` (`TRACKER=`, `DATASET=`, `N_TRIALS=`)                   |
-| `track-default`     | Track test split with registry defaults, then score (`TRACKER=`, `DATASET=`)               |
-| `track-tuned`       | Track test split with `best_params.json`, then score (`TRACKER=`, `DATASET=`)              |
-| `upload`            | Upload an existing `submission.zip` (`TRACKER=`, `DATASET=`, `CONFIG=default` or `tuned`)  |
-| `poll`              | Poll an existing Codabench submission for scores (`SUBMISSION_ID=`, `TRACKER=`, `DATASET=`, `CONFIG=`) |
-| `benchmark-default` | Prep → track-default → tables. One `DATASET` → all four trackers + comparison table |
-| `benchmark-tuned`   | Prep → tune + track-tuned → tables. One `DATASET` → all four trackers + comparison table |
-| `benchmark`         | Full pipeline; set `BENCHMARK_CONFIG` to `default`, `tuned`, or `all` (default: `default`) |
-| `benchmark-comparison-default` | Shorthand: `benchmark-default` with `TRACKERS=all` on one `DATASET=` |
-| `benchmark-comparison-tuned`   | Shorthand: `benchmark-tuned` with `TRACKERS=all` on one `DATASET=` |
-| `collect`           | Rebuild per-tracker `tables.md` (`TRACKER=`, optional `DATASETS=`) |
-| `collect-comparison`| Rebuild comparison table for one dataset (`DATASET=dancetrack`) |
-| `clean`             | Remove `benchmark_prep/` and `benchmark_outputs/`                                          |
+| Target                         | Description                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `setup`                        | Install `trackers[tune]` from the repo root                                                            |
+| `data-check`                   | Print present/missing assets under `DATA_ROOT`                                                         |
+| `prep`                         | Prep one dataset (`DATASET=…`) into `benchmark_prep/`                                                  |
+| `prep-all`                     | Prep all four datasets                                                                                 |
+| `tune`                         | Optuna search → `best_params.json` (`TRACKER=`, `DATASET=`, `N_TRIALS=`)                               |
+| `track-default`                | Track test split with registry defaults, then score (`TRACKER=`, `DATASET=`)                           |
+| `track-tuned`                  | Track test split with `best_params.json`, then score (`TRACKER=`, `DATASET=`)                          |
+| `upload`                       | Upload an existing `submission.zip` (`TRACKER=`, `DATASET=`, `CONFIG=default` or `tuned`)              |
+| `poll`                         | Poll an existing Codabench submission for scores (`SUBMISSION_ID=`, `TRACKER=`, `DATASET=`, `CONFIG=`) |
+| `benchmark-default`            | Prep → track-default → tables. One `DATASET` → all four trackers + comparison table                    |
+| `benchmark-tuned`              | Prep → tune + track-tuned → tables. One `DATASET` → all four trackers + comparison table               |
+| `benchmark`                    | Full pipeline; set `BENCHMARK_CONFIG` to `default`, `tuned`, or `all` (default: `default`)             |
+| `benchmark-comparison-default` | Shorthand: `benchmark-default` with `TRACKERS=all` on one `DATASET=`                                   |
+| `benchmark-comparison-tuned`   | Shorthand: `benchmark-tuned` with `TRACKERS=all` on one `DATASET=`                                     |
+| `collect`                      | Rebuild per-tracker `tables.md` (`TRACKER=`, optional `DATASETS=`)                                     |
+| `collect-comparison`           | Rebuild comparison table for one dataset (`DATASET=dancetrack`)                                        |
+| `clean`                        | Remove `benchmark_prep/` and `benchmark_outputs/`                                                      |
 
 ## Usage
 
@@ -192,19 +192,19 @@ make clean
 
 ### Variables
 
-| Variable           | Default               | Purpose                                     |
-| ------------------ | --------------------- | ------------------------------------------- |
-| `TRACKER`          | `sort`                | Single tracker when `DATASETS` lists more than one dataset |
+| Variable           | Default               | Purpose                                                                                                                                                       |
+| ------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TRACKER`          | `sort`                | Single tracker when `DATASETS` lists more than one dataset                                                                                                    |
 | `TRACKERS`         | —                     | Space-separated list, or `all` (see `COMPARISON_TRACKERS` in `scripts/datasets.py`). When `DATASETS` is a single dataset, defaults to all comparison trackers |
-| `DATA_ROOT`        | `./data`              | Raw dataset tree                            |
-| `DATASET`          | `mot17`               | Single-dataset targets                      |
-| `DATASETS`         | all four              | Space-separated subset for `benchmark*`     |
-| `BENCHMARK_CONFIG` | `default`             | `benchmark`: `default`, `tuned`, or `all`   |
-| `CONFIG`           | —                     | `upload`: `default` or `tuned`              |
-| `N_TRIALS`         | `10`                  | Optuna trials per dataset                   |
-| `CODABENCH_TOKEN`  | —                     | Required for Codabench datasets             |
-| `PREP_DIR`         | `./benchmark_prep`    | Prepared flat MOT dets/GT                   |
-| `OUTPUT_DIR`       | `./benchmark_outputs` | Params, preds, scores, tables               |
+| `DATA_ROOT`        | `./data`              | Raw dataset tree                                                                                                                                              |
+| `DATASET`          | `mot17`               | Single-dataset targets                                                                                                                                        |
+| `DATASETS`         | all four              | Space-separated subset for `benchmark*`                                                                                                                       |
+| `BENCHMARK_CONFIG` | `default`             | `benchmark`: `default`, `tuned`, or `all`                                                                                                                     |
+| `CONFIG`           | —                     | `upload`: `default` or `tuned`                                                                                                                                |
+| `N_TRIALS`         | `10`                  | Optuna trials per dataset                                                                                                                                     |
+| `CODABENCH_TOKEN`  | —                     | Required for Codabench datasets                                                                                                                               |
+| `PREP_DIR`         | `./benchmark_prep`    | Prepared flat MOT dets/GT                                                                                                                                     |
+| `OUTPUT_DIR`       | `./benchmark_outputs` | Params, preds, scores, tables                                                                                                                                 |
 
 BoT-SORT sets `FIXED_PARAMS={"enable_cmc": true}` and uses frame directories when present.
 
