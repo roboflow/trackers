@@ -65,8 +65,7 @@ class BaseStateEstimator(ABC):
         coordinate (`sigma_a2`) is back-calibrated from the velocity
         diagonal of `kf.Q` whenever `set_kf_covariances(Q=...)` is called,
         which preserves byte-for-byte behaviour at the reference `dt = 1`.
-        See `docs/design/dynamic-frame-rate.md` for the theoretical
-        background.
+        See `docs/learn/track.md` (Variable frame rate) for usage details.
 
     Note:
         Noise matrices (R, Q, P) are not configured in `_create_filter`
@@ -143,7 +142,7 @@ class BaseStateEstimator(ABC):
         """Return the state-transition matrix F for the given time step `dt`.
 
         For a constant-velocity model the velocity columns scale with `dt`.
-        See `docs/design/dynamic-frame-rate.md` (§4.1) for the derivation.
+        See `docs/learn/track.md` (Variable frame rate) for context.
         """
 
     @abstractmethod
@@ -153,7 +152,7 @@ class BaseStateEstimator(ABC):
         Uses the Discrete White Noise Acceleration (DWNA) discretization
         with `self._sigma_a2` as the per-coordinate acceleration variance,
         with cross terms between position and velocity included.
-        See `docs/design/dynamic-frame-rate.md` (§4.2) for the formula.
+        See `docs/learn/track.md` (Variable frame rate) for context.
         """
 
     @abstractmethod
@@ -226,7 +225,6 @@ class BaseStateEstimator(ABC):
         caller's `Q` as `Q(dt = 1)`). This preserves byte-for-byte behaviour
         at the reference time step while making `build_Q(dt)` consistent
         with the tuning baked into `Q` for any other `dt`.
-        See `docs/design/dynamic-frame-rate.md` (§4.3) for the rationale.
 
         Args:
             R: Measurement noise covariance matrix.

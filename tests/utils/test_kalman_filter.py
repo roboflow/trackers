@@ -6,8 +6,8 @@
 
 """Tests for the variable-dt Kalman filter and DWNA state-estimator builders.
 
-PR 1 of the dynamic-frame-rate refactor; see
-`docs/design/dynamic-frame-rate.md` for the full specification.
+Tests for the variable-dt Kalman filter and DWNA state-estimator builders.
+See `docs/learn/track.md` (Variable frame rate) for user-facing usage.
 """
 
 from __future__ import annotations
@@ -77,9 +77,9 @@ def test_first_predict_with_dt_one_preserves_reference_Q(
 ) -> None:
     """The very first `predict(1.0)` must not rebuild the caller-supplied Q.
 
-    This is the "preserve calibration" rule from
-    `docs/design/dynamic-frame-rate.md` §4.3 and the
-    `_cached_dt is None` branch in `KalmanFilter.predict`.
+    This is the "preserve calibration" rule: the first `predict(1.0)` must
+    not rebuild the caller-supplied Q (`_cached_dt is None` in
+    `KalmanFilter._sync_motion_model`).
     """
     bbox = np.array([10.0, 20.0, 30.0, 40.0])
     est = estimator_cls(bbox)

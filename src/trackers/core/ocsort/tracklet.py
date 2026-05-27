@@ -239,8 +239,7 @@ class OCSORTTracklet(BaseTracklet):
                 `1.0` reproduces the per-frame semantics. Note that the
                 ORU virtual-trajectory sub-stepping inside `_unfreeze_*`
                 still operates in unit-frame steps; full time-aware ORU
-                is deferred to a later PR (see
-                `docs/design/dynamic-frame-rate.md` §6 PR 6).
+                is deferred to a future release.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
