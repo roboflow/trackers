@@ -231,8 +231,15 @@ class OCSORTTracklet(BaseTracklet):
         self.last_observation = bbox
         self.observations[self.age] = bbox
 
-    def predict(self) -> np.ndarray:
+    def predict(self, dt: float = 1.0) -> np.ndarray:
         """Predict next bounding box position.
+
+        Args:
+            dt: Time elapsed since the last predict, in seconds. Default
+                `1.0` reproduces the per-frame semantics. Note that the
+                ORU virtual-trajectory sub-stepping inside `_unfreeze_*`
+                still operates in unit-frame steps; full time-aware ORU
+                is deferred to a future release.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
@@ -246,7 +253,7 @@ class OCSORTTracklet(BaseTracklet):
             self._freeze()
             self._observed = False
 
-        self.state_estimator.predict()
+        self.state_estimator.predict(dt)
         self.age += 1
 
         if self.time_since_update > 0:

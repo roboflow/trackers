@@ -6,8 +6,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
+
+FBuilder = Callable[[float], NDArray[np.float64]]
+QBuilder = Callable[[float], NDArray[np.float64]]
 
 
 class KalmanFilter:
@@ -15,6 +20,12 @@ class KalmanFilter:
 
     A standard linear Kalman filter for state estimation. This is a clean,
     general-purpose implementation that can be used by any tracker.
+
+    Variable time-step support (opt-in):
+        Call `set_motion_model_builders` to install dt-aware F/Q rebuilding.
+        Until then, `predict(dt)` uses the stored `F`/`Q` matrices regardless
+        of `dt` — the backward-compatible path for callers that never register
+        builders.
 
     Attributes:
         dim_x: Dimension of state vector.
@@ -71,13 +82,58 @@ class KalmanFilter:
 
         self._I: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
 
-    def predict(self) -> None:
-        """Predict next state (prior) using state transition model.
+        self._F_builder: FBuilder | None = None
+        self._Q_builder: QBuilder | None = None
+        # None until the first dt-aware predict; then holds the last dt used.
+        self._cached_dt: float | None = None
+
+    def set_motion_model_builders(
+        self,
+        F_builder: FBuilder,
+        Q_builder: QBuilder,
+    ) -> None:
+        """Install dt-aware F/Q rebuilding for subsequent `predict(dt)` calls.
+
+        The first `predict(1.0)` preserves caller-supplied reference `F`/`Q`.
+        Any other `dt`, or a later change in `dt`, rebuilds from the builders.
+
+        Args:
+            F_builder: Callable mapping `dt -> F(dt)` (dim_x, dim_x).
+            Q_builder: Callable mapping `dt -> Q(dt)` (dim_x, dim_x).
+        """
+        self._F_builder = F_builder
+        self._Q_builder = Q_builder
+        self._cached_dt = None
+
+    def _sync_motion_model(self, dt: float) -> None:
+        if self._F_builder is None or self._Q_builder is None:
+            return
+
+        # First predict, or a different dt than the last predict and not 1.
+        if self._cached_dt is None:
+            if dt != 1.0:
+                self.F = self._F_builder(dt)
+                self.Q = self._Q_builder(dt)
+            self._cached_dt = dt
+        elif dt != self._cached_dt:
+            self.F = self._F_builder(dt)
+            self.Q = self._Q_builder(dt)
+            self._cached_dt = dt
+
+    def predict(self, dt: float = 1.0) -> None:
+        """Predict next state (prior) using the state transition model.
 
         Computes:
             x = F @ x
             P = F @ P @ F.T + Q
+
+        Args:
+            dt: Time elapsed since the last predict, in seconds. Default
+                `1.0` corresponds to the implicit "one frame per call"
+                semantics used everywhere before this change.
         """
+        self._sync_motion_model(dt)
+
         self.x = self.F @ self.x
         self.P = self.F @ self.P @ self.F.T + self.Q
 

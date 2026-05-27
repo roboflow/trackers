@@ -37,7 +37,7 @@ class SORTTracklet(BaseTracklet):
         self.time_since_update = 0
         self.number_of_successful_updates += 1
 
-    def predict(self) -> np.ndarray:
+    def predict(self, dt: float = 1.0) -> np.ndarray:
         """Predict next bounding box position and advance missed-frame clock.
 
         Propagates the Kalman filter and increments `time_since_update` and
@@ -45,10 +45,15 @@ class SORTTracklet(BaseTracklet):
         status — unmatched tracks advance their clock automatically here
         without any separate miss notification.
 
+        Args:
+            dt: Time elapsed since the last predict, in seconds. Default
+                `1.0` reproduces the per-frame semantics used everywhere
+                before dynamic-frame-rate support.
+
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
-        self.state_estimator.predict()
+        self.state_estimator.predict(dt)
         self.time_since_update += 1
         self.age += 1
         return self.state_estimator.state_to_bbox()

@@ -189,15 +189,19 @@ class BoTSORTTracklet(BaseTracklet):
         self.time_since_update = 0
         self.number_of_successful_updates += 1
 
-    def predict(self) -> np.ndarray:
+    def predict(self, dt: float = 1.0) -> np.ndarray:
         """Predict the next bounding-box position.
 
         Increments ``time_since_update`` to track how many frames have
         elapsed since the last matched measurement — this replaces the
         ``update(None)`` call used in ByteTrack/SORT.
+
+        Args:
+            dt: Time elapsed since the last predict, in seconds. Default
+                `1.0` reproduces the per-frame semantics.
         """
         self._refresh_noise_from_state()
-        self.state_estimator.predict()
+        self.state_estimator.predict(dt)
         self._clamp_state_bbox()
         self.age += 1
         self.time_since_update += 1

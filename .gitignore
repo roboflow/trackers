@@ -181,3 +181,6 @@ wandb/
 .developments/
 .reports/
 .temp/
+
+# Internal design notes (kept locally, not published)
+docs/design/dynamic-frame-rate.md

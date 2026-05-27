@@ -46,13 +46,18 @@ class BaseTracklet(ABC):
         pass
 
     @abstractmethod
-    def predict(self) -> np.ndarray:
+    def predict(self, dt: float = 1.0) -> np.ndarray:
         """Predict next bounding box position and advance missed-frame state.
 
         Propagates the Kalman filter and increments `time_since_update` (and
         `age`) on every call — matched or unmatched. Subclasses that track
         consecutive-update counters must also reset them here when
         `time_since_update > 0` before incrementing.
+
+        Args:
+            dt: Time elapsed since the last predict, in seconds. Default
+                `1.0` reproduces the implicit "one frame per call"
+                semantics used everywhere before dynamic-frame-rate support.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
