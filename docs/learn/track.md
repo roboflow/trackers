@@ -133,6 +133,63 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 ---
 
+## Variable frame rate
+
+By default, trackers assume **one `update()` call per frame** at a steady rate. The Kalman filter advances with a fixed step (`dt = 1.0` in internal frame units), and parameters like `lost_track_buffer` are counted in frames (scaled by `frame_rate`).
+
+When your pipeline has **irregular timing** — frame skips, variable-FPS video, async detectors, or batch inference with gaps — pass a monotonic **`timestamp`** in seconds to `update()`. SORT and ByteTrack will:
+
+1. Derive the actual elapsed time `dt` between consecutive updates.
+2. Scale Kalman prediction (`F`, `Q`) to that `dt`.
+3. Prune lost tracks using a **seconds** budget (`lost_track_buffer / 30` seconds) instead of a frame count.
+
+`frame_rate` is still required in both modes. In fixed-rate mode it scales frame-based thresholds. In dynamic mode it is the **reference FPS** used to calibrate process noise and to bootstrap the first update before a previous timestamp exists.
+
+| | Fixed rate (default) | Dynamic rate |
+|---|---|---|
+| `timestamp` | `None` (omit) | monotonic seconds, e.g. from video clock |
+| Kalman step | `dt = 1.0` per call | `dt = t − t_prev` |
+| Lost-track budget | frames (`lost_track_buffer`, scaled by `frame_rate`) | seconds (`lost_track_buffer / 30`) |
+| Supported trackers | all | **SORT**, **ByteTrack** |
+
+!!! note "OC-SORT and BoT-SORT"
+    These trackers accept the `timestamp` argument for API consistency but **do not use it yet**. Passing a timestamp emits a one-time warning and the tracker continues in fixed-rate mode.
+
+=== "Python"
+
+    ```python
+    import cv2
+
+    import supervision as sv
+    from inference import get_model
+    from trackers import ByteTrackTracker
+
+    model = get_model("rfdetr-nano")
+    tracker = ByteTrackTracker(frame_rate=30.0, lost_track_buffer=30)
+
+    cap = cv2.VideoCapture("source.mp4")
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Monotonic timestamp in seconds (OpenCV reports milliseconds).
+        timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+
+        result = model.infer(frame)[0]
+        detections = sv.Detections.from_inference(result)
+        detections = tracker.update(detections, timestamp=timestamp)
+    ```
+
+**Behaviour notes:**
+
+- **Backward compatible:** omitting `timestamp` reproduces today's tracking behaviour.
+- **First timestamped call:** uses `dt = 1 / frame_rate` (no prior timestamp yet).
+- **Duplicate or non-monotonic timestamps:** predict is skipped for that step; a warning is emitted once per tracker instance.
+- **Between videos:** call `tracker.reset()` so timestamp state does not carry over.
+
+---
+
 ## Detectors
 
 Trackers don't detect objects—they link detections across frames. A detection or segmentation model provides per-frame bounding boxes or masks that the tracker uses to assign and maintain IDs.
