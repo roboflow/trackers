@@ -64,8 +64,9 @@ class BaseStateEstimator(ABC):
         the state by a non-unit time step. The acceleration variance per
         coordinate (`sigma_a2`) is back-calibrated from the velocity
         diagonal of `kf.Q` whenever `set_kf_covariances(Q=...)` is called,
-        which preserves byte-for-byte behaviour at the reference `dt = 1`.
-        See `docs/learn/track.md` (Variable frame rate) for usage details.
+        which preserves byte-for-byte behaviour at the reference fixed-rate
+        step (`dt = 1.0` frame units). When timestamps are used, the same
+        builders receive `dt` in seconds instead — see ``docs/learn/track.md``.
 
     Note:
         Noise matrices (R, Q, P) are not configured in `_create_filter`
@@ -176,9 +177,8 @@ class BaseStateEstimator(ABC):
         """Run the Kalman filter prediction step.
 
         Args:
-            dt: Time elapsed since the last predict, in seconds. Default
-                `1.0` corresponds to the implicit "one frame per call"
-                semantics used everywhere before this change.
+            dt: Kalman predict step. ``1.0`` is one frame unit (fixed-rate);
+                seconds when the caller passes timestamps through the tracker.
         """
         self.clamp_velocity()
         self.kf.predict(dt)
@@ -222,9 +222,9 @@ class BaseStateEstimator(ABC):
         When `Q` is supplied, the per-coordinate acceleration variance
         `self._sigma_a2` is back-calibrated from the velocity diagonal of
         the caller-supplied matrix (`σ_a²[i] = Q[v_i, v_i]`, treating the
-        caller's `Q` as `Q(dt = 1)`). This preserves byte-for-byte behaviour
-        at the reference time step while making `build_Q(dt)` consistent
-        with the tuning baked into `Q` for any other `dt`.
+        caller's `Q` as the reference matrix at the fixed-rate step
+        ``dt = 1.0`` frame units). Dynamic-rate `build_Q(dt)` then scales
+        from that calibration using DWNA with `dt` in seconds.
 
         Args:
             R: Measurement noise covariance matrix.
@@ -271,7 +271,8 @@ class BaseStateEstimator(ABC):
         constant-velocity model.
 
         Args:
-            dt: Time step in seconds.
+            dt: Step size. Frame units (`1.0` per update) in fixed-rate mode,
+                or elapsed seconds when the tracker passes timestamps.
             dim_x: Full state dimension.
             pos_idx: Indices of position coordinates (length n).
             vel_idx: Indices of the matching velocity coordinates (length n).

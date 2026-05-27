@@ -385,11 +385,15 @@ class BaseTracker(ABC):
             )
 
     def _compute_dt(self, timestamp: float | None) -> float:
-        """Compute per-step ``dt`` (seconds) from an optional wall-clock timestamp.
+        """Compute per-step ``dt`` for ``tracklet.predict(dt)``.
 
-        Must be called once per ``update()`` invocation. On the very first call
-        with a non-None timestamp the method bootstraps with ``1 / frame_rate``
-        so the first predict step behaves identically to the fixed-rate path.
+        Fixed-rate mode (``timestamp is None``) returns ``1.0`` — one **frame
+        unit** per ``update()``, not one second. This matches the legacy Kalman
+        tuning (velocity as displacement per frame) and preserves backward
+        compatibility.
+
+        Dynamic mode (``timestamp`` in seconds) returns elapsed **wall-clock
+        seconds**: ``1 / frame_rate`` on the first call, then ``t - t_prev``.
 
         Subclasses that use this helper must initialise the following attributes
         in their ``__init__``::
@@ -400,7 +404,7 @@ class BaseTracker(ABC):
 
         Args:
             timestamp: Absolute time of the current frame in seconds, or
-                ``None`` to use fixed-rate mode (returns ``1 / frame_rate``).
+                ``None`` for fixed-rate mode (returns ``1.0`` frame units).
 
         Returns:
             Positive ``dt`` to pass to ``tracklet.predict(dt)``, or ``0.0``
@@ -450,10 +454,10 @@ class BaseTracker(ABC):
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
                 Used by trackers with camera motion compensation (e.g. BoTSORT).
             timestamp: Absolute time of the current frame in seconds, or
-                ``None`` to keep fixed-rate behaviour (``dt = 1 / frame_rate``).
-                When provided, the tracker derives ``dt`` from consecutive
-                timestamps and passes it to each tracklet's Kalman predict step,
-                enabling robust variable frame-rate tracking.
+                ``None`` for fixed-rate mode (Kalman ``dt = 1.0`` frame units
+                per call). When provided, ``dt`` is derived in seconds from
+                consecutive timestamps and passed to each tracklet's predict
+                step for variable frame-rate tracking.
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each

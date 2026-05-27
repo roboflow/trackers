@@ -98,8 +98,10 @@ class KalmanFilter:
         Any other `dt`, or a later change in `dt`, rebuilds from the builders.
 
         Args:
-            F_builder: Callable mapping `dt -> F(dt)` (dim_x, dim_x).
-            Q_builder: Callable mapping `dt -> Q(dt)` (dim_x, dim_x).
+            F_builder: Callable mapping step size to ``F`` (dim_x, dim_x).
+                Step size is frame units (``1.0``) in fixed-rate mode or
+                seconds in dynamic-rate mode — see ``docs/learn/track.md``.
+            Q_builder: Callable mapping step size to ``Q`` (dim_x, dim_x).
         """
         self._F_builder = F_builder
         self._Q_builder = Q_builder
@@ -128,9 +130,10 @@ class KalmanFilter:
             P = F @ P @ F.T + Q
 
         Args:
-            dt: Time elapsed since the last predict, in seconds. Default
-                `1.0` corresponds to the implicit "one frame per call"
-                semantics used everywhere before this change.
+            dt: Step size for the predict update. In fixed-rate tracking this
+                is ``1.0`` (**one frame unit**, not one second) so tuned ``F``
+                / ``Q`` are preserved on the first call. In dynamic-rate
+                tracking the tracker passes elapsed **seconds** instead.
         """
         self._sync_motion_model(dt)
 

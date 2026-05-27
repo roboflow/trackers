@@ -136,7 +136,7 @@ class ByteTrackTracker(BaseTracker):
             frame: Ignored by ByteTrack. If provided (not `None`), a warning is
                 emitted.
             timestamp: Absolute time of the current frame in seconds, or ``None``
-                for fixed-rate mode (``dt = 1 / frame_rate``).
+                for fixed-rate mode (Kalman ``dt = 1.0`` frame units per call).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.

@@ -56,9 +56,10 @@ class BaseTracklet(ABC):
         in their `update()` method alongside `time_since_update`.
 
         Args:
-            dt: Time elapsed since the last predict, in seconds. Default
-                `1.0` reproduces the implicit "one frame per call"
-                semantics used everywhere before dynamic-frame-rate support.
+            dt: Kalman predict step. ``1.0`` means one frame unit (fixed-rate
+                default); when the tracker uses timestamps, this is elapsed
+                seconds. Subclasses increment ``time_since_update_seconds``
+                by this value in dynamic mode.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.

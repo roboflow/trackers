@@ -135,22 +135,35 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 ## Variable frame rate
 
-By default, trackers assume **one `update()` call per frame** at a steady rate. The Kalman filter advances with a fixed step (`dt = 1.0` in internal frame units), and parameters like `lost_track_buffer` are counted in frames (scaled by `frame_rate`).
+By default, trackers assume **one `update()` call per frame** at a steady rate. When your pipeline has **irregular timing** — frame skips, variable-FPS video, async detectors, or batch inference with gaps — pass a monotonic **`timestamp`** in seconds to `update()`. SORT and ByteTrack will derive the elapsed time between updates, scale Kalman prediction (`F`, `Q`) accordingly, and prune lost tracks on a **seconds** budget instead of a frame count.
 
-When your pipeline has **irregular timing** — frame skips, variable-FPS video, async detectors, or batch inference with gaps — pass a monotonic **`timestamp`** in seconds to `update()`. SORT and ByteTrack will:
-
-1. Derive the actual elapsed time `dt` between consecutive updates.
-2. Scale Kalman prediction (`F`, `Q`) to that `dt`.
-3. Prune lost tracks using a **seconds** budget (`lost_track_buffer / 30` seconds) instead of a frame count.
-
-`frame_rate` is still required in both modes. In fixed-rate mode it scales frame-based thresholds. In dynamic mode it is the **reference FPS** used to calibrate process noise and to bootstrap the first update before a previous timestamp exists.
+`frame_rate` is required in both modes. In fixed-rate mode it scales frame-based thresholds (`lost_track_buffer`, etc.). In dynamic mode it is the **reference FPS** used to bootstrap the first timestamped step and to convert frame-denominated parameters to seconds.
 
 | | Fixed rate (default) | Dynamic rate |
 |---|---|---|
 | `timestamp` | `None` (omit) | monotonic seconds, e.g. from video clock |
-| Kalman step | `dt = 1.0` per call | `dt = t − t_prev` |
+| Kalman `dt` | `1.0` per call (**frame units**, see below) | elapsed **seconds** (`t − t_prev`) |
 | Lost-track budget | frames (`lost_track_buffer`, scaled by `frame_rate`) | seconds (`lost_track_buffer / 30`) |
 | Supported trackers | all | **SORT**, **ByteTrack** |
+
+### Two conventions for `dt`
+
+The Kalman filter's `predict(dt)` argument does **not** always mean seconds. The library uses two conventions on purpose:
+
+**Fixed-rate mode** (`timestamp=None`, the default):
+
+- Every `update()` passes **`dt = 1.0`** to the Kalman predict step.
+- This is **one frame index step**, not one second. Velocity in the filter state behaves as **displacement per frame** (e.g. pixels per frame).
+- The tuned `F` and `Q` matrices from SORT / ByteTrack assume this convention. The first predict with `dt = 1.0` keeps those matrices unchanged, which preserves backward-compatible behaviour for all existing call sites and benchmarks.
+- `frame_rate` does **not** enter the Kalman step here; it only scales frame-count thresholds like `lost_track_buffer`.
+
+**Dynamic-rate mode** (`timestamp` supplied):
+
+- `dt` is in **wall-clock seconds**: bootstrap `1 / frame_rate` on the first call, then `t − t_prev` on each subsequent call.
+- `F(dt)` and `Q(dt)` are rebuilt from the DWNA builders using that physical elapsed time. Process noise grows with longer gaps; position prediction uses `velocity × dt` in seconds.
+- Lost-track pruning switches to a seconds budget (`time_since_update_seconds`).
+
+These conventions are **not interchangeable**. At a constant 25 FPS, fixed mode still uses `dt = 1.0` per frame while dynamic mode uses `dt = 0.04` s — different numeric values, same intent (one nominal frame period). Dynamic mode is meant for **variable** gaps between updates, where treating each step as `dt = 1` frame would mis-scale prediction and pruning.
 
 !!! note "OC-SORT and BoT-SORT"
     These trackers accept the `timestamp` argument for API consistency but **do not use it yet**. Passing a timestamp emits a one-time warning and the tracker continues in fixed-rate mode.
@@ -183,8 +196,8 @@ When your pipeline has **irregular timing** — frame skips, variable-FPS video,
 
 **Behaviour notes:**
 
-- **Backward compatible:** omitting `timestamp` reproduces today's tracking behaviour.
-- **First timestamped call:** uses `dt = 1 / frame_rate` (no prior timestamp yet).
+- **Backward compatible:** omitting `timestamp` reproduces today's tracking behaviour (`dt = 1.0` frame units every call).
+- **First timestamped call:** uses `dt = 1 / frame_rate` seconds (bootstrap before a previous timestamp exists).
 - **Duplicate or non-monotonic timestamps:** predict is skipped for that step; a warning is emitted once per tracker instance.
 - **Between videos:** call `tracker.reset()` so timestamp state does not carry over.
 
