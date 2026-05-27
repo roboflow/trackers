@@ -26,10 +26,10 @@ from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_detections(boxes: list[list[float]], confidences: list[float] | None = None) -> sv.Detections:
     if not boxes:
@@ -52,6 +52,7 @@ _EMPTY = _make_detections([])
 # ---------------------------------------------------------------------------
 # Backward compatibility: no timestamp → identical behaviour
 # ---------------------------------------------------------------------------
+
 
 class TestNoTimestampBackwardCompat:
     """Passing no timestamp must give byte-identical results to old code."""
@@ -85,6 +86,7 @@ class TestNoTimestampBackwardCompat:
 # _compute_dt behaviour
 # ---------------------------------------------------------------------------
 
+
 class TestComputeDt:
     """Unit-test the _compute_dt helper via a SORTTracker instance."""
 
@@ -104,8 +106,8 @@ class TestComputeDt:
 
     def test_second_timestamp_returns_gap(self):
         t = self._make_tracker(frame_rate=30.0)
-        t._compute_dt(1000.0)               # bootstrap
-        dt = t._compute_dt(1000.1)          # 100 ms gap
+        t._compute_dt(1000.0)  # bootstrap
+        dt = t._compute_dt(1000.1)  # 100 ms gap
         assert dt == pytest.approx(0.1, abs=1e-9)
 
     def test_non_monotonic_returns_zero_and_warns(self):
@@ -113,7 +115,7 @@ class TestComputeDt:
         t._compute_dt(1000.0)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            dt = t._compute_dt(999.9)   # duplicate / backwards
+            dt = t._compute_dt(999.9)  # duplicate / backwards
         assert dt == 0.0
         assert len(caught) == 1
         assert issubclass(caught[0].category, UserWarning)
@@ -125,7 +127,7 @@ class TestComputeDt:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             t._compute_dt(999.9)
-            t._compute_dt(999.8)   # second non-monotonic: should NOT warn again
+            t._compute_dt(999.8)  # second non-monotonic: should NOT warn again
         assert len(caught) == 1
 
     def test_reset_clears_timestamp_state(self):
@@ -141,6 +143,7 @@ class TestComputeDt:
 # ---------------------------------------------------------------------------
 # time_since_update_seconds accumulation
 # ---------------------------------------------------------------------------
+
 
 class TestTimeSinceUpdateSeconds:
     """Verify time_since_update_seconds increments and resets correctly."""
@@ -166,8 +169,8 @@ class TestTimeSinceUpdateSeconds:
             lost_track_buffer=30,
         )
         tracker.update(_DET)
-        tracker.update(_EMPTY)   # miss → increment
-        tracker.update(_DET)     # hit  → reset
+        tracker.update(_EMPTY)  # miss → increment
+        tracker.update(_DET)  # hit  → reset
         assert len(tracker.tracks) == 1
         assert tracker.tracks[0].time_since_update_seconds == 0.0
 
@@ -201,13 +204,14 @@ class TestTimeSinceUpdateSeconds:
 # Time-based pruning
 # ---------------------------------------------------------------------------
 
+
 class TestTimePruning:
     """Seconds-based pruning activates when timestamps are supplied."""
 
     def test_sort_time_pruning_keeps_track_within_budget(self):
         """Track should survive if it hasn't exceeded maximum_time_without_update."""
         tracker = SORTTracker(
-            lost_track_buffer=30,   # → 1.0 s budget
+            lost_track_buffer=30,  # → 1.0 s budget
             frame_rate=30.0,
             minimum_consecutive_frames=1,
         )
@@ -221,7 +225,7 @@ class TestTimePruning:
 
     def test_sort_time_pruning_removes_track_past_budget(self):
         tracker = SORTTracker(
-            lost_track_buffer=30,   # → 1.0 s budget
+            lost_track_buffer=30,  # → 1.0 s budget
             frame_rate=30.0,
             minimum_consecutive_frames=1,
         )
@@ -274,6 +278,7 @@ class TestTimePruning:
 # OC-SORT and BoT-SORT warn on timestamp
 # ---------------------------------------------------------------------------
 
+
 class TestUnsupportedTimestampWarn:
     """OC-SORT and BoT-SORT must warn once and ignore the timestamp."""
 
@@ -325,6 +330,7 @@ class TestUnsupportedTimestampWarn:
 # ---------------------------------------------------------------------------
 # Multi-frame sequence: timestamp mode vs fixed mode gives consistent IDs
 # ---------------------------------------------------------------------------
+
 
 class TestEquivalentTimingConsistency:
     """At 30 fps timestamps, SORT tracking lifecycle matches fixed-rate mode."""

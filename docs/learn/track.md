@@ -139,12 +139,12 @@ By default, trackers assume **one `update()` call per frame** at a steady rate. 
 
 `frame_rate` is required in both modes. In fixed-rate mode it scales frame-based thresholds (`lost_track_buffer`, etc.). In dynamic mode it is the **reference FPS** used to bootstrap the first timestamped step and to convert frame-denominated parameters to seconds.
 
-| | Fixed rate (default) | Dynamic rate |
-|---|---|---|
-| `timestamp` | `None` (omit) | monotonic seconds, e.g. from video clock |
-| Kalman `dt` | `1.0` per call (**frame units**, see below) | elapsed **seconds** (`t − t_prev`) |
-| Lost-track budget | frames (`lost_track_buffer`, scaled by `frame_rate`) | seconds (`lost_track_buffer / 30`) |
-| Supported trackers | all | **SORT**, **ByteTrack** |
+|                    | Fixed rate (default)                                 | Dynamic rate                             |
+| ------------------ | ---------------------------------------------------- | ---------------------------------------- |
+| `timestamp`        | `None` (omit)                                        | monotonic seconds, e.g. from video clock |
+| Kalman `dt`        | `1.0` per call (**frame units**, see below)          | elapsed **seconds** (`t − t_prev`)       |
+| Lost-track budget  | frames (`lost_track_buffer`, scaled by `frame_rate`) | seconds (`lost_track_buffer / 30`)       |
+| Supported trackers | all                                                  | **SORT**, **ByteTrack**                  |
 
 ### Two conventions for `dt`
 
@@ -166,6 +166,7 @@ The Kalman filter's `predict(dt)` argument does **not** always mean seconds. The
 These conventions are **not interchangeable**. At a constant 25 FPS, fixed mode still uses `dt = 1.0` per frame while dynamic mode uses `dt = 0.04` s — different numeric values, same intent (one nominal frame period). Dynamic mode is meant for **variable** gaps between updates, where treating each step as `dt = 1` frame would mis-scale prediction and pruning.
 
 !!! note "OC-SORT and BoT-SORT"
+
     These trackers accept the `timestamp` argument for API consistency but **do not use it yet**. Passing a timestamp emits a one-time warning and the tracker continues in fixed-rate mode.
 
 === "Python"
