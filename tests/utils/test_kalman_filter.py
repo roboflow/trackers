@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import numpy as np
 
-
 from trackers.utils.kalman_filter import KalmanFilter
 
 

@@ -9,9 +9,9 @@ from __future__ import annotations
 import numpy as np
 
 from trackers.utils.base_tracklet import BaseTracklet
-from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.cmc import CMC
 from trackers.utils.converters import xyxy_to_xywh
+from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
