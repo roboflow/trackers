@@ -11,9 +11,8 @@ Integration behaviour is parametrized over timestamp-aware trackers.
 
 from __future__ import annotations
 
-from typing import Any
-
 import warnings
+from typing import Any
 
 import numpy as np
 import pytest
@@ -21,11 +20,11 @@ import supervision as sv
 
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.bytetrack.tracker import ByteTrackTracker
+from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.ocsort.tracker import OCSORTTracker
-from trackers.core.sort.tracklet import SORTTracklet
 from trackers.core.sort.tracker import SORTTracker
+from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.base_tracklet import BaseTracklet
 
 TIMESTAMP_AWARE_TRACKERS: list[Any] = [
@@ -97,14 +96,10 @@ def test_explicit_none_timestamp_matches_omitted(
     extra_kwargs: dict[str, Any],
 ) -> None:
     frame_rate = 30.0
-    t1 = _make_timestamp_aware_tracker(
-        tracker_cls, tracklet_cls, extra_kwargs, frame_rate=frame_rate
-    )
+    t1 = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=frame_rate)
     r1 = t1.update(_DET)
 
-    t2 = _make_timestamp_aware_tracker(
-        tracker_cls, tracklet_cls, extra_kwargs, frame_rate=frame_rate
-    )
+    t2 = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=frame_rate)
     r2 = t2.update(_DET, timestamp=None)
 
     assert list(r1.tracker_id) == list(r2.tracker_id)
@@ -135,9 +130,7 @@ def test_predict_timing_first_timestamp_bootstraps(
     tracklet_cls: type[BaseTracklet],
     extra_kwargs: dict[str, Any],
 ) -> None:
-    tracker = _make_timestamp_aware_tracker(
-        tracker_cls, tracklet_cls, extra_kwargs, frame_rate=30.0
-    )
+    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=30.0)
     timing = tracker._predict_timing(1000.0)
     assert timing.elapsed_seconds == pytest.approx(1.0 / 30.0)
     assert timing.frame_step == pytest.approx(1.0)
@@ -153,9 +146,7 @@ def test_predict_timing_second_timestamp_returns_gap(
     tracklet_cls: type[BaseTracklet],
     extra_kwargs: dict[str, Any],
 ) -> None:
-    tracker = _make_timestamp_aware_tracker(
-        tracker_cls, tracklet_cls, extra_kwargs, frame_rate=30.0
-    )
+    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=30.0)
     tracker._predict_timing(1000.0)
     timing = tracker._predict_timing(1000.1)
     assert timing.elapsed_seconds == pytest.approx(0.1, abs=1e-9)
@@ -212,9 +203,7 @@ def test_predict_timing_constant_fps_maps_to_one_frame_step(
     tracklet_cls: type[BaseTracklet],
     extra_kwargs: dict[str, Any],
 ) -> None:
-    tracker = _make_timestamp_aware_tracker(
-        tracker_cls, tracklet_cls, extra_kwargs, frame_rate=25.0
-    )
+    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=25.0)
     timing = tracker._predict_timing(0.04)
     assert timing.elapsed_seconds == pytest.approx(0.04)
     assert timing.frame_step == pytest.approx(1.0)
@@ -229,9 +218,7 @@ def test_predict_timing_frame_gap_scales_frame_step(
     tracklet_cls: type[BaseTracklet],
     extra_kwargs: dict[str, Any],
 ) -> None:
-    tracker = _make_timestamp_aware_tracker(
-        tracker_cls, tracklet_cls, extra_kwargs, frame_rate=25.0
-    )
+    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=25.0)
     tracker._predict_timing(0.04)
     timing = tracker._predict_timing(0.24)
     assert timing.elapsed_seconds == pytest.approx(0.20)
@@ -430,10 +417,6 @@ def test_same_confirmation_pattern_at_reference_fps(
     tracklet_cls: type[BaseTracklet],
     extra_kwargs: dict[str, Any],
 ) -> None:
-    fixed_pattern = _confirmation_pattern(
-        tracker_cls, tracklet_cls, extra_kwargs, use_timestamps=False
-    )
-    dynamic_pattern = _confirmation_pattern(
-        tracker_cls, tracklet_cls, extra_kwargs, use_timestamps=True
-    )
+    fixed_pattern = _confirmation_pattern(tracker_cls, tracklet_cls, extra_kwargs, use_timestamps=False)
+    dynamic_pattern = _confirmation_pattern(tracker_cls, tracklet_cls, extra_kwargs, use_timestamps=True)
     assert fixed_pattern == dynamic_pattern
