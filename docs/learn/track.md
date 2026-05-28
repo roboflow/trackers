@@ -142,32 +142,33 @@ By default, trackers assume **one `update()` call per frame** at a steady rate. 
 |                    | Fixed rate (default)                                 | Dynamic rate                             |
 | ------------------ | ---------------------------------------------------- | ---------------------------------------- |
 | `timestamp`        | `None` (omit)                                        | monotonic seconds, e.g. from video clock |
-| Kalman `dt`        | `1.0` per call (**frame units**, see below)          | elapsed **seconds** (`t − t_prev`)       |
+| Kalman `frame_step` | `1.0` per call (**frame units**, see below)          | `elapsed_seconds × frame_rate` (frame units) |
 | Lost-track budget  | frames (`lost_track_buffer`, scaled by `frame_rate`) | seconds (`lost_track_buffer / 30`)       |
 | Supported trackers | all                                                  | **SORT**, **ByteTrack**                  |
 
-### Two conventions for `dt`
+### Two time quantities: `frame_step` and `elapsed_seconds`
 
-The Kalman filter's `predict(dt)` argument does **not** always mean seconds. The library uses two conventions on purpose:
+Kalman prediction and lost-track pruning use **different units on purpose**:
 
 **Fixed-rate mode** (`timestamp=None`, the default):
 
-- Every `update()` passes **`dt = 1.0`** to the Kalman predict step.
+- Every `update()` passes **`frame_step = 1.0`** to the Kalman predict step.
 - This is **one frame index step**, not one second. Velocity in the filter state behaves as **displacement per frame** (e.g. pixels per frame).
-- The tuned `F` and `Q` matrices from SORT / ByteTrack assume this convention. The first predict with `dt = 1.0` keeps those matrices unchanged, which preserves backward-compatible behaviour for all existing call sites and benchmarks.
+- The tuned `F` and `Q` matrices from SORT / ByteTrack assume this convention. The first predict with `frame_step = 1.0` keeps those matrices unchanged, which preserves backward-compatible behaviour for all existing call sites and benchmarks.
 - `frame_rate` does **not** enter the Kalman step here; it only scales frame-count thresholds like `lost_track_buffer`.
 
 **Dynamic-rate mode** (`timestamp` supplied):
 
-- `dt` is in **wall-clock seconds**: bootstrap `1 / frame_rate` on the first call, then `t − t_prev` on each subsequent call.
-- `F(dt)` and `Q(dt)` are rebuilt from the DWNA builders using that physical elapsed time. Process noise grows with longer gaps; position prediction uses `velocity × dt` in seconds.
+- Timestamps provide elapsed **seconds** between calls (`1 / frame_rate` bootstrap, then `t − t_prev`).
+- Kalman prediction still uses **frame units**: `frame_step = elapsed_seconds × frame_rate`. At constant FPS this equals `1.0`, matching fixed-rate behaviour; after frame drops it equals the number of skipped frame periods.
+- `F(frame_step)` and `Q(frame_step)` scale with that frame-unit step. Process noise grows with longer gaps; position prediction uses `velocity × frame_step` in the same frame-unit convention as SORT / ByteTrack tuning.
 - Lost-track pruning switches to a seconds budget (`time_since_update_seconds`).
 
-These conventions are **not interchangeable**. At a constant 25 FPS, fixed mode still uses `dt = 1.0` per frame while dynamic mode uses `dt = 0.04` s — different numeric values, same intent (one nominal frame period). Dynamic mode is meant for **variable** gaps between updates, where treating each step as `dt = 1` frame would mis-scale prediction and pruning.
+These conventions share one Kalman tuning curve. At a constant 25 FPS with no drops, timestamp mode uses `dt = 1.0` frame units — identical to fixed mode. Dynamic mode is meant for **variable** gaps between updates, where static mode would still use `dt = 1.0` per processed frame regardless of the real gap.
 
 !!! note "OC-SORT and BoT-SORT"
 
-    These trackers accept the `timestamp` argument for API consistency but **do not use it yet**. Passing a timestamp emits a one-time warning and the tracker continues in fixed-rate mode.
+    These trackers accept the `timestamp` argument for API consistency but **do not use it yet**. Passing a timestamp emits a warning and the tracker continues in fixed-rate mode.
 
 === "Python"
 
@@ -197,9 +198,11 @@ These conventions are **not interchangeable**. At a constant 25 FPS, fixed mode 
 
 **Behaviour notes:**
 
-- **Backward compatible:** omitting `timestamp` reproduces today's tracking behaviour (`dt = 1.0` frame units every call).
-- **First timestamped call:** uses `dt = 1 / frame_rate` seconds (bootstrap before a previous timestamp exists).
-- **Duplicate or non-monotonic timestamps:** predict is skipped for that step; a warning is emitted once per tracker instance.
+- **Backward compatible:** omitting `timestamp` reproduces today's tracking behaviour (`frame_step = 1.0` every call).
+- **First timestamped call:** uses `elapsed_seconds = 1 / frame_rate` (bootstrap before a previous timestamp exists).
+- **Duplicate or non-monotonic timestamps:** predict is skipped for that step; a warning is emitted on each occurrence.
+- **Per-call mode:** elapsed-second accumulation and lost-track pruning apply only when **that** ``update()`` call passes
+  ``timestamp``. Omitting ``timestamp`` on a later call returns to ``frame_step = 1.0`` and frame-count pruning for that step.
 - **Between videos:** call `tracker.reset()` so timestamp state does not carry over.
 
 ---

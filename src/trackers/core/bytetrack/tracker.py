@@ -111,10 +111,7 @@ class ByteTrackTracker(BaseTracker):
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
 
-        # Dynamic frame-rate state
-        self._frame_rate: float = frame_rate
-        self._last_timestamp: float | None = None
-        self._dt_nonmonotonic_warned: bool = False
+        self._init_timestamp_state(frame_rate)
 
     def update(
         self,
@@ -136,7 +133,7 @@ class ByteTrackTracker(BaseTracker):
             frame: Ignored by ByteTrack. If provided (not `None`), a warning is
                 emitted.
             timestamp: Absolute time of the current frame in seconds, or ``None``
-                for fixed-rate mode (Kalman ``dt = 1.0`` frame units per call).
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
@@ -144,7 +141,7 @@ class ByteTrackTracker(BaseTracker):
             differ from input.
         """
         self._warn_if_frame_unused(frame)
-        dt = self._compute_dt(timestamp)
+        timing = self._predict_timing(timestamp)
 
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
@@ -154,9 +151,7 @@ class ByteTrackTracker(BaseTracker):
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
 
-        if dt > 0:
-            for tracker in self.tracks:
-                tracker.predict(dt)
+        self._predict_tracklets(self.tracks, timing)
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -221,7 +216,10 @@ class ByteTrackTracker(BaseTracker):
             tracklets=self.tracks,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
             maximum_frames_without_update=self.maximum_frames_without_update,
-            maximum_time_without_update=self.maximum_time_without_update if self._last_timestamp is not None else None,
+            maximum_time_without_update=self._lost_track_time_budget(
+                timing,
+                self.maximum_time_without_update,
+            ),
         )
 
         # Build final sv.Detections from original by indexing
@@ -303,4 +301,3 @@ class ByteTrackTracker(BaseTracker):
         self.tracks = []
         ByteTrackTracklet.count_id = 0
         self._last_timestamp = None
-        self._dt_nonmonotonic_warned = False

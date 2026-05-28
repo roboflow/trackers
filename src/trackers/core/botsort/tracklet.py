@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.cmc import CMC
 from trackers.utils.converters import xyxy_to_xywh
 from trackers.utils.state_representations import (
@@ -189,7 +190,7 @@ class BoTSORTTracklet(BaseTracklet):
         self.time_since_update = 0
         self.number_of_successful_updates += 1
 
-    def predict(self, dt: float = 1.0) -> np.ndarray:
+    def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict the next bounding-box position.
 
         Increments ``time_since_update`` to track how many frames have
@@ -197,14 +198,14 @@ class BoTSORTTracklet(BaseTracklet):
         ``update(None)`` call used in ByteTrack/SORT.
 
         Args:
-            dt: Time elapsed since the last predict, in seconds. Default
-                `1.0` reproduces the per-frame semantics.
+            timing: Kalman frame step for this update. Elapsed seconds are
+                ignored by BoT-SORT today; accepted for API consistency with
+                ``BaseTracklet``.
         """
         self._refresh_noise_from_state()
-        self.state_estimator.predict(dt)
+        self.state_estimator.predict(frame_step=timing.frame_step)
         self._clamp_state_bbox()
-        self.age += 1
-        self.time_since_update += 1
+        self._advance_miss_clocks(timing)
         return self.state_estimator.state_to_bbox()
 
     def get_state_bbox(self) -> np.ndarray:

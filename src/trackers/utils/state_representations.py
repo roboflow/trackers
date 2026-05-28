@@ -18,6 +18,7 @@ from trackers.utils.converters import (
     xyxy_to_xywh,
 )
 from trackers.utils.kalman_filter import KalmanFilter
+from trackers.utils.motion_models import ConstantVelocityDWNA, init_constant_velocity_filter
 
 
 class StateRepresentation(Enum):
@@ -56,17 +57,10 @@ class BaseStateEstimator(ABC):
     internal state/measurement vectors.
 
     Variable time-step support:
-        Each subclass provides `build_F(dt)` and `build_Q(dt)` that
-        describe the constant-velocity motion model and the Discrete
-        White Noise Acceleration (DWNA) process noise for an arbitrary
-        time step. These builders are auto-registered on the underlying
-        `KalmanFilter` at construction so that `predict(dt)` can advance
-        the state by a non-unit time step. The acceleration variance per
-        coordinate (`sigma_a2`) is back-calibrated from the velocity
-        diagonal of `kf.Q` whenever `set_kf_covariances(Q=...)` is called,
-        which preserves byte-for-byte behaviour at the reference fixed-rate
-        step (`dt = 1.0` frame units). When timestamps are used, the same
-        builders receive `dt` in seconds instead — see ``docs/learn/track.md``.
+        Subclasses declare kinematic index pairs via class attributes
+        ``_POS_IDX`` and ``_VEL_IDX``. A ``ConstantVelocityDWNA`` motion model
+        (see ``motion_models.py``) builds ``F(dt)`` / ``Q(dt)`` and is synced
+        onto the filter before each predict step. See ``docs/learn/track.md``.
 
     Note:
         Noise matrices (R, Q, P) are not configured in `_create_filter`
@@ -79,7 +73,11 @@ class BaseStateEstimator(ABC):
 
     Attributes:
         kf: The underlying Kalman filter instance.
+        motion: Constant-velocity DWNA process model wired to ``kf``.
     """
+
+    _POS_IDX: np.ndarray
+    _VEL_IDX: np.ndarray
 
     def __init__(self, bbox: np.ndarray) -> None:
         """Initialise the filter with the first detection.
@@ -88,17 +86,21 @@ class BaseStateEstimator(ABC):
             bbox: First detection `[x1, y1, x2, y2]`.
         """
         self.kf: KalmanFilter = self._create_filter(bbox)
-        # Acceleration variance per kinematic coordinate, used by `build_Q`.
-        # Updated in `set_kf_covariances` whenever Q is supplied so that
-        # the back-calibration tracks any tracklet-specific tuning.
-        self._sigma_a2: np.ndarray = np.ones(self._n_kinematic_dims(), dtype=np.float64)
-        # Diagonal entries of Q for *non-kinematic* state dimensions
-        # (e.g. the aspect-ratio random walk in XCYCSR). Captured from any
-        # caller-supplied Q so `build_Q(dt)` does not overwrite them.
-        self._extra_q_diagonal: np.ndarray = np.diag(self.kf.Q).astype(np.float64).copy()
-        # Register the time-parameterized motion model with the KF so that
-        # `predict(dt)` can build F(dt) / Q(dt) when dt != 1.
-        self.kf.set_motion_model_builders(self.build_F, self.build_Q)
+        self.motion: ConstantVelocityDWNA = ConstantVelocityDWNA.from_filter(
+            self.kf,
+            self._POS_IDX,
+            self._VEL_IDX,
+        )
+
+    def _init_cv_filter(self, dim_x: int, measurement: np.ndarray) -> KalmanFilter:
+        """Create a constant-velocity filter with ``F(1)``, ``H = I``, and initial state."""
+        return init_constant_velocity_filter(
+            dim_x=dim_x,
+            dim_z=4,
+            pos_idx=self._POS_IDX,
+            vel_idx=self._VEL_IDX,
+            measurement=measurement,
+        )
 
     @abstractmethod
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
@@ -138,50 +140,16 @@ class BaseStateEstimator(ABC):
         (e.g. non-negative scale). Modifies the filter state in-place.
         """
 
-    @abstractmethod
-    def build_F(self, dt: float) -> np.ndarray:
-        """Return the state-transition matrix F for the given time step `dt`.
-
-        For a constant-velocity model the velocity columns scale with `dt`.
-        See `docs/learn/track.md` (Variable frame rate) for context.
-        """
-
-    @abstractmethod
-    def build_Q(self, dt: float) -> np.ndarray:
-        """Return the process-noise covariance Q for the given time step `dt`.
-
-        Uses the Discrete White Noise Acceleration (DWNA) discretization
-        with `self._sigma_a2` as the per-coordinate acceleration variance,
-        with cross terms between position and velocity included.
-        See `docs/learn/track.md` (Variable frame rate) for context.
-        """
-
-    @abstractmethod
-    def _n_kinematic_dims(self) -> int:
-        """Number of (position, velocity) coordinate pairs in the state vector.
-
-        Used to size the back-calibrated `_sigma_a2` vector. Excludes purely
-        positional (no-velocity) state dimensions, such as the aspect-ratio
-        coordinate in the XCYCSR representation.
-        """
-
-    @abstractmethod
-    def _kinematic_indices(self) -> tuple[np.ndarray, np.ndarray]:
-        """Return `(position_indices, velocity_indices)` into the state vector.
-
-        These index arrays let `build_Q` populate the DWNA blocks without
-        each subclass having to repeat the boilerplate.
-        """
-
-    def predict(self, dt: float = 1.0) -> None:
+    def predict(self, frame_step: float = 1.0) -> None:
         """Run the Kalman filter prediction step.
 
         Args:
-            dt: Kalman predict step. ``1.0`` is one frame unit (fixed-rate);
-                seconds when the caller passes timestamps through the tracker.
+            frame_step: Kalman predict step in **frame units** (``1.0`` = one
+                nominal frame at the tuned reference).
         """
         self.clamp_velocity()
-        self.kf.predict(dt)
+        self.motion.sync(self.kf, frame_step)
+        self.kf.predict()
 
     def update(self, bbox: np.ndarray | None) -> None:
         """Update the filter with a new observation.
@@ -210,6 +178,7 @@ class BaseStateEstimator(ABC):
             state: Dictionary from `get_state`.
         """
         self.kf.set_state(state)
+        self.motion.reset_cached_dt()
 
     def set_kf_covariances(
         self,
@@ -219,12 +188,8 @@ class BaseStateEstimator(ABC):
     ) -> None:
         """Set Kalman filter parameters.
 
-        When `Q` is supplied, the per-coordinate acceleration variance
-        `self._sigma_a2` is back-calibrated from the velocity diagonal of
-        the caller-supplied matrix (`σ_a²[i] = Q[v_i, v_i]`, treating the
-        caller's `Q` as the reference matrix at the fixed-rate step
-        ``dt = 1.0`` frame units). Dynamic-rate `build_Q(dt)` then scales
-        from that calibration using DWNA with `dt` in seconds.
+        When `Q` is supplied, the motion model back-calibrates σ_a² from the
+        velocity diagonal at the default reference step ``1.0`` frame units.
 
         Args:
             R: Measurement noise covariance matrix.
@@ -241,66 +206,12 @@ class BaseStateEstimator(ABC):
             if Q.shape != expected_shape:
                 raise ValueError(f"Q must have shape {expected_shape}; got {Q.shape}.")
             self.kf.Q = Q
-            _, vel_idx = self._kinematic_indices()
-            self._sigma_a2 = np.asarray([float(Q[v, v]) for v in vel_idx], dtype=np.float64)
-            self._extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
+            self.motion.calibrate_from_Q(Q)
         if P is not None:
             expected_shape = (self.kf.dim_x, self.kf.dim_x)
             if P.shape != expected_shape:
                 raise ValueError(f"P must have shape {expected_shape}; got {P.shape}.")
             self.kf.P = P
-
-    def _build_Q_dwna(
-        self,
-        dt: float,
-        dim_x: int,
-        pos_idx: np.ndarray,
-        vel_idx: np.ndarray,
-    ) -> np.ndarray:
-        """Helper: build a DWNA process-noise matrix Q(dt).
-
-        For each (position, velocity) index pair we fill the standard
-        2x2 DWNA block:
-
-            ⎡  σ_a² · dt⁴/4    σ_a² · dt³/2 ⎤
-            ⎣  σ_a² · dt³/2    σ_a² · dt²   ⎦
-
-        Off-kinematic diagonal entries (e.g. the aspect-ratio variance in
-        XCYCSR) are carried over from the caller-supplied `extra_diagonal`,
-        which preserves any random-walk tuning that lives outside the
-        constant-velocity model.
-
-        Args:
-            dt: Step size. Frame units (`1.0` per update) in fixed-rate mode,
-                or elapsed seconds when the tracker passes timestamps.
-            dim_x: Full state dimension.
-            pos_idx: Indices of position coordinates (length n).
-            vel_idx: Indices of the matching velocity coordinates (length n).
-
-        Returns:
-            Newly-allocated `(dim_x, dim_x)` Q matrix.
-        """
-        Q = np.zeros((dim_x, dim_x), dtype=np.float64)
-        dt2 = dt * dt
-        dt3 = dt2 * dt
-        dt4 = dt2 * dt2
-        s = self._sigma_a2
-        for k in range(len(pos_idx)):
-            p = int(pos_idx[k])
-            v = int(vel_idx[k])
-            sa2 = float(s[k])
-            Q[p, p] = sa2 * dt4 / 4.0
-            Q[p, v] = sa2 * dt3 / 2.0
-            Q[v, p] = sa2 * dt3 / 2.0
-            Q[v, v] = sa2 * dt2
-        # Restore non-kinematic diagonal entries (e.g. random-walk for the
-        # XCYCSR aspect ratio) captured by `set_kf_covariances` from the
-        # caller-supplied Q.
-        touched = set(int(i) for i in pos_idx) | set(int(i) for i in vel_idx)
-        for i in range(dim_x):
-            if i not in touched:
-                Q[i, i] = float(self._extra_q_diagonal[i])
-        return Q
 
 
 class XCYCSRStateEstimator(BaseStateEstimator):
@@ -318,30 +229,7 @@ class XCYCSRStateEstimator(BaseStateEstimator):
     _VEL_IDX = np.array([4, 5, 6], dtype=np.int64)
 
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
-        kf = KalmanFilter(dim_x=7, dim_z=4)
-
-        # State transition: constant velocity model (dt = 1 reference; see
-        # `build_F` for the dt-parameterized form).
-        kf.F = np.array(
-            [
-                [1, 0, 0, 0, 1, 0, 0],
-                [0, 1, 0, 0, 0, 1, 0],
-                [0, 0, 1, 0, 0, 0, 1],
-                [0, 0, 0, 1, 0, 0, 0],  # aspect ratio: no velocity
-                [0, 0, 0, 0, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1],
-            ],
-            dtype=np.float64,
-        )
-
-        # Measurement function: observe (x, y, s, r) from state
-        kf.H = np.eye(4, 7, dtype=np.float64)
-
-        # Initialise state with first observation
-        kf.x[:4] = xyxy_to_xcycsr(bbox).reshape((4, 1))
-
-        return kf
+        return self._init_cv_filter(7, xyxy_to_xcycsr(bbox))
 
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
         return xyxy_to_xcycsr(bbox)
@@ -350,25 +238,8 @@ class XCYCSRStateEstimator(BaseStateEstimator):
         return xcycsr_to_xyxy(self.kf.x[:4].reshape((4,)))
 
     def clamp_velocity(self) -> None:
-        # If predicted scale would go negative, zero out scale velocity
         if (self.kf.x[6] + self.kf.x[2]) <= 0:
             self.kf.x[6] = 0.0
-
-    def _n_kinematic_dims(self) -> int:
-        return 3  # (xc, vx), (yc, vy), (s, vs); aspect ratio is non-kinematic.
-
-    def _kinematic_indices(self) -> tuple[np.ndarray, np.ndarray]:
-        return self._POS_IDX, self._VEL_IDX
-
-    def build_F(self, dt: float) -> np.ndarray:
-        F = np.eye(7, dtype=np.float64)
-        F[0, 4] = dt  # xc += vx * dt
-        F[1, 5] = dt  # yc += vy * dt
-        F[2, 6] = dt  # s  += vs * dt
-        return F
-
-    def build_Q(self, dt: float) -> np.ndarray:
-        return self._build_Q_dwna(dt, dim_x=7, pos_idx=self._POS_IDX, vel_idx=self._VEL_IDX)
 
 
 class XCYCWHStateEstimator(BaseStateEstimator):
@@ -390,22 +261,7 @@ class XCYCWHStateEstimator(BaseStateEstimator):
     _VEL_IDX = np.array([4, 5, 6, 7], dtype=np.int64)
 
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
-        kf = KalmanFilter(dim_x=8, dim_z=4)
-
-        # Constant-velocity state transition (dt = 1 reference; see
-        # `build_F` for the dt-parameterized form).
-        kf.F = np.eye(8, dtype=np.float64)
-        for i in range(4):
-            kf.F[i, i + 4] = 1.0
-
-        # Measurement: observe [xc, yc, w, h]
-        kf.H = np.eye(4, 8, dtype=np.float64)
-
-        # Initialise position from first bbox
-        measurement = xyxy_to_xywh(bbox)
-        kf.x[:4] = measurement.reshape((4, 1))
-
-        return kf
+        return self._init_cv_filter(8, xyxy_to_xywh(bbox))
 
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
         return xyxy_to_xywh(bbox)
@@ -415,21 +271,6 @@ class XCYCWHStateEstimator(BaseStateEstimator):
 
     def clamp_velocity(self) -> None:
         pass
-
-    def _n_kinematic_dims(self) -> int:
-        return 4
-
-    def _kinematic_indices(self) -> tuple[np.ndarray, np.ndarray]:
-        return self._POS_IDX, self._VEL_IDX
-
-    def build_F(self, dt: float) -> np.ndarray:
-        F = np.eye(8, dtype=np.float64)
-        for i in range(4):
-            F[i, i + 4] = dt
-        return F
-
-    def build_Q(self, dt: float) -> np.ndarray:
-        return self._build_Q_dwna(dt, dim_x=8, pos_idx=self._POS_IDX, vel_idx=self._VEL_IDX)
 
 
 class XYXYStateEstimator(BaseStateEstimator):
@@ -446,31 +287,7 @@ class XYXYStateEstimator(BaseStateEstimator):
     _VEL_IDX = np.array([4, 5, 6, 7], dtype=np.int64)
 
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
-        kf = KalmanFilter(dim_x=8, dim_z=4)
-
-        # State transition: constant velocity for all coordinates
-        # (dt = 1 reference; see `build_F` for the dt-parameterized form).
-        kf.F = np.array(
-            [
-                [1, 0, 0, 0, 1, 0, 0, 0],  # x1 += vx1
-                [0, 1, 0, 0, 0, 1, 0, 0],  # y1 += vy1
-                [0, 0, 1, 0, 0, 0, 1, 0],  # x2 += vx2
-                [0, 0, 0, 1, 0, 0, 0, 1],  # y2 += vy2
-                [0, 0, 0, 0, 1, 0, 0, 0],  # vx1
-                [0, 0, 0, 0, 0, 1, 0, 0],  # vy1
-                [0, 0, 0, 0, 0, 0, 1, 0],  # vx2
-                [0, 0, 0, 0, 0, 0, 0, 1],  # vy2
-            ],
-            dtype=np.float64,
-        )
-
-        # Measurement function: observe (x1, y1, x2, y2) from state
-        kf.H = np.eye(4, 8, dtype=np.float64)
-
-        # Initialise state with first observation (direct XYXY)
-        kf.x[:4] = bbox.reshape((4, 1))
-
-        return kf
+        return self._init_cv_filter(8, bbox)
 
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
         return bbox
@@ -479,23 +296,7 @@ class XYXYStateEstimator(BaseStateEstimator):
         return self.kf.x[:4].reshape((4,))
 
     def clamp_velocity(self) -> None:
-        # No clamping needed for XYXY representation
         pass
-
-    def _n_kinematic_dims(self) -> int:
-        return 4
-
-    def _kinematic_indices(self) -> tuple[np.ndarray, np.ndarray]:
-        return self._POS_IDX, self._VEL_IDX
-
-    def build_F(self, dt: float) -> np.ndarray:
-        F = np.eye(8, dtype=np.float64)
-        for i in range(4):
-            F[i, i + 4] = dt
-        return F
-
-    def build_Q(self, dt: float) -> np.ndarray:
-        return self._build_Q_dwna(dt, dim_x=8, pos_idx=self._POS_IDX, vel_idx=self._VEL_IDX)
 
 
 # ---------------------------------------------------------------------------

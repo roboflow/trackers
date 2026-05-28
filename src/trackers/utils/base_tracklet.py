@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.state_representations import BaseStateEstimator
 
 
@@ -46,20 +47,23 @@ class BaseTracklet(ABC):
         """
         pass
 
+    def _advance_miss_clocks(self, timing: PredictTiming) -> None:
+        """Advance frame and optional wall-clock miss counters after predict."""
+        self.time_since_update += 1
+        if timing.elapsed_seconds is not None:
+            self.time_since_update_seconds += timing.elapsed_seconds
+        self.age += 1
+
     @abstractmethod
-    def predict(self, dt: float = 1.0) -> np.ndarray:
+    def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict next bounding box position and advance missed-frame state.
 
         Propagates the Kalman filter and increments `time_since_update` (and
-        `age`) on every call — matched or unmatched. Subclasses must also
-        increment `time_since_update_seconds` by `dt` and reset it to `0.0`
-        in their `update()` method alongside `time_since_update`.
+        `age`) on every call — matched or unmatched.
 
         Args:
-            dt: Kalman predict step. ``1.0`` means one frame unit (fixed-rate
-                default); when the tracker uses timestamps, this is elapsed
-                seconds. Subclasses increment ``time_since_update_seconds``
-                by this value in dynamic mode.
+            timing: Kalman frame step and optional elapsed seconds for this
+                update. Defaults to one fixed-rate frame step.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.

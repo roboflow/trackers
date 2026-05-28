@@ -7,6 +7,7 @@
 import numpy as np
 
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
@@ -38,7 +39,7 @@ class SORTTracklet(BaseTracklet):
         self.time_since_update_seconds = 0.0
         self.number_of_successful_updates += 1
 
-    def predict(self, dt: float = 1.0) -> np.ndarray:
+    def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict next bounding box position and advance missed-frame clock.
 
         Propagates the Kalman filter and increments `time_since_update` and
@@ -47,17 +48,14 @@ class SORTTracklet(BaseTracklet):
         without any separate miss notification.
 
         Args:
-            dt: Time elapsed since the last predict, in seconds. Default
-                `1.0` reproduces the per-frame semantics used everywhere
-                before dynamic-frame-rate support.
+            timing: Kalman frame step and optional elapsed seconds for this
+                update.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
-        self.state_estimator.predict(dt)
-        self.time_since_update += 1
-        self.time_since_update_seconds += dt
-        self.age += 1
+        self.state_estimator.predict(frame_step=timing.frame_step)
+        self._advance_miss_clocks(timing)
         return self.state_estimator.state_to_bbox()
 
     def get_state_bbox(self) -> np.ndarray:

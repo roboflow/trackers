@@ -143,7 +143,6 @@ class BoTSORTTracker(BaseTracker):
 
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
-        self._timestamp_mode_warned: bool = False
 
     def update(
         self,
@@ -165,8 +164,7 @@ class BoTSORTTracker(BaseTracker):
                 Used for camera motion compensation when ``enable_cmc=True``.
             timestamp: Absolute time of the current frame in seconds. BoT-SORT
                 does not yet support variable-rate prediction; if provided, a
-                one-time warning is emitted and the tracker continues in
-                fixed-rate mode.
+                warning is emitted and the tracker continues in fixed-rate mode.
 
         Returns:
             New sv.Detections with tracker_id assigned for each detection.
@@ -178,7 +176,7 @@ class BoTSORTTracker(BaseTracker):
               tracker can estimate a global affine transform and warp predicted
               track states before association.
         """
-        if timestamp is not None and not self._timestamp_mode_warned:
+        if timestamp is not None:
             warnings.warn(
                 "BoTSORTTracker does not yet support variable frame-rate via timestamp. "
                 "The timestamp argument is ignored and fixed-rate mode is used. "
@@ -186,7 +184,6 @@ class BoTSORTTracker(BaseTracker):
                 UserWarning,
                 stacklevel=2,
             )
-            self._timestamp_mode_warned = True
         self.frame_id += 1
 
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -421,7 +418,6 @@ class BoTSORTTracker(BaseTracker):
         self.tracks = []
         self.frame_id = 0
         BoTSORTTracklet.count_id = 0
-        self._timestamp_mode_warned = False
         if self.cmc is not None:
             self.cmc.reset()
 

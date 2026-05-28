@@ -18,6 +18,8 @@ from typing import Any, ClassVar, Protocol, Union, get_args, get_origin
 import numpy as np
 import supervision as sv
 
+from trackers.utils.predict_timing import PredictTiming
+
 
 @dataclass
 class ParameterInfo:
@@ -368,6 +370,21 @@ class BaseTracker(ABC):
         """
         return sorted(cls._registry.keys())
 
+    _frame_rate: float
+    _last_timestamp: float | None
+
+    def _init_timestamp_state(self, frame_rate: float) -> None:
+        """Register reference FPS and reset timestamp bookkeeping.
+
+        Call from ``__init__`` on trackers that support variable frame rate
+        (SORT, ByteTrack).
+
+        Args:
+            frame_rate: Reference frames per second for bootstrap elapsed time.
+        """
+        self._frame_rate = frame_rate
+        self._last_timestamp = None
+
     def _warn_if_frame_unused(self, frame: np.ndarray | None) -> None:
         """Emit a UserWarning when a frame is passed to a tracker that ignores it.
 
@@ -384,58 +401,68 @@ class BaseTracker(ABC):
                 stacklevel=3,
             )
 
-    def _compute_dt(self, timestamp: float | None) -> float:
-        """Compute per-step ``dt`` for ``tracklet.predict(dt)``.
+    def _elapsed_seconds_since_last(self, timestamp: float) -> float:
+        """Return wall-clock seconds since the previous timestamped update.
 
-        Fixed-rate mode (``timestamp is None``) returns ``1.0`` — one **frame
-        unit** per ``update()``, not one second. This matches the legacy Kalman
-        tuning (velocity as displacement per frame) and preserves backward
-        compatibility.
-
-        Dynamic mode (``timestamp`` in seconds) returns elapsed **wall-clock
-        seconds**: ``1 / frame_rate`` on the first call, then ``t - t_prev``.
-
-        Subclasses that use this helper must initialise the following attributes
-        in their ``__init__``::
-
-            self._frame_rate: float          # reference FPS, e.g. 30.0
-            self._last_timestamp: float | None = None
-            self._dt_nonmonotonic_warned: bool = False
-
-        Args:
-            timestamp: Absolute time of the current frame in seconds, or
-                ``None`` for fixed-rate mode (returns ``1.0`` frame units).
-
-        Returns:
-            Positive ``dt`` to pass to ``tracklet.predict(dt)``, or ``0.0``
-            when the timestamp is non-positive / non-monotonic (caller should
-            skip the predict step for this frame).
+        Updates ``_last_timestamp``. Bootstrap (first call) returns
+        ``1 / frame_rate``. Non-monotonic timestamps return ``0.0`` and warn.
         """
-        if timestamp is None:
-            # Fixed-rate mode: preserve backward-compat dt=1.0 (one frame unit).
-            return 1.0
-
-        last: float | None = self._last_timestamp  # type: ignore[attr-defined]
-        self._last_timestamp = timestamp  # type: ignore[attr-defined]
+        last = self._last_timestamp
+        self._last_timestamp = timestamp
 
         if last is None:
-            # Bootstrap: first timestamped call uses reference step (1 / frame_rate
-            # seconds) so the first predict is consistent with fixed-rate behaviour.
-            return 1.0 / self._frame_rate  # type: ignore[attr-defined]
+            # Bootstrap: no prior timestamp, so we cannot compute t - t_prev.
+            # Use one nominal frame period (1 / frame_rate) so the first Kalman
+            # step is frame_step=1.0 — matching fixed-rate behaviour rather than
+            # using the absolute timestamp value (e.g. 37.2 s would break tuning).
+            return 1.0 / self._frame_rate
 
-        dt = timestamp - last
-        if dt <= 0:
-            if not self._dt_nonmonotonic_warned:  # type: ignore[attr-defined]
-                warnings.warn(
-                    f"{type(self).__name__}: non-positive dt={dt:.6f}s from "
-                    "non-monotonic timestamp. Skipping predict for this step. "
-                    "Further occurrences will be silenced.",
-                    UserWarning,
-                    stacklevel=3,
-                )
-                self._dt_nonmonotonic_warned = True  # type: ignore[attr-defined]
+        elapsed = timestamp - last
+        if elapsed <= 0:
+            warnings.warn(
+                f"{type(self).__name__}: non-positive elapsed={elapsed:.6f}s from "
+                "non-monotonic timestamp. Skipping predict for this step.",
+                UserWarning,
+                stacklevel=3,
+            )
             return 0.0
-        return dt
+        return elapsed
+
+    def _predict_timing(self, timestamp: float | None) -> PredictTiming:
+        """Split one update into Kalman frame units and optional elapsed seconds.
+
+        Fixed-rate mode (``timestamp is None``): ``frame_step=1.0``,
+        ``elapsed_seconds=None``.
+
+        Timestamp mode: ``frame_step = elapsed_seconds * frame_rate`` so Kalman
+        keeps frame-unit tuning; ``elapsed_seconds`` drives time-based pruning.
+        """
+        if timestamp is None:
+            return PredictTiming(frame_step=1.0, elapsed_seconds=None)
+
+        elapsed = self._elapsed_seconds_since_last(timestamp)
+        if elapsed <= 0.0:
+            return PredictTiming(frame_step=0.0, elapsed_seconds=elapsed)
+
+        return PredictTiming(
+            frame_step=elapsed * self._frame_rate,
+            elapsed_seconds=elapsed,
+        )
+
+    def _predict_tracklets(self, tracklets: list[Any], timing: PredictTiming) -> None:
+        """Run Kalman predict on all tracklets unless timing says to skip."""
+        if timing.skip_predict:
+            return
+        for tracklet in tracklets:
+            tracklet.predict(timing)
+
+    def _lost_track_time_budget(
+        self,
+        timing: PredictTiming,
+        seconds_budget: float,
+    ) -> float | None:
+        """Return seconds pruning budget when timestamp mode is active."""
+        return seconds_budget if timing.uses_elapsed_time else None
 
     @abstractmethod
     def update(
@@ -454,10 +481,9 @@ class BaseTracker(ABC):
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
                 Used by trackers with camera motion compensation (e.g. BoTSORT).
             timestamp: Absolute time of the current frame in seconds, or
-                ``None`` for fixed-rate mode (Kalman ``dt = 1.0`` frame units
-                per call). When provided, ``dt`` is derived in seconds from
-                consecutive timestamps and passed to each tracklet's predict
-                step for variable frame-rate tracking.
+                ``None`` for fixed-rate mode (``frame_step = 1.0`` per call).
+                When provided, elapsed seconds are converted to Kalman frame
+                units via ``× frame_rate``; pruning uses seconds directly.
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each
