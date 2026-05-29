@@ -101,6 +101,7 @@ class OCSORTTracker(BaseTracker):
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
+        self.maximum_time_without_update: float | None = None
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.direction_consistency_weight = direction_consistency_weight

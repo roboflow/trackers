@@ -188,7 +188,7 @@ class BaseStateEstimator(ABC):
     ) -> None:
         """Set Kalman filter parameters.
 
-        When `Q` is supplied, the motion model back-calibrates σ_a² from the
+        When `Q` is supplied, the motion model back-calibrates sigma_a2 from the
         velocity diagonal at the default reference step ``1.0`` frame units.
 
         Args:

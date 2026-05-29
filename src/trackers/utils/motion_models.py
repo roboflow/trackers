@@ -54,10 +54,10 @@ def build_dwna_Q(
 ) -> NDArray[np.float64]:
     """Build a Discrete White Noise Acceleration process-noise matrix ``Q(dt)``.
 
-    Each kinematic pair receives the standard 2×2 DWNA block:
+    Each kinematic pair receives the standard 2x2 DWNA block:
 
-        ⎡  σ_a² · dt⁴/4    σ_a² · dt³/2 ⎤
-        ⎣  σ_a² · dt³/2    σ_a² · dt²   ⎦
+        [  sigma_a2 * dt^4/4    sigma_a2 * dt^3/2 ]
+        [  sigma_a2 * dt^3/2    sigma_a2 * dt^2   ]
 
     Diagonal entries for state indices outside those pairs are copied from
     ``extra_q_diagonal`` (e.g. the aspect-ratio random walk in XCYCSR).
@@ -114,7 +114,7 @@ class ConstantVelocityDWNA:
         pos_idx: NDArray[np.int64],
         vel_idx: NDArray[np.int64],
     ) -> ConstantVelocityDWNA:
-        """Create a model sized for *kf* with default σ_a² until ``calibrate_from_Q``."""
+        """Create a model sized for *kf* with default sigma_a2 until ``calibrate_from_Q``."""
         return cls(
             dim_x=kf.dim_x,
             pos_idx=pos_idx,
@@ -125,7 +125,7 @@ class ConstantVelocityDWNA:
         )
 
     def calibrate_from_Q(self, Q: np.ndarray) -> None:
-        """Back-calibrate σ_a² from velocity diagonals of a reference ``Q`` matrix.
+        """Back-calibrate sigma_a2 from velocity diagonals of a reference ``Q`` matrix.
 
         Args:
             Q: Reference process-noise matrix valid at one nominal frame step

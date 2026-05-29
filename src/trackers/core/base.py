@@ -320,6 +320,7 @@ class BaseTracker(ABC):
     # list[ConcreteTracklet] in subclasses rejects list[TrackletProtocol] base.
     tracks: list[Any]
     maximum_frames_without_update: int
+    maximum_time_without_update: float | None
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.
@@ -483,7 +484,7 @@ class BaseTracker(ABC):
             timestamp: Absolute time of the current frame in seconds, or
                 ``None`` for fixed-rate mode (``frame_step = 1.0`` per call).
                 When provided, elapsed seconds are converted to Kalman frame
-                units via ``× frame_rate``; pruning uses seconds directly.
+                units via ``* frame_rate``; pruning uses seconds directly.
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each
