@@ -207,10 +207,7 @@ def main() -> None:
 
     print(f"Generator device: {generator.device}")
     if generator.device.type == "cuda":
-        print(
-            f"GPU: {torch.cuda.get_device_name(generator.device)} "
-            f"(CUDA {torch.version.cuda})"
-        )
+        print(f"GPU: {torch.cuda.get_device_name(generator.device)} (CUDA {torch.version.cuda})")
     else:
         print("GPU: N/A (running on CPU)")
 
