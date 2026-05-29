@@ -167,6 +167,16 @@ def validate_and_clip_xyxy_box(
     return np.array([x1, y1, x2, y2], dtype=np.float32)
 
 
+def validate_device(device: str) -> str:
+    """Validate the requested SAM execution device."""
+    if device.startswith("cuda") and not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA was requested, but torch.cuda.is_available() is False. "
+            "Use --device cpu or install a CUDA-enabled PyTorch build."
+        )
+    return device
+
+
 def main() -> None:
     """Run SAM mask generation, report the execution device, and save a visualization
     image.
@@ -192,13 +202,15 @@ def main() -> None:
 
     generator = SAMBoxMaskGenerator(
         model_type=args.model_type,
-        device=args.device,
+        device=validate_device(args.device),
     )
 
     print(f"Generator device: {generator.device}")
-
     if generator.device.type == "cuda":
-        print(f"GPU: {torch.cuda.get_device_name(generator.device)} (CUDA {torch.version.cuda})")
+        print(
+            f"GPU: {torch.cuda.get_device_name(generator.device)} "
+            f"(CUDA {torch.version.cuda})"
+        )
     else:
         print("GPU: CPU")
 
