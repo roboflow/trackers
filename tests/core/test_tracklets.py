@@ -18,6 +18,8 @@ Sections
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
@@ -216,3 +218,33 @@ def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
     tracklet.update(re_match_bbox)
     assert tracklet._frozen_state is None  # _unfreeze() cleared it
     assert tracklet._observed is True
+
+
+def test_ocsort_oru_unfreeze_uses_unit_frame_step_predicts(bbox: np.ndarray) -> None:
+    """ORU virtual trajectory runs one Kalman predict per sub-step at frame_step=1.0.
+
+    Each sub-step goes through ``state_estimator.predict``, so ``clamp_velocity``
+    runs on every virtual ORU step — matching fixed-rate OC-SORT behaviour.
+    """
+    tracklet = OCSORTTracklet(bbox)
+    tracklet.predict()
+    tracklet.update(np.array([15.0, 25.0, 35.0, 45.0]))
+
+    missed_frames = 3
+    for _ in range(missed_frames):
+        tracklet.predict()
+
+    re_match_bbox = np.array([20.0, 30.0, 40.0, 50.0])
+    tracklet.predict()
+    expected_gap = missed_frames + 1
+
+    with patch.object(
+        tracklet.state_estimator,
+        "predict",
+        wraps=tracklet.state_estimator.predict,
+    ) as mock_predict:
+        tracklet.update(re_match_bbox)
+
+    assert mock_predict.call_count == expected_gap - 1
+    for call in mock_predict.call_args_list:
+        assert call.kwargs == {"frame_step": 1.0}

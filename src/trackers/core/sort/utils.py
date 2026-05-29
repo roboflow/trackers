@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from typing import TypeVar
 
 from trackers.core.sort.tracklet import SORTTracklet
-from trackers.utils.tracklet_lifecycle import within_lost_track_budget
+from trackers.utils.base_tracklet import BaseTracklet
 
 T_SORTTracklet = TypeVar("T_SORTTracklet", bound="SORTTracklet")
 
@@ -46,7 +46,7 @@ def _get_alive_tracklets(
     for tracklet in tracklets:
         is_mature = tracklet.number_of_successful_updates >= minimum_consecutive_frames
         is_active = tracklet.time_since_update == 0
-        within_budget = within_lost_track_budget(
+        within_budget = BaseTracklet.within_lost_track_budget(
             tracklet,
             maximum_frames_without_update=maximum_frames_without_update,
             maximum_time_without_update=maximum_time_without_update,

@@ -46,8 +46,11 @@ def test_predict_default_matches_unit_frame_step(
     np.testing.assert_allclose(default.kf.P, explicit.kf.P, atol=1e-12)
 
 
-def test_set_state_resets_motion_cache() -> None:
-    est = XYXYStateEstimator(BBOX.copy())
+@pytest.mark.parametrize("estimator_cls", ALL_ESTIMATORS)
+def test_set_state_resets_motion_cache(
+    estimator_cls: type[BaseStateEstimator],
+) -> None:
+    est = estimator_cls(BBOX.copy())
     est.predict(frame_step=0.5)
     assert est.motion.cached_dt == pytest.approx(0.5)
 

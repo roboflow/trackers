@@ -96,10 +96,7 @@ class ConstantVelocityDWNA:
     Holds per-coordinate calibration derived from a reference ``Q`` matrix and
     writes ``F(dt)`` / ``Q(dt)`` onto a ``KalmanFilter`` when ``dt`` changes.
 
-    ``calibration_dt`` is the frame step at which the caller's tuned ``Q`` was
-    defined (``1.0`` frame unit for SORT / ByteTrack). ``sync`` re-calibrates
-    when the active nominal step changes so ``build_Q(nominal_frame_step)``
-    reproduces that reference matrix.
+    Tuned ``Q`` is assumed to be valid at one nominal frame step (``1.0``).
     """
 
     dim_x: int
@@ -107,7 +104,6 @@ class ConstantVelocityDWNA:
     vel_idx: NDArray[np.int64]
     sigma_a2: NDArray[np.float64]
     extra_q_diagonal: NDArray[np.float64]
-    calibration_dt: float = 1.0
     reference_Q: NDArray[np.float64] | None = None
     cached_dt: float | None = field(default=None, init=False)
 
@@ -128,19 +124,14 @@ class ConstantVelocityDWNA:
             reference_Q=kf.Q.copy(),
         )
 
-    def calibrate_from_Q(self, Q: np.ndarray, calibration_dt: float = 1.0) -> None:
+    def calibrate_from_Q(self, Q: np.ndarray) -> None:
         """Back-calibrate σ_a² from velocity diagonals of a reference ``Q`` matrix.
 
         Args:
-            Q: Reference process-noise matrix valid at ``calibration_dt``.
-            calibration_dt: Step size (frame units or seconds) at which ``Q``
-                was tuned. Kinematic blocks scale as ``(dt / calibration_dt)²``.
+            Q: Reference process-noise matrix valid at one nominal frame step
+                (``1.0`` frame unit for SORT / ByteTrack tuning).
         """
-        if calibration_dt <= 0:
-            raise ValueError("calibration_dt must be positive.")
-        dt2 = calibration_dt * calibration_dt
-        self.calibration_dt = calibration_dt
-        self.sigma_a2 = np.asarray([float(Q[v, v]) / dt2 for v in self.vel_idx], dtype=np.float64)
+        self.sigma_a2 = np.asarray([float(Q[v, v]) for v in self.vel_idx], dtype=np.float64)
         self.extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
         self.reference_Q = np.asarray(Q, dtype=np.float64).copy()
         self.cached_dt = None
@@ -158,38 +149,20 @@ class ConstantVelocityDWNA:
             dt,
         )
 
-    def apply(self, kf: KalmanFilter, dt: float) -> None:
-        """Write ``F(dt)`` and ``Q(dt)`` onto *kf*."""
-        kf.F = self.build_F(dt)
-        kf.Q = self.build_Q(dt)
-
-    def sync(
-        self,
-        kf: KalmanFilter,
-        frame_step: float,
-        nominal_frame_step: float = 1.0,
-    ) -> None:
+    def sync(self, kf: KalmanFilter, frame_step: float) -> None:
         """Update *kf* motion matrices for a predict step in frame units.
 
-        ``nominal_frame_step`` is the reference step where tuned ``Q`` was
-        calibrated (``1.0`` for SORT / ByteTrack). When it changes, σ_a² is
-        re-derived from the current ``Q`` so gap scaling uses the tuned noise
-        level.
-
-        At the nominal step the caller's ``Q`` is kept unchanged (SORT /
-        ByteTrack tuning is diagonal and must not be replaced by a DWNA block
-        rebuild). Longer or shorter steps rebuild ``Q(frame_step)`` from the
-        calibrated model.
+        At the nominal step (``1.0``) the caller's tuned ``Q`` is kept unchanged
+        (SORT / ByteTrack tuning is diagonal and must not be replaced by a DWNA
+        block rebuild). Longer or shorter steps rebuild ``Q(frame_step)`` from
+        the calibrated model.
         """
-        if not np.isclose(self.calibration_dt, nominal_frame_step):
-            self.calibrate_from_Q(kf.Q, calibration_dt=nominal_frame_step)
-
         kf.F = self.build_F(frame_step)
 
         if self.cached_dt is not None and np.isclose(frame_step, self.cached_dt):
             return
 
-        if not np.isclose(frame_step, nominal_frame_step):
+        if not np.isclose(frame_step, 1.0):
             kf.Q = self.build_Q(frame_step)
         elif self.reference_Q is not None:
             kf.Q = self.reference_Q.copy()

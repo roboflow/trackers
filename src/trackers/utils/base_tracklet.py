@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -53,6 +55,18 @@ class BaseTracklet(ABC):
         if timing.elapsed_seconds is not None:
             self.time_since_update_seconds += timing.elapsed_seconds
         self.age += 1
+
+    @staticmethod
+    def within_lost_track_budget(
+        tracklet: BaseTracklet,
+        *,
+        maximum_frames_without_update: int,
+        maximum_time_without_update: float | None = None,
+    ) -> bool:
+        """Return whether a tracklet is still within its lost-track budget."""
+        if maximum_time_without_update is not None:
+            return tracklet.time_since_update_seconds < maximum_time_without_update
+        return tracklet.time_since_update < maximum_frames_without_update
 
     @abstractmethod
     def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
