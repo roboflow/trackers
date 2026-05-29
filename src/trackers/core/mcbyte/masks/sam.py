@@ -50,7 +50,6 @@ def _ensure_checkpoint_exists(
     urlretrieve(checkpoint_url, checkpoint_path)  # noqa: S310
 
 
-
 class SAMBoxMaskGenerator(MaskGenerator):
     """Generate binary masks from tracklet bounding boxes using Segment Anything.
 
