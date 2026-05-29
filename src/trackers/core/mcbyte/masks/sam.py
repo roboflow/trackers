@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
 import numpy as np
@@ -39,14 +40,15 @@ def _ensure_checkpoint_exists(
     if checkpoint_url is None:
         raise ValueError(f"No default checkpoint URL for model_type={model_type!r}.")
 
+    parsed_url = urlparse(checkpoint_url)
+    if parsed_url.scheme != "https":
+        raise ValueError(f"Unsupported checkpoint URL scheme: {parsed_url.scheme!r}")
+
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
     logger.info("Downloading SAM checkpoint to %s", checkpoint_path)
+    urlretrieve(checkpoint_url, checkpoint_path)  # noqa: S310
 
-    urlretrieve(
-        checkpoint_url,
-        checkpoint_path,
-    )
 
 
 class SAMBoxMaskGenerator(MaskGenerator):
