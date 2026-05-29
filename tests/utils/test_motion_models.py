@@ -75,9 +75,7 @@ def test_build_Q_preserves_non_kinematic_diagonal() -> None:
     )
     for frame_step in (0.5, 1.0, 2.0):
         Q_built = model.build_Q(frame_step)
-        assert Q_built[3, 3] == pytest.approx(7.5), (
-            f"Q[3,3] not preserved at frame_step={frame_step}"
-        )
+        assert Q_built[3, 3] == pytest.approx(7.5), f"Q[3,3] not preserved at frame_step={frame_step}"
 
 
 def test_sync_preserves_reference_q_at_unit_frame_step() -> None:
