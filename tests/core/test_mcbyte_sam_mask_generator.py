@@ -6,10 +6,8 @@
 
 from __future__ import annotations
 
-import numpy as np
 import torch
 
-from trackers.core.mcbyte.masks.base import TrackletSnapshot
 from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
 
 
@@ -29,6 +27,6 @@ def test_sam_box_mask_generator_converts_sam_masks_to_expected_shape() -> None:
     assert converted_masks[0, 10:20, 30:40].all()
     # No extra True pixels elsewhere.
     assert converted_masks[0].sum() == 10 * 10
-    
+
     assert converted_masks[1, 50:70, 80:90].all()
     assert converted_masks[1].sum() == 20 * 10

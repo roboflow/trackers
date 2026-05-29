@@ -26,6 +26,7 @@ SAM_DEFAULT_CHECKPOINT_PATHS = {
     "vit_b": Path("models/sam/sam_vit_b_01ec64.pth"),
 }
 
+
 def _ensure_checkpoint_exists(
     checkpoint_path: Path,
     model_type: str,
@@ -36,9 +37,7 @@ def _ensure_checkpoint_exists(
 
     checkpoint_url = SAM_CHECKPOINT_URLS.get(model_type)
     if checkpoint_url is None:
-        raise ValueError(
-            f"No default checkpoint URL for model_type={model_type!r}."
-        )
+        raise ValueError(f"No default checkpoint URL for model_type={model_type!r}.")
 
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -48,6 +47,7 @@ def _ensure_checkpoint_exists(
         checkpoint_url,
         checkpoint_path,
     )
+
 
 class SAMBoxMaskGenerator(MaskGenerator):
     """Generate binary masks from tracklet bounding boxes using Segment Anything.
@@ -85,9 +85,7 @@ class SAMBoxMaskGenerator(MaskGenerator):
             raise ImportError(msg) from exc
 
         self.checkpoint_path = (
-            Path(checkpoint_path)
-            if checkpoint_path is not None
-            else SAM_DEFAULT_CHECKPOINT_PATHS[model_type]
+            Path(checkpoint_path) if checkpoint_path is not None else SAM_DEFAULT_CHECKPOINT_PATHS[model_type]
         )
 
         _ensure_checkpoint_exists(
@@ -137,19 +135,16 @@ class SAMBoxMaskGenerator(MaskGenerator):
             frame.shape[:2],
         )
 
-        #McByte expects one mask per box, hence multimask_output=False
+        # McByte expects one mask per box, hence multimask_output=False
         masks, _, _ = self.predictor.predict_torch(
             point_coords=None,
             point_labels=None,
             boxes=transformed_boxes,
-            multimask_output=False, 
+            multimask_output=False,
         )
 
         masks_np = self._convert_masks(masks)
-        tracklet_mask_dict = {
-            tracklet.tracker_id: mask_index
-            for mask_index, tracklet in enumerate(tracklets)
-        }
+        tracklet_mask_dict = {tracklet.tracker_id: mask_index for mask_index, tracklet in enumerate(tracklets)}
 
         return MaskOutput(
             masks=masks_np,
