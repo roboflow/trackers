@@ -57,7 +57,8 @@ CODABENCH_POLL_INTERVAL ?= 10
 # BoT-SORT requires CMC on by default for the published numbers.
 ifeq ($(TRACKER),botsort)
   ifeq ($(strip $(FIXED_PARAMS)),)
-    FIXED_PARAMS := {"enable_cmc": true}
+    # No spaces — Make word-splits $(FIXED_PARAMS) when expanding recipe lines.
+    FIXED_PARAMS := {"enable_cmc":true}
   endif
 endif
 
@@ -243,7 +244,7 @@ benchmark:
 	    if [ "$(BENCHMARK_CONFIG)" = "tuned" ] || [ "$(BENCHMARK_CONFIG)" = "all" ]; then \
 	      echo ""; echo "===== [$$t/$$d] tune ====="; \
 	      extras=""; \
-	      if [ "$$t" = "botsort" ]; then extras='FIXED_PARAMS={"enable_cmc": true}'; fi; \
+	      if [ "$$t" = "botsort" ]; then extras='FIXED_PARAMS={"enable_cmc":true}'; fi; \
 	      $(MAKE) tune TRACKER=$$t DATASET=$$d N_TRIALS=$(N_TRIALS) $$extras || exit 1; \
 	      echo "===== [$$t/$$d] tuned ====="; \
 	      $(MAKE) track-tuned TRACKER=$$t DATASET=$$d || exit 1; \
