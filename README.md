@@ -156,7 +156,8 @@ Want to see it in action before writing any code? Try trackers in your browser w
 - **Questions?** Find us on [Discord](https://discord.gg/GbfgXGJ8Bk).
 
 ## Community Ports
-* **C++ Edge Port:** A highly-optimized, hardware-agnostic C++ translation of this repository (BoTSORT, ByteTrack, OC-SORT and SORT) designed for real-time Edge AI deployments (Raspberry Pi, Jetson) is available at [EdgeTrackers-CPP](https://github.com/MatinRafiei/roboflow-trackers-cpp.git).
+
+- **C++ Edge Port:** A highly-optimized, hardware-agnostic C++ translation of this repository (BoTSORT, ByteTrack, OC-SORT and SORT) designed for real-time Edge AI deployments (Raspberry Pi, Jetson) is available at [EdgeTrackers-CPP](https://github.com/MatinRafiei/roboflow-trackers-cpp.git).
 
 ## Contributing
 
