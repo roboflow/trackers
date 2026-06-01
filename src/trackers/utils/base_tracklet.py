@@ -4,10 +4,13 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import numpy as np
 
+from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.state_representations import BaseStateEstimator
 
 
@@ -25,6 +28,7 @@ class BaseTracklet(ABC):
 
         self.tracker_id = -1
         self.time_since_update = 0
+        self.time_since_update_seconds: float = 0.0
         self.number_of_successful_consecutive_updates = 0
 
     @classmethod
@@ -45,19 +49,31 @@ class BaseTracklet(ABC):
         """
         pass
 
+    def _advance_miss_clocks(self, timing: PredictTiming) -> None:
+        """Advance miss counters by one step."""
+        self.time_since_update += 1
+        if timing.elapsed_seconds is not None:
+            self.time_since_update_seconds += timing.elapsed_seconds
+        self.age += 1
+
+    @staticmethod
+    def within_lost_track_budget(
+        tracklet: BaseTracklet,
+        *,
+        maximum_frames_without_update: int,
+        maximum_time_without_update: float | None = None,
+    ) -> bool:
+        """Return whether a tracklet is still within its lost-track budget."""
+        if maximum_time_without_update is not None:
+            return tracklet.time_since_update_seconds < maximum_time_without_update
+        return tracklet.time_since_update < maximum_frames_without_update
+
     @abstractmethod
-    def predict(self, dt: float = 1.0) -> np.ndarray:
+    def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict next bounding box position and advance missed-frame state.
 
         Propagates the Kalman filter and increments `time_since_update` (and
-        `age`) on every call — matched or unmatched. Subclasses that track
-        consecutive-update counters must also reset them here when
-        `time_since_update > 0` before incrementing.
-
-        Args:
-            dt: Time elapsed since the last predict, in seconds. Default
-                `1.0` reproduces the implicit "one frame per call"
-                semantics used everywhere before dynamic-frame-rate support.
+        `age`) on every call — matched or unmatched.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.

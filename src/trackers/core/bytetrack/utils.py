@@ -16,33 +16,31 @@ def _get_alive_tracklets(
     tracklets: Sequence[T_ByteTrackTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
+    maximum_time_without_update: float | None = None,
 ) -> list[T_ByteTrackTracklet]:
     """
-    Remove dead or immature lost tracklets and get alive trackers
-    that are within `maximum_frames_without_update` AND (it's mature OR
-    it was just updated).
+    Remove dead or immature lost tracklets and return alive trackers
+    that are within the time/frame budget AND (mature OR just updated).
 
     Note:
         Maturity is sticky: once a tracklet has reached
         `minimum_consecutive_frames` consecutive observations it is
         assigned a non-negative `tracker_id` (i.e. `tracker_id != -1`)
         and stays "confirmed" through subsequent missed frames until
-        pruned by `maximum_frames_without_update`. This matches the
-        original ByteTrack paper's "confirmed track" semantics. For
-        unconfirmed tracks (`tracker_id == -1`), maturity is determined
-        by `number_of_successful_consecutive_updates`; this counter is
-        reset to 0 in `predict()` when `time_since_update > 0` (i.e.
-        on any missed frame), so it correctly reflects only consecutive
-        observations.
+        pruned. This matches the original ByteTrack paper's "confirmed
+        track" semantics. For unconfirmed tracks (`tracker_id == -1`),
+        maturity is determined by `number_of_successful_consecutive_updates`;
+        this counter is reset to 0 in `predict()` on any missed frame.
 
     Args:
         tracklets: List of BaseTracklet objects.
-        minimum_consecutive_frames: Number of consecutive frames that an object
-            must be tracked before it is considered a 'valid' track. Used as
-            the bootstrap threshold for tracks that have not yet been
-            assigned a tracker_id.
-        maximum_frames_without_update: Maximum number of frames without update
-            before a track is considered dead.
+        minimum_consecutive_frames: Number of consecutive frames an object
+            must be tracked before it is considered a valid track.
+        maximum_frames_without_update: Frame-count budget (used when
+            ``maximum_time_without_update`` is ``None``).
+        maximum_time_without_update: Seconds budget. When provided, this
+            criterion is used **instead of** the frame-count budget, enabling
+            correct pruning under variable frame rates.
 
     Returns:
         List of alive tracklets.
@@ -57,6 +55,11 @@ def _get_alive_tracklets(
             tracklet.number_of_successful_consecutive_updates >= minimum_consecutive_frames
         )
         is_active = tracklet.time_since_update == 0
-        if tracklet.time_since_update < maximum_frames_without_update and (is_mature or is_active):
+        within_budget = BaseTracklet.within_lost_track_budget(
+            tracklet,
+            maximum_frames_without_update=maximum_frames_without_update,
+            maximum_time_without_update=maximum_time_without_update,
+        )
+        if within_budget and (is_mature or is_active):
             alive_tracklets.append(tracklet)
     return alive_tracklets

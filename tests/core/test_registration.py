@@ -322,7 +322,12 @@ class TestSearchSpaceValidation:
                 def __init__(self) -> None:
                     pass
 
-                def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
+                def update(
+                    self,
+                    detections: Any,
+                    frame: np.ndarray | None = None,
+                    timestamp: float | None = None,
+                ) -> Any:
                     return detections
 
                 def reset(self) -> None:
@@ -337,7 +342,12 @@ class TestSearchSpaceValidation:
             def __init__(self) -> None:
                 pass
 
-            def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
+            def update(
+                self,
+                detections: Any,
+                frame: np.ndarray | None = None,
+                timestamp: float | None = None,
+            ) -> Any:
                 return detections
 
             def reset(self) -> None:
@@ -356,7 +366,12 @@ class TestSearchSpaceValidation:
             def __init__(self, x: int = 1) -> None:
                 pass
 
-            def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
+            def update(
+                self,
+                detections: Any,
+                frame: np.ndarray | None = None,
+                timestamp: float | None = None,
+            ) -> Any:
                 return detections
 
             def reset(self) -> None:
@@ -408,7 +423,12 @@ class TestSearchSpaceValidation:
                 def __init__(self, x: int = 0) -> None:
                     pass
 
-                def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
+                def update(
+                    self,
+                    detections: Any,
+                    frame: np.ndarray | None = None,
+                    timestamp: float | None = None,
+                ) -> Any:
                     return detections
 
                 def reset(self) -> None:

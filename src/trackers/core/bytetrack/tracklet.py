@@ -7,6 +7,7 @@
 import numpy as np
 
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
@@ -35,9 +36,10 @@ class ByteTrackTracklet(BaseTracklet):
         """
         self.state_estimator.update(bbox)
         self.time_since_update = 0
+        self.time_since_update_seconds = 0.0
         self.number_of_successful_consecutive_updates += 1
 
-    def predict(self, dt: float = 1.0) -> np.ndarray:
+    def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict next bounding box position and advance missed-frame clock.
 
         Propagates the Kalman filter and advances `time_since_update`, `age`,
@@ -46,20 +48,14 @@ class ByteTrackTracklet(BaseTracklet):
         `number_of_successful_consecutive_updates` to 0 so the counter
         reflects only truly consecutive observations.
 
-        Args:
-            dt: Time elapsed since the last predict, in seconds. Default
-                `1.0` reproduces the per-frame semantics used everywhere
-                before dynamic-frame-rate support.
-
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
-        self.state_estimator.predict(dt)
+        self.state_estimator.predict(timing.frame_step)
 
         if self.time_since_update > 0:
             self.number_of_successful_consecutive_updates = 0
-        self.time_since_update += 1
-        self.age += 1
+        self._advance_miss_clocks(timing)
         return self.state_estimator.state_to_bbox()
 
     def get_state_bbox(self) -> np.ndarray:

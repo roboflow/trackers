@@ -18,6 +18,8 @@ from typing import Any, ClassVar, Protocol, Union, get_args, get_origin
 import numpy as np
 import supervision as sv
 
+from trackers.utils.predict_timing import PredictTiming
+
 
 @dataclass
 class ParameterInfo:
@@ -318,6 +320,7 @@ class BaseTracker(ABC):
     # list[ConcreteTracklet] in subclasses rejects list[TrackletProtocol] base.
     tracks: list[Any]
     maximum_frames_without_update: int
+    maximum_time_without_update: float | None
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.
@@ -368,6 +371,20 @@ class BaseTracker(ABC):
         """
         return sorted(cls._registry.keys())
 
+    _frame_rate: float
+    _last_timestamp: float | None
+
+    def _init_timestamp_state(self, frame_rate: float) -> None:
+        """Register reference FPS and reset timestamp bookkeeping.
+
+        Call from ``__init__`` on all concrete trackers.
+
+        Args:
+            frame_rate: Reference frames per second for bootstrap elapsed time.
+        """
+        self._frame_rate = frame_rate
+        self._last_timestamp = None
+
     def _warn_if_frame_unused(self, frame: np.ndarray | None) -> None:
         """Emit a UserWarning when a frame is passed to a tracker that ignores it.
 
@@ -384,11 +401,68 @@ class BaseTracker(ABC):
                 stacklevel=3,
             )
 
+    def _elapsed_seconds_since_last(self, timestamp: float) -> float:
+        """Return wall-clock seconds since the previous timestamped update.
+
+        Updates ``_last_timestamp``. Bootstrap (first call) returns
+        ``1 / frame_rate``. Non-monotonic timestamps return ``0.0`` and warn.
+        """
+        last = self._last_timestamp
+        self._last_timestamp = timestamp
+
+        if last is None:
+            # Bootstrap: no prior timestamp, so we cannot compute t - t_prev.
+            # Use one nominal frame period (1 / frame_rate) so the first Kalman
+            # step is frame_step=1.0 — matching fixed-rate behaviour rather than
+            # using the absolute timestamp value (e.g. 37.2 s would break tuning).
+            return 1.0 / self._frame_rate
+
+        elapsed = timestamp - last
+        if elapsed <= 0:
+            warnings.warn(
+                f"{type(self).__name__}: non-positive elapsed={elapsed:.6f}s from "
+                "non-monotonic timestamp. Skipping predict for this step.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return 0.0
+        return elapsed
+
+    def _predict_timing(self, timestamp: float | None) -> PredictTiming:
+        """Build predict timing from an optional timestamp."""
+        if timestamp is None:
+            return PredictTiming(frame_step=1.0, elapsed_seconds=None)
+
+        elapsed = self._elapsed_seconds_since_last(timestamp)
+        if elapsed <= 0.0:
+            return PredictTiming(frame_step=0.0, elapsed_seconds=elapsed)
+
+        return PredictTiming(
+            frame_step=elapsed * self._frame_rate,
+            elapsed_seconds=elapsed,
+        )
+
+    def _predict_tracklets(self, tracklets: list[Any], timing: PredictTiming) -> None:
+        """Predict all tracklets unless the timestamp did not advance."""
+        if timing.skip_predict:
+            return
+        for tracklet in tracklets:
+            tracklet.predict(timing)
+
+    def _lost_track_time_budget(
+        self,
+        timing: PredictTiming,
+        seconds_budget: float,
+    ) -> float | None:
+        """Return the seconds lost-track budget when timestamps are in use."""
+        return seconds_budget if timing.uses_elapsed_time else None
+
     @abstractmethod
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        timestamp: float | None = None,
     ) -> sv.Detections:
         """Process new detections and assign track IDs.
 
@@ -399,6 +473,10 @@ class BaseTracker(ABC):
             detections: Current frame detections with xyxy, confidence, class_id.
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
                 Used by trackers with camera motion compensation (e.g. BoTSORT).
+            timestamp: Absolute time of the current frame in seconds, or
+                ``None`` for fixed-rate mode (``frame_step = 1.0`` per call).
+                When provided, elapsed seconds are converted to Kalman frame
+                units via ``* frame_rate``; pruning uses seconds directly.
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each

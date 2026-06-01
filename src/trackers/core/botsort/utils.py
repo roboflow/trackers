@@ -9,12 +9,14 @@ from collections.abc import Sequence
 import numpy as np
 
 from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.utils.base_tracklet import BaseTracklet
 
 
 def get_alive_tracklets(
     tracklets: Sequence[BoTSORTTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
+    maximum_time_without_update: float | None = None,
 ) -> list[BoTSORTTracklet]:
     """
     Remove dead or immature lost tracklets and return alive ones.
@@ -29,7 +31,9 @@ def get_alive_tracklets(
             must have before it is considered a 'valid' track.
         maximum_frames_without_update: Maximum number of frames without update
             before a track is considered dead.
-
+        maximum_time_without_update: Seconds budget. When provided, this
+            criterion is used **instead of** the frame-count budget, enabling
+            correct pruning under variable frame rates.
     Returns:
         List of alive tracklets.
     """
@@ -37,7 +41,12 @@ def get_alive_tracklets(
     for tracker in tracklets:
         is_mature = tracker.number_of_successful_updates >= minimum_consecutive_frames
         is_active = tracker.time_since_update == 0
-        if tracker.time_since_update < maximum_frames_without_update and (is_mature or is_active):
+        within_budget = BaseTracklet.within_lost_track_budget(
+            tracker,
+            maximum_frames_without_update=maximum_frames_without_update,
+            maximum_time_without_update=maximum_time_without_update,
+        )
+        if within_budget and (is_mature or is_active):
             alive_tracklets.append(tracker)
     return alive_tracklets
 

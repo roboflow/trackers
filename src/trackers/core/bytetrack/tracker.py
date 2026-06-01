@@ -99,10 +99,10 @@ class ByteTrackTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
         iou: BaseIoU | None = None,
     ) -> None:
-        # Calculate maximum frames without update based on lost_track_buffer and
-        # frame_rate. This scales the buffer based on the frame rate to ensure
-        # consistent time-based tracking across different frame rates.
+        # `lost_track_buffer` is defined at 30 FPS; scale to actual frame_rate
+        # for frame-count pruning, and convert to seconds for time-based pruning.
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
+        self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
@@ -111,10 +111,13 @@ class ByteTrackTracker(BaseTracker):
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
 
+        self._init_timestamp_state(frame_rate)
+
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        timestamp: float | None = None,
     ) -> sv.Detections:
         """Update tracks state with new detections and return tracked objects.
         Performs Kalman filter prediction, two-stage association (high then low
@@ -129,6 +132,8 @@ class ByteTrackTracker(BaseTracker):
                 tracks regardless of `track_activation_threshold`.
             frame: Ignored by ByteTrack. If provided (not `None`), a warning is
                 emitted.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
@@ -136,6 +141,8 @@ class ByteTrackTracker(BaseTracker):
             differ from input.
         """
         self._warn_if_frame_unused(frame)
+        timing = self._predict_timing(timestamp)
+
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
@@ -144,8 +151,7 @@ class ByteTrackTracker(BaseTracker):
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
 
-        for tracker in self.tracks:
-            tracker.predict()
+        self._predict_tracklets(self.tracks, timing)
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -210,6 +216,10 @@ class ByteTrackTracker(BaseTracker):
             tracklets=self.tracks,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
             maximum_frames_without_update=self.maximum_frames_without_update,
+            maximum_time_without_update=self._lost_track_time_budget(
+                timing,
+                self.maximum_time_without_update,
+            ),
         )
 
         # Build final sv.Detections from original by indexing
@@ -290,3 +300,4 @@ class ByteTrackTracker(BaseTracker):
         """
         self.tracks = []
         ByteTrackTracklet.count_id = 0
+        self._last_timestamp = None

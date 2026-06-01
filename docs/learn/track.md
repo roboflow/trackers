@@ -133,6 +133,83 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 ---
 
+## Variable frame rate
+
+By default, trackers assume **one `update()` call per frame** at a steady rate. When your pipeline has **irregular timing** — frame skips, variable-FPS video, async detectors, or batch inference with gaps — pass a monotonic **`timestamp`** in seconds to `update()`. All four trackers derive elapsed time between updates, scale Kalman prediction (`F`, `Q`) accordingly, and prune lost tracks on a **seconds** budget instead of a frame count.
+
+`frame_rate` is required in both modes. In fixed-rate mode it scales frame-based thresholds (`lost_track_buffer`, etc.). In dynamic mode it is the **reference FPS** used to bootstrap the first timestamped step and to convert frame-denominated parameters to seconds.
+
+|                     | Fixed rate (default)                                 | Dynamic rate                                 |
+| ------------------- | ---------------------------------------------------- | -------------------------------------------- |
+| `timestamp`         | `None` (omit)                                        | monotonic seconds, e.g. from video clock     |
+| Kalman `frame_step` | `1.0` per call (**frame units**, see below)          | `elapsed_seconds × frame_rate` (frame units) |
+| Lost-track budget   | frames (`lost_track_buffer`, scaled by `frame_rate`) | seconds (`lost_track_buffer / 30`)           |
+| Supported trackers  | all                                                  | all four trackers                            |
+
+### Two time quantities: `frame_step` and `elapsed_seconds`
+
+Kalman prediction and lost-track pruning use **different units on purpose**:
+
+**Fixed-rate mode** (`timestamp=None`, the default):
+
+- Every `update()` passes **`frame_step = 1.0`** to the Kalman predict step.
+- This is **one frame index step**, not one second. Velocity in the filter state behaves as **displacement per frame** (e.g. pixels per frame).
+- The tuned `F` and `Q` matrices from SORT / ByteTrack assume this convention. The first predict with `frame_step = 1.0` keeps those matrices unchanged, which preserves backward-compatible behaviour for all existing call sites and benchmarks.
+- `frame_rate` does **not** enter the Kalman step here; it only scales frame-count thresholds like `lost_track_buffer`.
+
+**Dynamic-rate mode** (`timestamp` supplied):
+
+- Timestamps provide elapsed **seconds** between calls (`1 / frame_rate` bootstrap, then `t − t_prev`).
+- Kalman prediction still uses **frame units**: `frame_step = elapsed_seconds × frame_rate`. At constant FPS this equals `1.0`, matching fixed-rate behaviour; after frame drops it equals the number of skipped frame periods.
+- `F(frame_step)` and `Q(frame_step)` scale with that frame-unit step. Process noise grows with longer gaps; position prediction uses `velocity × frame_step` in the same frame-unit convention as SORT / ByteTrack tuning.
+- Lost-track pruning switches to a seconds budget (`time_since_update_seconds`).
+
+These conventions share one Kalman tuning curve. At a constant 25 FPS with no drops, timestamp mode uses `dt = 1.0` frame units — identical to fixed mode. Dynamic mode is meant for **variable** gaps between updates, where static mode would still use `dt = 1.0` per processed frame regardless of the real gap.
+
+!!! note "OC-SORT ORU sub-steps"
+
+    OC-SORT's Observation-Centric Re-Update virtual trajectory still advances the
+    Kalman filter in unit-frame steps inside `_unfreeze_*`. Main-track predict
+    and lost-track pruning respect `timestamp`; ORU gap length follows frame
+    counts, not wall-clock seconds.
+
+=== "Python"
+
+    ```python
+    import cv2
+
+    import supervision as sv
+    from inference import get_model
+    from trackers import ByteTrackTracker
+
+    model = get_model("rfdetr-nano")
+    tracker = ByteTrackTracker(frame_rate=30.0, lost_track_buffer=30)
+
+    cap = cv2.VideoCapture("source.mp4")
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Monotonic timestamp in seconds (OpenCV reports milliseconds).
+        timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+
+        result = model.infer(frame)[0]
+        detections = sv.Detections.from_inference(result)
+        detections = tracker.update(detections, timestamp=timestamp)
+    ```
+
+**Behaviour notes:**
+
+- **Backward compatible:** omitting `timestamp` reproduces today's tracking behaviour (`frame_step = 1.0` every call).
+- **First timestamped call:** uses `elapsed_seconds = 1 / frame_rate` (bootstrap before a previous timestamp exists).
+- **Duplicate or non-monotonic timestamps:** predict is skipped for that step; a warning is emitted on each occurrence.
+- **Per-call mode:** elapsed-second accumulation and lost-track pruning apply only when **that** `update()` call passes
+    `timestamp`. Omitting `timestamp` on a later call returns to `frame_step = 1.0` and frame-count pruning for that step.
+- **Between videos:** call `tracker.reset()` so timestamp state does not carry over.
+
+---
+
 ## Detectors
 
 Trackers don't detect objects—they link detections across frames. A detection or segmentation model provides per-frame bounding boxes or masks that the tracker uses to assign and maintain IDs.
