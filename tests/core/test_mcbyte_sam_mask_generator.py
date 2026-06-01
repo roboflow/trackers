@@ -6,9 +6,11 @@
 
 from __future__ import annotations
 
-import torch
+import pytest
 
-from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
+torch = pytest.importorskip("torch")
+
+from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator  # noqa: E402
 
 
 def test_sam_box_mask_generator_converts_sam_masks_to_expected_shape() -> None:

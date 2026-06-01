@@ -209,7 +209,7 @@ def main() -> None:
     if generator.device.type == "cuda":
         print(f"GPU: {torch.cuda.get_device_name(generator.device)} (CUDA {torch.version.cuda})")
     else:
-        print("GPU: CPU")
+        print("GPU: N/A (running on CPU)")
 
     mask_output = generator.generate(
         frame=image_rgb,

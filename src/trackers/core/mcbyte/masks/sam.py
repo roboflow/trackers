@@ -10,12 +10,12 @@ import logging
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
-from urllib.request import urlretrieve
 
 import numpy as np
 import torch
 
 from trackers.core.mcbyte.masks.base import MaskGenerator, MaskOutput, TrackletSnapshot
+from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def _ensure_checkpoint_exists(
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
     logger.info("Downloading SAM checkpoint to %s", checkpoint_path)
-    urlretrieve(checkpoint_url, checkpoint_path)  # noqa: S310
+    _download_file(checkpoint_url, checkpoint_path)
 
 
 class SAMBoxMaskGenerator(MaskGenerator):
@@ -85,9 +85,12 @@ class SAMBoxMaskGenerator(MaskGenerator):
             )
             raise ImportError(msg) from exc
 
-        self.checkpoint_path = (
-            Path(checkpoint_path) if checkpoint_path is not None else SAM_DEFAULT_CHECKPOINT_PATHS[model_type]
-        )
+        default_checkpoint = SAM_DEFAULT_CHECKPOINT_PATHS.get(model_type)
+        if default_checkpoint is None:
+            raise ValueError(
+                f"Unsupported model_type={model_type!r}. Supported types: {sorted(SAM_DEFAULT_CHECKPOINT_PATHS)}"
+            )
+        self.checkpoint_path = Path(checkpoint_path) if checkpoint_path is not None else default_checkpoint
 
         _ensure_checkpoint_exists(
             checkpoint_path=self.checkpoint_path,
@@ -105,7 +108,6 @@ class SAMBoxMaskGenerator(MaskGenerator):
         frame: np.ndarray,
         tracklets: list[TrackletSnapshot],
     ) -> MaskOutput:
-        height, width = frame.shape[:2]
         """Generate one binary mask per tracklet bounding box.
 
         Args:
@@ -118,6 +120,7 @@ class SAMBoxMaskGenerator(MaskGenerator):
             the number of input tracklets. ``tracklet_mask_dict`` maps each
             tracker ID to its local mask index in the returned mask array.
         """
+        height, width = frame.shape[:2]
 
         if len(tracklets) == 0:
             return MaskOutput(
