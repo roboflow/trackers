@@ -4,7 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-import warnings
 from typing import ClassVar, cast
 
 import numpy as np
@@ -129,7 +128,7 @@ class BoTSORTTracker(BaseTracker):
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
-        self.maximum_time_without_update: float | None = None
+        self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold_first_assoc = minimum_iou_threshold_first_assoc
         self.minimum_iou_threshold_second_assoc = minimum_iou_threshold_second_assoc
@@ -144,6 +143,8 @@ class BoTSORTTracker(BaseTracker):
 
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
+
+        self._init_timestamp_state(frame_rate)
 
     def update(
         self,
@@ -163,9 +164,8 @@ class BoTSORTTracker(BaseTracker):
                 it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
                 Used for camera motion compensation when ``enable_cmc=True``.
-            timestamp: Absolute time of the current frame in seconds. BoT-SORT
-                does not yet support variable-rate prediction; if provided, a
-                warning is emitted and the tracker continues in fixed-rate mode.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             New sv.Detections with tracker_id assigned for each detection.
@@ -177,14 +177,7 @@ class BoTSORTTracker(BaseTracker):
               tracker can estimate a global affine transform and warp predicted
               track states before association.
         """
-        if timestamp is not None:
-            warnings.warn(
-                "BoTSORTTracker does not yet support variable frame-rate via timestamp. "
-                "The timestamp argument is ignored and fixed-rate mode is used. "
-                "Variable-rate support for BoT-SORT is planned for a future release.",
-                UserWarning,
-                stacklevel=2,
-            )
+        timing = self._predict_timing(timestamp)
         self.frame_id += 1
 
         if len(self.tracks) == 0 and len(detections) == 0:
@@ -196,8 +189,7 @@ class BoTSORTTracker(BaseTracker):
         out_tracker_ids: list[int] = []
 
         # Predict new locations for existing tracks
-        for tracker in self.tracks:
-            tracker.predict()
+        self._predict_tracklets(self.tracks, timing)
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -321,6 +313,10 @@ class BoTSORTTracker(BaseTracker):
             tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_time_without_update=self._lost_track_time_budget(
+                timing,
+                self.maximum_time_without_update,
+            ),
         )
 
         # Build final detections
@@ -419,6 +415,7 @@ class BoTSORTTracker(BaseTracker):
         self.tracks = []
         self.frame_id = 0
         BoTSORTTracklet.count_id = 0
+        self._last_timestamp = None
         if self.cmc is not None:
             self.cmc.reset()
 

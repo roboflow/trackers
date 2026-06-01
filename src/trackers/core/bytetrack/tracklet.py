@@ -48,14 +48,10 @@ class ByteTrackTracklet(BaseTracklet):
         `number_of_successful_consecutive_updates` to 0 so the counter
         reflects only truly consecutive observations.
 
-        Args:
-            timing: Kalman frame step and optional elapsed seconds for this
-                update.
-
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
-        self.state_estimator.predict(frame_step=timing.frame_step)
+        self.state_estimator.predict(timing.frame_step)
 
         if self.time_since_update > 0:
             self.number_of_successful_consecutive_updates = 0

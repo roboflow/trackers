@@ -135,7 +135,7 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 ## Variable frame rate
 
-By default, trackers assume **one `update()` call per frame** at a steady rate. When your pipeline has **irregular timing** — frame skips, variable-FPS video, async detectors, or batch inference with gaps — pass a monotonic **`timestamp`** in seconds to `update()`. SORT and ByteTrack will derive the elapsed time between updates, scale Kalman prediction (`F`, `Q`) accordingly, and prune lost tracks on a **seconds** budget instead of a frame count.
+By default, trackers assume **one `update()` call per frame** at a steady rate. When your pipeline has **irregular timing** — frame skips, variable-FPS video, async detectors, or batch inference with gaps — pass a monotonic **`timestamp`** in seconds to `update()`. All four trackers derive elapsed time between updates, scale Kalman prediction (`F`, `Q`) accordingly, and prune lost tracks on a **seconds** budget instead of a frame count.
 
 `frame_rate` is required in both modes. In fixed-rate mode it scales frame-based thresholds (`lost_track_buffer`, etc.). In dynamic mode it is the **reference FPS** used to bootstrap the first timestamped step and to convert frame-denominated parameters to seconds.
 
@@ -144,7 +144,7 @@ By default, trackers assume **one `update()` call per frame** at a steady rate. 
 | `timestamp`         | `None` (omit)                                        | monotonic seconds, e.g. from video clock     |
 | Kalman `frame_step` | `1.0` per call (**frame units**, see below)          | `elapsed_seconds × frame_rate` (frame units) |
 | Lost-track budget   | frames (`lost_track_buffer`, scaled by `frame_rate`) | seconds (`lost_track_buffer / 30`)           |
-| Supported trackers  | all                                                  | **SORT**, **ByteTrack**                      |
+| Supported trackers  | all                                                  | all four trackers                            |
 
 ### Two time quantities: `frame_step` and `elapsed_seconds`
 
@@ -166,9 +166,12 @@ Kalman prediction and lost-track pruning use **different units on purpose**:
 
 These conventions share one Kalman tuning curve. At a constant 25 FPS with no drops, timestamp mode uses `dt = 1.0` frame units — identical to fixed mode. Dynamic mode is meant for **variable** gaps between updates, where static mode would still use `dt = 1.0` per processed frame regardless of the real gap.
 
-!!! note "OC-SORT and BoT-SORT"
+!!! note "OC-SORT ORU sub-steps"
 
-    These trackers accept the `timestamp` argument for API consistency but **do not use it yet**. Passing a timestamp emits a warning and the tracker continues in fixed-rate mode.
+    OC-SORT's Observation-Centric Re-Update virtual trajectory still advances the
+    Kalman filter in unit-frame steps inside ``_unfreeze_*``. Main-track predict
+    and lost-track pruning respect ``timestamp``; ORU gap length follows frame
+    counts, not wall-clock seconds.
 
 === "Python"
 

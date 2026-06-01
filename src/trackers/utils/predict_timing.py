@@ -4,7 +4,12 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Timing payload for one tracklet predict step."""
+"""Timing for one Kalman predict step.
+
+Stores how large the predict step is (in frame units) and how many seconds passed since the
+last step. Two fields are used because Kalman ``F``/``Q`` scale in frame units,
+while timestamped updates also need real elapsed time between calls.
+"""
 
 from __future__ import annotations
 
@@ -13,27 +18,21 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PredictTiming:
-    """Kalman frame step and optional wall-clock elapsed time for one predict.
-
-    Attributes:
-        frame_step: Kalman ``F`` / ``Q`` step in **frame units** (``1.0`` = one
-            nominal frame at the tuned reference).
-        elapsed_seconds: ``None`` in fixed-rate mode; otherwise seconds since the
-            last processed timestamp (for ``time_since_update_seconds``).
-    """
+    """Predict step size and elapsed time since the last step."""
 
     frame_step: float
     elapsed_seconds: float | None
 
     @property
     def skip_predict(self) -> bool:
-        """True when predict should be skipped (non-monotonic timestamp)."""
+        """Return whether predict should be skipped."""
         return self.frame_step <= 0.0
 
     @property
     def uses_elapsed_time(self) -> bool:
-        """True when this step should accumulate elapsed seconds on tracklets."""
+        """Return whether elapsed wall-clock time is available."""
         return self.elapsed_seconds is not None
 
 
+# One frame per step; elapsed time not tracked.
 FIXED_RATE_TIMING = PredictTiming(frame_step=1.0, elapsed_seconds=None)

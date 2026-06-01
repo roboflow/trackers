@@ -4,7 +4,6 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-import warnings
 from typing import ClassVar
 
 import numpy as np
@@ -14,8 +13,10 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.ocsort.utils import _build_direction_consistency_matrix_batch
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
+from trackers.utils.predict_timing import PredictTiming
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
@@ -101,7 +102,7 @@ class OCSORTTracker(BaseTracker):
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
         self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
-        self.maximum_time_without_update: float | None = None
+        self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.direction_consistency_weight = direction_consistency_weight
@@ -112,6 +113,8 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+
+        self._init_timestamp_state(frame_rate)
 
     def _get_associated_indices(
         self,
@@ -182,23 +185,16 @@ class OCSORTTracker(BaseTracker):
                 confidence scores.
             frame: Ignored by OC-SORT. If provided (not `None`), a warning is
                 emitted.
-            timestamp: Absolute time of the current frame in seconds. OC-SORT
-                does not yet support variable-rate prediction; if provided, a
-                warning is emitted and the tracker continues in fixed-rate mode.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
             Unmatched or immature tracks have tracker_id of -1.
         """
         self._warn_if_frame_unused(frame)
-        if timestamp is not None:
-            warnings.warn(
-                "OCSORTTracker does not yet support variable frame-rate via timestamp. "
-                "The timestamp argument is ignored and fixed-rate mode is used. "
-                "Variable-rate support for OC-SORT is planned for a future release.",
-                UserWarning,
-                stacklevel=2,
-            )
+        timing = self._predict_timing(timestamp)
+
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
@@ -215,8 +211,7 @@ class OCSORTTracker(BaseTracker):
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
 
-        for tracker in self.tracks:
-            tracker.predict()
+        self._predict_tracklets(self.tracks, timing)
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
@@ -254,7 +249,7 @@ class OCSORTTracker(BaseTracker):
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(tid)
 
-            self.tracks = self._prune_expired_tracklets()
+            self.tracks = self._prune_expired_tracklets(timing)
 
             remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
             self._spawn_new_tracklets(detection_boxes[remaining_indices])
@@ -262,7 +257,7 @@ class OCSORTTracker(BaseTracker):
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(-1)
         else:
-            self.tracks = self._prune_expired_tracklets()
+            self.tracks = self._prune_expired_tracklets(timing)
 
             self._spawn_new_tracklets(detection_boxes[unmatched_detections])
             for det_idx in unmatched_detections:
@@ -288,16 +283,29 @@ class OCSORTTracker(BaseTracker):
         self.tracks = []
         self.frame_count = 0
         OCSORTTracklet.count_id = 0
+        self._last_timestamp = None
 
-    def _prune_expired_tracklets(self) -> list[OCSORTTracklet]:
+    def _prune_expired_tracklets(self, timing: PredictTiming) -> list[OCSORTTracklet]:
         """Remove tracklets that have been lost for too long.
 
         Returns:
-            List of tracklets whose time_since_update has not exceeded
-            maximum_frames_without_update.
+            List of tracklets still within the frame or seconds budget.
         """
+        seconds_budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        if seconds_budget is not None:
+            return [
+                tracklet
+                for tracklet in self.tracks
+                if BaseTracklet.within_lost_track_budget(
+                    tracklet,
+                    maximum_frames_without_update=self.maximum_frames_without_update,
+                    maximum_time_without_update=seconds_budget,
+                )
+            ]
         return [
-            tracklet for tracklet in self.tracks if tracklet.time_since_update <= self.maximum_frames_without_update
+            tracklet
+            for tracklet in self.tracks
+            if tracklet.time_since_update <= self.maximum_frames_without_update
         ]
 
     def _compute_direction_consistency_matrix(self, detection_boxes: np.ndarray, confidences: np.ndarray) -> np.ndarray:

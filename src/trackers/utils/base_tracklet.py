@@ -50,7 +50,7 @@ class BaseTracklet(ABC):
         pass
 
     def _advance_miss_clocks(self, timing: PredictTiming) -> None:
-        """Advance frame and optional wall-clock miss counters after predict."""
+        """Advance miss counters by one step."""
         self.time_since_update += 1
         if timing.elapsed_seconds is not None:
             self.time_since_update_seconds += timing.elapsed_seconds
@@ -74,10 +74,6 @@ class BaseTracklet(ABC):
 
         Propagates the Kalman filter and increments `time_since_update` (and
         `age`) on every call — matched or unmatched.
-
-        Args:
-            timing: Kalman frame step and optional elapsed seconds for this
-                update. Defaults to one fixed-rate frame step.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.

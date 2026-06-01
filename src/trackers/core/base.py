@@ -377,8 +377,7 @@ class BaseTracker(ABC):
     def _init_timestamp_state(self, frame_rate: float) -> None:
         """Register reference FPS and reset timestamp bookkeeping.
 
-        Call from ``__init__`` on trackers that support variable frame rate
-        (SORT, ByteTrack).
+        Call from ``__init__`` on all concrete trackers.
 
         Args:
             frame_rate: Reference frames per second for bootstrap elapsed time.
@@ -430,14 +429,7 @@ class BaseTracker(ABC):
         return elapsed
 
     def _predict_timing(self, timestamp: float | None) -> PredictTiming:
-        """Split one update into Kalman frame units and optional elapsed seconds.
-
-        Fixed-rate mode (``timestamp is None``): ``frame_step=1.0``,
-        ``elapsed_seconds=None``.
-
-        Timestamp mode: ``frame_step = elapsed_seconds * frame_rate`` so Kalman
-        keeps frame-unit tuning; ``elapsed_seconds`` drives time-based pruning.
-        """
+        """Build predict timing from an optional timestamp."""
         if timestamp is None:
             return PredictTiming(frame_step=1.0, elapsed_seconds=None)
 
@@ -451,7 +443,7 @@ class BaseTracker(ABC):
         )
 
     def _predict_tracklets(self, tracklets: list[Any], timing: PredictTiming) -> None:
-        """Run Kalman predict on all tracklets unless timing says to skip."""
+        """Predict all tracklets unless the timestamp did not advance."""
         if timing.skip_predict:
             return
         for tracklet in tracklets:
@@ -462,7 +454,7 @@ class BaseTracker(ABC):
         timing: PredictTiming,
         seconds_budget: float,
     ) -> float | None:
-        """Return seconds pruning budget when timestamp mode is active."""
+        """Return the seconds lost-track budget when timestamps are in use."""
         return seconds_budget if timing.uses_elapsed_time else None
 
     @abstractmethod

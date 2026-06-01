@@ -6,7 +6,6 @@
 
 """Smoke tests that each bbox estimator wires motion sync correctly.
 
-Motion math and ``sync`` behaviour are covered in ``tests/utils/test_motion_models.py``.
 Timestamp integration is covered in ``tests/core/test_timestamp_plumbing.py``.
 """
 
@@ -40,7 +39,7 @@ def test_predict_default_matches_unit_frame_step(
 
     for _ in range(5):
         default.predict()
-        explicit.predict(frame_step=1.0)
+        explicit.predict(1.0)
 
     np.testing.assert_allclose(default.kf.x, explicit.kf.x, atol=1e-12)
     np.testing.assert_allclose(default.kf.P, explicit.kf.P, atol=1e-12)
@@ -51,11 +50,11 @@ def test_set_state_resets_motion_cache(
     estimator_cls: type[BaseStateEstimator],
 ) -> None:
     est = estimator_cls(BBOX.copy())
-    est.predict(frame_step=0.5)
-    assert est.motion.cached_dt == pytest.approx(0.5)
+    est.predict(0.5)
+    assert est.motion.cached_step == pytest.approx(0.5)
 
     state = est.get_state()
-    est.predict(frame_step=2.0)
+    est.predict(2.0)
     est.set_state(state)
 
-    assert est.motion.cached_dt is None
+    assert est.motion.cached_step is None

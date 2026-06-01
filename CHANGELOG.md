@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Pluggable IoU variants** — `iou=` parameter on all four trackers (`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, `BoTSORTTracker`) accepts any `BaseIoU` subclass. Built-in variants: `IoU` (standard), `GIoU`, `DIoU`, `CIoU`, `BIoU` (Buffered IoU) ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **`BaseIoU` ABC** in `trackers.utils.iou` — defines the `compute(boxes_1, boxes_2)` contract; subclass and override `_compute` to implement a custom similarity metric ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **`normalize_for_fusion` on `BaseIoU`** — signed variants (GIoU, DIoU, CIoU) override this to shift `[-1, 1]` → `[0, 1]` before BoT-SORT score fusion, preventing ranking inversion ([#403](https://github.com/roboflow/trackers/pull/403)).
+- **Optional `timestamp=` on `BaseTracker.update()`** — all four trackers convert elapsed wall-clock seconds into Kalman frame units and prune lost tracks on a seconds budget when timestamps are supplied; omitting `timestamp` preserves fixed-rate behaviour ([#438](https://github.com/roboflow/trackers/pull/438)).
+- **`KalmanMotionModel`** in `trackers.utils.motion_models` — supplies the Kalman `F` and `Q` for a given `frame_step`; `F` is a trivial constant-velocity matrix (`constant_velocity_F`) while `ScalableProcessNoise` holds the tuned `Q`, used at the nominal step and DWNA-scaled on timestamp gaps.
 
 ### 🔄 Deprecated
 

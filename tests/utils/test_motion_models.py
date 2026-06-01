@@ -4,12 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Unit tests for constant-velocity DWNA motion models.
-
-``frame_step`` is in frame units (``1.0`` = one nominal frame) for ``sync`` and
-tracker integration. Timestamp → frame_step conversion is covered in
-``tests/core/test_timestamp_plumbing.py``.
-"""
+"""Tests for ``F`` / ``Q`` builders in ``motion_models.py``."""
 
 from __future__ import annotations
 
@@ -18,8 +13,9 @@ import pytest
 
 from trackers.utils.kalman_filter import KalmanFilter
 from trackers.utils.motion_models import (
-    ConstantVelocityDWNA,
-    build_constant_velocity_F,
+    KalmanMotionModel,
+    ScalableProcessNoise,
+    constant_velocity_F,
 )
 
 POS_1D = np.array([0], dtype=np.int64)
@@ -31,9 +27,9 @@ VEL_XCYCSR = np.array([4, 5, 6], dtype=np.int64)
 
 
 def test_build_F_scales_velocity_coupling_with_frame_step() -> None:
-    F1 = build_constant_velocity_F(8, POS_4D, VEL_4D, 1.0)
-    F2 = build_constant_velocity_F(8, POS_4D, VEL_4D, 2.0)
-    F_half = build_constant_velocity_F(8, POS_4D, VEL_4D, 0.5)
+    F1 = constant_velocity_F(8, POS_4D, VEL_4D, 1.0)
+    F2 = constant_velocity_F(8, POS_4D, VEL_4D, 2.0)
+    F_half = constant_velocity_F(8, POS_4D, VEL_4D, 0.5)
 
     for v in VEL_4D:
         for j in range(8):
@@ -45,16 +41,18 @@ def test_build_F_scales_velocity_coupling_with_frame_step() -> None:
         assert F_half[p, v] == pytest.approx(0.5)
 
 
-def test_build_Q_scales_with_frame_step_polynomial() -> None:
-    model = ConstantVelocityDWNA(
+def test_dwna_gap_noise_scales_with_frame_step_polynomial() -> None:
+    gap = ScalableProcessNoise(
         dim_x=8,
         pos_idx=POS_4D,
         vel_idx=VEL_4D,
+        baseline_Q=np.eye(8, dtype=np.float64) * 0.01,
         sigma_a2=np.ones(4, dtype=np.float64) * 0.01,
         extra_q_diagonal=np.ones(8, dtype=np.float64) * 0.01,
     )
-    Q1 = model.build_Q(1.0)
-    Q2 = model.build_Q(2.0)
+    # Compare two gap steps (doubling) so both go through DWNA, not the baseline.
+    Q1 = gap.build_Q(2.0)
+    Q2 = gap.build_Q(4.0)
 
     for p, v in zip(POS_4D, VEL_4D):
         assert Q2[v, v] == pytest.approx(Q1[v, v] * 4.0)
@@ -63,29 +61,33 @@ def test_build_Q_scales_with_frame_step_polynomial() -> None:
         assert Q2[v, p] == pytest.approx(Q1[v, p] * 8.0)
 
 
-def test_build_Q_preserves_non_kinematic_diagonal() -> None:
+def test_dwna_gap_noise_preserves_non_kinematic_diagonal() -> None:
     extra = np.ones(7, dtype=np.float64) * 0.01
     extra[3] = 7.5
-    model = ConstantVelocityDWNA(
+    gap = ScalableProcessNoise(
         dim_x=7,
         pos_idx=POS_XCYCSR,
         vel_idx=VEL_XCYCSR,
+        baseline_Q=np.diag(extra),
         sigma_a2=np.ones(3, dtype=np.float64) * 0.01,
         extra_q_diagonal=extra,
     )
-    for frame_step in (0.5, 1.0, 2.0):
-        Q_built = model.build_Q(frame_step)
-        assert Q_built[3, 3] == pytest.approx(7.5), f"Q[3,3] not preserved at frame_step={frame_step}"
+    # Non-unit steps exercise the DWNA path; the non-kinematic diagonal is fixed.
+    for frame_step in (0.5, 2.0):
+        Q_built = gap.build_Q(frame_step)
+        assert Q_built[3, 3] == pytest.approx(7.5), (
+            f"Q[3,3] not preserved at frame_step={frame_step}"
+        )
 
 
 def test_sync_preserves_reference_q_at_unit_frame_step() -> None:
     kf = KalmanFilter(dim_x=2, dim_z=1)
     custom_Q = np.diag([0.01, 0.02])
     kf.Q = custom_Q.copy()
-    model = ConstantVelocityDWNA.from_filter(kf, POS_1D, VEL_1D)
+    model = KalmanMotionModel.from_filter(kf, POS_1D, VEL_1D)
     model.calibrate_from_Q(custom_Q)
 
-    model.sync(kf, 1.0)
+    model.apply(kf, 1.0)
 
     np.testing.assert_allclose(kf.Q, custom_Q)
 
@@ -94,12 +96,12 @@ def test_sync_gap_scales_q_relative_to_unit_frame_step() -> None:
     kf = KalmanFilter(dim_x=2, dim_z=1)
     custom_Q = np.diag([0.01, 0.02])
     kf.Q = custom_Q.copy()
-    model = ConstantVelocityDWNA.from_filter(kf, POS_1D, VEL_1D)
+    model = KalmanMotionModel.from_filter(kf, POS_1D, VEL_1D)
     model.calibrate_from_Q(custom_Q)
 
-    model.sync(kf, 1.0)
-    model.sync(kf, 3.0)
+    model.apply(kf, 1.0)
+    model.apply(kf, 3.0)
 
     assert kf.Q[1, 1] == pytest.approx(custom_Q[1, 1] * 9.0)
-    model.sync(kf, 1.0)
+    model.apply(kf, 1.0)
     np.testing.assert_allclose(kf.Q, custom_Q, rtol=1e-12)

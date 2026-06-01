@@ -143,7 +143,7 @@ class OCSORTTracklet(BaseTracklet):
 
             self.state_estimator.kf.update(virtual_obs)
             if i < time_gap - 1:
-                self.state_estimator.predict(frame_step=1.0)
+                self.state_estimator.predict()
 
     def _unfreeze_xyxy(self, new_bbox: np.ndarray, time_gap: int) -> None:
         """ORU interpolation for XYXY representation.
@@ -162,7 +162,7 @@ class OCSORTTracklet(BaseTracklet):
 
             self.state_estimator.kf.update(virtual_obs)
             if i < time_gap - 1:
-                self.state_estimator.predict(frame_step=1.0)
+                self.state_estimator.predict()
 
     def get_k_previous_obs(self) -> np.ndarray | None:
         """Get observation from delta_t steps ago.
@@ -227,6 +227,7 @@ class OCSORTTracklet(BaseTracklet):
 
         self._observed = True
         self.time_since_update = 0
+        self.time_since_update_seconds = 0.0
         self.number_of_successful_consecutive_updates += 1
         self.previous_to_last_observation = self.last_observation
         self.last_observation = bbox
@@ -235,15 +236,10 @@ class OCSORTTracklet(BaseTracklet):
     def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict next bounding box position.
 
-        Args:
-            timing: Kalman frame step for this update. Elapsed seconds are
-                ignored by OC-SORT today; accepted for API consistency with
-                ``BaseTracklet``.
-
         Note:
             ORU virtual-trajectory sub-stepping inside ``_unfreeze_*`` still
-            operates in unit-frame steps; full time-aware ORU is deferred to a
-            future release.
+            uses unit-frame Kalman steps; gap length follows ``time_since_update``
+            in frame counts, not wall-clock seconds.
 
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
@@ -257,7 +253,7 @@ class OCSORTTracklet(BaseTracklet):
             self._freeze()
             self._observed = False
 
-        self.state_estimator.predict(frame_step=timing.frame_step)
+        self.state_estimator.predict(timing.frame_step)
 
         if self.time_since_update > 0:
             self.number_of_successful_consecutive_updates = 0

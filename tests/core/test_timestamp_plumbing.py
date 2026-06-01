@@ -20,9 +20,11 @@ import supervision as sv
 
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.ocsort.tracker import OCSORTTracker
+from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracker import SORTTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.base_tracklet import BaseTracklet
@@ -35,6 +37,18 @@ TIMESTAMP_AWARE_TRACKERS: list[Any] = [
         {"track_activation_threshold": 0.5},
         id="bytetrack",
     ),
+    pytest.param(
+        OCSORTTracker,
+        OCSORTTracklet,
+        {"high_conf_det_threshold": 0.5},
+        id="ocsort",
+    ),
+    pytest.param(
+        BoTSORTTracker,
+        BoTSORTTracklet,
+        {"enable_cmc": False, "track_activation_threshold": 0.5},
+        id="botsort",
+    ),
 ]
 
 PREDICT_TIMING_TRACKER: list[Any] = [
@@ -43,11 +57,12 @@ PREDICT_TIMING_TRACKER: list[Any] = [
 
 FRAME_BUDGET_TRACKERS: list[Any] = [
     pytest.param(SORTTracker, SORTTracklet, {}, id="sort"),
-]
-
-UNSUPPORTED_TIMESTAMP_TRACKERS: list[Any] = [
-    pytest.param(OCSORTTracker, "OCSORTTracker", {}, id="ocsort"),
-    pytest.param(BoTSORTTracker, "BoTSORTTracker", {"enable_cmc": False}, id="botsort"),
+    pytest.param(
+        BoTSORTTracker,
+        BoTSORTTracklet,
+        {"enable_cmc": False, "track_activation_threshold": 0.5},
+        id="botsort",
+    ),
 ]
 
 
@@ -158,6 +173,37 @@ def test_predict_timing_second_timestamp_returns_gap(
     "tracker_cls, tracklet_cls, extra_kwargs",
     PREDICT_TIMING_TRACKER,
 )
+def test_predict_timing_constant_fps_maps_to_one_frame_step(
+    tracker_cls: type[BaseTracker],
+    tracklet_cls: type[BaseTracklet],
+    extra_kwargs: dict[str, Any],
+) -> None:
+    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=25.0)
+    timing = tracker._predict_timing(0.04)
+    assert timing.elapsed_seconds == pytest.approx(0.04)
+    assert timing.frame_step == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize(
+    "tracker_cls, tracklet_cls, extra_kwargs",
+    PREDICT_TIMING_TRACKER,
+)
+def test_predict_timing_frame_gap_scales_frame_step(
+    tracker_cls: type[BaseTracker],
+    tracklet_cls: type[BaseTracklet],
+    extra_kwargs: dict[str, Any],
+) -> None:
+    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=25.0)
+    tracker._predict_timing(0.04)
+    timing = tracker._predict_timing(0.24)
+    assert timing.elapsed_seconds == pytest.approx(0.20)
+    assert timing.frame_step == pytest.approx(5.0)
+
+
+@pytest.mark.parametrize(
+    "tracker_cls, tracklet_cls, extra_kwargs",
+    PREDICT_TIMING_TRACKER,
+)
 def test_predict_timing_non_monotonic_skips_predict_and_warns_each_time(
     tracker_cls: type[BaseTracker],
     tracklet_cls: type[BaseTracklet],
@@ -192,37 +238,6 @@ def test_predict_timing_reset_clears_timestamp_state(
     timing = tracker._predict_timing(500.0)
     assert timing.elapsed_seconds == pytest.approx(1.0 / 30.0)
     assert timing.frame_step == pytest.approx(1.0)
-
-
-@pytest.mark.parametrize(
-    "tracker_cls, tracklet_cls, extra_kwargs",
-    PREDICT_TIMING_TRACKER,
-)
-def test_predict_timing_constant_fps_maps_to_one_frame_step(
-    tracker_cls: type[BaseTracker],
-    tracklet_cls: type[BaseTracklet],
-    extra_kwargs: dict[str, Any],
-) -> None:
-    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=25.0)
-    timing = tracker._predict_timing(0.04)
-    assert timing.elapsed_seconds == pytest.approx(0.04)
-    assert timing.frame_step == pytest.approx(1.0)
-
-
-@pytest.mark.parametrize(
-    "tracker_cls, tracklet_cls, extra_kwargs",
-    PREDICT_TIMING_TRACKER,
-)
-def test_predict_timing_frame_gap_scales_frame_step(
-    tracker_cls: type[BaseTracker],
-    tracklet_cls: type[BaseTracklet],
-    extra_kwargs: dict[str, Any],
-) -> None:
-    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=25.0)
-    tracker._predict_timing(0.04)
-    timing = tracker._predict_timing(0.24)
-    assert timing.elapsed_seconds == pytest.approx(0.20)
-    assert timing.frame_step == pytest.approx(5.0)
 
 
 @pytest.mark.parametrize(
@@ -360,25 +375,6 @@ def test_mixed_timestamp_then_fixed_uses_frame_budget(
     assert tracker.tracks[0].time_since_update_seconds == 0.0
     tracker.update(_make_detections([], []))
     assert len(tracker.tracks) == 0
-
-
-@pytest.mark.parametrize(
-    "tracker_cls, tracker_name, extra_kwargs",
-    UNSUPPORTED_TIMESTAMP_TRACKERS,
-)
-def test_unsupported_tracker_warns_on_timestamped_updates(
-    tracker_cls: type[BaseTracker],
-    tracker_name: str,
-    extra_kwargs: dict[str, Any],
-) -> None:
-    tracker = tracker_cls(**extra_kwargs)
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        tracker.update(_DET, timestamp=1.0)
-        tracker.update(_DET, timestamp=2.0)
-    named_warns = [w for w in caught if tracker_name in str(w.message)]
-    assert len(named_warns) == 2
-    assert all(issubclass(w.category, UserWarning) for w in named_warns)
 
 
 def _confirmation_pattern(

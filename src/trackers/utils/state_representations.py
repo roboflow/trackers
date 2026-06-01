@@ -18,7 +18,7 @@ from trackers.utils.converters import (
     xyxy_to_xywh,
 )
 from trackers.utils.kalman_filter import KalmanFilter
-from trackers.utils.motion_models import ConstantVelocityDWNA, init_constant_velocity_filter
+from trackers.utils.motion_models import KalmanMotionModel, init_constant_velocity_filter
 
 
 class StateRepresentation(Enum):
@@ -56,24 +56,14 @@ class BaseStateEstimator(ABC):
     handle conversions between `[x1, y1, x2, y2]` bboxes and the
     internal state/measurement vectors.
 
-    Variable time-step support:
-        Subclasses declare kinematic index pairs via class attributes
-        ``_POS_IDX`` and ``_VEL_IDX``. A ``ConstantVelocityDWNA`` motion model
-        (see ``motion_models.py``) builds ``F(dt)`` / ``Q(dt)`` and is synced
-        onto the filter before each predict step. See ``docs/learn/track.md``.
+    Variable frame rate: pass a larger ``frame_step`` to ``predict()`` after a
+    gap. See ``docs/learn/track.md``.
 
     Note:
-        Noise matrices (R, Q, P) are not configured in `_create_filter`
-        and default to identity matrices. Callers must configure them via
-        `set_kf_covariances` after construction for accurate tracking.
-        Tracklet classes (`SORTTracklet`, `ByteTrackTracklet`,
-        `OCSORTTracklet`) do this automatically via `_configure_noise()`.
-        If you instantiate a state estimator directly, call
-        `set_kf_covariances` before the first `predict`/`update`.
 
     Attributes:
         kf: The underlying Kalman filter instance.
-        motion: Constant-velocity DWNA process model wired to ``kf``.
+        motion: Builds ``F`` and ``Q`` before each predict.
     """
 
     _POS_IDX: np.ndarray
@@ -86,7 +76,7 @@ class BaseStateEstimator(ABC):
             bbox: First detection `[x1, y1, x2, y2]`.
         """
         self.kf: KalmanFilter = self._create_filter(bbox)
-        self.motion: ConstantVelocityDWNA = ConstantVelocityDWNA.from_filter(
+        self.motion: KalmanMotionModel = KalmanMotionModel.from_filter(
             self.kf,
             self._POS_IDX,
             self._VEL_IDX,
@@ -141,14 +131,9 @@ class BaseStateEstimator(ABC):
         """
 
     def predict(self, frame_step: float = 1.0) -> None:
-        """Run the Kalman filter prediction step.
-
-        Args:
-            frame_step: Kalman predict step in **frame units** (``1.0`` = one
-                nominal frame at the tuned reference).
-        """
+        """Predict one step. ``frame_step=1.0`` is one frame; use more after a gap."""
         self.clamp_velocity()
-        self.motion.sync(self.kf, frame_step)
+        self.motion.apply(self.kf, frame_step)
         self.kf.predict()
 
     def update(self, bbox: np.ndarray | None) -> None:
@@ -178,7 +163,7 @@ class BaseStateEstimator(ABC):
             state: Dictionary from `get_state`.
         """
         self.kf.set_state(state)
-        self.motion.reset_cached_dt()
+        self.motion.reset_cache()
 
     def set_kf_covariances(
         self,
@@ -186,15 +171,17 @@ class BaseStateEstimator(ABC):
         Q: np.ndarray | None = None,
         P: np.ndarray | None = None,
     ) -> None:
-        """Set Kalman filter parameters.
+        """Set Kalman noise matrices (``R``, ``Q``, ``P``).
 
-        When `Q` is supplied, the motion model back-calibrates sigma_a2 from the
-        velocity diagonal at the default reference step ``1.0`` frame units.
+        ``Q`` is process noise — how much the state may drift per predict.
+        Tracklets choose ``Q`` in ``_configure_noise()`` for the one-frame case.
+        When ``Q`` is passed here, the motion model stores it as the reference
+        used at ``frame_step=1.0`` and as the starting point for gap scaling.
 
         Args:
-            R: Measurement noise covariance matrix.
-            Q: Process noise covariance matrix.
-            P: Error covariance matrix.
+            R: Measurement noise (trust in detections).
+            Q: Process noise (drift between detections).
+            P: Initial state uncertainty.
         """
         if R is not None:
             expected_shape = (self.kf.dim_z, self.kf.dim_z)

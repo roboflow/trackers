@@ -47,14 +47,10 @@ class SORTTracklet(BaseTracklet):
         status — unmatched tracks advance their clock automatically here
         without any separate miss notification.
 
-        Args:
-            timing: Kalman frame step and optional elapsed seconds for this
-                update.
-
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
-        self.state_estimator.predict(frame_step=timing.frame_step)
+        self.state_estimator.predict(timing.frame_step)
         self._advance_miss_clocks(timing)
         return self.state_estimator.state_to_bbox()
 

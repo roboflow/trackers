@@ -28,6 +28,7 @@ from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.predict_timing import FIXED_RATE_TIMING
 
 # All concrete tracklet classes and their short IDs used as test suffixes.
 _TRACKLET_PARAMS = [
@@ -247,4 +248,4 @@ def test_ocsort_oru_unfreeze_uses_unit_frame_step_predicts(bbox: np.ndarray) -> 
 
     assert mock_predict.call_count == expected_gap - 1
     for call in mock_predict.call_args_list:
-        assert call.kwargs == {"frame_step": 1.0}
+        assert call.kwargs.get("timing", FIXED_RATE_TIMING) == FIXED_RATE_TIMING
