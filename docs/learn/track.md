@@ -169,8 +169,8 @@ These conventions share one Kalman tuning curve. At a constant 25 FPS with no dr
 !!! note "OC-SORT ORU sub-steps"
 
     OC-SORT's Observation-Centric Re-Update virtual trajectory still advances the
-    Kalman filter in unit-frame steps inside ``_unfreeze_*``. Main-track predict
-    and lost-track pruning respect ``timestamp``; ORU gap length follows frame
+    Kalman filter in unit-frame steps inside `_unfreeze_*`. Main-track predict
+    and lost-track pruning respect `timestamp`; ORU gap length follows frame
     counts, not wall-clock seconds.
 
 === "Python"

@@ -75,9 +75,7 @@ def test_dwna_gap_noise_preserves_non_kinematic_diagonal() -> None:
     # Non-unit steps exercise the DWNA path; the non-kinematic diagonal is fixed.
     for frame_step in (0.5, 2.0):
         Q_built = gap.build_Q(frame_step)
-        assert Q_built[3, 3] == pytest.approx(7.5), (
-            f"Q[3,3] not preserved at frame_step={frame_step}"
-        )
+        assert Q_built[3, 3] == pytest.approx(7.5), f"Q[3,3] not preserved at frame_step={frame_step}"
 
 
 def test_sync_preserves_reference_q_at_unit_frame_step() -> None:

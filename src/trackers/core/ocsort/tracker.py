@@ -303,9 +303,7 @@ class OCSORTTracker(BaseTracker):
                 )
             ]
         return [
-            tracklet
-            for tracklet in self.tracks
-            if tracklet.time_since_update <= self.maximum_frames_without_update
+            tracklet for tracklet in self.tracks if tracklet.time_since_update <= self.maximum_frames_without_update
         ]
 
     def _compute_direction_consistency_matrix(self, detection_boxes: np.ndarray, confidences: np.ndarray) -> np.ndarray:
