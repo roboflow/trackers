@@ -34,7 +34,7 @@ All four trackers support both modes: `SORTTracker`, `ByteTrackTracker`, `OCSORT
 | ------------------- | ---------------------------------------------------- | -------------------------------------------- |
 | `timestamp`         | `None` (omit)                                        | Monotonic seconds, e.g. video clock          |
 | Kalman `frame_step` | `1.0` per call (frame units)                         | `elapsed_seconds × frame_rate` (frame units) |
-| Lost-track budget   | Frames (`lost_track_buffer`, scaled by `frame_rate`) | Seconds (`lost_track_buffer / 30`)         |
+| Lost-track budget   | Frames (`lost_track_buffer`, scaled by `frame_rate`) | Seconds (`lost_track_buffer / 30`)           |
 
 `frame_rate` is required in **both** modes. In fixed mode it scales frame-based thresholds. In dynamic mode it is the **reference FPS** used to bootstrap the first timestamped step and to convert gaps into frame units for the Kalman filter.
 
