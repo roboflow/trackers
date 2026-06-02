@@ -129,6 +129,7 @@ nav:
   - Guides:
     - Install Trackers: learn/install.md
     - Track Objects: learn/track.md
+    - Dynamic Frame Rate: learn/dynamic-frame-rate.md
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
     - Tune Trackers: learn/tune.md
