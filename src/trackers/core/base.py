@@ -431,6 +431,7 @@ class BaseTracker(ABC):
     def _predict_timing(self, timestamp: float | None) -> PredictTiming:
         """Build predict timing from an optional timestamp."""
         if timestamp is None:
+            self._last_timestamp = None
             return PredictTiming(frame_step=1.0, elapsed_seconds=None)
 
         elapsed = self._elapsed_seconds_since_last(timestamp)
