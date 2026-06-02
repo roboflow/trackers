@@ -20,7 +20,7 @@ Use **`timestamp=`** when the wall-clock gap between two processed updates can d
 
 - Frame drops on a live stream or conveyor camera
 - Variable-FPS files where decode timestamps reflect capture time
-- Async detectors that process frames out of order or with backlog
+- Async detectors with **irregular gaps**, as long as timestamps stay **monotonic** (capture time or PTS, not processing order)
 
 Keep **`timestamp=None`** (omit the argument) when you process every frame in order at a steady rate. That preserves existing behaviour and benchmark numbers.
 

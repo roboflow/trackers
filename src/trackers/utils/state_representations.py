@@ -57,9 +57,16 @@ class BaseStateEstimator(ABC):
     internal state/measurement vectors.
 
     Variable frame rate: pass a larger ``frame_step`` to ``predict()`` after a
-    gap. See ``docs/learn/track.md``.
+    gap. See ``docs/learn/dynamic-frame-rate.md``.
 
     Note:
+        Noise matrices (R, Q, P) are not configured in ``_create_filter``
+        and default to identity matrices. Callers must configure them via
+        ``set_kf_covariances`` after construction for accurate tracking.
+        Tracklet classes (``SORTTracklet``, ``ByteTrackTracklet``,
+        ``OCSORTTracklet``) do this automatically via ``_configure_noise()``.
+        If you instantiate a state estimator directly, call
+        ``set_kf_covariances`` before the first ``predict``/``update``.
 
     Attributes:
         kf: The underlying Kalman filter instance.
