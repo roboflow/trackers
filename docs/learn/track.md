@@ -133,41 +133,6 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 ---
 
-## Variable frame rate
-
-By default, each `update()` is one frame at a steady rate. If your pipeline skips frames or has irregular timing, pass a monotonic **`timestamp`** in seconds so the tracker scales Kalman prediction and lost-track pruning to the real gap. Omit `timestamp` to keep existing fixed-rate behaviour.
-
-Set **`frame_rate`** to your reference FPS in both modes (threshold scaling in fixed mode; gap conversion in dynamic mode). Call **`tracker.reset()`** between videos so timestamp state does not carry over.
-
-See the [Dynamic Frame Rate guide](dynamic-frame-rate.md) for fixed vs dynamic comparison, `frame_step` / `elapsed_seconds`, motion-model scaling, and edge cases.
-
-=== "Python"
-
-    ```python
-    import cv2
-
-    import supervision as sv
-    from inference import get_model
-    from trackers import ByteTrackTracker
-
-    model = get_model("rfdetr-nano")
-    tracker = ByteTrackTracker(frame_rate=30.0, lost_track_buffer=30)
-
-    cap = cv2.VideoCapture("source.mp4")
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-
-        result = model.infer(frame)[0]
-        detections = sv.Detections.from_inference(result)
-        detections = tracker.update(detections, timestamp=timestamp)
-    ```
-
----
-
 ## Detectors
 
 Trackers don't detect objects—they link detections across frames. A detection or segmentation model provides per-frame bounding boxes or masks that the tracker uses to assign and maintain IDs.
@@ -350,6 +315,14 @@ Save tracking results as annotated video files or display them in real time.
     cap.release()
     out.release()
     ```
+
+---
+
+## Dynamic frame rate {#variable-frame-rate}
+
+By default, each `update()` assumes one frame at a steady rate. If your pipeline skips frames or has irregular timing, pass an optional monotonic **`timestamp`** (seconds) to `tracker.update()` so Kalman prediction and lost-track pruning match the real gap. Omit `timestamp` to keep fixed-rate behaviour.
+
+See the [Dynamic Frame Rate guide](dynamic-frame-rate.md) for when to enable it, `frame_step` semantics, edge cases, and a Python example.
 
 ---
 

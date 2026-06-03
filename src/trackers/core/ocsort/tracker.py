@@ -194,6 +194,8 @@ class OCSORTTracker(BaseTracker):
         """
         self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
 
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()

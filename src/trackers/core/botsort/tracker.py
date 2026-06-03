@@ -178,6 +178,8 @@ class BoTSORTTracker(BaseTracker):
               track states before association.
         """
         timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
         self.frame_id += 1
 
         if len(self.tracks) == 0 and len(detections) == 0:

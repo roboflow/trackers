@@ -22,6 +22,7 @@ class PredictTiming:
 
     frame_step: float
     elapsed_seconds: float | None
+    skip_update: bool = False
 
     @property
     def skip_predict(self) -> bool:

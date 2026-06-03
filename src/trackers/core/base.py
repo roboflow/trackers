@@ -401,47 +401,66 @@ class BaseTracker(ABC):
                 stacklevel=3,
             )
 
-    def _elapsed_seconds_since_last(self, timestamp: float) -> float:
-        """Return wall-clock seconds since the previous timestamped update.
+    def _predict_timing(self, timestamp: float | None) -> PredictTiming:
+        """Build predict timing from an optional timestamp.
 
-        Updates ``_last_timestamp``. Bootstrap (first call) returns
-        ``1 / frame_rate``. Non-monotonic timestamps return ``0.0`` and warn.
+        All timestamp ordering checks live here: fixed-rate mode, bootstrap,
+        backwards (skip whole update), duplicate (skip predict only), normal gap.
+        ``_last_timestamp`` advances only on bootstrap and strictly increasing times.
         """
+        if timestamp is None:
+            self._last_timestamp = None
+            return PredictTiming(frame_step=1.0, elapsed_seconds=None)
+
         last = self._last_timestamp
-        self._last_timestamp = timestamp
 
         if last is None:
             # Bootstrap: no prior timestamp, so we cannot compute t - t_prev.
             # Use one nominal frame period (1 / frame_rate) so the first Kalman
             # step is frame_step=1.0 — matching fixed-rate behaviour rather than
             # using the absolute timestamp value (e.g. 37.2 s would break tuning).
-            return 1.0 / self._frame_rate
+            self._last_timestamp = timestamp
+            elapsed = 1.0 / self._frame_rate
+            return PredictTiming(
+                frame_step=elapsed * self._frame_rate,
+                elapsed_seconds=elapsed,
+            )
 
-        elapsed = timestamp - last
-        if elapsed <= 0:
+        if timestamp < last:
             warnings.warn(
-                f"{type(self).__name__}: non-positive elapsed={elapsed:.6f}s from "
-                "non-monotonic timestamp. Skipping predict for this step.",
+                f"{type(self).__name__}: timestamp {timestamp} is earlier than the "
+                f"previous timestamp {last}. Skipping update; pass capture times in "
+                "non-decreasing order.",
                 UserWarning,
                 stacklevel=3,
             )
-            return 0.0
-        return elapsed
+            return PredictTiming(frame_step=0.0, elapsed_seconds=None, skip_update=True)
 
-    def _predict_timing(self, timestamp: float | None) -> PredictTiming:
-        """Build predict timing from an optional timestamp."""
-        if timestamp is None:
-            self._last_timestamp = None
-            return PredictTiming(frame_step=1.0, elapsed_seconds=None)
+        if timestamp == last:
+            warnings.warn(
+                f"{type(self).__name__}: duplicate timestamp {timestamp}; "
+                "skipping predict for this step.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return PredictTiming(frame_step=0.0, elapsed_seconds=0.0)
 
-        elapsed = self._elapsed_seconds_since_last(timestamp)
-        if elapsed <= 0.0:
-            return PredictTiming(frame_step=0.0, elapsed_seconds=elapsed)
-
+        elapsed = timestamp - last
+        self._last_timestamp = timestamp
         return PredictTiming(
             frame_step=elapsed * self._frame_rate,
             elapsed_seconds=elapsed,
         )
+
+    def _detections_for_skipped_update(self, detections: sv.Detections) -> sv.Detections:
+        """Return detections unchanged except tracker_id=-1; do not mutate tracks."""
+        if len(detections) == 0:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
+        result = detections[np.arange(len(detections))]
+        result.tracker_id = np.full(len(result), -1, dtype=int)
+        return result
 
     def _predict_tracklets(self, tracklets: list[Any], timing: PredictTiming) -> None:
         """Predict all tracklets unless the timestamp did not advance."""
@@ -478,6 +497,9 @@ class BaseTracker(ABC):
                 ``None`` for fixed-rate mode (``frame_step = 1.0`` per call).
                 When provided, elapsed seconds are converted to Kalman frame
                 units via ``* frame_rate``; pruning uses seconds directly.
+                Must be non-decreasing in capture time; an earlier value than
+                the previous call skips the update and emits a warning. Equal
+                values skip predict only and emit a warning.
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each

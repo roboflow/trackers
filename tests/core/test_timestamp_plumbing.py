@@ -204,7 +204,7 @@ def test_predict_timing_frame_gap_scales_frame_step(
     "tracker_cls, tracklet_cls, extra_kwargs",
     PREDICT_TIMING_TRACKER,
 )
-def test_predict_timing_non_monotonic_skips_predict_and_warns_each_time(
+def test_predict_timing_earlier_timestamp_skips_update_and_warns(
     tracker_cls: type[BaseTracker],
     tracklet_cls: type[BaseTracklet],
     extra_kwargs: dict[str, Any],
@@ -214,12 +214,58 @@ def test_predict_timing_non_monotonic_skips_predict_and_warns_each_time(
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         timing = tracker._predict_timing(999.9)
-        tracker._predict_timing(999.8)
+    assert timing.skip_update
     assert timing.skip_predict
+    assert len(caught) == 1
+    assert issubclass(caught[0].category, UserWarning)
+    assert "earlier than the previous timestamp" in str(caught[0].message)
+    assert tracker._last_timestamp == 1000.0
+
+
+@pytest.mark.parametrize(
+    "tracker_cls, tracklet_cls, extra_kwargs",
+    PREDICT_TIMING_TRACKER,
+)
+def test_predict_timing_duplicate_timestamp_skips_predict_and_warns(
+    tracker_cls: type[BaseTracker],
+    tracklet_cls: type[BaseTracklet],
+    extra_kwargs: dict[str, Any],
+) -> None:
+    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs)
+    tracker._predict_timing(1000.0)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        timing = tracker._predict_timing(1000.0)
+    assert timing.skip_predict
+    assert not timing.skip_update
     assert timing.elapsed_seconds == 0.0
-    assert len(caught) == 2
-    assert all(issubclass(w.category, UserWarning) for w in caught)
-    assert all("non-positive" in str(w.message).lower() for w in caught)
+    assert len(caught) == 1
+    assert issubclass(caught[0].category, UserWarning)
+    assert "duplicate" in str(caught[0].message).lower()
+
+
+@pytest.mark.parametrize(
+    "tracker_cls, tracklet_cls, extra_kwargs",
+    PREDICT_TIMING_TRACKER,
+)
+def test_update_earlier_timestamp_skips_without_mutating_tracks(
+    tracker_cls: type[BaseTracker],
+    tracklet_cls: type[BaseTracklet],
+    extra_kwargs: dict[str, Any],
+) -> None:
+    tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs)
+    tracker.update(_DET, timestamp=0.0)
+    x_before = tracker.tracks[0].state_estimator.kf.x.copy()
+    hits_before = tracker.tracks[0].time_since_update
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        result = tracker.update(_DET, timestamp=-1.0)
+
+    assert result.tracker_id is not None
+    assert (result.tracker_id == -1).all()
+    assert tracker.tracks[0].time_since_update == hits_before
+    np.testing.assert_array_equal(tracker.tracks[0].state_estimator.kf.x, x_before)
 
 
 @pytest.mark.parametrize(

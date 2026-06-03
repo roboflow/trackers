@@ -1,87 +1,85 @@
+---
+title: Dynamic Frame Rate — Variable-Gap Tracking | Trackers
+description: Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, and BoT-SORT.
+---
+
 # Dynamic Frame Rate
 
-Trackers normally assume **one `update()` call per video frame**. When frames are skipped — variable FPS, async inference, network drops, or batch gaps — fixed-rate prediction treats every processed step as a single frame of motion. Passing a **`timestamp`** in seconds tells the tracker how much time actually passed so Kalman prediction and lost-track pruning match the real gap.
+Most tracking examples assume you call `update()` once per video frame, in order, at a steady FPS. That breaks when **frames are dropped** (you skip frame 2 but still call `update()` on frame 3) or when you **only process some frames**. Processing delay is fine, a frame that arrives late but with the right capture timestamp still has the correct gap to the previous frame you tracked. What matters is the **time between captured frames you actually update on**, not how long inference took.
+
+Pass an optional **`timestamp`** (seconds) on `update()` so the tracker knows how much time actually passed. Prediction and pruning then follow the real gap. Omit `timestamp` and nothing changes: fixed-rate behaviour.
 
 **What you'll learn:**
 
-- When to enable dynamic frame rate
-- How fixed-rate and timestamp modes differ
-- What `frame_step` and `elapsed_seconds` mean
-- Edge cases (bootstrap, non-monotonic timestamps, mixed calls)
-- OC-SORT-specific behaviour
+- How to use dynamic frame rate mode
+- When its worth to use it
+- How fixed-rate and dynamic-rate modes differ
 
-For a minimal code example, see [Track Objects — Variable frame rate](track.md#variable-frame-rate).
 
 ---
 
-## When to use it
+## Install
 
-Use **`timestamp=`** when the wall-clock gap between two processed updates can differ from one frame period. Typical cases:
+Get started by installing the package.
 
-- Frame drops on a live stream or conveyor camera
-- Variable-FPS files where decode timestamps reflect capture time
-- Async detectors with **irregular gaps**, as long as timestamps stay **monotonic** (capture time or PTS, not processing order)
+```text
+pip install trackers
+```
 
-Keep **`timestamp=None`** (omit the argument) when you process every frame in order at a steady rate. That preserves existing behaviour and benchmark numbers.
-
-All four trackers support both modes: `SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, and `BoTSORTTracker`.
+For more options, see the [install guide](install.md).
 
 ---
 
-## Fixed rate vs dynamic rate
+## When to Use It
+
+Turn on timestamps when the **capture-time gap** between two `update()` calls is not always one frame period, we call that **dynamic frame rate**, and some cases where it happens are:
+
+- **Dropped or skipped frames**: you process frame 100 after frame 97; the tracker should treat that as three frame periods of motion, not one
+- **Sparse decode**: variable-FPS files or sampling every Nth frame, using the container or camera clock
+- **Out-of-order completion**: workers may finish in any order, but you should call `update()` in **non-decreasing capture time** (sort by capture time or frame index before updating). A later frame must not be updated before an earlier one
+
+Stick with the default when you process **every** frame in order at a steady rate. A normal `VideoCapture` loop that reads all frames does not need timestamps.
+
+`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, and `BoTSORTTracker` all accept `timestamp` on `update()`.
+
+---
+
+## Fixed Rate vs Dynamic Rate
 
 |                     | Fixed rate (default)                                 | Dynamic rate                                 |
 | ------------------- | ---------------------------------------------------- | -------------------------------------------- |
 | `timestamp`         | `None` (omit)                                        | Monotonic seconds, e.g. video clock          |
 | Kalman `frame_step` | `1.0` per call (frame units)                         | `elapsed_seconds × frame_rate` (frame units) |
-| Lost-track budget   | Frames (`lost_track_buffer`, scaled by `frame_rate`) | Seconds (`lost_track_buffer / 30`)           |
 
-`frame_rate` is required in **both** modes. In fixed mode it scales frame-based thresholds. In dynamic mode it is the **reference FPS** used to bootstrap the first timestamped step and to convert gaps into frame units for the Kalman filter.
 
-At a constant 25 FPS with no drops, `frame_step` stays `1.0` — dynamic mode matches fixed mode. Dynamic mode is meant for **variable** gaps between updates.
+**`lost_track_buffer` is always the same integer** — frames at a **30 FPS reference** (MOT-style tuning), not seconds you type in. The tracker converts it for you:
 
----
+- **Fixed rate:** `maximum_frames_without_update = int(frame_rate / 30 × lost_track_buffer)` so a 60 FPS pipeline with `lost_track_buffer=30` keeps lost tracks for 60 frames (~1 s if you update every frame).
+- **Dynamic rate:** `maximum_time_without_update = lost_track_buffer / 30` seconds between `update()` calls. The same `lost_track_buffer=30` gives a **1.0 s** budget; that does **not** scale with `frame_rate`.
 
-## Two time quantities
+Set **`frame_rate`** on the tracker in both modes. In fixed mode it scales the frame budget above. When you pass `timestamp`, it also turns elapsed seconds into Kalman frame units (`elapsed_seconds × frame_rate`).
 
-Kalman prediction and lost-track pruning intentionally use different units.
-
-### `frame_step` (Kalman predict)
-
-Used to scale the motion matrix `F` and process noise `Q`. Values are in **frame units**, not seconds:
-
-- Fixed mode: always `1.0` per `update()`.
-- Dynamic mode: `frame_step = elapsed_seconds × frame_rate`.
-
-Velocity in the filter state is displacement **per frame period** (e.g. pixels per frame at the reference rate). Existing SORT / ByteTrack tuning assumes this convention.
-
-### `elapsed_seconds` (lost-track pruning)
-
-When `timestamp` is supplied, each tracklet accumulates **`time_since_update_seconds`** on predict and resets it on match. Tracks are pruned against a seconds budget derived from `lost_track_buffer`.
-
-When `timestamp` is omitted, pruning uses the existing **frame-count** logic (`time_since_update`).
+If the video is actually steady 25 FPS and you pass timestamps every frame, `frame_step` stays `1.0` — dynamic mode lines up with fixed mode. 
 
 ---
 
-## How prediction scales
+## What Happens on a Long Gap
 
-Implementation path:
+On each predict, the filter adjusts how far it extrapolates and how uncertain it is:
 
-1. `BaseTracker._predict_timing(timestamp)` builds a `PredictTiming` object.
-2. Tracklets pass `timing.frame_step` into the state estimator's `predict()`.
-3. **`KalmanMotionModel`** writes `F` and `Q` on the filter before each predict step.
+- **Position** moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (`frame_step`).
+- **Process noise** grows on longer gaps so the box does not stay artificially tight. At `frame_step = 1.0` you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.
 
-**Motion (`F`).** Constant velocity: each position row picks up `velocity × frame_step` (`constant_velocity_F`).
-
-**Process noise (`Q`).** Each tracklet sets a one-frame `Q` in `_configure_noise()`. At `frame_step = 1.0` that matrix is used unchanged. For other steps, kinematic blocks are rebuilt with **discrete white-noise acceleration (DWNA)** scaling — position variance ∝ `Δt⁴`, velocity ∝ `Δt²` — so uncertainty grows correctly on longer gaps. Multiplying the one-frame `Q` by `Δt` alone would be wrong in either direction.
-
-Implementation: `trackers.utils.motion_models.KalmanMotionModel` and `ScalableProcessNoise.build_Q()`.
 
 ---
 
 ## Usage
 
+Feed **`timestamp`** in seconds into `tracker.update()` alongside your detections. Use **capture time** of each frame in the video, or `frame_index / fps`.
+
 === "Python"
+
+    Read the video clock from OpenCV and pass it to ByteTrack each frame.
 
     ```python
     import cv2
@@ -90,7 +88,7 @@ Implementation: `trackers.utils.motion_models.KalmanMotionModel` and `ScalablePr
     from inference import get_model
     from trackers import ByteTrackTracker
 
-    model = get_model("rfdetr-nano")
+    model = get_model("rfdetr-medium")
     tracker = ByteTrackTracker(frame_rate=30.0, lost_track_buffer=30)
 
     cap = cv2.VideoCapture("source.mp4")
@@ -106,30 +104,24 @@ Implementation: `trackers.utils.motion_models.KalmanMotionModel` and `ScalablePr
         detections = tracker.update(detections, timestamp=timestamp)
     ```
 
-Use **capture time** (frame index / FPS, camera PTS, container timestamp). Avoid `time.time()` at receive/decode unless that is your intended timeline.
+Call **`tracker.reset()`** when you switch videos so the last timestamp does not leak into the next file.
 
 ---
 
-## Behaviour notes
+## Things to Know
 
-- **Backward compatible:** omitting `timestamp` reproduces fixed-rate behaviour.
-- **First timestamped call:** elapsed time bootstraps to `1 / frame_rate` so the first Kalman step uses `frame_step = 1.0`, not the absolute clock value.
-- **Non-monotonic timestamps:** predict is skipped for that step; a warning is emitted.
-- **Per-call mode:** only calls that pass `timestamp` use seconds-based pruning and scaled predict. A later call without `timestamp` reverts to `frame_step = 1.0` and frame-count pruning for that step.
-- **Between videos:** call `tracker.reset()` so timestamp state does not carry over.
+**You can mix modes per call.** Only steps that pass `timestamp` use seconds for pruning and scaled predict. One `update()` without `timestamp` goes back to passed `frame_rate`.
 
----
+**The first timestamped step is special.** The tracker does not use your absolute clock value as the first gap. It assumes `1 / frame_rate` seconds so the first Kalman predict still looks like one frame.
 
-## OC-SORT caveat
+**Timestamps must not go backwards.** If `timestamp` is less than the previous call, `update()` **warns and skips the whole step** (tracks unchanged, output IDs are `-1`). Reorder by capture time and call again. **Duplicate** timestamps (same capture time twice) only skip predict; association still runs on the last state.
 
-OC-SORT's Observation-Centric Re-Update (ORU) virtual trajectory inside `_unfreeze_*` still advances the Kalman filter in **unit-frame** steps. Main-track predict and lost-track pruning respect `timestamp`; ORU gap length follows frame counts, not wall-clock seconds.
+**`frame_rate` should match your reference timeline.** If the file is 24 FPS but you set `frame_rate=30`, each step over-predicts motion. Same parameter already mattered for threshold scaling in fixed mode; it matters more when gaps are measured in seconds.
 
-For timestamp mode with large gaps, prefer **`XYXYStateEstimator`** for OC-SORT. The default XCYCSR representation can produce invalid boxes after aggressive multi-frame predicts (`sqrt` of negative scale).
+**OC-SORT:** ORU still steps in frame units, not wall-clock gaps. 
 
 ---
 
-## Related
+## Takeaway
 
-- [Track Objects](track.md) — CLI and Python tracking basics
-- [State Estimators](state-estimators.md) — XYXY vs XCYCSR representations
-- [Tune Trackers](tune.md) — hyperparameters such as `lost_track_buffer` and `frame_rate`
+Timestamps are optional on `update()`. Skip them when you track every frame in order. Use them when frames are **dropped or sparse**, pass **capture time** (not inference finish time), call `update()` in **time order**, set `frame_rate` to the FPS you tuned against, and `reset()` between videos.
