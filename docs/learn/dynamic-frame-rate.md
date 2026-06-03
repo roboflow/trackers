@@ -15,7 +15,6 @@ Pass an optional **`timestamp`** (seconds) on `update()` so the tracker knows ho
 - When its worth to use it
 - How fixed-rate and dynamic-rate modes differ
 
-
 ---
 
 ## Install
@@ -46,11 +45,10 @@ Stick with the default when you process **every** frame in order at a steady rat
 
 ## Fixed Rate vs Dynamic Rate
 
-|                     | Fixed rate (default)                                 | Dynamic rate                                 |
-| ------------------- | ---------------------------------------------------- | -------------------------------------------- |
-| `timestamp`         | `None` (omit)                                        | Monotonic seconds, e.g. video clock          |
-| Kalman `frame_step` | `1.0` per call (frame units)                         | `elapsed_seconds × frame_rate` (frame units) |
-
+|                     | Fixed rate (default)         | Dynamic rate                                 |
+| ------------------- | ---------------------------- | -------------------------------------------- |
+| `timestamp`         | `None` (omit)                | Monotonic seconds, e.g. video clock          |
+| Kalman `frame_step` | `1.0` per call (frame units) | `elapsed_seconds × frame_rate` (frame units) |
 
 **`lost_track_buffer` is always the same integer** — frames at a **30 FPS reference** (MOT-style tuning), not seconds you type in. The tracker converts it for you:
 
@@ -59,7 +57,7 @@ Stick with the default when you process **every** frame in order at a steady rat
 
 Set **`frame_rate`** on the tracker in both modes. In fixed mode it scales the frame budget above. When you pass `timestamp`, it also turns elapsed seconds into Kalman frame units (`elapsed_seconds × frame_rate`).
 
-If the video is actually steady 25 FPS and you pass timestamps every frame, `frame_step` stays `1.0` — dynamic mode lines up with fixed mode. 
+If the video is actually steady 25 FPS and you pass timestamps every frame, `frame_step` stays `1.0` — dynamic mode lines up with fixed mode.
 
 ---
 
@@ -69,7 +67,6 @@ On each predict, the filter adjusts how far it extrapolates and how uncertain it
 
 - **Position** moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (`frame_step`).
 - **Process noise** grows on longer gaps so the box does not stay artificially tight. At `frame_step = 1.0` you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.
-
 
 ---
 
@@ -118,7 +115,7 @@ Call **`tracker.reset()`** when you switch videos so the last timestamp does not
 
 **`frame_rate` should match your reference timeline.** If the file is 24 FPS but you set `frame_rate=30`, each step over-predicts motion. Same parameter already mattered for threshold scaling in fixed mode; it matters more when gaps are measured in seconds.
 
-**OC-SORT:** ORU still steps in frame units, not wall-clock gaps. 
+**OC-SORT:** ORU still steps in frame units, not wall-clock gaps.
 
 ---
 

@@ -438,8 +438,7 @@ class BaseTracker(ABC):
 
         if timestamp == last:
             warnings.warn(
-                f"{type(self).__name__}: duplicate timestamp {timestamp}; "
-                "skipping predict for this step.",
+                f"{type(self).__name__}: duplicate timestamp {timestamp}; skipping predict for this step.",
                 UserWarning,
                 stacklevel=3,
             )
