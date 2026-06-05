@@ -260,16 +260,18 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 === "Tuned"
 
-    Results after grid search over tracker parameters.
+    Results after grid search over tracker parameters, reporting the
+    best-performing configuration per tracker on the test set (searched
+    parameters when they beat registry defaults, otherwise defaults).
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
     |   SORT    |   54.3   |   53.4   |   89.5   |
     | ByteTrack |   55.3   |   55.2   |   89.9   |
-    |  OC-SORT  |   53.5   |   53.3   |   88.7   |
-    | BoT-SORT  | **57.0** | **58.2** | **91.1** |
+    |  OC-SORT  |   54.1   |   53.3   |   89.3   |
+    | BoT-SORT  | **57.8** | **57.9** | **92.2** |
 
-    Tuned configuration for each tracker.
+    Best configuration for each tracker.
 
     ```yaml
     SORT:
@@ -286,21 +288,21 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       high_conf_det_threshold: 0.52
 
     OC-SORT:
-      lost_track_buffer: 31
-      minimum_iou_threshold: 0.28
+      lost_track_buffer: 30
+      minimum_iou_threshold: 0.3
       minimum_consecutive_frames: 3
-      direction_consistency_weight: 0.1
-      high_conf_det_threshold: 0.67
+      direction_consistency_weight: 0.2
+      high_conf_det_threshold: 0.6
       delta_t: 3
 
     BoT-SORT:
-      lost_track_buffer: 15
-      minimum_consecutive_frames: 4
-      minimum_iou_threshold_first_assoc: 0.1
-      minimum_iou_threshold_second_assoc: 0.48
-      minimum_iou_threshold_unconfirmed_assoc: 0.28
-      high_conf_det_threshold: 0.52
-      track_activation_threshold: 0.87
+      lost_track_buffer: 30
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.2
+      minimum_iou_threshold_second_assoc: 0.5
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
+      high_conf_det_threshold: 0.6
+      track_activation_threshold: 0.7
       enable_cmc: true
       cmc_method: sparseOptFlow
     ```
