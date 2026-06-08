@@ -35,17 +35,13 @@ def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
     """Parse one command-line bounding box in ``x1,y1,x2,y2`` format."""
     values = [float(value) for value in box.split(",")]
     if len(values) != 4:
-        raise argparse.ArgumentTypeError(
-            "Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2."
-        )
+        raise argparse.ArgumentTypeError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
     return values[0], values[1], values[2], values[3]
 
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments for the visualization script."""
-    parser = argparse.ArgumentParser(
-        description="Visualize SAM initialization and Cutie mask propagation."
-    )
+    parser = argparse.ArgumentParser(description="Visualize SAM initialization and Cutie mask propagation.")
     parser.add_argument(
         "--image-dir",
         type=Path,
@@ -120,9 +116,7 @@ def list_selected_frame_paths(
 ) -> list[Path]:
     """List sorted frame paths from ``start_file`` to ``end_file`` inclusive."""
     frame_paths = sorted(
-        path
-        for path in image_dir.iterdir()
-        if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
+        path for path in image_dir.iterdir() if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
     )
     filenames = [path.name for path in frame_paths]
 
@@ -134,9 +128,7 @@ def list_selected_frame_paths(
     start_index = filenames.index(start_file)
     end_index = filenames.index(end_file)
     if end_index < start_index:
-        raise ValueError(
-            f"end-file must not come before start-file. Got {start_file=} and {end_file=}."
-        )
+        raise ValueError(f"end-file must not come before start-file. Got {start_file=} and {end_file=}.")
 
     return frame_paths[start_index : end_index + 1]
 
@@ -333,10 +325,7 @@ def main() -> None:
         visual = overlay_masks(frame, propagated_mask_output.masks)
         save_rgb_image(visual, output_dir / frame_path.name)
 
-        print(
-            f"Saved {frame_path.name} (Cutie); "
-            f"mask_avg_prob_dict={propagated_mask_output.mask_avg_prob_dict}"
-        )
+        print(f"Saved {frame_path.name} (Cutie); mask_avg_prob_dict={propagated_mask_output.mask_avg_prob_dict}")
 
     print(f"Saved visualizations to {output_dir}")
 

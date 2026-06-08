@@ -79,10 +79,15 @@ def _image_to_torch(
     """Convert an RGB frame from ``(H, W, 3)`` NumPy format to ``(3, H, W)`` Cutie
     tensor format.
     """
-    return torch.from_numpy(frame.transpose(2, 0, 1)).float().to(
-        device,
-        non_blocking=True,
-    ) / 255.0
+    return (
+        torch.from_numpy(frame.transpose(2, 0, 1))
+        .float()
+        .to(
+            device,
+            non_blocking=True,
+        )
+        / 255.0
+    )
 
 
 def _torch_prob_to_numpy_mask(prob: torch.Tensor) -> np.ndarray:
@@ -130,10 +135,7 @@ def _build_tracklet_object_dict(
     Mask generators return local mask array indices starting from 0. Cutie uses
     positive object IDs, with 0 reserved for background.
     """
-    return {
-        tracklet_id: local_mask_index + 1
-        for tracklet_id, local_mask_index in tracklet_mask_dict.items()
-    }
+    return {tracklet_id: local_mask_index + 1 for tracklet_id, local_mask_index in tracklet_mask_dict.items()}
 
 
 def _compute_mask_avg_prob_dict(
@@ -217,15 +219,10 @@ class CutieMaskPropagator(MaskPropagator):
         default_weights_path = CUTIE_DEFAULT_WEIGHTS_PATHS.get(model_type)
         if default_weights_path is None:
             raise ValueError(
-                f"Unsupported model_type={model_type!r}. "
-                f"Supported types: {sorted(CUTIE_DEFAULT_WEIGHTS_PATHS)}"
+                f"Unsupported model_type={model_type!r}. Supported types: {sorted(CUTIE_DEFAULT_WEIGHTS_PATHS)}"
             )
 
-        self.weights_path = (
-            Path(weights_path)
-            if weights_path is not None
-            else default_weights_path
-        )
+        self.weights_path = Path(weights_path) if weights_path is not None else default_weights_path
 
         _ensure_weights_exist(
             weights_path=self.weights_path,
@@ -285,8 +282,7 @@ class CutieMaskPropagator(MaskPropagator):
 
         if mask_output.masks.ndim != 3:
             raise ValueError(
-                "CutieMaskPropagator expects masks with shape (N, H, W). "
-                f"Got shape {mask_output.masks.shape}."
+                f"CutieMaskPropagator expects masks with shape (N, H, W). Got shape {mask_output.masks.shape}."
             )
 
         num_masks = mask_output.masks.shape[0]
@@ -308,9 +304,7 @@ class CutieMaskPropagator(MaskPropagator):
                 f"indices {expected_indices}. Got {actual_indices}."
             )
 
-        self._tracklet_object_dict = _build_tracklet_object_dict(
-            mask_output.tracklet_mask_dict
-        )
+        self._tracklet_object_dict = _build_tracklet_object_dict(mask_output.tracklet_mask_dict)
 
         # For the first masks (initializing Cutie), these will be 1,2,...,N
         # In case of adding new masks and removing the redundant ones, this list
