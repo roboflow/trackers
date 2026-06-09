@@ -282,17 +282,11 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for DanceTrack.</small></p>
 
-!!! warning
-
-    DanceTrack test set evaluation is currently unavailable because CodaLab, which hosted
-    the benchmark, has been [discontinued](https://docs.codabench.org/dev/Newsletters_Archive/CodaLab-in-2025/).
-    Migration to Codabench is [in progress](https://github.com/DanceTrack/DanceTrack/issues/42).
-    Results below use the validation set instead.
-
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the
-    validation set. This dataset provides oracle (ground-truth) detections.
+    Parameters were tuned on the validation set. Results are reported on the
+    test set via [Codabench](https://www.codabench.org/competitions/14885/) submission.
+    Detections come from oracle (ground-truth) boxes.
 
 === "Default"
 
@@ -300,54 +294,54 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
-    |   SORT    |   45.0   |   39.0   |   80.6   |
-    | ByteTrack |   50.2   |   49.9   |   86.2   |
-    |  OC-SORT  |   51.8   |   50.9   |   87.3   |
-    | BoT-SORT  |   50.5   |   49.2   |   85.1   |
-    |  C-BIoU   | **53.8** | **53.8** | **90.1** |
+    |   SORT    |   47.2   |   41.0   |   86.5   |
+    | ByteTrack |   53.3   |   53.6   |   90.3   |
+    |  OC-SORT  |   54.1   |   53.3   |   89.3   |
+    | BoT-SORT  | **57.8** | **57.9** | **92.2** |
 
 === "Tuned"
 
-    Results after grid search over tracker parameters.
+    Hyperparameter tuning, reporting the best tuned configuration per
+    tracker evaluated on the test set (tuning performed on the valid split;
+    if tuning did not outperform registry defaults, defaults are shown).
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
-    |   SORT    |   50.6   |   49.6   |   84.3   |
-    | ByteTrack |   53.2   |   54.6   |   86.8   |
-    |  OC-SORT  |   52.0   |   51.8   |   87.2   |
-    | BoT-SORT  |   53.5   |   54.0   |   86.5   |
-    |  C-BIoU   | **54.6** | **57.0** | **89.6** |
+    |   SORT    |   54.3   |   53.4   |   89.5   |
+    | ByteTrack |   55.3   |   55.2   |   89.9   |
+    |  OC-SORT  |   54.1   |   53.3   |   89.3   |
+    | BoT-SORT  | **57.8** | **57.9** | **92.2** |
 
-    Tuned configuration for each tracker.
+    Best configuration for each tracker.
 
     ```yaml
     SORT:
-      lost_track_buffer: 10
-      track_activation_threshold: 0.9
-      minimum_consecutive_frames: 2
-      minimum_iou_threshold: 0.05
+      lost_track_buffer: 91
+      track_activation_threshold: 0.89
+      minimum_consecutive_frames: 3
+      minimum_iou_threshold: 0.21
 
     ByteTrack:
-      lost_track_buffer: 60
+      lost_track_buffer: 76
       track_activation_threshold: 0.9
-      minimum_consecutive_frames: 1
-      minimum_iou_threshold: 0.1
-      high_conf_det_threshold: 0.5
+      minimum_consecutive_frames: 4
+      minimum_iou_threshold: 0.33
+      high_conf_det_threshold: 0.52
 
     OC-SORT:
       lost_track_buffer: 30
-      minimum_iou_threshold: 0.1
+      minimum_iou_threshold: 0.3
       minimum_consecutive_frames: 3
       direction_consistency_weight: 0.2
       high_conf_det_threshold: 0.6
-      delta_t: 1
+      delta_t: 3
 
     BoT-SORT:
-      lost_track_buffer: 60
+      lost_track_buffer: 30
       minimum_consecutive_frames: 2
-      minimum_iou_threshold_first_assoc: 0.1
+      minimum_iou_threshold_first_assoc: 0.2
       minimum_iou_threshold_second_assoc: 0.5
-      minimum_iou_threshold_unconfirmed_assoc: 0.2
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
       high_conf_det_threshold: 0.6
       track_activation_threshold: 0.7
       enable_cmc: true
@@ -400,7 +394,7 @@ sports video, aerial footage, and crowded retail scenes all benefit.
 **OC-SORT** is best when camera motion is significant or objects follow non-linear paths. Its
 observation-centric re-update mechanism and direction consistency cost reduce drift from the
 linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns,
-camera pans, or erratic motion — the benchmark edge on MOT17 and DanceTrack reflects exactly
+camera pans, or erratic motion — the benchmark edge on MOT17 reflects exactly
 these conditions.
 
 **BoT-SORT** is the choice when camera ego-motion is strong and you need the most stable

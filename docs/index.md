@@ -116,10 +116,10 @@ Clean, modular implementations of leading trackers. All HOTA scores use default 
 
 |                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
 | :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      45.0       |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    59.4    |      72.8      |      83.9      |      50.2       |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |    **51.8**     |
-| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                   Camera motion compensation                    |  **63.7**  |    **73.8**    |    **84.5**    |      50.5       |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      47.2       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    59.4    |      72.8      |      83.9      |      53.3       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |      54.1       |
+| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                   Camera motion compensation                    |  **63.7**  |    **73.8**    |    **84.5**    |    **57.8**     |
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](trackers/comparison.md).
 

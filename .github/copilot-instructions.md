@@ -81,9 +81,10 @@ trackers download mot17 --split val --asset annotations,detections
 
 | Tracker   | MOT17 | SportsMOT | SoccerNet | DanceTrack |
 | --------- | ----- | --------- | --------- | ---------- |
-| SORT      | 58.4  | 70.9      | 81.6      | 45.0       |
-| ByteTrack | 60.1  | 73.0      | 84.0      | 50.2       |
-| OC-SORT   | 61.9  | 71.7      | 78.4      | 51.8       |
+| SORT      | 58.4  | 70.9      | 81.6      | 47.2       |
+| ByteTrack | 60.1  | 73.0      | 84.0      | 53.3       |
+| OC-SORT   | 61.9  | 71.7      | 78.4      | 54.1       |
+| BoT-SORT  | 63.7  | 73.8      | 84.5      | 57.8       |
 
 ## Documentation
 
