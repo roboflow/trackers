@@ -243,7 +243,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the
+    Parameters were tuned on the validation set. Results are reported on the
     test set via [Codabench](https://www.codabench.org/competitions/14885/) submission.
     Detections come from oracle (ground-truth) boxes.
 
