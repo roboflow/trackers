@@ -1,6 +1,6 @@
 # Roboflow Trackers
 
-> Clean-room Python implementations of SORT, ByteTrack, and OC-SORT —
+> Clean-room Python implementations of SORT, ByteTrack, OC-SORT, and BoT-SORT —
 > multi-object tracking algorithms that plug into any detection model
 > via the supervision library. Apache 2.0. 71,000+ monthly PyPI installs.
 

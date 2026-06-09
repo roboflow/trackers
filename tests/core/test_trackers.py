@@ -30,7 +30,7 @@ from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
 from trackers.utils.iou import BaseIoU
 
-from .shared_ids import ALL_TRACKER_IDS
+from .shared_ids import ALL_TRACKER_IDS, IOU_TRACKER_IDS
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -127,7 +127,7 @@ def test_tracker_update_empty_does_not_mutate_input(tracker_id: str) -> None:
     assert result is not dets, "update() must return a new sv.Detections instance"
 
 
-@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+@pytest.mark.parametrize("tracker_id", IOU_TRACKER_IDS)
 def test_tracker_uses_configured_iou_variant(tracker_id: str) -> None:
     """Trackers should use the configured IoU implementation for matching."""
     tracking_iou = _TrackingIoU()
@@ -151,6 +151,7 @@ def test_no_confidence_detections_can_spawn_confirmed_tracks(tracker_id: str) ->
     raise AssertionError(f"{tracker_id} did not confirm any track for confidence=None detections")
 
 
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
 @pytest.mark.parametrize(
     "xyxy_boxes",
     [
@@ -173,16 +174,15 @@ def test_no_confidence_detections_can_spawn_confirmed_tracks(tracker_id: str) ->
     ],
     ids=["single_box", "two_boxes", "three_boxes_non_overlapping"],
 )
-def test_bytetrack_no_confidence_matches_explicit_ones_confidence(xyxy_boxes: np.ndarray) -> None:
-    """ByteTrack treats confidence=None the same as all-ones across multi-box batches.
+def test_no_confidence_matches_explicit_ones_confidence(tracker_id: str, xyxy_boxes: np.ndarray) -> None:
+    """Every tracker treats confidence=None the same as all-ones across multi-box batches.
 
-    The batched scenarios exercise the high/low split machinery in
-    `ByteTrackTracker.update()` that single-box equivalence cannot trigger; a
-    regression that mis-buckets `confidence=None` in a multi-detection batch
-    would still pass single-box equality but would diverge here.
+    Multi-detection batches exercise confidence bucketing in trackers that split
+    high/low detections; a regression that mis-buckets ``confidence=None`` would
+    still pass single-box equality but diverge here.
     """
-    no_confidence_tracker = ByteTrackTracker(minimum_consecutive_frames=1)
-    explicit_confidence_tracker = ByteTrackTracker(minimum_consecutive_frames=1)
+    no_confidence_tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
+    explicit_confidence_tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     class_ids = np.zeros(len(xyxy_boxes), dtype=int)
     detection_without_confidence = sv.Detections(xyxy=xyxy_boxes.copy(), class_id=class_ids.copy())
     detection_with_ones_confidence = sv.Detections(
