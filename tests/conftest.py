@@ -46,12 +46,16 @@ CACHE_DIR = Path.home() / ".cache" / "trackers-test"
 
 @pytest.fixture(autouse=True)
 def reset_random_seeds() -> None:
-    """Reset numpy random state before each test for reproducibility."""
+    """Reset random state before each test for reproducibility."""
+    import random
+
+    random.seed(42)
     np.random.seed(42)
     try:
         import torch
 
         torch.manual_seed(42)
+        torch.cuda.manual_seed_all(42)
     except ImportError:
         pass
 
