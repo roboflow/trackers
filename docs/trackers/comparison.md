@@ -260,9 +260,9 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 === "Tuned"
 
-    Results after grid search over tracker parameters, reporting the
-    best-performing configuration per tracker on the test set (searched
-    parameters when they beat registry defaults, otherwise defaults).
+    Hyperparameter tuning, reporting the best tuned configuration per
+    tracker evaluated on the test set (tuning performed on the valid split;
+    if tuning did not outperform registry defaults, defaults are shown).
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
