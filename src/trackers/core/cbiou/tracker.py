@@ -64,6 +64,12 @@ class CBIoUTracker(BoTSORTTracker):
             be **less than** ``buffer_ratio_second`` (``b1 < b2``) per the paper.
         buffer_ratio_second: Buffer scale ``b2`` for the second BIoU pass. It is suggested to
             be **greater than** ``buffer_ratio_first``.
+
+    Note:
+        Unmatched low-confidence detections (confidence in ``(0.1, high_conf_det_threshold)``)
+        that are not associated in Step 2 appear in the output with ``tracker_id == -1``,
+        consistent with ``BoTSORTTracker`` behaviour. Callers filtering by
+        ``tracker_id >= 0`` will silently drop these rows.
     """
 
     tracker_id = "cbiou"
@@ -142,7 +148,9 @@ class CBIoUTracker(BoTSORTTracker):
             frame: Unused. Emits a ``UserWarning`` if provided.
 
         Returns:
-            Detections with ``tracker_id`` assigned.
+            Detections with ``tracker_id`` assigned. Unmatched
+            low-confidence detections are included with ``tracker_id == -1``;
+            callers filtering by ``tracker_id >= 0`` will silently drop these rows.
         """
         self._warn_if_frame_unused(frame)
         self.frame_id += 1

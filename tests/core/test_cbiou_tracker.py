@@ -204,3 +204,31 @@ class TestCBIoUSearchSpace:
         ss = CBIoUTracker.search_space
         assert "enable_cmc" not in ss
         assert "cmc_method" not in ss
+
+
+class TestCBIoUUnmatchedLowConfidence:
+    def test_unmatched_low_conf_detection_has_minus_one_tracker_id(self) -> None:
+        """Unmatched low-confidence detection appears in update() output with tracker_id=-1."""
+        tracker = CBIoUTracker(
+            minimum_consecutive_frames=1,
+            high_conf_det_threshold=0.6,
+            buffer_ratio_first=0.1,
+            buffer_ratio_second=0.3,
+            minimum_iou_threshold_second_assoc=0.1,
+        )
+        # Frame 1: establish a confirmed track near origin
+        tracker.update(
+            sv.Detections(
+                xyxy=np.array([[0.0, 0.0, 10.0, 10.0]], dtype=np.float32),
+                confidence=np.array([0.9], dtype=np.float32),
+            )
+        )
+        # Frame 2: low-confidence detection far from any track (no IoU overlap)
+        result = tracker.update(
+            sv.Detections(
+                xyxy=np.array([[500.0, 500.0, 510.0, 510.0]], dtype=np.float32),
+                confidence=np.array([0.3], dtype=np.float32),
+            )
+        )
+        assert len(result) == 1
+        assert result.tracker_id[0] == -1
