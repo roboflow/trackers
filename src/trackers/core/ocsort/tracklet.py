@@ -296,7 +296,8 @@ class OCSORTTracklet(BaseTracklet):
         Args:
             minimum_consecutive_frames: Frames required for track maturity.
             frame_count: Current frame number in tracking process.
-            allocate_tracker_id: Allocator owned by the tracker instance.
+            allocate_tracker_id: Zero-argument callable returning a unique int ID;
+                called at most once per tracklet, when it first becomes mature.
 
         Returns:
             Integer tracker ID, or -1 for immature tracks.

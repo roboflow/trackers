@@ -21,7 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### ⚠️ Breaking Changes
 
-- **Internal tracklet ID counters removed** — track IDs are now allocated by each tracker instance instead of `BaseTracklet.count_id` / `Tracklet.get_next_tracker_id()`. Internal tracklet subclassers should allocate IDs in tracker code and assign `tracklet.tracker_id` directly.
+- **Internal tracklet ID counters removed** — track IDs are now allocated by each tracker instance instead of the class-level counters on each `*Tracklet` subclass (e.g. `BoTSORTTracklet.get_next_tracker_id()`). Internal tracklet subclassers should allocate IDs in tracker code and assign `tracklet.tracker_id` directly. Use `self._allocate_tracker_id()` (inherited from `BaseTracker`) as the replacement allocator when implementing a custom tracker subclass.
 
 ### 🌱 Changed
 
