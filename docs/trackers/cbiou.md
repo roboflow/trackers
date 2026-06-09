@@ -25,9 +25,9 @@ For comparisons with other trackers, plus default and tuned parameters, see the 
 
 C-BIoU keeps the [ByteTrack](bytetrack.md)-style association pipeline used in [BoT-SORT](botsort.md) but replaces plain IoU with **Cascaded Buffered IoU** at each association step.
 
-**First association (b1).** High-confidence detections are matched to confirmed and lost tracks using BIoU with `buffer_ratio_first` (paper **b1**, small buffer). Costs are fused with detection confidence.
+**First association (b1).** High-confidence detections are matched to confirmed and lost tracks using BIoU with `buffer_ratio_first` ([paper](#reference) **b1**, small buffer). Costs are fused with detection confidence.
 
-**Second association (b2).** Remaining *tracked* tracks (not lost) are matched to low-confidence detections using BIoU with `buffer_ratio_second` (paper **b2**, large buffer). In this implementation, this larger buffer corresponds to ByteTrack's recovery stage for unmatched tracks and low-confidence detections.
+**Second association (b2).** Remaining *tracked* tracks (not lost) are matched to low-confidence detections using BIoU with `buffer_ratio_second` ([paper](#reference) **b2**, large buffer). In this implementation, this larger buffer corresponds to ByteTrack's recovery stage for unmatched tracks and low-confidence detections.
 
 **Unconfirmed association (b1).** Leftover high-confidence detections are matched to unconfirmed tracks using the same buffer as pass 1. Unmatched unconfirmed tracks are removed. This step is inherited from ByteTrack lifecycle logic, not the paper's two-buffer cascade.
 
