@@ -222,7 +222,7 @@ class CBIoUTracker(BoTSORTTracker):
             track = strack_pool[row]
             track.update(high_boxes[col])
             if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+                track.tracker_id = self._allocate_tracker_id()
             out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -236,7 +236,7 @@ class CBIoUTracker(BoTSORTTracker):
             track = remaining_tracked[row]
             track.update(low_boxes[col])
             if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+                track.tracker_id = self._allocate_tracker_id()
             out_det_indices.append(int(low_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -265,7 +265,7 @@ class CBIoUTracker(BoTSORTTracker):
                 orig_high_idx = unmatched_high_list[col]
                 track.update(high_boxes[orig_high_idx])
                 if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                    track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+                    track.tracker_id = self._allocate_tracker_id()
                 out_det_indices.append(int(high_indices[orig_high_idx]))
                 out_tracker_ids.append(track.tracker_id)
 
