@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.">
+        <meta name="description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.">
       
       
         <meta name="author" content="Roboflow">
@@ -29,7 +29,7 @@
     
     
       
-        <title>SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers - Trackers</title>
+        <title>SORT vs ByteTrack vs OC-SORT vs BoT-SORT vs C-BIoU — MOT Benchmark Comparison | Trackers - Trackers</title>
       
     
     
@@ -130,7 +130,7 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Comparison",
-  "description": "Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.",
+  "description": "Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.",
   "url": "https://trackers.roboflow.com/latest/develop/trackers/comparison/",
   "mainEntityOfPage": {
     "@type": "WebPage",
@@ -222,8 +222,8 @@
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
 <meta property="og:url" content="https://trackers.roboflow.com/latest/develop/trackers/comparison/" />
-<meta property="og:title" content="SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers" />
-<meta property="og:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters." />
+<meta property="og:title" content="SORT vs ByteTrack vs OC-SORT vs BoT-SORT vs C-BIoU — MOT Benchmark Comparison | Trackers" />
+<meta property="og:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -234,8 +234,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers" />
-<meta name="twitter:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters." />
+<meta name="twitter:title" content="SORT vs ByteTrack vs OC-SORT vs BoT-SORT vs C-BIoU — MOT Benchmark Comparison | Trackers" />
+<meta name="twitter:description" content="Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -318,7 +318,7 @@
 
             </a>
             
-              SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers
+              SORT vs ByteTrack vs OC-SORT vs BoT-SORT vs C-BIoU — MOT Benchmark Comparison | Trackers
             
           </span>
         </div>
@@ -1354,6 +1354,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cbiou/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    C-BIoU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1712,7 +1740,7 @@
 
 
 <h1 id="tracker-comparison">Tracker Comparison</h1>
-<p>This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, and BoT-SORT on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.</p>
+<p>This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.</p>
 <div class="admonition info">
 <p class="admonition-title">Benchmark version</p>
 <p>Results use <strong>trackers v2.3.0</strong> (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT) or ground-truth oracle boxes (SoccerNet, DanceTrack). Parameters were tuned via grid search on held-out splits. See <a href="#methodology">Methodology</a> for details.</p>
@@ -1768,8 +1796,14 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 <tr>
 <td style="text-align: center;">BoT-SORT</td>
 <td style="text-align: center;"><strong>63.7</strong></td>
-<td style="text-align: center;"><strong>78.7</strong></td>
+<td style="text-align: center;">78.7</td>
 <td style="text-align: center;"><strong>79.2</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">63.0</td>
+<td style="text-align: center;"><strong>79.1</strong></td>
+<td style="text-align: center;">77.4</td>
 </tr>
 </tbody>
 </table>
@@ -1807,8 +1841,14 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 <tr>
 <td style="text-align: center;">BoT-SORT</td>
 <td style="text-align: center;"><strong>63.8</strong></td>
-<td style="text-align: center;"><strong>78.7</strong></td>
+<td style="text-align: center;">78.7</td>
 <td style="text-align: center;"><strong>79.4</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">63.0</td>
+<td style="text-align: center;"><strong>79.1</strong></td>
+<td style="text-align: center;">77.4</td>
 </tr>
 </tbody>
 </table>
@@ -1844,6 +1884,17 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 </span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
 </span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">  </span><span class="nt">enable_cmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">  </span><span class="nt">cmc_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sparseOptFlow</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="nt">C-BIoU</span><span class="p">:</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_second_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_unconfirmed_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="nt">buffer_ratio_first</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="nt">buffer_ratio_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -1898,6 +1949,12 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 <td style="text-align: center;"><strong>73.4</strong></td>
 <td style="text-align: center;"><strong>96.9</strong></td>
 </tr>
+<tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">73.1</td>
+<td style="text-align: center;">72.6</td>
+<td style="text-align: center;">96.7</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1937,6 +1994,12 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 <td style="text-align: center;">74.0</td>
 <td style="text-align: center;"><strong>96.9</strong></td>
 </tr>
+<tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">73.1</td>
+<td style="text-align: center;">72.6</td>
+<td style="text-align: center;">96.7</td>
+</tr>
 </tbody>
 </table>
 <p>Tuned configuration for each tracker.</p>
@@ -1971,6 +2034,17 @@ test set via Codabench submission. Detections come from a YOLOX model.</p>
 </span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
 </span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="w">  </span><span class="nt">enable_cmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="w">  </span><span class="nt">cmc_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sparseOptFlow</span>
+</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>
+</span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="nt">C-BIoU</span><span class="p">:</span>
+</span><span id="__span-1-34"><a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-1-35"><a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-1-36"><a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-1-37"><a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_second_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-1-38"><a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_unconfirmed_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-1-39"><a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="__span-1-40"><a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+</span><span id="__span-1-41"><a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a><span class="w">  </span><span class="nt">buffer_ratio_first</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-1-42"><a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="w">  </span><span class="nt">buffer_ratio_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2026,6 +2100,12 @@ oracle (ground-truth) detections.</p>
 <td style="text-align: center;"><strong>79.3</strong></td>
 <td style="text-align: center;">96.6</td>
 </tr>
+<tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">82.6</td>
+<td style="text-align: center;">76.6</td>
+<td style="text-align: center;">97.0</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -2045,13 +2125,13 @@ oracle (ground-truth) detections.</p>
 <td style="text-align: center;">SORT</td>
 <td style="text-align: center;">84.2</td>
 <td style="text-align: center;">78.2</td>
-<td style="text-align: center;"><strong>98.2</strong></td>
+<td style="text-align: center;">98.2</td>
 </tr>
 <tr>
 <td style="text-align: center;">ByteTrack</td>
 <td style="text-align: center;">84.0</td>
 <td style="text-align: center;">78.1</td>
-<td style="text-align: center;"><strong>98.2</strong></td>
+<td style="text-align: center;">98.2</td>
 </tr>
 <tr>
 <td style="text-align: center;">OC-SORT</td>
@@ -2061,9 +2141,15 @@ oracle (ground-truth) detections.</p>
 </tr>
 <tr>
 <td style="text-align: center;">BoT-SORT</td>
-<td style="text-align: center;"><strong>85.0</strong></td>
-<td style="text-align: center;"><strong>79.7</strong></td>
+<td style="text-align: center;">85.0</td>
+<td style="text-align: center;">79.7</td>
 <td style="text-align: center;">97.2</td>
+</tr>
+<tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;"><strong>85.7</strong></td>
+<td style="text-align: center;"><strong>80.0</strong></td>
+<td style="text-align: center;"><strong>99.3</strong></td>
 </tr>
 </tbody>
 </table>
@@ -2099,9 +2185,27 @@ oracle (ground-truth) detections.</p>
 </span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
 </span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">  </span><span class="nt">enable_cmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">  </span><span class="nt">cmc_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sparseOptFlow</span>
+</span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>
+</span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="nt">C-BIoU</span><span class="p">:</span>
+</span><span id="__span-2-34"><a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">43</span>
+</span><span id="__span-2-35"><a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-2-36"><a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+</span><span id="__span-2-37"><a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_second_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.46</span>
+</span><span id="__span-2-38"><a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_unconfirmed_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.27</span>
+</span><span id="__span-2-39"><a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.40</span>
+</span><span id="__span-2-40"><a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.48</span>
+</span><span id="__span-2-41"><a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">  </span><span class="nt">buffer_ratio_first</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.68</span>
+</span><span id="__span-2-42"><a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">  </span><span class="nt">buffer_ratio_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.50</span>
 </span></code></pre></div>
 </div>
 </div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">SoccerNet buffer ordering exception</p>
+<p>This config uses <code>buffer_ratio_first: 0.68 &gt; buffer_ratio_second: 0.50</code>, which reverses
+the general <code>b1 &lt; b2</code> recommendation in the <a href="../cbiou/#buffer-ordering">C-BIoU docs</a>.
+Optuna found this ordering yields higher HOTA on SoccerNet's dense, long-sequence scenarios.
+On most other datasets the <code>b1 &lt; b2</code> default applies.</p>
 </div>
 <h2 id="dancetrack"><a href="https://arxiv.org/abs/2111.14690">DanceTrack</a></h2>
 <p>Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.</p>
@@ -2229,6 +2333,17 @@ if tuning did not outperform registry defaults, defaults are shown).</p>
 </span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
 </span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="w">  </span><span class="nt">enable_cmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a><span class="w">  </span><span class="nt">cmc_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sparseOptFlow</span>
+</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>
+</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a><span class="nt">C-BIoU</span><span class="p">:</span>
+</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">53</span>
+</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a><span class="w">  </span><span class="nt">minimum_consecutive_frames</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-3-36"><a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.11</span>
+</span><span id="__span-3-37"><a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_second_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.57</span>
+</span><span id="__span-3-38"><a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_unconfirmed_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.30</span>
+</span><span id="__span-3-39"><a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.36</span>
+</span><span id="__span-3-40"><a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.83</span>
+</span><span id="__span-3-41"><a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a><span class="w">  </span><span class="nt">buffer_ratio_first</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.23</span>
+</span><span id="__span-3-42"><a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a><span class="w">  </span><span class="nt">buffer_ratio_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.33</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2239,9 +2354,10 @@ if tuning did not outperform registry defaults, defaults are shown).</p>
 bounding boxes provided by the dataset) or model detections (produced by a YOLOX
 detector following the ByteTrack procedure). The source is noted per dataset above.</p>
 <h3 id="tuning">Tuning</h3>
-<p>Best parameters per tracker and dataset were found via grid search, selecting the
-configuration with the highest HOTA. Tuning and evaluation always use separate data
-splits to reflect real-world usage:</p>
+<p>Best parameters per tracker and dataset were found via grid search (SORT, ByteTrack,
+OC-SORT, BoT-SORT) or Optuna (<code>n_trials=100</code>, objective HOTA, trial 0 = defaults for
+C-BIoU), selecting the configuration with the highest HOTA on the tune split. Tuning and
+evaluation always use separate data splits to reflect real-world usage:</p>
 <ul>
 <li>Train + validation + test: tune on validation, report on test.</li>
 <li>Train + validation: tune on train, report on validation.</li>
@@ -2267,6 +2383,7 @@ identities. It extends ByteTrack with camera motion compensation (CMC) and confi
 association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports
 broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is
 small relative to the detector, so the trade-off favors identity stability over raw speed.</p>
+<p><strong>C-BIoU</strong> targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet and DanceTrack, and achieves the highest IDF1 on MOT17 among the trackers listed here. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See <a href="../cbiou/">C-BIoU</a> for buffer scales <strong>b1</strong> and <strong>b2</strong>.</p>
 <h2 id="metric-definitions">Metric Definitions</h2>
 <p><strong>HOTA</strong> (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes
 tracking quality into detection accuracy (DetA) and association accuracy (AssA), then takes
@@ -2303,7 +2420,7 @@ near-perfect recall produces high MOTA even when identity switches are frequent.
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="June 9, 2026 13:13:44 UTC">2026-06-09</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="June 9, 2026 19:54:51 UTC">2026-06-09</span>
   </span>
 
     
