@@ -33,8 +33,8 @@ class CBIoUTracker(BoTSORTTracker):
 
     * ``buffer_ratio_first`` — first pass (high-confidence detections vs tracks;
       paper: small ``b1``).
-    * ``buffer_ratio_second`` — second pass (low-confidence detections;
-      paper: large ``b2``).
+    * ``buffer_ratio_second`` — second pass (remaining *confirmed* tracks vs
+      low-confidence detections; paper: large ``b2``).
 
     The ByteTrack-style unconfirmed-track step (leftover high-confidence
     detections vs tentative tracks) reuses **b1** (``iou_first``).
@@ -65,11 +65,28 @@ class CBIoUTracker(BoTSORTTracker):
         buffer_ratio_second: Buffer scale ``b2`` for the second BIoU pass. It is suggested to
             be **greater than** ``buffer_ratio_first``.
 
+    Raises:
+        ValueError: If ``buffer_ratio_first`` or ``buffer_ratio_second`` is negative.
+
     Note:
         Unmatched low-confidence detections (confidence in ``(0.1, high_conf_det_threshold)``)
         that are not associated in Step 2 appear in the output with ``tracker_id == -1``,
         consistent with ``BoTSORTTracker`` behaviour. Callers filtering by
         ``tracker_id >= 0`` will silently drop these rows.
+
+    Example:
+        Run C-BIoU on a batch of detections::
+
+            import numpy as np
+            import supervision as sv
+            from trackers import CBIoUTracker
+
+            tracker = CBIoUTracker()
+            detections = sv.Detections(
+                xyxy=np.array([[0.0, 0.0, 100.0, 100.0]]),
+                confidence=np.array([0.9]),
+            )
+            result = tracker.update(detections)
     """
 
     tracker_id = "cbiou"
