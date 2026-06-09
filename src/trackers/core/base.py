@@ -419,8 +419,8 @@ class BaseTracker(ABC):
         self._next_track_id = 0
 
     def _allocate_tracker_id(self) -> int:
-        """Return the next tracker ID from this tracker instance."""
-        next_track_id = getattr(self, "_next_track_id", 0)
+        """Return the next tracker ID (zero-indexed) and advance the internal counter."""
+        next_track_id = self._next_track_id
         self._next_track_id = next_track_id + 1
         return next_track_id
 
