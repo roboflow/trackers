@@ -271,6 +271,13 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       buffer_ratio_second: 0.50
     ```
 
+!!! note "SoccerNet buffer ordering exception"
+
+    This config uses `buffer_ratio_first: 0.68 > buffer_ratio_second: 0.50`, which reverses
+    the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering).
+    Optuna found this ordering yields higher HOTA on SoccerNet's dense, long-sequence scenarios.
+    On most other datasets the `b1 < b2` default applies.
+
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
 Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.
