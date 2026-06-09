@@ -55,8 +55,10 @@ def reset_random_seeds() -> None:
         import torch
 
         torch.manual_seed(42)
-        torch.cuda.manual_seed_all(42)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(42)
     except ImportError:
+        pass
         pass
 
 
