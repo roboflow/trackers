@@ -98,7 +98,6 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
       track_activation_threshold: 0.7
       buffer_ratio_first: 0.3
       buffer_ratio_second: 0.5
-      enable_cmc: false
     ```
 
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
@@ -184,7 +183,6 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       track_activation_threshold: 0.7
       buffer_ratio_first: 0.3
       buffer_ratio_second: 0.5
-      enable_cmc: false
     ```
 
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
