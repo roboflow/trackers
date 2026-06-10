@@ -21,9 +21,9 @@ import supervision as sv
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
-from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
+from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracker import SORTTracker
