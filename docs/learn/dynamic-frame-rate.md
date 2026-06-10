@@ -1,6 +1,6 @@
 ---
 title: Dynamic Frame Rate — Variable-Gap Tracking | Trackers
-description: Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, and BoT-SORT.
+description: Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU.
 ---
 
 # Dynamic Frame Rate
@@ -39,7 +39,7 @@ Turn on timestamps when the **capture-time gap** between two `update()` calls is
 
 Stick with the default when you process **every** frame in order at a steady rate. A normal `VideoCapture` loop that reads all frames does not need timestamps.
 
-`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, and `BoTSORTTracker` all accept `timestamp` on `update()`.
+`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, `BoTSORTTracker`, and `CBIoUTracker` all accept `timestamp` on `update()`.
 
 ---
 

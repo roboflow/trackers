@@ -21,6 +21,7 @@ import supervision as sv
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.ocsort.tracker import OCSORTTracker
@@ -49,6 +50,12 @@ TIMESTAMP_AWARE_TRACKERS: list[Any] = [
         {"enable_cmc": False, "track_activation_threshold": 0.5},
         id="botsort",
     ),
+    pytest.param(
+        CBIoUTracker,
+        BoTSORTTracklet,
+        {"track_activation_threshold": 0.5},
+        id="cbiou",
+    ),
 ]
 
 PREDICT_TIMING_TRACKER: list[Any] = [
@@ -62,6 +69,12 @@ FRAME_BUDGET_TRACKERS: list[Any] = [
         BoTSORTTracklet,
         {"enable_cmc": False, "track_activation_threshold": 0.5},
         id="botsort",
+    ),
+    pytest.param(
+        CBIoUTracker,
+        BoTSORTTracklet,
+        {"track_activation_threshold": 0.5},
+        id="cbiou",
     ),
 ]
 
@@ -81,11 +94,10 @@ def _make_detections(boxes: list[list[float]], confidences: list[float] | None =
 
 def _make_timestamp_aware_tracker(
     tracker_cls: type[BaseTracker],
-    tracklet_cls: type[BaseTracklet],
+    _tracklet_cls: type[BaseTracklet],
     extra_kwargs: dict[str, Any],
     **kwargs: Any,
 ) -> BaseTracker:
-    tracklet_cls.count_id = 0
     params = {
         "minimum_consecutive_frames": 1,
         "frame_rate": 30.0,

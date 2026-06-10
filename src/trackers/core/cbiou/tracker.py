@@ -154,6 +154,7 @@ class CBIoUTracker(BoTSORTTracker):
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        timestamp: float | None = None,
     ) -> sv.Detections:
         """Update the C-BIoU tracker with detections from the current frame.
 
@@ -163,12 +164,17 @@ class CBIoUTracker(BoTSORTTracker):
         Args:
             detections: Supervision detections for the current frame.
             frame: Unused. Emits a ``UserWarning`` if provided.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             Detections with ``tracker_id`` assigned. Unmatched
             low-confidence detections are included with ``tracker_id == -1``;
             callers filtering by ``tracker_id >= 0`` will silently drop these rows.
         """
+        timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
         self._warn_if_frame_unused(frame)
         self.frame_id += 1
 
@@ -181,8 +187,7 @@ class CBIoUTracker(BoTSORTTracker):
         out_tracker_ids: list[int] = []
 
         # Predict new locations for existing tracks
-        for tracker in self.tracks:
-            tracker.predict()
+        self._predict_tracklets(self.tracks, timing)
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -293,6 +298,10 @@ class CBIoUTracker(BoTSORTTracker):
             tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_time_without_update=self._lost_track_time_budget(
+                timing,
+                self.maximum_time_without_update,
+            ),
         )
 
         if not out_det_indices:
