@@ -232,6 +232,10 @@ class OCSORTTracklet(BaseTracklet):
         self.previous_to_last_observation = self.last_observation
         self.last_observation = bbox
         self.observations[self.age] = bbox
+        # Prune entries beyond the delta_t lookback window to bound memory.
+        cutoff = self.age - self.delta_t
+        for key in [k for k in self.observations if k < cutoff]:
+            del self.observations[key]
 
     def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict next bounding box position.
