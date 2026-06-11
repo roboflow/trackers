@@ -107,7 +107,7 @@ Call **`tracker.reset()`** when you switch videos so the last timestamp does not
 
 ## Things to Know
 
-**You can mix modes per call.** Only steps that pass `timestamp` use seconds for pruning and scaled predict. One `update()` without `timestamp` goes back to passed `frame_rate`.
+**You can mix modes per call.** Only steps that pass `timestamp` use seconds for pruning and scaled predict. Calling `update()` without `timestamp` resets the internal timestamp anchor — the next `update()` that *does* pass a `timestamp` will be treated as a fresh start (Kalman frame step `1 / frame_rate`), not a measured gap from the last timestamped call.
 
 **The first timestamped step is special.** The tracker does not use your absolute clock value as the first gap. It assumes `1 / frame_rate` seconds so the first Kalman predict still looks like one frame.
 
