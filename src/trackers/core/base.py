@@ -495,15 +495,23 @@ class BaseTracker(ABC):
                 Used by trackers with camera motion compensation (e.g. BoTSORT).
             timestamp: Absolute time of the current frame in seconds, or
                 ``None`` for fixed-rate mode (``frame_step = 1.0`` per call).
-                When provided, elapsed seconds are converted to Kalman frame
-                units via ``* frame_rate``; pruning uses seconds directly.
-                Must be non-decreasing in capture time; an earlier value than
-                the previous call skips the update and emits a warning. Equal
-                values skip predict only and emit a warning.
+                Must be non-negative. When provided, elapsed seconds are
+                converted to Kalman frame units via ``* frame_rate``; pruning
+                uses seconds directly. Must be non-decreasing in capture time.
+                Passing ``None`` resets the internal timestamp anchor so the
+                next timestamped call is treated as a fresh bootstrap.
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each
-            detection box.
+            detection box. When the update is skipped (backwards or
+            non-finite timestamp), all ``tracker_id`` values are ``-1``.
+
+        Warns:
+            UserWarning: If ``timestamp`` is earlier than the previous call
+                (backwards order); the whole update is skipped and all output
+                IDs are ``-1``. If ``timestamp`` equals the previous call
+                (duplicate); predict is skipped but association still runs on
+                the last state (``elapsed_seconds = 0.0``).
         """
         pass
 
