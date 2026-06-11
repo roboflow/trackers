@@ -13,7 +13,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, ClassVar, Protocol, Union, get_args, get_origin
+from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin
 
 import numpy as np
 import supervision as sv
@@ -458,7 +458,7 @@ class BaseTracker(ABC):
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
             return result
-        result = detections[np.arange(len(detections))]
+        result = cast(sv.Detections, detections[np.arange(len(detections))])
         result.tracker_id = np.full(len(result), -1, dtype=int)
         return result
 
