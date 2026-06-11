@@ -199,6 +199,15 @@ class SORTTracker(BaseTracker):
 
         self._predict_tracklets(self.tracks, timing)
 
+        # Prune expired tracks before association so a track that has exceeded
+        # its budget cannot be revived with its old ID (ghost-ID prevention).
+        self.tracks = _get_alive_tracklets(
+            self.tracks,
+            self.minimum_consecutive_frames,
+            self.maximum_frames_without_update,
+            self._lost_track_time_budget(timing, self.maximum_time_without_update),
+        )
+
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
 
@@ -215,14 +224,6 @@ class SORTTracker(BaseTracker):
 
         confidences = default_confidences(detections)
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
-
-        # Remove dead tracklets (seconds budget only on timestamped updates)
-        self.tracks = _get_alive_tracklets(
-            self.tracks,
-            self.minimum_consecutive_frames,
-            self.maximum_frames_without_update,
-            self._lost_track_time_budget(timing, self.maximum_time_without_update),
-        )
 
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
         tracker_ids = np.full(len(detection_boxes), -1, dtype=int)

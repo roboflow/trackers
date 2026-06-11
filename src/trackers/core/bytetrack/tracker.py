@@ -156,6 +156,18 @@ class ByteTrackTracker(BaseTracker):
 
         self._predict_tracklets(self.tracks, timing)
 
+        # Prune expired tracks before association so a track that has exceeded
+        # its budget cannot be revived with its old ID (ghost-ID prevention).
+        self.tracks = _get_alive_tracklets(
+            tracklets=self.tracks,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            maximum_time_without_update=self._lost_track_time_budget(
+                timing,
+                self.maximum_time_without_update,
+            ),
+        )
+
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
 
@@ -213,16 +225,6 @@ class ByteTrackTracker(BaseTracker):
             high_indices,
             out_det_indices,
             out_tracker_ids,
-        )
-
-        self.tracks = _get_alive_tracklets(
-            tracklets=self.tracks,
-            minimum_consecutive_frames=self.minimum_consecutive_frames,
-            maximum_frames_without_update=self.maximum_frames_without_update,
-            maximum_time_without_update=self._lost_track_time_budget(
-                timing,
-                self.maximum_time_without_update,
-            ),
         )
 
         # Build final sv.Detections from original by indexing

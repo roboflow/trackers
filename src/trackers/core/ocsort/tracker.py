@@ -216,6 +216,10 @@ class OCSORTTracker(BaseTracker):
 
         self._predict_tracklets(self.tracks, timing)
 
+        # Prune expired tracks before association so a track that has exceeded
+        # its budget cannot be revived with its old ID (ghost-ID prevention).
+        self.tracks = self._prune_expired_tracklets(timing)
+
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
 
@@ -260,16 +264,12 @@ class OCSORTTracker(BaseTracker):
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(tid)
 
-            self.tracks = self._prune_expired_tracklets(timing)
-
             remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
             self._spawn_new_tracklets(detection_boxes[remaining_indices])
             for det_idx in remaining_indices:
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(-1)
         else:
-            self.tracks = self._prune_expired_tracklets(timing)
-
             self._spawn_new_tracklets(detection_boxes[unmatched_detections])
             for det_idx in unmatched_detections:
                 out_det_indices.append(det_idx)

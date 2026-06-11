@@ -194,6 +194,18 @@ class BoTSORTTracker(BaseTracker):
         # Predict new locations for existing tracks
         self._predict_tracklets(self.tracks, timing)
 
+        # Prune expired tracks before association so a track that has exceeded
+        # its budget cannot be revived with its old ID (ghost-ID prevention).
+        self.tracks = get_alive_tracklets(
+            tracklets=self.tracks,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_time_without_update=self._lost_track_time_budget(
+                timing,
+                self.maximum_time_without_update,
+            ),
+        )
+
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
 
@@ -309,17 +321,6 @@ class BoTSORTTracker(BaseTracker):
             out_det_indices,
             out_tracker_ids,
             is_first_frame=(self.frame_id == 1),
-        )
-
-        # Kill lost tracks
-        self.tracks = get_alive_tracklets(
-            tracklets=self.tracks,
-            maximum_frames_without_update=self.maximum_frames_without_update,
-            minimum_consecutive_frames=self.minimum_consecutive_frames,
-            maximum_time_without_update=self._lost_track_time_budget(
-                timing,
-                self.maximum_time_without_update,
-            ),
         )
 
         # Build final detections
