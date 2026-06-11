@@ -15,13 +15,15 @@ the box is allowed to drift when there is no new detection. Each tracklet sets
 Those values assume **one frame** between updates. ``frame_step=1.0`` is
 that case; other values rescale ``F`` and ``Q`` for shorter or longer gaps.
 
-When ``frame_step`` is not 1.0, position/velocity blocks in ``Q`` use the
-standard constant-velocity + white-noise-acceleration layout: velocity variance
-scales as ``Δt²``, position as ``Δt⁴`` (multiplying the one-frame ``Q`` by
-``Δt`` alone would be wrong in either direction). The acceleration variance is
-fixed so ``Q(1)`` still matches ``_configure_noise()``. Same block structure as
-``filterpy.common.discrete_white_noise`` — see the filterpy docs or source if
-you want the formulas side by side.
+``Q`` uses the standard constant-velocity + white-noise-acceleration (DWNA)
+layout at *every* frame step, including ``1.0``: velocity variance scales as
+``Δt²``, position as ``Δt⁴`` (multiplying the one-frame ``Q`` by ``Δt`` alone
+would be wrong in either direction). The acceleration variance ``sigma_a2`` is
+calibrated from the velocity diagonal of the reference ``Q`` set by
+``_configure_noise()``, so the DWNA layout is continuous across all
+``frame_step`` values — no special-case branch at ``frame_step == 1.0``. Same
+block structure as ``filterpy.common.discrete_white_noise`` — see the filterpy
+docs or source if you want the formulas side by side.
 """
 
 from __future__ import annotations
@@ -49,18 +51,19 @@ def constant_velocity_F(
 
 @dataclass
 class ScalableProcessNoise:
-    """Store the tracker's one-frame ``Q`` and scale it for longer gaps.
+    """Store the tracker's one-frame ``Q`` and scale it for any gap.
 
     On tracklet creation, ``_configure_noise()`` sets ``Q`` with values that
     work when exactly one frame passes between updates (see ``SORTTracklet``,
-    ``ByteTrackTracklet``, etc.). That matrix is kept as ``baseline_Q`` and
-    reused unchanged whenever ``frame_step`` is 1.0.
+    ``ByteTrackTracklet``, etc.). ``calibrate`` extracts the per-axis
+    acceleration variance ``sigma_a2`` from that reference ``Q`` and stores the
+    DWNA-at-1 layout as ``baseline_Q``.
 
-    Whenever ``frame_step`` is not 1.0, position/velocity blocks in ``Q`` use
-    white-noise-acceleration scaling. Smaller steps
-    (``frame_step < 1``) shrink uncertainty; larger steps (``frame_step > 1``)
-    grow it. Frozen entries (e.g. aspect ratio in XCYCSR) stay at the
-    values from ``_configure_noise()``.
+    Position/velocity blocks in ``Q`` use white-noise-acceleration scaling at
+    *every* frame step — there is no special-case branch at ``frame_step ==
+    1.0``. Smaller steps (``frame_step < 1``) shrink uncertainty; larger steps
+    (``frame_step > 1``) grow it. Frozen entries (e.g. aspect ratio in XCYCSR)
+    stay at the values from ``_configure_noise()``.
     """
 
     dim_x: int
@@ -71,15 +74,19 @@ class ScalableProcessNoise:
     extra_q_diagonal: NDArray[np.float64]
 
     def calibrate(self, Q: np.ndarray) -> None:
-        """Save ``Q`` as the one-frame reference (called from ``set_kf_covariances``)."""
-        self.baseline_Q = np.asarray(Q, dtype=np.float64).copy()
+        """Calibrate ``sigma_a2`` from ``Q`` and store the DWNA-at-1 reference.
+
+        Called from ``set_kf_covariances``. The velocity diagonal of ``Q``
+        defines the per-axis acceleration variance; ``baseline_Q`` is then
+        normalised to the DWNA layout at ``frame_step = 1.0`` so ``build_Q`` is
+        continuous everywhere.
+        """
         self.sigma_a2 = np.asarray([float(Q[v, v]) for v in self.vel_idx], dtype=np.float64)
         self.extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
+        self.baseline_Q = self._dwna(1.0)
 
     def build_Q(self, frame_step: float) -> NDArray[np.float64]:
-        """Return process noise ``Q`` for *frame_step* (baseline at 1.0, scaled otherwise)."""
-        if np.isclose(frame_step, 1.0):
-            return self.baseline_Q.copy()
+        """Return process noise ``Q`` for *frame_step* using the DWNA layout."""
         return self._dwna(frame_step)
 
     def _dwna(self, frame_step: float) -> NDArray[np.float64]:

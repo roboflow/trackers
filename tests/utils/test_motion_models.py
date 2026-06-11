@@ -78,7 +78,24 @@ def test_dwna_gap_noise_preserves_non_kinematic_diagonal() -> None:
         assert Q_built[3, 3] == pytest.approx(7.5), f"Q[3,3] not preserved at frame_step={frame_step}"
 
 
-def test_sync_preserves_reference_q_at_unit_frame_step() -> None:
+def test_build_Q_continuous_at_frame_step_1() -> None:
+    """``build_Q`` must be continuous across ``frame_step = 1.0`` (no special-case branch)."""
+    gap = ScalableProcessNoise(
+        dim_x=8,
+        pos_idx=POS_4D,
+        vel_idx=VEL_4D,
+        baseline_Q=np.eye(8, dtype=np.float64) * 0.01,
+        sigma_a2=np.ones(4, dtype=np.float64) * 0.01,
+        extra_q_diagonal=np.ones(8, dtype=np.float64) * 0.01,
+    )
+    q1 = gap.build_Q(1.0)
+    q2 = gap.build_Q(1.0 + 1e-9)
+
+    np.testing.assert_allclose(q1, q2, rtol=1e-6)
+
+
+def test_sync_preserves_velocity_diagonal_at_unit_frame_step() -> None:
+    """Calibration must preserve the velocity-diagonal entry that defines ``sigma_a2``."""
     kf = KalmanFilter(dim_x=2, dim_z=1)
     custom_Q = np.diag([0.01, 0.02])
     kf.Q = custom_Q.copy()
@@ -87,10 +104,18 @@ def test_sync_preserves_reference_q_at_unit_frame_step() -> None:
 
     model.apply(kf, 1.0)
 
-    np.testing.assert_allclose(kf.Q, custom_Q)
+    # Q uses the DWNA layout at every step (including 1.0). The velocity diagonal
+    # equals sigma_a2 * dt^2 = custom_Q[1,1] * 1 = custom_Q[1,1].
+    assert kf.Q[1, 1] == pytest.approx(custom_Q[1, 1])
+    # Position diagonal follows DWNA: sigma_a2 * dt^4 / 4.
+    assert kf.Q[0, 0] == pytest.approx(custom_Q[1, 1] / 4.0)
+    # Position/velocity cross-term: sigma_a2 * dt^3 / 2.
+    assert kf.Q[0, 1] == pytest.approx(custom_Q[1, 1] / 2.0)
+    assert kf.Q[1, 0] == pytest.approx(custom_Q[1, 1] / 2.0)
 
 
 def test_sync_gap_scales_q_relative_to_unit_frame_step() -> None:
+    """Gap step must scale velocity variance as ``dt^2`` relative to ``frame_step = 1``."""
     kf = KalmanFilter(dim_x=2, dim_z=1)
     custom_Q = np.diag([0.01, 0.02])
     kf.Q = custom_Q.copy()
@@ -98,8 +123,10 @@ def test_sync_gap_scales_q_relative_to_unit_frame_step() -> None:
     model.calibrate_from_Q(custom_Q)
 
     model.apply(kf, 1.0)
+    q_unit = kf.Q.copy()
     model.apply(kf, 3.0)
 
     assert kf.Q[1, 1] == pytest.approx(custom_Q[1, 1] * 9.0)
     model.apply(kf, 1.0)
-    np.testing.assert_allclose(kf.Q, custom_Q, rtol=1e-12)
+    # Returning to frame_step=1 reproduces the DWNA-at-1 layout exactly.
+    np.testing.assert_allclose(kf.Q, q_unit, rtol=1e-12)
