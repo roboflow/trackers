@@ -42,10 +42,17 @@ class BaseTracklet(ABC):
         pass
 
     def _advance_miss_clocks(self, timing: PredictTiming) -> None:
-        """Advance miss counters by one step."""
+        """Advance miss counters by one step.
+
+        When ``elapsed_seconds`` is ``None`` (fixed-rate mode), the seconds
+        counter is reset to zero so stale values from a prior timestamp-mode
+        stretch cannot influence later seconds-budget pruning.
+        """
         self.time_since_update += 1
         if timing.elapsed_seconds is not None:
             self.time_since_update_seconds += timing.elapsed_seconds
+        else:
+            self.time_since_update_seconds = 0.0
         self.age += 1
 
     @staticmethod
