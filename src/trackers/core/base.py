@@ -413,6 +413,14 @@ class BaseTracker(ABC):
             self._last_timestamp = None
             return PredictTiming(frame_step=1.0, elapsed_seconds=None)
 
+        if not np.isfinite(timestamp):
+            warnings.warn(
+                f"{type(self).__name__}: timestamp {timestamp!r} is not finite; skipping update.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return PredictTiming(frame_step=0.0, elapsed_seconds=None, skip_update=True)
+
         last = self._last_timestamp
 
         if last is None:
