@@ -13,6 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.core.sort.utils import _get_alive_tracklets
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
@@ -199,14 +200,19 @@ class SORTTracker(BaseTracker):
 
         self._predict_tracklets(self.tracks, timing)
 
-        # Prune expired tracks before association so a track that has exceeded
-        # its budget cannot be revived with its old ID (ghost-ID prevention).
-        self.tracks = _get_alive_tracklets(
-            self.tracks,
-            self.minimum_consecutive_frames,
-            self.maximum_frames_without_update,
-            self._lost_track_time_budget(timing, self.maximum_time_without_update),
-        )
+        # Ghost-ID prevention: remove tracks that already exceed their budget
+        # so they cannot be revived by association. Use budget-only filter here
+        # (not _get_alive_tracklets) to keep immature tracks alive for matching.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        self.tracks = [
+            t
+            for t in self.tracks
+            if BaseTracklet.within_lost_track_budget(
+                t,
+                maximum_frames_without_update=self.maximum_frames_without_update,
+                maximum_time_without_update=_budget,
+            )
+        ]
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
@@ -224,6 +230,14 @@ class SORTTracker(BaseTracker):
 
         confidences = default_confidences(detections)
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
+
+        # Full lifecycle prune: also removes immature+unmatched tracks
+        self.tracks = _get_alive_tracklets(
+            self.tracks,
+            self.minimum_consecutive_frames,
+            self.maximum_frames_without_update,
+            _budget,
+        )
 
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
         tracker_ids = np.full(len(detection_boxes), -1, dtype=int)

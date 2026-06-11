@@ -13,6 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.bytetrack.utils import _get_alive_tracklets
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
@@ -156,17 +157,18 @@ class ByteTrackTracker(BaseTracker):
 
         self._predict_tracklets(self.tracks, timing)
 
-        # Prune expired tracks before association so a track that has exceeded
-        # its budget cannot be revived with its old ID (ghost-ID prevention).
-        self.tracks = _get_alive_tracklets(
-            tracklets=self.tracks,
-            minimum_consecutive_frames=self.minimum_consecutive_frames,
-            maximum_frames_without_update=self.maximum_frames_without_update,
-            maximum_time_without_update=self._lost_track_time_budget(
-                timing,
-                self.maximum_time_without_update,
-            ),
-        )
+        # Ghost-ID prevention: budget-only filter before association.
+        # Keeps immature tracks alive for matching; full lifecycle prune runs after.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        self.tracks = [
+            t
+            for t in self.tracks
+            if BaseTracklet.within_lost_track_budget(
+                t,
+                maximum_frames_without_update=self.maximum_frames_without_update,
+                maximum_time_without_update=_budget,
+            )
+        ]
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -225,6 +227,14 @@ class ByteTrackTracker(BaseTracker):
             high_indices,
             out_det_indices,
             out_tracker_ids,
+        )
+
+        # Full lifecycle prune: removes immature+unmatched and any remaining expired tracks
+        self.tracks = _get_alive_tracklets(
+            tracklets=self.tracks,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            maximum_time_without_update=_budget,
         )
 
         # Build final sv.Detections from original by indexing

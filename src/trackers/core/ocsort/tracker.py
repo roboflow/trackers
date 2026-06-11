@@ -275,6 +275,9 @@ class OCSORTTracker(BaseTracker):
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(-1)
 
+        # Post-association budget prune: removes tracks that exceeded budget after predict
+        self.tracks = self._prune_expired_tracklets(timing)
+
         # Build output — single index into the filtered detections preserves
         # all metadata (confidence, class_id, mask, data dict).
         if out_det_indices:

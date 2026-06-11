@@ -14,6 +14,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -194,17 +195,18 @@ class BoTSORTTracker(BaseTracker):
         # Predict new locations for existing tracks
         self._predict_tracklets(self.tracks, timing)
 
-        # Prune expired tracks before association so a track that has exceeded
-        # its budget cannot be revived with its old ID (ghost-ID prevention).
-        self.tracks = get_alive_tracklets(
-            tracklets=self.tracks,
-            maximum_frames_without_update=self.maximum_frames_without_update,
-            minimum_consecutive_frames=self.minimum_consecutive_frames,
-            maximum_time_without_update=self._lost_track_time_budget(
-                timing,
-                self.maximum_time_without_update,
-            ),
-        )
+        # Ghost-ID prevention: budget-only filter before association.
+        # Keeps immature tracks alive for matching; full lifecycle prune runs after.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        self.tracks = [
+            t
+            for t in self.tracks
+            if BaseTracklet.within_lost_track_budget(
+                t,
+                maximum_frames_without_update=self.maximum_frames_without_update,
+                maximum_time_without_update=_budget,
+            )
+        ]
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -321,6 +323,14 @@ class BoTSORTTracker(BaseTracker):
             out_det_indices,
             out_tracker_ids,
             is_first_frame=(self.frame_id == 1),
+        )
+
+        # Full lifecycle prune: removes immature+unmatched and any remaining expired
+        self.tracks = get_alive_tracklets(
+            tracklets=self.tracks,
+            maximum_frames_without_update=self.maximum_frames_without_update,
+            minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_time_without_update=_budget,
         )
 
         # Build final detections
