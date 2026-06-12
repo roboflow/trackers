@@ -22,12 +22,13 @@ LABELS = {"mot17": "MOT17", "sportsmot": "SportsMOT", "soccernet": "SoccerNet", 
 
 # Trackers shown side-by-side in docs/trackers/comparison.md — single source of truth for
 # Makefile (via `datasets.py --field comparison_trackers`) and collect.py.
-COMPARISON_TRACKERS = ("sort", "bytetrack", "ocsort", "botsort")
+COMPARISON_TRACKERS = ("sort", "bytetrack", "ocsort", "botsort", "cbiou")
 TRACKER_LABELS = {
     "sort": "SORT",
     "bytetrack": "ByteTrack",
     "ocsort": "OC-SORT",
     "botsort": "BoT-SORT",
+    "cbiou": "C-BIoU",
 }
 
 # Per-dataset splits used by the benchmark workflow.

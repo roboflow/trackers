@@ -256,9 +256,12 @@ def print_submission_failure_logs(
     print(f"  logs →\n{text}", flush=True)
 
 
-def _is_transient_http_error(exc: BaseException) -> bool:
+def _is_transient_error(exc: BaseException) -> bool:
     msg = str(exc)
-    return any(f"HTTP {code}" in msg for code in _TRANSIENT_HTTP_STATUSES)
+    if any(f"HTTP {code}" in msg for code in _TRANSIENT_HTTP_STATUSES):
+        return True
+    # DNS blips, connection resets, timeouts, etc. (OSError wrapped by _request).
+    return " failed: [" in msg or " failed: timed out" in msg
 
 
 def get_submission(
@@ -281,7 +284,7 @@ def get_submission(
             return payload
         except RuntimeError as exc:
             last_exc = exc
-            if attempt + 1 >= max_retries or not _is_transient_http_error(exc):
+            if attempt + 1 >= max_retries or not _is_transient_error(exc):
                 raise
             wait = min(10.0 * (2**attempt), 60.0)
             print(f"  transient API error, retry in {wait:.0f}s: {exc}", flush=True)
