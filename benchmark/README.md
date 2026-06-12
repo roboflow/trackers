@@ -111,7 +111,7 @@ make data-check DATA_ROOT="/path/to/datasets"
 | ------------------ | ----- | ----- | ----------------------- |
 | MOT17              | val   | test  | Codabench               |
 | SportsMOT          | val   | test  | Codabench               |
-| DanceTrack         | train | test  | Codabench               |
+| DanceTrack         | val   | test  | Codabench               |
 | SoccerNet-tracking | train | test  | Local (`trackers eval`) |
 
 ## Commands

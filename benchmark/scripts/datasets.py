@@ -31,7 +31,7 @@ TRACKER_LABELS = {
 }
 
 # Per-dataset splits used by the benchmark workflow.
-TUNE_SPLIT = {"soccernet": "train", "dancetrack": "train", "sportsmot": "val", "mot17": "val"}
+TUNE_SPLIT = {"soccernet": "train", "dancetrack": "val", "sportsmot": "val", "mot17": "val"}
 EVAL_SPLIT = {"soccernet": "test", "dancetrack": "val", "sportsmot": "val", "mot17": "val"}
 SUBMIT_SPLIT = {"dancetrack": "test", "sportsmot": "test", "mot17": "test"}  # soccernet has no Codabench
 

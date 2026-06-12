@@ -72,7 +72,7 @@ DATASETS           ?= $(ALL_DATASETS)
 # delegate to scripts/datasets.py to stay DRY.
 mot17_TUNE_SPLIT      := val
 sportsmot_TUNE_SPLIT  := val
-dancetrack_TUNE_SPLIT := train
+dancetrack_TUNE_SPLIT := val
 soccernet_TUNE_SPLIT  := train
 SCORE_SPLIT := test
 
