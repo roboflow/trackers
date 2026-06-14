@@ -110,6 +110,7 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+        self._reset_id_allocator()
 
     def _get_associated_indices(
         self,
@@ -212,7 +213,11 @@ class OCSORTTracker(BaseTracker):
 
         for row, col in matched_indices:
             self.tracks[row].update(detection_boxes[col])
-            tid = self.tracks[row].resolve_tracker_id(self.minimum_consecutive_frames, self.frame_count)
+            tid = self.tracks[row].resolve_tracker_id(
+                self.minimum_consecutive_frames,
+                self.frame_count,
+                self._allocate_tracker_id,
+            )
             out_det_indices.append(col)
             out_tracker_ids.append(tid)
 
@@ -232,7 +237,11 @@ class OCSORTTracker(BaseTracker):
                 track_idx = unmatched_tracks[ocr_row]
                 det_idx = unmatched_detections[ocr_col]
                 self.tracks[track_idx].update(detection_boxes[det_idx])
-                tid = self.tracks[track_idx].resolve_tracker_id(self.minimum_consecutive_frames, self.frame_count)
+                tid = self.tracks[track_idx].resolve_tracker_id(
+                    self.minimum_consecutive_frames,
+                    self.frame_count,
+                    self._allocate_tracker_id,
+                )
                 out_det_indices.append(det_idx)
                 out_tracker_ids.append(tid)
 
@@ -269,7 +278,7 @@ class OCSORTTracker(BaseTracker):
         """
         self.tracks = []
         self.frame_count = 0
-        OCSORTTracklet.count_id = 0
+        self._reset_id_allocator()
 
     def _prune_expired_tracklets(self) -> list[OCSORTTracklet]:
         """Remove tracklets that have been lost for too long.

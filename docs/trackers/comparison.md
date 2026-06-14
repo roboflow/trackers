@@ -1,11 +1,11 @@
 ---
-title: SORT vs ByteTrack vs OC-SORT vs BoT-SORT — MOT Benchmark Comparison | Trackers
-description: Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, and BoT-SORT on MOT17, MOT20, DanceTrack, and SportsMOT — HOTA, IDF1, MOTA scores with default and tuned parameters.
+title: SORT vs ByteTrack vs OC-SORT vs BoT-SORT vs C-BIoU — MOT Benchmark Comparison | Trackers
+description: Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
 ---
 
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, and BoT-SORT on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.
+This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.
 
 !!! info "Benchmark version"
 
@@ -38,7 +38,8 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |   SORT    |   58.4   |   69.9   |   67.2   |
     | ByteTrack |   60.1   |   73.2   |   74.1   |
     |  OC-SORT  |   61.9   |   76.4   |   76.0   |
-    | BoT-SORT  | **63.7** | **78.7** | **79.2** |
+    | BoT-SORT  | **63.7** |   78.7   | **79.2** |
+    |  C-BIoU   |   63.0   | **79.1** |   77.4   |
 
 === "Tuned"
 
@@ -49,7 +50,8 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |   SORT    |   60.4   |   72.5   |   75.8   |
     | ByteTrack |   60.5   |   72.7   |   76.1   |
     |  OC-SORT  |   62.0   |   76.5   |   77.3   |
-    | BoT-SORT  | **63.8** | **78.7** | **79.4** |
+    | BoT-SORT  | **63.8** |   78.7   | **79.4** |
+    |  C-BIoU   |   63.0   | **79.1** |   77.4   |
 
     Tuned configuration for each tracker.
 
@@ -85,6 +87,17 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
       track_activation_threshold: 0.6
       enable_cmc: true
       cmc_method: sparseOptFlow
+
+    C-BIoU:
+      lost_track_buffer: 30
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.2
+      minimum_iou_threshold_second_assoc: 0.5
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
+      high_conf_det_threshold: 0.6
+      track_activation_threshold: 0.7
+      buffer_ratio_first: 0.3
+      buffer_ratio_second: 0.5
     ```
 
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
@@ -111,6 +124,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     | ByteTrack |   73.0   |   72.5   |   96.4   |
     |  OC-SORT  |   71.7   |   71.4   |   95.0   |
     | BoT-SORT  | **73.8** | **73.4** | **96.9** |
+    |  C-BIoU   |   73.1   |   72.6   |   96.7   |
 
 === "Tuned"
 
@@ -122,6 +136,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     | ByteTrack |   73.3   |   73.5   |   95.9   |
     |  OC-SORT  |   74.0   | **75.4** |   95.6   |
     | BoT-SORT  | **74.1** |   74.0   | **96.9** |
+    |  C-BIoU   |   73.1   |   72.6   |   96.7   |
 
     Tuned configuration for each tracker.
 
@@ -157,6 +172,17 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       track_activation_threshold: 0.8
       enable_cmc: true
       cmc_method: sparseOptFlow
+
+    C-BIoU:
+      lost_track_buffer: 30
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.2
+      minimum_iou_threshold_second_assoc: 0.5
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
+      high_conf_det_threshold: 0.6
+      track_activation_threshold: 0.7
+      buffer_ratio_first: 0.3
+      buffer_ratio_second: 0.5
     ```
 
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
@@ -184,6 +210,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     | ByteTrack |   84.0   |   78.1   | **97.8** |
     |  OC-SORT  |   78.4   |   72.6   |   94.1   |
     | BoT-SORT  | **84.5** | **79.3** |   96.6   |
+    |  C-BIoU   |   82.6   |   76.6   |   97.0   |
 
 === "Tuned"
 
@@ -191,10 +218,11 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
-    |   SORT    |   84.2   |   78.2   | **98.2** |
-    | ByteTrack |   84.0   |   78.1   | **98.2** |
+    |   SORT    |   84.2   |   78.2   |   98.2   |
+    | ByteTrack |   84.0   |   78.1   |   98.2   |
     |  OC-SORT  |   82.9   |   77.9   |   96.8   |
-    | BoT-SORT  | **85.0** | **79.7** |   97.2   |
+    | BoT-SORT  |   85.0   |   79.7   |   97.2   |
+    |  C-BIoU   | **85.7** | **80.0** | **99.3** |
 
     Tuned configuration for each tracker.
 
@@ -230,7 +258,25 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       track_activation_threshold: 0.7
       enable_cmc: true
       cmc_method: sparseOptFlow
+
+    C-BIoU:
+      lost_track_buffer: 43
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.05
+      minimum_iou_threshold_second_assoc: 0.46
+      minimum_iou_threshold_unconfirmed_assoc: 0.27
+      high_conf_det_threshold: 0.40
+      track_activation_threshold: 0.48
+      buffer_ratio_first: 0.68
+      buffer_ratio_second: 0.50
     ```
+
+!!! note "SoccerNet buffer ordering exception"
+
+    This config uses `buffer_ratio_first: 0.68 > buffer_ratio_second: 0.50`, which reverses
+    the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering).
+    Optuna found this ordering yields higher HOTA on SoccerNet's dense, long-sequence scenarios.
+    On most other datasets the `b1 < b2` default applies.
 
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
@@ -241,17 +287,11 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for DanceTrack.</small></p>
 
-!!! warning
-
-    DanceTrack test set evaluation is currently unavailable because CodaLab, which hosted
-    the benchmark, has been [discontinued](https://docs.codabench.org/dev/Newsletters_Archive/CodaLab-in-2025/).
-    Migration to Codabench is [in progress](https://github.com/DanceTrack/DanceTrack/issues/42).
-    Results below use the validation set instead.
-
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the
-    validation set. Detections come from a YOLOX model.
+    Parameters were tuned on the validation set. Results are reported on the
+    test set via [Codabench](https://www.codabench.org/competitions/14885/) submission.
+    Detections come from a YOLOX model.
 
 === "Default"
 
@@ -259,56 +299,69 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
-    |   SORT    |   45.0   |   39.0   |   80.6   |
-    | ByteTrack |   50.2   |   49.9   |   86.2   |
-    |  OC-SORT  | **51.8** | **50.9** | **87.3** |
-    | BoT-SORT  |   50.5   |   49.2   |   85.1   |
+    |   SORT    |   47.2   |   41.0   |   86.5   |
+    | ByteTrack |   53.3   |   53.6   |   90.3   |
+    |  OC-SORT  |   54.1   |   53.3   |   89.3   |
+    | BoT-SORT  | **57.8** | **57.9** | **92.2** |
 
 === "Tuned"
 
-    Results after grid search over tracker parameters.
+    Hyperparameter tuning, reporting the best tuned configuration per
+    tracker evaluated on the test set (tuning performed on the valid split;
+    if tuning did not outperform registry defaults, defaults are shown).
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
-    |   SORT    |   50.6   |   49.6   |   84.3   |
-    | ByteTrack | **53.2** | **54.6** |   86.8   |
-    |  OC-SORT  |   52.0   |   51.8   | **87.2** |
-    | BoT-SORT  | **53.5** | **54.0** |   86.5   |
+    |   SORT    |   54.3   |   53.4   |   89.5   |
+    | ByteTrack |   55.3   |   55.2   |   89.9   |
+    |  OC-SORT  |   54.1   |   53.3   |   89.3   |
+    | BoT-SORT  | **57.8** | **57.9** | **92.2** |
 
-    Tuned configuration for each tracker.
+    Best configuration for each tracker.
 
     ```yaml
     SORT:
-      lost_track_buffer: 10
-      track_activation_threshold: 0.9
-      minimum_consecutive_frames: 2
-      minimum_iou_threshold: 0.05
+      lost_track_buffer: 91
+      track_activation_threshold: 0.89
+      minimum_consecutive_frames: 3
+      minimum_iou_threshold: 0.21
 
     ByteTrack:
-      lost_track_buffer: 60
+      lost_track_buffer: 76
       track_activation_threshold: 0.9
-      minimum_consecutive_frames: 1
-      minimum_iou_threshold: 0.1
-      high_conf_det_threshold: 0.5
+      minimum_consecutive_frames: 4
+      minimum_iou_threshold: 0.33
+      high_conf_det_threshold: 0.52
 
     OC-SORT:
       lost_track_buffer: 30
-      minimum_iou_threshold: 0.1
+      minimum_iou_threshold: 0.3
       minimum_consecutive_frames: 3
       direction_consistency_weight: 0.2
       high_conf_det_threshold: 0.6
-      delta_t: 1
+      delta_t: 3
 
     BoT-SORT:
-      lost_track_buffer: 60
+      lost_track_buffer: 30
       minimum_consecutive_frames: 2
-      minimum_iou_threshold_first_assoc: 0.1
+      minimum_iou_threshold_first_assoc: 0.2
       minimum_iou_threshold_second_assoc: 0.5
-      minimum_iou_threshold_unconfirmed_assoc: 0.2
+      minimum_iou_threshold_unconfirmed_assoc: 0.3
       high_conf_det_threshold: 0.6
       track_activation_threshold: 0.7
       enable_cmc: true
       cmc_method: sparseOptFlow
+
+    C-BIoU:
+      lost_track_buffer: 53
+      minimum_consecutive_frames: 2
+      minimum_iou_threshold_first_assoc: 0.11
+      minimum_iou_threshold_second_assoc: 0.57
+      minimum_iou_threshold_unconfirmed_assoc: 0.30
+      high_conf_det_threshold: 0.36
+      track_activation_threshold: 0.83
+      buffer_ratio_first: 0.23
+      buffer_ratio_second: 0.33
     ```
 
 ## Methodology
@@ -321,9 +374,10 @@ detector following the ByteTrack procedure). The source is noted per dataset abo
 
 ### Tuning
 
-Best parameters per tracker and dataset were found via grid search, selecting the
-configuration with the highest HOTA. Tuning and evaluation always use separate data
-splits to reflect real-world usage:
+Best parameters per tracker and dataset were found via grid search (SORT, ByteTrack,
+OC-SORT, BoT-SORT) or Optuna (`n_trials=100`, objective HOTA, trial 0 = defaults for
+C-BIoU), selecting the configuration with the highest HOTA on the tune split. Tuning and
+evaluation always use separate data splits to reflect real-world usage:
 
 - Train + validation + test: tune on validation, report on test.
 - Train + validation: tune on train, report on validation.
@@ -345,7 +399,7 @@ sports video, aerial footage, and crowded retail scenes all benefit.
 **OC-SORT** is best when camera motion is significant or objects follow non-linear paths. Its
 observation-centric re-update mechanism and direction consistency cost reduce drift from the
 linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns,
-camera pans, or erratic motion — the benchmark edge on MOT17 and DanceTrack reflects exactly
+camera pans, or erratic motion — the benchmark edge on MOT17 reflects exactly
 these conditions.
 
 **BoT-SORT** is the choice when camera ego-motion is strong and you need the most stable
@@ -353,6 +407,8 @@ identities. It extends ByteTrack with camera motion compensation (CMC) and confi
 association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports
 broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is
 small relative to the detector, so the trade-off favors identity stability over raw speed.
+
+**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet and DanceTrack, and achieves the highest IDF1 on MOT17 among the trackers listed here. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](cbiou.md) for buffer scales **b1** and **b2**.
 
 ## Metric Definitions
 

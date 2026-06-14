@@ -19,6 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **`CMCTMethod` type alias** — kept as a back-compat alias for `CMCMethod`; will be removed in v3.0. Migrate to `CMCMethod` ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`CMC.apply_to_xyxy` renamed to `CMC.warp_xyxy_corners`** — old name kept as a deprecated wrapper that forwards to the new name; will be removed in v3.0. Update call sites to `CMC.warp_xyxy_corners` ([#414](https://github.com/roboflow/trackers/pull/414)).
 
+### ⚠️ Breaking Changes
+
+- **Internal tracklet ID counters removed** — track IDs are now allocated by each tracker instance instead of the class-level counters on each `*Tracklet` subclass (e.g. `BoTSORTTracklet.get_next_tracker_id()`). Internal tracklet subclassers should allocate IDs in tracker code and assign `tracklet.tracker_id` directly. Use `self._allocate_tracker_id()` (inherited from `BaseTracker`) as the replacement allocator when implementing a custom tracker subclass.
+
 ### 🌱 Changed
 
 - **`CMC`, `CMCConfig`, `CMCMethod` moved to `trackers.utils.cmc` and re-exported from top-level `trackers` package** — import directly with `from trackers import CMC`; old `trackers.core.botsort.cmc` path kept as a deprecated shim ([#414](https://github.com/roboflow/trackers/pull/414)).
@@ -34,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Eager division warnings on zero-area boxes** — IoU helper switched from `np.where` (eager) to `np.divide(..., where=...)` (lazy), suppressing `RuntimeWarning` under strict NumPy error settings ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **CLI argparse crash on `BaseIoU` parameter** — `iou=` is now excluded from argparse auto-discovery; the variant must be set programmatically ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **ByteTrack tracked nothing when detections lacked confidence scores** — the default-fill changed from `np.zeros` to `np.ones`, matching SORT / OC-SORT / BoT-SORT behaviour, so detectors that emit `sv.Detections` without `confidence` now produce tracks instead of empty results ([#415](https://github.com/roboflow/trackers/pull/415)).
+- **Tracker instances no longer share track ID counters** — resetting one tracker instance no longer resets another instance's ID allocator, preventing duplicate live IDs in multi-camera, class-specific, or parallel tracker workflows.
 
 ---
 
