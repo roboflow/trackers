@@ -139,6 +139,7 @@ class BoTSORTTracker(BaseTracker):
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
         self.frame_id: int = 0
+        self._reset_id_allocator()
 
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
@@ -231,7 +232,7 @@ class BoTSORTTracker(BaseTracker):
             track = strack_pool[row]
             track.update(high_boxes[col])
             if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+                track.tracker_id = self._allocate_tracker_id()
             out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -246,7 +247,7 @@ class BoTSORTTracker(BaseTracker):
             track = remaining_tracked[row]
             track.update(low_boxes[col])
             if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+                track.tracker_id = self._allocate_tracker_id()
             out_det_indices.append(int(low_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -276,7 +277,7 @@ class BoTSORTTracker(BaseTracker):
                 orig_high_idx = unmatched_high_list[col]
                 track.update(high_boxes[orig_high_idx])
                 if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                    track.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+                    track.tracker_id = self._allocate_tracker_id()
                 out_det_indices.append(int(high_indices[orig_high_idx]))
                 out_tracker_ids.append(track.tracker_id)
 
@@ -391,7 +392,7 @@ class BoTSORTTracker(BaseTracker):
                     state_estimator_class=self.state_estimator_class,
                 )
                 if is_first_frame and self.instant_first_frame_activation:
-                    tracklet.tracker_id = BoTSORTTracklet.get_next_tracker_id()
+                    tracklet.tracker_id = self._allocate_tracker_id()
                 self.tracks.append(tracklet)
                 out_det_indices.append(global_idx)
                 out_tracker_ids.append(tracklet.tracker_id)
@@ -402,7 +403,7 @@ class BoTSORTTracker(BaseTracker):
         """
         self.tracks = []
         self.frame_id = 0
-        BoTSORTTracklet.count_id = 0
+        self._reset_id_allocator()
         if self.cmc is not None:
             self.cmc.reset()
 

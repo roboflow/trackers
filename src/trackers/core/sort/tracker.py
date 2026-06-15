@@ -99,6 +99,7 @@ class SORTTracker(BaseTracker):
 
         # Active tracklets
         self.tracks: list[SORTTracklet] = []
+        self._reset_id_allocator()
 
     @property
     def trackers(self) -> list[SORTTracklet]:
@@ -215,7 +216,7 @@ class SORTTracker(BaseTracker):
         for det_idx, tracklet in matched_tracklet_for_det.items():
             if tracklet.number_of_successful_updates >= self.minimum_consecutive_frames:
                 if tracklet.tracker_id == -1:
-                    tracklet.tracker_id = SORTTracklet.get_next_tracker_id()
+                    tracklet.tracker_id = self._allocate_tracker_id()
                 tracker_ids[det_idx] = tracklet.tracker_id
 
         # Return a fresh sv.Detections rather than mutating the caller's object,
@@ -229,4 +230,4 @@ class SORTTracker(BaseTracker):
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
-        SORTTracklet.count_id = 0
+        self._reset_id_allocator()

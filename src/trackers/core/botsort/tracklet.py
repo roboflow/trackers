@@ -37,8 +37,6 @@ class BoTSORTTracklet(BaseTracklet):
       internal Kalman state and covariance.
     """
 
-    count_id: int = 0
-
     # Noise sigma constants (scale-aware noise for BoT-SORT)
     _SIGMA_P: float = 0.05
     _SIGMA_V: float = 0.00625
