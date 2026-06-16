@@ -210,6 +210,46 @@ class ReIDModel:
         return cls(backbone, resolved_device, _build_osnet_transforms())
 
     @classmethod
+    def from_checkpoint(
+        cls,
+        checkpoint_path: str,
+        device: str = "auto",
+        variant: str = "x1_0",
+    ) -> ReIDModel:
+        """Load an OSNet backbone from a local ``.pth`` checkpoint.
+
+        Use this for checkpoints that are not hosted on the Hugging Face Hub —
+        for example the torchreid model-zoo weights distributed via Google Drive.
+        The classifier head is dropped on load (see :func:`_load_osnet_checkpoint`),
+        so only the embedding backbone needs to match.
+
+        Args:
+            checkpoint_path: Local filesystem path to a ``.pth`` checkpoint.
+            device: Compute device — ``"auto"`` selects the best available
+                device, or pass any :class:`torch.device`-compatible string.
+            variant: OSNet width variant: ``"x1_0"`` (default), ``"x0_75"``,
+                ``"x0_5"``, or ``"x0_25"``.
+
+        Returns:
+            A :class:`ReIDModel` ready for inference.
+
+        Examples:
+            >>> model = ReIDModel.from_checkpoint("osnet_x1_0_market1501.pth")  # doctest: +SKIP
+        """
+        _require_reid_deps()
+
+        from trackers.core.reid.osnet import build_osnet
+
+        resolved_device = _select_device(device)
+
+        backbone = build_osnet(variant=variant)
+        backbone.eval()
+        _load_osnet_checkpoint(backbone, checkpoint_path, resolved_device)
+        backbone.to(resolved_device)
+
+        return cls(backbone, resolved_device, _build_osnet_transforms())
+
+    @classmethod
     def from_timm(
         cls,
         model_name: str,
