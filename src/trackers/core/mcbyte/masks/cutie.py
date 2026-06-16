@@ -188,10 +188,7 @@ def _output_prob_to_object_indexed_mask(
 # See Cutie's ObjectManager and InferenceCore implementation for details.
 def _get_object_id_to_tmp_id(processor: Any) -> dict[int, int]:
     """Return mapping from immutable Cutie object IDs to temporary tensor IDs."""
-    return {
-        obj.id: tmp_id
-        for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items()
-    }
+    return {obj.id: tmp_id for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items()}
 
 
 def _binary_masks_to_non_overlapping_torch(
@@ -532,8 +529,7 @@ class CutieMaskPropagator(MaskPropagator):
         """
         if not self._initialized:
             raise RuntimeError(
-                "CutieMaskPropagator must be initialized before calling add_masks(). "
-                "Call initialize() first."
+                "CutieMaskPropagator must be initialized before calling add_masks(). Call initialize() first."
             )
 
         if mask_output.masks is None:
@@ -541,8 +537,7 @@ class CutieMaskPropagator(MaskPropagator):
 
         if mask_output.masks.ndim != 3:
             raise ValueError(
-                "CutieMaskPropagator expects masks with shape (N, H, W). "
-                f"Got shape {mask_output.masks.shape}."
+                f"CutieMaskPropagator expects masks with shape (N, H, W). Got shape {mask_output.masks.shape}."
             )
 
         num_masks = mask_output.masks.shape[0]
@@ -563,13 +558,10 @@ class CutieMaskPropagator(MaskPropagator):
                 f"indices {expected_indices}. Got {actual_indices}."
             )
 
-        duplicate_tracklet_ids = set(mask_output.tracklet_mask_dict) & set(
-            self._tracklet_object_dict
-        )
+        duplicate_tracklet_ids = set(mask_output.tracklet_mask_dict) & set(self._tracklet_object_dict)
         if len(duplicate_tracklet_ids) > 0:
             raise ValueError(
-                "Cannot add masks for tracklets that already have Cutie objects: "
-                f"{sorted(duplicate_tracklet_ids)}."
+                f"Cannot add masks for tracklets that already have Cutie objects: {sorted(duplicate_tracklet_ids)}."
             )
 
         sorted_tracklet_ids = [
@@ -619,8 +611,7 @@ class CutieMaskPropagator(MaskPropagator):
         """Remove masks associated with the given tracklet IDs from Cutie memory."""
         if not self._initialized:
             raise RuntimeError(
-                "CutieMaskPropagator must be initialized before calling remove_masks(). "
-                "Call initialize() first."
+                "CutieMaskPropagator must be initialized before calling remove_masks(). Call initialize() first."
             )
 
         if len(tracklet_ids) == 0:
@@ -649,18 +640,12 @@ class CutieMaskPropagator(MaskPropagator):
             for tracklet_id, object_id in self._tracklet_object_dict.items()
             if tracklet_id not in tracklet_ids_to_remove_set
         }
-        self._object_ids = [
-            object_id
-            for object_id in self._object_ids
-            if object_id not in object_ids_to_remove_set
-        ]
+        self._object_ids = [object_id for object_id in self._object_ids if object_id not in object_ids_to_remove_set]
 
         # If the previous indexed mask contains pixels belonging to removed objects,
         # turn those pixels into background in this cached mask state.
         if self._last_indexed_mask is not None:
-            self._last_indexed_mask[
-                np.isin(self._last_indexed_mask, object_ids_to_remove)
-            ] = 0
+            self._last_indexed_mask[np.isin(self._last_indexed_mask, object_ids_to_remove)] = 0
 
         # No active objects remain, so propagation has nothing valid to propagate.
         if len(self._object_ids) == 0:

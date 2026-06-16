@@ -51,6 +51,7 @@ class RemoveMaskEvent:
 
     Removal happens before propagating to ``frame_file``.
     """
+
     frame_file: str
     tracker_id: int
 
@@ -67,9 +68,7 @@ def parse_add_mask_event(event: str) -> AddMaskEvent:
     """Parse ``filename:x1,y1,x2,y2`` add-mask event."""
     parts = event.split(":")
     if len(parts) != 2:
-        raise argparse.ArgumentTypeError(
-            "Add event must have format filename:x1,y1,x2,y2."
-        )
+        raise argparse.ArgumentTypeError("Add event must have format filename:x1,y1,x2,y2.")
 
     frame_file, box_str = parts
     return AddMaskEvent(
@@ -82,9 +81,7 @@ def parse_remove_mask_event(event: str) -> RemoveMaskEvent:
     """Parse ``filename:manual_mask_id`` remove-mask event."""
     parts = event.split(":")
     if len(parts) != 2:
-        raise argparse.ArgumentTypeError(
-            "Remove event must have format filename:manual_mask_id."
-        )
+        raise argparse.ArgumentTypeError("Remove event must have format filename:manual_mask_id.")
 
     frame_file, tracker_id_str = parts
     return RemoveMaskEvent(
@@ -496,7 +493,6 @@ def main() -> None:
         "Do not add another mask for an already initialized object."
     )
 
-
     device = validate_device(args.device, label="SAM/Cutie")
 
     sam_generator = SAMBoxMaskGenerator(
@@ -533,7 +529,6 @@ def main() -> None:
         # Cutie outputs. SAM local mask indices start at 0, while Cutie object IDs start
         # at 1.
         object_ids=[tracklet.tracker_id for tracklet in tracklets],
-
     )
     initial_visual = draw_boxes(initial_visual, tracklets)
     initial_visual = draw_frame_label(
