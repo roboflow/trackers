@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 
@@ -283,16 +285,16 @@ def test_add_masks_assigns_new_object_ids_and_updates_state() -> None:
 
     class DummyProcessor:
         def __init__(self) -> None:
-            self.step_calls = []
+            self.step_calls: list[dict[str, Any]] = []
 
         def step(
             self,
-            frame: torch.Tensor,
-            mask: torch.Tensor | None = None,
+            frame: Any,
+            mask: Any | None = None,
             objects: list[int] | None = None,
             *,
             idx_mask: bool = True,
-        ) -> torch.Tensor:
+        ) -> Any:
             self.step_calls.append(
                 {
                     "frame": frame,
@@ -303,7 +305,7 @@ def test_add_masks_assigns_new_object_ids_and_updates_state() -> None:
             )
             return torch.empty((3, 4, 4), dtype=torch.float32)
 
-        def output_prob_to_mask(self, prob: torch.Tensor) -> torch.Tensor:
+        def output_prob_to_mask(self, prob: Any) -> Any:
             return torch.tensor(
                 [
                     [0, 3, 3, 0],
@@ -409,7 +411,7 @@ def test_remove_masks_deletes_objects_and_updates_state() -> None:
 
     class DummyProcessor:
         def __init__(self) -> None:
-            self.deleted_objects = None
+            self.deleted_objects: list[int] | None = None
 
         def delete_objects(self, object_ids: list[int]) -> None:
             self.deleted_objects = object_ids
@@ -460,6 +462,9 @@ def test_remove_masks_marks_uninitialized_when_no_objects_remain() -> None:
     propagator = object.__new__(CutieMaskPropagator)
 
     class DummyProcessor:
+        def __init__(self) -> None:
+            self.deleted_objects: list[int] | None = None
+
         def delete_objects(self, object_ids: list[int]) -> None:
             self.deleted_objects = object_ids
 
@@ -500,7 +505,7 @@ def test_propagate_uses_object_id_remapping_after_temporary_id_shift() -> None:
         def __init__(self) -> None:
             self.object_manager = DummyObjectManager()
 
-        def step(self, frame: torch.Tensor) -> torch.Tensor:
+        def step(self, frame: Any) -> Any:
             # Channels:
             # 0: background, 1: tmp 1 -> object 1, 2: tmp 2 -> object 3.
             return torch.tensor(
@@ -512,7 +517,7 @@ def test_propagate_uses_object_id_remapping_after_temporary_id_shift() -> None:
                 dtype=torch.float32,
             )
 
-        def output_prob_to_mask(self, prob: torch.Tensor) -> torch.Tensor:
+        def output_prob_to_mask(self, prob: Any) -> Any:
             # This simulates Cutie's tmp-id to object-id remapping:
             # tmp 2 is remapped to immutable object ID 3.
             return torch.tensor(
@@ -571,6 +576,7 @@ def test_propagate_uses_object_id_remapping_after_temporary_id_shift() -> None:
         ),
     )
 
+    assert output.mask_avg_prob_dict is not None
     assert np.isclose(output.mask_avg_prob_dict[1], 0.8)
     assert np.isclose(output.mask_avg_prob_dict[3], np.mean([0.7, 0.8]))
 

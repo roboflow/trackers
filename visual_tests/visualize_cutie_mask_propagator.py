@@ -134,19 +134,19 @@ def validate_lifecycle_events(
     filename_set = set(filenames)
     first_file = filenames[0]
 
-    for event in add_events:
-        if event.frame_file not in filename_set:
-            raise ValueError(f"Add event frame is outside selected range: {event.frame_file}")
-        if event.frame_file == filenames[-1]:
+    for add_event in add_events:
+        if add_event.frame_file not in filename_set:
+            raise ValueError(f"Add event frame is outside selected range: {add_event.frame_file}")
+        if add_event.frame_file == filenames[-1]:
             raise ValueError(
                 "Add events cannot be scheduled on the last selected frame, because "
                 "they are applied on that frame and propagated to the next one."
             )
 
-    for event in remove_events:
-        if event.frame_file not in filename_set:
-            raise ValueError(f"Remove event frame is outside selected range: {event.frame_file}")
-        if event.frame_file == first_file:
+    for remove_event in remove_events:
+        if remove_event.frame_file not in filename_set:
+            raise ValueError(f"Remove event frame is outside selected range: {remove_event.frame_file}")
+        if remove_event.frame_file == first_file:
             raise ValueError("Remove events cannot be scheduled on the first selected frame.")
 
 
