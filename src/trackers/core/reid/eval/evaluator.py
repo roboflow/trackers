@@ -51,16 +51,28 @@ def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.
     Raises:
         ValueError: If *metric* is not ``"cosine"`` or ``"euclidean"``.
     """
+    # All ops below are done in place on a single (Nq, Ng) array to keep peak
+    # memory at one distance matrix — important for large galleries (e.g.
+    # MSMT17's 11.7k × 82.2k matrix is ~3.8 GB on its own).
     if metric == "cosine":
-        qn = q_embs / (np.linalg.norm(q_embs, axis=1, keepdims=True) + 1e-12)
-        gn = g_embs / (np.linalg.norm(g_embs, axis=1, keepdims=True) + 1e-12)
-        return (1.0 - qn @ gn.T).astype(np.float32)
+        qn = (q_embs / (np.linalg.norm(q_embs, axis=1, keepdims=True) + 1e-12)).astype(
+            np.float32, copy=False
+        )
+        gn = (g_embs / (np.linalg.norm(g_embs, axis=1, keepdims=True) + 1e-12)).astype(
+            np.float32, copy=False
+        )
+        distmat = qn @ gn.T  # cosine similarity
+        distmat *= -1.0
+        distmat += 1.0  # → 1 − cosine similarity
+        return distmat
     if metric == "euclidean":
-        q_sq = (q_embs**2).sum(axis=1, keepdims=True)
-        g_sq = (g_embs**2).sum(axis=1, keepdims=True)
-        dist_sq = q_sq + g_sq.T - 2.0 * (q_embs @ g_embs.T)
-        np.maximum(dist_sq, 0.0, out=dist_sq)
-        return np.sqrt(dist_sq).astype(np.float32)
+        distmat = (q_embs @ g_embs.T).astype(np.float32, copy=False)
+        distmat *= -2.0
+        distmat += (q_embs**2).sum(axis=1, keepdims=True)
+        distmat += (g_embs**2).sum(axis=1, keepdims=True).T
+        np.maximum(distmat, 0.0, out=distmat)
+        np.sqrt(distmat, out=distmat)
+        return distmat
     raise ValueError(f"Unknown distance metric: {metric!r}. Use 'cosine' or 'euclidean'.")
 
 
@@ -92,6 +104,7 @@ class ReidEvaluator:
         distance: str = "cosine",
         query_embeddings: np.ndarray | None = None,
         gallery_embeddings: np.ndarray | None = None,
+        return_distmat: bool = True,
     ) -> ReidResult:
         """Run end-to-end evaluation on query and gallery splits.
 
@@ -115,10 +128,15 @@ class ReidEvaluator:
                 extraction is skipped — useful for re-scoring the same
                 embeddings under a different *distance*.
             gallery_embeddings: Optional pre-extracted **raw** gallery embeddings.
+            return_distmat: If ``True`` (default) the full distance matrix is
+                returned on the result. Set ``False`` to free it immediately
+                after scoring — important for large galleries (MSMT17's matrix
+                is ~3.8 GB), especially when re-scoring under multiple metrics.
 
         Returns:
-            :class:`ReidResult` containing metrics, raw embeddings, and the
-            distance matrix.
+            :class:`ReidResult` containing metrics and raw embeddings. The
+            ``distmat`` field is the scoring matrix, or an empty array when
+            *return_distmat* is ``False``.
         """
         if query_embeddings is None or gallery_embeddings is None:
             if verbose:
@@ -152,6 +170,10 @@ class ReidEvaluator:
 
         if verbose:
             print(f"\nResults ({distance})\n{'-' * 50}\n{metrics}\n{'-' * 50}")
+
+        if not return_distmat:
+            del distmat
+            distmat = np.empty((0, 0), dtype=np.float32)
 
         return ReidResult(
             metrics=metrics,
