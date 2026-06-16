@@ -303,8 +303,9 @@ class ReIDModel:
         self,
         image_paths: list[str],
         batch_size: int = 64,
+        normalize: bool = True,
     ) -> np.ndarray:
-        """Extract L2-normalised embeddings from a list of image file paths.
+        """Extract embeddings from a list of image file paths.
 
         Designed for the re-ID evaluation workflow where each image is already
         a cropped identity photograph (e.g. MSMT17 / Market-1501 samples).
@@ -316,6 +317,9 @@ class ReIDModel:
                 opened as RGB via Pillow.
             batch_size: Number of images to process in a single forward pass.
                 Reduce if running out of GPU memory.
+            normalize: If ``True`` (default), L2-normalise each embedding so
+                cosine similarity equals the dot product. Set ``False`` to
+                return the raw backbone features (needed for Euclidean distance).
 
         Returns:
             Float32 array of shape ``(N, D)`` where *N* is ``len(image_paths)``
@@ -342,7 +346,8 @@ class ReIDModel:
             batch = torch.stack(tensors).to(self._device)
             with torch.inference_mode():
                 embs = self._backbone(batch)
-            embs = torch.nn.functional.normalize(embs, p=2, dim=1)
+            if normalize:
+                embs = torch.nn.functional.normalize(embs, p=2, dim=1)
             all_embeddings.append(embs.cpu().numpy().astype(np.float32))
 
         return np.concatenate(all_embeddings, axis=0)

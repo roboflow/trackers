@@ -23,15 +23,45 @@ class ReidResult:
 
     Attributes:
         metrics: CMC / mAP / mINP scores.
-        query_embeddings: L2-normalised query embeddings, shape ``(Nq, D)``.
-        gallery_embeddings: L2-normalised gallery embeddings, shape ``(Ng, D)``.
-        distmat: Cosine distance matrix, shape ``(Nq, Ng)``.
+        query_embeddings: Raw (un-normalised) query embeddings, shape ``(Nq, D)``.
+            Can be passed back into :meth:`ReidEvaluator.evaluate` to re-score
+            under a different distance metric without re-extracting features.
+        gallery_embeddings: Raw (un-normalised) gallery embeddings, shape ``(Ng, D)``.
+        distmat: Distance matrix used for scoring, shape ``(Nq, Ng)``.
     """
 
     metrics: ReidMetrics
     query_embeddings: np.ndarray
     gallery_embeddings: np.ndarray
     distmat: np.ndarray
+
+
+def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.ndarray:
+    """Build a query×gallery distance matrix under the requested metric.
+
+    Args:
+        q_embs: Raw query embeddings, shape ``(Nq, D)``.
+        g_embs: Raw gallery embeddings, shape ``(Ng, D)``.
+        metric: ``"cosine"`` (1 − cosine similarity on L2-normalised vectors)
+            or ``"euclidean"`` (L2 distance on the raw vectors).
+
+    Returns:
+        Float32 distance matrix of shape ``(Nq, Ng)`` (lower = more similar).
+
+    Raises:
+        ValueError: If *metric* is not ``"cosine"`` or ``"euclidean"``.
+    """
+    if metric == "cosine":
+        qn = q_embs / (np.linalg.norm(q_embs, axis=1, keepdims=True) + 1e-12)
+        gn = g_embs / (np.linalg.norm(g_embs, axis=1, keepdims=True) + 1e-12)
+        return (1.0 - qn @ gn.T).astype(np.float32)
+    if metric == "euclidean":
+        q_sq = (q_embs**2).sum(axis=1, keepdims=True)
+        g_sq = (g_embs**2).sum(axis=1, keepdims=True)
+        dist_sq = q_sq + g_sq.T - 2.0 * (q_embs @ g_embs.T)
+        np.maximum(dist_sq, 0.0, out=dist_sq)
+        return np.sqrt(dist_sq).astype(np.float32)
+    raise ValueError(f"Unknown distance metric: {metric!r}. Use 'cosine' or 'euclidean'.")
 
 
 class ReidEvaluator:
@@ -59,14 +89,17 @@ class ReidEvaluator:
         gallery: ReidSplit,
         max_rank: int = 10,
         verbose: bool = True,
+        distance: str = "cosine",
+        query_embeddings: np.ndarray | None = None,
+        gallery_embeddings: np.ndarray | None = None,
     ) -> ReidResult:
         """Run end-to-end evaluation on query and gallery splits.
 
         Steps:
 
-        1. Batch-extract L2-normalised embeddings for query and gallery.
-        2. Compute the cosine distance matrix (1 − dot product for normalised
-           vectors).
+        1. Batch-extract raw embeddings for query and gallery (skipped when
+           *query_embeddings* / *gallery_embeddings* are provided).
+        2. Build the distance matrix under *distance*.
         3. Apply the junk rule and compute CMC / mAP / mINP.
 
         Args:
@@ -74,28 +107,37 @@ class ReidEvaluator:
             gallery: Gallery split (search pool).
             max_rank: Highest CMC rank to report (default 10).
             verbose: Print progress messages to stdout.
+            distance: ``"cosine"`` (1 − cosine similarity on L2-normalised
+                embeddings, the default) or ``"euclidean"`` (L2 distance on the
+                raw embeddings, matching the torchreid model-zoo protocol).
+            query_embeddings: Optional pre-extracted **raw** query embeddings.
+                When given (together with *gallery_embeddings*), feature
+                extraction is skipped — useful for re-scoring the same
+                embeddings under a different *distance*.
+            gallery_embeddings: Optional pre-extracted **raw** gallery embeddings.
 
         Returns:
-            :class:`ReidResult` containing metrics, embeddings, and the
+            :class:`ReidResult` containing metrics, raw embeddings, and the
             distance matrix.
         """
-        if verbose:
-            print(f"Extracting query embeddings  ({len(query)} images)…")
-        q_embs = self._model.extract_features_from_paths(
-            query.image_paths, batch_size=self._batch_size
-        )
+        if query_embeddings is None or gallery_embeddings is None:
+            if verbose:
+                print(f"Extracting query embeddings  ({len(query)} images)…")
+            q_embs = self._model.extract_features_from_paths(
+                query.image_paths, batch_size=self._batch_size, normalize=False
+            )
+
+            if verbose:
+                print(f"Extracting gallery embeddings ({len(gallery)} images)…")
+            g_embs = self._model.extract_features_from_paths(
+                gallery.image_paths, batch_size=self._batch_size, normalize=False
+            )
+        else:
+            q_embs, g_embs = query_embeddings, gallery_embeddings
 
         if verbose:
-            print(f"Extracting gallery embeddings ({len(gallery)} images)…")
-        g_embs = self._model.extract_features_from_paths(
-            gallery.image_paths, batch_size=self._batch_size
-        )
-
-        if verbose:
-            print("Computing distance matrix…")
-        # Cosine distance = 1 − cosine similarity. For L2-normalised vectors,
-        # cosine similarity = dot product, so distance = 1 − (q @ g.T).
-        distmat = 1.0 - (q_embs @ g_embs.T).astype(np.float32)
+            print(f"Computing distance matrix ({distance})…")
+        distmat = _distance_matrix(q_embs, g_embs, distance)
 
         if verbose:
             print("Computing metrics…")
@@ -109,7 +151,7 @@ class ReidEvaluator:
         )
 
         if verbose:
-            print(f"\nResults\n{'-' * 50}\n{metrics}\n{'-' * 50}")
+            print(f"\nResults ({distance})\n{'-' * 50}\n{metrics}\n{'-' * 50}")
 
         return ReidResult(
             metrics=metrics,
