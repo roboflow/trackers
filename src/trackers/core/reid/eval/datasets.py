@@ -139,9 +139,14 @@ def _parse_market_filename(filename: str) -> tuple[int, int]:
     Filename format: ``<pid>_c<camid>s<seq>_<frame>_<det>.jpg``
     Example: ``0001_c1s1_000001_00.jpg`` → pid=1, camid=0
 
-    Special pids:
-    - ``0000`` → pid = -1 (distractor / junk)
-    - ``-1``   → pid = -2 (background, also junk)
+    Person-ID conventions (standard Market-1501 / torchreid protocol):
+
+    - ``-1`` → **junk** images (false detections). Kept as ``pid = -1`` so the
+      metric's junk rule (:func:`~trackers.core.reid.eval.metrics.compute_reid_metrics`)
+      discards them entirely — they must not appear in the ranked gallery.
+    - ``0000`` → **distractor** images. Kept as ``pid = 0``; real query IDs start
+      at 1, so distractors never count as a correct match but remain in the
+      gallery as noise that the model has to rank below true matches.
 
     Args:
         filename: Basename of the image file (with or without extension).
@@ -153,21 +158,14 @@ def _parse_market_filename(filename: str) -> tuple[int, int]:
         >>> _parse_market_filename("0001_c1s1_000001_00.jpg")
         (1, 0)
         >>> _parse_market_filename("0000_c2s1_000001_00.jpg")
-        (-1, 1)
+        (0, 1)
         >>> _parse_market_filename("-1_c3s1_000001_00.jpg")
-        (-2, 2)
+        (-1, 2)
     """
     stem = Path(filename).stem
     parts = stem.split("_")
-    raw_pid = int(parts[0])
+    pid = int(parts[0])
     camid = int(parts[1][1]) - 1  # "c1" → 0
-
-    if raw_pid == 0:
-        pid = -1
-    elif raw_pid == -1:
-        pid = -2
-    else:
-        pid = raw_pid
 
     return pid, camid
 
@@ -187,11 +185,12 @@ def load_market1501(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
             └── *.jpg
 
     Person IDs and camera IDs are parsed from filenames following the
-    ``<pid>_c<camid>s<seq>_<frame>_<det>.jpg`` convention. Items with
-    ``pid == -1`` (distractors, labelled ``0000_…``) are retained in the
-    gallery split with ``pid = -1`` so the junk rule in
-    :func:`~trackers.core.reid.eval.metrics.compute_reid_metrics` can
-    filter them automatically.
+    ``<pid>_c<camid>s<seq>_<frame>_<det>.jpg`` convention. Junk images
+    (labelled ``-1_…``) keep ``pid = -1`` so the junk rule in
+    :func:`~trackers.core.reid.eval.metrics.compute_reid_metrics` discards
+    them, while distractor images (labelled ``0000_…``) keep ``pid = 0`` and
+    remain in the gallery as noise. This reproduces the standard Market-1501
+    protocol (effective gallery of 15 913 images out of 19 732 files).
 
     Args:
         root: Path to the ``Market-1501-v15.09.15`` directory.
