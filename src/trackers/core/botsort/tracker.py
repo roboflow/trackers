@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 import numpy as np
 import supervision as sv
@@ -14,6 +14,7 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
+from trackers.core.reid.distance import appearance_similarity
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -21,6 +22,9 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
 )
+
+if TYPE_CHECKING:
+    from trackers.core.reid.model import ReIDModel
 
 
 class BoTSORTTracker(BaseTracker):
@@ -83,6 +87,18 @@ class BoTSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
+        reid_model: Optional :class:`~trackers.core.reid.model.ReIDModel` for
+            appearance-based association. When provided, a
+            :class:`~trackers.core.reid.feature_bank.FeatureBank` is attached to
+            each track and appearance cost is fused into the first-stage
+            high-confidence association. Requires ``frame`` to be passed to
+            :meth:`update`.  When ``None`` (default), behaviour is identical to
+            the geometry-only BoT-SORT baseline.
+        appearance_weight: Weight in ``[0, 1]`` for blending appearance
+            similarity into the first-stage cost matrix.
+            ``0.0`` = IoU only; ``1.0`` = appearance only.  Default ``0.5``.
+        reid_ema_alpha: EMA momentum for track feature updates.  Higher values
+            retain older appearance information longer.  Default ``0.9``.
 
     Notes:
         - `maximum_frames_without_update` is computed as:
@@ -123,6 +139,9 @@ class BoTSORTTracker(BaseTracker):
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
+        reid_model: "ReIDModel | None" = None,
+        appearance_weight: float = 0.5,
+        reid_ema_alpha: float = 0.9,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -143,6 +162,10 @@ class BoTSORTTracker(BaseTracker):
 
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
+
+        self.reid_model = reid_model
+        self.appearance_weight = appearance_weight
+        self.reid_ema_alpha = reid_ema_alpha
 
     def update(
         self,
@@ -218,12 +241,35 @@ class BoTSORTTracker(BaseTracker):
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(frame, mask_boxes)
             CMC.apply_batch(H, self.tracks)
+
+        # Appearance: extract embeddings once for all high-confidence detections.
+        # Only runs when a ReIDModel is provided *and* a frame is available.
+        # When reid_model is None this block is skipped entirely and behaviour
+        # is identical to the geometry-only baseline.
+        det_embeddings: np.ndarray | None = None
+        if self.reid_model is not None and frame is not None and len(high_boxes) > 0:
+            det_embeddings = self.reid_model.extract_features(
+                sv.Detections(xyxy=high_boxes), frame
+            )
+
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
         iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
         iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
+
+        if det_embeddings is not None and len(strack_pool) > 0:
+            track_feats = [
+                t.feature_bank.feature if t.feature_bank is not None else None
+                for t in strack_pool
+            ]
+            app_sim = appearance_similarity(track_feats, det_embeddings)
+            iou_matrix = (
+                (1.0 - self.appearance_weight) * iou_matrix
+                + self.appearance_weight * app_sim
+            )
+
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
         )
@@ -231,6 +277,8 @@ class BoTSORTTracker(BaseTracker):
         for row, col in matched:
             track = strack_pool[row]
             track.update(high_boxes[col])
+            if track.feature_bank is not None and det_embeddings is not None:
+                track.feature_bank.update(det_embeddings[col])
             if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
                 track.tracker_id = self._allocate_tracker_id()
             out_det_indices.append(int(high_indices[col]))
@@ -299,6 +347,7 @@ class BoTSORTTracker(BaseTracker):
             out_det_indices,
             out_tracker_ids,
             is_first_frame=(self.frame_id == 1),
+            det_embeddings=det_embeddings,
         )
 
         # Kill lost tracks
@@ -375,6 +424,7 @@ class BoTSORTTracker(BaseTracker):
         out_det_indices: list[int],
         out_tracker_ids: list[int],
         is_first_frame: bool = False,
+        det_embeddings: np.ndarray | None = None,
     ) -> None:
         """Create new tracklets from unmatched high-confidence detections.
 
@@ -382,7 +432,14 @@ class BoTSORTTracker(BaseTracker):
         real tracker ID, following the original ByteTrack convention where
         ``activate()`` sets ``is_activated = True`` only when
         ``frame_id == 1``.
+
+        When a ``reid_model`` is configured, each new tracklet receives a
+        :class:`~trackers.core.reid.feature_bank.FeatureBank` and, if
+        ``det_embeddings`` are available, its feature is initialised from the
+        detection embedding immediately.
         """
+        from trackers.core.reid.feature_bank import FeatureBank
+
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
             conf = float(confidences[global_idx])
@@ -391,6 +448,10 @@ class BoTSORTTracker(BaseTracker):
                     initial_bbox=detection_boxes[global_idx],
                     state_estimator_class=self.state_estimator_class,
                 )
+                if self.reid_model is not None:
+                    tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
+                    if det_embeddings is not None:
+                        tracklet.feature_bank.update(det_embeddings[det_local_idx])
                 if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = self._allocate_tracker_id()
                 self.tracks.append(tracklet)

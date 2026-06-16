@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from trackers.core.reid.feature_bank import FeatureBank
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.cmc import CMC
 from trackers.utils.converters import xyxy_to_xywh
@@ -52,6 +53,9 @@ class BoTSORTTracklet(BaseTracklet):
         # Count initial bbox as first successful update so that
         # number_of_successful_updates starts at 1.
         self.number_of_successful_updates = 1
+        # Optional appearance feature bank — set by BoTSORTTracker when a
+        # ReIDModel is provided.  None means no appearance information.
+        self.feature_bank: FeatureBank | None = None
 
     def _configure_initial_noise(self, bbox: np.ndarray) -> None:
         """Set initial P, Q, R based on the first detection's size."""

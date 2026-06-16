@@ -47,6 +47,12 @@ dependencies = [
 [project.optional-dependencies]
 detection = ["inference-models>=0.19.0"]
 tune = ["optuna>=3.0.0"]
+reid = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "timm>=1.0.0",
+    "huggingface-hub>=0.20.0",
+]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"
@@ -206,6 +212,9 @@ module = [
     "torch",
     "torchvision",
     "torchvision.transforms",
+    "timm",
+    "timm.*",
+    "huggingface_hub",
     "firerequests",
     "scipy",
     "scipy.*",
