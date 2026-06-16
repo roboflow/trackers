@@ -47,6 +47,16 @@ class ReidSplit:
 # MSMT17
 # --------------------------------------------------------------------------- #
 
+def _parse_msmt17_camid(filename: str) -> int:
+    """Extract 0-indexed camid from an MSMT17 image filename.
+
+    Filename format: ``<pid>_<idx>_<camid>_<scene>_<frame>_<track>.jpg``
+    Example: ``0001_019_07_0303morning_0020_1.jpg`` → camid = 6 (0-indexed).
+    """
+    stem = Path(filename).stem
+    return int(stem.split("_")[2]) - 1
+
+
 def load_msmt17(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
     """Load the MSMT17 query and gallery splits from a local directory.
 
@@ -57,16 +67,16 @@ def load_msmt17(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
 
         <root>/
         ├── test/
-        │   ├── query/
-        │   └── gallery/
+        │   └── <pid>/      (one folder per identity)
+        │       └── *.jpg
         ├── list_query.txt
         └── list_gallery.txt
 
-    Each list file contains one sample per line in the format::
+    Each list file contains one sample per line.  Two formats are supported:
 
-        <relative_image_path>  <pid>  <camid>
-
-    where ``pid`` and ``camid`` are 0-indexed integers.
+    * **2-column** (community mirrors): ``<relative_path>  <pid>``
+      Camera ID is extracted from the filename (3rd ``_``-separated field).
+    * **3-column** (original release): ``<relative_path>  <pid>  <camid>``
 
     Args:
         root: Path to the ``MSMT17_V1`` (or ``MSMT17``) directory.
@@ -97,9 +107,13 @@ def load_msmt17(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
             if not line:
                 continue
             parts = line.split()
-            if len(parts) < 3:
+            if len(parts) < 2:
                 continue
-            rel_path, pid, camid = parts[0], int(parts[1]), int(parts[2])
+            rel_path = parts[0]
+            pid = int(parts[1])
+            camid = int(parts[2]) if len(parts) >= 3 else _parse_msmt17_camid(
+                Path(rel_path).name
+            )
             paths.append(str(image_root / rel_path))
             pids.append(pid)
             camids.append(camid)
