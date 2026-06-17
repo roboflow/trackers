@@ -181,6 +181,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     video_capture.release()
     cv2.destroyAllWindows()
     ```
+
 > Note: `SORTTracker` is not deprecated. The old `tracker.trackers` alias is deprecated in favor of `tracker.tracks`.
 
 ## Reference
