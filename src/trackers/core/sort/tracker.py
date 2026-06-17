@@ -8,6 +8,7 @@ from typing import ClassVar
 
 import numpy as np
 import supervision as sv
+from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -102,6 +103,7 @@ class SORTTracker(BaseTracker):
         self._reset_id_allocator()
 
     @property
+    @deprecated(target=None, deprecated_in="2.0", remove_in="3.0")
     def trackers(self) -> list[SORTTracklet]:
         """Deprecated: use tracks instead."""
         return self.tracks
