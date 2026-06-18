@@ -15,6 +15,7 @@ from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.core.reid.distance import appearance_similarity
+from trackers.core.reid.extraction import extract_detection_embeddings
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -91,12 +92,10 @@ class BoTSORTTracker(BaseTracker):
             appearance-based association. When provided, a
             :class:`~trackers.core.reid.feature_bank.FeatureBank` is attached to
             each track and appearance cost is fused into the first-stage
-            high-confidence association. Requires ``frame`` to be passed to
+            high-confidence association using the BoT-SORT paper gated-min
+            fusion (Section 3.3). Requires ``frame`` to be passed to
             :meth:`update`.  When ``None`` (default), behaviour is identical to
             the geometry-only BoT-SORT baseline.
-        appearance_weight: Weight in ``[0, 1]`` for blending appearance
-            similarity into the first-stage cost matrix.
-            ``0.0`` = IoU only; ``1.0`` = appearance only.  Default ``0.5``.
         reid_ema_alpha: EMA momentum for track feature updates.  Higher values
             retain older appearance information longer.  Default ``0.9``.
 
@@ -109,6 +108,9 @@ class BoTSORTTracker(BaseTracker):
     """
 
     tracker_id = "botsort"
+    _IOU_DIST_THRESHOLD: ClassVar[float] = 0.5
+    _EMB_DIST_THRESHOLD: ClassVar[float] = 0.25
+    _GATED_APP_DISTANCE_SCALE: ClassVar[float] = 0.5
     search_space: ClassVar[dict[str, dict]] = {
         "lost_track_buffer": {"type": "randint", "range": [10, 91]},
         "track_activation_threshold": {"type": "uniform", "range": [0.1, 0.9]},
@@ -140,7 +142,6 @@ class BoTSORTTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
         reid_model: "ReIDModel | None" = None,
-        appearance_weight: float = 0.5,
         reid_ema_alpha: float = 0.9,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
@@ -164,7 +165,6 @@ class BoTSORTTracker(BaseTracker):
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
 
         self.reid_model = reid_model
-        self.appearance_weight = appearance_weight
         self.reid_ema_alpha = reid_ema_alpha
 
     def update(
@@ -243,35 +243,38 @@ class BoTSORTTracker(BaseTracker):
             CMC.apply_batch(H, self.tracks)
 
         # Appearance: extract embeddings once for all high-confidence detections.
-        # Only runs when a ReIDModel is provided *and* a frame is available.
         # When reid_model is None this block is skipped entirely and behaviour
         # is identical to the geometry-only baseline.
         det_embeddings: np.ndarray | None = None
-        if self.reid_model is not None and frame is not None and len(high_boxes) > 0:
-            det_embeddings = self.reid_model.extract_features(
-                sv.Detections(xyxy=high_boxes), frame
-            )
+        if self.reid_model is not None:
+            if frame is None:
+                raise ValueError(
+                    f"{type(self).__name__}.update() requires frame when reid_model is set."
+                )
+            if len(high_boxes) > 0:
+                det_embeddings = extract_detection_embeddings(
+                    self.reid_model, frame, high_boxes
+                )
 
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
         iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
-        iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
+        similarity_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
 
         if det_embeddings is not None and len(strack_pool) > 0:
             track_feats = [
-                t.feature_bank.feature if t.feature_bank is not None else None
+                t.feature_bank.feature
+                if t.feature_bank is not None and t.feature_bank.is_initialized
+                else None
                 for t in strack_pool
             ]
             app_sim = appearance_similarity(track_feats, det_embeddings)
-            iou_matrix = (
-                (1.0 - self.appearance_weight) * iou_matrix
-                + self.appearance_weight * app_sim
-            )
+            similarity_matrix = self._fuse_botsort_gated_min(similarity_matrix, app_sim)
 
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold_first_assoc
+            similarity_matrix, self.minimum_iou_threshold_first_assoc
         )
 
         for row, col in matched:
@@ -367,6 +370,24 @@ class BoTSORTTracker(BaseTracker):
         result = cast(sv.Detections, detections[idx])
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
+
+    def _fuse_botsort_gated_min(
+        self,
+        iou_similarity: np.ndarray,
+        appearance_similarity: np.ndarray,
+    ) -> np.ndarray:
+        """Fuse IoU and appearance using BoT-SORT paper gated-min (Section 3.3).
+
+        Appearance distance is only considered when both IoU and embedding
+        gates pass; otherwise association falls back to IoU alone for that
+        pair.
+        """
+        d_iou = 1.0 - iou_similarity
+        d_app = 1.0 - appearance_similarity
+        gate = (d_app < self._EMB_DIST_THRESHOLD) & (d_iou < self._IOU_DIST_THRESHOLD)
+        d_app_gated = np.where(gate, self._GATED_APP_DISTANCE_SCALE * d_app, 1.0)
+        fused_distance = np.minimum(d_iou, d_app_gated)
+        return 1.0 - fused_distance
 
     def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:

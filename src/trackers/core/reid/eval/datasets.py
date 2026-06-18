@@ -8,10 +8,10 @@
 
 Supports the two standard benchmarks used in this RFC:
 
-- **MSMT17** — large-scale pedestrian re-ID; 15 cameras, 4 101 identities.
+- **MSMT17** — large-scale pedestrian re-ID; 15 cameras, 4,101 identities.
   Requires accepting the original license:
   http://www.pkuvmc.com/publications/msmt17.html
-- **Market-1501** — smaller pedestrian benchmark; 6 cameras, 1 501 identities.
+- **Market-1501** — smaller pedestrian benchmark; 6 cameras, 1,501 identities.
   Freely available; useful as a fast sanity-check.
 
 Both loaders return a ``(query, gallery)`` pair of :class:`ReidSplit` objects.

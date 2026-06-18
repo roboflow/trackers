@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import supervision as sv
@@ -13,12 +13,18 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.bytetrack.utils import _get_alive_tracklets
+from trackers.core.reid.distance import appearance_similarity
+from trackers.core.reid.extraction import extract_detection_embeddings
+from trackers.core.reid.fusion_methods import fuse_weighted_first_stage
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XYXYStateEstimator,
 )
+
+if TYPE_CHECKING:
+    from trackers.core.reid.model import ReIDModel
 
 
 class ByteTrackTracker(BaseTracker):
@@ -76,6 +82,17 @@ class ByteTrackTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
+        reid_model: Optional :class:`~trackers.core.reid.model.ReIDModel` for
+            appearance-based association in the first high-confidence stage.
+            Requires ``frame`` to be passed to :meth:`update`.  When ``None``
+            (default), behaviour is identical to the geometry-only ByteTrack
+            baseline.
+        appearance_weight: Weight in ``[0, 1]`` for blending appearance
+            similarity into the first-stage cost matrix when ``reid_model`` is
+            set.  ``0.0`` = IoU only; ``1.0`` = appearance only.  Default
+            ``0.2``.
+        reid_ema_alpha: EMA momentum for track feature updates.  Default
+            ``0.9``.
     """
 
     tracker_id = "bytetrack"
@@ -98,6 +115,9 @@ class ByteTrackTracker(BaseTracker):
         high_conf_det_threshold: float = 0.6,
         state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
         iou: BaseIoU | None = None,
+        reid_model: "ReIDModel | None" = None,
+        appearance_weight: float = 0.2,
+        reid_ema_alpha: float = 0.9,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -110,6 +130,9 @@ class ByteTrackTracker(BaseTracker):
         self.tracks: list[ByteTrackTracklet] = []
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+        self.reid_model = reid_model
+        self.appearance_weight = appearance_weight
+        self.reid_ema_alpha = reid_ema_alpha
         self._reset_id_allocator()
 
     def update(
@@ -128,7 +151,8 @@ class ByteTrackTracker(BaseTracker):
                 detections are treated as confidence `1.0` — they bypass the
                 low-confidence stage and any unmatched boxes can spawn new
                 tracks regardless of `track_activation_threshold`.
-            frame: Ignored by ByteTrack. If provided (not `None`), a warning is
+            frame: Current video frame. Required when ``reid_model`` is set.
+                Otherwise ignored; if provided without ReID, a warning is
                 emitted.
 
         Returns:
@@ -136,7 +160,13 @@ class ByteTrackTracker(BaseTracker):
             Unmatched detections have tracker_id of -1. Detection order may
             differ from input.
         """
-        self._warn_if_frame_unused(frame)
+        if self.reid_model is None:
+            self._warn_if_frame_unused(frame)
+        elif frame is None:
+            raise ValueError(
+                f"{type(self).__name__}.update() requires frame when reid_model is set."
+            )
+
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
@@ -161,11 +191,31 @@ class ByteTrackTracker(BaseTracker):
         # Step 1: associate high-confidence detections to all tracks
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, high_boxes)
+
+        det_embeddings: np.ndarray | None = None
+        if self.reid_model is not None and len(high_boxes) > 0:
+            det_embeddings = extract_detection_embeddings(
+                self.reid_model, frame, high_boxes
+            )
+            if len(self.tracks) > 0:
+                track_feats = [
+                    t.feature_bank.feature
+                    if t.feature_bank is not None and t.feature_bank.is_initialized
+                    else None
+                    for t in self.tracks
+                ]
+                app_sim = appearance_similarity(track_feats, det_embeddings)
+                iou_matrix = fuse_weighted_first_stage(
+                    iou_matrix, app_sim, self.appearance_weight
+                )
+
         matched, unmatched_tracks, unmatched_high = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 
         for row, col in matched:
             track = self.tracks[row]
             track.update(high_boxes[col])
+            if track.feature_bank is not None and det_embeddings is not None:
+                track.feature_bank.update(det_embeddings[col])
             if (
                 track.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
@@ -205,6 +255,7 @@ class ByteTrackTracker(BaseTracker):
             high_indices,
             out_det_indices,
             out_tracker_ids,
+            det_embeddings=det_embeddings,
         )
 
         self.tracks = _get_alive_tracklets(
@@ -271,17 +322,23 @@ class ByteTrackTracker(BaseTracker):
         high_indices: np.ndarray,
         out_det_indices: list[int],
         out_tracker_ids: list[int],
+        det_embeddings: np.ndarray | None = None,
     ) -> None:
+        from trackers.core.reid.feature_bank import FeatureBank
+
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
             conf = float(confidences[global_idx])
             if conf >= self.track_activation_threshold:
-                self.tracks.append(
-                    ByteTrackTracklet(
-                        initial_bbox=detection_boxes[global_idx],
-                        state_estimator_class=self.state_estimator_class,
-                    )
+                tracklet = ByteTrackTracklet(
+                    initial_bbox=detection_boxes[global_idx],
+                    state_estimator_class=self.state_estimator_class,
                 )
+                if self.reid_model is not None:
+                    tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
+                    if det_embeddings is not None:
+                        tracklet.feature_bank.update(det_embeddings[det_local_idx])
+                self.tracks.append(tracklet)
                 out_det_indices.append(global_idx)
                 out_tracker_ids.append(-1)
 
