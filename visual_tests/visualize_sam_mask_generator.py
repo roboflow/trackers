@@ -6,10 +6,10 @@
 
 """Visual sanity check for SAMBoxMaskGenerator.
 
-This script is intended for local/manual validation only. It does not bundle any
-image assets and does not run as part of the test suite. The user provides an
-input image and one or more bounding boxes, and the script saves an image with
-SAM masks and boxes overlaid.
+This script is intended for local/manual validation and development debugging
+only. It does not bundle any image assets and does not run as part of the test
+suite. The user provides an input image and one or more bounding boxes, and the
+script saves an image with SAM masks and boxes overlaid.
 """
 
 from __future__ import annotations

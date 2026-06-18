@@ -19,10 +19,14 @@ from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)
 
+# Default download URLs for supported SAM model variants.
 SAM_CHECKPOINT_URLS = {
     "vit_b": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth",
 }
 
+# Default checkpoint locations for supported SAM model variants.
+# Currently only `vit_b` is used as in the original McByte, but this mapping is kept
+# extensible so additional SAM backbones (vit_h, vit_l) can be added consistently.
 SAM_DEFAULT_CHECKPOINT_PATHS = {
     "vit_b": Path("models/sam/sam_vit_b_01ec64.pth"),
 }
@@ -76,7 +80,10 @@ class SAMBoxMaskGenerator(MaskGenerator):
         device: str = "cpu",
     ) -> None:
         try:
-            from segment_anything import SamPredictor, sam_model_registry
+            from segment_anything import (  # type: ignore[import-untyped]
+                SamPredictor,
+                sam_model_registry,
+            )
         except ImportError as exc:
             msg = (
                 "SAM support requires Segment Anything. "
