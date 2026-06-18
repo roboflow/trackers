@@ -261,7 +261,8 @@ class BoTSORTTracker(BaseTracker):
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
         iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
-        similarity_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
+        iou_sim_raw = self.iou.normalize_for_fusion(iou_matrix)
+        iou_sim_fused = _fuse_score(iou_sim_raw, high_scores)
 
         if det_embeddings is not None and len(strack_pool) > 0:
             track_feats = [
@@ -271,7 +272,9 @@ class BoTSORTTracker(BaseTracker):
                 for t in strack_pool
             ]
             app_sim = appearance_similarity(track_feats, det_embeddings)
-            similarity_matrix = self._fuse_botsort_gated_min(similarity_matrix, app_sim)
+            similarity_matrix = self._fuse_botsort_gated_min(iou_sim_raw, iou_sim_fused, app_sim)
+        else:
+            similarity_matrix = iou_sim_fused
 
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             similarity_matrix, self.minimum_iou_threshold_first_assoc
@@ -373,20 +376,22 @@ class BoTSORTTracker(BaseTracker):
 
     def _fuse_botsort_gated_min(
         self,
-        iou_similarity: np.ndarray,
+        iou_similarity_raw: np.ndarray,
+        iou_similarity_fused: np.ndarray,
         appearance_similarity: np.ndarray,
     ) -> np.ndarray:
         """Fuse IoU and appearance using BoT-SORT paper gated-min (Section 3.3).
 
-        Appearance distance is only considered when both IoU and embedding
-        gates pass; otherwise association falls back to IoU alone for that
-        pair.
+        Proximity gating uses **raw** IoU (before detection-score fusion), while
+        the motion term in the final min uses score-fused IoU — matching the
+        reference BoT-SORT implementation.
         """
-        d_iou = 1.0 - iou_similarity
+        d_iou_raw = 1.0 - iou_similarity_raw
+        d_iou_fused = 1.0 - iou_similarity_fused
         d_app = 1.0 - appearance_similarity
-        gate = (d_app < self._EMB_DIST_THRESHOLD) & (d_iou < self._IOU_DIST_THRESHOLD)
+        gate = (d_app < self._EMB_DIST_THRESHOLD) & (d_iou_raw < self._IOU_DIST_THRESHOLD)
         d_app_gated = np.where(gate, self._GATED_APP_DISTANCE_SCALE * d_app, 1.0)
-        fused_distance = np.minimum(d_iou, d_app_gated)
+        fused_distance = np.minimum(d_iou_fused, d_app_gated)
         return 1.0 - fused_distance
 
     def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:

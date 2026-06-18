@@ -15,7 +15,10 @@ from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.bytetrack.utils import _get_alive_tracklets
 from trackers.core.reid.distance import appearance_similarity
 from trackers.core.reid.extraction import extract_detection_embeddings
-from trackers.core.reid.fusion_methods import fuse_weighted_first_stage
+from trackers.core.reid.fusion_methods import (
+    fuse_weighted_first_stage,
+    mask_appearance_by_iou_proximity,
+)
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
@@ -205,6 +208,7 @@ class ByteTrackTracker(BaseTracker):
                     for t in self.tracks
                 ]
                 app_sim = appearance_similarity(track_feats, det_embeddings)
+                app_sim = mask_appearance_by_iou_proximity(iou_matrix, app_sim)
                 iou_matrix = fuse_weighted_first_stage(
                     iou_matrix, app_sim, self.appearance_weight
                 )
