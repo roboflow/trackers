@@ -37,7 +37,7 @@ distinct, deliberately separate extension points:
 
 This spec supersedes the draft `ReIDModel` constructors (`from_pretrained(repo_id,
 filename)`, `from_timm`, `from_checkpoint`, `BackboneSpec`) currently on the
-`feat/reid-phase1` branch.
+`feat/core/reid` branch.
 
 ---
 
