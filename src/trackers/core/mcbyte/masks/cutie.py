@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import nullcontext
+from enum import Enum
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -20,16 +21,30 @@ from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)
 
-CUTIE_CHECKPOINT_URLS = {
-    "base-mega": "https://github.com/hkchengrex/Cutie/releases/download/v1.0/cutie-base-mega.pth",
-}
+CUTIE_RELEASE_URL = "https://github.com/hkchengrex/Cutie/releases/download/v1.0"
 
-CUTIE_CHECKPOINT_MD5S = {
-    "base-mega": "a6071de6136982e396851903ab4c083a",
-}
 
-CUTIE_DEFAULT_WEIGHTS_PATHS = {
-    "base-mega": Path("models/cutie/cutie-base-mega.pth"),
+class CutieAsset(Enum):
+    BASE_MEGA = (
+        "cutie-base-mega.pth",
+        "a6071de6136982e396851903ab4c083a",
+    )
+
+    def __init__(self, filename: str, md5_hash: str) -> None:
+        self.filename = filename
+        self.md5_hash = md5_hash
+
+    @property
+    def url(self) -> str:
+        return f"{CUTIE_RELEASE_URL}/{self.filename}"
+
+    @property
+    def default_path(self) -> Path:
+        return Path("models/cutie") / self.filename
+
+
+CUTIE_ASSETS = {
+    "base-mega": CutieAsset.BASE_MEGA,
 }
 
 
@@ -37,25 +52,25 @@ def _ensure_weights_exist(
     weights_path: Path,
     model_type: str,
 ) -> None:
-    """Download the default Cutie weights if they are not available locally."""
-    if weights_path.exists():
-        return
+    """Ensure default Cutie weights are available and pass checksum validation."""
+    asset = CUTIE_ASSETS.get(model_type)
+    if asset is None:
+        raise ValueError(
+            f"No default Cutie asset for model_type={model_type!r}. "
+            f"Supported types: {sorted(CUTIE_ASSETS)}"
+        )
 
-    checkpoint_url = CUTIE_CHECKPOINT_URLS.get(model_type)
-    if checkpoint_url is None:
-        raise ValueError(f"No default Cutie checkpoint URL for model_type={model_type!r}.")
-
-    parsed_url = urlparse(checkpoint_url)
+    parsed_url = urlparse(asset.url)
     if parsed_url.scheme != "https":
         raise ValueError(f"Unsupported checkpoint URL scheme: {parsed_url.scheme!r}")
 
     weights_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger.info("Downloading Cutie checkpoint to %s", weights_path)
+    logger.info("Ensuring Cutie checkpoint exists at %s", weights_path)
     _download_file(
-        checkpoint_url,
+        asset.url,
         weights_path,
-        md5=CUTIE_CHECKPOINT_MD5S.get(model_type),
+        md5=asset.md5_hash,
     )
 
 
@@ -72,6 +87,15 @@ def _get_cutie_package_dir(cutie_module: Any) -> Path:
     return Path(module_paths[0]).resolve()
 
 
+def _autocast_context(use_amp: bool) -> Any:
+    """Return the appropriate autocast context for the current AMP setting."""
+    if use_amp:
+        if hasattr(torch, "amp"):
+            return torch.amp.autocast("cuda", enabled=True)
+        return torch.cuda.amp.autocast(enabled=True)
+    return nullcontext()
+
+
 def _image_to_torch(
     frame: np.ndarray,
     device: torch.device,
@@ -79,20 +103,24 @@ def _image_to_torch(
     """Convert an RGB frame from ``(H, W, 3)`` NumPy format to ``(3, H, W)`` Cutie
     tensor format.
     """
-    return (
+    frame_torch = (
         torch.from_numpy(frame.transpose(2, 0, 1))
         .float()
         .to(
             device,
             non_blocking=True,
         )
-        / 255.0
     )
+
+    if frame_torch.max() > 1:
+        frame_torch /= 255.0
+
+    return frame_torch
 
 
 def _torch_prob_to_numpy_mask(prob: torch.Tensor) -> np.ndarray:
     """Convert Cutie probability output to an indexed NumPy mask."""
-    return torch.max(prob, dim=0).indices.cpu().numpy().astype(np.uint8)
+    return torch.max(prob, dim=0).indices.cpu().numpy().astype(np.int32)
 
 
 def _binary_masks_to_non_overlapping_torch(
@@ -198,13 +226,13 @@ class CutieMaskPropagator(MaskPropagator):
         use_amp: bool = True,
     ) -> None:
         try:
-            import cutie
-            from cutie.inference.inference_core import InferenceCore
-            from cutie.inference.utils.args_utils import get_dataset_cfg
-            from cutie.model.cutie import CUTIE
-            from hydra import compose, initialize_config_dir
-            from omegaconf import open_dict
+            import cutie  # type: ignore[import-untyped]
+            from cutie.inference.inference_core import InferenceCore  # type: ignore[import-untyped]
+            from cutie.inference.utils.args_utils import get_dataset_cfg  # type: ignore[import-untyped]
+            from cutie.model.cutie import CUTIE  # type: ignore[import-untyped]
         except ImportError as exc:
+            # TODO: Update these installation instructions once Cutie dependency
+            # management is finalized in Trackers. (+ a related note in _load_config())
             msg = (
                 "Cutie support requires Cutie to be installed. "
                 "Install Cutie separately, for example by cloning the Cutie "
@@ -216,40 +244,25 @@ class CutieMaskPropagator(MaskPropagator):
 
         self.use_amp = use_amp and self.device.type == "cuda"
 
-        default_weights_path = CUTIE_DEFAULT_WEIGHTS_PATHS.get(model_type)
-        if default_weights_path is None:
+        asset = CUTIE_ASSETS.get(model_type)
+        if asset is None:
             raise ValueError(
-                f"Unsupported model_type={model_type!r}. Supported types: {sorted(CUTIE_DEFAULT_WEIGHTS_PATHS)}"
+                f"Unsupported model_type={model_type!r}. "
+                f"Supported types: {sorted(CUTIE_ASSETS)}"
             )
 
-        self.weights_path = Path(weights_path) if weights_path is not None else default_weights_path
+        self.weights_path = Path(weights_path) if weights_path is not None else asset.default_path
 
         _ensure_weights_exist(
             weights_path=self.weights_path,
             model_type=model_type,
         )
 
-        if config_path is None:
-            cutie_package_dir = _get_cutie_package_dir(cutie)
-            self.config_path = cutie_package_dir / "config"
-        else:
-            self.config_path = Path(config_path)
-
-        if not self.config_path.exists():
-            raise FileNotFoundError(
-                f"Cutie config directory not found: {self.config_path}. "
-                "Pass config_path explicitly if Cutie is installed in a custom location."
-            )
-
-        with initialize_config_dir(
-            version_base="1.3.2",
-            config_dir=str(self.config_path.resolve()),
-            job_name="eval_config",
-        ):
-            cfg = compose(config_name=config_name)
-
-        with open_dict(cfg):
-            cfg["weights"] = self.weights_path
+        cfg = self._load_config(
+            cutie_module=cutie,
+            config_path=config_path,
+            config_name=config_name,
+        )
 
         # Cutie mutates/augments the config through this helper in the original code.
         _ = get_dataset_cfg(cfg)
@@ -270,6 +283,7 @@ class CutieMaskPropagator(MaskPropagator):
         self._object_ids = []
         self._initialized = False
 
+    @torch.inference_mode()
     def initialize(
         self,
         frame: np.ndarray,
@@ -320,17 +334,17 @@ class CutieMaskPropagator(MaskPropagator):
         frame_torch = _image_to_torch(frame, self.device)
         masks_torch = _binary_masks_to_non_overlapping_torch(mask_output.masks, self.device)
 
-        with torch.inference_mode():
-            with self._autocast_context():
-                _ = self.processor.step(
-                    frame_torch,
-                    masks_torch,
-                    objects=self._object_ids,
-                    idx_mask=False,
-                )
+        with _autocast_context(self.use_amp):
+            _ = self.processor.step(
+                frame_torch,
+                masks_torch,
+                objects=self._object_ids,
+                idx_mask=False,
+            )
 
         self._initialized = True
 
+    @torch.inference_mode()
     def propagate(
         self,
         frame: np.ndarray,
@@ -341,9 +355,8 @@ class CutieMaskPropagator(MaskPropagator):
 
         frame_torch = _image_to_torch(frame, self.device)
 
-        with torch.inference_mode():
-            with self._autocast_context():
-                prob = self.processor.step(frame_torch)
+        with _autocast_context(self.use_amp):
+            prob = self.processor.step(frame_torch)
 
         indexed_mask = _torch_prob_to_numpy_mask(prob)
 
@@ -362,9 +375,46 @@ class CutieMaskPropagator(MaskPropagator):
             mask_avg_prob_dict=mask_avg_prob_dict,
         )
 
-    def _autocast_context(self) -> Any:
-        if self.use_amp:
-            if hasattr(torch, "amp"):
-                return torch.amp.autocast("cuda", enabled=True)
-            return torch.cuda.amp.autocast(enabled=True)
-        return nullcontext()
+    def _load_config(
+        self,
+        cutie_module: Any,
+        config_path: str | Path | None,
+        config_name: str,
+    ) -> Any:
+        """Load Cutie Hydra config and inject the selected weights path."""
+        try:
+            from hydra import compose, initialize_config_dir
+            from omegaconf import open_dict
+        except ImportError as exc:
+            # TODO: Update these installation instructions once Cutie dependency
+            # management is finalized in Trackers. (+ a related note in __init__())
+            msg = (
+                "Cutie config loading requires Hydra and OmegaConf. "
+                "They should normally be installed with Cutie. "
+                "Please verify your Cutie installation."
+            )
+            raise ImportError(msg) from exc
+
+        if config_path is None:
+            cutie_package_dir = _get_cutie_package_dir(cutie_module)
+            self.config_path = cutie_package_dir / "config"
+        else:
+            self.config_path = Path(config_path)
+
+        if not self.config_path.exists():
+            raise FileNotFoundError(
+                f"Cutie config directory not found: {self.config_path}. "
+                "Pass config_path explicitly if Cutie is installed in a custom location."
+            )
+
+        with initialize_config_dir(
+            version_base="1.3.2",
+            config_dir=str(self.config_path.resolve()),
+            job_name="eval_config",
+        ):
+            cfg = compose(config_name=config_name)
+
+        with open_dict(cfg):
+            cfg["weights"] = self.weights_path
+
+        return cfg

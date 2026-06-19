@@ -58,7 +58,7 @@ def test_torch_prob_to_numpy_mask_returns_argmax_index_mask() -> None:
             [0, 1],
             [1, 2],
         ],
-        dtype=np.uint8,
+        dtype=np.int32,
     )
     np.testing.assert_array_equal(indexed_mask, expected)
 
@@ -94,7 +94,7 @@ def test_indexed_mask_to_binary_masks_returns_one_channel_per_object_id() -> Non
             [0, 1, 1],
             [0, 2, 2],
         ],
-        dtype=np.uint8,
+        dtype=np.int32,
     )
 
     masks = _indexed_mask_to_binary_masks(
@@ -132,14 +132,14 @@ def test_build_tracklet_object_dict_converts_local_indices_to_cutie_object_ids()
         {
             10: 0,
             20: 1,
-            30: 2,
+            30: 2
         }
     )
 
     assert tracklet_object_dict == {
         10: 1,
         20: 2,
-        30: 3,
+        30: 3
     }
 
 
@@ -196,48 +196,40 @@ def test_reset_clears_internal_state() -> None:
     assert not propagator._initialized
 
 
-def test_initialize_validates_mask_shape() -> None:
+@pytest.mark.parametrize(
+    ("masks", "tracklet_mask_dict", "error_match"),
+    [
+        (
+            np.zeros((4, 4), dtype=bool),
+            {1: 0},
+            "expects masks with shape",
+        ),
+        (
+            np.zeros((2, 4, 4), dtype=bool),
+            {1: 0},
+            "must match number of masks",
+        ),
+        (
+            np.zeros((2, 4, 4), dtype=bool),
+            {1: 1, 2: 2},
+            "local mask indices",
+        ),
+    ],
+)
+def test_initialize_validates_mask_output(
+    masks: np.ndarray,
+    tracklet_mask_dict: dict[int, int],
+    error_match: str,
+) -> None:
     propagator = object.__new__(CutieMaskPropagator)
 
     mask_output = MaskOutput(
-        masks=np.zeros((4, 4), dtype=bool),
-        tracklet_mask_dict={1: 0},
+        masks=masks,
+        tracklet_mask_dict=tracklet_mask_dict,
         mask_avg_prob_dict=None,
     )
 
-    with pytest.raises(ValueError, match="expects masks with shape"):
-        propagator.initialize(
-            frame=np.zeros((4, 4, 3), dtype=np.uint8),
-            mask_output=mask_output,
-        )
-
-
-def test_initialize_validates_mapping_length() -> None:
-    propagator = object.__new__(CutieMaskPropagator)
-
-    mask_output = MaskOutput(
-        masks=np.zeros((2, 4, 4), dtype=bool),
-        tracklet_mask_dict={1: 0},
-        mask_avg_prob_dict=None,
-    )
-
-    with pytest.raises(ValueError, match="must match number of masks"):
-        propagator.initialize(
-            frame=np.zeros((4, 4, 3), dtype=np.uint8),
-            mask_output=mask_output,
-        )
-
-
-def test_initialize_validates_local_mask_indices() -> None:
-    propagator = object.__new__(CutieMaskPropagator)
-
-    mask_output = MaskOutput(
-        masks=np.zeros((2, 4, 4), dtype=bool),
-        tracklet_mask_dict={1: 1, 2: 2},
-        mask_avg_prob_dict=None,
-    )
-
-    with pytest.raises(ValueError, match="local mask indices"):
+    with pytest.raises(ValueError, match=error_match):
         propagator.initialize(
             frame=np.zeros((4, 4, 3), dtype=np.uint8),
             mask_output=mask_output,
