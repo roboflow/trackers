@@ -128,19 +128,9 @@ def test_indexed_mask_to_binary_masks_returns_one_channel_per_object_id() -> Non
 
 
 def test_build_tracklet_object_dict_converts_local_indices_to_cutie_object_ids() -> None:
-    tracklet_object_dict = _build_tracklet_object_dict(
-        {
-            10: 0,
-            20: 1,
-            30: 2
-        }
-    )
+    tracklet_object_dict = _build_tracklet_object_dict({10: 0, 20: 1, 30: 2})
 
-    assert tracklet_object_dict == {
-        10: 1,
-        20: 2,
-        30: 3
-    }
+    assert tracklet_object_dict == {10: 1, 20: 2, 30: 3}
 
 
 def test_compute_mask_avg_prob_dict_matches_original_mcbyte_logic() -> None:

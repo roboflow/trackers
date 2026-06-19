@@ -56,8 +56,7 @@ def _ensure_weights_exist(
     asset = CUTIE_ASSETS.get(model_type)
     if asset is None:
         raise ValueError(
-            f"No default Cutie asset for model_type={model_type!r}. "
-            f"Supported types: {sorted(CUTIE_ASSETS)}"
+            f"No default Cutie asset for model_type={model_type!r}. Supported types: {sorted(CUTIE_ASSETS)}"
         )
 
     parsed_url = urlparse(asset.url)
@@ -246,10 +245,7 @@ class CutieMaskPropagator(MaskPropagator):
 
         asset = CUTIE_ASSETS.get(model_type)
         if asset is None:
-            raise ValueError(
-                f"Unsupported model_type={model_type!r}. "
-                f"Supported types: {sorted(CUTIE_ASSETS)}"
-            )
+            raise ValueError(f"Unsupported model_type={model_type!r}. Supported types: {sorted(CUTIE_ASSETS)}")
 
         self.weights_path = Path(weights_path) if weights_path is not None else asset.default_path
 
