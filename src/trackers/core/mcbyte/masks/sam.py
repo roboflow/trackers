@@ -53,6 +53,7 @@ def _ensure_checkpoint_exists(
     logger.info("Downloading SAM checkpoint to %s", checkpoint_path)
     _download_file(checkpoint_url, checkpoint_path)
 
+
 class SAMBoxMaskGenerator(MaskGenerator):
     """Generate binary masks from tracklet bounding boxes using Segment Anything.
 

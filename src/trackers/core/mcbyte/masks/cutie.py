@@ -470,7 +470,6 @@ class CutieMaskPropagator(MaskPropagator):
             mask_avg_prob_dict=mask_avg_prob_dict,
         )
 
-
     def _load_config(
         self,
         cutie_module: Any,
