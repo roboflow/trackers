@@ -198,6 +198,48 @@ class TestComputeHOTAMetrics:
             assert isinstance(result[field], np.ndarray)
             assert len(result[field]) == len(ALPHA_THRESHOLDS)
 
+    def test_metrics_invariant_to_id_relabeling(self) -> None:
+        """HOTA depends only on association structure, not on the integer id values.
+
+        Relabeling ground-truth and tracker ids with a consistent, non-monotonic
+        bijection (including ids that are unsorted within a frame) must leave every
+        metric unchanged. This guards the internal id-to-index remapping.
+        """
+        gt_ids = [
+            np.array([0, 1, 2]),
+            np.array([0, 1, 2]),
+            np.array([0, 1, 2]),
+            np.array([0, 1]),
+        ]
+        tracker_ids = [
+            np.array([10, 11, 12]),
+            np.array([10, 11, 12]),
+            np.array([10, 12]),  # tracker 11 drops out...
+            np.array([10, 11, 12]),  # ...and reappears, exercising association
+        ]
+        similarity_scores = [
+            np.array([[0.9, 0.1, 0.0], [0.1, 0.8, 0.1], [0.0, 0.1, 0.7]]),
+            np.array([[0.85, 0.0, 0.1], [0.1, 0.75, 0.0], [0.0, 0.1, 0.7]]),
+            np.array([[0.8, 0.1], [0.1, 0.0], [0.0, 0.7]]),
+            np.array([[0.8, 0.1, 0.0], [0.1, 0.7, 0.2]]),
+        ]
+
+        baseline = compute_hota_metrics(gt_ids, tracker_ids, similarity_scores)
+
+        # Non-monotonic bijection so the sorted-unique reindexing differs from identity
+        # and relabeled ids are unsorted within a frame.
+        gt_remap = {0: 1007, 1: 1003, 2: 1009}
+        tracker_remap = {10: 5002, 11: 5008, 12: 5001}
+        relabeled_gt = [np.array([gt_remap[i] for i in frame]) for frame in gt_ids]
+        relabeled_tracker = [np.array([tracker_remap[i] for i in frame]) for frame in tracker_ids]
+
+        relabeled = compute_hota_metrics(relabeled_gt, relabeled_tracker, similarity_scores)
+
+        for key in ["HOTA", "DetA", "AssA", "DetRe", "DetPr", "AssRe", "AssPr", "LocA", "OWTA"]:
+            assert relabeled[key] == pytest.approx(baseline[key]), f"{key} changed under id relabeling"
+        for key in ["HOTA_TP_array", "HOTA_FN_array", "HOTA_FP_array", "AssA_array", "LocA_array"]:
+            np.testing.assert_allclose(relabeled[key], baseline[key], err_msg=f"{key} changed under id relabeling")
+
 
 class TestAggregateHOTAMetrics:
     """Multi-sequence aggregation of HOTA metrics."""
