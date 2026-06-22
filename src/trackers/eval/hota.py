@@ -132,6 +132,8 @@ def compute_hota_metrics(
     # `unique_gt_ids` / `unique_tracker_ids` are sorted (np.unique returns sorted
     # output), so an id's row/column index is simply its position found by binary
     # search. This replaces per-frame Python dict lookups in the hot loops below.
+    # Precondition: all per-frame IDs are present in unique_*_ids (guaranteed —
+    # unique arrays are built from concatenation of all frames).
 
     # Variables for global association (ref: hota.py:48-50)
     potential_matches_count: np.ndarray = np.zeros((num_gt_ids, num_tracker_ids), dtype=np.float64)
@@ -176,7 +178,7 @@ def compute_hota_metrics(
     # scatter all alphas in one vectorized op.
     matches_counts: np.ndarray = np.zeros((num_alphas, num_gt_ids, num_tracker_ids), dtype=np.float64)
 
-    # Second pass: calculate scores for each timestep (ref: hota.py:72-101)
+    # Second pass: calculate scores for each timestep (ref: hota.py:72-88)
     for t, (gt_ids_t, tracker_ids_t) in enumerate(zip(gt_ids, tracker_ids)):
         # Handle empty frames (ref: hota.py:74-81)
         if len(gt_ids_t) == 0:
@@ -210,8 +212,9 @@ def compute_hota_metrics(
         loc_a += (matched_similarity[np.newaxis, :] * alpha_mask).sum(axis=1)
 
         # Scatter the surviving matches into the per-alpha co-occurrence counts.
-        # Each (gt, tracker) index pair is unique within a frame, so this
-        # advanced-index in-place add has no duplicate destinations.
+        # Within a frame each gt and tracker id appears at most once (MOT convention),
+        # so matched pairs are distinct and numpy += is equivalent to np.add.at here
+        # — same as pre-vectorization behavior.
         matched_gt = gt_indices[match_rows]
         matched_tr = tr_indices[match_cols]
         matches_counts[:, matched_gt, matched_tr] += alpha_mask
