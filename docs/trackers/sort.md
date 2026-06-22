@@ -53,6 +53,7 @@ SORT models each tracked object with a seven-dimensional state vector `[x, y, s,
     If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
 
 !!! note "SORTTracker is not deprecated"
+
     `SORTTracker` itself is not deprecated. Only the `tracker.trackers` attribute alias
     is deprecated in favor of `tracker.tracks`.
 
