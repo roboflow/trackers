@@ -123,7 +123,20 @@ def _binary_masks_to_indexed_mask(
 ) -> np.ndarray:
     """Convert binary masks to one indexed mask using the given object IDs.
 
-    Earlier masks keep priority in overlapping regions.
+    Args:
+        masks: Binary masks with shape ``(N, H, W)``, where ``N`` is the
+            number of masks and ``H``/``W`` are the frame height and width.
+        object_ids: Cutie object IDs with length ``N``. Each ID is written
+            into the output indexed mask where the corresponding binary mask
+            is active.
+
+    Returns:
+        Indexed mask with shape ``(H, W)`` and dtype ``int32``. Background
+        pixels are ``0``. Object pixels contain the corresponding Cutie object
+        ID.
+
+    Note:
+        Earlier masks keep priority in overlapping regions.
     """
     if masks.shape[0] != len(object_ids):
         raise ValueError(
@@ -151,43 +164,46 @@ def _output_prob_to_object_indexed_mask(
     return indexed_mask.cpu().numpy().astype(np.int32)
 
 
-# NOTE:
-# Cutie distinguishes between:
-#
-#   - immutable object IDs
-#   - temporary tensor IDs
-#
-# Object IDs are assigned when objects are added and remain stable for the
-# lifetime of those objects. Temporary IDs are used internally for tensor
-# channels and may change after object deletion because Cutie compacts its
-# internal representation.
-#
-# Example:
-#
-#   object IDs: [1, 2, 3]
-#
-# After deleting object 2:
-#
-#   object IDs still present: [1, 3]
-#   temporary IDs may become:
-#       object 1 -> tmp 1
-#       object 3 -> tmp 2
-#
-# Therefore:
-#
-#   prob[2]
-#
-# no longer means "object 2". It means "temporary channel 2", which may
-# correspond to object 3.
-#
-# We therefore always use Cutie's ObjectManager mappings and
-# output_prob_to_mask() helper instead of assuming:
-#
-#   object_id == temporary_id
-#
-# See Cutie's ObjectManager and InferenceCore implementation for details.
+
 def _get_object_id_to_tmp_id(processor: Any) -> dict[int, int]:
-    """Return mapping from immutable Cutie object IDs to temporary tensor IDs."""
+    """Return mapping from immutable Cutie object IDs to temporary tensor IDs.
+
+    # NOTE:
+    # Cutie distinguishes between:
+    #
+    #   - immutable object IDs
+    #   - temporary tensor IDs
+    #
+    # Object IDs are assigned when objects are added and remain stable for the
+    # lifetime of those objects. Temporary IDs are used internally for tensor
+    # channels and may change after object deletion because Cutie compacts its
+    # internal representation.
+    #
+    # Example:
+    #
+    #   object IDs: [1, 2, 3]
+    #
+    # After deleting object 2:
+    #
+    #   object IDs still present: [1, 3]
+    #   temporary IDs may become:
+    #       object 1 -> tmp 1
+    #       object 3 -> tmp 2
+    #
+    # Therefore:
+    #
+    #   prob[2]
+    #
+    # no longer means "object 2". It means "temporary channel 2", which may
+    # correspond to object 3.
+    #
+    # We therefore always use Cutie's ObjectManager mappings and
+    # output_prob_to_mask() helper instead of assuming:
+    #
+    #   object_id == temporary_id
+    #
+    # See Cutie's ObjectManager and InferenceCore implementation for details.
+    """
     return {obj.id: tmp_id for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items()}
 
 
@@ -304,10 +320,10 @@ class CutieMaskPropagator(MaskPropagator):
         use_amp: bool = True,
     ) -> None:
         try:
-            import cutie  # type: ignore[import-untyped]
-            from cutie.inference.inference_core import InferenceCore  # type: ignore[import-untyped]
-            from cutie.inference.utils.args_utils import get_dataset_cfg  # type: ignore[import-untyped]
-            from cutie.model.cutie import CUTIE  # type: ignore[import-untyped]
+            import cutie
+            from cutie.inference.inference_core import InferenceCore
+            from cutie.inference.utils.args_utils import get_dataset_cfg
+            from cutie.model.cutie import CUTIE
         except ImportError as exc:
             # TODO: Update these installation instructions once Cutie dependency
             # management is finalized in Trackers. (+ a related note in _load_config())
@@ -514,6 +530,7 @@ class CutieMaskPropagator(MaskPropagator):
 
         return cfg
 
+    @torch.inference_mode()
     def add_masks(
         self,
         frame: np.ndarray,
@@ -586,14 +603,13 @@ class CutieMaskPropagator(MaskPropagator):
         frame_torch = _image_to_torch(frame, self.device)
         indexed_mask_torch = torch.from_numpy(indexed_mask).long().to(self.device)
 
-        with torch.inference_mode():
-            with _autocast_context(self.use_amp):
-                prob = self.processor.step(
-                    frame_torch,
-                    indexed_mask_torch,
-                    objects=new_object_ids,
-                    idx_mask=True,
-                )
+        with _autocast_context(self.use_amp):
+            prob = self.processor.step(
+                frame_torch,
+                indexed_mask_torch,
+                objects=new_object_ids,
+                idx_mask=True,
+            )
 
         self._last_object_id = max(new_object_ids)
         self._tracklet_object_dict.update(zip(sorted_tracklet_ids, new_object_ids))
@@ -622,23 +638,21 @@ class CutieMaskPropagator(MaskPropagator):
             if tracklet_id in self._tracklet_object_dict
         ]
 
-        # If the requested tracklets never had a mask. It can happen when masks are
-        # not created instantly.E.g when bounding box is too covered by another one
-        #  to get its own mask. NOTE: This delay will be introduced later.
+        # If the requested tracklets never had a mask, simply ignore the request.
+        # This can happen when masks are not created instantly (e.g. when a bounding box
+        # is too covered by another one to get its own mask).
+        # NOTE: This delay will be introduced later.
         if len(object_ids_to_remove) == 0:
             return
 
         self.processor.delete_objects(object_ids_to_remove)
 
+        for tracklet_id in tracklet_ids:
+            self._tracklet_object_dict.pop(tracklet_id, None)
+
         # For efficient Python filtering
         object_ids_to_remove_set = set(object_ids_to_remove)
-        tracklet_ids_to_remove_set = set(tracklet_ids)
 
-        self._tracklet_object_dict = {
-            tracklet_id: object_id
-            for tracklet_id, object_id in self._tracklet_object_dict.items()
-            if tracklet_id not in tracklet_ids_to_remove_set
-        }
         self._object_ids = [object_id for object_id in self._object_ids if object_id not in object_ids_to_remove_set]
 
         # If the previous indexed mask contains pixels belonging to removed objects,

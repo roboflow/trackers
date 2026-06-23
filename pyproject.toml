@@ -207,5 +207,7 @@ module = [
     "firerequests",
     "scipy",
     "scipy.*",
+    "cutie",
+    "cutie.*",
 ]
 ignore_missing_imports = true
