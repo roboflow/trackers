@@ -590,20 +590,45 @@ def test_zero_lost_buffer_expires_on_first_missed_frame(tracker_id: str) -> None
     assert len(tracker.tracks) == 0, "zero buffer must prune on the first missed frame"
 
 
+@pytest.mark.parametrize(
+    "lost_track_buffer,frame_rate,expected",
+    [
+        pytest.param(30, 30, 30, id="baseline_30fps"),
+        pytest.param(30, 60, 60, id="double_fps"),
+        pytest.param(30, 120, 120, id="quad_fps"),
+        pytest.param(3, 15, 2, id="ceil_over_int_noninteger"),
+        pytest.param(5, 10, 2, id="ceil_fraction"),
+        pytest.param(1, 10, 1, id="low_fps_min_one"),
+        pytest.param(0, 30, 0, id="zero_buffer_passthrough"),
+    ],
+)
+def test_compute_maximum_frames_without_update_scaling(
+    lost_track_buffer: int,
+    frame_rate: float,
+    expected: int,
+) -> None:
+    """_compute_maximum_frames_without_update uses ceil; non-integer intermediates round up."""
+    result = BaseTracker._compute_maximum_frames_without_update(lost_track_buffer, frame_rate)
+    assert result == expected
+
+
 @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"lost_track_buffer": -1},
-        {"frame_rate": 0},
-        {"frame_rate": -30},
+        pytest.param({"lost_track_buffer": -1}, id="negative_buffer"),
+        pytest.param({"frame_rate": 0}, id="zero_frame_rate"),
+        pytest.param({"frame_rate": -30}, id="negative_frame_rate"),
+        pytest.param({"frame_rate": float("inf")}, id="inf_frame_rate"),
+        pytest.param({"frame_rate": float("nan")}, id="nan_frame_rate"),
+        pytest.param({"frame_rate": float("-inf")}, id="neg_inf_frame_rate"),
     ],
 )
 def test_lost_buffer_configuration_rejects_invalid_values(
     tracker_id: str,
     kwargs: dict[str, int],
 ) -> None:
-    """Non-negative lost_track_buffer and positive frame_rate are required."""
+    """Non-negative lost_track_buffer and positive finite frame_rate are required."""
     with pytest.raises(ValueError):
         _instantiate(tracker_id, **kwargs)
 

@@ -326,7 +326,34 @@ class BaseTracker(ABC):
         lost_track_buffer: int,
         frame_rate: float,
     ) -> int:
-        """Scale positive lost-track buffers without changing explicit zero-buffer configs."""
+        """Scale positive lost-track buffers without changing explicit zero-buffer configs.
+
+        Args:
+            lost_track_buffer: Non-negative buffer length expressed in 30 FPS frames.
+                Zero means no missed-frame grace period.
+            frame_rate: Actual video frame rate in frames per second. Must be
+                finite and strictly positive.
+
+        Returns:
+            Scaled maximum number of missed frames before a confirmed track expires.
+            Returns zero when ``lost_track_buffer`` is zero; otherwise returns
+            ``max(1, ceil(frame_rate / 30.0 * lost_track_buffer))`` to ensure at
+            least one frame of grace for any positive buffer at any frame rate.
+
+        Raises:
+            ValueError: If ``lost_track_buffer`` is negative.
+            ValueError: If ``frame_rate`` is not finite or is not strictly positive.
+
+        Examples:
+            >>> BaseTracker._compute_maximum_frames_without_update(30, 30.0)
+            30
+            >>> BaseTracker._compute_maximum_frames_without_update(30, 60.0)
+            60
+            >>> BaseTracker._compute_maximum_frames_without_update(3, 15.0)
+            2
+            >>> BaseTracker._compute_maximum_frames_without_update(0, 30.0)
+            0
+        """
         if lost_track_buffer < 0:
             raise ValueError("lost_track_buffer must be greater than or equal to 0")
         if not math.isfinite(frame_rate) or frame_rate <= 0:
