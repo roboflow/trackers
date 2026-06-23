@@ -117,9 +117,93 @@ def _image_to_torch(
     return frame_torch
 
 
-def _torch_prob_to_numpy_mask(prob: torch.Tensor) -> np.ndarray:
-    """Convert Cutie probability output to an indexed NumPy mask."""
-    return torch.max(prob, dim=0).indices.cpu().numpy().astype(np.int32)
+def _binary_masks_to_indexed_mask(
+    masks: np.ndarray,
+    object_ids: list[int],
+) -> np.ndarray:
+    """Convert binary masks to one indexed mask using the given object IDs.
+
+    Args:
+        masks: Binary masks with shape ``(N, H, W)``, where ``N`` is the
+            number of masks and ``H``/``W`` are the frame height and width.
+        object_ids: Cutie object IDs with length ``N``. Each ID is written
+            into the output indexed mask where the corresponding binary mask
+            is active.
+
+    Returns:
+        Indexed mask with shape ``(H, W)`` and dtype ``int32``. Background
+        pixels are ``0``. Object pixels contain the corresponding Cutie object
+        ID.
+
+    Note:
+        Earlier masks keep priority in overlapping regions.
+    """
+    if masks.shape[0] != len(object_ids):
+        raise ValueError(
+            "Number of masks must match number of object IDs. "
+            f"Got {masks.shape[0]} masks and {len(object_ids)} object IDs."
+        )
+
+    indexed_mask = np.zeros(masks.shape[1:], dtype=np.int32)
+    occupied = np.zeros(masks.shape[1:], dtype=bool)
+
+    for mask, object_id in zip(masks, object_ids):
+        valid_mask = mask & ~occupied
+        indexed_mask[valid_mask] = object_id
+        occupied |= valid_mask
+
+    return indexed_mask
+
+
+def _output_prob_to_object_indexed_mask(
+    processor: Any,
+    prob: torch.Tensor,
+) -> np.ndarray:
+    """Convert Cutie probability output to an object-ID-indexed NumPy mask."""
+    indexed_mask = processor.output_prob_to_mask(prob)
+    return indexed_mask.cpu().numpy().astype(np.int32)
+
+
+def _get_object_id_to_tmp_id(processor: Any) -> dict[int, int]:
+    """Return mapping from immutable Cutie object IDs to temporary tensor IDs.
+
+    # NOTE:
+    # Cutie distinguishes between:
+    #
+    #   - immutable object IDs
+    #   - temporary tensor IDs
+    #
+    # Object IDs are assigned when objects are added and remain stable for the
+    # lifetime of those objects. Temporary IDs are used internally for tensor
+    # channels and may change after object deletion because Cutie compacts its
+    # internal representation.
+    #
+    # Example:
+    #
+    #   object IDs: [1, 2, 3]
+    #
+    # After deleting object 2:
+    #
+    #   object IDs still present: [1, 3]
+    #   temporary IDs may become:
+    #       object 1 -> tmp 1
+    #       object 3 -> tmp 2
+    #
+    # Therefore:
+    #
+    #   prob[2]
+    #
+    # no longer means "object 2". It means "temporary channel 2", which may
+    # correspond to object 3.
+    #
+    # We therefore always use Cutie's ObjectManager mappings and
+    # output_prob_to_mask() helper instead of assuming:
+    #
+    #   object_id == temporary_id
+    #
+    # See Cutie's ObjectManager and InferenceCore implementation for details.
+    """
+    return {obj.id: tmp_id for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items()}
 
 
 def _binary_masks_to_non_overlapping_torch(
@@ -148,6 +232,9 @@ def _indexed_mask_to_binary_masks(
     object_ids: list[int],
 ) -> np.ndarray:
     """Convert an indexed mask to one binary mask per Cutie object ID."""
+    if len(object_ids) == 0:
+        return np.zeros((0, *indexed_mask.shape), dtype=bool)
+
     return np.stack(
         [indexed_mask == object_id for object_id in object_ids],
         axis=0,
@@ -168,18 +255,25 @@ def _build_tracklet_object_dict(
 def _compute_mask_avg_prob_dict(
     prob: torch.Tensor,
     object_ids: list[int],
+    object_id_to_tmp_id: dict[int, int],
 ) -> dict[int, float]:
     """Compute average Cutie confidence for each predicted object region.
 
     The input probability tensor has shape ``(num_objects + 1, H, W)``, where
-    channel 0 is background. For each object ID, confidence is averaged only over
-    pixels where that object wins the argmax prediction.
+    channel 0 is background and channels ``1..num_objects`` follow Cutie's
+    current temporary object IDs. For each immutable object ID, confidence is
+    averaged over pixels where that object's current temporary ID wins the argmax
+    prediction.
     """
     mask_maxes = torch.max(prob, dim=0).indices
     mask_avg_prob_dict: dict[int, float] = {}
 
     for object_id in object_ids:
-        object_prob = prob[object_id][mask_maxes == object_id]
+        tmp_id = object_id_to_tmp_id.get(object_id)
+        if tmp_id is None:
+            continue
+
+        object_prob = prob[tmp_id][mask_maxes == tmp_id]
         if object_prob.numel() == 0:
             continue
 
@@ -225,10 +319,10 @@ class CutieMaskPropagator(MaskPropagator):
         use_amp: bool = True,
     ) -> None:
         try:
-            import cutie  # type: ignore[import-untyped]
-            from cutie.inference.inference_core import InferenceCore  # type: ignore[import-untyped]
-            from cutie.inference.utils.args_utils import get_dataset_cfg  # type: ignore[import-untyped]
-            from cutie.model.cutie import CUTIE  # type: ignore[import-untyped]
+            import cutie
+            from cutie.inference.inference_core import InferenceCore
+            from cutie.inference.utils.args_utils import get_dataset_cfg
+            from cutie.model.cutie import CUTIE
         except ImportError as exc:
             # TODO: Update these installation instructions once Cutie dependency
             # management is finalized in Trackers. (+ a related note in _load_config())
@@ -271,12 +365,20 @@ class CutieMaskPropagator(MaskPropagator):
         self._tracklet_object_dict: dict[int, int] = {}
         self._object_ids: list[int] = []
         self._initialized = False
+        # largest immutable Cutie object ID ever assigned
+        self._last_object_id = 0
+        # NOTE: Reserved for future add-mask behavior closer to the original McByte logic:
+        # inserting new masks into the previous-frame prediction before feeding Cutie
+        # again. It is updated during propagation and kept for upcoming lifecycle work.
+        self._last_indexed_mask: np.ndarray | None = None
 
     def reset(self) -> None:
         """Reset Cutie temporal memory and object mappings."""
         self.processor.clear_memory()
         self._tracklet_object_dict = {}
         self._object_ids = []
+        self._last_object_id = 0
+        self._last_indexed_mask = None
         self._initialized = False
 
     @torch.inference_mode()
@@ -326,6 +428,11 @@ class CutieMaskPropagator(MaskPropagator):
                 key=lambda item: item[1],
             )
         ]
+        self._last_object_id = max(self._object_ids, default=0)
+        self._last_indexed_mask = _binary_masks_to_indexed_mask(
+            masks=mask_output.masks,
+            object_ids=self._object_ids,
+        )
 
         frame_torch = _image_to_torch(frame, self.device)
         masks_torch = _binary_masks_to_non_overlapping_torch(mask_output.masks, self.device)
@@ -354,20 +461,50 @@ class CutieMaskPropagator(MaskPropagator):
         with _autocast_context(self.use_amp):
             prob = self.processor.step(frame_torch)
 
-        indexed_mask = _torch_prob_to_numpy_mask(prob)
+        # Convert Cutie's temporary tensor IDs back to immutable object IDs.
+        # This is required because temporary IDs may change after object removal.
+        indexed_mask = _output_prob_to_object_indexed_mask(
+            processor=self.processor,
+            prob=prob,
+        )
+        self._last_indexed_mask = indexed_mask.copy()
 
         masks = _indexed_mask_to_binary_masks(
             indexed_mask=indexed_mask,
             object_ids=self._object_ids,
         )
-        mask_avg_prob_dict = _compute_mask_avg_prob_dict(
+
+        # --- Internal states: ---
+        # self._tracklet_object_dict : tracklet_id -> Cutie object_id
+        # self._object_ids : Cutie object IDs, in same order as returned masks
+        # --- MaskOutput format (a common contract): ---
+        # Do not change Cutie's internal IDs. Only convert them back
+        # at the returned MaskOutput to expose the common external contract:
+        # tracklet_mask_dict: tracklet_id -> local index in MaskOutput.masks
+        # mask_avg_prob_dict: tracklet_id -> confidence
+        object_avg_prob_dict = _compute_mask_avg_prob_dict(
             prob=prob,
             object_ids=self._object_ids,
+            object_id_to_tmp_id=_get_object_id_to_tmp_id(self.processor),
         )
+
+        object_id_to_mask_index = {object_id: mask_index for mask_index, object_id in enumerate(self._object_ids)}
+
+        tracklet_mask_dict = {
+            tracklet_id: object_id_to_mask_index[object_id]
+            for tracklet_id, object_id in self._tracklet_object_dict.items()
+            if object_id in object_id_to_mask_index
+        }
+
+        mask_avg_prob_dict = {
+            tracklet_id: object_avg_prob_dict[object_id]
+            for tracklet_id, object_id in self._tracklet_object_dict.items()
+            if object_id in object_avg_prob_dict
+        }
 
         return MaskOutput(
             masks=masks,
-            tracklet_mask_dict=self._tracklet_object_dict.copy(),
+            tracklet_mask_dict=tracklet_mask_dict,
             mask_avg_prob_dict=mask_avg_prob_dict,
         )
 
@@ -414,3 +551,138 @@ class CutieMaskPropagator(MaskPropagator):
             cfg["weights"] = self.weights_path
 
         return cfg
+
+    @torch.inference_mode()
+    def add_masks(
+        self,
+        frame: np.ndarray,
+        mask_output: MaskOutput,
+    ) -> None:
+        """Add externally generated masks to Cutie memory.
+
+        This method does not create masks itself. It receives masks through
+        ``MaskOutput``, for example from ``SAMBoxMaskGenerator``. The method assigns
+        new immutable Cutie object IDs, feeds the masks into Cutie memory on the
+        given reference frame, and updates the propagator's tracklet/object state.
+        """
+        if not self._initialized:
+            raise RuntimeError(
+                "CutieMaskPropagator must be initialized before calling add_masks(). Call initialize() first."
+            )
+
+        if mask_output.masks is None:
+            return
+
+        if mask_output.masks.ndim != 3:
+            raise ValueError(
+                f"CutieMaskPropagator expects masks with shape (N, H, W). Got shape {mask_output.masks.shape}."
+            )
+
+        num_masks = mask_output.masks.shape[0]
+        if len(mask_output.tracklet_mask_dict) != num_masks:
+            raise ValueError(
+                "Number of tracklet-mask mappings must match number of masks. "
+                f"Got {len(mask_output.tracklet_mask_dict)} mappings for {num_masks} masks."
+            )
+
+        if num_masks == 0:
+            return
+
+        expected_indices = list(range(num_masks))
+        actual_indices = sorted(mask_output.tracklet_mask_dict.values())
+        if actual_indices != expected_indices:
+            raise ValueError(
+                "MaskOutput tracklet_mask_dict must map tracklet IDs to local mask "
+                f"indices {expected_indices}. Got {actual_indices}."
+            )
+
+        duplicate_tracklet_ids = set(mask_output.tracklet_mask_dict) & set(self._tracklet_object_dict)
+        if len(duplicate_tracklet_ids) > 0:
+            raise ValueError(
+                f"Cannot add masks for tracklets that already have Cutie objects: {sorted(duplicate_tracklet_ids)}."
+            )
+
+        sorted_tracklet_ids = [
+            tracklet_id
+            for tracklet_id, _ in sorted(
+                mask_output.tracklet_mask_dict.items(),
+                key=lambda item: item[1],
+            )
+        ]
+
+        new_object_ids = list(
+            range(
+                self._last_object_id + 1,
+                self._last_object_id + num_masks + 1,
+            )
+        )
+
+        indexed_mask = _binary_masks_to_indexed_mask(
+            masks=mask_output.masks,
+            object_ids=new_object_ids,
+        )
+
+        frame_torch = _image_to_torch(frame, self.device)
+        indexed_mask_torch = torch.from_numpy(indexed_mask).long().to(self.device)
+
+        with _autocast_context(self.use_amp):
+            prob = self.processor.step(
+                frame_torch,
+                indexed_mask_torch,
+                objects=new_object_ids,
+                idx_mask=True,
+            )
+
+        self._last_object_id = max(new_object_ids)
+        self._tracklet_object_dict.update(zip(sorted_tracklet_ids, new_object_ids))
+        self._object_ids.extend(new_object_ids)
+        self._last_indexed_mask = _output_prob_to_object_indexed_mask(
+            processor=self.processor,
+            prob=prob,
+        )
+
+    def remove_masks(
+        self,
+        tracklet_ids: list[int],
+    ) -> None:
+        """Remove masks associated with the given tracklet IDs from Cutie memory."""
+        if not self._initialized:
+            raise RuntimeError(
+                "CutieMaskPropagator must be initialized before calling remove_masks(). Call initialize() first."
+            )
+
+        if len(tracklet_ids) == 0:
+            return
+
+        object_ids_to_remove = [
+            self._tracklet_object_dict[tracklet_id]
+            for tracklet_id in tracklet_ids
+            if tracklet_id in self._tracklet_object_dict
+        ]
+
+        # If the requested tracklets never had a mask, simply ignore the request.
+        # This can happen when masks are not created instantly (e.g. when a bounding box
+        # is too covered by another one to get its own mask).
+        # NOTE: This delay will be introduced later.
+        if len(object_ids_to_remove) == 0:
+            return
+
+        self.processor.delete_objects(object_ids_to_remove)
+
+        for tracklet_id in tracklet_ids:
+            self._tracklet_object_dict.pop(tracklet_id, None)
+
+        # For efficient Python filtering
+        object_ids_to_remove_set = set(object_ids_to_remove)
+
+        self._object_ids = [object_id for object_id in self._object_ids if object_id not in object_ids_to_remove_set]
+
+        # If the previous indexed mask contains pixels belonging to removed objects,
+        # turn those pixels into background in this cached mask state.
+        if self._last_indexed_mask is not None:
+            self._last_indexed_mask[np.isin(self._last_indexed_mask, object_ids_to_remove)] = 0
+
+        # No active objects remain, so propagation has nothing valid to propagate.
+        if len(self._object_ids) == 0:
+            self._last_indexed_mask = None
+            self._initialized = False

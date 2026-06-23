@@ -214,6 +214,8 @@ module = [
     "firerequests",
     "scipy",
     "scipy.*",
+    "cutie",
+    "cutie.*",
     "cv2",
     "rfdetr",
     "rfdetr.*",

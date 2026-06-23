@@ -16,6 +16,8 @@ those masks over the remaining selected frames.
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -31,12 +33,136 @@ DEFAULT_OUTPUT_ROOT = Path("visual_tests/outputs/cutie")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
+@dataclass(frozen=True)
+class AddMaskEvent:
+    """Manual add-mask event parsed from ``--add-at``.
+
+    ``frame_file`` is the frame where the provided box is valid. The script
+    applies the mask on that frame and propagates it to the next frame.
+    """
+
+    frame_file: str
+    xyxy: tuple[float, float, float, float]
+
+
+@dataclass(frozen=True)
+class RemoveMaskEvent:
+    """Manual remove-mask event parsed from ``--remove-at``.
+
+    Removal happens before propagating to ``frame_file``.
+    """
+
+    frame_file: str
+    tracker_id: int
+
+
 def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
     """Parse one command-line bounding box in ``x1,y1,x2,y2`` format."""
     values = [float(value) for value in box.split(",")]
     if len(values) != 4:
         raise argparse.ArgumentTypeError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
     return values[0], values[1], values[2], values[3]
+
+
+def parse_add_mask_event(event: str) -> AddMaskEvent:
+    """Parse ``filename:x1,y1,x2,y2`` add-mask event."""
+    parts = event.split(":")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("Add event must have format filename:x1,y1,x2,y2.")
+
+    frame_file, box_str = parts
+
+    try:
+        xyxy = parse_xyxy_box(box_str)
+    except (ValueError, argparse.ArgumentTypeError) as exc:
+        raise argparse.ArgumentTypeError("Add event must have format filename:x1,y1,x2,y2.") from exc
+
+    return AddMaskEvent(
+        frame_file=frame_file,
+        xyxy=xyxy,
+    )
+
+
+def parse_remove_mask_event(event: str) -> RemoveMaskEvent:
+    """Parse ``filename:manual_mask_id`` remove-mask event."""
+    parts = event.split(":")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("Remove event must have format filename:manual_mask_id.")
+
+    frame_file, tracker_id_str = parts
+
+    try:
+        tracker_id = int(tracker_id_str)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Remove event must have format filename:manual_mask_id.") from exc
+
+    if tracker_id <= 0:
+        raise argparse.ArgumentTypeError("manual_mask_id must be a positive integer.")
+
+    return RemoveMaskEvent(
+        frame_file=frame_file,
+        tracker_id=tracker_id,
+    )
+
+
+def group_add_events_by_next_frame(
+    frame_paths: list[Path],
+    events: list[AddMaskEvent],
+) -> dict[str, list[AddMaskEvent]]:
+    """Group add events by the frame they should be applied before.
+
+    The CLI frame is the frame where the box is valid. Internally, McByte-style
+    timing applies the mask on that frame, then propagates to the next frame.
+    """
+    filenames = [path.name for path in frame_paths]
+    grouped: dict[str, list[AddMaskEvent]] = defaultdict(list)
+
+    for event in events:
+        source_index = filenames.index(event.frame_file)
+        target_file = filenames[source_index + 1]
+        grouped[target_file].append(event)
+
+    return dict(grouped)
+
+
+def group_remove_events(events: list[RemoveMaskEvent]) -> dict[str, list[int]]:
+    """Group remove events by the frame before which they should be applied."""
+    grouped: dict[str, list[int]] = defaultdict(list)
+    for event in events:
+        grouped[event.frame_file].append(event.tracker_id)
+    return dict(grouped)
+
+
+def validate_lifecycle_events(
+    frame_paths: list[Path],
+    add_events: list[AddMaskEvent],
+    remove_events: list[RemoveMaskEvent],
+) -> None:
+    """Validate that add/remove lifecycle events are compatible with the frame range.
+
+    Add events refer to the source frame where the box is valid and are internally
+    shifted to the next frame. Therefore, they cannot be scheduled on the last
+    selected frame. Remove events are applied before propagation to their target
+    frame, so they cannot be scheduled on the first selected frame.
+    """
+    filenames = [path.name for path in frame_paths]
+    filename_set = set(filenames)
+    first_file = filenames[0]
+
+    for add_event in add_events:
+        if add_event.frame_file not in filename_set:
+            raise ValueError(f"Add event frame is outside selected range: {add_event.frame_file}")
+        if add_event.frame_file == filenames[-1]:
+            raise ValueError(
+                "Add events cannot be scheduled on the last selected frame, because "
+                "they are applied on that frame and propagated to the next one."
+            )
+
+    for remove_event in remove_events:
+        if remove_event.frame_file not in filename_set:
+            raise ValueError(f"Remove event frame is outside selected range: {remove_event.frame_file}")
+        if remove_event.frame_file == first_file:
+            raise ValueError("Remove events cannot be scheduled on the first selected frame.")
 
 
 def parse_args() -> argparse.Namespace:
@@ -68,6 +194,33 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Bounding box on the first selected frame in xyxy format: x1,y1,x2,y2. "
             "Pass this argument multiple times for multiple boxes."
+        ),
+    )
+    parser.add_argument(
+        "--add-at",
+        type=parse_add_mask_event,
+        action="append",
+        default=[],
+        help=(
+            "Add a new mask using a box on the given frame. Format: "
+            "filename:x1,y1,x2,y2. Can be passed multiple times. "
+            "The box is applied on this frame, then Cutie propagates to the next "
+            "frame, following McByte timing. "
+            "In this standalone script, every --add-at event is treated as a new "
+            "object. Do not add a mask for an object that already has one. In the full "
+            "McByte pipeline this is handled by the tracker, but this visual script "
+            "does not know object identity beyond the manual IDs."
+        ),
+    )
+    parser.add_argument(
+        "--remove-at",
+        type=parse_remove_mask_event,
+        action="append",
+        default=[],
+        help=(
+            "Remove a mask before propagating to the given frame. Format: "
+            "filename:manual_mask_id. Can be passed multiple times. "
+            "Manual mask IDs are assigned automatically."
         ),
     )
     parser.add_argument(
@@ -163,17 +316,29 @@ def validate_and_clip_xyxy_box(
     return np.array([x1, y1, x2, y2], dtype=np.float32)
 
 
+def color_from_id(object_id: int) -> np.ndarray:
+    """Return a deterministic RGB color for a stable object/manual ID."""
+    rng = np.random.default_rng(object_id)
+    return rng.integers(0, 255, size=3, dtype=np.uint8)
+
+
 def overlay_masks(
     image: np.ndarray,
     masks: np.ndarray,
+    object_ids: list[int],
     alpha: float = 0.45,
 ) -> np.ndarray:
-    """Overlay binary masks on an RGB image."""
-    output = image.copy()
-    rng = np.random.default_rng(0)
+    """Overlay binary masks on an RGB image using stable object-ID colors."""
+    if masks.shape[0] != len(object_ids):
+        raise ValueError(
+            "Number of masks must match number of object IDs. "
+            f"Got {masks.shape[0]} masks and {len(object_ids)} object IDs."
+        )
 
-    for mask in masks:
-        color = rng.integers(0, 255, size=3, dtype=np.uint8)
+    output = image.copy()
+
+    for mask, object_id in zip(masks, object_ids):
+        color = color_from_id(object_id)
         colored_mask = np.zeros_like(output)
         colored_mask[mask] = color
 
@@ -184,6 +349,17 @@ def overlay_masks(
         )
 
     return output
+
+
+def get_mask_tracklet_ids_in_order(tracklet_mask_dict: dict[int, int]) -> list[int]:
+    """Return tracklet/manual IDs in the same order as MaskOutput.masks."""
+    return [
+        tracklet_id
+        for tracklet_id, _ in sorted(
+            tracklet_mask_dict.items(),
+            key=lambda item: item[1],
+        )
+    ]
 
 
 def draw_boxes(
@@ -212,6 +388,37 @@ def draw_boxes(
             2,
             cv2.LINE_AA,
         )
+
+    return output
+
+
+def draw_frame_label(
+    image: np.ndarray,
+    frame_name: str,
+) -> np.ndarray:
+    """Draw the frame filename in the top-left corner."""
+    output = image.copy()
+
+    cv2.putText(
+        output,
+        frame_name,
+        (20, 35),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.0,
+        (255, 255, 255),
+        3,  # white outline
+        cv2.LINE_AA,
+    )
+    cv2.putText(
+        output,
+        frame_name,
+        (20, 35),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.0,
+        (0, 0, 0),
+        1,  # black fill
+        cv2.LINE_AA,
+    )
 
     return output
 
@@ -263,6 +470,17 @@ def main() -> None:
     if len(frame_paths) < 2:
         raise ValueError("At least two frames are required for Cutie propagation.")
 
+    validate_lifecycle_events(
+        frame_paths=frame_paths,
+        add_events=args.add_at,
+        remove_events=args.remove_at,
+    )
+    add_events_by_file = group_add_events_by_next_frame(
+        frame_paths=frame_paths,
+        events=args.add_at,
+    )
+    remove_events_by_file = group_remove_events(args.remove_at)
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = args.output_root / timestamp
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -271,7 +489,7 @@ def main() -> None:
 
     tracklets = [
         TrackletSnapshot(
-            tracker_id=index,
+            tracker_id=index + 1,
             xyxy=validate_and_clip_xyxy_box(
                 box=box,
                 image_shape=initial_frame.shape[:2],
@@ -279,6 +497,14 @@ def main() -> None:
         )
         for index, box in enumerate(args.box)
     ]
+    next_manual_tracklet_id = len(tracklets) + 1
+    print("Initial manual mask IDs:")
+    for tracklet in tracklets:
+        print(f"  {tracklet.tracker_id}: initial box {tracklet.xyxy.tolist()}")
+    print(
+        "Note: each --add-at event is treated as a new object. "
+        "Do not add another mask for an already initialized object."
+    )
 
     device = validate_device(args.device, label="SAM/Cutie")
 
@@ -309,23 +535,85 @@ def main() -> None:
         mask_output=initial_mask_output,
     )
 
-    initial_visual = overlay_masks(initial_frame, initial_mask_output.masks)
+    initial_visual = overlay_masks(
+        image=initial_frame,
+        masks=initial_mask_output.masks,
+        # Use manual IDs for the first-frame SAM masks so their colors match the later
+        # Cutie outputs. SAM local mask indices start at 0, while Cutie object IDs start
+        # at 1.
+        object_ids=[tracklet.tracker_id for tracklet in tracklets],
+    )
     initial_visual = draw_boxes(initial_visual, tracklets)
+    initial_visual = draw_frame_label(
+        initial_visual,
+        frame_paths[0].name,
+    )
 
     save_rgb_image(initial_visual, output_dir / frame_paths[0].name)
     print(f"Saved {frame_paths[0].name} (SAM)")
 
+    previous_frame = initial_frame
+    previous_frame_path = frame_paths[0]
+
     for frame_path in frame_paths[1:]:
         frame = load_rgb_image(frame_path)
+
+        add_events = add_events_by_file.get(frame_path.name, [])
+        if len(add_events) > 0:
+            add_tracklets = []
+            for event in add_events:
+                manual_tracklet_id = next_manual_tracklet_id
+                next_manual_tracklet_id += 1
+
+                tracklet = TrackletSnapshot(
+                    tracker_id=manual_tracklet_id,
+                    xyxy=validate_and_clip_xyxy_box(
+                        box=event.xyxy,
+                        image_shape=previous_frame.shape[:2],
+                    ),
+                )
+                add_tracklets.append(tracklet)
+
+                print(
+                    f"Scheduled add from {previous_frame_path.name} before propagating "
+                    f"to {frame_path.name}: manual ID {manual_tracklet_id}, "
+                    f"box {tracklet.xyxy.tolist()}"
+                )
+
+            add_mask_output = sam_generator.generate(frame=previous_frame, tracklets=add_tracklets)
+            cutie_propagator.add_masks(frame=previous_frame, mask_output=add_mask_output)
+
+            print(
+                f"Added {len(add_tracklets)} mask(s) before {frame_path.name} "
+                f"using previous frame {previous_frame_path.name}."
+            )
+
+        remove_tracklet_ids = remove_events_by_file.get(frame_path.name, [])
+        if len(remove_tracklet_ids) > 0:
+            cutie_propagator.remove_masks(remove_tracklet_ids)
+            print(f"Removed mask(s) for manual IDs {remove_tracklet_ids} before {frame_path.name}")
+
         propagated_mask_output = cutie_propagator.propagate(frame)
 
         if propagated_mask_output is None or propagated_mask_output.masks is None:
             raise RuntimeError(f"Cutie did not return masks for frame: {frame_path}")
 
-        visual = overlay_masks(frame, propagated_mask_output.masks)
+        visual = overlay_masks(
+            image=frame,
+            masks=propagated_mask_output.masks,
+            object_ids=get_mask_tracklet_ids_in_order(propagated_mask_output.tracklet_mask_dict),
+        )
+        visual = draw_frame_label(visual, frame_path.name)
         save_rgb_image(visual, output_dir / frame_path.name)
 
-        print(f"Saved {frame_path.name} (Cutie); mask_avg_prob_dict={propagated_mask_output.mask_avg_prob_dict}")
+        print(
+            f"Saved {frame_path.name} (Cutie); "
+            f"tracklet_mask_dict={propagated_mask_output.tracklet_mask_dict}; "
+            f"mask_avg_prob_dict={propagated_mask_output.mask_avg_prob_dict}"
+        )
+
+        previous_frame = frame
+        previous_frame_path = frame_path
 
     print(f"Saved visualizations to {output_dir}")
 
