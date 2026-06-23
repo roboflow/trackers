@@ -14,10 +14,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🔄 Deprecated
 
+- **`SORTTracker.trackers`** — deprecated alias for `.tracks`; emits `FutureWarning` since v2.5, will be removed in v3.0. Use `tracker.tracks` instead.
 - **`trackers.core.botsort.cmc` module** — `CMC` moved to `trackers.utils.cmc`; old path re-exports all symbols with `DeprecationWarning` until v3.0. Migrate: `from trackers.utils.cmc import CMC` or `from trackers import CMC` ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`BoTSORTTracker.apply_cmc_batch`** — use `CMC.apply_batch(H, tracker.tracks)` directly. Will be removed in v3.0 ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`CMCTMethod` type alias** — kept as a back-compat alias for `CMCMethod`; will be removed in v3.0. Migrate to `CMCMethod` ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`CMC.apply_to_xyxy` renamed to `CMC.warp_xyxy_corners`** — old name kept as a deprecated wrapper that forwards to the new name; will be removed in v3.0. Update call sites to `CMC.warp_xyxy_corners` ([#414](https://github.com/roboflow/trackers/pull/414)).
+
+### ⚠️ Breaking Changes
+
+- **Internal tracklet ID counters removed** — track IDs are now allocated by each tracker instance instead of the class-level counters on each `*Tracklet` subclass (e.g. `BoTSORTTracklet.get_next_tracker_id()`). Internal tracklet subclassers should allocate IDs in tracker code and assign `tracklet.tracker_id` directly. Use `self._allocate_tracker_id()` (inherited from `BaseTracker`) as the replacement allocator when implementing a custom tracker subclass.
 
 ### 🌱 Changed
 
@@ -28,17 +33,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### ⚠️ Breaking Changes
 
-- **Invalid lost-track buffer settings now raise `ValueError`** — `lost_track_buffer` must be non-negative and `frame_rate` must be finite and positive for `SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, and `BoTSORTTracker`. Explicit `lost_track_buffer=0` remains valid and means no missed-frame grace period; negative buffers and invalid frame rates previously initialized but produced nonsensical lifecycle behavior.
+- **Invalid lost-track buffer settings now raise `ValueError`** — `lost_track_buffer` must be non-negative and `frame_rate` must be finite and positive for `SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, and `BoTSORTTracker`. Explicit `lost_track_buffer=0` remains valid and means no missed-frame grace period; negative buffers and invalid frame rates previously initialized but produced nonsensical lifecycle behavior ([#420](https://github.com/roboflow/trackers/pull/420)).
+- **Confirmed tracks now survive one additional missed frame** — all trackers changed from exclusive (`time_since_update < maximum_frames_without_update`) to inclusive (`<=`) boundary semantics to match OC-SORT's previous behavior. Users comparing metric results across this version should expect small IDSW/HOTA shifts ([#420](https://github.com/roboflow/trackers/pull/420)).
 
 ### 🔧 Fixed
 
+- Clarified in docs that `SORTTracker` itself is not deprecated — only the `.trackers` alias is.
 - **BoT-SORT score fusion with signed IoU** — `_fuse_score` multiplied raw negative IoU values by confidence, inverting track ranking for GIoU/DIoU/CIoU; `normalize_for_fusion` now normalises similarity before fusion ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **Non-finite box coordinates crash `linear_sum_assignment`** — `BaseIoU.compute` now raises `ValueError` with a clear message for NaN/inf inputs instead of propagating invalid entries into SciPy ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **OC-SORT Observation-Centric Recovery** now uses standard `IoU` per the paper, independent of the configured `iou=` variant ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **Eager division warnings on zero-area boxes** — IoU helper switched from `np.where` (eager) to `np.divide(..., where=...)` (lazy), suppressing `RuntimeWarning` under strict NumPy error settings ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **CLI argparse crash on `BaseIoU` parameter** — `iou=` is now excluded from argparse auto-discovery; the variant must be set programmatically ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **ByteTrack tracked nothing when detections lacked confidence scores** — the default-fill changed from `np.zeros` to `np.ones`, matching SORT / OC-SORT / BoT-SORT behaviour, so detectors that emit `sv.Detections` without `confidence` now produce tracks instead of empty results ([#415](https://github.com/roboflow/trackers/pull/415)).
-- **Positive low-FPS lost-track buffers no longer collapse to zero frames** — all trackers now scale positive `lost_track_buffer` values with `ceil(...)` and keep confirmed tracks alive through exactly the scaled number of missed frames, matching OC-SORT's previous inclusive boundary semantics.
+- **Positive low-FPS lost-track buffers no longer collapse to zero frames** — all trackers now scale positive `lost_track_buffer` values with `ceil(...)` and keep confirmed tracks alive through exactly the scaled number of missed frames, matching OC-SORT's previous inclusive boundary semantics ([#420](https://github.com/roboflow/trackers/pull/420)).
+- **Tracker instances no longer share track ID counters** — resetting one tracker instance no longer resets another instance's ID allocator, preventing duplicate live IDs in multi-camera, class-specific, or parallel tracker workflows.
 
 ---
 

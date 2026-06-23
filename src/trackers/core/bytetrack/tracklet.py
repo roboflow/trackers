@@ -14,8 +14,6 @@ from trackers.utils.state_representations import (
 
 
 class ByteTrackTracklet(BaseTracklet):
-    count_id: int = 0
-
     def __init__(
         self,
         initial_bbox: np.ndarray,

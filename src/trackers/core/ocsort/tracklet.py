@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 
 from trackers.utils.base_tracklet import BaseTracklet
@@ -38,8 +40,6 @@ class OCSORTTracklet(BaseTracklet):
         velocity: Normalized direction vector computed with delta_t lookback.
         delta_t: Number of timesteps back to look for velocity estimation.
     """
-
-    count_id: int = 0
 
     def __init__(
         self,
@@ -286,6 +286,7 @@ class OCSORTTracklet(BaseTracklet):
         self,
         minimum_consecutive_frames: int,
         frame_count: int,
+        allocate_tracker_id: Callable[[], int],
     ) -> int:
         """Resolve the tracker ID for the current tracklet state.
 
@@ -295,6 +296,8 @@ class OCSORTTracklet(BaseTracklet):
         Args:
             minimum_consecutive_frames: Frames required for track maturity.
             frame_count: Current frame number in tracking process.
+            allocate_tracker_id: Zero-argument callable returning a unique int ID;
+                called at most once per tracklet, when it first becomes mature.
 
         Returns:
             Integer tracker ID, or -1 for immature tracks.
@@ -303,11 +306,11 @@ class OCSORTTracklet(BaseTracklet):
         if frame_count <= minimum_consecutive_frames:
             if self.time_since_update == 0:
                 if self.tracker_id == -1:
-                    self.tracker_id = OCSORTTracklet.get_next_tracker_id()
+                    self.tracker_id = allocate_tracker_id()
                 return self.tracker_id
         else:
             if is_mature:
                 if self.tracker_id == -1:
-                    self.tracker_id = OCSORTTracklet.get_next_tracker_id()
+                    self.tracker_id = allocate_tracker_id()
                 return self.tracker_id
         return -1

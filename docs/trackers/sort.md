@@ -52,6 +52,11 @@ SORT models each tracked object with a seven-dimensional state vector `[x, y, s,
     `SORTTracker.update()` accepts `frame` for API consistency with other trackers, but SORT does not use image/frame pixels.
     If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
 
+!!! note "SORTTracker is not deprecated"
+
+    `SORTTracker` itself is not deprecated. Only the `tracker.trackers` attribute alias
+    is deprecated in favor of `tracker.tracks`.
+
 ## Run on video, webcam, or RTSP stream
 
 These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.

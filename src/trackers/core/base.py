@@ -319,6 +319,7 @@ class BaseTracker(ABC):
     # list[ConcreteTracklet] in subclasses rejects list[TrackletProtocol] base.
     tracks: list[Any]
     maximum_frames_without_update: int
+    _next_track_id: int
 
     @staticmethod
     def _compute_maximum_frames_without_update(
@@ -428,6 +429,16 @@ class BaseTracker(ABC):
         Call between videos or when tracking should restart from scratch.
         """
         pass
+
+    def _reset_id_allocator(self) -> None:
+        """Restart this tracker instance's ID allocation from zero."""
+        self._next_track_id = 0
+
+    def _allocate_tracker_id(self) -> int:
+        """Return the next tracker ID (zero-indexed) and advance the internal counter."""
+        next_track_id = self._next_track_id
+        self._next_track_id = next_track_id + 1
+        return next_track_id
 
     @property
     def tracked_objects(self) -> sv.Detections:

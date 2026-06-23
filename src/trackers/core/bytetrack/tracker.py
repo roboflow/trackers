@@ -111,6 +111,7 @@ class ByteTrackTracker(BaseTracker):
         self.tracks: list[ByteTrackTracklet] = []
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+        self._reset_id_allocator()
 
     def update(
         self,
@@ -170,7 +171,7 @@ class ByteTrackTracker(BaseTracker):
                 track.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
             ):
-                track.tracker_id = ByteTrackTracklet.get_next_tracker_id()
+                track.tracker_id = self._allocate_tracker_id()
             out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -188,7 +189,7 @@ class ByteTrackTracker(BaseTracker):
                 track.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
             ):
-                track.tracker_id = ByteTrackTracklet.get_next_tracker_id()
+                track.tracker_id = self._allocate_tracker_id()
             out_det_indices.append(int(low_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -290,4 +291,4 @@ class ByteTrackTracker(BaseTracker):
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
-        ByteTrackTracklet.count_id = 0
+        self._reset_id_allocator()

@@ -236,6 +236,7 @@ class TestTrackerAutoRegistration:
         from trackers import (  # noqa: F401
             BoTSORTTracker,
             ByteTrackTracker,
+            CBIoUTracker,
             OCSORTTracker,
             SORTTracker,
         )
@@ -247,6 +248,7 @@ class TestTrackerAutoRegistration:
         from trackers import (  # noqa: F401
             BoTSORTTracker,
             ByteTrackTracker,
+            CBIoUTracker,
             OCSORTTracker,
             SORTTracker,
         )
@@ -265,6 +267,7 @@ class TestTrackerAutoRegistration:
         from trackers import (  # noqa: F401
             BoTSORTTracker,
             ByteTrackTracker,
+            CBIoUTracker,
             OCSORTTracker,
             SORTTracker,
         )
@@ -276,6 +279,8 @@ class TestTrackerAutoRegistration:
 
     @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
     def test_tracker_params_have_descriptions(self, tracker_id: str) -> None:
+        from trackers import CBIoUTracker  # noqa: F401
+
         info = BaseTracker._lookup_tracker(tracker_id)
 
         assert info is not None
@@ -291,6 +296,7 @@ class TestSearchSpaceValidation:
         from trackers import (
             BoTSORTTracker,
             ByteTrackTracker,
+            CBIoUTracker,
             OCSORTTracker,
             SORTTracker,
         )
@@ -300,6 +306,7 @@ class TestSearchSpaceValidation:
             SORTTracker,
             OCSORTTracker,
             BoTSORTTracker,
+            CBIoUTracker,
         ):
             init_params = set(inspect.signature(tracker_cls.__init__).parameters) - {"self"}
             for key in tracker_cls.search_space:
