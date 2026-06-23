@@ -75,9 +75,7 @@ def parse_add_mask_event(event: str) -> AddMaskEvent:
     try:
         xyxy = parse_xyxy_box(box_str)
     except (ValueError, argparse.ArgumentTypeError) as exc:
-        raise argparse.ArgumentTypeError(
-            "Add event must have format filename:x1,y1,x2,y2."
-        ) from exc
+        raise argparse.ArgumentTypeError("Add event must have format filename:x1,y1,x2,y2.") from exc
 
     return AddMaskEvent(
         frame_file=frame_file,
@@ -96,14 +94,10 @@ def parse_remove_mask_event(event: str) -> RemoveMaskEvent:
     try:
         tracker_id = int(tracker_id_str)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            "Remove event must have format filename:manual_mask_id."
-        ) from exc
+        raise argparse.ArgumentTypeError("Remove event must have format filename:manual_mask_id.") from exc
 
     if tracker_id <= 0:
-        raise argparse.ArgumentTypeError(
-            "manual_mask_id must be a positive integer."
-        )
+        raise argparse.ArgumentTypeError("manual_mask_id must be a positive integer.")
 
     return RemoveMaskEvent(
         frame_file=frame_file,
@@ -588,14 +582,8 @@ def main() -> None:
                     f"box {tracklet.xyxy.tolist()}"
                 )
 
-            add_mask_output = sam_generator.generate(
-                frame=previous_frame,
-                tracklets=add_tracklets
-            )
-            cutie_propagator.add_masks(
-                frame=previous_frame,
-                mask_output=add_mask_output
-            )
+            add_mask_output = sam_generator.generate(frame=previous_frame, tracklets=add_tracklets)
+            cutie_propagator.add_masks(frame=previous_frame, mask_output=add_mask_output)
 
             print(
                 f"Added {len(add_tracklets)} mask(s) before {frame_path.name} "

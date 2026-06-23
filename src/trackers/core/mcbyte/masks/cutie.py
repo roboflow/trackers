@@ -164,7 +164,6 @@ def _output_prob_to_object_indexed_mask(
     return indexed_mask.cpu().numpy().astype(np.int32)
 
 
-
 def _get_object_id_to_tmp_id(processor: Any) -> dict[int, int]:
     """Return mapping from immutable Cutie object IDs to temporary tensor IDs.
 
