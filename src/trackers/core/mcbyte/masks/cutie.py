@@ -488,10 +488,7 @@ class CutieMaskPropagator(MaskPropagator):
             object_id_to_tmp_id=_get_object_id_to_tmp_id(self.processor),
         )
 
-        object_id_to_mask_index = {
-            object_id: mask_index
-            for mask_index, object_id in enumerate(self._object_ids)
-        }
+        object_id_to_mask_index = {object_id: mask_index for mask_index, object_id in enumerate(self._object_ids)}
 
         tracklet_mask_dict = {
             tracklet_id: object_id_to_mask_index[object_id]
