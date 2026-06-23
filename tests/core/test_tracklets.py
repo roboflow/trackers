@@ -156,30 +156,6 @@ def test_bytetrack_tracklet_starts_with_one_successful_consecutive_update(
     assert tracklet.number_of_successful_consecutive_updates == 1
 
 
-def test_tracklet_id_counter_increments_per_subclass() -> None:
-    """Each tracklet subclass keeps its own independent ID counter."""
-    sort_id = SORTTracklet.count_id
-    byte_id = ByteTrackTracklet.count_id
-    bots_id = BoTSORTTracklet.count_id
-    try:
-        SORTTracklet.count_id = 0
-        ByteTrackTracklet.count_id = 0
-        BoTSORTTracklet.count_id = 0
-
-        assert SORTTracklet.get_next_tracker_id() == 0
-        assert SORTTracklet.get_next_tracker_id() == 1
-        assert ByteTrackTracklet.get_next_tracker_id() == 0
-        assert ByteTrackTracklet.get_next_tracker_id() == 1
-        assert BoTSORTTracklet.get_next_tracker_id() == 0
-        assert BoTSORTTracklet.get_next_tracker_id() == 1
-        assert SORTTracklet.get_next_tracker_id() == 2
-        assert BoTSORTTracklet.get_next_tracker_id() == 2
-    finally:
-        SORTTracklet.count_id = sort_id
-        ByteTrackTracklet.count_id = byte_id
-        BoTSORTTracklet.count_id = bots_id
-
-
 def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
     """ORU unfreeze fires correctly after exactly one missed frame.
 

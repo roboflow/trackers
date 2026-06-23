@@ -18,5 +18,9 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: ⬆️
+    groups:
+      uv-lock:
+        patterns:
+          - "*"
     exclude-paths:
       - "demo"

@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import numpy as np
+import supervision as sv
 
 
 class BaseIoU(ABC):
@@ -115,7 +116,6 @@ class IoU(BaseIoU):
     """
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
-        import supervision as sv
 
         return sv.box_iou_batch(boxes_1, boxes_2)
 
@@ -167,7 +167,6 @@ class BIoU(BaseIoU):
         self.buffer_ratio = buffer_ratio
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
-        import supervision as sv
 
         if self.buffer_ratio == 0:
             return sv.box_iou_batch(boxes_1, boxes_2)
