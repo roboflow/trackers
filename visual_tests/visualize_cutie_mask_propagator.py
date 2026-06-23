@@ -351,13 +351,11 @@ def overlay_masks(
     return output
 
 
-# In CutieMaskPropagator, tracklet_mask_dict maps manual/tracklet IDs to immutable
-# Cutie object IDs, and masks are produced in _object_ids order.
-def get_mask_object_ids_in_order(tracklet_mask_dict: dict[int, int]) -> list[int]:
-    """Return object IDs in the same order as MaskOutput.masks."""
+def get_mask_tracklet_ids_in_order(tracklet_mask_dict: dict[int, int]) -> list[int]:
+    """Return tracklet/manual IDs in the same order as MaskOutput.masks."""
     return [
-        object_id
-        for _, object_id in sorted(
+        tracklet_id
+        for tracklet_id, _ in sorted(
             tracklet_mask_dict.items(),
             key=lambda item: item[1],
         )
@@ -603,7 +601,7 @@ def main() -> None:
         visual = overlay_masks(
             image=frame,
             masks=propagated_mask_output.masks,
-            object_ids=get_mask_object_ids_in_order(propagated_mask_output.tracklet_mask_dict),
+            object_ids=get_mask_tracklet_ids_in_order(propagated_mask_output.tracklet_mask_dict),
         )
         visual = draw_frame_label(visual, frame_path.name)
         save_rgb_image(visual, output_dir / frame_path.name)

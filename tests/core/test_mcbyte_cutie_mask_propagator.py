@@ -498,7 +498,7 @@ def test_remove_masks_marks_uninitialized_when_no_objects_remain(
     assert not propagator._initialized
 
 
-def test_propagate_uses_object_id_remapping_after_temporary_id_shift(
+def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
     initialized_cutie_propagator: CutieMaskPropagator,
 ) -> None:
     class DummyObject:
@@ -555,8 +555,8 @@ def test_propagate_uses_object_id_remapping_after_temporary_id_shift(
 
     assert output is not None
     assert output.tracklet_mask_dict == {
-        10: 1,
-        30: 3,
+        10: 0,
+        30: 1,
     }
 
     assert output.masks is not None
@@ -586,8 +586,8 @@ def test_propagate_uses_object_id_remapping_after_temporary_id_shift(
     )
 
     assert output.mask_avg_prob_dict is not None
-    assert np.isclose(output.mask_avg_prob_dict[1], 0.8)
-    assert np.isclose(output.mask_avg_prob_dict[3], np.mean([0.7, 0.8]))
+    assert np.isclose(output.mask_avg_prob_dict[10], 0.8)
+    assert np.isclose(output.mask_avg_prob_dict[30], np.mean([0.7, 0.8]))
 
     np.testing.assert_array_equal(
         propagator._last_indexed_mask,

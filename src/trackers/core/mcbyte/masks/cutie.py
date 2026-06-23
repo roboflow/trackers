@@ -473,15 +473,41 @@ class CutieMaskPropagator(MaskPropagator):
             indexed_mask=indexed_mask,
             object_ids=self._object_ids,
         )
-        mask_avg_prob_dict = _compute_mask_avg_prob_dict(
+
+        # --- Internal states: ---
+        # self._tracklet_object_dict : tracklet_id -> Cutie object_id
+        # self._object_ids : Cutie object IDs, in same order as returned masks
+        # --- MaskOutput format (a common contract): ---
+        # Do not change Cutie's internal IDs. Only convert them back
+        # at the returned MaskOutput to expose the common external contract:
+        # tracklet_mask_dict: tracklet_id -> local index in MaskOutput.masks
+        # mask_avg_prob_dict: tracklet_id -> confidence
+        object_avg_prob_dict = _compute_mask_avg_prob_dict(
             prob=prob,
             object_ids=self._object_ids,
             object_id_to_tmp_id=_get_object_id_to_tmp_id(self.processor),
         )
 
+        object_id_to_mask_index = {
+            object_id: mask_index
+            for mask_index, object_id in enumerate(self._object_ids)
+        }
+
+        tracklet_mask_dict = {
+            tracklet_id: object_id_to_mask_index[object_id]
+            for tracklet_id, object_id in self._tracklet_object_dict.items()
+            if object_id in object_id_to_mask_index
+        }
+
+        mask_avg_prob_dict = {
+            tracklet_id: object_avg_prob_dict[object_id]
+            for tracklet_id, object_id in self._tracklet_object_dict.items()
+            if object_id in object_avg_prob_dict
+        }
+
         return MaskOutput(
             masks=masks,
-            tracklet_mask_dict=self._tracklet_object_dict.copy(),
+            tracklet_mask_dict=tracklet_mask_dict,
             mask_avg_prob_dict=mask_avg_prob_dict,
         )
 
