@@ -26,6 +26,19 @@ from trackers.core.mcbyte.masks.cutie import (  # noqa: E402
 )
 
 
+@pytest.fixture
+def initialized_cutie_propagator() -> CutieMaskPropagator:
+    propagator = object.__new__(CutieMaskPropagator)
+    propagator.device = torch.device("cpu")
+    propagator.use_amp = False
+    propagator._initialized = True
+    propagator._tracklet_object_dict = {}
+    propagator._object_ids = []
+    propagator._last_object_id = 0
+    propagator._last_indexed_mask = None
+    return propagator
+
+
 def test_image_to_torch_converts_rgb_numpy_frame() -> None:
     frame = np.array(
         [
@@ -194,9 +207,9 @@ def test_propagate_returns_none_when_not_initialized() -> None:
     assert output is None
 
 
-def test_reset_clears_internal_state() -> None:
-    propagator = object.__new__(CutieMaskPropagator)
-
+def test_reset_clears_internal_state(
+    initialized_cutie_propagator: CutieMaskPropagator,
+) -> None:
     class DummyProcessor:
         def __init__(self) -> None:
             self.clear_memory_called = False
@@ -206,10 +219,10 @@ def test_reset_clears_internal_state() -> None:
 
     processor = DummyProcessor()
 
+    propagator = initialized_cutie_propagator
     propagator.processor = processor
     propagator._tracklet_object_dict = {10: 1}
     propagator._object_ids = [1]
-    propagator._initialized = True
     propagator._last_object_id = 5
     propagator._last_indexed_mask = np.ones((4, 4), dtype=np.int32)
 
@@ -280,9 +293,9 @@ def test_add_masks_requires_initialization() -> None:
         )
 
 
-def test_add_masks_assigns_new_object_ids_and_updates_state() -> None:
-    propagator = object.__new__(CutieMaskPropagator)
-
+def test_add_masks_assigns_new_object_ids_and_updates_state(
+    initialized_cutie_propagator: CutieMaskPropagator,
+) -> None:
     class DummyProcessor:
         def __init__(self) -> None:
             self.step_calls: list[dict[str, Any]] = []
@@ -318,10 +331,8 @@ def test_add_masks_assigns_new_object_ids_and_updates_state() -> None:
 
     processor = DummyProcessor()
 
+    propagator = initialized_cutie_propagator
     propagator.processor = processor
-    propagator.device = torch.device("cpu")
-    propagator.use_amp = False
-    propagator._initialized = True
     propagator._tracklet_object_dict = {10: 1, 20: 2}
     propagator._object_ids = [1, 2]
     propagator._last_object_id = 2
@@ -406,9 +417,9 @@ def test_remove_masks_requires_initialization() -> None:
         propagator.remove_masks([10])
 
 
-def test_remove_masks_deletes_objects_and_updates_state() -> None:
-    propagator = object.__new__(CutieMaskPropagator)
-
+def test_remove_masks_deletes_objects_and_updates_state(
+    initialized_cutie_propagator: CutieMaskPropagator,
+) -> None:
     class DummyProcessor:
         def __init__(self) -> None:
             self.deleted_objects: list[int] | None = None
@@ -418,8 +429,8 @@ def test_remove_masks_deletes_objects_and_updates_state() -> None:
 
     processor = DummyProcessor()
 
+    propagator = initialized_cutie_propagator
     propagator.processor = processor
-    propagator._initialized = True
     propagator._tracklet_object_dict = {
         10: 1,
         20: 2,
@@ -458,9 +469,9 @@ def test_remove_masks_deletes_objects_and_updates_state() -> None:
     )
 
 
-def test_remove_masks_marks_uninitialized_when_no_objects_remain() -> None:
-    propagator = object.__new__(CutieMaskPropagator)
-
+def test_remove_masks_marks_uninitialized_when_no_objects_remain(
+    initialized_cutie_propagator: CutieMaskPropagator,
+) -> None:
     class DummyProcessor:
         def __init__(self) -> None:
             self.deleted_objects: list[int] | None = None
@@ -470,8 +481,8 @@ def test_remove_masks_marks_uninitialized_when_no_objects_remain() -> None:
 
     processor = DummyProcessor()
 
+    propagator = initialized_cutie_propagator
     propagator.processor = processor
-    propagator._initialized = True
     propagator._tracklet_object_dict = {10: 1}
     propagator._object_ids = [1]
     propagator._last_object_id = 1
@@ -487,9 +498,9 @@ def test_remove_masks_marks_uninitialized_when_no_objects_remain() -> None:
     assert not propagator._initialized
 
 
-def test_propagate_uses_object_id_remapping_after_temporary_id_shift() -> None:
-    propagator = object.__new__(CutieMaskPropagator)
-
+def test_propagate_uses_object_id_remapping_after_temporary_id_shift(
+    initialized_cutie_propagator: CutieMaskPropagator,
+) -> None:
     class DummyObject:
         def __init__(self, object_id: int) -> None:
             self.id = object_id
@@ -528,10 +539,8 @@ def test_propagate_uses_object_id_remapping_after_temporary_id_shift() -> None:
                 dtype=torch.int64,
             )
 
+    propagator = initialized_cutie_propagator
     propagator.processor = DummyProcessor()
-    propagator.device = torch.device("cpu")
-    propagator.use_amp = False
-    propagator._initialized = True
     propagator._tracklet_object_dict = {
         10: 1,
         30: 3,
