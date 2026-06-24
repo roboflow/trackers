@@ -645,3 +645,12 @@ def test_bytetrack_consecutive_counter_resets_on_miss() -> None:
     tracker.update(_detection(bbox))
     assert tracker.tracks[0].number_of_successful_consecutive_updates == 1
     assert tracker.tracks[0].tracker_id == -1
+
+
+def test_sort_trackers_property_emits_future_warning() -> None:
+    """Accessing deprecated .trackers must emit FutureWarning with correct message."""
+    tracker = SORTTracker(minimum_consecutive_frames=1)
+    with pytest.warns(FutureWarning, match=r"deprecated since v2\.5"):
+        result = tracker.trackers
+    assert result is tracker.tracks
+    assert isinstance(type(tracker).__dict__["trackers"], property)

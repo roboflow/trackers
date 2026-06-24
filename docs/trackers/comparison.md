@@ -9,11 +9,11 @@ This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, 
 
 !!! info "Benchmark version"
 
-    Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT) or ground-truth oracle boxes (SoccerNet, DanceTrack). Parameters were tuned via grid search on held-out splits. See [Methodology](#methodology) for details.
+    Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits. See [Methodology](#methodology) for details.
 
 !!! note "Benchmark methodology"
 
-    Results measured using YOLOX detections (MOT17, SportsMOT) or oracle ground-truth boxes (SoccerNet, DanceTrack) with default and grid-searched parameters. Performance varies across detectors — see [Detection Quality Matters](../learn/detection-quality.md) for the impact of detector quality on tracking metrics.
+    Results measured using YOLOX detections (MOT17, SportsMOT, DanceTrack) or oracle ground-truth boxes (SoccerNet) with default and grid-searched parameters. Performance varies across detectors — see [Detection Quality Matters](../learn/detection-quality.md) for the impact of detector quality on tracking metrics.
 
 ## [MOT17](https://arxiv.org/abs/1603.00831)
 
@@ -291,7 +291,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
     Parameters were tuned on the validation set. Results are reported on the
     test set via [Codabench](https://www.codabench.org/competitions/14885/) submission.
-    Detections come from oracle (ground-truth) boxes.
+    Detections come from a YOLOX model.
 
 === "Default"
 
@@ -303,6 +303,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     | ByteTrack |   53.3   |   53.6   |   90.3   |
     |  OC-SORT  |   54.1   |   53.3   |   89.3   |
     | BoT-SORT  | **57.8** | **57.9** | **92.2** |
+    |  C-BIoU   |   56.7   |   56.7   | **92.2** |
 
 === "Tuned"
 
@@ -315,7 +316,8 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |   SORT    |   54.3   |   53.4   |   89.5   |
     | ByteTrack |   55.3   |   55.2   |   89.9   |
     |  OC-SORT  |   54.1   |   53.3   |   89.3   |
-    | BoT-SORT  | **57.8** | **57.9** | **92.2** |
+    | BoT-SORT  | **57.8** |   57.9   |   92.2   |
+    |  C-BIoU   |   57.7   | **58.7** | **92.4** |
 
     Best configuration for each tracker.
 
@@ -353,16 +355,23 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       cmc_method: sparseOptFlow
 
     C-BIoU:
-      lost_track_buffer: 53
-      minimum_consecutive_frames: 2
-      minimum_iou_threshold_first_assoc: 0.11
-      minimum_iou_threshold_second_assoc: 0.57
-      minimum_iou_threshold_unconfirmed_assoc: 0.30
-      high_conf_det_threshold: 0.36
-      track_activation_threshold: 0.83
-      buffer_ratio_first: 0.23
-      buffer_ratio_second: 0.33
+      lost_track_buffer: 37
+      track_activation_threshold: 0.71
+      minimum_consecutive_frames: 3
+      minimum_iou_threshold_first_assoc: 0.22
+      minimum_iou_threshold_second_assoc: 0.70
+      minimum_iou_threshold_unconfirmed_assoc: 0.26
+      high_conf_det_threshold: 0.34
+      buffer_ratio_first: 0.12
+      buffer_ratio_second: 0.10
     ```
+
+!!! note "DanceTrack buffer ordering exception"
+
+    This config uses `buffer_ratio_first: 0.12 > buffer_ratio_second: 0.10`, which reverses
+    the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering).
+    Optuna found this ordering on DanceTrack's validation split; the margin (0.02) is small
+    and the `b1 < b2` default applies on most other datasets.
 
 ## Methodology
 
@@ -408,7 +417,7 @@ association, which reduces ID switches on panning or handheld footage. Use BoT-S
 broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is
 small relative to the detector, so the trade-off favors identity stability over raw speed.
 
-**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet and DanceTrack, and achieves the highest IDF1 on MOT17 among the trackers listed here. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](cbiou.md) for buffer scales **b1** and **b2**.
+**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet, reaches the highest tuned IDF1 and MOTA on DanceTrack, and achieves the highest IDF1 on MOT17 among the trackers listed here. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](cbiou.md) for buffer scales **b1** and **b2**.
 
 ## Metric Definitions
 
