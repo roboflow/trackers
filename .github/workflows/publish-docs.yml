@@ -63,11 +63,11 @@ jobs:
           REF_NAME="${{ github.event.inputs.ref }}"
           # If it's a full ref like refs/heads/branch or refs/tags/tag, extract the name
           CLEAN_REF=$(echo "$REF_NAME" | sed 's|^refs/[^/]*/||')
-          if echo "$CLEAN_REF" | grep -qE '(rc|dev|alpha|beta|\.a[0-9]|\.b[0-9])'; then
+          if echo "$CLEAN_REF" | grep -qE '(^|[._-]|[0-9])(rc[0-9]*|dev[0-9]*|alpha[0-9]*|beta[0-9]*|a[0-9]+|b[0-9]+)([._-]|$)'; then
             echo "Skipping pre-release ref: $CLEAN_REF"
             exit 0
           fi
-          uv run mike deploy --push $CLEAN_REF
+          uv run mike deploy --push "$CLEAN_REF"
 
       - name: 🚀 Deploy Release Docs
         if: github.event_name == 'release' && github.event.action == 'published' && !github.event.release.prerelease
