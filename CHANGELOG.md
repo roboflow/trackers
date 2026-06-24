@@ -4,13 +4,15 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.5.0] — 2026-06-22
 
 ### 🚀 Added
 
 - **Pluggable IoU variants** — `iou=` parameter on all four trackers (`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, `BoTSORTTracker`) accepts any `BaseIoU` subclass. Built-in variants: `IoU` (standard), `GIoU`, `DIoU`, `CIoU`, `BIoU` (Buffered IoU) ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **`BaseIoU` ABC** in `trackers.utils.iou` — defines the `compute(boxes_1, boxes_2)` contract; subclass and override `_compute` to implement a custom similarity metric ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **`normalize_for_fusion` on `BaseIoU`** — signed variants (GIoU, DIoU, CIoU) override this to shift `[-1, 1]` → `[0, 1]` before BoT-SORT score fusion, preventing ranking inversion ([#403](https://github.com/roboflow/trackers/pull/403)).
+- **`CBIoUTracker`** — Cascaded-Buffered IoU tracker (Yang et al., WACV 2023). Two-stage matching with independently tunable `buffer_ratio_first` / `buffer_ratio_second` buffer scales; inherits ByteTrack-style low-confidence second pass from BoT-SORT ([#417](https://github.com/roboflow/trackers/pull/417)).
+- **`py.typed` marker** — PEP 561 compliance; IDEs and type checkers now recognise the package as typed without `--ignore-missing-imports`.
 
 ### 🔄 Deprecated
 
@@ -30,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **`CMC.warp_xyxy_corners`** — `apply_to_xyxy` renamed to `warp_xyxy_corners`; old name kept as a deprecated wrapper until v3.0 ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`CMC.apply_batch` homogeneity guard** — now raises `TypeError` immediately when the tracklet list contains mixed state-estimator types, preventing silent state corruption ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`BoTSORTTracklet.apply_cmc` delegates to `CMC.apply_batch`** — per-track and batch paths now share identical code; behaviour is unchanged ([#414](https://github.com/roboflow/trackers/pull/414)).
+- **`Tuner` gains `enqueue_defaults`, `fixed_params`, `images_dir`, `seed`** — `enqueue_defaults=True` (default) evaluates a baseline trial using each param's `__init__` default before Optuna samples; `fixed_params` holds selected params constant across all trials; `images_dir` enables frame loading for CMC-enabled trackers; `seed` makes TPE sampling reproducible ([#427](https://github.com/roboflow/trackers/pull/427)).
 
 ### 🔧 Fixed
 
@@ -41,6 +44,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **CLI argparse crash on `BaseIoU` parameter** — `iou=` is now excluded from argparse auto-discovery; the variant must be set programmatically ([#403](https://github.com/roboflow/trackers/pull/403)).
 - **ByteTrack tracked nothing when detections lacked confidence scores** — the default-fill changed from `np.zeros` to `np.ones`, matching SORT / OC-SORT / BoT-SORT behaviour, so detectors that emit `sv.Detections` without `confidence` now produce tracks instead of empty results ([#415](https://github.com/roboflow/trackers/pull/415)).
 - **Tracker instances no longer share track ID counters** — resetting one tracker instance no longer resets another instance's ID allocator, preventing duplicate live IDs in multi-camera, class-specific, or parallel tracker workflows.
+- **HOTA per-frame alpha loop vectorized** — removes the inner Python loop; large evaluations run significantly faster with no change to numeric output ([#462](https://github.com/roboflow/trackers/pull/462)).
+- **MOT evaluation distractor handling** — ground-truth preprocessing now applies distractor class filtering consistent with TrackEval, correcting reported metrics on MOT17 and similar datasets ([#466](https://github.com/roboflow/trackers/pull/466)).
 
 ---
 
