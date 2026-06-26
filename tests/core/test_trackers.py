@@ -253,6 +253,27 @@ def test_bytetrack_no_confidence_spawns_tracks_below_activation_threshold() -> N
     )
 
 
+def test_bytetrack_returns_unmatched_detection_between_thresholds() -> None:
+    """A detection whose confidence sits between high_conf_det_threshold and
+    track_activation_threshold must still be returned (with tracker_id -1) when
+    it matches no track, not silently dropped."""
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.6,
+        track_activation_threshold=0.7,
+    )
+    detections = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0], [100.0, 100.0, 140.0, 140.0], [200.0, 200.0, 240.0, 240.0]]),
+        confidence=np.array([0.50, 0.65, 0.80]),  # low / mid (in the gap) / high
+    )
+
+    result = tracker.update(detections)
+
+    assert len(result) == 3, "every detection must be returned, including the mid-confidence one"
+    assert 0.65 in result.confidence.tolist(), "mid-confidence detection must not be dropped"
+    assert result.tracker_id is not None
+    assert np.all(result.tracker_id == -1), "no detection matches a track on the first frame"
+
+
 def test_bytetrack_calls_iou_in_low_confidence_branch() -> None:
     """ByteTrack must call the configured IoU in its low-confidence association branch."""
     from trackers import ByteTrackTracker
