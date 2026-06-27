@@ -57,6 +57,26 @@ class TestBoTSORTTrackerLifecycle:
         assert result.tracker_id is not None
         assert result.tracker_id[0] >= 0
 
+    def test_instant_activated_track_survives_a_miss(self) -> None:
+        """A first-frame track keeps its ID after a single miss (no ID switch).
+
+        With the default ``minimum_consecutive_frames=2`` an instant-activated
+        track has only one update, so without sticky maturity it is treated as
+        unconfirmed and deleted on a miss — an ID switch when the object returns.
+        """
+        tracker = BoTSORTTracker(enable_cmc=False)
+        far_away = (300.0, 300.0, 340.0, 340.0)
+        obj = (10.0, 10.0, 50.0, 50.0)
+
+        first = tracker.update(_detection(obj))
+        track_id = int(first.tracker_id[0])
+
+        tracker.update(_detection(far_away))  # object missed this frame
+        assert any(t.tracker_id == track_id for t in tracker.tracks)
+
+        returned = tracker.update(_detection(obj))  # object reappears
+        assert track_id in returned.tracker_id.tolist()
+
     @pytest.mark.parametrize(
         "estimator_class",
         [XCYCWHStateEstimator, XYXYStateEstimator, XCYCSRStateEstimator],

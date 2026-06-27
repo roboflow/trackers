@@ -35,7 +35,11 @@ def get_alive_tracklets(
     """
     alive_tracklets = []
     for tracker in tracklets:
-        is_mature = tracker.number_of_successful_updates >= minimum_consecutive_frames
+        # Maturity is sticky: once a tracklet holds a real tracker_id (assigned
+        # at consecutive-update maturity or by instant first-frame activation),
+        # that id is never reset, so `tracker_id != -1` keeps it alive as a lost
+        # track instead of deleting it on a miss. Mirrors ByteTrack's rule.
+        is_mature = tracker.tracker_id != -1 or tracker.number_of_successful_updates >= minimum_consecutive_frames
         is_active = tracker.time_since_update == 0
         if tracker.time_since_update < maximum_frames_without_update and (is_mature or is_active):
             alive_tracklets.append(tracker)

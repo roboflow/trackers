@@ -208,7 +208,11 @@ class BoTSORTTracker(BaseTracker):
         for track in self.tracks:
             if track.time_since_update > 1:
                 lost_tracks.append(track)
-            elif track.number_of_successful_updates >= self.minimum_consecutive_frames:
+            elif track.tracker_id != -1 or track.number_of_successful_updates >= self.minimum_consecutive_frames:
+                # Maturity is sticky: a track that already holds a real
+                # tracker_id (e.g. an instant-activated first-frame track) stays
+                # confirmed even before it reaches minimum_consecutive_frames, so
+                # it is kept as lost rather than deleted on a miss.
                 confirmed_tracks.append(track)
             else:
                 unconfirmed_tracks.append(track)
