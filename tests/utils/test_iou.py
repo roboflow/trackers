@@ -391,6 +391,45 @@ class TestCIoUProperties:
         assert np.all(ciou_result <= diou_result + 1e-6)
 
 
+class TestNormalizeForFusion:
+    """Verify the [0, 1] fusion contract of BaseIoU.normalize_for_fusion."""
+
+    @pytest.mark.parametrize(
+        "metric",
+        [_iou, _biou, _giou, _diou, _ciou],
+        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU"],
+    )
+    def test_output_in_unit_range_over_random_batch(self, metric: BaseIoU) -> None:
+        """normalize_for_fusion must map similarities into [0, 1] for score fusion.
+
+        CIoU's aspect-ratio penalty drives raw scores below -1, so the naive
+        ``(x + 1) / 2`` shift (without clamping) yields negatives that corrupt
+        ``_fuse_score``. The other variants already lie in [0, 1] post-shift.
+        """
+        rng = np.random.default_rng(103)
+        xy = rng.uniform(0, 500, size=(100, 2))
+        wh = rng.uniform(1, 200, size=(100, 2))
+        boxes_1 = np.hstack([xy, xy + wh])
+
+        xy2 = rng.uniform(0, 500, size=(80, 2))
+        wh2 = rng.uniform(1, 200, size=(80, 2))
+        boxes_2 = np.hstack([xy2, xy2 + wh2])
+
+        normalized = metric.normalize_for_fusion(metric.compute(boxes_1, boxes_2))
+        assert np.all(normalized >= 0.0)
+        assert np.all(normalized <= 1.0)
+
+    def test_ciou_below_minus_one_clamps_to_zero(self) -> None:
+        """A wide-vs-tall, far-apart pair has CIoU < -1; fusion must stay >= 0."""
+        boxes_1 = np.array([[0.0, 0.0, 100.0, 1.0]])  # w/h = 100
+        boxes_2 = np.array([[400.0, 400.0, 401.0, 500.0]])  # w/h = 0.01, no overlap
+        raw = _ciou.compute(boxes_1, boxes_2)
+        assert raw[0, 0] < -1.0  # precondition: the regime that breaks the shift
+        normalized = _ciou.normalize_for_fusion(raw)
+        assert normalized[0, 0] >= 0.0
+        assert normalized[0, 0] <= 1.0
+
+
 class TestEmptyArrayHandling:
     """Verify BaseIoU.compute handles empty inputs for all subclasses."""
 
