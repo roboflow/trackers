@@ -17,33 +17,15 @@ def appearance_similarity(
 ) -> np.ndarray:
     """Compute cosine similarity between track features and detection embeddings.
 
-    Both inputs are expected to be **L2-normalised**, so cosine similarity
-    reduces to the dot product and is fast to compute.  Tracks that have no
-    stored feature yet (``None``) receive a similarity of ``0.0`` for every
-    detection, making the fused cost fall back to IoU alone for those entries.
+    Both inputs are expected to be L2-normalised. Tracks with ``None`` features
+    receive similarity ``0.0``.
 
     Args:
-        track_features: One embedding per track, in the same order as the
-            rows of the IoU matrix being fused.  ``None`` entries are treated
-            as "no appearance information available".
-        det_embeddings: Detection embeddings, shape ``(N, D)``.  Must be
-            L2-normalised.
+        track_features: One embedding per track (``None`` = no feature yet).
+        det_embeddings: Detection embeddings, shape ``(N, D)``.
 
     Returns:
-        Similarity matrix of shape ``(T, N)`` with values in ``[-1, 1]``
-        (practically ``[0, 1]`` for well-trained re-ID embeddings).
-
-    Examples:
-        >>> import numpy as np
-        >>> det = np.array([[1.0, 0.0], [0.0, 1.0]])
-        >>> feats = [np.array([1.0, 0.0]), None]
-        >>> sim = appearance_similarity(feats, det)
-        >>> sim.shape
-        (2, 2)
-        >>> float(sim[0, 0])  # identical vectors → similarity 1
-        1.0
-        >>> float(sim[1, 0])  # no feature → similarity 0
-        0.0
+        Similarity matrix of shape ``(T, N)``.
     """
     n_tracks = len(track_features)
     n_dets = len(det_embeddings)

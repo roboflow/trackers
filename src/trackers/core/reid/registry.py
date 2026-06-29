@@ -4,31 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Model cards, the tiny curated alias map, and config (de)serialization.
-
-A :class:`ModelCard` bundles the three independent axes that define a pretrained
-re-ID identity — *architecture*, *weights*, and *preprocessing* — plus an
-optional ``domain_warning`` for checkpoints that are domain-specific (e.g.
-trained only on pedestrian images).
-
-**Scaling is via self-describing repos, not this map.** Any model published with
-a ``reid_config.json`` (exactly what
-:meth:`~trackers.core.reid.model.ReIDModel.save_pretrained` writes) loads with
-``from_pretrained("hf://org/repo")`` and **zero registration** —
-:func:`resolve_model_card` reads the config straight from the directory / Hub
-repo. Community and user-trained models are these self-describing repos; they do
-**not** belong in :data:`ALIASES`.
-
-:data:`ALIASES` is therefore a *deliberately tiny* curated layer with only two
-jobs: (1) provide the no-arg default model, and (2) adapt external checkpoints
-that lack a ``reid_config.json`` (a bare ``.pth`` cannot state its architecture
-or preprocessing, so the card records that triple once). It is a convenience,
-never a gate. The code-level extension point for new backbones is
-:mod:`trackers.core.reid.architectures`, not this map.
-
-All ``huggingface_hub`` imports are lazy so that importing this module does not
-require network access or the optional ``[reid]`` extra at import time.
-"""
+"""Model cards, curated aliases, and ``reid_config.json`` (de)serialization."""
 
 from __future__ import annotations
 
@@ -68,19 +44,7 @@ DEFAULT_MODEL = "osnet_x1_0_msmt17_combineall"
 
 @dataclass
 class ModelCard:
-    """A complete, overridable description of a pretrained re-ID identity.
-
-    Attributes:
-        architecture: Architecture selector string — a registered name such as
-            ``"osnet_x1_0"``, a timm model as ``"timm:resnet50"``, etc. (see
-            :func:`~trackers.core.reid.architectures.list_architectures`).
-        weights: Weight source string — a local path or ``"hf://<repo>/<file>"``
-            URL, or ``None`` if no external weights are needed.
-        preprocessing: Explicit input/output preprocessing pipeline.
-        domain_warning: Optional human-readable warning emitted (as a
-            :class:`UserWarning`) when this card is used as the *default*
-            checkpoint, flagging that it is domain-specific.
-    """
+    """Architecture, weights source, preprocessing, and optional domain warning."""
 
     architecture: str
     weights: str | None
@@ -103,19 +67,7 @@ ALIASES: dict[str, ModelCard] = {
 
 
 def resolve_model_card(source: str) -> ModelCard | None:
-    """Return a :class:`ModelCard` for an alias or a config-bearing source.
-
-    Args:
-        source: A curated alias name (e.g. ``"osnet_x1_0_msmt17_combineall"``),
-            a local directory path that contains a ``reid_config.json``, or an
-            ``"hf://org/repo"`` URL (no file suffix) whose repo holds
-            ``reid_config.json``.
-
-    Returns:
-        A :class:`ModelCard` if the source is resolved, else ``None``
-        (indicating the source is a bare weights file and requires an explicit
-        ``architecture`` argument).
-    """
+    """Return a card for a curated alias or a directory/repo with ``reid_config.json``."""
     if source in ALIASES:
         return ALIASES[source]
 
@@ -142,20 +94,7 @@ def resolve_model_card(source: str) -> ModelCard | None:
 
 
 def load_model_config(directory_or_repo: str) -> ModelCard:
-    """Load a :class:`ModelCard` from a ``reid_config.json`` in a directory or HF repo.
-
-    Also discovers ``weights.safetensors`` alongside the config file and sets
-    the card's ``weights`` field accordingly.
-
-    Args:
-        directory_or_repo: Local directory path or ``"hf://org/repo"`` URL.
-
-    Returns:
-        A :class:`ModelCard` populated from the config file.
-
-    Raises:
-        FileNotFoundError: If no ``reid_config.json`` is found in the directory.
-    """
+    """Load a :class:`ModelCard` from ``reid_config.json`` (and local ``weights.safetensors`` if present)."""
     if directory_or_repo.startswith("hf://"):
         return _load_hf_repo_config(directory_or_repo)
 
@@ -172,16 +111,7 @@ def load_model_config(directory_or_repo: str) -> ModelCard:
 
 
 def save_model_config(card: ModelCard, directory: str) -> None:
-    """Write a ``reid_config.json`` to *directory* from a :class:`ModelCard`.
-
-    Args:
-        card: The :class:`ModelCard` to serialize. ``card.architecture`` must
-            be a string (not an ``nn.Module``).
-        directory: Target directory (must exist).
-
-    Raises:
-        ValueError: If ``card.architecture`` is not a string.
-    """
+    """Write ``reid_config.json`` to *directory*."""
     if not isinstance(card.architecture, str):
         raise ValueError(
             "Cannot save a ModelCard whose architecture is an nn.Module. "

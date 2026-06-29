@@ -4,24 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Standard person re-ID retrieval metrics.
-
-Implements the query/gallery evaluation protocol used by Market-1501, MSMT17,
-and most other re-ID benchmarks:
-
-- **CMC Rank-k** — probability that at least one correct match appears in the
-  top-k retrieved gallery items.
-- **mAP** — mean Average Precision across all queries; rewards retrieving *all*
-  correct instances highly, not just one.
-- **mINP** — mean Inverse Negative Penalty; penalises how far down the *hardest*
-  correct match falls.
-
-Junk rule (standard):
-  When evaluating a query ``(pid, camid)``, gallery items that share *both* the
-  same person ID **and** the same camera ID are excluded (trivially easy
-  same-camera matches). Items with ``pid == -1`` (Market-1501 distractors) are
-  also excluded.
-"""
+"""Re-ID retrieval metrics (CMC, mAP, mINP)."""
 
 from __future__ import annotations
 
@@ -32,18 +15,7 @@ import numpy as np
 
 @dataclass
 class ReidMetrics:
-    """Re-ID retrieval metrics for a single evaluation run.
-
-    All values are percentages in ``[0, 100]``.
-
-    Attributes:
-        map: Mean Average Precision.
-        rank1: CMC Rank-1 accuracy.
-        rank5: CMC Rank-5 accuracy.
-        rank10: CMC Rank-10 accuracy.
-        minp: Mean Inverse Negative Penalty.
-        num_queries: Number of valid queries used in the computation.
-    """
+    """CMC / mAP / mINP scores (percentages) for one evaluation run."""
 
     map: float
     rank1: float
@@ -71,39 +43,20 @@ def compute_reid_metrics(
     g_camids: np.ndarray,
     max_rank: int = 10,
 ) -> ReidMetrics:
-    """Compute CMC, mAP, and mINP from a pre-computed distance matrix.
+    """Compute CMC, mAP, and mINP from a query×gallery distance matrix.
 
-    Applies the standard junk rule: for each query ``(pid, camid)`` gallery
-    items with the same ``pid`` **and** the same ``camid`` are excluded, as
-    are distractor items (``pid == -1``).
+    Excludes same-(pid, camid) gallery matches and ``pid == -1`` junk items.
 
     Args:
-        distmat: Distance matrix of shape ``(num_queries, num_gallery)``.
-            Lower values mean more similar. Typically 1 − cosine similarity
-            for L2-normalised embeddings.
-        q_pids: Person IDs for each query, shape ``(num_queries,)``.
-        g_pids: Person IDs for each gallery item, shape ``(num_gallery,)``.
-        q_camids: Camera IDs for each query, shape ``(num_queries,)``.
-        g_camids: Camera IDs for each gallery item, shape ``(num_gallery,)``.
-        max_rank: Highest CMC rank to compute (must be ≤ ``num_gallery``).
+        distmat: Distance matrix ``(num_queries, num_gallery)`` (lower = closer).
+        q_pids: Query person IDs.
+        g_pids: Gallery person IDs.
+        q_camids: Query camera IDs.
+        g_camids: Gallery camera IDs.
+        max_rank: Highest CMC rank to compute.
 
     Returns:
-        :class:`ReidMetrics` with all scores as percentages.
-
-    Raises:
-        ValueError: If ``distmat`` shape is inconsistent with the pid/camid
-            arrays, or if ``max_rank`` exceeds the gallery size.
-
-    Examples:
-        >>> import numpy as np
-        >>> distmat = np.array([[0.1, 0.9], [0.8, 0.2]])
-        >>> q_pids   = np.array([1, 2])
-        >>> g_pids   = np.array([1, 2])
-        >>> q_camids = np.array([0, 0])
-        >>> g_camids = np.array([1, 1])
-        >>> m = compute_reid_metrics(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=2)
-        >>> m.rank1
-        100.0
+        :class:`ReidMetrics` with scores as percentages.
     """
     num_q, num_g = distmat.shape
 

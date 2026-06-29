@@ -4,21 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Architecture-agnostic appearance feature extractor for re-identification.
-
-A :class:`ReIDModel` is defined by three independent, swappable axes:
-
-- **architecture** — selected by name from
-  :mod:`trackers.core.reid.architectures` (or a timm model / a raw ``nn.Module``);
-- **weights** — any local file or ``hf://`` URL, see
-  :mod:`trackers.core.reid.weights`;
-- **preprocessing** — an explicit :class:`~trackers.core.reid.preprocessing.ReIDPreprocessing`
-  describing every transformation applied to a crop and to the output embedding.
-
-Each axis is a parameter, so changing the backbone, the weights, or the
-preprocessing never requires a new class. Adding a new architecture is a matter
-of registering a builder in :mod:`trackers.core.reid.architectures`.
-"""
+"""Re-ID appearance encoder: loading, inference, and checkpoint I/O."""
 
 from __future__ import annotations
 
@@ -52,15 +38,7 @@ def _require_reid_deps() -> None:
 
 
 def _select_device(device: str) -> torch.device:
-    """Resolve a device string to a :class:`torch.device`.
-
-    Args:
-        device: ``"auto"`` to pick the best available device, or any value
-            accepted by :class:`torch.device` (``"cpu"``, ``"cuda"``, ``"mps"``, …).
-
-    Returns:
-        The resolved :class:`torch.device`.
-    """
+    """Resolve ``"auto"`` or a device string to a :class:`torch.device`."""
     import torch
 
     if device == "auto":
@@ -73,33 +51,13 @@ def _select_device(device: str) -> torch.device:
 class ReIDModel:
     """Appearance feature extractor for object re-identification.
 
-    Wraps a backbone neural network plus an explicit preprocessing pipeline and
-    exposes a single inference method (:meth:`extract_features`) that accepts
-    ``supervision.Detections`` and a video frame and returns embedding vectors —
-    one per detection.
-
-    The model is **class-agnostic and architecture-agnostic by design**: there
-    is nothing person-specific in the API, and the backbone, weights, and
-    preprocessing are all independent parameters (see :meth:`from_pretrained`).
-    The *default* checkpoint (OSNet on MSMT17) was trained on pedestrian images;
-    a ``UserWarning`` is emitted when that default is used so callers are aware.
-
-    Preprocessing is never hidden: the active
-    :class:`~trackers.core.reid.preprocessing.ReIDPreprocessing` is available as
-    :attr:`preprocessing` and is logged on construction.
-
-    Typical usage (inference only)::
-
-        model = ReIDModel.from_pretrained()                     # default OSNet/MSMT17
-        embeddings = model.extract_features(detections, frame)  # (N, 512)
+    Wraps a backbone and preprocessing pipeline. The default checkpoint is
+    pedestrian-trained; pass ``source``/``architecture`` for other domains.
 
     Args:
-        backbone: A :class:`torch.nn.Module` that accepts a ``(B, 3, H, W)``
-            float tensor and returns a ``(B, D)`` embedding tensor when in eval
-            mode.
-        device: The :class:`torch.device` the backbone lives on.
-        preprocessing: The explicit input/output processing applied around the
-            backbone.
+        backbone: Feature-extractor module (``(B, 3, H, W)`` → ``(B, D)`` in eval).
+        device: Device the backbone runs on.
+        preprocessing: Crop and embedding preprocessing.
     """
 
     def __init__(
@@ -119,7 +77,7 @@ class ReIDModel:
 
     @property
     def preprocessing(self) -> ReIDPreprocessing:
-        """The explicit preprocessing pipeline applied by this model."""
+        """Active preprocessing pipeline."""
         return self._preprocessing
 
     # ------------------------------------------------------------------ #
@@ -135,53 +93,20 @@ class ReIDModel:
         preprocessing: ReIDPreprocessing | None = None,
         device: str = "auto",
     ) -> ReIDModel:
-        """Build a re-ID model from a source, with optional overrides.
+        """Build a :class:`ReIDModel` from a checkpoint source.
 
-        This is the single, architecture-agnostic entry point. The three axes
-        (architecture, weights, preprocessing) are resolved from *source* in
-        this order, then any explicit keyword overrides are applied:
-
-        1. ``source is None`` and ``architecture is None`` → default curated model.
-        2. ``source in ALIASES`` → the alias's :class:`~trackers.core.reid.registry.ModelCard`.
-        3. *source* is a directory or ``hf://`` repo that contains a
-           ``reid_config.json`` → self-describing checkpoint (written by
-           :meth:`save_pretrained`).
-        4. *source* is a bare weights file (``*.pth`` / ``*.safetensors``) →
-           ``architecture`` is **required**; raises :class:`ValueError` if missing.
-        5. ``source is None`` and ``architecture is not None`` → build the
-           architecture with its own pretrained weights (timm ImageNet) or
-           random weights (OSNet); no external weights loaded.
+        ``source`` may be a curated alias, ``hf://`` repo or file, a local path
+        or directory with ``reid_config.json``, or ``None`` for the default
+        model. A bare ``.pth``/``.safetensors`` file requires ``architecture``.
 
         Args:
-            source: A curated alias (e.g. ``"osnet_x1_0_msmt17_combineall"``),
-                an ``"hf://org/repo"`` repo URL, an ``"hf://org/repo/file.pth"``
-                file URL, a local ``.pth`` / ``.safetensors`` path, a local
-                directory produced by :meth:`save_pretrained`, or ``None`` to
-                use the default model.
-            architecture: Override the resolved architecture. One of a
-                registered name (``"osnet_x1_0"``, ``"timm:resnet50"``, …),
-                a pre-built :class:`torch.nn.Module`, or ``None`` to keep the
-                resolved value. Required when *source* is a bare weights file.
-            preprocessing: Override the resolved preprocessing. ``None`` uses
-                the card's preprocessing or the default.
-            device: Compute device — ``"auto"`` selects the best available
-                device, or pass any :class:`torch.device`-compatible string.
+            source: Model source (alias, Hub URL, local path, or ``None``).
+            architecture: Backbone override; required for bare weight files.
+            preprocessing: Preprocessing override.
+            device: Compute device (``"auto"`` picks the best available).
 
         Returns:
-            A :class:`ReIDModel` ready for inference.
-
-        Raises:
-            ValueError: If *source* is a bare weights file and *architecture*
-                is not provided.
-
-        Examples:
-            >>> model = ReIDModel.from_pretrained()  # doctest: +SKIP
-            >>> model = ReIDModel.from_pretrained(
-            ...     "/runs/osnet.pth", architecture="osnet_x1_0"
-            ... )  # doctest: +SKIP
-            >>> model = ReIDModel.from_pretrained(
-            ...     architecture="timm:resnet50"
-            ... )  # doctest: +SKIP
+            Loaded :class:`ReIDModel`.
         """
         from trackers.core.reid.architectures import build_architecture
         from trackers.core.reid.registry import DEFAULT_MODEL, resolve_model_card
@@ -261,30 +186,7 @@ class ReIDModel:
         return instance
 
     def save_pretrained(self, directory: str) -> None:
-        """Write the model to *directory* as a self-describing checkpoint.
-
-        Produces two files that :meth:`from_pretrained` can reload without any
-        manual architecture hint:
-
-        - ``weights.safetensors`` — the backbone's state dict (classifier head
-          excluded; it is stripped at load time via
-          :func:`~trackers.core.reid.weights.load_state_dict_into`).
-        - ``reid_config.json`` — architecture name + preprocessing config.
-
-        Args:
-            directory: Target directory; created automatically if absent.
-
-        Raises:
-            ValueError: If the architecture name is unknown (e.g. the model was
-                built directly from a raw ``nn.Module`` without going through
-                :meth:`from_pretrained`).
-
-        Examples:
-            >>> model = ReIDModel.from_pretrained(
-            ...     architecture="osnet_x1_0"
-            ... )  # doctest: +SKIP
-            >>> model.save_pretrained("/runs/my_reid")  # doctest: +SKIP
-        """
+        """Write ``weights.safetensors`` and ``reid_config.json`` to *directory*."""
         from safetensors.torch import save_file
 
         from trackers.core.reid.registry import ModelCard, save_model_config
@@ -322,29 +224,17 @@ class ReIDModel:
         batch_size: int = 64,
         normalize: bool = True,
     ) -> np.ndarray:
-        """Extract embeddings from a list of image file paths.
+        """Extract embeddings from pre-cropped image paths (evaluation use).
 
-        Designed for the re-ID evaluation workflow where each image is already
-        a cropped identity photograph (e.g. MSMT17 / Market-1501 samples).
-        Images are read as RGB via Pillow, so the preprocessing ``to_rgb`` flag
-        (which concerns BGR OpenCV crops) does not apply here.
-        For the tracking use case where crops are derived from bounding boxes
-        in a video frame, use :meth:`extract_features` instead.
+        For bbox crops from a video frame, use :meth:`extract_features`.
 
         Args:
-            image_paths: Absolute or relative paths to image files.
-            batch_size: Number of images to process in a single forward pass.
-                Reduce if running out of GPU memory.
-            normalize: If ``True`` (default), L2-normalise each embedding so
-                cosine similarity equals the dot product. Set ``False`` to
-                return the raw backbone features (needed for Euclidean distance).
+            image_paths: Paths to RGB-ready crop images.
+            batch_size: Images per forward pass.
+            normalize: L2-normalise embeddings when ``True`` (default).
 
         Returns:
-            Float32 array of shape ``(N, D)`` where *N* is ``len(image_paths)``
-            and *D* is the backbone's embedding dimension.
-
-        Examples:
-            >>> model = None  # doctest: +SKIP
+            Float32 array of shape ``(N, D)``.
         """
         if not image_paths:
             return np.empty((0, 0), dtype=np.float32)
@@ -375,35 +265,14 @@ class ReIDModel:
         detections: sv.Detections,
         frame: np.ndarray,
     ) -> np.ndarray:
-        """Extract appearance embeddings for each detection.
-
-        Each bounding box in *detections* is cropped from *frame*, then passed
-        through the explicit preprocessing pipeline (:attr:`preprocessing`) and
-        the backbone. Crops are assumed BGR (OpenCV convention) and converted to
-        RGB when ``preprocessing.to_rgb`` is set; the output is L2-normalised
-        when ``preprocessing.normalize_embeddings`` is set.
+        """Extract L2-normalised appearance embeddings for each detection.
 
         Args:
-            detections: Detections whose bounding boxes define the crops.
-                The frame must contain the full scene; boxes outside the frame
-                boundaries are clamped automatically by :func:`sv.crop_image`.
-            frame: BGR image array (e.g. from ``cv2.VideoCapture``). Must be
-                the same frame the detections were produced on.
+            detections: Detections whose ``xyxy`` boxes define the crops.
+            frame: BGR video frame the detections were produced on.
 
         Returns:
-            Float32 array of shape ``(N, D)`` where *N* is ``len(detections)``
-            and *D* is the backbone's embedding dimension. Returns an empty
-            ``(0, 0)`` array when *detections* is empty.
-
-        Examples:
-            >>> import numpy as np
-            >>> import supervision as sv
-            >>> detections = sv.Detections.empty()
-            >>> frame = np.zeros((480, 640, 3), dtype=np.uint8)
-            >>> class _FakeModel:
-            ...     def extract_features(self, d, f): return np.empty((0, 0))
-            >>> _FakeModel().extract_features(detections, frame).shape
-            (0, 0)
+            Float32 array of shape ``(N, D)``, or ``(0, 0)`` when empty.
         """
         if len(detections) == 0:
             return np.empty((0, 0), dtype=np.float32)

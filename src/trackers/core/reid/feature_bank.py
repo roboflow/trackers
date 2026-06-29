@@ -12,35 +12,10 @@ import numpy as np
 
 
 class FeatureBank:
-    """Maintains an EMA-smoothed appearance embedding for a single track.
-
-    Each time a track is successfully matched to a detection, the new
-    detection embedding is blended into the stored feature using an
-    exponential moving average and the result is L2-normalised. This
-    smooths out per-frame noise while keeping the representation
-    up-to-date with gradual appearance changes.
-
-    The bank is intentionally **pure-numpy** and has no dependency on
-    ``torch``, so it adds zero overhead when ``[reid]`` is installed but
-    the :class:`~trackers.core.reid.model.ReIDModel` is not in use.
+    """EMA-smoothed appearance embedding for a single track.
 
     Args:
-        alpha: EMA momentum.  ``alpha=1.0`` keeps only the most recent
-            embedding (no smoothing); ``alpha=0.0`` keeps only the very
-            first embedding (frozen).  Default ``0.9`` is a good starting
-            point for MOT scenes.
-
-    Examples:
-        >>> import numpy as np
-        >>> bank = FeatureBank(alpha=0.9)
-        >>> bank.is_initialized
-        False
-        >>> e1 = np.array([1.0, 0.0, 0.0])
-        >>> bank.update(e1)
-        >>> bank.is_initialized
-        True
-        >>> np.allclose(bank.feature, e1)
-        True
+        alpha: EMA momentum in ``[0, 1]`` (``0.9`` default).
     """
 
     def __init__(self, alpha: float = 0.9) -> None:
@@ -60,15 +35,7 @@ class FeatureBank:
         return self._feature is not None
 
     def update(self, embedding: np.ndarray) -> None:
-        """Blend *embedding* into the stored feature using EMA.
-
-        The result is always L2-normalised so that cosine similarity
-        remains a valid metric.
-
-        Args:
-            embedding: L2-normalised embedding vector, shape ``(D,)``.
-                Must be the same dimensionality as all previous updates.
-        """
+        """Blend *embedding* into the stored feature (L2-normalised)."""
         if self._feature is None:
             self._feature = embedding.copy()
         else:
@@ -78,14 +45,5 @@ class FeatureBank:
                 self._feature /= norm
 
     def reset(self) -> None:
-        """Clear the stored feature, returning the bank to uninitialised state.
-
-        Examples:
-            >>> import numpy as np
-            >>> bank = FeatureBank()
-            >>> bank.update(np.array([1.0, 0.0]))
-            >>> bank.reset()
-            >>> bank.is_initialized
-            False
-        """
+        """Clear the stored feature."""
         self._feature = None

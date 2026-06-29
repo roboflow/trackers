@@ -4,20 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Weight sourcing and architecture-agnostic loading for re-ID backbones.
-
-This module decouples *where weights come from* from *what architecture they
-are loaded into*. A weight source is a single string:
-
-- ``"/path/to/weights.pth"`` (or ``.safetensors``) — a local file;
-- ``"hf://<repo_id>/<filename>"`` — a file on the Hugging Face Hub, with an
-  optional ``"@<revision>"`` suffix on the repo id, e.g.
-  ``"hf://org/model@main/weights.safetensors"``.
-
-Loading is name + shape matched against the target module and produces a
-:class:`KeyReport`, so a mismatched architecture/weights pairing fails *loudly*
-(a near-empty match is an error, not a silent accuracy regression).
-"""
+"""Checkpoint path resolution and state-dict loading."""
 
 from __future__ import annotations
 
@@ -39,15 +26,7 @@ _DEFAULT_DROP_PREFIXES = ("classifier",)
 
 @dataclass
 class KeyReport:
-    """Summary of a state-dict load, for transparency and loud failures.
-
-    Attributes:
-        matched: Number of target parameters filled from the checkpoint.
-        total: Total number of target parameters.
-        missing: Target keys that were *not* found in the checkpoint.
-        unexpected: Checkpoint keys that did not map to any target parameter
-            (after prefix stripping/dropping), including shape mismatches.
-    """
+    """Summary of a state-dict load (matched/missing/unexpected keys)."""
 
     matched: int
     total: int
@@ -67,19 +46,7 @@ class KeyReport:
 
 
 def resolve_weights(source: str) -> str:
-    """Resolve a weight source string to a local filesystem path.
-
-    Args:
-        source: A local path or an ``"hf://<repo_id>/<filename>"`` URL (with an
-            optional ``"@<revision>"`` on the repo id).
-
-    Returns:
-        Absolute local path to the weights file.
-
-    Raises:
-        FileNotFoundError: If a local path does not exist.
-        ValueError: If an ``hf://`` URL is malformed.
-    """
+    """Resolve a local path or ``hf://repo/file`` URL to a local weights file."""
     if source.startswith(_HF_PREFIX):
         return _resolve_hf(source)
 
@@ -137,24 +104,7 @@ def load_state_dict_into(
     drop_prefixes: tuple[str, ...] = _DEFAULT_DROP_PREFIXES,
     warn_threshold: float = 0.5,
 ) -> KeyReport:
-    """Load weights from *path* into *module*, matching by name and shape.
-
-    Keys are matched against the module's own ``state_dict``; only entries whose
-    name **and** shape agree are loaded. ``module.`` prefixes (DataParallel) are
-    stripped and *drop_prefixes* (classification heads by default) are removed.
-
-    Args:
-        module: Target module to load weights into.
-        path: Local path to a ``.pth`` / ``.safetensors`` checkpoint.
-        device: Device tensors are mapped to during load.
-        drop_prefixes: Source key prefixes to discard before matching.
-        warn_threshold: Emit a :class:`UserWarning` if the matched fraction
-            falls below this value — a strong signal that the weights do not
-            belong to this architecture.
-
-    Returns:
-        A :class:`KeyReport` describing what was loaded.
-    """
+    """Load *path* into *module* by name and shape (classifier keys skipped)."""
     state_dict = _read_state_dict(path, device)
 
     cleaned: dict = {}
