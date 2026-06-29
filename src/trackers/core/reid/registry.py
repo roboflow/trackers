@@ -82,7 +82,7 @@ def resolve_model_card(source: str) -> ModelCard | None:
     # hf://org/repo has exactly 2 non-empty parts after "hf://".
     # hf://org/repo/file.pth has 3+ parts and is a bare weights file.
     if source.startswith("hf://"):
-        rest = source[len("hf://"):]
+        rest = source[len("hf://") :]
         parts = [p for p in rest.split("/") if p]
         if len(parts) == 2:
             try:
@@ -137,7 +137,7 @@ def _load_hf_repo_config(hf_repo_url: str) -> ModelCard:
     """Download and parse ``reid_config.json`` from an HF repo URL."""
     from huggingface_hub import hf_hub_download
 
-    rest = hf_repo_url[len("hf://"):]
+    rest = hf_repo_url[len("hf://") :]
     parts = [p for p in rest.split("/") if p]
     repo_id = "/".join(parts[:2])
     revision = None

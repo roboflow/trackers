@@ -248,13 +248,9 @@ class BoTSORTTracker(BaseTracker):
         det_embeddings: np.ndarray | None = None
         if self.reid_model is not None:
             if frame is None:
-                raise ValueError(
-                    f"{type(self).__name__}.update() requires frame when reid_model is set."
-                )
+                raise ValueError(f"{type(self).__name__}.update() requires frame when reid_model is set.")
             if len(high_boxes) > 0:
-                det_embeddings = extract_detection_embeddings(
-                    self.reid_model, frame, high_boxes
-                )
+                det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
 
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
@@ -266,9 +262,7 @@ class BoTSORTTracker(BaseTracker):
 
         if det_embeddings is not None and len(strack_pool) > 0:
             track_feats = [
-                t.feature_bank.feature
-                if t.feature_bank is not None and t.feature_bank.is_initialized
-                else None
+                t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
                 for t in strack_pool
             ]
             app_sim = appearance_similarity(track_feats, det_embeddings)

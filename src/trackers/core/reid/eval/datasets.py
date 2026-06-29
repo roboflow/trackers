@@ -30,6 +30,7 @@ class ReidSplit:
 # MSMT17
 # --------------------------------------------------------------------------- #
 
+
 def _parse_msmt17_camid(filename: str) -> int:
     """Extract 0-indexed camid from an MSMT17 image filename.
 
@@ -69,9 +70,7 @@ def load_msmt17(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
                 continue
             rel_path = parts[0]
             pid = int(parts[1])
-            camid = int(parts[2]) if len(parts) >= 3 else _parse_msmt17_camid(
-                Path(rel_path).name
-            )
+            camid = int(parts[2]) if len(parts) >= 3 else _parse_msmt17_camid(Path(rel_path).name)
             paths.append(str(image_root / rel_path))
             pids.append(pid)
             camids.append(camid)
@@ -90,6 +89,7 @@ def load_msmt17(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
 # --------------------------------------------------------------------------- #
 # Market-1501
 # --------------------------------------------------------------------------- #
+
 
 def _parse_market_filename(filename: str) -> tuple[int, int]:
     """Parse ``(pid, camid)`` from a Market-1501 filename.

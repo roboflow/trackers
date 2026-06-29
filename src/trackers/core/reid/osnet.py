@@ -79,9 +79,7 @@ class _LightConv3x3(nn.Module):
     def __init__(self, in_channels: int, out_channels: int) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, 1, stride=1, padding=0, bias=False)
-        self.conv2 = nn.Conv2d(
-            out_channels, out_channels, 3, stride=1, padding=1, bias=False, groups=out_channels
-        )
+        self.conv2 = nn.Conv2d(out_channels, out_channels, 3, stride=1, padding=1, bias=False, groups=out_channels)
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
 
@@ -124,9 +122,7 @@ class OSBlock(nn.Module):
         self.conv1 = _Conv1x1(in_channels, mid)
         self.conv2a = _LightConv3x3(mid, mid)
         self.conv2b = nn.Sequential(_LightConv3x3(mid, mid), _LightConv3x3(mid, mid))
-        self.conv2c = nn.Sequential(
-            _LightConv3x3(mid, mid), _LightConv3x3(mid, mid), _LightConv3x3(mid, mid)
-        )
+        self.conv2c = nn.Sequential(_LightConv3x3(mid, mid), _LightConv3x3(mid, mid), _LightConv3x3(mid, mid))
         self.conv2d = nn.Sequential(
             _LightConv3x3(mid, mid),
             _LightConv3x3(mid, mid),
@@ -140,7 +136,12 @@ class OSBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         x1 = self.conv1(x)
-        x2 = self.gate(self.conv2a(x1)) + self.gate(self.conv2b(x1)) + self.gate(self.conv2c(x1)) + self.gate(self.conv2d(x1))
+        x2 = (
+            self.gate(self.conv2a(x1))
+            + self.gate(self.conv2b(x1))
+            + self.gate(self.conv2c(x1))
+            + self.gate(self.conv2d(x1))
+        )
         x3 = self.conv3(x2)
         if self.downsample is not None:
             identity = self.downsample(identity)

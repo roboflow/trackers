@@ -40,7 +40,7 @@ def appearance_similarity(
         return sim
 
     track_matrix = np.stack([track_features[i] for i in valid_indices])  # (K, D)
-    cos_sims = (track_matrix @ det_embeddings.T).astype(np.float32)       # (K, N)
+    cos_sims = (track_matrix @ det_embeddings.T).astype(np.float32)  # (K, N)
 
     for local_idx, track_idx in enumerate(valid_indices):
         sim[track_idx] = cos_sims[local_idx]

@@ -50,16 +50,15 @@ class ReIDPreprocessing:
             "nearest": InterpolationMode.NEAREST,
         }
         if self.interpolation not in modes:
-            raise ValueError(
-                f"Unknown interpolation {self.interpolation!r}. "
-                f"Choose from: {sorted(modes)}"
-            )
+            raise ValueError(f"Unknown interpolation {self.interpolation!r}. Choose from: {sorted(modes)}")
 
-        return Compose([
-            Resize(self.input_size, interpolation=modes[self.interpolation]),
-            ToTensor(),
-            Normalize(mean=list(self.mean), std=list(self.std)),
-        ])
+        return Compose(
+            [
+                Resize(self.input_size, interpolation=modes[self.interpolation]),
+                ToTensor(),
+                Normalize(mean=list(self.mean), std=list(self.std)),
+            ]
+        )
 
     def to_dict(self) -> dict:
         """Serialise for ``reid_config.json``."""

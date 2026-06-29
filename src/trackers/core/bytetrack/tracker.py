@@ -166,9 +166,7 @@ class ByteTrackTracker(BaseTracker):
         if self.reid_model is None:
             self._warn_if_frame_unused(frame)
         elif frame is None:
-            raise ValueError(
-                f"{type(self).__name__}.update() requires frame when reid_model is set."
-            )
+            raise ValueError(f"{type(self).__name__}.update() requires frame when reid_model is set.")
 
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
@@ -197,21 +195,15 @@ class ByteTrackTracker(BaseTracker):
 
         det_embeddings: np.ndarray | None = None
         if self.reid_model is not None and len(high_boxes) > 0:
-            det_embeddings = extract_detection_embeddings(
-                self.reid_model, frame, high_boxes
-            )
+            det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
             if len(self.tracks) > 0:
                 track_feats = [
-                    t.feature_bank.feature
-                    if t.feature_bank is not None and t.feature_bank.is_initialized
-                    else None
+                    t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
                     for t in self.tracks
                 ]
                 app_sim = appearance_similarity(track_feats, det_embeddings)
                 app_sim = mask_appearance_by_iou_proximity(iou_matrix, app_sim)
-                iou_matrix = fuse_weighted_first_stage(
-                    iou_matrix, app_sim, self.appearance_weight
-                )
+                iou_matrix = fuse_weighted_first_stage(iou_matrix, app_sim, self.appearance_weight)
 
         matched, unmatched_tracks, unmatched_high = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 

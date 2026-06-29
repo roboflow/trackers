@@ -60,13 +60,10 @@ def resolve_weights(source: str) -> str:
 def _resolve_hf(source: str) -> str:
     from huggingface_hub import hf_hub_download
 
-    rest = source[len(_HF_PREFIX):]
+    rest = source[len(_HF_PREFIX) :]
     parts = rest.split("/")
     if len(parts) < 3:
-        raise ValueError(
-            f"Malformed hf:// weights URL {source!r}. "
-            f"Expected 'hf://<org>/<name>/<filename>'."
-        )
+        raise ValueError(f"Malformed hf:// weights URL {source!r}. Expected 'hf://<org>/<name>/<filename>'.")
 
     repo_id = "/".join(parts[:2])
     filename = "/".join(parts[2:])

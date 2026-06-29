@@ -33,12 +33,8 @@ def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.
     # memory at one distance matrix — important for large galleries (e.g.
     # MSMT17's 11.7k × 82.2k matrix is ~3.8 GB on its own).
     if metric == "cosine":
-        qn = (q_embs / (np.linalg.norm(q_embs, axis=1, keepdims=True) + 1e-12)).astype(
-            np.float32, copy=False
-        )
-        gn = (g_embs / (np.linalg.norm(g_embs, axis=1, keepdims=True) + 1e-12)).astype(
-            np.float32, copy=False
-        )
+        qn = (q_embs / (np.linalg.norm(q_embs, axis=1, keepdims=True) + 1e-12)).astype(np.float32, copy=False)
+        gn = (g_embs / (np.linalg.norm(g_embs, axis=1, keepdims=True) + 1e-12)).astype(np.float32, copy=False)
         distmat = qn @ gn.T  # cosine similarity
         distmat *= -1.0
         distmat += 1.0  # → 1 − cosine similarity

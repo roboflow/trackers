@@ -32,8 +32,7 @@ def _require_reid_deps() -> None:
         import torchvision  # noqa: F401
     except ImportError as exc:
         raise ImportError(
-            "The reid feature requires optional dependencies. "
-            "Install them with:  pip install trackers[reid]"
+            "The reid feature requires optional dependencies. Install them with:  pip install trackers[reid]"
         ) from exc
 
 
@@ -129,18 +128,14 @@ class ReIDModel:
         if card is not None:
             resolved_arch = architecture if architecture is not None else card.architecture
             resolved_weights = card.weights
-            resolved_preprocessing = (
-                preprocessing if preprocessing is not None else card.preprocessing
-            )
+            resolved_preprocessing = preprocessing if preprocessing is not None else card.preprocessing
             resolved_warning = card.domain_warning if using_default else None
 
         elif source is None:
             # §2.2 step 5: architecture-only; no external weights loaded.
             resolved_arch = architecture
             resolved_weights = None
-            resolved_preprocessing = (
-                preprocessing if preprocessing is not None else ReIDPreprocessing()
-            )
+            resolved_preprocessing = preprocessing if preprocessing is not None else ReIDPreprocessing()
             resolved_warning = None
 
         else:
@@ -155,9 +150,7 @@ class ReIDModel:
                 )
             resolved_arch = architecture
             resolved_weights = source
-            resolved_preprocessing = (
-                preprocessing if preprocessing is not None else ReIDPreprocessing()
-            )
+            resolved_preprocessing = preprocessing if preprocessing is not None else ReIDPreprocessing()
             resolved_warning = None
 
         if resolved_warning:
@@ -172,17 +165,13 @@ class ReIDModel:
         if resolved_weights is not None:
             local_path = resolve_weights(resolved_weights)
             report = load_state_dict_into(backbone, local_path, resolved_device)
-            logger.info(
-                "ReIDModel weights (%s): %s", resolved_weights, report.summary()
-            )
+            logger.info("ReIDModel weights (%s): %s", resolved_weights, report.summary())
 
         backbone.to(resolved_device)
 
         instance = cls(backbone, resolved_device, resolved_preprocessing)
         # Store the architecture name (string only) to enable save_pretrained.
-        instance._architecture = (
-            resolved_arch if isinstance(resolved_arch, str) else None
-        )
+        instance._architecture = resolved_arch if isinstance(resolved_arch, str) else None
         return instance
 
     def save_pretrained(self, directory: str) -> None:

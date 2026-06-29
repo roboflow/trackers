@@ -38,7 +38,7 @@ def build_architecture(
     if architecture.startswith(_TIMM_PREFIX):
         import timm
 
-        name = architecture[len(_TIMM_PREFIX):]
+        name = architecture[len(_TIMM_PREFIX) :]
         return timm.create_model(name, pretrained=pretrained, num_classes=num_classes)
 
     if architecture in _OSNET_VARIANTS:
