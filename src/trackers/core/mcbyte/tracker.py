@@ -303,14 +303,24 @@ class McByteTracker(BaseTracker):
         )
 
         # Kill terminated tracks. Temporarily lost tracks remain alive and keep masks.
-        tracklet_ids_before_pruning = {int(track.tracker_id) for track in self.tracks if track.tracker_id >= 0}
+        tracklet_ids_before_pruning = {
+            int(track.tracker_id)
+            for track in self.tracks
+            if track.tracker_id >= 0
+        }
         self.tracks = get_alive_tracklets(
             tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
         )
-        tracklet_ids_after_pruning = {int(track.tracker_id) for track in self.tracks if track.tracker_id >= 0}
-        terminated_tracklet_ids = sorted(tracklet_ids_before_pruning - tracklet_ids_after_pruning)
+        tracklet_ids_after_pruning = {
+            int(track.tracker_id)
+            for track in self.tracks
+            if track.tracker_id >= 0
+        }
+        terminated_tracklet_ids = sorted(
+            tracklet_ids_before_pruning - tracklet_ids_after_pruning
+        )
 
         # Build final detections
         if not out_det_indices:
@@ -387,12 +397,17 @@ class McByteTracker(BaseTracker):
         # Find current visible tracklets that do not yet have masks.
         # These will be passed to SAM/Cutie on the next frame.
         new_tracklets = [
-            tracklet for tracklet in current_tracklets if tracklet.tracker_id not in self._mask_tracklet_ids
+            tracklet
+            for tracklet in current_tracklets
+            if tracklet.tracker_id not in self._mask_tracklet_ids
         ]
 
         # Mark those new tracklets as now mask-managed, so if they disappear temporarily
         # and later reappear, they are not treated as new again.
-        self._mask_tracklet_ids.update(tracklet.tracker_id for tracklet in new_tracklets)
+        self._mask_tracklet_ids.update(
+            tracklet.tracker_id
+            for tracklet in new_tracklets
+        )
 
         # Store lifecycle events from this frame. At the next update(),
         # MaskManager receives these and calls add_masks() / remove_masks().

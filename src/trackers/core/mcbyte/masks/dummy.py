@@ -107,7 +107,8 @@ class DummyIdentityMaskPropagator(MaskPropagator):
 
         offset = self._mask_output.masks.shape[0]
         added_mapping = {
-            tracklet_id: offset + local_index for tracklet_id, local_index in mask_output.tracklet_mask_dict.items()
+            tracklet_id: offset + local_index
+            for tracklet_id, local_index in mask_output.tracklet_mask_dict.items()
         }
 
         self._mask_output = MaskOutput(
@@ -135,7 +136,10 @@ class DummyIdentityMaskPropagator(MaskPropagator):
         ]
 
         kept_indices = [mask_index for _, mask_index in remaining_items]
-        new_mapping = {tracklet_id: new_index for new_index, (tracklet_id, _) in enumerate(remaining_items)}
+        new_mapping = {
+            tracklet_id: new_index
+            for new_index, (tracklet_id, _) in enumerate(remaining_items)
+        }
 
         self._mask_output = MaskOutput(
             masks=self._mask_output.masks[kept_indices],
