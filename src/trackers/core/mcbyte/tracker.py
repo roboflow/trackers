@@ -8,7 +8,7 @@ from typing import cast
 
 import numpy as np
 import supervision as sv
-from deprecate import deprecated
+from deprecate import deprecated  # type: ignore[import-untyped]
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -32,9 +32,15 @@ from trackers.utils.state_representations import (
 class McByteTracker(BaseTracker):
     """McByte-style multi-object tracker.
 
-    This tracker currently provides the initial McByte integration skeleton,
-    built on top of IoU association, Kalman-filter-based tracklets, optional camera
-    motion compensation, and optional mask-manager infrastructure.
+    This tracker builds on ByteTrack-style two-stage IoU association with
+    Kalman-filter-based tracklets, optional camera motion compensation, and optional
+    McByte mask-manager support.
+
+    When a mask manager is configured, the tracker follows the original McByte
+    timing: masks for frame ``t`` are prepared before association on frame ``t``,
+    using tracker outputs from frame ``t-1``. Tracklets that are temporarily lost
+    but still alive keep their masks; masks are removed only when tracklets are
+    terminated by tracker pruning.
 
     Args:
         lost_track_buffer: Time buffer, in frames at 30 FPS, for keeping lost
@@ -113,32 +119,35 @@ class McByteTracker(BaseTracker):
         self._previous_frame: np.ndarray | None = None
         self._previous_tracklets: list[TrackletSnapshot] = []
         self._last_mask_output: MaskOutput | None = None
+        self._previous_new_tracklets: list[TrackletSnapshot] = []
+        self._previous_removed_tracklet_ids: list[int] = []
+        self._mask_tracklet_ids: set[int] = set()
 
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
     ) -> sv.Detections:
-        """
-        Update the tracker with detections from the current frame.
+        """Update the tracker with detections from the current frame.
 
-        This is the main per-frame entry point.
+        This is the main per-frame entry point. If a mask manager is configured and a
+        frame is provided, masks are updated before association using tracker lifecycle
+        events stored from the previous call. After association, the method stores the
+        current frame's visible tracklets, newly created tracklets, and explicitly
+        terminated tracklet IDs for the next frame's mask update.
 
         Args:
             detections: Supervision detections for the current frame. Must include
                 ``.xyxy``. Confidence (`detections.confidence`) is optional but
-                recommended. This method does not mutate the input detections;
-                it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
+                recommended. This method does not mutate the input detections; it
+                returns a new ``sv.Detections`` with ``tracker_id`` assigned.
+            frame: Current RGB frame. Required for camera motion compensation and for
+                mask-manager propagation.
 
         Returns:
-            New sv.Detections with tracker_id assigned for each detection.
-            Confirmed tracks have tracker_id >= 0; unconfirmed tracks have
+            New sv.Detections with tracker_id assigned for each output detection.
+            Confirmed tracks have tracker_id >= 0; unmatched/unconfirmed detections have
             tracker_id of -1.
-
-        Notes:
-            - If CMC is enabled, pass the current video frame via ``frame`` so the
-              tracker can estimate a global affine transform and warp predicted
-              track states before association.
         """
         self.frame_id += 1
 
@@ -146,12 +155,15 @@ class McByteTracker(BaseTracker):
         # frame and current frame. It is better to keep the method argument as "frame",
         # as in case of the other trackers.
         current_frame = frame
+        terminated_tracklet_ids: list[int] = []
 
         if self.mask_manager is not None and current_frame is not None:
             self._last_mask_output = self.mask_manager.get_updated_masks(
                 frame=current_frame,
                 previous_frame=self._previous_frame,
                 previous_tracklets=self._previous_tracklets,
+                new_tracklets=self._previous_new_tracklets,
+                removed_tracklet_ids=self._previous_removed_tracklet_ids,
             )
         else:
             self._last_mask_output = None
@@ -159,7 +171,11 @@ class McByteTracker(BaseTracker):
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
-            self._store_previous_mask_inputs(current_frame, result)
+            self._store_previous_mask_inputs(
+                frame=current_frame,
+                detections=result,
+                removed_tracklet_ids=terminated_tracklet_ids,
+            )
             return result
 
         out_det_indices: list[int] = []
@@ -286,56 +302,130 @@ class McByteTracker(BaseTracker):
             is_first_frame=(self.frame_id == 1),
         )
 
-        # Kill lost tracks
+        # Kill terminated tracks. Temporarily lost tracks remain alive and keep masks.
+        tracklet_ids_before_pruning = {
+            int(track.tracker_id)
+            for track in self.tracks
+            if track.tracker_id >= 0
+        }
         self.tracks = get_alive_tracklets(
             tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
+        )
+        tracklet_ids_after_pruning = {
+            int(track.tracker_id)
+            for track in self.tracks
+            if track.tracker_id >= 0
+        }
+        terminated_tracklet_ids = sorted(
+            tracklet_ids_before_pruning - tracklet_ids_after_pruning
         )
 
         # Build final detections
         if not out_det_indices:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
-            self._store_previous_mask_inputs(current_frame, result)
+            self._store_previous_mask_inputs(
+                frame=current_frame,
+                detections=result,
+                removed_tracklet_ids=terminated_tracklet_ids,
+            )
             return result
 
         idx = np.array(out_det_indices)
         result = cast(sv.Detections, detections[idx])
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
-        self._store_previous_mask_inputs(current_frame, result)
+        self._store_previous_mask_inputs(
+            frame=current_frame,
+            detections=result,
+            removed_tracklet_ids=terminated_tracklet_ids,
+        )
         return result
+
+    """Convert tracker output detections into mask-manager tracklet snapshots.
+
+    Only detections with valid non-negative tracker IDs are converted. The returned
+    snapshots contain the tracker ID and ``xyxy`` box needed by mask generators.
+    """
+    def _detections_to_tracklet_snapshots(
+        self,
+        detections: sv.Detections,
+    ) -> list[TrackletSnapshot]:
+        if detections.tracker_id is None:
+            return []
+
+        return [
+            TrackletSnapshot(
+                tracker_id=int(tracker_id),
+                xyxy=xyxy.astype(np.float32),
+            )
+            for xyxy, tracker_id in zip(detections.xyxy, detections.tracker_id)
+            if tracker_id >= 0
+        ]
 
     def _store_previous_mask_inputs(
         self,
         frame: np.ndarray | None,
         detections: sv.Detections,
+        removed_tracklet_ids: list[int],
     ) -> None:
-        """Store current tracker output for mask preparation on the next frame."""
-        self._previous_frame = None
-        self._previous_tracklets = []
+        """Store tracker outputs and mask lifecycle events for the next frame.
 
-        if self.mask_manager is None or frame is None or detections.tracker_id is None:
+        The mask manager consumes these values at the beginning of the next ``update()``
+        call. New tracklets are detected among current visible outputs that do not yet
+        have masks. Removed tracklets are provided explicitly from tracker pruning, so
+        temporarily lost but still alive tracklets keep their masks.
+        """
+        if self.mask_manager is None or frame is None:
+            self._previous_frame = None
+            self._previous_tracklets = []
+            self._previous_new_tracklets = []
+            self._previous_removed_tracklet_ids = []
+            self._mask_tracklet_ids = set()
             return
 
-        previous_tracklets = []
-        for xyxy, tracker_id in zip(detections.xyxy, detections.tracker_id):
-            if tracker_id < 0:
-                continue
-            previous_tracklets.append(
-                TrackletSnapshot(
-                    tracker_id=int(tracker_id),
-                    xyxy=xyxy.copy(),
-                )
-            )
+        # Convert current output detections into TrackletSnapshots.
+        # Only valid tracker IDs are kept.
+        current_tracklets = self._detections_to_tracklet_snapshots(detections)
 
-        if len(previous_tracklets) == 0:
-            return
+        # Remove from the “tracks that already have masks” set
+        # only the IDs that were truly terminated/pruned.
+        removed_tracklet_id_set = set(removed_tracklet_ids)
+        self._mask_tracklet_ids -= removed_tracklet_id_set
 
-        self._previous_frame = frame.copy()
-        self._previous_tracklets = previous_tracklets
+        # Find current visible tracklets that do not yet have masks.
+        # These will be passed to SAM/Cutie on the next frame.
+        new_tracklets = [
+            tracklet
+            for tracklet in current_tracklets
+            if tracklet.tracker_id not in self._mask_tracklet_ids
+        ]
+
+        # Mark those new tracklets as now mask-managed, so if they disappear temporarily
+        # and later reappear, they are not treated as new again.
+        self._mask_tracklet_ids.update(
+            tracklet.tracker_id
+            for tracklet in new_tracklets
+        )
+
+        # Store lifecycle events from this frame. At the next update(),
+        # MaskManager receives these and calls add_masks() / remove_masks().
+        self._previous_new_tracklets = new_tracklets
+        self._previous_removed_tracklet_ids = removed_tracklet_ids
+
+        # Stores the current frame and current visible tracklets
+        # as “previous” inputs for the next frame.
+        self._previous_frame = frame
+        self._previous_tracklets = current_tracklets
 
     def _get_iou_matrix(self, tracklets: list[McByteTracklet], detections: np.ndarray) -> np.ndarray:
+        """Compute IoU similarity between tracklet states and detection boxes.
+
+        Returns an ``(N, M)`` matrix where ``N`` is the number of tracklets and ``M`` is
+        the number of detections. Empty inputs are handled by returning an empty matrix
+        with the expected shape.
+        """
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
@@ -414,9 +504,11 @@ class McByteTracker(BaseTracker):
                 out_tracker_ids.append(tracklet.tracker_id)
 
     def reset(self) -> None:
-        """Reset tracker state by clearing all tracks, resetting ID counter, camera
-        motion compensation and mask manager. Call this method when switching to a new
-        video or scene.
+        """Reset tracker, camera-motion, and mask-manager state.
+
+        This clears active tracklets, resets the global McByte track ID counter, clears
+        stored mask lifecycle inputs, and resets optional camera motion compensation and
+        mask-manager components. Call this when switching to a new video or scene.
         """
         self.tracks = []
         self.frame_id = 0
@@ -428,6 +520,9 @@ class McByteTracker(BaseTracker):
             self.mask_manager.reset()
         if self.cmc is not None:
             self.cmc.reset()
+        self._previous_new_tracklets = []
+        self._previous_removed_tracklet_ids = []
+        self._mask_tracklet_ids = set()
 
     @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:

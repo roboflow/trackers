@@ -159,3 +159,66 @@ def test_mask_manager_reset_clears_state() -> None:
     assert output_before_reset is not None
     assert output_after_reset is not None
     assert output_after_reset.tracklet_mask_dict == {9: 0}
+
+
+def test_mask_manager_adds_new_tracklets_after_initialization() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+    )
+
+    first_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            TrackletSnapshot(3, np.array([5, 6, 25, 30], dtype=np.float32)),
+        ],
+    )
+
+    second_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            TrackletSnapshot(3, np.array([5, 6, 25, 30], dtype=np.float32)),
+        ],
+        new_tracklets=[
+            TrackletSnapshot(9, np.array([40, 40, 60, 60], dtype=np.float32)),
+        ],
+    )
+
+    assert first_output is not None
+    assert second_output is not None
+    assert second_output.masks is not None
+    assert second_output.masks.shape == (2, 100, 120)
+    assert second_output.tracklet_mask_dict == {3: 0, 9: 1}
+
+
+def test_mask_manager_removes_tracklets_after_initialization() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+    )
+
+    manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            TrackletSnapshot(3, np.array([5, 6, 25, 30], dtype=np.float32)),
+            TrackletSnapshot(9, np.array([40, 40, 60, 60], dtype=np.float32)),
+        ],
+    )
+
+    output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            TrackletSnapshot(3, np.array([5, 6, 25, 30], dtype=np.float32)),
+            TrackletSnapshot(9, np.array([40, 40, 60, 60], dtype=np.float32)),
+        ],
+        removed_tracklet_ids=[3],
+    )
+
+    assert output is not None
+    assert output.masks is not None
+    assert output.masks.shape == (1, 100, 120)
+    assert output.tracklet_mask_dict == {9: 0}
