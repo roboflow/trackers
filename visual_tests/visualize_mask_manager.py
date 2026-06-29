@@ -122,10 +122,7 @@ def parse_args() -> argparse.Namespace:
         type=parse_remove_tracklet_event,
         action="append",
         default=[],
-        help=(
-            "Remove a tracklet before propagating to the given frame. "
-            "Format: filename:tracklet_id."
-        ),
+        help=("Remove a tracklet before propagating to the given frame. Format: filename:tracklet_id."),
     )
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--device", type=str, default="cuda")
@@ -490,10 +487,7 @@ def main() -> None:
             active_tracklets[tracklet_id] = tracklet
             new_tracklets_for_next_frame.append(tracklet)
 
-            print(
-                f"Scheduled add from {frame_path.name}: "
-                f"tracklet {tracklet_id}, box {tracklet.xyxy.tolist()}"
-            )
+            print(f"Scheduled add from {frame_path.name}: tracklet {tracklet_id}, box {tracklet.xyxy.tolist()}")
 
         remove_tracklet_ids = remove_events_by_file.get(frame_path.name, [])
         for tracklet_id in remove_tracklet_ids:
@@ -505,7 +499,6 @@ def main() -> None:
         previous_tracklets = list(active_tracklets.values())
         previous_new_tracklets = new_tracklets_for_next_frame
         previous_removed_tracklet_ids = removed_tracklet_ids_for_next_frame
-
 
         tracklets_vis = list(active_tracklets.values()) if frame_index == 0 else previous_new_tracklets
         visualize_output(
