@@ -31,7 +31,7 @@ For more options, see the [install guide](learn/install.md).
 
 ---
 
-[![Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers](https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png){ width="960" height="540" loading="lazy" decoding="async" }](https://www.youtube.com/watch?v=u0k2dTZ0vfs)
+<a href="https://www.youtube.com/watch?v=u0k2dTZ0vfs"><img src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png" alt="Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers" width="960" height="540" loading="lazy" decoding="async"></a>
 
 ---
 
@@ -159,7 +159,7 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
-    [![SORT tracker tutorial preview](https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/sort-sample.png){ width="1280" height="720" loading="lazy" decoding="async" }](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb)
+    <a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/sort-sample.png" alt="SORT tracker tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
 
     End-to-end example showing how to run RF-DETR detection with the SORT tracker.
 
@@ -169,7 +169,7 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
-    [![ByteTrack tracker tutorial preview](https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/bytetrack-sample.png){ width="1920" height="1080" loading="lazy" decoding="async" }](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
+    <a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb"><img src="https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/bytetrack-sample.png" alt="ByteTrack tracker tutorial preview" width="1920" height="1080" loading="lazy" decoding="async"></a>
 
     End-to-end example showing how to run RF-DETR detection with the ByteTrack tracker.
 
