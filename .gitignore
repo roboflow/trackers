@@ -181,3 +181,6 @@ wandb/
 .developments/
 .reports/
 .temp/
+
+# Local design docs (kept on disk, not published)
+rfcs/
