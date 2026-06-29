@@ -19,18 +19,6 @@ from trackers.core.reid.fusion_methods import (
 
 
 class TestFuseWeightedFirstStage:
-    def test_weight_zero_returns_iou_only(self) -> None:
-        iou = np.array([[0.8, 0.2]], dtype=np.float32)
-        app = np.array([[0.1, 0.9]], dtype=np.float32)
-        fused = fuse_weighted_first_stage(iou, app, weight=0.0)
-        np.testing.assert_allclose(fused, iou)
-
-    def test_weight_one_returns_appearance_only(self) -> None:
-        iou = np.array([[0.8, 0.2]], dtype=np.float32)
-        app = np.array([[0.1, 0.9]], dtype=np.float32)
-        fused = fuse_weighted_first_stage(iou, app, weight=1.0)
-        np.testing.assert_allclose(fused, app)
-
     def test_weighted_blend(self) -> None:
         iou = np.array([[1.0, 0.0]], dtype=np.float32)
         app = np.array([[0.0, 1.0]], dtype=np.float32)

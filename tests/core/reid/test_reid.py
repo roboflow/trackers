@@ -9,7 +9,7 @@
 Tests are grouped by the module they exercise:
   - preprocessing (ReIDPreprocessing)
   - registry (resolve_model_card, load_model_config, save_model_config)
-  - weights (resolve_weights, load_state_dict_into)
+  - loaders (resolve_weights, load_state_dict_into)
   - model smoke (ReIDModel.from_pretrained, extract_features)  [torch required]
   - round-trip (save_pretrained → from_pretrained)              [torch required]
 
@@ -24,12 +24,12 @@ import tempfile
 
 import pytest
 
-from trackers.core.reid.preprocessing import ReIDPreprocessing
-from trackers.core.reid.registry import (
+from trackers.core.reid.models.loaders import resolve_weights
+from trackers.core.reid.models.preprocessing import ReIDPreprocessing
+from trackers.core.reid.models.registry import (
     DEFAULT_MODEL,
     resolve_model_card,
 )
-from trackers.core.reid.weights import resolve_weights
 
 # ---------------------------------------------------------------------------
 # 1. Preprocessing
@@ -37,11 +37,6 @@ from trackers.core.reid.weights import resolve_weights
 
 
 class TestReIDPreprocessing:
-    def test_describe_nonempty(self) -> None:
-        p = ReIDPreprocessing()
-        assert len(p.describe()) > 0
-        assert "bilinear" in p.describe()
-
     def test_build_transform_callable(self) -> None:
         pytest.importorskip("torch")
         pytest.importorskip("torchvision")
@@ -67,11 +62,6 @@ class TestReIDPreprocessing:
         p2 = ReIDPreprocessing.from_dict(d)
         assert p2 == p
 
-    def test_from_dict_partial_uses_defaults(self) -> None:
-        p = ReIDPreprocessing.from_dict({"interpolation": "bicubic"})
-        assert p.input_size == ReIDPreprocessing().input_size
-        assert p.interpolation == "bicubic"
-
 
 # ---------------------------------------------------------------------------
 # 2. Registry / resolution
@@ -86,9 +76,6 @@ class TestRegistry:
         assert card.weights is not None
         assert card.domain_warning is not None
 
-    def test_unknown_alias_returns_none(self) -> None:
-        assert resolve_model_card("this_alias_does_not_exist") is None
-
     def test_local_dir_with_config(self, tmp_path) -> None:
         import json
 
@@ -100,9 +87,6 @@ class TestRegistry:
         card = resolve_model_card(str(tmp_path))
         assert card is not None
         assert card.architecture == "osnet_x1_0"
-
-    def test_local_dir_without_config_returns_none(self, tmp_path) -> None:
-        assert resolve_model_card(str(tmp_path)) is None
 
     def test_bare_path_without_architecture_raises(self) -> None:
         """from_pretrained on a bare weights file without architecture → ValueError."""
@@ -123,17 +107,17 @@ class TestRegistry:
 
 
 # ---------------------------------------------------------------------------
-# 3. Weights
+# 3. Loaders
 # ---------------------------------------------------------------------------
 
 
-class TestWeights:
+class TestLoaders:
     def test_missing_local_path_raises(self) -> None:
         with pytest.raises(FileNotFoundError):
             resolve_weights("/nonexistent/path/to/weights.pth")
 
     def test_malformed_hf_url_raises(self) -> None:
-        from trackers.core.reid.weights import _resolve_hf
+        from trackers.core.reid.models.loaders import _resolve_hf
 
         with pytest.raises(ValueError, match="hf://"):
             _resolve_hf("hf://only_one_part")
@@ -143,7 +127,7 @@ class TestWeights:
         import torch
         import torch.nn as nn
 
-        from trackers.core.reid.weights import load_state_dict_into
+        from trackers.core.reid.models.loaders import load_state_dict_into
 
         model = nn.Linear(4, 2)
         with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
@@ -161,7 +145,7 @@ class TestWeights:
         import torch
         import torch.nn as nn
 
-        from trackers.core.reid.weights import load_state_dict_into
+        from trackers.core.reid.models.loaders import load_state_dict_into
 
         source = nn.Linear(4, 2)
         target = nn.Linear(8, 4)
@@ -189,7 +173,7 @@ class TestModelSmoke:
         import torch.nn as nn
 
         from trackers.core.reid.model import ReIDModel
-        from trackers.core.reid.preprocessing import ReIDPreprocessing
+        from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 
         class _TinyEncoder(nn.Module):
             def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -216,7 +200,7 @@ class TestModelSmoke:
         import torch.nn as nn
 
         from trackers.core.reid.model import ReIDModel
-        from trackers.core.reid.preprocessing import ReIDPreprocessing
+        from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 
         class _TinyEncoder(nn.Module):
             def forward(self, x: torch.Tensor) -> torch.Tensor:

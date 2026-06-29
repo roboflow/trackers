@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import supervision as sv
 
-from trackers.core.reid.preprocessing import ReIDPreprocessing
-from trackers.core.reid.weights import load_state_dict_into, resolve_weights
+from trackers.core.reid.models.loaders import load_state_dict_into, resolve_weights
+from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 
 if TYPE_CHECKING:
     import torch
@@ -108,7 +108,7 @@ class ReIDModel:
             Loaded :class:`ReIDModel`.
         """
         from trackers.core.reid.architectures import build_architecture
-        from trackers.core.reid.registry import DEFAULT_MODEL, resolve_model_card
+        from trackers.core.reid.models.registry import DEFAULT_MODEL, resolve_model_card
 
         _require_reid_deps()
         resolved_device = _select_device(device)
@@ -178,7 +178,7 @@ class ReIDModel:
         """Write ``weights.safetensors`` and ``reid_config.json`` to *directory*."""
         from safetensors.torch import save_file
 
-        from trackers.core.reid.registry import ModelCard, save_model_config
+        from trackers.core.reid.models.registry import ModelCard, save_model_config
 
         if self._architecture is None:
             raise ValueError(

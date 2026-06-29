@@ -11,9 +11,9 @@ from trackers.core.reid.eval.evaluator import ReidEvaluator, ReidResult
 from trackers.core.reid.eval.metrics import ReidMetrics, compute_reid_metrics
 from trackers.core.reid.feature_bank import FeatureBank
 from trackers.core.reid.model import ReIDModel
-from trackers.core.reid.preprocessing import ReIDPreprocessing
-from trackers.core.reid.registry import ModelCard, resolve_model_card
-from trackers.core.reid.weights import KeyReport, resolve_weights
+from trackers.core.reid.models.loaders import KeyReport, resolve_weights
+from trackers.core.reid.models.preprocessing import ReIDPreprocessing
+from trackers.core.reid.models.registry import ModelCard, resolve_model_card
 
 __all__ = [
     "FeatureBank",

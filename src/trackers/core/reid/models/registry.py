@@ -12,7 +12,7 @@ import json
 import os
 from dataclasses import dataclass
 
-from trackers.core.reid.preprocessing import ReIDPreprocessing
+from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 
 # ---------------------------------------------------------------------------
 # Default checkpoint URL

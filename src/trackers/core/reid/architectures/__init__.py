@@ -42,7 +42,7 @@ def build_architecture(
         return timm.create_model(name, pretrained=pretrained, num_classes=num_classes)
 
     if architecture in _OSNET_VARIANTS:
-        from trackers.core.reid.osnet import build_osnet
+        from trackers.core.reid.architectures.osnet import build_osnet
 
         # OSNet weights are always loaded explicitly via the weights axis, so
         # pretrained is intentionally ignored here.
