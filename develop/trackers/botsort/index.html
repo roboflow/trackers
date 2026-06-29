@@ -243,7 +243,7 @@
       data-md-component="logo"
     >
       
-  <img src="../../assets/logo-trackers-violet.svg" alt="logo">
+  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
 
     </a>
 
@@ -272,7 +272,7 @@
             id="item-logo"
             >
             
-  <img src="../../assets/logo-trackers-violet.svg" alt="logo">
+  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
 
             </a>
             
@@ -332,7 +332,7 @@
 
     <ul class="header-list">
         <li style="align-items: center;" id="resources-list">
-            <label for="dropdown-resources"><span>Resources <img src="https://ka-p.fontawesome.com/releases/v6.6.0/svgs/regular/chevron-down.svg?v=2&token=a463935e93" style="height: 0.5rem;" /></span></label>
+            <label for="dropdown-resources"><span>Resources <svg class="dropdown-chevron" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></label>
             <input type="radio" name="dropdown" id="dropdown-resources" style="display: none;" />
             <ul class="resources-sublist sublist">
                 <li><a href="https://blog.roboflow.com">Blog</a></li>
@@ -342,7 +342,7 @@
             </ul>
         </li>
         <li style="align-items: center;" id="products-list">
-            <label for="dropdown-products"><span>Docs <img src="https://ka-p.fontawesome.com/releases/v6.6.0/svgs/regular/chevron-down.svg?v=2&token=a463935e93" style="height: 0.5rem;" /></span></label>
+            <label for="dropdown-products"><span>Docs <svg class="dropdown-chevron" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></label>
             <input type="radio" name="dropdown" id="dropdown-products" style="display: none;" />
             <ul class="products-sublist sublist">
                 <li><a href="https://inference.roboflow.com">Inference</a></li>
@@ -353,6 +353,17 @@
             </ul>
         </li>
         <script>
+          const searchDialog = document.querySelector('.md-search[role="dialog"]');
+          if (searchDialog && !searchDialog.hasAttribute('aria-label')) {
+            searchDialog.setAttribute('aria-label', 'Search');
+          }
+          const versionButton = document.querySelector('.md-version__current');
+          if (versionButton) {
+            const version = versionButton.textContent.trim();
+            if (version) {
+              versionButton.setAttribute('aria-label', 'Select version ' + version);
+            }
+          }
           document.addEventListener('click', function(event) {
             const resourcesList = document.getElementById('resources-list');
             const productsList = document.getElementById('products-list');
@@ -423,7 +434,7 @@
             display: none;
           }
         </style>
-        <a href="https://github.com/roboflow/trackers"><li class="header-btn" style="border-radius: 5px; color: white; background: var(--md-typeset-a-color); padding-top: 0.25rem; padding-left: 0.5rem; padding-bottom: 0.25rem; padding-right: 0.5rem; border: 1px solid #8315F9;">Go to GitHub</li></a>
+        <li><a href="https://github.com/roboflow/trackers" class="header-btn" style="display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; color: white; background: var(--md-typeset-a-color); padding: 0.25rem 0.5rem; border: 1px solid #8315F9;">Go to GitHub</a></li>
     </ul>
   </nav>
 
@@ -547,7 +558,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="Trackers" class="md-nav__button md-logo" aria-label="Trackers" data-md-component="logo">
       
-  <img src="../../assets/logo-trackers-violet.svg" alt="logo">
+  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
 
     </a>
     Trackers
@@ -1948,6 +1959,7 @@
     /* Register event handlers after documented loaded */
     document.addEventListener("DOMContentLoaded", function() {
       var ref = document.querySelector("[data-md-component=palette]")
+      if (!ref || !giscus) return
       ref.addEventListener("change", function() {
         var palette = __md_get("__palette")
         if (palette && typeof palette.color === "object") {
@@ -1955,6 +1967,7 @@
 
           /* Instruct Giscus to change theme */
           var frame = document.querySelector(".giscus-frame")
+          if (!frame) return
           frame.contentWindow.postMessage(
             { giscus: { setConfig: { theme } } },
             "https://giscus.app"
@@ -2138,8 +2151,6 @@
         <script src="../../javascripts/pycon_copy.js"></script>
       
         <script src="../../javascripts/mathjax.js"></script>
-      
-        <script src="https://unpkg.com/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
       
         <script src="../../javascripts/cli_builder_framework.js"></script>
       
