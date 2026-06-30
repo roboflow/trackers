@@ -188,41 +188,24 @@ class BoTSORTTracker(BaseTracker):
         self.reid_model = reid_model
         self.reid_ema_alpha = reid_ema_alpha
         if not 0.0 <= reid_emb_dist_threshold <= 2.0:
-            raise ValueError(
-                f"reid_emb_dist_threshold must be in [0, 2], got {reid_emb_dist_threshold}"
-            )
+            raise ValueError(f"reid_emb_dist_threshold must be in [0, 2], got {reid_emb_dist_threshold}")
         if not 0.0 <= reid_iou_dist_threshold <= 1.0:
-            raise ValueError(
-                f"reid_iou_dist_threshold must be in [0, 1], got {reid_iou_dist_threshold}"
-            )
+            raise ValueError(f"reid_iou_dist_threshold must be in [0, 1], got {reid_iou_dist_threshold}")
         if not 0.0 <= reid_gated_app_distance_scale <= 1.0:
-            raise ValueError(
-                "reid_gated_app_distance_scale must be in [0, 1], "
-                f"got {reid_gated_app_distance_scale}"
-            )
+            raise ValueError(f"reid_gated_app_distance_scale must be in [0, 1], got {reid_gated_app_distance_scale}")
         self.reid_emb_dist_threshold = reid_emb_dist_threshold
         self.reid_iou_dist_threshold = reid_iou_dist_threshold
         self.reid_gated_app_distance_scale = reid_gated_app_distance_scale
         self.reid_iou_dist_threshold_lost = (
-            reid_iou_dist_threshold
-            if reid_iou_dist_threshold_lost is None
-            else reid_iou_dist_threshold_lost
+            reid_iou_dist_threshold if reid_iou_dist_threshold_lost is None else reid_iou_dist_threshold_lost
         )
         self.reid_emb_dist_threshold_lost = (
-            reid_emb_dist_threshold
-            if reid_emb_dist_threshold_lost is None
-            else reid_emb_dist_threshold_lost
+            reid_emb_dist_threshold if reid_emb_dist_threshold_lost is None else reid_emb_dist_threshold_lost
         )
         if not 0.0 <= self.reid_iou_dist_threshold_lost <= 1.0:
-            raise ValueError(
-                "reid_iou_dist_threshold_lost must be in [0, 1], "
-                f"got {self.reid_iou_dist_threshold_lost}"
-            )
+            raise ValueError(f"reid_iou_dist_threshold_lost must be in [0, 1], got {self.reid_iou_dist_threshold_lost}")
         if not 0.0 <= self.reid_emb_dist_threshold_lost <= 2.0:
-            raise ValueError(
-                "reid_emb_dist_threshold_lost must be in [0, 2], "
-                f"got {self.reid_emb_dist_threshold_lost}"
-            )
+            raise ValueError(f"reid_emb_dist_threshold_lost must be in [0, 2], got {self.reid_emb_dist_threshold_lost}")
 
     def update(
         self,
@@ -533,9 +516,7 @@ class BoTSORTTracker(BaseTracker):
         if self.reid_model is None or det_embeddings is None or not unmatched_det_local:
             return unmatched_pool, unmatched_det_local
 
-        lost_pool_indices = [
-            pool_idx for pool_idx in unmatched_pool if strack_pool[pool_idx].time_since_update > 1
-        ]
+        lost_pool_indices = [pool_idx for pool_idx in unmatched_pool if strack_pool[pool_idx].time_since_update > 1]
         if not lost_pool_indices:
             return unmatched_pool, unmatched_det_local
 
@@ -631,9 +612,7 @@ class BoTSORTTracker(BaseTracker):
             return []
 
         track_feats = [
-            track.feature_bank.feature
-            if track.feature_bank is not None and track.feature_bank.is_initialized
-            else None
+            track.feature_bank.feature if track.feature_bank is not None and track.feature_bank.is_initialized else None
             for track in lost_tracks
         ]
         if all(feature is None for feature in track_feats):

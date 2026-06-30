@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Live webcam demo: BoT-SORT + ReID track ID persistence.
 
 Stand in front of the camera, note your track ID, leave the frame completely,
@@ -100,9 +106,7 @@ def parse_args() -> argparse.Namespace:
         "--lost-buffer",
         type=int,
         default=70,
-        help=(
-            "Lost-track buffer in frames before a track is deleted "
-        ),
+        help=("Lost-track buffer in frames before a track is deleted "),
     )
     parser.add_argument(
         "--fps",
@@ -120,10 +124,7 @@ def parse_args() -> argparse.Namespace:
         "--classes",
         type=str,
         default="person,cup",
-        help=(
-            "Comma-separated class names or ids to track "
-            "(default: person,cup). Use --all-classes for every class."
-        ),
+        help=("Comma-separated class names or ids to track (default: person,cup). Use --all-classes for every class."),
     )
     parser.add_argument(
         "--all-classes",
@@ -149,10 +150,7 @@ def parse_args() -> argparse.Namespace:
         "--reid-emb-dist-threshold",
         type=float,
         default=0.40,
-        help=(
-            "Appearance distance gate θ_emb for BoT-SORT ReID fusion "
-            "(default: 0.40; paper uses 0.25)."
-        ),
+        help=("Appearance distance gate θ_emb for BoT-SORT ReID fusion (default: 0.40; paper uses 0.25)."),
     )
     parser.add_argument(
         "--reid-iou-dist-threshold",
@@ -199,10 +197,7 @@ def load_detector(model_id: str):
     try:
         from inference_models import AutoModel
     except ImportError as exc:
-        raise SystemExit(
-            "inference-models is required.\n"
-            "Install with: pip install 'trackers[detection,reid]'"
-        ) from exc
+        raise SystemExit("inference-models is required.\nInstall with: pip install 'trackers[detection,reid]'") from exc
 
     from trackers.utils.device import _best_device
 
@@ -467,10 +462,7 @@ def compute_reid_similarities(
         Similarity matrix of shape ``(num_tracks, num_dets)``.
     """
     track_feats = [
-        t.feature_bank.feature
-        if t.feature_bank is not None and t.feature_bank.is_initialized
-        else None
-        for t in tracks
+        t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None for t in tracks
     ]
     return appearance_similarity(track_feats, det_embeddings)
 
@@ -666,7 +658,12 @@ def render_side_panel(
     legend_y = min(y + 12, frame_height - 18)
     _panel_text(panel, "color:", 16, legend_y, color=PANEL_MUTED, scale=0.34)
     legend_x = 62
-    for label, color in (("0.80+", PANEL_SIM_GOOD), ("0.50", PANEL_SIM_MED), ("0.25", PANEL_SIM_HIGH), ("<0.25", PANEL_SIM_BAD)):
+    for label, color in (
+        ("0.80+", PANEL_SIM_GOOD),
+        ("0.50", PANEL_SIM_MED),
+        ("0.25", PANEL_SIM_HIGH),
+        ("<0.25", PANEL_SIM_BAD),
+    ):
         _panel_text(panel, label, legend_x, legend_y, color=color, scale=0.34, thickness=2)
         legend_x += 48
 
@@ -803,17 +800,12 @@ def main() -> None:
 
     preferred = parse_camera(args.camera)
     cap, camera_index, probe_frame = acquire_webcam(preferred)
-    print(
-        f"Webcam index {camera_index} OK "
-        f"({probe_frame.shape[1]}x{probe_frame.shape[0]}). Loading models..."
-    )
+    print(f"Webcam index {camera_index} OK ({probe_frame.shape[1]}x{probe_frame.shape[0]}). Loading models...")
     detector = load_detector(args.model)
     class_names = list(getattr(detector, "class_names", None) or [])
     class_filter = None if args.all_classes else resolve_class_filter(args.classes, class_names)
     class_summary = format_class_summary(class_filter, class_names)
-    print(
-        f"Detector ready: {args.model!r} (RF-DETR via inference-models, tracking {class_summary})"
-    )
+    print(f"Detector ready: {args.model!r} (RF-DETR via inference-models, tracking {class_summary})")
 
     box_annotator = sv.BoxAnnotator(thickness=2)
     label_annotator = sv.LabelAnnotator(text_scale=0.9, text_thickness=2)
@@ -871,9 +863,7 @@ def main() -> None:
 
         det_embeddings = np.empty((0, 0), dtype=np.float32)
         if len(filtered_dets) > 0:
-            det_embeddings = extract_detection_embeddings(
-                reid_model, frame_bgr, filtered_dets.xyxy
-            )
+            det_embeddings = extract_detection_embeddings(reid_model, frame_bgr, filtered_dets.xyxy)
 
         tracked = tracker.update(filtered_dets, frame=frame_bgr)
 
