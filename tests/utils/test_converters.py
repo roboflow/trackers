@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from trackers.utils.converters import (
     xcycsr_to_xyxy,
     xywh_to_xyxy,
@@ -193,17 +192,36 @@ class TestXCYCSRConversion:
         np.testing.assert_array_almost_equal(result, expected, decimal=4)
 
     def test_xcycsr_to_xyxy_zero_scale(self) -> None:
-        """Zero-scale xcycsr decodes with NaN y-coords; x-center is preserved."""
+        """A zero-scale xcycsr decodes to a valid, finite box without NaN/Inf."""
         xcycsr = np.array([10.0, 20.0, 0.0, 1.0])
         result = xcycsr_to_xyxy(xcycsr)
+        assert np.isfinite(result).all()
         assert result[0] == result[2] == 10.0
-        assert np.isnan(result[1]) and np.isnan(result[3])
+        assert result[1] == result[3] == 20.0
 
     def test_xcycsr_to_xyxy_zero_aspect(self) -> None:
-        """A zero aspect-ratio xcycsr decodes to a non-finite (NaN/Inf) box."""
+        """A zero aspect-ratio xcycsr decodes to a finite box without NaN/Inf."""
         xcycsr = np.array([10.0, 20.0, 100.0, 0.0])
         result = xcycsr_to_xyxy(xcycsr)
-        assert np.isnan(result).any() or np.isinf(result).any()
+        assert np.isfinite(result).all()
+        assert result[0] == pytest.approx(10.0)
+        assert result[2] == pytest.approx(10.0)
+        # With w=0, h = 0.0. ymin/ymax will be 20 +/- 0
+        assert result[1] == pytest.approx(20.0)
+        assert result[3] == pytest.approx(20.0)
+
+    def test_xcycsr_to_xyxy_batch_mixed_degenerate(self) -> None:
+        """Batch path handles a mix of normal and degenerate boxes without error."""
+        xcycsr = np.array(
+            [
+                [10.0, 20.0, 100.0, 1.0],  # normal box
+                [10.0, 20.0, 0.0, 1.0],  # zero scale
+                [10.0, 20.0, 100.0, 0.0],  # zero aspect
+            ]
+        )
+        result = xcycsr_to_xyxy(xcycsr)
+        assert np.isfinite(result).all()
+        assert result.shape == (3, 4)
 
     def test_xcycsr_to_xyxy_negative_scale(self) -> None:
         """A negative-scale xcycsr decodes with NaN entries (sqrt of negative)."""
