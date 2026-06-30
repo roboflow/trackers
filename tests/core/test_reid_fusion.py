@@ -65,3 +65,46 @@ class TestBoTSORTGatedMinFusion:
         app_sim = np.zeros((1, 2), dtype=np.float32)
         fused = tracker._fuse_botsort_gated_min(iou_raw, iou_fused, app_sim)
         np.testing.assert_allclose(fused, iou_fused)
+
+    def test_custom_emb_dist_threshold(self) -> None:
+        tracker = BoTSORTTracker(enable_cmc=False, reid_emb_dist_threshold=0.1)
+        iou_raw = np.array([[0.7]], dtype=np.float32)
+        iou_fused = np.array([[0.63]], dtype=np.float32)
+        app_sim = np.array([[0.8]], dtype=np.float32)
+        fused = tracker._fuse_botsort_gated_min(iou_raw, iou_fused, app_sim)
+        assert fused[0, 0] == pytest.approx(0.63)
+
+    def test_custom_iou_dist_threshold_loosens_proximity_gate(self) -> None:
+        strict = BoTSORTTracker(enable_cmc=False, reid_iou_dist_threshold=0.5)
+        loose = BoTSORTTracker(enable_cmc=False, reid_iou_dist_threshold=0.85)
+        iou_raw = np.array([[0.25]], dtype=np.float32)
+        iou_fused = np.array([[0.20]], dtype=np.float32)
+        app_sim = np.array([[0.85]], dtype=np.float32)
+        strict_fused = strict._fuse_botsort_gated_min(iou_raw, iou_fused, app_sim)
+        loose_fused = loose._fuse_botsort_gated_min(iou_raw, iou_fused, app_sim)
+        assert strict_fused[0, 0] == pytest.approx(0.20)
+        assert loose_fused[0, 0] == pytest.approx(0.925)
+
+    def test_lost_track_mask_uses_looser_iou_gate(self) -> None:
+        tracker = BoTSORTTracker(
+            enable_cmc=False,
+            reid_iou_dist_threshold=0.5,
+            reid_iou_dist_threshold_lost=1.0,
+            reid_emb_dist_threshold=0.25,
+            reid_emb_dist_threshold_lost=0.55,
+        )
+        iou_raw = np.array([[0.0], [0.0]], dtype=np.float32)
+        iou_fused = np.array([[0.0], [0.0]], dtype=np.float32)
+        app_sim = np.array([[0.50], [0.50]], dtype=np.float32)
+        lost_mask = np.array([False, True])
+        fused = tracker._fuse_botsort_gated_min(iou_raw, iou_fused, app_sim, lost_track_mask=lost_mask)
+        assert fused[0, 0] == pytest.approx(0.0)
+        assert fused[1, 0] == pytest.approx(0.75)
+
+    def test_reid_threshold_defaults(self) -> None:
+        tracker = BoTSORTTracker(enable_cmc=False)
+        assert tracker.reid_emb_dist_threshold == 0.25
+        assert tracker.reid_iou_dist_threshold == 0.5
+        assert tracker.reid_gated_app_distance_scale == 0.5
+        assert tracker.reid_emb_dist_threshold_lost == 0.25
+        assert tracker.reid_iou_dist_threshold_lost == 0.5

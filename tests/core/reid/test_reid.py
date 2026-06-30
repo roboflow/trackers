@@ -192,6 +192,27 @@ class TestModelSmoke:
         norms = np.linalg.norm(embs, axis=1)
         np.testing.assert_allclose(norms, np.ones_like(norms), atol=1e-5)
 
+    def test_extract_features_clamps_out_of_frame_boxes(self) -> None:
+        pytest.importorskip("torch")
+        import numpy as np
+        import supervision as sv
+        import torch
+        import torch.nn as nn
+
+        from trackers.core.reid.model import ReIDModel
+        from trackers.core.reid.models.preprocessing import ReIDPreprocessing
+
+        class _TinyEncoder(nn.Module):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return x.flatten(1)[:, :16]
+
+        device = torch.device("cpu")
+        model = ReIDModel(_TinyEncoder(), device, ReIDPreprocessing())
+        frame = np.zeros((128, 128, 3), dtype=np.uint8)
+        dets = sv.Detections(xyxy=np.array([[-40.0, -40.0, 10.0, 10.0]], dtype=np.float32))
+        embs = model.extract_features(dets, frame)
+        assert embs.shape[0] == 1
+
     def test_empty_detections_returns_empty(self) -> None:
         pytest.importorskip("torch")
         import numpy as np

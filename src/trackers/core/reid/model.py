@@ -25,6 +25,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _clamp_xyxy_to_frame(box: np.ndarray, height: int, width: int) -> np.ndarray:
+    """Clip a box to frame bounds with at least 1 px width and height."""
+    x1, y1, x2, y2 = box.astype(float)
+    max_x = max(width, 1)
+    max_y = max(height, 1)
+    x1 = float(np.clip(x1, 0, max_x - 1))
+    y1 = float(np.clip(y1, 0, max_y - 1))
+    x2 = float(np.clip(x2, x1 + 1, max_x))
+    y2 = float(np.clip(y2, y1 + 1, max_y))
+    return np.array([x1, y1, x2, y2], dtype=np.float32)
+
+
 def _require_reid_deps() -> None:
     """Raise a descriptive ImportError when the reid optional deps are absent."""
     try:
@@ -269,9 +281,13 @@ class ReIDModel:
         import torch
         from PIL import Image as PILImage
 
+        frame_h, frame_w = frame.shape[:2]
         crops = []
         for box in detections.xyxy:
-            crop = sv.crop_image(image=frame, xyxy=box.astype(int))
+            safe_box = _clamp_xyxy_to_frame(box, frame_h, frame_w)
+            crop = sv.crop_image(image=frame, xyxy=safe_box.astype(int))
+            if crop.size == 0:
+                crop = np.zeros((1, 1, 3), dtype=frame.dtype)
             if self._preprocessing.to_rgb:
                 crop = crop[:, :, ::-1].copy()
             pil_crop = PILImage.fromarray(crop)
