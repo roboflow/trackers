@@ -89,41 +89,27 @@ class BoTSORTTracker(BaseTracker):
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
         reid_model: Optional :class:`~trackers.core.reid.model.ReIDModel` for
-            appearance-based association. When provided, a
-            :class:`~trackers.core.reid.feature_bank.FeatureBank` is attached to
-            each track and appearance cost is fused into the first-stage
-            high-confidence association using the BoT-SORT paper gated-min
-            fusion (Section 3.3). Requires ``frame`` to be passed to
-            :meth:`update`.  When ``None`` (default), behaviour is identical to
-            the geometry-only BoT-SORT baseline.
-        reid_ema_alpha: EMA momentum for track feature updates.  Higher values
-            retain older appearance information longer.  Default ``0.9``.
-        reid_emb_dist_threshold: Appearance distance gate (θ_emb) for BoT-SORT
-            gated-min fusion.  Pairs with ``d_app = 1 - cosine_similarity``
-            below this value (and IoU above θ_iou) may use appearance cost.
-            Default ``0.25`` matches the BoT-SORT paper.
-        reid_iou_dist_threshold: IoU distance gate (θ_iou) for proximity
-            gating before appearance is used.  Requires
-            ``d_iou = 1 - IoU`` below this value (equivalently IoU above
-            ``1 - θ_iou``).  Default ``0.5`` (IoU > 0.5) matches the
-            reference BoT-SORT implementation.
-        reid_gated_app_distance_scale: Scale applied to appearance distance
-            when the proximity gate passes during gated-min fusion.
-            Default ``0.5`` matches the reference BoT-SORT implementation.
-        reid_iou_dist_threshold_lost: IoU distance gate applied to **lost**
-            tracks during gated-min fusion.  When ``None`` (default), uses
-            ``reid_iou_dist_threshold``.  Set to ``1.0`` to skip IoU gating
-            for lost tracks (appearance-only fusion when boxes do not overlap).
-        reid_emb_dist_threshold_lost: Appearance distance gate for **lost**
-            tracks during gated-min fusion and appearance-only recovery.
-            When ``None`` (default), uses ``reid_emb_dist_threshold``.
+            appearance-based association in the first high-confidence stage.
+            Requires ``frame`` in :meth:`update`. When ``None`` (default),
+            behaviour matches the geometry-only BoT-SORT baseline.
+        reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
+        reid_emb_dist_threshold: Appearance distance gate for gated-min fusion.
+            Default ``0.25``.
+        reid_iou_dist_threshold: IoU distance gate before appearance is used.
+            Default ``0.5``.
+        reid_gated_app_distance_scale: Appearance distance scale when gated.
+            Default ``0.5``.
+        reid_iou_dist_threshold_lost: IoU distance gate for lost tracks. Defaults
+            to ``reid_iou_dist_threshold``.
+        reid_emb_dist_threshold_lost: Appearance distance gate for lost tracks.
+            Defaults to ``reid_emb_dist_threshold``.
 
     Notes:
         - `maximum_frames_without_update` is computed as:
             int(frame_rate / 30.0 * lost_track_buffer)
             to maintain consistent “seconds” worth of buffer across different FPS.
-        - When CMC is enabled, pass the current video frame via the ``frame``
-          argument of :meth:`update`.
+        - When CMC or ReID is enabled, pass the current video frame via the
+          ``frame`` argument of :meth:`update`.
     """
 
     tracker_id = "botsort"
@@ -468,16 +454,7 @@ class BoTSORTTracker(BaseTracker):
         out_det_indices: list[int],
         out_tracker_ids: list[int],
     ) -> None:
-        """Update a track from a matched detection and record output indices.
-
-        Args:
-            track: Tracklet to update.
-            bbox: Matched detection box in ``xyxy`` format.
-            embedding: Optional ReID embedding for the detection.
-            global_det_index: Index into the original ``sv.Detections`` batch.
-            out_det_indices: Output detection index list to append to.
-            out_tracker_ids: Output tracker ID list to append to.
-        """
+        """Update a track from a matched detection and record output indices."""
         track.update(bbox)
         if track.feature_bank is not None and embedding is not None:
             track.feature_bank.update(embedding)
@@ -498,21 +475,7 @@ class BoTSORTTracker(BaseTracker):
         out_det_indices: list[int],
         out_tracker_ids: list[int],
     ) -> tuple[list[int], list[int]]:
-        """Recover lost tracks via appearance-only matching.
-
-        Args:
-            strack_pool: Tracks considered in the current association stage.
-            unmatched_pool: Pool indices still without a detection match.
-            unmatched_det_local: Unmatched detection indices local to ``det_boxes``.
-            det_boxes: Detection boxes aligned with ``unmatched_det_local``.
-            det_embeddings: Embeddings aligned with ``det_boxes`` rows.
-            det_index_map: Maps each local detection row to a global detection index.
-            out_det_indices: Output detection index list to append to.
-            out_tracker_ids: Output tracker ID list to append to.
-
-        Returns:
-            Updated ``(unmatched_pool, unmatched_det_local)`` after recovery.
-        """
+        """Recover lost tracks via appearance-only matching."""
         if self.reid_model is None or det_embeddings is None or not unmatched_det_local:
             return unmatched_pool, unmatched_det_local
 
@@ -554,22 +517,7 @@ class BoTSORTTracker(BaseTracker):
         appearance_similarity: np.ndarray,
         lost_track_mask: np.ndarray | None = None,
     ) -> np.ndarray:
-        """Fuse IoU and appearance using BoT-SORT gated-min (Section 3.3).
-
-        Proximity gating uses raw IoU (before detection-score fusion), while
-        the motion term in the final min uses score-fused IoU.
-
-        Args:
-            iou_similarity_raw: Raw IoU similarity, shape ``(T, D)``.
-            iou_similarity_fused: IoU similarity after score fusion, shape ``(T, D)``.
-            appearance_similarity: Cosine similarity, shape ``(T, D)``.
-            lost_track_mask: Optional boolean mask of shape ``(T,)`` marking lost
-                tracks that may use :attr:`reid_iou_dist_threshold_lost` and
-                :attr:`reid_emb_dist_threshold_lost`.
-
-        Returns:
-            Fused similarity matrix of shape ``(T, D)``.
-        """
+        """Fuse IoU and appearance using BoT-SORT gated-min fusion."""
         d_iou_raw = 1.0 - iou_similarity_raw
         d_iou_fused = 1.0 - iou_similarity_fused
         d_app = 1.0 - appearance_similarity
@@ -597,17 +545,7 @@ class BoTSORTTracker(BaseTracker):
         unmatched_det_local: list[int],
         det_embeddings: np.ndarray,
     ) -> list[tuple[int, int]]:
-        """Match lost tracks to detections using appearance only.
-
-        Args:
-            lost_tracks: Lost tracklets with optional stored embeddings.
-            unmatched_det_local: Unmatched detection indices into ``det_embeddings``.
-            det_embeddings: Full detection embedding matrix for the current stage.
-
-        Returns:
-            ``(lost_track_index, det_local_index)`` pairs that pass
-            :attr:`reid_emb_dist_threshold_lost`.
-        """
+        """Match lost tracks to detections using appearance only."""
         if self.reid_model is None or not lost_tracks or not unmatched_det_local:
             return []
 
@@ -682,18 +620,7 @@ class BoTSORTTracker(BaseTracker):
         is_first_frame: bool = False,
         det_embeddings: np.ndarray | None = None,
     ) -> None:
-        """Create new tracklets from unmatched high-confidence detections.
-
-        On the very first frame, new tracklets are immediately activated with a
-        real tracker ID, following the original ByteTrack convention where
-        ``activate()`` sets ``is_activated = True`` only when
-        ``frame_id == 1``.
-
-        When a ``reid_model`` is configured, each new tracklet receives a
-        :class:`~trackers.core.reid.feature_bank.FeatureBank` and, if
-        ``det_embeddings`` are available, its feature is initialised from the
-        detection embedding immediately.
-        """
+        """Create new tracklets from unmatched high-confidence detections."""
         from trackers.core.reid.feature_bank import FeatureBank
 
         for det_local_idx in unmatched_high_local:
