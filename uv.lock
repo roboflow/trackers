@@ -4135,6 +4135,12 @@ dependencies = [
 detection = [
     { name = "inference-models" },
 ]
+reid = [
+    { name = "huggingface-hub" },
+    { name = "timm" },
+    { name = "torch" },
+    { name = "torchvision" },
+]
 tune = [
     { name = "optuna" },
 ]
@@ -4168,6 +4174,7 @@ mypy-types = [
 
 [package.metadata]
 requires-dist = [
+    { name = "huggingface-hub", marker = "extra == 'reid'", specifier = ">=0.20.0" },
     { name = "inference-models", marker = "extra == 'detection'", specifier = ">=0.19.0" },
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "opencv-python", specifier = ">=4.8.0" },
@@ -4177,8 +4184,11 @@ requires-dist = [
     { name = "rich", specifier = ">=13.0.0" },
     { name = "scipy", specifier = ">=1.13.1" },
     { name = "supervision", specifier = ">=0.26.1" },
+    { name = "timm", marker = "extra == 'reid'", specifier = ">=1.0.0" },
+    { name = "torch", marker = "extra == 'reid'", specifier = ">=2.0.0" },
+    { name = "torchvision", marker = "extra == 'reid'", specifier = ">=0.15.0" },
 ]
-provides-extras = ["detection", "tune"]
+provides-extras = ["detection", "tune", "reid"]
 
 [package.metadata.requires-dev]
 build = [
