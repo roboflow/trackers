@@ -269,7 +269,8 @@ def test_bytetrack_returns_unmatched_detection_between_thresholds() -> None:
     result = tracker.update(detections)
 
     assert len(result) == 3, "every detection must be returned, including the mid-confidence one"
-    assert 0.65 in result.confidence.tolist(), "mid-confidence detection must not be dropped"
+    # compare with a tolerance: confidence may be stored as float32
+    np.testing.assert_allclose(np.sort(result.confidence), [0.50, 0.65, 0.80], atol=1e-6)
     assert result.tracker_id is not None
     assert np.all(result.tracker_id == -1), "no detection matches a track on the first frame"
 
