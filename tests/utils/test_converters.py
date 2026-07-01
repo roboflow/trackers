@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+
 from trackers.utils.converters import (
     xcycsr_to_xyxy,
     xywh_to_xyxy,
