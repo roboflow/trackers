@@ -173,10 +173,18 @@ class BoTSORTTracker(BaseTracker):
             Confirmed tracks have tracker_id >= 0; unconfirmed tracks have
             tracker_id of -1.
 
+        Warns:
+            UserWarning: If ``timestamp`` is earlier than the previous call
+                (backwards order); the whole update is skipped and all output
+                IDs are ``-1``. If ``timestamp`` equals the previous call
+                (duplicate); predict is skipped but association still runs on
+                the last state.
+
         Notes:
             - If CMC is enabled, pass the current video frame via ``frame`` so the
               tracker can estimate a global affine transform and warp predicted
-              track states before association.
+              track states before association. When ``frame=None`` and
+              ``enable_cmc=True``, CMC is silently skipped for that step.
         """
         timing = self._predict_timing(timestamp)
         if timing.skip_update:

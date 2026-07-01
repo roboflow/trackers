@@ -538,6 +538,16 @@ class BaseTracker(ABC):
                 IDs are ``-1``. If ``timestamp`` equals the previous call
                 (duplicate); predict is skipped but association still runs on
                 the last state (``elapsed_seconds = 0.0``).
+
+        Note:
+            Mixing timestamped and non-timestamped calls in the same session is
+            unsupported. Calling ``update(detections)`` (no timestamp) resets
+            ``_last_timestamp`` to ``None``; the next timestamped call is then
+            treated as a fresh bootstrap (``frame_step = 1 / frame_rate``) rather
+            than measuring the real gap from the previous call. If you switch from
+            ``update(d, timestamp=t)`` to ``update(d)`` and then back to
+            ``update(d, timestamp=t2)``, the elapsed gap ``t2 - t`` is silently
+            discarded and the Kalman step is reset to one nominal frame.
         """
         pass
 

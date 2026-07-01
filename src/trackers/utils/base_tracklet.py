@@ -62,7 +62,24 @@ class BaseTracklet(ABC):
         maximum_frames_without_update: int,
         maximum_time_without_update: float | None = None,
     ) -> bool:
-        """Return whether a tracklet is still within its lost-track budget."""
+        """Return whether a tracklet is still within its lost-track budget.
+
+        When ``maximum_time_without_update`` is provided (dynamic-rate mode),
+        the check uses ``tracklet.time_since_update_seconds``; otherwise it
+        falls back to the frame count ``tracklet.time_since_update``.
+
+        Args:
+            tracklet: The tracklet to evaluate.
+            maximum_frames_without_update: Maximum number of frames a track may
+                go unmatched before being pruned (used in fixed-rate mode).
+            maximum_time_without_update: Maximum wall-clock seconds a track may
+                go unmatched before being pruned. ``None`` means no time budget
+                is applied and the frame count is used instead.
+
+        Returns:
+            ``True`` if the tracklet is within its allowed budget, ``False`` if
+            it should be pruned.
+        """
         if maximum_time_without_update is not None:
             return tracklet.time_since_update_seconds < maximum_time_without_update
         return tracklet.time_since_update < maximum_frames_without_update
@@ -71,11 +88,16 @@ class BaseTracklet(ABC):
     def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict next bounding box position and advance missed-frame state.
 
-        Propagates the Kalman filter and increments `time_since_update` (and
-        `age`) on every call — matched or unmatched.
+        Propagates the Kalman filter and increments ``time_since_update`` (and
+        ``age``) on every call — matched or unmatched.
+
+        Args:
+            timing: ``PredictTiming`` carrying ``frame_step`` (Kalman step size
+                in frame units) and ``elapsed_seconds`` (wall-clock gap since
+                the last update, or ``None`` in fixed-rate mode).
 
         Returns:
-            Predicted bounding box `[x1, y1, x2, y2]`.
+            Predicted bounding box ``[x1, y1, x2, y2]``.
         """
         pass
 

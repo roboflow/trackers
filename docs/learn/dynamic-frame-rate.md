@@ -12,7 +12,7 @@ Pass an optional **`timestamp`** (seconds) on `update()` so the tracker knows ho
 **What you'll learn:**
 
 - How to use dynamic frame rate mode
-- When its worth to use it
+- When it's worth to use it
 - How fixed-rate and dynamic-rate modes differ
 
 ---

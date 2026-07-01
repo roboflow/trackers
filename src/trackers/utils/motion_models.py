@@ -42,7 +42,22 @@ def constant_velocity_F(
     vel_idx: NDArray[np.int64],
     frame_step: float,
 ) -> NDArray[np.float64]:
-    """Constant velocity: each position row picks up ``velocity * frame_step``."""
+    """Build the constant-velocity state-transition matrix F.
+
+    Each position state is coupled to its paired velocity state by
+    ``frame_step``; all other entries remain as in the identity matrix.
+
+    Args:
+        dim_x: State vector dimension.
+        pos_idx: Indices of position states in the state vector.
+        vel_idx: Indices of velocity states paired with ``pos_idx``
+            (must have the same length as ``pos_idx``).
+        frame_step: Elapsed time in frame units; the off-diagonal coupling
+            ``F[pos, vel]`` is set to this value.
+
+    Returns:
+        Transition matrix F of shape ``(dim_x, dim_x)``.
+    """
     F = np.eye(dim_x, dtype=np.float64)
     for p, v in zip(pos_idx, vel_idx, strict=True):
         F[int(p), int(v)] = frame_step
@@ -80,12 +95,18 @@ class ScalableProcessNoise:
         self._nonkinematic_idx = [i for i in range(self.dim_x) if i not in kinematic]
 
     def calibrate(self, Q: np.ndarray) -> None:
-        """Calibrate ``sigma_a2`` from ``Q`` and store the configured-Q reference.
+        """Extract per-axis acceleration variance from Q and store the reference.
 
-        Called from ``set_kf_covariances``. The velocity diagonal of ``Q``
-        defines the per-axis acceleration variance used when ``frame_step != 1``.
-        ``baseline_Q`` stores ``Q`` itself; ``build_Q(1.0)`` returns it directly
-        so the hand-tuned one-frame noise is preserved exactly.
+        Called from ``set_kf_covariances``. The velocity-diagonal entries of
+        ``Q`` define ``sigma_a2``, which is used to scale noise for
+        ``frame_step != 1.0`` via DWNA. ``baseline_Q`` stores ``Q`` itself so
+        that ``build_Q(1.0)`` returns it directly, preserving hand-tuned
+        one-frame noise exactly.
+
+        Args:
+            Q: Configured one-frame process noise matrix of shape
+                ``(dim_x, dim_x)``, as produced by ``_configure_noise`` via
+                ``set_kf_covariances``.
         """
         self.sigma_a2 = np.asarray([float(Q[v, v]) for v in self.vel_idx], dtype=np.float64)
         self.extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
@@ -94,18 +115,35 @@ class ScalableProcessNoise:
         self._nonkinematic_idx = [i for i in range(self.dim_x) if i not in kinematic]
 
     def build_Q(self, frame_step: float) -> NDArray[np.float64]:
-        """Return process noise ``Q`` for *frame_step*.
+        """Return process noise Q scaled for the given frame step.
 
         At ``frame_step == 1.0`` the original configured Q (``baseline_Q``) is
-        returned to preserve hand-tuned noise and backward compatibility.
-        For any other step the DWNA formula is applied.
+        returned unchanged to preserve hand-tuned noise and backward
+        compatibility. For any other step the DWNA formula is applied via
+        ``_dwna``.
+
+        Args:
+            frame_step: Elapsed time in frame units; ``1.0`` returns
+                ``baseline_Q`` exactly.
+
+        Returns:
+            Process noise matrix of shape ``(dim_x, dim_x)``.
         """
         if frame_step == 1.0:
             return self.baseline_Q.copy()
         return self._dwna(frame_step)
 
     def _dwna(self, frame_step: float) -> NDArray[np.float64]:
-        """Build gap-scaled ``Q`` (white-noise acceleration blocks per axis)."""
+        """Build gap-scaled Q using the DWNA (discrete white noise acceleration) model.
+
+        Args:
+            frame_step: Elapsed time in frame units.
+
+        Returns:
+            Process noise matrix of shape ``(dim_x, dim_x)`` with kinematic
+            blocks scaled by ``frame_step`` and non-kinematic diagonal entries
+            taken from the one-frame reference.
+        """
         Q = np.zeros((self.dim_x, self.dim_x), dtype=np.float64)
         dt2 = frame_step * frame_step
         dt3 = dt2 * frame_step
@@ -142,7 +180,19 @@ class KalmanMotionModel:
         pos_idx: NDArray[np.int64],
         vel_idx: NDArray[np.int64],
     ) -> KalmanMotionModel:
-        """Create a motion model; uses the reference ``Q`` from the filter."""
+        """Create a motion model seeded from an already-configured Kalman filter.
+
+        Uses the filter's current ``Q`` as the one-frame reference noise.
+        Call ``calibrate_from_Q`` later if ``Q`` is updated via ``set_kf_covariances``.
+
+        Args:
+            kf: ``KalmanFilter`` with ``Q`` already set to the one-frame reference.
+            pos_idx: Indices of position states in the state vector.
+            vel_idx: Indices of velocity states paired with ``pos_idx``.
+
+        Returns:
+            ``KalmanMotionModel`` ready to apply ``F`` and ``Q`` per predict step.
+        """
         dim_x = kf.dim_x
         return cls(
             dim_x=dim_x,
@@ -159,12 +209,29 @@ class KalmanMotionModel:
         )
 
     def calibrate_from_Q(self, Q: np.ndarray) -> None:
-        """Update the one-frame reference after ``Q`` changes in ``set_kf_covariances``."""
+        """Update the one-frame noise reference when Q changes.
+
+        Call this after ``set_kf_covariances`` updates ``Q`` on the filter so
+        that ``build_Q`` and future cached steps use the new reference.
+
+        Args:
+            Q: Reference one-frame process noise matrix, as produced by
+                ``set_kf_covariances``. Shape must be ``(dim_x, dim_x)``.
+        """
         self.process_noise.calibrate(Q)
         self.cached_step = None
 
     def apply(self, kf: KalmanFilter, frame_step: float) -> None:
-        """Set ``kf.F`` and ``kf.Q`` for *frame_step* (both cached per step)."""
+        """Set F and Q on a Kalman filter for the given frame step.
+
+        Both matrices are cached per unique step value to avoid redundant
+        computation when the same step is repeated across consecutive frames.
+
+        Args:
+            kf: ``KalmanFilter`` to update in-place.
+            frame_step: Elapsed time in frame units for this predict step.
+                Use ``1.0`` for a single nominal frame; larger values for gaps.
+        """
         if (
             self.cached_step is not None
             and frame_step == self.cached_step
@@ -181,7 +248,11 @@ class KalmanMotionModel:
         self.cached_step = frame_step
 
     def reset_cache(self) -> None:
-        """Clear cached step and matrices (e.g. after restoring filter state)."""
+        """Clear cached step and matrices.
+
+        Call after restoring a filter state (e.g. via ``set_state``) to ensure
+        the next ``apply`` recomputes F and Q rather than reusing stale values.
+        """
         self.cached_step = None
         self._cached_F = None
         self._cached_Q = None
@@ -194,7 +265,25 @@ def init_constant_velocity_filter(
     vel_idx: NDArray[np.int64],
     measurement: np.ndarray,
 ) -> KalmanFilter:
-    """New constant-velocity filter with ``F(1)``, identity ``H``, and initial state."""
+    """Create a constant-velocity Kalman filter with F(1), identity H, and initial state.
+
+    Initialises ``F`` for one nominal frame step (``frame_step = 1.0``),
+    sets ``H = I[:dim_z, :dim_x]``, and seeds the state vector with the
+    first measurement.
+
+    Args:
+        dim_x: Full state vector dimension (positions + velocities).
+        dim_z: Measurement dimension (number of observed coordinates).
+        pos_idx: Indices of position states in the state vector.
+        vel_idx: Indices of velocity states paired with ``pos_idx``.
+        measurement: Initial measurement of shape ``(dim_z,)`` used to
+            seed the filter state.
+
+    Returns:
+        Configured ``KalmanFilter`` with ``F``, ``H``, and initial state set.
+        Noise matrices (``Q``, ``R``, ``P``) are left at their filter defaults
+        and must be set by the caller via ``set_kf_covariances``.
+    """
     kf = KalmanFilter(dim_x=dim_x, dim_z=dim_z)
     kf.F = constant_velocity_F(dim_x, pos_idx, vel_idx, 1.0)
     kf.H = np.eye(dim_z, dim_x, dtype=np.float64)

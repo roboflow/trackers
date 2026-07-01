@@ -192,6 +192,10 @@ class OCSORTTracker(BaseTracker):
         Returns:
             sv.Detections with tracker_id assigned for each detection.
             Unmatched or immature tracks have tracker_id of -1.
+
+        Warns:
+            UserWarning: If ``frame`` is passed but OC-SORT does not perform
+                camera motion compensation (CMC), the frame is ignored.
         """
         self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)

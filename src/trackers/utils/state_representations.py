@@ -138,7 +138,13 @@ class BaseStateEstimator(ABC):
         """
 
     def predict(self, frame_step: float = 1.0) -> None:
-        """Predict one step. ``frame_step=1.0`` is one frame; use more after a gap."""
+        """Predict one Kalman step, scaling F and Q by frame_step.
+
+        Args:
+            frame_step: Elapsed time in frame units; ``1.0`` = one nominal
+                frame. Pass a larger value after a gap between updates so the
+                filter extrapolates further and widens process noise accordingly.
+        """
         self.clamp_velocity()
         self.motion.apply(self.kf, frame_step)
         self.kf.predict()

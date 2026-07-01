@@ -18,7 +18,18 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PredictTiming:
-    """Predict step size and elapsed time since the last step."""
+    """Predict step size and elapsed time since the last step.
+
+    Attributes:
+        frame_step (float): Elapsed time in frame units for this predict step.
+            Used to scale Kalman ``F`` and ``Q``. ``1.0`` means one nominal
+            frame; larger values indicate a gap between updates.
+        elapsed_seconds (float | None): Wall-clock seconds elapsed since the
+            last ``update()`` call. ``None`` in fixed-rate mode (no timestamp
+            was passed); non-``None`` in dynamic-rate mode.
+        skip_update (bool): When ``True`` the caller should skip the entire
+            measurement update step (e.g. backwards or non-finite timestamp).
+    """
 
     frame_step: float
     elapsed_seconds: float | None
@@ -26,12 +37,22 @@ class PredictTiming:
 
     @property
     def skip_predict(self) -> bool:
-        """Return whether predict should be skipped."""
+        """Return True when the Kalman predict step should be skipped.
+
+        Returns:
+            ``True`` if ``frame_step <= 0.0`` (duplicate or invalid timestamp),
+            ``False`` otherwise.
+        """
         return self.frame_step <= 0.0
 
     @property
     def uses_elapsed_time(self) -> bool:
-        """Return whether elapsed wall-clock time is available."""
+        """Return True when wall-clock elapsed time is available.
+
+        Returns:
+            ``True`` if ``elapsed_seconds`` is not ``None`` (dynamic-rate mode),
+            ``False`` in fixed-rate mode.
+        """
         return self.elapsed_seconds is not None
 
 

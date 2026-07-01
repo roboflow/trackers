@@ -140,6 +140,10 @@ class ByteTrackTracker(BaseTracker):
             sv.Detections with tracker_id assigned for each detection.
             Unmatched detections have tracker_id of -1. Detection order may
             differ from input.
+
+        Warns:
+            UserWarning: If ``frame`` is passed but ByteTrack does not perform
+                camera motion compensation (CMC), the frame is ignored.
         """
         self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)

@@ -172,6 +172,10 @@ class CBIoUTracker(BoTSORTTracker):
             Detections with ``tracker_id`` assigned. Unmatched
             low-confidence detections are included with ``tracker_id == -1``;
             callers filtering by ``tracker_id >= 0`` will silently drop these rows.
+
+        Warns:
+            UserWarning: If ``frame`` is passed but C-BIoU does not perform
+                camera motion compensation (CMC), the frame is ignored.
         """
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
