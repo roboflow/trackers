@@ -386,6 +386,7 @@ class BoTSORTTracker(BaseTracker):
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
             conf = float(confidences[global_idx])
+            out_det_indices.append(global_idx)
             if conf >= self.track_activation_threshold:
                 tracklet = BoTSORTTracklet(
                     initial_bbox=detection_boxes[global_idx],
@@ -394,8 +395,9 @@ class BoTSORTTracker(BaseTracker):
                 if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = self._allocate_tracker_id()
                 self.tracks.append(tracklet)
-                out_det_indices.append(global_idx)
                 out_tracker_ids.append(tracklet.tracker_id)
+            else:
+                out_tracker_ids.append(-1)
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
