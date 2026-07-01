@@ -14,7 +14,6 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -198,15 +197,7 @@ class BoTSORTTracker(BaseTracker):
         # Ghost-ID prevention: budget-only filter before association.
         # Keeps immature tracks alive for matching; full lifecycle prune runs after.
         _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
-        self.tracks = [
-            t
-            for t in self.tracks
-            if BaseTracklet.within_lost_track_budget(
-                t,
-                maximum_frames_without_update=self.maximum_frames_without_update,
-                maximum_time_without_update=_budget,
-            )
-        ]
+        self._prune_lost_tracks(timing)
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)

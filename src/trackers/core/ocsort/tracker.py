@@ -231,7 +231,7 @@ class OCSORTTracker(BaseTracker):
         )
 
         for row, col in matched_indices:
-            self.tracks[row].update(detection_boxes[col])
+            self.tracks[row].update(detection_boxes[col], timing)
             tid = self.tracks[row].resolve_tracker_id(
                 self.minimum_consecutive_frames,
                 self.frame_count,
@@ -255,7 +255,7 @@ class OCSORTTracker(BaseTracker):
             for ocr_row, ocr_col in ocr_matched:
                 track_idx = unmatched_tracks[ocr_row]
                 det_idx = unmatched_detections[ocr_col]
-                self.tracks[track_idx].update(detection_boxes[det_idx])
+                self.tracks[track_idx].update(detection_boxes[det_idx], timing)
                 tid = self.tracks[track_idx].resolve_tracker_id(
                     self.minimum_consecutive_frames,
                     self.frame_count,

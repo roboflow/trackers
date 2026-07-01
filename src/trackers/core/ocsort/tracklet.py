@@ -78,15 +78,17 @@ class OCSORTTracklet(BaseTracklet):
         """Save Kalman filter state before track is lost (ORU mechanism)."""
         self._frozen_state = self.state_estimator.get_state()
 
-    def _unfreeze(self, new_bbox: np.ndarray) -> None:
+    def _unfreeze(self, new_bbox: np.ndarray, timing: PredictTiming) -> None:
         """Restore state and apply virtual trajectory (ORU mechanism).
 
         Generates linear interpolation between last observation and new
         detection, then re-updates the Kalman filter through this virtual
-        trajectory.
+        trajectory. Each sub-step uses ``timing.frame_step / time_gap`` so
+        the replayed predictions scale correctly in variable-FPS mode.
 
         Args:
             new_bbox: New observation bounding box `[x1, y1, x2, y2]`.
+            timing: Predict timing carrying the actual elapsed frame step.
         """
         if self._frozen_state is None:
             return
@@ -95,15 +97,16 @@ class OCSORTTracklet(BaseTracklet):
         self.state_estimator.set_state(self._frozen_state)
 
         time_gap = self.time_since_update
+        sub_step = timing.frame_step
         # this is oc-sort specific
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
-            self._unfreeze_xcycsr(new_bbox, time_gap)
+            self._unfreeze_xcycsr(new_bbox, time_gap, sub_step)
         else:
-            self._unfreeze_xyxy(new_bbox, time_gap)
+            self._unfreeze_xyxy(new_bbox, time_gap, sub_step)
 
         self._frozen_state = None
 
-    def _unfreeze_xcycsr(self, new_bbox: np.ndarray, time_gap: int) -> None:
+    def _unfreeze_xcycsr(self, new_bbox: np.ndarray, time_gap: int, sub_step: float) -> None:
         """ORU interpolation for XCYCSR representation.
 
         Generates time_gap predict+update cycles with virtual observations
@@ -143,9 +146,9 @@ class OCSORTTracklet(BaseTracklet):
 
             self.state_estimator.kf.update(virtual_obs)
             if i < time_gap - 1:
-                self.state_estimator.predict()
+                self.state_estimator.predict(sub_step)
 
-    def _unfreeze_xyxy(self, new_bbox: np.ndarray, time_gap: int) -> None:
+    def _unfreeze_xyxy(self, new_bbox: np.ndarray, time_gap: int, sub_step: float) -> None:
         """ORU interpolation for XYXY representation.
 
         Same pattern as XCYCSR: time_gap predict+update cycles with factors
@@ -162,7 +165,7 @@ class OCSORTTracklet(BaseTracklet):
 
             self.state_estimator.kf.update(virtual_obs)
             if i < time_gap - 1:
-                self.state_estimator.predict()
+                self.state_estimator.predict(sub_step)
 
     def get_k_previous_obs(self) -> np.ndarray | None:
         """Get observation from delta_t steps ago.
@@ -200,7 +203,7 @@ class OCSORTTracklet(BaseTracklet):
         norm = np.sqrt((cy2 - cy1) ** 2 + (cx2 - cx1) ** 2) + 1e-6
         return speed / norm
 
-    def update(self, bbox: np.ndarray) -> None:
+    def update(self, bbox: np.ndarray, timing: PredictTiming = FIXED_RATE_TIMING) -> None:
         """Update tracklet state with a new bounding-box observation.
 
         Handles ORU: if the track was lost and is now observed again,
@@ -209,6 +212,7 @@ class OCSORTTracklet(BaseTracklet):
 
         Args:
             bbox: Bounding box `[x1, y1, x2, y2]`.
+            timing: Predict timing for ORU replay sub-step scaling.
         """
         # Compute velocity only after the track has been observed at least once
         # (matches original OC-SORT: velocity is None until 2nd match)
@@ -218,7 +222,7 @@ class OCSORTTracklet(BaseTracklet):
 
         # Check if we need to unfreeze (was lost, now observed)
         if not self._observed and self._frozen_state is not None:
-            self._unfreeze(bbox)
+            self._unfreeze(bbox, timing)
 
         # Update KF with the real observation
         # (after ORU this is the final update at the correct time step;

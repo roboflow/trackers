@@ -14,7 +14,6 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.core.sort.utils import _get_alive_tracklets
-from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import (
@@ -206,19 +205,10 @@ class SORTTracker(BaseTracker):
 
         self._predict_tracklets(self.tracks, timing)
 
-        # Ghost-ID prevention: remove tracks that already exceed their budget
-        # so they cannot be revived by association. Use budget-only filter here
-        # (not _get_alive_tracklets) to keep immature tracks alive for matching.
+        # Ghost-ID prevention: budget-only filter before association.
+        # Keeps immature tracks alive for matching; full lifecycle prune runs after.
         _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
-        self.tracks = [
-            t
-            for t in self.tracks
-            if BaseTracklet.within_lost_track_budget(
-                t,
-                maximum_frames_without_update=self.maximum_frames_without_update,
-                maximum_time_without_update=_budget,
-            )
-        ]
+        self._prune_lost_tracks(timing)
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)

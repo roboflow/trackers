@@ -18,6 +18,7 @@ from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin
 import numpy as np
 import supervision as sv
 
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.predict_timing import PredictTiming
 
 
@@ -372,8 +373,8 @@ class BaseTracker(ABC):
         """
         return sorted(cls._registry.keys())
 
-    _frame_rate: float
-    _last_timestamp: float | None
+    _frame_rate: float = 1.0
+    _last_timestamp: float | None = None
 
     def _init_timestamp_state(self, frame_rate: float) -> None:
         """Register reference FPS and reset timestamp bookkeeping.
@@ -480,10 +481,27 @@ class BaseTracker(ABC):
     def _lost_track_time_budget(
         self,
         timing: PredictTiming,
-        seconds_budget: float,
+        seconds_budget: float | None,
     ) -> float | None:
         """Return the seconds lost-track budget when timestamps are in use."""
         return seconds_budget if timing.uses_elapsed_time else None
+
+    def _prune_lost_tracks(self, timing: PredictTiming) -> None:
+        """Remove tracks that exceed their lost-track budget (ghost-ID prevention).
+
+        Applies a budget-only filter so immature tracks stay alive for matching.
+        Call after ``_predict_tracklets`` and before association.
+        """
+        budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        self.tracks = [
+            t
+            for t in self.tracks
+            if BaseTracklet.within_lost_track_budget(
+                t,
+                maximum_frames_without_update=self.maximum_frames_without_update,
+                maximum_time_without_update=budget,
+            )
+        ]
 
     @abstractmethod
     def update(
