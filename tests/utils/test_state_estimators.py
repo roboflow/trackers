@@ -41,8 +41,8 @@ def test_predict_default_matches_unit_frame_step(
         default.predict()
         explicit.predict(1.0)
 
-    np.testing.assert_allclose(default.kf.x, explicit.kf.x, atol=1e-12)
-    np.testing.assert_allclose(default.kf.P, explicit.kf.P, atol=1e-12)
+    np.testing.assert_allclose(default.kf.state, explicit.kf.state, atol=1e-12)
+    np.testing.assert_allclose(default.kf.state_covariance, explicit.kf.state_covariance, atol=1e-12)
 
 
 @pytest.mark.parametrize("estimator_cls", ALL_ESTIMATORS)

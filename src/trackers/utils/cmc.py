@@ -375,11 +375,11 @@ class CMC:
         Returns:
             Affine transform matrix (2, 3) mapping previous frame to current, float32.
         """
-        H_img, W_img = frame_bgr.shape[:2]
+        img_h, img_w = frame_bgr.shape[:2]
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
 
         if self.downscale > 1:
-            gray = cv2.resize(gray, (W_img // self.downscale, H_img // self.downscale))
+            gray = cv2.resize(gray, (img_w // self.downscale, img_h // self.downscale))
         H, W = gray.shape[:2]
 
         # Build mask: central ROI + remove detections (background features)
@@ -408,25 +408,25 @@ class CMC:
         kps = self.detector.detect(gray, mask)  # type: ignore[union-attr]
         kps, desc = self.extractor.compute(gray, kps)  # type: ignore[union-attr]
 
-        H_aff = np.eye(2, 3, dtype=np.float32)
+        affine_mtx = np.eye(2, 3, dtype=np.float32)
 
         # First frame init
         if not self._initialized:
             self._prev_kps = copy.copy(kps)
             self._prev_desc = None if desc is None else copy.copy(desc)
             self._initialized = True
-            return H_aff
+            return affine_mtx
 
         if self._prev_desc is None or desc is None or len(desc) == 0 or self._prev_kps is None:
             self._prev_kps = copy.copy(kps)
             self._prev_desc = None if desc is None else copy.copy(desc)
-            return H_aff
+            return affine_mtx
 
         knn = self.matcher.knnMatch(self._prev_desc, desc, k=2)  # type: ignore[union-attr]
         if len(knn) == 0:
             self._prev_kps = copy.copy(kps)
             self._prev_desc = copy.copy(desc)
-            return H_aff
+            return affine_mtx
 
         max_spatial = self.cfg.max_spatial_distance_frac * np.array([W, H], dtype=np.float32)
 
@@ -459,21 +459,21 @@ class CMC:
             curr_pts_np = np.asarray(curr_pts, dtype=np.float32)[inl]
 
             if len(prev_pts_np) >= 5:
-                H_est, _ = cv2.estimateAffinePartial2D(
+                affine_est, _ = cv2.estimateAffinePartial2D(
                     prev_pts_np,
                     curr_pts_np,
                     method=cv2.RANSAC,
                     ransacReprojThreshold=self.cfg.ransac_reproj_threshold,
                 )
-                if H_est is not None:
-                    H_aff = H_est.astype(np.float32)
+                if affine_est is not None:
+                    affine_mtx = affine_est.astype(np.float32)
                     if self.downscale > 1:
-                        H_aff[0, 2] *= self.downscale
-                        H_aff[1, 2] *= self.downscale
+                        affine_mtx[0, 2] *= self.downscale
+                        affine_mtx[1, 2] *= self.downscale
 
         self._prev_kps = copy.copy(kps)
         self._prev_desc = copy.copy(desc)
-        return H_aff
+        return affine_mtx
 
     def _estimate_sparse_optflow(self, frame_bgr: np.ndarray) -> np.ndarray:
         """
@@ -493,14 +493,14 @@ class CMC:
         Returns:
             Affine transform matrix (2, 3) mapping previous frame to current, float32.
         """
-        H_img, W_img = frame_bgr.shape[:2]
+        img_h, img_w = frame_bgr.shape[:2]
         frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
 
-        H_aff = np.eye(2, 3, dtype=np.float32)
+        affine_mtx = np.eye(2, 3, dtype=np.float32)
 
         # Downscale
         if self.downscale > 1:
-            frame = cv2.resize(frame, (W_img // self.downscale, H_img // self.downscale))
+            frame = cv2.resize(frame, (img_w // self.downscale, img_h // self.downscale))
 
         # Find keypoints in current frame
         keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)
@@ -510,13 +510,13 @@ class CMC:
             self._prev_frame_gray = frame.copy()
             self._prev_points = copy.copy(keypoints)
             self._initialized = True
-            return H_aff
+            return affine_mtx
 
         # If we don't have points, re-init
         if self._prev_frame_gray is None or self._prev_points is None or keypoints is None:
             self._prev_frame_gray = frame.copy()
             self._prev_points = copy.copy(keypoints)
-            return H_aff
+            return affine_mtx
 
         # Optical flow correspondences
         # calcOpticalFlowPyrLK will throw or return nonsense if we give it None
@@ -525,7 +525,7 @@ class CMC:
         if status is None or matched is None:
             self._prev_frame_gray = frame.copy()
             self._prev_points = copy.copy(keypoints)
-            return H_aff
+            return affine_mtx
 
         # Keep only good correspondences
         prev_pts: list[np.ndarray] = []
@@ -543,18 +543,18 @@ class CMC:
 
         # Find rigid matrix
         if (np.size(prev_pts_np, 0) > 4) and (np.size(prev_pts_np, 0) == np.size(curr_pts_np, 0)):
-            H_est, _ = cv2.estimateAffinePartial2D(
+            affine_est, _ = cv2.estimateAffinePartial2D(
                 prev_pts_np,
                 curr_pts_np,
                 method=cv2.RANSAC,
             )
-            if H_est is not None:
-                H_aff = H_est.astype(np.float32)
+            if affine_est is not None:
+                affine_mtx = affine_est.astype(np.float32)
 
                 # Handle downscale translation back to original image coords
                 if self.downscale > 1:
-                    H_aff[0, 2] *= self.downscale
-                    H_aff[1, 2] *= self.downscale
+                    affine_mtx[0, 2] *= self.downscale
+                    affine_mtx[1, 2] *= self.downscale
         else:
             logger.warning("CMC: not enough matching points for motion estimation")
             self.frames_failed += 1
@@ -564,7 +564,7 @@ class CMC:
         # self._prev_points = copy.copy(keypoints)
         self._prev_points = None if keypoints is None else keypoints.copy()
 
-        return H_aff
+        return affine_mtx
 
     def _estimate_ecc(self, frame_bgr: np.ndarray) -> np.ndarray:
         """
@@ -593,39 +593,39 @@ class CMC:
             identity if initialization has not yet occurred or if ECC
             optimization fails.
         """
-        H_img, W_img = frame_bgr.shape[:2]
+        img_h, img_w = frame_bgr.shape[:2]
         frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
 
-        H_aff = np.eye(2, 3, dtype=np.float32)
+        affine_mtx = np.eye(2, 3, dtype=np.float32)
 
         if self.downscale > 1:
             frame = cv2.GaussianBlur(frame, (3, 3), 1.5)
-            frame = cv2.resize(frame, (W_img // self.downscale, H_img // self.downscale))
+            frame = cv2.resize(frame, (img_w // self.downscale, img_h // self.downscale))
 
         if not self._initialized:
             self._prev_frame_gray = frame.copy()
             self._initialized = True
-            return H_aff
+            return affine_mtx
 
         if self._prev_frame_gray is None:
             self._prev_frame_gray = frame.copy()
-            return H_aff
+            return affine_mtx
 
         try:
-            _cc, H_est = cv2.findTransformECC(
+            _cc, affine_est = cv2.findTransformECC(
                 self._prev_frame_gray,
                 frame,
-                H_aff,
+                affine_mtx,
                 self.warp_mode,
                 self.criteria,
                 None,
                 self.cfg.ecc_gaussian_filter_size,
             )
-            if H_est is not None:
-                H_aff = H_est.astype(np.float32)
+            if affine_est is not None:
+                affine_mtx = affine_est.astype(np.float32)
                 if self.downscale > 1:
-                    H_aff[0, 2] *= self.downscale
-                    H_aff[1, 2] *= self.downscale
+                    affine_mtx[0, 2] *= self.downscale
+                    affine_mtx[1, 2] *= self.downscale
         except cv2.error:
             logger.warning("CMC: ECC motion estimation failed, using identity")
             self.frames_failed += 1
@@ -636,7 +636,7 @@ class CMC:
         # frame.
         self._prev_frame_gray = frame.copy()
 
-        return H_aff
+        return affine_mtx
 
     @staticmethod
     def warp_xyxy_corners(
@@ -644,10 +644,10 @@ class CMC:
         y1: np.ndarray,
         x2: np.ndarray,
         y2: np.ndarray,
-        R: np.ndarray,
-        t: np.ndarray | None = None,
+        rot_mtx: np.ndarray,
+        translation: np.ndarray | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Transform four box corners via R/t and return the enclosing axis-aligned box.
+        """Transform four box corners via rot_mtx/translation and return the enclosing axis-aligned box.
 
         Takes per-axis coordinate arrays (not a packed (N, 4) array) and returns
         per-axis result arrays of the same shape. The four corners are
@@ -664,8 +664,8 @@ class CMC:
             y1: Top edge coordinate(s), same shape as ``x1``.
             x2: Right edge coordinate(s), same shape as ``x1``.
             y2: Bottom edge coordinate(s), same shape as ``x1``.
-            R: 2x2 rotation/shear sub-matrix of the affine transform.
-            t: Optional 2-element translation vector.
+            rot_mtx: 2x2 rotation/shear sub-matrix of the affine transform.
+            translation: Optional 2-element translation vector.
 
         Returns:
             Tuple ``(new_x1, new_y1, new_x2, new_y2)`` -- per-axis min and max of
@@ -673,13 +673,13 @@ class CMC:
 
         Examples:
             >>> import numpy as np
-            >>> R = np.eye(2, dtype=np.float64)
-            >>> t = np.array([5.0, -3.0])
+            >>> rot_mtx = np.eye(2, dtype=np.float64)
+            >>> translation = np.array([5.0, -3.0])
             >>> x1 = np.array([10.0, 20.0])
             >>> y1 = np.array([20.0, 30.0])
             >>> x2 = np.array([50.0, 60.0])
             >>> y2 = np.array([80.0, 90.0])
-            >>> nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t)
+            >>> nx1, ny1, nx2, ny2 = CMC.warp_xyxy_corners(x1, y1, x2, y2, rot_mtx, translation)
             >>> nx1.tolist()
             [15.0, 25.0]
         """
@@ -692,9 +692,9 @@ class CMC:
             ],
             axis=-2,
         )  # (..., 4, 2)
-        out = corners @ R.T
-        if t is not None:
-            out = out + t
+        out = corners @ rot_mtx.T
+        if translation is not None:
+            out = out + translation
         lo = out.min(axis=-2)
         hi = out.max(axis=-2)
         return lo[..., 0], lo[..., 1], hi[..., 0], hi[..., 1]
@@ -710,8 +710,8 @@ class CMC:
         y1: np.ndarray,
         x2: np.ndarray,
         y2: np.ndarray,
-        R: np.ndarray,
-        t: np.ndarray | None = None,
+        rot_mtx: np.ndarray,
+        translation: np.ndarray | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Deprecated alias for :meth:`CMC.warp_xyxy_corners`.
 
@@ -724,8 +724,8 @@ class CMC:
             y1: Top edge coordinate(s).
             x2: Right edge coordinate(s).
             y2: Bottom edge coordinate(s).
-            R: 2x2 rotation/shear sub-matrix of the affine transform.
-            t: Optional 2-element translation vector.
+            rot_mtx: 2x2 rotation/shear sub-matrix of the affine transform.
+            translation: Optional 2-element translation vector.
 
         Returns:
             Tuple ``(new_x1, new_y1, new_x2, new_y2)`` -- see
@@ -734,27 +734,27 @@ class CMC:
         Examples:
             >>> import numpy as np
             >>> import warnings
-            >>> R = np.eye(2, dtype=np.float64)
-            >>> t = np.array([5.0, -3.0])
+            >>> rot_mtx = np.eye(2, dtype=np.float64)
+            >>> translation = np.array([5.0, -3.0])
             >>> x1 = np.array([10.0, 20.0])
             >>> y1 = np.array([20.0, 30.0])
             >>> x2 = np.array([50.0, 60.0])
             >>> y2 = np.array([80.0, 90.0])
             >>> with warnings.catch_warnings():
             ...     warnings.simplefilter("ignore")
-            ...     nx1, _, _, _ = CMC.apply_to_xyxy(x1, y1, x2, y2, R, t)
+            ...     nx1, _, _, _ = CMC.apply_to_xyxy(x1, y1, x2, y2, rot_mtx, translation)
             >>> nx1.tolist()
             [15.0, 25.0]
         """
 
     @staticmethod
-    def apply_batch(H: np.ndarray | None, tracklets: Sequence[BaseTracklet]) -> None:
+    def apply_batch(affine_mtx: np.ndarray | None, tracklets: Sequence[BaseTracklet]) -> None:
         """Apply a 2x3 affine camera-motion transform to a list of BoT-SORT tracklets.
 
         .. note::
             This method is BoT-SORT-specific. It requires each tracklet to expose a
-            ``state_estimator`` with a ``kf.x`` state-vector column (``(dim, 1)``) and
-            ``kf.P`` covariance matrix, matching the layout of
+            ``state_estimator`` with a ``kf.state`` state-vector column (``(dim, 1)``) and
+            ``kf.state_covariance`` matrix, matching the layout of
             ``XCYCWHStateEstimator`` / ``XYXYStateEstimator``. Passing arbitrary
             tracklets without this layout will raise ``AttributeError`` at runtime.
 
@@ -763,19 +763,19 @@ class CMC:
 
         For XYXY-state tracks, positions and velocities are updated via four-corner
         enclosure (``CMC.warp_xyxy_corners``) so that axis-alignment is preserved under
-        rotation, reflection, and shear. The covariance matrix ``P`` is updated with
-        the block-diagonal rotation matrix only when ``R`` is axis-aligned
-        (off-diagonals < 1e-6). When ``R`` has cross-axis terms, ``P`` is left
-        unchanged.
+        rotation, reflection, and shear. The state covariance is updated with the
+        block-diagonal rotation matrix only when ``rot_mtx`` is axis-aligned
+        (off-diagonals < 1e-6). When ``rot_mtx`` has cross-axis terms, the covariance is
+        left unchanged.
 
         For XCYCWH-state tracks, only the centre position and velocity are rotated;
         width/height and their velocities are not transformed.
 
         Args:
-            H: 2x3 affine transform matrix returned by ``CMC.estimate()``. If
+            affine_mtx: 2x3 affine transform matrix returned by ``CMC.estimate()``. If
                 ``None``, this method is a no-op.
             tracklets: Homogeneous list of BoT-SORT tracklets, each with a
-                ``state_estimator.kf.x`` state vector and ``kf.P`` covariance.
+                ``state_estimator.kf.state`` state vector and ``kf.state_covariance`` covariance.
 
         Raises:
             TypeError: If tracklets in the list have different state estimator types.
@@ -785,31 +785,31 @@ class CMC:
             >>> from trackers.core.botsort.tracklet import BoTSORTTracklet
             >>> bbox = np.array([10.0, 20.0, 50.0, 80.0])
             >>> track = BoTSORTTracklet(bbox)
-            >>> H = np.eye(2, 3, dtype=np.float32)
-            >>> CMC.apply_batch(H, [track])  # identity H -- state unchanged
-            >>> CMC.apply_batch(None, [track])  # None H -- no-op
+            >>> affine_mtx = np.eye(2, 3, dtype=np.float32)
+            >>> CMC.apply_batch(affine_mtx, [track])  # identity -- state unchanged
+            >>> CMC.apply_batch(None, [track])  # None -- no-op
         """
         from trackers.utils.state_representations import XYXYStateEstimator
 
-        if H is None or len(tracklets) == 0:
+        if affine_mtx is None or len(tracklets) == 0:
             return
 
-        R = H[:2, :2].astype(np.float64)
-        t = H[:2, 2].astype(np.float64)
+        rot_mtx = affine_mtx[:2, :2].astype(np.float64)
+        translation = affine_mtx[:2, 2].astype(np.float64)
 
         first_estimator: BaseStateEstimator = tracklets[0].state_estimator
-        if not all(type(t.state_estimator) is type(first_estimator) for t in tracklets):
-            mismatch = next(t for t in tracklets if type(t.state_estimator) is not type(first_estimator))
+        if not all(type(trk.state_estimator) is type(first_estimator) for trk in tracklets):
+            mismatch = next(trk for trk in tracklets if type(trk.state_estimator) is not type(first_estimator))
             raise TypeError(
                 f"CMC.apply_batch requires homogeneous state types; "
                 f"got {type(first_estimator).__name__!r} and {type(mismatch.state_estimator).__name__!r}."
             )
-        dim = first_estimator.kf.x.shape[0]
+        dim = first_estimator.kf.state.shape[0]
         is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
 
         # Stack states (N, dim) and covariances (N, dim, dim)
-        states = np.array([trk.state_estimator.kf.x.reshape(-1) for trk in tracklets])
-        Ps = np.array([trk.state_estimator.kf.P for trk in tracklets])
+        states = np.array([trk.state_estimator.kf.state.reshape(-1) for trk in tracklets])
+        covariances = np.array([trk.state_estimator.kf.state_covariance for trk in tracklets])
 
         if is_xyxy:
             # XYXY boxes must remain axis-aligned after CMC. For transforms with
@@ -818,39 +818,39 @@ class CMC:
             # invalid geometry. Transform all four corners, then rebuild the
             # enclosing axis-aligned box with per-axis min/max.
             states[:, 0], states[:, 1], states[:, 2], states[:, 3] = CMC.warp_xyxy_corners(
-                states[:, 0], states[:, 1], states[:, 2], states[:, 3], R, t
+                states[:, 0], states[:, 1], states[:, 2], states[:, 3], rot_mtx, translation
             )
             # Keep XYXY velocity ordering valid under mixed-axis transforms by
             # applying the same corner-wise normalization to the paired velocity
             # components.
             states[:, 4], states[:, 5], states[:, 6], states[:, 7] = CMC.warp_xyxy_corners(
-                states[:, 4], states[:, 5], states[:, 6], states[:, 7], R
+                states[:, 4], states[:, 5], states[:, 6], states[:, 7], rot_mtx
             )
         else:
-            # Batch-transform centre positions: x' = x @ R.T + t
-            states[:, 0:2] = states[:, 0:2] @ R.T + t
-            # Batch-transform centre velocities: v' = v @ R.T
-            states[:, 4:6] = states[:, 4:6] @ R.T
+            # Batch-transform centre positions: pos' = pos @ rot_mtx.T + translation
+            states[:, 0:2] = states[:, 0:2] @ rot_mtx.T + translation
+            # Batch-transform centre velocities: vel' = vel @ rot_mtx.T
+            states[:, 4:6] = states[:, 4:6] @ rot_mtx.T
 
-        A = None
+        block_rot = None
         if is_xyxy:
             # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
-            # to 1e-6 residuals on off-diagonals even for pure-translation H;
+            # to 1e-6 residuals on off-diagonals even for pure-translation affine_mtx;
             # default atol=1e-8 misclassifies those as cross-axis transforms.
-            if np.isclose(R[0, 1], 0.0, atol=1e-6) and np.isclose(R[1, 0], 0.0, atol=1e-6):
-                A = np.eye(dim, dtype=np.float64)
-                A[0:2, 0:2] = R
-                A[2:4, 2:4] = R
-                A[4:6, 4:6] = R
-                A[6:8, 6:8] = R
+            if np.isclose(rot_mtx[0, 1], 0.0, atol=1e-6) and np.isclose(rot_mtx[1, 0], 0.0, atol=1e-6):
+                block_rot = np.eye(dim, dtype=np.float64)
+                block_rot[0:2, 0:2] = rot_mtx
+                block_rot[2:4, 2:4] = rot_mtx
+                block_rot[4:6, 4:6] = rot_mtx
+                block_rot[6:8, 6:8] = rot_mtx
         else:
-            A = np.eye(dim, dtype=np.float64)
-            A[0:2, 0:2] = R
-            A[4:6, 4:6] = R
+            block_rot = np.eye(dim, dtype=np.float64)
+            block_rot[0:2, 0:2] = rot_mtx
+            block_rot[4:6, 4:6] = rot_mtx
 
-        if A is not None:
-            Ps = A @ Ps @ A.T
+        if block_rot is not None:
+            covariances = block_rot @ covariances @ block_rot.T
 
         for i, trk in enumerate(tracklets):
-            trk.state_estimator.kf.x = states[i].reshape(-1, 1)
-            trk.state_estimator.kf.P = Ps[i]
+            trk.state_estimator.kf.state = states[i].reshape(-1, 1)
+            trk.state_estimator.kf.state_covariance = covariances[i]

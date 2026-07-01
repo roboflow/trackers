@@ -95,32 +95,32 @@ def test_build_Q_at_frame_step_1_returns_baseline() -> None:
 
 
 def test_sync_preserves_configured_q_at_unit_frame_step() -> None:
-    """At frame_step=1.0, kf.Q must equal the configured Q exactly (backward-compat gate)."""
+    """At frame_step=1.0, kf.process_noise must equal the configured Q exactly (backward-compat gate)."""
     kf = KalmanFilter(dim_x=2, dim_z=1)
     custom_Q = np.diag([0.01, 0.02])
-    kf.Q = custom_Q.copy()
+    kf.process_noise = custom_Q.copy()
     model = KalmanMotionModel.from_filter(kf, POS_1D, VEL_1D)
-    model.calibrate_from_Q(custom_Q)
+    model.calibrate_from_process_noise(custom_Q)
 
     model.apply(kf, 1.0)
 
     # frame_step=1.0 returns the hand-tuned Q unchanged — no DWNA rescaling.
-    np.testing.assert_array_equal(kf.Q, custom_Q)
+    np.testing.assert_array_equal(kf.process_noise, custom_Q)
 
 
 def test_sync_gap_scales_q_relative_to_unit_frame_step() -> None:
     """Gap step must scale velocity variance as ``dt^2`` relative to ``frame_step = 1``."""
     kf = KalmanFilter(dim_x=2, dim_z=1)
     custom_Q = np.diag([0.01, 0.02])
-    kf.Q = custom_Q.copy()
+    kf.process_noise = custom_Q.copy()
     model = KalmanMotionModel.from_filter(kf, POS_1D, VEL_1D)
-    model.calibrate_from_Q(custom_Q)
+    model.calibrate_from_process_noise(custom_Q)
 
     model.apply(kf, 1.0)
-    q_unit = kf.Q.copy()
+    q_unit = kf.process_noise.copy()
     model.apply(kf, 3.0)
 
-    assert kf.Q[1, 1] == pytest.approx(custom_Q[1, 1] * 9.0)
+    assert kf.process_noise[1, 1] == pytest.approx(custom_Q[1, 1] * 9.0)
     model.apply(kf, 1.0)
     # Returning to frame_step=1 restores the configured baseline Q exactly.
-    np.testing.assert_allclose(kf.Q, q_unit, rtol=1e-12)
+    np.testing.assert_allclose(kf.process_noise, q_unit, rtol=1e-12)

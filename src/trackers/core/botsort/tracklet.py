@@ -109,7 +109,7 @@ class BoTSORTTracklet(BaseTracklet):
         if initial:
             if isinstance(self.state_estimator, XCYCSRStateEstimator):
                 s = np.sqrt(max(w * h, 1e-6))
-                P = np.diag(
+                state_covariance = np.diag(
                     [
                         (2 * sp * w) ** 2,
                         (2 * sp * h) ** 2,
@@ -121,7 +121,7 @@ class BoTSORTTracklet(BaseTracklet):
                     ]
                 )
             else:
-                P = np.diag(
+                state_covariance = np.diag(
                     [
                         (2 * sp * w) ** 2,
                         (2 * sp * h) ** 2,
@@ -133,9 +133,11 @@ class BoTSORTTracklet(BaseTracklet):
                         (10 * sv * h) ** 2,
                     ]
                 )
-            self.state_estimator.set_kf_covariances(R=R, Q=Q, P=P)
+            self.state_estimator.set_kf_covariances(
+                measurement_noise=R, process_noise=Q, state_covariance=state_covariance
+            )
         else:
-            self.state_estimator.set_kf_covariances(R=R, Q=Q)
+            self.state_estimator.set_kf_covariances(measurement_noise=R, process_noise=Q)
 
     def _refresh_noise_from_state(self) -> None:
         """Recompute Q and R from the current bbox size."""
@@ -166,7 +168,7 @@ class BoTSORTTracklet(BaseTracklet):
 
     def _clamp_state_bbox(self) -> None:
         """Clamp geometric components based on active state representation."""
-        kf_x = self.state_estimator.kf.x
+        kf_x = self.state_estimator.kf.state
         if isinstance(self.state_estimator, XYXYStateEstimator):
             self._clamp_xyxy_state(kf_x)
         elif isinstance(self.state_estimator, XCYCWHStateEstimator):
@@ -206,7 +208,7 @@ class BoTSORTTracklet(BaseTracklet):
         """Return the current bounding-box estimate in xyxy format."""
         return self.state_estimator.state_to_bbox()
 
-    def apply_cmc(self, H: np.ndarray | None) -> None:
+    def apply_cmc(self, affine_mtx: np.ndarray | None) -> None:
         """Apply a 2x3 affine camera-motion transform **in place**.
 
         Delegates to :meth:`CMC.apply_batch` with ``[self]`` as the
@@ -215,14 +217,14 @@ class BoTSORTTracklet(BaseTracklet):
         update rules.
 
         Args:
-            H: 2x3 affine transform matrix. If ``None``, this is a no-op.
+            affine_mtx: 2x3 affine transform matrix. If ``None``, this is a no-op.
 
         Examples:
             >>> import numpy as np
             >>> bbox = np.array([10.0, 20.0, 50.0, 80.0])
             >>> tracklet = BoTSORTTracklet(bbox)
-            >>> H = np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]], dtype=np.float32)
-            >>> tracklet.apply_cmc(H)
+            >>> affine_mtx = np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]], dtype=np.float32)
+            >>> tracklet.apply_cmc(affine_mtx)
             >>> tracklet.apply_cmc(None)  # no-op
         """
-        CMC.apply_batch(H, [self])
+        CMC.apply_batch(affine_mtx, [self])

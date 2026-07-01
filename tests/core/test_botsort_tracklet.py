@@ -73,8 +73,8 @@ def test_botsort_tracklet_larger_box_has_larger_process_noise() -> None:
     small = BoTSORTTracklet(np.array([0.0, 0.0, 20.0, 20.0]))
     large = BoTSORTTracklet(np.array([0.0, 0.0, 200.0, 200.0]))
 
-    small_Q = np.diag(small.state_estimator.kf.Q)
-    large_Q = np.diag(large.state_estimator.kf.Q)
+    small_Q = np.diag(small.state_estimator.kf.process_noise)
+    large_Q = np.diag(large.state_estimator.kf.process_noise)
 
     assert np.all(large_Q > small_Q), "larger box must produce larger process noise diagonal"
 
@@ -84,8 +84,8 @@ def test_botsort_tracklet_larger_box_has_larger_measurement_noise() -> None:
     small = BoTSORTTracklet(np.array([0.0, 0.0, 20.0, 20.0]))
     large = BoTSORTTracklet(np.array([0.0, 0.0, 200.0, 200.0]))
 
-    small_R = np.diag(small.state_estimator.kf.R)
-    large_R = np.diag(large.state_estimator.kf.R)
+    small_R = np.diag(small.state_estimator.kf.measurement_noise)
+    large_R = np.diag(large.state_estimator.kf.measurement_noise)
 
     assert np.all(large_R > small_R), "larger box must produce larger measurement noise diagonal"
 
@@ -99,36 +99,36 @@ def test_botsort_tracklet_apply_cmc_none_is_noop(
     tracklet: BoTSORTTracklet,
 ) -> None:
     """apply_cmc(None) must leave state and covariance unchanged."""
-    state_before = tracklet.state_estimator.kf.x.copy()
-    P_before = tracklet.state_estimator.kf.P.copy()
+    state_before = tracklet.state_estimator.kf.state.copy()
+    P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
     tracklet.apply_cmc(None)
 
-    np.testing.assert_array_equal(tracklet.state_estimator.kf.x, state_before)
-    np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.state, state_before)
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.state_covariance, P_before)
 
 
 def test_botsort_tracklet_apply_cmc_identity_is_noop(
     tracklet: BoTSORTTracklet,
 ) -> None:
     """apply_cmc with an identity transform must leave state unchanged."""
-    state_before = tracklet.state_estimator.kf.x.copy()
+    state_before = tracklet.state_estimator.kf.state.copy()
     tracklet.apply_cmc(np.eye(2, 3, dtype=np.float32))
-    np.testing.assert_allclose(tracklet.state_estimator.kf.x, state_before, atol=1e-6)
+    np.testing.assert_allclose(tracklet.state_estimator.kf.state, state_before, atol=1e-6)
 
 
 def test_botsort_tracklet_apply_cmc_translates_center(
     tracklet: BoTSORTTracklet,
 ) -> None:
     """A pure translation H must shift center by (tx, ty)."""
-    x_before = tracklet.state_estimator.kf.x.reshape(-1).copy()
+    x_before = tracklet.state_estimator.kf.state.reshape(-1).copy()
     cx, cy = x_before[0], x_before[1]
 
     tx, ty = 10.0, -5.0
     H = np.array([[1.0, 0.0, tx], [0.0, 1.0, ty]], dtype=np.float32)
     tracklet.apply_cmc(H)
 
-    x_after = tracklet.state_estimator.kf.x.reshape(-1)
+    x_after = tracklet.state_estimator.kf.state.reshape(-1)
     np.testing.assert_allclose(x_after[0], cx + tx, atol=1e-6)
     np.testing.assert_allclose(x_after[1], cy + ty, atol=1e-6)
 

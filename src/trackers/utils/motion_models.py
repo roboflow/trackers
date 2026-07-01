@@ -171,7 +171,7 @@ class KalmanMotionModel:
     process_noise: ScalableProcessNoise
     cached_step: float | None = field(default=None, init=False)
     _cached_transition_mtx: NDArray[np.float64] | None = field(default=None, init=False)
-    _cached_Q: NDArray[np.float64] | None = field(default=None, init=False)
+    _cached_process_noise: NDArray[np.float64] | None = field(default=None, init=False)
 
     @classmethod
     def from_filter(
@@ -202,23 +202,23 @@ class KalmanMotionModel:
                 dim_x=dim_x,
                 pos_idx=pos_idx,
                 vel_idx=vel_idx,
-                baseline_Q=kf.Q.copy(),
+                baseline_Q=kf.process_noise.copy(),
                 sigma_a2=np.ones(len(pos_idx), dtype=np.float64),
-                extra_q_diagonal=np.diag(kf.Q).astype(np.float64).copy(),
+                extra_q_diagonal=np.diag(kf.process_noise).astype(np.float64).copy(),
             ),
         )
 
-    def calibrate_from_Q(self, Q: np.ndarray) -> None:
-        """Update the one-frame noise reference when Q changes.
+    def calibrate_from_process_noise(self, process_noise: np.ndarray) -> None:
+        """Update the one-frame noise reference when process noise changes.
 
-        Call this after ``set_kf_covariances`` updates ``Q`` on the filter so
-        that ``build_Q`` and future cached steps use the new reference.
+        Call this after ``set_kf_covariances`` updates ``process_noise`` on the
+        filter so that ``build_Q`` and future cached steps use the new reference.
 
         Args:
-            Q: Reference one-frame process noise matrix, as produced by
-                ``set_kf_covariances``. Shape must be ``(dim_x, dim_x)``.
+            process_noise: Reference one-frame process noise matrix, as produced
+                by ``set_kf_covariances``. Shape must be ``(dim_x, dim_x)``.
         """
-        self.process_noise.calibrate(Q)
+        self.process_noise.calibrate(process_noise)
         self.cached_step = None
 
     def apply(self, kf: KalmanFilter, frame_step: float) -> None:
@@ -236,15 +236,15 @@ class KalmanMotionModel:
             self.cached_step is not None
             and frame_step == self.cached_step
             and self._cached_transition_mtx is not None
-            and self._cached_Q is not None
+            and self._cached_process_noise is not None
         ):
             kf.transition_mtx = self._cached_transition_mtx
-            kf.Q = self._cached_Q
+            kf.process_noise = self._cached_process_noise
             return
         kf.transition_mtx = constant_velocity_transition_matrix(self.dim_x, self.pos_idx, self.vel_idx, frame_step)
-        kf.Q = self.process_noise.build_Q(frame_step)
+        kf.process_noise = self.process_noise.build_Q(frame_step)
         self._cached_transition_mtx = kf.transition_mtx
-        self._cached_Q = kf.Q
+        self._cached_process_noise = kf.process_noise
         self.cached_step = frame_step
 
     def reset_cache(self) -> None:
@@ -255,7 +255,7 @@ class KalmanMotionModel:
         """
         self.cached_step = None
         self._cached_transition_mtx = None
-        self._cached_Q = None
+        self._cached_process_noise = None
 
 
 def init_constant_velocity_filter(
@@ -286,6 +286,6 @@ def init_constant_velocity_filter(
     """
     kf = KalmanFilter(dim_x=dim_x, dim_z=dim_z)
     kf.transition_mtx = constant_velocity_transition_matrix(dim_x, pos_idx, vel_idx, 1.0)
-    kf.H = np.eye(dim_z, dim_x, dtype=np.float64)
-    kf.x[:dim_z] = np.asarray(measurement, dtype=np.float64).reshape((dim_z, 1))
+    kf.observation_mtx = np.eye(dim_z, dim_x, dtype=np.float64)
+    kf.state[:dim_z] = np.asarray(measurement, dtype=np.float64).reshape((dim_z, 1))
     return kf

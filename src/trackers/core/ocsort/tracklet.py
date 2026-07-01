@@ -280,21 +280,25 @@ class OCSORTTracklet(BaseTracklet):
     def _configure_noise(self) -> None:
         """Configure Kalman filter noise matrices (OC-SORT paper tuning)."""
         kf = self.state_estimator.kf
-        R = kf.R
-        P = kf.P
-        Q = kf.Q
+        measurement_noise = kf.measurement_noise
+        state_covariance = kf.state_covariance
+        process_noise = kf.process_noise
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
-            R[2:, 2:] *= 10.0
-            P[4:, 4:] *= 1000.0
-            P *= 10.0
-            Q[-1, -1] *= 0.01
-            Q[4:, 4:] *= 0.01
+            measurement_noise[2:, 2:] *= 10.0
+            state_covariance[4:, 4:] *= 1000.0
+            state_covariance *= 10.0
+            process_noise[-1, -1] *= 0.01
+            process_noise[4:, 4:] *= 0.01
         else:
             # XYXY: same velocity uncertainty scaling
-            P[4:, 4:] *= 1000.0
-            P *= 10.0
-            Q[4:, 4:] *= 0.01
-        self.state_estimator.set_kf_covariances(R=R, Q=Q, P=P)
+            state_covariance[4:, 4:] *= 1000.0
+            state_covariance *= 10.0
+            process_noise[4:, 4:] *= 0.01
+        self.state_estimator.set_kf_covariances(
+            measurement_noise=measurement_noise,
+            process_noise=process_noise,
+            state_covariance=state_covariance,
+        )
 
     def resolve_tracker_id(
         self,

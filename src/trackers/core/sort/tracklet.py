@@ -60,23 +60,22 @@ class SORTTracklet(BaseTracklet):
         """Configure Kalman filter noise matrices (OC-SORT paper behaviour) and SORT
         behaviour for XYXY coordinates."""
         kf = self.state_estimator.kf
-        R = kf.R
-        P = kf.P
-        Q = kf.Q
+        measurement_noise = kf.measurement_noise
+        state_covariance = kf.state_covariance
+        process_noise = kf.process_noise
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
-            R[2:, 2:] *= 10.0
-            P[4:, 4:] *= 1000.0
-            P *= 10.0
-            Q[-1, -1] *= 0.01
-            Q[4:, 4:] *= 0.01
+            measurement_noise[2:, 2:] *= 10.0
+            state_covariance[4:, 4:] *= 1000.0
+            state_covariance *= 10.0
+            process_noise[-1, -1] *= 0.01
+            process_noise[4:, 4:] *= 0.01
         else:
-            # Process covariance matrix (Q)
-            Q = np.eye(8, dtype=np.float64) * 0.01
+            process_noise = np.eye(8, dtype=np.float64) * 0.01
+            measurement_noise = np.eye(4, dtype=np.float64) * 0.1
+            state_covariance = np.eye(8, dtype=np.float64)
 
-            # Measurement covariance (R): noise in detection
-            R = np.eye(4, dtype=np.float64) * 0.1
-
-            # Error covariance matrix (P)
-            P = np.eye(8, dtype=np.float64)
-
-        self.state_estimator.set_kf_covariances(R=R, Q=Q, P=P)
+        self.state_estimator.set_kf_covariances(
+            measurement_noise=measurement_noise,
+            process_noise=process_noise,
+            state_covariance=state_covariance,
+        )

@@ -180,38 +180,38 @@ class BaseStateEstimator(ABC):
 
     def set_kf_covariances(
         self,
-        R: np.ndarray | None = None,
-        Q: np.ndarray | None = None,
-        P: np.ndarray | None = None,
+        measurement_noise: np.ndarray | None = None,
+        process_noise: np.ndarray | None = None,
+        state_covariance: np.ndarray | None = None,
     ) -> None:
-        """Set Kalman noise matrices (``R``, ``Q``, ``P``).
+        """Set Kalman noise matrices.
 
-        ``Q`` is process noise — how much the state may drift per predict.
-        Tracklets choose ``Q`` in ``_configure_noise()`` for the one-frame case.
-        When ``Q`` is passed here, the motion model stores it as the reference
-        used at ``frame_step=1.0`` and as the starting point for gap scaling.
+        ``process_noise`` controls how much the state may drift per predict.
+        Tracklets set it in ``_configure_noise()`` for the one-frame case.
+        When passed here, the motion model stores it as the reference used at
+        ``frame_step=1.0`` and as the starting point for gap scaling.
 
         Args:
-            R: Measurement noise (trust in detections).
-            Q: Process noise (drift between detections).
-            P: Initial state uncertainty.
+            measurement_noise: Measurement noise covariance (trust in detections).
+            process_noise: Process noise covariance (drift between detections).
+            state_covariance: Initial state uncertainty.
         """
-        if R is not None:
+        if measurement_noise is not None:
             expected_shape = (self.kf.dim_z, self.kf.dim_z)
-            if R.shape != expected_shape:
-                raise ValueError(f"R must have shape {expected_shape}; got {R.shape}.")
-            self.kf.R = R
-        if Q is not None:
+            if measurement_noise.shape != expected_shape:
+                raise ValueError(f"measurement_noise must have shape {expected_shape}; got {measurement_noise.shape}.")
+            self.kf.measurement_noise = measurement_noise
+        if process_noise is not None:
             expected_shape = (self.kf.dim_x, self.kf.dim_x)
-            if Q.shape != expected_shape:
-                raise ValueError(f"Q must have shape {expected_shape}; got {Q.shape}.")
-            self.kf.Q = Q
-            self.motion.calibrate_from_Q(Q)
-        if P is not None:
+            if process_noise.shape != expected_shape:
+                raise ValueError(f"process_noise must have shape {expected_shape}; got {process_noise.shape}.")
+            self.kf.process_noise = process_noise
+            self.motion.calibrate_from_process_noise(process_noise)
+        if state_covariance is not None:
             expected_shape = (self.kf.dim_x, self.kf.dim_x)
-            if P.shape != expected_shape:
-                raise ValueError(f"P must have shape {expected_shape}; got {P.shape}.")
-            self.kf.P = P
+            if state_covariance.shape != expected_shape:
+                raise ValueError(f"state_covariance must have shape {expected_shape}; got {state_covariance.shape}.")
+            self.kf.state_covariance = state_covariance
 
 
 class XCYCSRStateEstimator(BaseStateEstimator):
@@ -235,11 +235,11 @@ class XCYCSRStateEstimator(BaseStateEstimator):
         return xyxy_to_xcycsr(bbox)
 
     def state_to_bbox(self) -> np.ndarray:
-        return xcycsr_to_xyxy(self.kf.x[:4].reshape((4,)))
+        return xcycsr_to_xyxy(self.kf.state[:4].reshape((4,)))
 
     def clamp_velocity(self) -> None:
-        if (self.kf.x[6] + self.kf.x[2]) <= 0:
-            self.kf.x[6] = 0.0
+        if (self.kf.state[6] + self.kf.state[2]) <= 0:
+            self.kf.state[6] = 0.0
 
 
 class XCYCWHStateEstimator(BaseStateEstimator):
@@ -267,7 +267,7 @@ class XCYCWHStateEstimator(BaseStateEstimator):
         return xyxy_to_xywh(bbox)
 
     def state_to_bbox(self) -> np.ndarray:
-        return xywh_to_xyxy(self.kf.x[:4].reshape((4,)))
+        return xywh_to_xyxy(self.kf.state[:4].reshape((4,)))
 
     def clamp_velocity(self) -> None:
         pass
@@ -293,7 +293,7 @@ class XYXYStateEstimator(BaseStateEstimator):
         return bbox
 
     def state_to_bbox(self) -> np.ndarray:
-        return self.kf.x[:4].reshape((4,))
+        return self.kf.state[:4].reshape((4,))
 
     def clamp_velocity(self) -> None:
         pass

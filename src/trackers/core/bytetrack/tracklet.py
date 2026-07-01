@@ -64,6 +64,6 @@ class ByteTrackTracklet(BaseTracklet):
         """Configure Kalman filter noise (original ByteTrack tuning)."""
         kf = self.state_estimator.kf
         self.state_estimator.set_kf_covariances(
-            R=kf.R * 0.1,
-            Q=kf.Q * 0.01,
+            measurement_noise=kf.measurement_noise * 0.1,
+            process_noise=kf.process_noise * 0.01,
         )

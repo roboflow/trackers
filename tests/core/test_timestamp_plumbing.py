@@ -267,7 +267,7 @@ def test_update_earlier_timestamp_skips_without_mutating_tracks(
 ) -> None:
     tracker = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs)
     tracker.update(_DET, timestamp=0.0)
-    x_before = tracker.tracks[0].state_estimator.kf.x.copy()
+    x_before = tracker.tracks[0].state_estimator.kf.state.copy()
     hits_before = tracker.tracks[0].time_since_update
 
     with warnings.catch_warnings():
@@ -277,7 +277,7 @@ def test_update_earlier_timestamp_skips_without_mutating_tracks(
     assert result.tracker_id is not None
     assert (result.tracker_id == -1).all()
     assert tracker.tracks[0].time_since_update == hits_before
-    np.testing.assert_array_equal(tracker.tracks[0].state_estimator.kf.x, x_before)
+    np.testing.assert_array_equal(tracker.tracks[0].state_estimator.kf.state, x_before)
 
 
 @pytest.mark.parametrize(
