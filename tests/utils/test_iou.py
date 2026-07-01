@@ -419,6 +419,34 @@ class TestNormalizeForFusion:
         assert np.all(normalized >= 0.0)
         assert np.all(normalized <= 1.0)
 
+    @pytest.mark.parametrize(
+        "metric",
+        [_iou, _biou],
+        ids=["IoU", "BIoU"],
+    )
+    def test_normalize_for_fusion_is_identity_for_unsigned_variants(self, metric: BaseIoU) -> None:
+        """normalize_for_fusion must be a no-op for IoU and BIoU."""
+        rng = np.random.default_rng(201)
+        xy = rng.uniform(0, 100, (10, 2))
+        wh = rng.uniform(1, 50, (10, 2))
+        b1 = np.hstack([xy, xy + wh])
+        xy2 = rng.uniform(0, 100, (8, 2))
+        wh2 = rng.uniform(1, 50, (8, 2))
+        b2 = np.hstack([xy2, xy2 + wh2])
+        raw = metric.compute(b1, b2)
+        np.testing.assert_array_equal(metric.normalize_for_fusion(raw), raw)
+
+    @pytest.mark.parametrize(
+        "metric",
+        [_giou, _diou, _ciou],
+        ids=["GIoU", "DIoU", "CIoU"],
+    )
+    def test_normalize_for_fusion_boundary_values(self, metric: BaseIoU) -> None:
+        """Shift maps -1→0, 0→0.5, 1→1 exactly for signed IoU variants."""
+        mat = np.array([[-1.0, 0.0, 1.0]])
+        expected = np.array([[0.0, 0.5, 1.0]])
+        np.testing.assert_allclose(metric.normalize_for_fusion(mat), expected, atol=1e-12)
+
     def test_ciou_below_minus_one_clamps_to_zero(self) -> None:
         """A wide-vs-tall, far-apart pair has CIoU < -1; fusion must stay >= 0."""
         boxes_1 = np.array([[0.0, 0.0, 100.0, 1.0]])  # w/h = 100
@@ -428,6 +456,7 @@ class TestNormalizeForFusion:
         normalized = _ciou.normalize_for_fusion(raw)
         assert normalized[0, 0] >= 0.0
         assert normalized[0, 0] <= 1.0
+        assert normalized[0, 0] == pytest.approx(0.0)
 
 
 class TestEmptyArrayHandling:
