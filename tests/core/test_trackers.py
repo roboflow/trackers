@@ -744,7 +744,7 @@ def test_compute_maximum_frames_without_update_scaling(
 )
 def test_lost_buffer_configuration_rejects_invalid_values(
     tracker_id: str,
-    kwargs: dict[str, int],
+    kwargs: dict[str, int | float],
 ) -> None:
     """Non-negative lost_track_buffer and positive finite frame_rate are required."""
     with pytest.raises(ValueError):
