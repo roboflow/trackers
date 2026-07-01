@@ -1195,6 +1195,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label=" GIoU">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.utils.iou.GIoU.normalize_for_fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;normalize_for_fusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1217,6 +1234,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label=" DIoU">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.utils.iou.DIoU.normalize_for_fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;normalize_for_fusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1238,6 +1272,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label=" CIoU">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.utils.iou.CIoU.normalize_for_fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;normalize_for_fusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1989,6 +2040,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label=" GIoU">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.utils.iou.GIoU.normalize_for_fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;normalize_for_fusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2011,6 +2079,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label=" DIoU">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.utils.iou.DIoU.normalize_for_fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;normalize_for_fusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2032,6 +2117,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label=" CIoU">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.utils.iou.CIoU.normalize_for_fusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;normalize_for_fusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2702,9 +2804,11 @@ produce undefined output.</p>
 
         <p>Normalize similarity values for score fusion in BoT-SORT association.</p>
 <p>By default returns the matrix unchanged. Signed variants (GIoU, DIoU,
-CIoU) override this to shift <code>[-1, 1]</code> scores into <code>[0, 1]</code> via
-<code>(matrix + 1) / 2</code> so that score fusion preserves ranking for both
-overlapping and non-overlapping box pairs.</p>
+CIoU) override this to shift their scores into <code>[0, 1]</code> via
+<code>(matrix + 1) / 2</code> (clamped) so that scores are monotonically mapped
+within <code>[-1, 1]</code> and saturated to <code>0</code> below <code>-1</code>. The clamp is a
+no-op for GIoU and DIoU (floor exactly <code>-1</code>) but active for CIoU,
+whose aspect-ratio penalty can push raw scores below <code>-1</code>.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -2904,6 +3008,24 @@ True
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.utils.iou.GIoU.normalize_for_fusion" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">normalize_for_fusion</span><span class="p">(</span><span class="n">similarity_matrix</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Shift <code>[-1, 1]</code> GIoU scores into <code>[0, 1]</code> for BoT-SORT fusion.</p>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2976,6 +3098,24 @@ True
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.utils.iou.DIoU.normalize_for_fusion" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">normalize_for_fusion</span><span class="p">(</span><span class="n">similarity_matrix</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Shift <code>[-1, 1]</code> DIoU scores into <code>[0, 1]</code> for BoT-SORT fusion.</p>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -3009,9 +3149,11 @@ The trade-off is weighted by <code>\alpha</code> that depends on IoU and <code>v
 matching :func:<code>torchvision.ops.complete_box_iou</code>.</p>
 <p><code>CIoU = DIoU - alpha * v</code>, with
 <code>alpha = v / (1 - IoU + v + epsilon)</code>.</p>
-<p>So <strong>CIoU ≤ DIoU ≤ IoU</strong> when widths and heights are positive.
-Scores are in <code>[-1, 1]</code>, matching the range of
-:func:<code>torchvision.ops.complete_box_iou</code>.</p>
+<p>So <strong>CIoU ≤ DIoU ≤ IoU</strong> when widths and heights are positive. Raw scores
+match :func:<code>torchvision.ops.complete_box_iou</code> exactly, with an upper bound
+of <code>1</code>; unlike GIoU and DIoU (which bottom out at <code>-1</code>), the aspect-ratio
+penalty can drive CIoU below <code>-1</code> (down to roughly <code>-1.5</code>). See
+:meth:<code>normalize_for_fusion</code>, which clamps after shifting into <code>[0, 1]</code>.</p>
 <p>Reference: https://arxiv.org/abs/1911.08287</p>
 
 
@@ -3048,6 +3190,26 @@ True
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.utils.iou.CIoU.normalize_for_fusion" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">normalize_for_fusion</span><span class="p">(</span><span class="n">similarity_matrix</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Shift and clamp CIoU scores into <code>[0, 1]</code> for BoT-SORT fusion.</p>
+<p>CIoU can fall below <code>-1</code> (see class docstring), so the clamp inside
+:func:<code>_shift_signed_to_unit_range</code> is non-trivial here.</p>
+
+
+    </div>
+
+</div>
 
 
 
