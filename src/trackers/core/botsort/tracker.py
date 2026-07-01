@@ -208,7 +208,12 @@ class BoTSORTTracker(BaseTracker):
         for track in self.tracks:
             if track.time_since_update > 1:
                 lost_tracks.append(track)
-            elif track.number_of_successful_updates >= self.minimum_consecutive_frames:
+            elif track.tracker_id != -1 or track.number_of_successful_updates >= self.minimum_consecutive_frames:
+                # Maturity is sticky: a track that already holds a real
+                # tracker_id (e.g. an instant-activated first-frame track) stays
+                # confirmed even before it reaches minimum_consecutive_frames.
+                # On a miss it is kept as a confirmed (then eventually lost)
+                # track rather than discarded as an unconfirmed one.
                 confirmed_tracks.append(track)
             else:
                 unconfirmed_tracks.append(track)
@@ -386,6 +391,7 @@ class BoTSORTTracker(BaseTracker):
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
             conf = float(confidences[global_idx])
+            out_det_indices.append(global_idx)
             if conf >= self.track_activation_threshold:
                 tracklet = BoTSORTTracklet(
                     initial_bbox=detection_boxes[global_idx],
@@ -394,8 +400,9 @@ class BoTSORTTracker(BaseTracker):
                 if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = self._allocate_tracker_id()
                 self.tracks.append(tracklet)
-                out_det_indices.append(global_idx)
                 out_tracker_ids.append(tracklet.tracker_id)
+            else:
+                out_tracker_ids.append(-1)
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.

@@ -20,13 +20,20 @@ def get_alive_tracklets(
     Remove dead or immature lost tracklets and return alive ones.
 
     A tracklet is kept if it is within ``maximum_frames_without_update`` **and**
-    it is either mature (enough successful updates) or was just updated this
-    frame.
+    it satisfies at least one liveness condition:
+
+    - it was updated this frame (``time_since_update == 0``), OR
+    - it holds a real tracker ID (``tracker_id != -1``) — sticky maturity:
+      a track instant-activated on the first frame is preserved on a miss
+      rather than deleted, OR
+    - it has accumulated at least ``minimum_consecutive_frames`` successful
+      updates.
 
     Args:
         tracklets: List of BoTSORTTracklet objects.
-        minimum_consecutive_frames: Number of successful updates that an object
-            must have before it is considered a 'valid' track.
+        minimum_consecutive_frames: Number of successful updates required for
+            maturity. Ignored for tracklets that already hold a real
+            ``tracker_id`` (sticky maturity path).
         maximum_frames_without_update: Maximum number of frames without update
             before a track is considered dead.
 
@@ -35,7 +42,12 @@ def get_alive_tracklets(
     """
     alive_tracklets = []
     for tracker in tracklets:
-        is_mature = tracker.number_of_successful_updates >= minimum_consecutive_frames
+        # Maturity is sticky: number_of_successful_updates is cumulative and
+        # never decremented, but instant first-frame activation assigns
+        # tracker_id before nsu reaches minimum_consecutive_frames. The
+        # tracker_id != -1 guard keeps those instant-activated tracks alive
+        # on a miss without waiting for nsu to catch up.
+        is_mature = tracker.tracker_id != -1 or tracker.number_of_successful_updates >= minimum_consecutive_frames
         is_active = tracker.time_since_update == 0
         if tracker.time_since_update < maximum_frames_without_update and (is_mature or is_active):
             alive_tracklets.append(tracker)
