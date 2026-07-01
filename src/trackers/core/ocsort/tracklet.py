@@ -117,11 +117,11 @@ class OCSORTTracklet(BaseTracklet):
         # Convert s, r back to w, h for interpolation
         x1, y1, s1, r1 = last_xcycsr
         w1 = np.sqrt(s1 * r1)
-        h1 = np.sqrt(s1 / r1)
+        h1 = np.sqrt(s1 / r1) if r1 != 0 else np.float64(0.0)
 
         x2, y2, s2, r2 = new_xcycsr
         w2 = np.sqrt(s2 * r2)
-        h2 = np.sqrt(s2 / r2)
+        h2 = np.sqrt(s2 / r2) if r2 != 0 else np.float64(0.0)
 
         # Linear interpolation deltas
         dx = (x2 - x1) / time_gap
