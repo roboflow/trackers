@@ -274,16 +274,18 @@ class ByteTrackTracker(BaseTracker):
     ) -> None:
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
-            conf = float(confidences[global_idx])
-            if conf >= self.track_activation_threshold:
+            # Every detection is returned (with tracker_id -1 when untracked),
+            # matching the documented contract and SORT's behaviour. Only
+            # detections clearing the activation threshold spawn a new track.
+            out_det_indices.append(global_idx)
+            out_tracker_ids.append(-1)
+            if float(confidences[global_idx]) >= self.track_activation_threshold:
                 self.tracks.append(
                     ByteTrackTracklet(
                         initial_bbox=detection_boxes[global_idx],
                         state_estimator_class=self.state_estimator_class,
                     )
                 )
-                out_det_indices.append(global_idx)
-                out_tracker_ids.append(-1)
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
