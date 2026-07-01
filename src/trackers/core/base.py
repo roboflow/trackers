@@ -491,8 +491,16 @@ class BaseTracker(ABC):
 
         Applies a budget-only filter so immature tracks stay alive for matching.
         Call after ``_predict_tracklets`` and before association.
+
+        At fixed frame rate (no timestamps) this is a no-op — the frame-count
+        budget is enforced post-association, preserving the last-frame re-association
+        opportunity that the original trackers relied on.  In variable-FPS mode the
+        time budget can differ from the frame budget, so expired-by-time tracks are
+        removed here before they can be matched and revived with a stale ID.
         """
         budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        if budget is None:
+            return
         self.tracks = [
             t
             for t in self.tracks

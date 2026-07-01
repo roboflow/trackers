@@ -220,9 +220,11 @@ class OCSORTTracker(BaseTracker):
 
         self._predict_tracklets(self.tracks, timing)
 
-        # Prune expired tracks before association so a track that has exceeded
-        # its budget cannot be revived with its old ID (ghost-ID prevention).
-        self.tracks = self._prune_expired_tracklets(timing)
+        # Ghost-ID prevention: only prune before association in variable-FPS mode.
+        # At fixed frame rate the same frame-count check runs post-association, so
+        # tracks keep their last-frame re-association opportunity.
+        if self._lost_track_time_budget(timing, self.maximum_time_without_update) is not None:
+            self.tracks = self._prune_expired_tracklets(timing)
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)

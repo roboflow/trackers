@@ -194,18 +194,20 @@ class CBIoUTracker(BoTSORTTracker):
         # Predict new locations for existing tracks
         self._predict_tracklets(self.tracks, timing)
 
-        # Ghost-ID prevention: budget-only filter before association.
-        # Keeps immature tracks alive for matching; full lifecycle prune runs after.
+        # Ghost-ID prevention: budget-only filter before association (variable-FPS only).
+        # At fixed frame rate the frame-count budget is enforced post-association, so
+        # tracks keep their last-frame re-association opportunity.
         _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
-        self.tracks = [
-            t
-            for t in self.tracks
-            if BaseTracklet.within_lost_track_budget(
-                t,
-                maximum_frames_without_update=self.maximum_frames_without_update,
-                maximum_time_without_update=_budget,
-            )
-        ]
+        if _budget is not None:
+            self.tracks = [
+                t
+                for t in self.tracks
+                if BaseTracklet.within_lost_track_budget(
+                    t,
+                    maximum_frames_without_update=self.maximum_frames_without_update,
+                    maximum_time_without_update=_budget,
+                )
+            ]
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
