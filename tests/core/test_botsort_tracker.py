@@ -65,13 +65,12 @@ class TestBoTSORTTrackerLifecycle:
         unconfirmed and deleted on a miss — an ID switch when the object returns.
         """
         tracker = BoTSORTTracker(enable_cmc=False)
-        far_away = (300.0, 300.0, 340.0, 340.0)
         obj = (10.0, 10.0, 50.0, 50.0)
 
         first = tracker.update(_detection(obj))
         track_id = int(first.tracker_id[0])
 
-        tracker.update(_detection(far_away))  # object missed this frame
+        tracker.update(sv.Detections.empty())  # no detections: object missed this frame
         assert any(t.tracker_id == track_id for t in tracker.tracks)
 
         returned = tracker.update(_detection(obj))  # object reappears
