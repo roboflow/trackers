@@ -86,9 +86,10 @@ class BaseIoU(ABC):
 
         By default returns the matrix unchanged. Signed variants (GIoU, DIoU,
         CIoU) override this to shift their scores into ``[0, 1]`` via
-        ``(matrix + 1) / 2`` (clamped) so that score fusion preserves ranking for
-        both overlapping and non-overlapping box pairs. The clamp matters for
-        CIoU, whose aspect-ratio penalty can push raw scores below ``-1``.
+        ``(matrix + 1) / 2`` (clamped) so that scores are monotonically mapped
+        within ``[-1, 1]`` and saturated to ``0`` below ``-1``. The clamp is a
+        no-op for GIoU and DIoU (floor exactly ``-1``) but active for CIoU,
+        whose aspect-ratio penalty can push raw scores below ``-1``.
 
         Args:
             similarity_matrix: ``(N, M)`` similarity matrix from :meth:`compute`.
@@ -297,6 +298,7 @@ class GIoU(BaseIoU):
         return iou - penalty
 
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
+        """Shift ``[-1, 1]`` GIoU scores into ``[0, 1]`` for BoT-SORT fusion."""
         return _shift_signed_to_unit_range(similarity_matrix)
 
 
@@ -349,6 +351,7 @@ class DIoU(BaseIoU):
         return iou - center_dist_sq / denom
 
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
+        """Shift ``[-1, 1]`` DIoU scores into ``[0, 1]`` for BoT-SORT fusion."""
         return _shift_signed_to_unit_range(similarity_matrix)
 
 
@@ -420,4 +423,9 @@ class CIoU(BaseIoU):
         return diou - alpha * v
 
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
+        """Shift and clamp CIoU scores into ``[0, 1]`` for BoT-SORT fusion.
+
+        CIoU can fall below ``-1`` (see class docstring), so the clamp inside
+        :func:`_shift_signed_to_unit_range` is non-trivial here.
+        """
         return _shift_signed_to_unit_range(similarity_matrix)
