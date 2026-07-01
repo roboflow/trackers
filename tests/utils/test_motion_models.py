@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Tests for ``F`` / ``Q`` builders in ``motion_models.py``."""
+"""Tests for transition matrix / ``Q`` builders in ``motion_models.py``."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from trackers.utils.kalman_filter import KalmanFilter
 from trackers.utils.motion_models import (
     KalmanMotionModel,
     ScalableProcessNoise,
-    constant_velocity_F,
+    constant_velocity_transition_matrix,
 )
 
 POS_1D = np.array([0], dtype=np.int64)
@@ -26,19 +26,20 @@ POS_XCYCSR = np.array([0, 1, 2], dtype=np.int64)
 VEL_XCYCSR = np.array([4, 5, 6], dtype=np.int64)
 
 
-def test_build_F_scales_velocity_coupling_with_frame_step() -> None:
-    F1 = constant_velocity_F(8, POS_4D, VEL_4D, 1.0)
-    F2 = constant_velocity_F(8, POS_4D, VEL_4D, 2.0)
-    F_half = constant_velocity_F(8, POS_4D, VEL_4D, 0.5)
+def test_transition_mtx_scales_velocity_coupling_with_frame_step() -> None:
+    """Velocity coupling in the transition matrix scales linearly with frame_step."""
+    mtx1 = constant_velocity_transition_matrix(8, POS_4D, VEL_4D, 1.0)
+    mtx2 = constant_velocity_transition_matrix(8, POS_4D, VEL_4D, 2.0)
+    mtx_half = constant_velocity_transition_matrix(8, POS_4D, VEL_4D, 0.5)
 
     for v in VEL_4D:
         for j in range(8):
-            assert F1[v, j] == F2[v, j] == F_half[v, j]
+            assert mtx1[v, j] == mtx2[v, j] == mtx_half[v, j]
 
     for p, v in zip(POS_4D, VEL_4D):
-        assert F1[p, v] == pytest.approx(1.0)
-        assert F2[p, v] == pytest.approx(2.0)
-        assert F_half[p, v] == pytest.approx(0.5)
+        assert mtx1[p, v] == pytest.approx(1.0)
+        assert mtx2[p, v] == pytest.approx(2.0)
+        assert mtx_half[p, v] == pytest.approx(0.5)
 
 
 def test_dwna_gap_noise_scales_with_frame_step_polynomial() -> None:

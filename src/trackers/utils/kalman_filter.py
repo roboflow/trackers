@@ -23,7 +23,7 @@ class KalmanFilter:
         dim_z: Dimension of measurement vector.
         x: State vector (dim_x, 1).
         P: State covariance matrix (dim_x, dim_x).
-        F: State transition matrix (dim_x, dim_x).
+        transition_mtx: State transition matrix (dim_x, dim_x).
         H: Measurement function matrix (dim_z, dim_x).
         Q: Process noise covariance (dim_x, dim_x).
         R: Measurement noise covariance (dim_z, dim_z).
@@ -53,7 +53,7 @@ class KalmanFilter:
         self.P: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
 
         # Process model
-        self.F: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
+        self.transition_mtx: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
         self.Q: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
 
         # Measurement model
@@ -74,14 +74,14 @@ class KalmanFilter:
         self._I: NDArray[np.float64] = np.eye(dim_x, dtype=np.float64)
 
     def predict(self) -> None:
-        """Predict next state (prior) using ``F`` and ``Q``.
+        """Predict next state (prior) using ``transition_mtx`` and ``Q``.
 
         Computes:
-            x = F @ x
-            P = F @ P @ F.T + Q
+            x = transition_mtx @ x
+            P = transition_mtx @ P @ transition_mtx.T + Q
         """
-        self.x = self.F @ self.x
-        self.P = self.F @ self.P @ self.F.T + self.Q
+        self.x = self.transition_mtx @ self.x
+        self.P = self.transition_mtx @ self.P @ self.transition_mtx.T + self.Q
 
         # Save prior
         self.x_prior = self.x.copy()
@@ -136,7 +136,7 @@ class KalmanFilter:
         return {
             "x": self.x.copy(),
             "P": self.P.copy(),
-            "F": self.F.copy(),
+            "transition_mtx": self.transition_mtx.copy(),
             "H": self.H.copy(),
             "Q": self.Q.copy(),
             "R": self.R.copy(),
@@ -150,7 +150,7 @@ class KalmanFilter:
         """
         self.x = state["x"].copy()
         self.P = state["P"].copy()
-        self.F = state["F"].copy()
+        self.transition_mtx = state["transition_mtx"].copy()
         self.H = state["H"].copy()
         self.Q = state["Q"].copy()
         self.R = state["R"].copy()

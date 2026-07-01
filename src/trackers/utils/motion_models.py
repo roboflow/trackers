@@ -36,13 +36,13 @@ from numpy.typing import NDArray
 from trackers.utils.kalman_filter import KalmanFilter
 
 
-def constant_velocity_F(
+def constant_velocity_transition_matrix(
     dim_x: int,
     pos_idx: NDArray[np.int64],
     vel_idx: NDArray[np.int64],
     frame_step: float,
 ) -> NDArray[np.float64]:
-    """Build the constant-velocity state-transition matrix F.
+    """Build the constant-velocity state-transition matrix.
 
     Each position state is coupled to its paired velocity state by
     ``frame_step``; all other entries remain as in the identity matrix.
@@ -53,15 +53,15 @@ def constant_velocity_F(
         vel_idx: Indices of velocity states paired with ``pos_idx``
             (must have the same length as ``pos_idx``).
         frame_step: Elapsed time in frame units; the off-diagonal coupling
-            ``F[pos, vel]`` is set to this value.
+            ``transition_matrix[pos, vel]`` is set to this value.
 
     Returns:
-        Transition matrix F of shape ``(dim_x, dim_x)``.
+        Transition matrix of shape ``(dim_x, dim_x)``.
     """
-    F = np.eye(dim_x, dtype=np.float64)
+    mtx = np.eye(dim_x, dtype=np.float64)
     for p, v in zip(pos_idx, vel_idx, strict=True):
-        F[int(p), int(v)] = frame_step
-    return F
+        mtx[int(p), int(v)] = frame_step
+    return mtx
 
 
 @dataclass
@@ -170,7 +170,7 @@ class KalmanMotionModel:
     vel_idx: NDArray[np.int64]
     process_noise: ScalableProcessNoise
     cached_step: float | None = field(default=None, init=False)
-    _cached_F: NDArray[np.float64] | None = field(default=None, init=False)
+    _cached_transition_mtx: NDArray[np.float64] | None = field(default=None, init=False)
     _cached_Q: NDArray[np.float64] | None = field(default=None, init=False)
 
     @classmethod
@@ -191,7 +191,7 @@ class KalmanMotionModel:
             vel_idx: Indices of velocity states paired with ``pos_idx``.
 
         Returns:
-            ``KalmanMotionModel`` ready to apply ``F`` and ``Q`` per predict step.
+            ``KalmanMotionModel`` ready to apply ``transition_mtx`` and ``Q`` per predict step.
         """
         dim_x = kf.dim_x
         return cls(
@@ -222,7 +222,7 @@ class KalmanMotionModel:
         self.cached_step = None
 
     def apply(self, kf: KalmanFilter, frame_step: float) -> None:
-        """Set F and Q on a Kalman filter for the given frame step.
+        """Set transition_matrix and Q on a Kalman filter for the given frame step.
 
         Both matrices are cached per unique step value to avoid redundant
         computation when the same step is repeated across consecutive frames.
@@ -235,15 +235,15 @@ class KalmanMotionModel:
         if (
             self.cached_step is not None
             and frame_step == self.cached_step
-            and self._cached_F is not None
+            and self._cached_transition_mtx is not None
             and self._cached_Q is not None
         ):
-            kf.F = self._cached_F
+            kf.transition_mtx = self._cached_transition_mtx
             kf.Q = self._cached_Q
             return
-        kf.F = constant_velocity_F(self.dim_x, self.pos_idx, self.vel_idx, frame_step)
+        kf.transition_mtx = constant_velocity_transition_matrix(self.dim_x, self.pos_idx, self.vel_idx, frame_step)
         kf.Q = self.process_noise.build_Q(frame_step)
-        self._cached_F = kf.F
+        self._cached_transition_mtx = kf.transition_mtx
         self._cached_Q = kf.Q
         self.cached_step = frame_step
 
@@ -251,10 +251,10 @@ class KalmanMotionModel:
         """Clear cached step and matrices.
 
         Call after restoring a filter state (e.g. via ``set_state``) to ensure
-        the next ``apply`` recomputes F and Q rather than reusing stale values.
+        the next ``apply`` recomputes transition_matrix and Q rather than reusing stale values.
         """
         self.cached_step = None
-        self._cached_F = None
+        self._cached_transition_mtx = None
         self._cached_Q = None
 
 
@@ -285,7 +285,7 @@ def init_constant_velocity_filter(
         and must be set by the caller via ``set_kf_covariances``.
     """
     kf = KalmanFilter(dim_x=dim_x, dim_z=dim_z)
-    kf.F = constant_velocity_F(dim_x, pos_idx, vel_idx, 1.0)
+    kf.transition_mtx = constant_velocity_transition_matrix(dim_x, pos_idx, vel_idx, 1.0)
     kf.H = np.eye(dim_z, dim_x, dtype=np.float64)
     kf.x[:dim_z] = np.asarray(measurement, dtype=np.float64).reshape((dim_z, 1))
     return kf
