@@ -343,6 +343,7 @@ class BaseTracker(ABC):
         Raises:
             ValueError: If ``lost_track_buffer`` is negative.
             ValueError: If ``frame_rate`` is not finite or is not strictly positive.
+            ValueError: If the scaled product overflows to infinity for extreme inputs.
 
         Examples:
             >>> BaseTracker._compute_maximum_frames_without_update(30, 30.0)
@@ -360,7 +361,10 @@ class BaseTracker(ABC):
             raise ValueError("frame_rate must be a finite positive value")
         if lost_track_buffer == 0:
             return 0
-        return max(1, math.ceil(frame_rate / 30.0 * lost_track_buffer))
+        scaled = frame_rate / 30.0 * lost_track_buffer
+        if not math.isfinite(scaled):
+            raise ValueError("Scaled lost_track_buffer overflows: frame_rate / 30.0 * lost_track_buffer must be finite")
+        return max(1, math.ceil(scaled))
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.

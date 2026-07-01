@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### ⚠️ Breaking Changes
 
 - **Internal tracklet ID counters removed** — track IDs are now allocated by each tracker instance instead of the class-level counters on each `*Tracklet` subclass (e.g. `BoTSORTTracklet.get_next_tracker_id()`). Internal tracklet subclassers should allocate IDs in tracker code and assign `tracklet.tracker_id` directly. Use `self._allocate_tracker_id()` (inherited from `BaseTracker`) as the replacement allocator when implementing a custom tracker subclass.
+- **Invalid lost-track buffer settings now raise `ValueError`** — `lost_track_buffer` must be non-negative and `frame_rate` must be finite and positive for `SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, and `BoTSORTTracker`. Explicit `lost_track_buffer=0` remains valid and means no missed-frame grace period; negative buffers and invalid frame rates previously initialized but produced nonsensical lifecycle behavior ([#420](https://github.com/roboflow/trackers/pull/420)).
+- **Confirmed tracks now survive one additional missed frame** — all trackers changed from exclusive (`time_since_update < maximum_frames_without_update`) to inclusive (`<=`) boundary semantics to match OC-SORT's previous behavior. Users comparing metric results across this version should expect small IDSW/HOTA shifts ([#420](https://github.com/roboflow/trackers/pull/420)).
 
 ### 🌱 Changed
 
@@ -33,11 +35,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **`CMC.apply_batch` homogeneity guard** — now raises `TypeError` immediately when the tracklet list contains mixed state-estimator types, preventing silent state corruption ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`BoTSORTTracklet.apply_cmc` delegates to `CMC.apply_batch`** — per-track and batch paths now share identical code; behaviour is unchanged ([#414](https://github.com/roboflow/trackers/pull/414)).
 - **`Tuner` gains `enqueue_defaults`, `fixed_params`, `images_dir`, `seed`** — `enqueue_defaults=True` (default) evaluates a baseline trial using each param's `__init__` default before Optuna samples; `fixed_params` holds selected params constant across all trials; `images_dir` enables frame loading for CMC-enabled trackers; `seed` makes TPE sampling reproducible ([#427](https://github.com/roboflow/trackers/pull/427)).
-
-### ⚠️ Breaking Changes
-
-- **Invalid lost-track buffer settings now raise `ValueError`** — `lost_track_buffer` must be non-negative and `frame_rate` must be finite and positive for `SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, and `BoTSORTTracker`. Explicit `lost_track_buffer=0` remains valid and means no missed-frame grace period; negative buffers and invalid frame rates previously initialized but produced nonsensical lifecycle behavior ([#420](https://github.com/roboflow/trackers/pull/420)).
-- **Confirmed tracks now survive one additional missed frame** — all trackers changed from exclusive (`time_since_update < maximum_frames_without_update`) to inclusive (`<=`) boundary semantics to match OC-SORT's previous behavior. Users comparing metric results across this version should expect small IDSW/HOTA shifts ([#420](https://github.com/roboflow/trackers/pull/420)).
 
 ### 🔧 Fixed
 

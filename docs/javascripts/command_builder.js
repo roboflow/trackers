@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
     confidence: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
     trackActivationThreshold: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
     minimumIouThreshold: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
-    lostTrackBuffer: { step: 1, min: 1, max: 999, decimals: 0 },
+    lostTrackBuffer: { step: 1, min: 0, max: 999, decimals: 0 },
     minimumConsecutiveFrames: { step: 1, min: 1, max: 99, decimals: 0 },
   };
 

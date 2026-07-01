@@ -438,7 +438,7 @@ class TestTrackerInstantiation:
         assert info is not None
         tracker = info.tracker_class(lost_track_buffer=60, frame_rate=60.0)  # type: ignore[call-arg]
 
-        # Internal calculation: maximum_frames_without_update = 60/30 * 60 = 120
+        # max(1, ceil(60.0/30.0 * 60)) = 120
         assert tracker.maximum_frames_without_update == 120  # type: ignore[attr-defined]
 
     def test_instantiate_with_registry_params(self) -> None:

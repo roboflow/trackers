@@ -66,6 +66,8 @@ class CBIoUTracker(BoTSORTTracker):
             be **greater than** ``buffer_ratio_first``.
 
     Raises:
+        ValueError: If ``lost_track_buffer`` is negative or ``frame_rate`` is not a
+            finite positive value (inherited from ``BoTSORTTracker``).
         ValueError: If ``buffer_ratio_first`` or ``buffer_ratio_second`` is negative.
 
     Note:
