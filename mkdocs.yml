@@ -59,7 +59,6 @@ extra_css:
 extra_javascript:
   - javascripts/pycon_copy.js
   - javascripts/mathjax.js
-  - https://unpkg.com/mathjax@3.2.2/es5/tex-mml-chtml.js
   - javascripts/cli_builder_framework.js
   - javascripts/command_builder.js
 
