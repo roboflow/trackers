@@ -2096,9 +2096,10 @@ applicability.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>int</code> specifying number of frames to buffer when a
-track is lost. Increasing this value enhances occlusion handling but
-may increase ID switching for similar objects.</p>
+                <p>Non-negative <code>int</code> specifying number of 30 FPS frames
+to buffer when a track is lost. <code>0</code> deletes a confirmed track on the
+first missed frame. Increasing this value enhances occlusion
+handling but may increase ID switching for similar objects.</p>
               </div>
             </td>
             <td>
@@ -2115,8 +2116,8 @@ may increase ID switching for similar objects.</p>
             <td>
               <div class="doc-md-description">
                 <p><code>float</code> specifying video frame rate in frames per second.
-Used to scale the lost track buffer for consistent tracking across
-different frame rates.</p>
+Must be positive. Used to scale the lost track buffer for consistent
+tracking across different frame rates.</p>
               </div>
             </td>
             <td>
@@ -2501,9 +2502,10 @@ provides.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>int</code> specifying number of frames to buffer when a
-track is lost. Increasing this value enhances occlusion handling but
-may increase ID switching for disappearing objects.</p>
+                <p>Non-negative <code>int</code> specifying number of 30 FPS frames
+to buffer when a track is lost. <code>0</code> deletes a confirmed track on the
+first missed frame. Increasing this value enhances occlusion
+handling but may increase ID switching for disappearing objects.</p>
               </div>
             </td>
             <td>
@@ -2520,8 +2522,8 @@ may increase ID switching for disappearing objects.</p>
             <td>
               <div class="doc-md-description">
                 <p><code>float</code> specifying video frame rate in frames per second.
-Used to scale the lost track buffer for consistent tracking across
-different frame rates.</p>
+Must be positive. Used to scale the lost track buffer for consistent
+tracking across different frame rates.</p>
               </div>
             </td>
             <td>
@@ -2903,9 +2905,10 @@ selection.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p><code>int</code> specifying number of frames to buffer when a
-track is lost. Increasing this value enhances occlusion handling but
-may increase ID switching for similar objects.</p>
+                <p>Non-negative <code>int</code> specifying number of 30 FPS frames
+to buffer when a track is lost. <code>0</code> deletes a confirmed track on the
+first missed frame. Increasing this value enhances occlusion
+handling but may increase ID switching for similar objects.</p>
               </div>
             </td>
             <td>
@@ -2922,8 +2925,8 @@ may increase ID switching for similar objects.</p>
             <td>
               <div class="doc-md-description">
                 <p><code>float</code> specifying video frame rate in frames per second.
-Used to scale the lost track buffer for consistent tracking across
-different frame rates.</p>
+Must be positive. Used to scale the lost track buffer for consistent
+tracking across different frame rates.</p>
               </div>
             </td>
             <td>
@@ -3310,8 +3313,9 @@ frame, performs:
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Time buffer (in frames at 30 FPS) for keeping lost tracks
-alive before deletion. This is scaled by <code>frame_rate</code>.</p>
+                <p>Non-negative time buffer (in frames at 30 FPS) for
+keeping lost tracks alive before deletion. <code>0</code> deletes a confirmed
+track on the first missed frame. This is scaled by <code>frame_rate</code>.</p>
               </div>
             </td>
             <td>
@@ -3328,7 +3332,7 @@ alive before deletion. This is scaled by <code>frame_rate</code>.</p>
             <td>
               <div class="doc-md-description">
                 <p>Video frame rate used to scale the lost track buffer to
-time-like behavior.</p>
+time-like behavior. Must be positive.</p>
               </div>
             </td>
             <td>
@@ -3557,9 +3561,9 @@ supply an <code>iou</code> argument.</p>
 <details class="notes" open>
   <summary>Notes</summary>
   <ul>
-<li><code>maximum_frames_without_update</code> is computed as:
-    int(frame_rate / 30.0 * lost_track_buffer)
-    to maintain consistent “seconds” worth of buffer across different FPS.</li>
+<li>Positive <code>maximum_frames_without_update</code> values are scaled by
+  <code>frame_rate</code> and rounded up to at least one missed frame. Explicit
+  zero-buffer configurations remain zero.</li>
 <li>When CMC is enabled, pass the current video frame via the <code>frame</code>
   argument of :meth:<code>update</code>.</li>
 </ul>
