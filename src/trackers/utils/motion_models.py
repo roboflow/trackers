@@ -16,14 +16,14 @@ Those values assume **one frame** between updates. ``frame_step=1.0`` is
 that case; other values rescale ``F`` and ``Q`` for shorter or longer gaps.
 
 ``Q`` uses the standard constant-velocity + white-noise-acceleration (DWNA)
-layout at *every* frame step, including ``1.0``: velocity variance scales as
-``Δt²``, position as ``Δt⁴`` (multiplying the one-frame ``Q`` by ``Δt`` alone
-would be wrong in either direction). The acceleration variance ``sigma_a2`` is
-calibrated from the velocity diagonal of the reference ``Q`` set by
-``_configure_noise()``, so the DWNA layout is continuous across all
-``frame_step`` values — no special-case branch at ``frame_step == 1.0``. Same
-block structure as ``filterpy.common.discrete_white_noise`` — see the filterpy
-docs or source if you want the formulas side by side.
+layout for gaps (``frame_step > 1``) and shorter-than-nominal steps
+(``frame_step < 1``): velocity variance scales as ``Δt²``, position as ``Δt⁴``.
+At ``frame_step == 1.0`` the original configured Q (set by ``_configure_noise``
+via ``set_kf_covariances``) is returned unchanged — this preserves the
+hand-tuned per-tracker noise and ensures backward compatibility when
+``timestamp`` is omitted. Same block structure as
+``filterpy.common.discrete_white_noise`` — see the filterpy docs or source if
+you want the formulas side by side.
 """
 
 from __future__ import annotations
@@ -59,9 +59,10 @@ class ScalableProcessNoise:
     acceleration variance ``sigma_a2`` from that reference ``Q`` and stores the
     DWNA-at-1 layout as ``baseline_Q``.
 
-    Position/velocity blocks in ``Q`` use white-noise-acceleration scaling at
-    *every* frame step — there is no special-case branch at ``frame_step ==
-    1.0``. Smaller steps (``frame_step < 1``) shrink uncertainty; larger steps
+    At ``frame_step == 1.0``, ``build_Q`` returns the original configured Q
+    stored in ``baseline_Q`` — preserving hand-tuned per-tracker noise and
+    backward compatibility. For other frame steps, DWNA scaling is applied:
+    smaller steps (``frame_step < 1``) shrink uncertainty; larger steps
     (``frame_step > 1``) grow it. Frozen entries (e.g. aspect ratio in XCYCSR)
     stay at the values from ``_configure_noise()``.
     """
@@ -74,19 +75,26 @@ class ScalableProcessNoise:
     extra_q_diagonal: NDArray[np.float64]
 
     def calibrate(self, Q: np.ndarray) -> None:
-        """Calibrate ``sigma_a2`` from ``Q`` and store the DWNA-at-1 reference.
+        """Calibrate ``sigma_a2`` from ``Q`` and store the configured-Q reference.
 
         Called from ``set_kf_covariances``. The velocity diagonal of ``Q``
-        defines the per-axis acceleration variance; ``baseline_Q`` is then
-        normalised to the DWNA layout at ``frame_step = 1.0`` so ``build_Q`` is
-        continuous everywhere.
+        defines the per-axis acceleration variance used when ``frame_step != 1``.
+        ``baseline_Q`` stores ``Q`` itself; ``build_Q(1.0)`` returns it directly
+        so the hand-tuned one-frame noise is preserved exactly.
         """
         self.sigma_a2 = np.asarray([float(Q[v, v]) for v in self.vel_idx], dtype=np.float64)
         self.extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
-        self.baseline_Q = self._dwna(1.0)
+        self.baseline_Q = Q.copy()
 
     def build_Q(self, frame_step: float) -> NDArray[np.float64]:
-        """Return process noise ``Q`` for *frame_step* using the DWNA layout."""
+        """Return process noise ``Q`` for *frame_step*.
+
+        At ``frame_step == 1.0`` the original configured Q (``baseline_Q``) is
+        returned to preserve hand-tuned noise and backward compatibility.
+        For any other step the DWNA formula is applied.
+        """
+        if frame_step == 1.0:
+            return self.baseline_Q.copy()
         return self._dwna(frame_step)
 
     def _dwna(self, frame_step: float) -> NDArray[np.float64]:
