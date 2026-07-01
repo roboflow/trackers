@@ -466,7 +466,7 @@ class BaseTracker(ABC):
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
             return result
-        result = cast(sv.Detections, detections[np.arange(len(detections))])
+        result = cast(sv.Detections, detections[:])
         result.tracker_id = np.full(len(result), -1, dtype=int)
         return result
 

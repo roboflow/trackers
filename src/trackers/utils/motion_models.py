@@ -73,6 +73,11 @@ class ScalableProcessNoise:
     baseline_Q: NDArray[np.float64]
     sigma_a2: NDArray[np.float64]
     extra_q_diagonal: NDArray[np.float64]
+    _nonkinematic_idx: list[int] = field(default_factory=list, init=False)
+
+    def __post_init__(self) -> None:
+        kinematic = {int(i) for i in self.pos_idx} | {int(i) for i in self.vel_idx}
+        self._nonkinematic_idx = [i for i in range(self.dim_x) if i not in kinematic]
 
     def calibrate(self, Q: np.ndarray) -> None:
         """Calibrate ``sigma_a2`` from ``Q`` and store the configured-Q reference.
@@ -85,6 +90,8 @@ class ScalableProcessNoise:
         self.sigma_a2 = np.asarray([float(Q[v, v]) for v in self.vel_idx], dtype=np.float64)
         self.extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
         self.baseline_Q = Q.copy()
+        kinematic = {int(i) for i in self.pos_idx} | {int(i) for i in self.vel_idx}
+        self._nonkinematic_idx = [i for i in range(self.dim_x) if i not in kinematic]
 
     def build_Q(self, frame_step: float) -> NDArray[np.float64]:
         """Return process noise ``Q`` for *frame_step*.
@@ -103,7 +110,6 @@ class ScalableProcessNoise:
         dt2 = frame_step * frame_step
         dt3 = dt2 * frame_step
         dt4 = dt2 * dt2
-        kinematic = set(int(i) for i in self.pos_idx) | set(int(i) for i in self.vel_idx)
         for k, (p, v) in enumerate(zip(self.pos_idx, self.vel_idx, strict=True)):
             p_i = int(p)
             v_i = int(v)
@@ -112,9 +118,8 @@ class ScalableProcessNoise:
             Q[p_i, v_i] = sa2 * dt3 / 2.0
             Q[v_i, p_i] = sa2 * dt3 / 2.0
             Q[v_i, v_i] = sa2 * dt2
-        for i in range(self.dim_x):
-            if i not in kinematic:
-                Q[i, i] = float(self.extra_q_diagonal[i])
+        for i in self._nonkinematic_idx:
+            Q[i, i] = float(self.extra_q_diagonal[i])
         return Q
 
 
@@ -127,6 +132,8 @@ class KalmanMotionModel:
     vel_idx: NDArray[np.int64]
     process_noise: ScalableProcessNoise
     cached_step: float | None = field(default=None, init=False)
+    _cached_F: NDArray[np.float64] | None = field(default=None, init=False)
+    _cached_Q: NDArray[np.float64] | None = field(default=None, init=False)
 
     @classmethod
     def from_filter(
@@ -157,16 +164,27 @@ class KalmanMotionModel:
         self.cached_step = None
 
     def apply(self, kf: KalmanFilter, frame_step: float) -> None:
-        """Set ``kf.F`` and ``kf.Q`` for *frame_step* (``Q`` is cached per step)."""
-        kf.F = constant_velocity_F(self.dim_x, self.pos_idx, self.vel_idx, frame_step)
-        if self.cached_step is not None and np.isclose(frame_step, self.cached_step):
+        """Set ``kf.F`` and ``kf.Q`` for *frame_step* (both cached per step)."""
+        if (
+            self.cached_step is not None
+            and frame_step == self.cached_step
+            and self._cached_F is not None
+            and self._cached_Q is not None
+        ):
+            kf.F = self._cached_F
+            kf.Q = self._cached_Q
             return
+        kf.F = constant_velocity_F(self.dim_x, self.pos_idx, self.vel_idx, frame_step)
         kf.Q = self.process_noise.build_Q(frame_step)
+        self._cached_F = kf.F
+        self._cached_Q = kf.Q
         self.cached_step = frame_step
 
     def reset_cache(self) -> None:
-        """Clear cached step (e.g. after restoring filter state)."""
+        """Clear cached step and matrices (e.g. after restoring filter state)."""
         self.cached_step = None
+        self._cached_F = None
+        self._cached_Q = None
 
 
 def init_constant_velocity_filter(
