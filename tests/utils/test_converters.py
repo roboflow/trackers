@@ -206,9 +206,9 @@ class TestXCYCSRConversion:
         result = xcycsr_to_xyxy(xcycsr)
         assert np.isfinite(result).all()
         assert result[0] == result[2] == 10.0
-        # With w=0, h = 100 / 1e-6 = 1e8. ymin/ymax will be 20 +/- 5e7
-        assert result[1] == 20.0 - 50000000.0
-        assert result[3] == 20.0 + 50000000.0
+        # Zero aspect-ratio clamps w to eps; height = scale / eps → large but finite
+        np.testing.assert_allclose(result[1], 20.0 - 5e7, rtol=1e-6)
+        np.testing.assert_allclose(result[3], 20.0 + 5e7, rtol=1e-6)
 
     def test_xcycsr_to_xyxy_batch_mixed_degenerate(self) -> None:
         """Batch path handles a mix of normal and degenerate boxes without error."""
