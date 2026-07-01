@@ -493,7 +493,9 @@ def test_xyxy_batch_matches_single_under_non_translation_R(R: np.ndarray) -> Non
     CMC.apply_batch(H, [batched])
 
     np.testing.assert_allclose(single.state_estimator.kf.state, batched.state_estimator.kf.state, atol=1e-9)
-    np.testing.assert_allclose(single.state_estimator.kf.state_covariance, batched.state_estimator.kf.state_covariance, atol=1e-9)
+    np.testing.assert_allclose(
+        single.state_estimator.kf.state_covariance, batched.state_estimator.kf.state_covariance, atol=1e-9
+    )
 
 
 def test_xyxy_apply_cmc_90deg_rotation_state_is_axis_aligned() -> None:
