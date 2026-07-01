@@ -780,6 +780,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../learn/dynamic-frame-rate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Frame Rate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../learn/download/" class="md-nav__link">
         
   
@@ -2240,7 +2268,7 @@ supply an <code>iou</code> argument.</p>
 
 
 <h3 id="trackers.core.sort.tracker.SORTTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -2297,6 +2325,23 @@ confidence scores.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>timestamp</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Absolute time of the current frame in seconds, or <code>None</code>
+for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2327,6 +2372,30 @@ confidence scores.</p>
             <td>
               <div class="doc-md-description">
                 <p>Unmatched or immature tracks have tracker_id of -1.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Warns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>UserWarning</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>frame</code> is passed but SORT does not perform
+camera motion compensation (CMC), the frame is ignored.</p>
               </div>
             </td>
           </tr>
@@ -2597,7 +2666,7 @@ supply an <code>iou</code> argument.</p>
 
 
 <h3 id="trackers.core.bytetrack.tracker.ByteTrackTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -2658,6 +2727,23 @@ emitted.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>timestamp</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Absolute time of the current frame in seconds, or <code>None</code>
+for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2698,6 +2784,30 @@ emitted.</p>
             <td>
               <div class="doc-md-description">
                 <p>differ from input.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Warns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>UserWarning</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>frame</code> is passed but ByteTrack does not perform
+camera motion compensation (CMC), the frame is ignored.</p>
               </div>
             </td>
           </tr>
@@ -2976,7 +3086,7 @@ supply an <code>iou</code> argument.</p>
 
 
 <h3 id="trackers.core.ocsort.tracker.OCSORTTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -3035,6 +3145,23 @@ emitted.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>timestamp</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Absolute time of the current frame in seconds, or <code>None</code>
+for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -3065,6 +3192,30 @@ emitted.</p>
             <td>
               <div class="doc-md-description">
                 <p>Unmatched or immature tracks have tracker_id of -1.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Warns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>UserWarning</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>frame</code> is passed but OC-SORT does not perform
+camera motion compensation (CMC), the frame is ignored.</p>
               </div>
             </td>
           </tr>
@@ -3438,7 +3589,7 @@ supply an <code>iou</code> argument.</p>
 
 
 <h3 id="trackers.core.botsort.tracker.BoTSORTTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -3477,6 +3628,40 @@ it returns a new <code>sv.Detections</code> with <code>tracker_id</code> assigne
             </td>
             <td>
                 <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current video frame in BGR format (H, W, 3), or <code>None</code>.
+Used for camera motion compensation when <code>enable_cmc=True</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>timestamp</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Absolute time of the current frame in seconds, or <code>None</code>
+for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
             </td>
           </tr>
       </tbody>
@@ -3526,12 +3711,40 @@ it returns a new <code>sv.Detections</code> with <code>tracker_id</code> assigne
     </table>
 
 
+<p><span class="doc-section-title">Warns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>UserWarning</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>timestamp</code> is earlier than the previous call
+(backwards order); the whole update is skipped and all output
+IDs are <code>-1</code>. If <code>timestamp</code> equals the previous call
+(duplicate); predict is skipped but association still runs on
+the last state.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
 <details class="notes" open>
   <summary>Notes</summary>
   <ul>
 <li>If CMC is enabled, pass the current video frame via <code>frame</code> so the
   tracker can estimate a global affine transform and warp predicted
-  track states before association.</li>
+  track states before association. When <code>frame=None</code> and
+  <code>enable_cmc=True</code>, CMC is silently skipped for that step.</li>
 </ul>
 </details>
 

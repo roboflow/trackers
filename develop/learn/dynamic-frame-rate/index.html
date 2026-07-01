@@ -6,19 +6,19 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Understand how detector quality affects tracking performance. Benchmark results show the impact of detection confidence and accuracy on HOTA, IDF1, and MOTA scores.">
+        <meta name="description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/detection-quality/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/dynamic-frame-rate/">
       
       
-        <link rel="prev" href="../tune/">
+        <link rel="prev" href="../track/">
       
       
-        <link rel="next" href="../state-estimators/">
+        <link rel="next" href="../download/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Detection Quality Matters - Trackers</title>
+        <title>Dynamic Frame Rate — Variable-Gap Tracking | Trackers - Trackers</title>
       
     
     
@@ -129,12 +129,12 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "Detection Quality Matters",
-  "description": "Understand how detector quality affects tracking performance. Benchmark results show the impact of detection confidence and accuracy on HOTA, IDF1, and MOTA scores.",
-  "url": "https://trackers.roboflow.com/latest/develop/learn/detection-quality/",
+  "headline": "Dynamic Frame Rate",
+  "description": "Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU.",
+  "url": "https://trackers.roboflow.com/latest/develop/learn/dynamic-frame-rate/",
   "mainEntityOfPage": {
     "@type": "WebPage",
-    "@id": "https://trackers.roboflow.com/latest/develop/learn/detection-quality/"
+    "@id": "https://trackers.roboflow.com/latest/develop/learn/dynamic-frame-rate/"
   },
   "image": {
     "@type": "ImageObject",
@@ -161,8 +161,8 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-04-21",
-  "datePublished": "2026-03-13"
+  "dateModified": "2026-07-01",
+  "datePublished": "2026-07-01"
 }
 </script>
 
@@ -179,9 +179,9 @@
 
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
-<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/detection-quality/" />
-<meta property="og:title" content="Detection Quality Matters — Roboflow Trackers" />
-<meta property="og:description" content="Understand how detector quality affects tracking performance. Benchmark results show the impact of detection confidence and accuracy on HOTA, IDF1, and MOTA scores." />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/dynamic-frame-rate/" />
+<meta property="og:title" content="Dynamic Frame Rate — Variable-Gap Tracking | Trackers" />
+<meta property="og:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -192,8 +192,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="Detection Quality Matters — Roboflow Trackers" />
-<meta name="twitter:description" content="Understand how detector quality affects tracking performance. Benchmark results show the impact of detection confidence and accuracy on HOTA, IDF1, and MOTA scores." />
+<meta name="twitter:title" content="Dynamic Frame Rate — Variable-Gap Tracking | Trackers" />
+<meta name="twitter:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -210,7 +210,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#detection-quality-matters" class="md-skip">
+        <a href="#dynamic-frame-rate" class="md-skip">
           Skip to content
         </a>
       
@@ -276,7 +276,7 @@
 
             </a>
             
-              Detection Quality Matters
+              Dynamic Frame Rate — Variable-Gap Tracking | Trackers
             
           </span>
         </div>
@@ -780,10 +780,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../dynamic-frame-rate/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Frame Rate
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -799,6 +826,103 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use It
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fixed-rate-vs-dynamic-rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed Rate vs Dynamic Rate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-happens-on-a-long-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happens on a Long Gap
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#things-to-know" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Things to Know
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#takeaway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Takeaway
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -892,37 +1016,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Detection Quality Matters
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../detection-quality/" class="md-nav__link">
         
   
   
@@ -938,181 +1035,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#detection-models" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Detection Models
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#download-data" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Download Data
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-the-experiment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run the Experiment
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Run the Experiment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#yolo26-nano" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        YOLO26 Nano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rf-detr-nano" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RF-DETR Nano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rf-detr-medium" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RF-DETR Medium
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#evaluate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Evaluate
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Evaluate">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#yolo26-nano_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        YOLO26 Nano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rf-detr-nano_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RF-DETR Nano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rf-detr-medium_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RF-DETR Medium
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Results
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#takeaway" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Takeaway
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1673,10 +1595,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#detection-models" class="md-nav__link">
+  <a href="#when-to-use-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Detection Models
+        When to Use It
       
     </span>
   </a>
@@ -1684,10 +1606,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#download-data" class="md-nav__link">
+  <a href="#fixed-rate-vs-dynamic-rate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Download Data
+        Fixed Rate vs Dynamic Rate
       
     </span>
   </a>
@@ -1695,110 +1617,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-the-experiment" class="md-nav__link">
+  <a href="#what-happens-on-a-long-gap" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run the Experiment
+        What Happens on a Long Gap
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Run the Experiment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#yolo26-nano" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        YOLO26 Nano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rf-detr-nano" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RF-DETR Nano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rf-detr-medium" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RF-DETR Medium
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#evaluate" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Evaluate
+        Usage
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Evaluate">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#yolo26-nano_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        YOLO26 Nano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rf-detr-nano_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RF-DETR Nano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rf-detr-medium_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        RF-DETR Medium
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#results" class="md-nav__link">
+  <a href="#things-to-know" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Results
+        Things to Know
       
     </span>
   </a>
@@ -1836,233 +1680,110 @@
   
 
 
-<h1 id="detection-quality-matters">Detection Quality Matters</h1>
-<p>Tracking quality starts at the detector. If it misses an object, the tracker never gets a chance. This guide isolates the effect of detector choice by running ByteTrack with three models of increasing accuracy on the MOT17 benchmark.</p>
+<h1 id="dynamic-frame-rate">Dynamic Frame Rate</h1>
+<p>Most tracking examples assume you call <code>update()</code> once per video frame, in order, at a steady FPS. That breaks when <strong>frames are dropped</strong> (you skip frame 2 but still call <code>update()</code> on frame 3) or when you <strong>only process some frames</strong>. Processing delay is fine, a frame that arrives late but with the right capture timestamp still has the correct gap to the previous frame you tracked. What matters is the <strong>time between captured frames you actually update on</strong>, not how long inference took.</p>
+<p>Pass an optional <strong><code>timestamp</code></strong> (seconds) on <code>update()</code> so the tracker knows how much time actually passed. Prediction and pruning then follow the real gap. Omit <code>timestamp</code> and nothing changes: fixed-rate behaviour.</p>
 <p><strong>What you'll learn:</strong></p>
 <ul>
-<li>Run the same tracker with different detection models</li>
-<li>Measure how detector choice impacts tracking metrics</li>
-<li>Compare YOLO26 Nano, RF-DETR Nano, and RF-DETR Medium on MOT17</li>
+<li>How to use dynamic frame rate mode</li>
+<li>When it's worth to use it</li>
+<li>How fixed-rate and dynamic-rate modes differ</li>
 </ul>
 <hr />
 <h2 id="install">Install</h2>
-<p>Install <code>trackers</code> with the detection extra to enable built-in model support.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install trackers[detection]
+<p>Get started by installing the package.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install trackers
 </span></code></pre></div>
 <p>For more options, see the <a href="../install/">install guide</a>.</p>
 <hr />
-<h2 id="detection-models">Detection Models</h2>
-<p>We pick three models that span a wide accuracy range on COCO, from a lightweight YOLO to a mid-size transformer detector. The gap in COCO accuracy between the weakest and strongest model is nearly 15 AP. The question is how much of that carries over to tracking.</p>
-<p><img alt="RF-DETR vs top object detectors on MS COCO" src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/rf_detr_1-2_latency_accuracy_object_detection.png" /></p>
-<p align="center" style="margin-top: -0.4em;"><small>Comparison of RF-DETR against other top real-time detectors on MS COCO.</small></p>
-
+<h2 id="when-to-use-it">When to Use It</h2>
+<p>Turn on timestamps when the <strong>capture-time gap</strong> between two <code>update()</code> calls is not always one frame period, we call that <strong>dynamic frame rate</strong>, and some cases where it happens are:</p>
+<ul>
+<li><strong>Dropped or skipped frames</strong>: you process frame 100 after frame 97; the tracker should treat that as three frame periods of motion, not one</li>
+<li><strong>Sparse decode</strong>: variable-FPS files or sampling every Nth frame, using the container or camera clock</li>
+<li><strong>Out-of-order completion</strong>: workers may finish in any order, but you should call <code>update()</code> in <strong>non-decreasing capture time</strong> (sort by capture time or frame index before updating). A later frame must not be updated before an earlier one</li>
+</ul>
+<p>Stick with the default when you process <strong>every</strong> frame in order at a steady rate. A normal <code>VideoCapture</code> loop that reads all frames does not need timestamps.</p>
+<p><code>SORTTracker</code>, <code>ByteTrackTracker</code>, <code>OCSORTTracker</code>, <code>BoTSORTTracker</code>, and <code>CBIoUTracker</code> all accept <code>timestamp</code> on <code>update()</code>.</p>
+<hr />
+<h2 id="fixed-rate-vs-dynamic-rate">Fixed Rate vs Dynamic Rate</h2>
 <table>
 <thead>
 <tr>
-<th style="text-align: center;">Model</th>
-<th style="text-align: center;">COCO AP50</th>
-<th style="text-align: center;">COCO AP50:95</th>
-<th style="text-align: center;">Latency (ms)</th>
+<th></th>
+<th>Fixed rate (default)</th>
+<th>Dynamic rate</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: center;">YOLO26 Nano</td>
-<td style="text-align: center;">55.8</td>
-<td style="text-align: center;">40.3</td>
-<td style="text-align: center;">1.7</td>
+<td><code>timestamp</code></td>
+<td><code>None</code> (omit)</td>
+<td>Monotonic seconds, e.g. video clock</td>
 </tr>
 <tr>
-<td style="text-align: center;">RF-DETR Nano</td>
-<td style="text-align: center;">67.6</td>
-<td style="text-align: center;">48.4</td>
-<td style="text-align: center;">2.3</td>
-</tr>
-<tr>
-<td style="text-align: center;">RF-DETR Medium</td>
-<td style="text-align: center;">73.6</td>
-<td style="text-align: center;">54.7</td>
-<td style="text-align: center;">4.4</td>
+<td>Kalman <code>frame_step</code></td>
+<td><code>1.0</code> per call (frame units)</td>
+<td><code>elapsed_seconds × frame_rate</code> (frame units)</td>
 </tr>
 </tbody>
 </table>
+<p><strong><code>lost_track_buffer</code> is always the same integer</strong> — frames at a <strong>30 FPS reference</strong> (MOT-style tuning), not seconds you type in. The tracker converts it for you:</p>
+<ul>
+<li><strong>Fixed rate:</strong> <code>maximum_frames_without_update = int(frame_rate / 30 × lost_track_buffer)</code> so a 60 FPS pipeline with <code>lost_track_buffer=30</code> keeps lost tracks for 60 frames (~1 s if you update every frame).</li>
+<li><strong>Dynamic rate:</strong> <code>maximum_time_without_update = lost_track_buffer / 30</code> seconds between <code>update()</code> calls. The same <code>lost_track_buffer=30</code> gives a <strong>1.0 s</strong> budget; that does <strong>not</strong> scale with <code>frame_rate</code>.</li>
+</ul>
+<p>Set <strong><code>frame_rate</code></strong> on the tracker in both modes. In fixed mode it scales the frame budget above. When you pass <code>timestamp</code>, it also turns elapsed seconds into Kalman frame units (<code>elapsed_seconds × frame_rate</code>).</p>
+<p>If the video is actually steady 25 FPS and you pass timestamps every frame, <code>frame_step</code> stays <code>1.0</code> — dynamic mode lines up with fixed mode.</p>
 <hr />
-<h2 id="download-data">Download Data</h2>
-<p>Pull the MOT17 validation split. You need frames for detection and annotations for evaluation.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers download mot17 \
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    --split val \
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    --asset frames,annotations \
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    --output ./data
-</span></code></pre></div>
+<h2 id="what-happens-on-a-long-gap">What Happens on a Long Gap</h2>
+<p>On each predict, the filter adjusts how far it extrapolates and how uncertain it is:</p>
+<ul>
+<li><strong>Position</strong> moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (<code>frame_step</code>).</li>
+<li><strong>Process noise</strong> grows on longer gaps so the box does not stay artificially tight. At <code>frame_step = 1.0</code> you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.</li>
+</ul>
 <hr />
-<h2 id="run-the-experiment">Run the Experiment</h2>
-<p>Run ByteTrack with default parameters three times, changing only the detection model each time.</p>
-<h3 id="yolo26-nano">YOLO26 Nano</h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Single sequence</label><label for="__tabbed_1_2">All sequences</label></div>
+<h2 id="usage">Usage</h2>
+<p>Feed <strong><code>timestamp</code></strong> in seconds into <code>tracker.update()</code> alongside your detections. Use <strong>capture time</strong> of each frame in the video, or <code>frame_index / fps</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Python</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>--model<span class="w"> </span>yolo26n-640<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span>--classes<span class="w"> </span>person<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span>--mot-output<span class="w"> </span>results/yolo26n/MOT17-13-FRCNN.txt
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">        </span>--model<span class="w"> </span>yolo26n-640<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span>--classes<span class="w"> </span>person<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">        </span>--mot-output<span class="w"> </span>results/yolo26n/<span class="nv">$seq</span>.txt
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">done</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<video width="100%" controls autoplay muted loop>
-  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/yolo26n_MOT17-13-FRCNN.mp4" type="video/mp4">
-</video>
-<p align="center" style="margin-top: -0.4em;"><small>ByteTrack with YOLO26 Nano on MOT17-13.</small></p>
-
-<h3 id="rf-detr-nano">RF-DETR Nano</h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Single sequence</label><label for="__tabbed_2_2">All sequences</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span>--model<span class="w"> </span>rfdetr-nano<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span>--classes<span class="w"> </span>person<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span>--mot-output<span class="w"> </span>results/rfdetr-nano/MOT17-13-FRCNN.txt
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">        </span>--model<span class="w"> </span>rfdetr-nano<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">        </span>--classes<span class="w"> </span>person<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">        </span>--mot-output<span class="w"> </span>results/rfdetr-nano/<span class="nv">$seq</span>.txt
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">done</span>
+<p>Read the video clock from OpenCV and pass it to ByteTrack each frame.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inference</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_model</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">(</span><span class="s2">&quot;rfdetr-medium&quot;</span><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">(</span><span class="n">frame_rate</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span> <span class="n">lost_track_buffer</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">cap</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="s2">&quot;source.mp4&quot;</span><span class="p">)</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">ret</span><span class="p">,</span> <span class="n">frame</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">ret</span><span class="p">:</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        <span class="k">break</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">CAP_PROP_POS_MSEC</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000.0</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">frame</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">Detections</span><span class="o">.</span><span class="n">from_inference</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 </div>
 </div>
-<video width="100%" controls autoplay muted loop>
-  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/rfdetr_nano_MOT17-13-FRCNN.mp4" type="video/mp4">
-</video>
-<p align="center" style="margin-top: -0.4em;"><small>ByteTrack with RF-DETR Nano on MOT17-13.</small></p>
-
-<h3 id="rf-detr-medium">RF-DETR Medium</h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Single sequence</label><label for="__tabbed_3_2">All sequences</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span>--model<span class="w"> </span>rfdetr-medium<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span>--classes<span class="w"> </span>person<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span>--mot-output<span class="w"> </span>results/rfdetr-medium/MOT17-13-FRCNN.txt
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">        </span>--model<span class="w"> </span>rfdetr-medium<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">        </span>--classes<span class="w"> </span>person<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">        </span>--mot-output<span class="w"> </span>results/rfdetr-medium/<span class="nv">$seq</span>.txt
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="k">done</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<video width="100%" controls autoplay muted loop>
-  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/rfdetr_medium_MOT17-13-FRCNN.mp4" type="video/mp4">
-</video>
-<p align="center" style="margin-top: -0.4em;"><small>ByteTrack with RF-DETR Medium on MOT17-13.</small></p>
-
+<p>Call <strong><code>tracker.reset()</code></strong> when you switch videos so the last timestamp does not leak into the next file.</p>
 <hr />
-<h2 id="evaluate">Evaluate</h2>
-<p>Evaluate each run against ground truth using CLEAR, HOTA, and Identity metrics.</p>
-<h3 id="yolo26-nano_1">YOLO26 Nano</h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>trackers eval \
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    --gt-dir ./data/mot17/val \
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    --tracker-dir results/yolo26n \
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    --metrics CLEAR HOTA Identity \
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    --columns MOTA HOTA IDF1
-</span></code></pre></div>
-<p><strong>Output:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>                                MOTA    HOTA    IDF1
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>----------------------------------------------------
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>COMBINED                      23.444  32.874  34.411
-</span></code></pre></div>
-<h3 id="rf-detr-nano_1">RF-DETR Nano</h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>trackers eval \
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    --gt-dir ./data/mot17/val \
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    --tracker-dir results/rfdetr-nano \
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    --metrics CLEAR HOTA Identity \
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    --columns MOTA HOTA IDF1
-</span></code></pre></div>
-<p><strong>Output:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>                                MOTA    HOTA    IDF1
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>----------------------------------------------------
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>COMBINED                      25.667  35.735  38.182
-</span></code></pre></div>
-<h3 id="rf-detr-medium_1">RF-DETR Medium</h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>trackers eval \
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    --gt-dir ./data/mot17/val \
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    --tracker-dir results/rfdetr-medium \
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    --metrics CLEAR HOTA Identity \
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    --columns MOTA HOTA IDF1
-</span></code></pre></div>
-<p><strong>Output:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>                                MOTA    HOTA    IDF1
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>----------------------------------------------------
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>COMBINED                      29.141  38.637  41.950
-</span></code></pre></div>
-<hr />
-<h2 id="results">Results</h2>
-<p>Same tracker, same data, same parameters. The only difference is the detector.</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: center;">Detector</th>
-<th style="text-align: center;">MOTA</th>
-<th style="text-align: center;">HOTA</th>
-<th style="text-align: center;">IDF1</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: center;">YOLO26 Nano</td>
-<td style="text-align: center;">23.444</td>
-<td style="text-align: center;">32.874</td>
-<td style="text-align: center;">34.411</td>
-</tr>
-<tr>
-<td style="text-align: center;">RF-DETR Nano</td>
-<td style="text-align: center;">25.667</td>
-<td style="text-align: center;">35.735</td>
-<td style="text-align: center;">38.182</td>
-</tr>
-<tr>
-<td style="text-align: center;">RF-DETR Medium</td>
-<td style="text-align: center;"><strong>29.141</strong></td>
-<td style="text-align: center;"><strong>38.637</strong></td>
-<td style="text-align: center;"><strong>41.950</strong></td>
-</tr>
-</tbody>
-</table>
-<p>RF-DETR Medium leads across every metric, showing that a stronger detector directly lifts tracking quality.</p>
+<h2 id="things-to-know">Things to Know</h2>
+<p><strong>You can mix modes per call.</strong> Only steps that pass <code>timestamp</code> use seconds for pruning and scaled predict. Calling <code>update()</code> without <code>timestamp</code> resets the internal timestamp anchor — the next <code>update()</code> that <em>does</em> pass a <code>timestamp</code> will be treated as a fresh start (Kalman frame step <code>1 / frame_rate</code>), not a measured gap from the last timestamped call.</p>
+<p><strong>The first timestamped step is special.</strong> The tracker does not use your absolute clock value as the first gap. It assumes <code>1 / frame_rate</code> seconds so the first Kalman predict still looks like one frame.</p>
+<p><strong>Timestamps must not go backwards.</strong> If <code>timestamp</code> is less than the previous call, <code>update()</code> <strong>warns and skips the whole step</strong> (tracks unchanged, output IDs are <code>-1</code>). Reorder by capture time and call again. <strong>Duplicate</strong> timestamps (same capture time twice) only skip predict; association still runs on the last state.</p>
+<p><strong><code>frame_rate</code> should match your reference timeline.</strong> If the file is 24 FPS but you set <code>frame_rate=30</code>, each step over-predicts motion. Same parameter already mattered for threshold scaling in fixed mode; it matters more when gaps are measured in seconds.</p>
+<p><strong>OC-SORT:</strong> ORU still steps in frame units, not wall-clock gaps.</p>
 <hr />
 <h2 id="takeaway">Takeaway</h2>
-<p>Before tweaking tracker hyperparameters, invest in detection quality. The results above show that swapping the detector alone produces larger gains than most tracker-level optimizations.</p>
+<p>Timestamps are optional on <code>update()</code>. Skip them when you track every frame in order. Use them when frames are <strong>dropped or sparse</strong>, pass <strong>capture time</strong> (not inference finish time), call <code>update()</code> in <strong>time order</strong>, set <code>frame_rate</code> to the FPS you tuned against, and <code>reset()</code> between videos.</p>
 
 
 
@@ -2085,7 +1806,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 21, 2026 13:12:13 UTC">2026-04-21</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 1, 2026 19:50:09 UTC">2026-07-01</span>
   </span>
 
     
@@ -2095,7 +1816,7 @@
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 13, 2026 17:04:08 UTC">2026-03-13</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 1, 2026 19:50:09 UTC">2026-07-01</span>
   </span>
 
     
@@ -2126,7 +1847,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../tune/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Tune Trackers">
+          <a href="../track/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Track Objects">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2136,20 +1857,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Tune Trackers
+                Track Objects
               </div>
             </div>
           </a>
         
         
           
-          <a href="../state-estimators/" class="md-footer__link md-footer__link--next" aria-label="Next: State Estimators">
+          <a href="../download/" class="md-footer__link md-footer__link--next" aria-label="Next: Download Datasets">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                State Estimators
+                Download Datasets
               </div>
             </div>
             <div class="md-footer__button md-icon">
