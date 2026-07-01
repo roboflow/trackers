@@ -32,7 +32,7 @@ ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as 
 
 **Stage 1 -- high-confidence matching.** Detections with confidence above `high_conf_det_threshold` are matched to confirmed tracks using IoU-based Hungarian assignment, identical to SORT. Unmatched tracks and unmatched high-confidence detections pass to the next stage.
 
-**Stage 2 -- low-confidence matching.** Detections with confidence between `track_activation_threshold` and `high_conf_det_threshold` are matched to the remaining unmatched tracks using IoU. This second pass associates weak detections to already-established tracks, recovering objects that would otherwise be lost. Detections below `track_activation_threshold` are discarded entirely and never start new tracks.
+**Stage 2 -- low-confidence matching.** Detections with confidence between `track_activation_threshold` and `high_conf_det_threshold` are matched to the remaining unmatched tracks using IoU. This second pass associates weak detections to already-established tracks, recovering objects that would otherwise be lost. Unmatched high-confidence detections whose confidence falls below `track_activation_threshold` are returned with `tracker_id` of `-1` and never start new tracks.
 
 **Track lifecycle.** New tracks are initialized only from unmatched high-confidence detections (stage 1). A new track is promoted to confirmed status after `minimum_consecutive_frames` consecutive matches. Tracks that go unmatched for more than `lost_track_buffer` frames are deleted.
 
