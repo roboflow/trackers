@@ -93,11 +93,14 @@ class SORTTracker(BaseTracker):
             lost_track_buffer=lost_track_buffer,
             frame_rate=frame_rate,
         )
+        self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+
+        self._init_timestamp_state(frame_rate)
 
         # Active tracklets
         self.tracks: list[SORTTracklet] = []
@@ -168,7 +171,12 @@ class SORTTracker(BaseTracker):
                 )
                 self.tracks.append(new_tracker)
 
-    def update(self, detections: sv.Detections, frame: np.ndarray | None = None) -> sv.Detections:
+    def update(
+        self,
+        detections: sv.Detections,
+        frame: np.ndarray | None = None,
+        timestamp: float | None = None,
+    ) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
         Performs Kalman filter prediction, IoU-based association, and initializes
         new tracks for unmatched high-confidence detections.
@@ -178,12 +186,22 @@ class SORTTracker(BaseTracker):
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
                 confidence scores.
             frame: Ignored by SORT. If provided (not `None`), a warning is emitted.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
             Unmatched or immature tracks have tracker_id of -1.
+
+        Warns:
+            UserWarning: If ``frame`` is passed but SORT does not perform
+                camera motion compensation (CMC), the frame is ignored.
         """
         self._warn_if_frame_unused(frame)
+        timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
+
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
@@ -191,8 +209,12 @@ class SORTTracker(BaseTracker):
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
 
-        for tracklet in self.tracks:
-            tracklet.predict()
+        self._predict_tracklets(self.tracks, timing)
+
+        # Ghost-ID prevention: budget-only filter before association.
+        # Keeps immature tracks alive for matching; full lifecycle prune runs after.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        self._prune_lost_tracks(timing)
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
@@ -211,11 +233,12 @@ class SORTTracker(BaseTracker):
         confidences = default_confidences(detections)
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
-        # Remove dead tracklets
+        # Full lifecycle prune: also removes immature+unmatched tracks
         self.tracks = _get_alive_tracklets(
             self.tracks,
             self.minimum_consecutive_frames,
             self.maximum_frames_without_update,
+            _budget,
         )
 
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
@@ -237,4 +260,5 @@ class SORTTracker(BaseTracker):
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
+        self._last_timestamp = None
         self._reset_id_allocator()

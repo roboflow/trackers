@@ -104,6 +104,7 @@ class ByteTrackTracker(BaseTracker):
             lost_track_buffer=lost_track_buffer,
             frame_rate=frame_rate,
         )
+        self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
@@ -113,10 +114,13 @@ class ByteTrackTracker(BaseTracker):
         self.iou = iou if iou is not None else IoU()
         self._reset_id_allocator()
 
+        self._init_timestamp_state(frame_rate)
+
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        timestamp: float | None = None,
     ) -> sv.Detections:
         """Update tracks state with new detections and return tracked objects.
         Performs Kalman filter prediction, two-stage association (high then low
@@ -131,13 +135,23 @@ class ByteTrackTracker(BaseTracker):
                 tracks regardless of `track_activation_threshold`.
             frame: Ignored by ByteTrack. If provided (not `None`), a warning is
                 emitted.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
             Unmatched detections have tracker_id of -1. Detection order may
             differ from input.
+
+        Warns:
+            UserWarning: If ``frame`` is passed but ByteTrack does not perform
+                camera motion compensation (CMC), the frame is ignored.
         """
         self._warn_if_frame_unused(frame)
+        timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
+
         if len(self.tracks) == 0 and len(detections) == 0:
             result = sv.Detections.empty()
             result.tracker_id = np.array([], dtype=int)
@@ -146,8 +160,12 @@ class ByteTrackTracker(BaseTracker):
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
 
-        for tracker in self.tracks:
-            tracker.predict()
+        self._predict_tracklets(self.tracks, timing)
+
+        # Ghost-ID prevention: budget-only filter before association.
+        # Keeps immature tracks alive for matching; full lifecycle prune runs after.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        self._prune_lost_tracks(timing)
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -208,10 +226,12 @@ class ByteTrackTracker(BaseTracker):
             out_tracker_ids,
         )
 
+        # Full lifecycle prune: removes immature+unmatched and any remaining expired tracks
         self.tracks = _get_alive_tracklets(
             tracklets=self.tracks,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
             maximum_frames_without_update=self.maximum_frames_without_update,
+            maximum_time_without_update=_budget,
         )
 
         # Build final sv.Detections from original by indexing
@@ -275,20 +295,23 @@ class ByteTrackTracker(BaseTracker):
     ) -> None:
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
-            conf = float(confidences[global_idx])
-            if conf >= self.track_activation_threshold:
+            # Every detection is returned (with tracker_id -1 when untracked),
+            # matching the documented contract and SORT's behaviour. Only
+            # detections clearing the activation threshold spawn a new track.
+            out_det_indices.append(global_idx)
+            out_tracker_ids.append(-1)
+            if float(confidences[global_idx]) >= self.track_activation_threshold:
                 self.tracks.append(
                     ByteTrackTracklet(
                         initial_bbox=detection_boxes[global_idx],
                         state_estimator_class=self.state_estimator_class,
                     )
                 )
-                out_det_indices.append(global_idx)
-                out_tracker_ids.append(-1)
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
+        self._last_timestamp = None
         self._reset_id_allocator()

@@ -14,10 +14,13 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, ClassVar, Protocol, Union, get_args, get_origin
+from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin
 
 import numpy as np
 import supervision as sv
+
+from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.predict_timing import PredictTiming
 
 
 @dataclass
@@ -319,6 +322,7 @@ class BaseTracker(ABC):
     # list[ConcreteTracklet] in subclasses rejects list[TrackletProtocol] base.
     tracks: list[Any]
     maximum_frames_without_update: int
+    maximum_time_without_update: float | None
     _next_track_id: int
 
     @staticmethod
@@ -415,6 +419,20 @@ class BaseTracker(ABC):
         """
         return sorted(cls._registry.keys())
 
+    _frame_rate: float = 1.0
+    _last_timestamp: float | None = None
+
+    def _init_timestamp_state(self, frame_rate: float) -> None:
+        """Register reference FPS and reset timestamp bookkeeping.
+
+        Call from ``__init__`` on all concrete trackers.
+
+        Args:
+            frame_rate: Reference frames per second for bootstrap elapsed time.
+        """
+        self._frame_rate = frame_rate
+        self._last_timestamp = None
+
     def _warn_if_frame_unused(self, frame: np.ndarray | None) -> None:
         """Emit a UserWarning when a frame is passed to a tracker that ignores it.
 
@@ -431,11 +449,120 @@ class BaseTracker(ABC):
                 stacklevel=3,
             )
 
+    def _predict_timing(self, timestamp: float | None) -> PredictTiming:
+        """Build predict timing from an optional timestamp.
+
+        All timestamp ordering checks live here: fixed-rate mode, bootstrap,
+        backwards (skip whole update), duplicate (skip predict only), normal gap.
+        ``_last_timestamp`` advances only on bootstrap and strictly increasing times.
+        """
+        if timestamp is None:
+            self._last_timestamp = None
+            return PredictTiming(frame_step=1.0, elapsed_seconds=None)
+
+        if not np.isfinite(timestamp):
+            warnings.warn(
+                f"{type(self).__name__}: timestamp {timestamp!r} is not finite; skipping update.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return PredictTiming(frame_step=0.0, elapsed_seconds=None, skip_update=True)
+
+        last = self._last_timestamp
+
+        if last is None:
+            # Bootstrap: no prior timestamp, so we cannot compute t - t_prev.
+            # Use one nominal frame period (1 / frame_rate) so the first Kalman
+            # step is frame_step=1.0 — matching fixed-rate behaviour rather than
+            # using the absolute timestamp value (e.g. 37.2 s would break tuning).
+            self._last_timestamp = timestamp
+            elapsed = 1.0 / self._frame_rate
+            return PredictTiming(
+                frame_step=elapsed * self._frame_rate,
+                elapsed_seconds=elapsed,
+            )
+
+        if timestamp < last:
+            warnings.warn(
+                f"{type(self).__name__}: timestamp {timestamp} is earlier than the "
+                f"previous timestamp {last}. Skipping update; pass capture times in "
+                "non-decreasing order.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return PredictTiming(frame_step=0.0, elapsed_seconds=None, skip_update=True)
+
+        if timestamp == last:
+            warnings.warn(
+                f"{type(self).__name__}: duplicate timestamp {timestamp}; skipping predict for this step.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return PredictTiming(frame_step=0.0, elapsed_seconds=0.0)
+
+        elapsed = timestamp - last
+        self._last_timestamp = timestamp
+        return PredictTiming(
+            frame_step=elapsed * self._frame_rate,
+            elapsed_seconds=elapsed,
+        )
+
+    def _detections_for_skipped_update(self, detections: sv.Detections) -> sv.Detections:
+        """Return detections unchanged except tracker_id=-1; do not mutate tracks."""
+        if len(detections) == 0:
+            result = sv.Detections.empty()
+            result.tracker_id = np.array([], dtype=int)
+            return result
+        result = cast(sv.Detections, detections[:])
+        result.tracker_id = np.full(len(result), -1, dtype=int)
+        return result
+
+    def _predict_tracklets(self, tracklets: list[Any], timing: PredictTiming) -> None:
+        """Predict all tracklets unless the timestamp did not advance."""
+        if timing.skip_predict:
+            return
+        for tracklet in tracklets:
+            tracklet.predict(timing)
+
+    def _lost_track_time_budget(
+        self,
+        timing: PredictTiming,
+        seconds_budget: float | None,
+    ) -> float | None:
+        """Return the seconds lost-track budget when timestamps are in use."""
+        return seconds_budget if timing.uses_elapsed_time else None
+
+    def _prune_lost_tracks(self, timing: PredictTiming) -> None:
+        """Remove tracks that exceed their lost-track budget (ghost-ID prevention).
+
+        Applies a budget-only filter so immature tracks stay alive for matching.
+        Call after ``_predict_tracklets`` and before association.
+
+        At fixed frame rate (no timestamps) this is a no-op — the frame-count
+        budget is enforced post-association, preserving the last-frame re-association
+        opportunity that the original trackers relied on.  In variable-FPS mode the
+        time budget can differ from the frame budget, so expired-by-time tracks are
+        removed here before they can be matched and revived with a stale ID.
+        """
+        budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        if budget is None:
+            return
+        self.tracks = [
+            t
+            for t in self.tracks
+            if BaseTracklet.within_lost_track_budget(
+                t,
+                maximum_frames_without_update=self.maximum_frames_without_update,
+                maximum_time_without_update=budget,
+            )
+        ]
+
     @abstractmethod
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        timestamp: float | None = None,
     ) -> sv.Detections:
         """Process new detections and assign track IDs.
 
@@ -446,10 +573,35 @@ class BaseTracker(ABC):
             detections: Current frame detections with xyxy, confidence, class_id.
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
                 Used by trackers with camera motion compensation (e.g. BoTSORT).
+            timestamp: Absolute time of the current frame in seconds, or
+                ``None`` for fixed-rate mode (``frame_step = 1.0`` per call).
+                Must be non-negative. When provided, elapsed seconds are
+                converted to Kalman frame units via ``* frame_rate``; pruning
+                uses seconds directly. Must be non-decreasing in capture time.
+                Passing ``None`` resets the internal timestamp anchor so the
+                next timestamped call is treated as a fresh bootstrap.
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each
-            detection box.
+            detection box. When the update is skipped (backwards or
+            non-finite timestamp), all ``tracker_id`` values are ``-1``.
+
+        Warns:
+            UserWarning: If ``timestamp`` is earlier than the previous call
+                (backwards order); the whole update is skipped and all output
+                IDs are ``-1``. If ``timestamp`` equals the previous call
+                (duplicate); predict is skipped but association still runs on
+                the last state (``elapsed_seconds = 0.0``).
+
+        Note:
+            Mixing timestamped and non-timestamped calls in the same session is
+            unsupported. Calling ``update(detections)`` (no timestamp) resets
+            ``_last_timestamp`` to ``None``; the next timestamped call is then
+            treated as a fresh bootstrap (``frame_step = 1 / frame_rate``) rather
+            than measuring the real gap from the previous call. If you switch from
+            ``update(d, timestamp=t)`` to ``update(d)`` and then back to
+            ``update(d, timestamp=t2)``, the elapsed gap ``t2 - t`` is silently
+            discarded and the Kalman step is reset to one nominal frame.
         """
         pass
 

@@ -253,6 +253,124 @@ def test_bytetrack_no_confidence_spawns_tracks_below_activation_threshold() -> N
     )
 
 
+def test_bytetrack_returns_unmatched_detection_between_thresholds() -> None:
+    """A detection whose confidence sits between high_conf_det_threshold and
+    track_activation_threshold must still be returned (with tracker_id -1) when
+    it matches no track, not silently dropped."""
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.6,
+        track_activation_threshold=0.7,
+    )
+    detections = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0], [100.0, 100.0, 140.0, 140.0], [200.0, 200.0, 240.0, 240.0]]),
+        confidence=np.array([0.50, 0.65, 0.80]),  # low / mid (in the gap) / high
+    )
+
+    result = tracker.update(detections)
+
+    assert len(result) == 3, "every detection must be returned, including the mid-confidence one"
+    # compare with a tolerance: confidence may be stored as float32
+    np.testing.assert_allclose(np.sort(result.confidence), [0.50, 0.65, 0.80], atol=1e-6)
+    assert result.tracker_id is not None
+    assert np.all(result.tracker_id == -1), "no detection matches a track on the first frame"
+
+
+def test_bytetrack_all_detections_in_gap() -> None:
+    """All detections in [high_conf_det_threshold, track_activation_threshold) return tracker_id=-1.
+
+    When every detection falls in the confidence gap, Stage 2 loop is empty and
+    _spawn_new_tracks processes them all but spawns no tracks.
+    """
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.5,
+        track_activation_threshold=0.8,
+    )
+    detections = sv.Detections(
+        xyxy=np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 30.0, 30.0]]),
+        confidence=np.array([0.55, 0.70]),  # both in gap
+    )
+
+    result = tracker.update(detections)
+
+    assert len(result) == 2
+    assert result.tracker_id is not None
+    assert np.all(result.tracker_id == -1)
+    assert len(tracker.tracks) == 0, "no tracks spawned when confidence below activation threshold"
+
+
+def test_bytetrack_mid_gap_detection_returned_across_frames() -> None:
+    """Mid-gap detection (tracker_id=-1) continues to appear in output on frame 2+.
+
+    A regression where a mid-gap detection stops being returned on subsequent
+    frames would not be caught by the single-frame test.
+    """
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.6,
+        track_activation_threshold=0.7,
+    )
+    mid_gap_det = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0]]),
+        confidence=np.array([0.65]),  # in gap
+    )
+
+    result_f1 = tracker.update(mid_gap_det)
+    result_f2 = tracker.update(mid_gap_det)
+
+    assert len(result_f1) == 1
+    assert result_f1.tracker_id is not None
+    assert np.all(result_f1.tracker_id == -1)
+    assert len(result_f2) == 1
+    assert result_f2.tracker_id is not None
+    assert np.all(result_f2.tracker_id == -1)
+
+
+def test_bytetrack_mid_gap_detection_matched_in_stage1() -> None:
+    """Mid-gap detection overlapping a confirmed track is matched in Stage 1.
+
+    A detection with confidence in [high_conf_det_threshold, track_activation_threshold)
+    qualifies for Stage 1 matching; if it overlaps an existing confirmed track it should
+    receive the track's positive tracker_id, not -1.
+
+    Three-frame sequence: frame 1 spawns the track (tracker_id=-1), frame 2 matches and
+    promotes it to a positive ID (minimum_consecutive_frames=1), frame 3 presents a
+    mid-gap detection that is matched in Stage 1 and receives the same positive ID.
+    """
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.6,
+        track_activation_threshold=0.7,
+        minimum_consecutive_frames=1,
+    )
+    box = np.array([[10.0, 10.0, 50.0, 50.0]])
+
+    # Frame 1: high-conf detection spawns a tentative track (tracker_id=-1).
+    frame1 = sv.Detections(xyxy=box, confidence=np.array([0.80]))
+    result1 = tracker.update(frame1)
+    assert len(result1) == 1
+    assert result1.tracker_id is not None
+    assert result1.tracker_id[0] == -1, "newly spawned track is tentative on frame 1"
+
+    # Frame 2: same high-conf detection matches the track — now 1 consecutive update.
+    # minimum_consecutive_frames=1 → track is promoted to a positive ID.
+    frame2 = sv.Detections(xyxy=box, confidence=np.array([0.80]))
+    result2 = tracker.update(frame2)
+    assert len(result2) == 1
+    assert result2.tracker_id is not None
+    confirmed_id = result2.tracker_id[0]
+    assert confirmed_id >= 0, "track promoted to positive ID after minimum_consecutive_frames=1 matches"
+
+    # Frame 3: mid-gap confidence at the same position.
+    # conf=0.65 >= high_conf_det_threshold=0.6 → qualifies for Stage 1 matching.
+    # Overlaps the confirmed track → matched → receives the track's positive ID.
+    frame3 = sv.Detections(xyxy=box, confidence=np.array([0.65]))
+    result3 = tracker.update(frame3)
+
+    assert len(result3) == 1
+    assert result3.tracker_id is not None
+    assert result3.tracker_id[0] == confirmed_id, (
+        "mid-gap det matched to confirmed track must receive the track's positive ID, not -1"
+    )
+
+
 def test_bytetrack_calls_iou_in_low_confidence_branch() -> None:
     """ByteTrack must call the configured IoU in its low-confidence association branch."""
     from trackers import ByteTrackTracker
