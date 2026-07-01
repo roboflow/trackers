@@ -403,7 +403,7 @@ def test_no_timestamp_uses_frame_budget(
         lost_track_buffer=5,
     )
     tracker.update(_DET)
-    for _ in range(4):
+    for _ in range(5):
         tracker.update(_make_detections([], []))
     assert len(tracker.tracks) == 1
     tracker.update(_make_detections([], []))
@@ -427,7 +427,7 @@ def test_mixed_timestamp_then_fixed_uses_frame_budget(
     )
     tracker.update(_DET, timestamp=0.0)
     assert tracker.tracks[0].time_since_update_seconds == 0.0
-    for _ in range(2):
+    for _ in range(3):
         tracker.update(_make_detections([], []))
     assert len(tracker.tracks) == 1
     assert tracker.tracks[0].time_since_update_seconds == 0.0
