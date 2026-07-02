@@ -10,11 +10,13 @@ import pytest
 from trackers.utils.cmc import CMC, CMCConfig
 
 
+from typing import Literal
+
 @pytest.mark.parametrize(
     "method",
     ["sparseOptFlow", "orb", "sift", "ecc"],
 )
-def test_cmc_downscale_zero_dimension(method: str) -> None:
+def test_cmc_downscale_zero_dimension(method: Literal["sparseOptFlow", "orb", "sift", "ecc"]) -> None:
     """Test that cmc downscaling does not crash when passed an image smaller than the downscale factor."""
     cfg = CMCConfig(method=method, downscale=2)
     cmc = CMC(cfg)
