@@ -4,13 +4,13 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from typing import Literal
+
 import numpy as np
 import pytest
 
 from trackers.utils.cmc import CMC, CMCConfig
 
-
-from typing import Literal
 
 @pytest.mark.parametrize(
     "method",
