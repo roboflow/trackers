@@ -15,14 +15,25 @@ from typing import TYPE_CHECKING
 import numpy as np
 import supervision as sv
 
-from trackers.core.reid.models.loaders import load_state_dict_into, resolve_weights
-from trackers.core.reid.models.preprocessing import ReIDPreprocessing
+from trackers.core.reid.models.loaders import load_state_dict_for_architecture, resolve_weights
+from trackers.core.reid.models.preprocessing import REID_INPUT_SIZE, ReIDPreprocessing
 
 if TYPE_CHECKING:
     import torch
     import torch.nn as nn
 
 logger = logging.getLogger(__name__)
+
+# Input geometry tied to a named architecture (when loading bare weight files).
+_ARCHITECTURE_DEFAULT_PREPROCESSING: dict[str, ReIDPreprocessing] = {
+    "fastreid_sbs_resnest50": ReIDPreprocessing(input_size=(384, 128)),
+}
+
+
+def _default_preprocessing_for_architecture(architecture: str | nn.Module | None) -> ReIDPreprocessing:
+    if isinstance(architecture, str) and architecture in _ARCHITECTURE_DEFAULT_PREPROCESSING:
+        return _ARCHITECTURE_DEFAULT_PREPROCESSING[architecture]
+    return ReIDPreprocessing(input_size=REID_INPUT_SIZE)
 
 
 def _clamp_xyxy_to_frame(box: np.ndarray, height: int, width: int) -> np.ndarray:
@@ -126,10 +137,8 @@ class ReIDModel:
         resolved_device = _select_device(device)
 
         # §2.2 step 1: no source and no architecture → use the default alias.
-        using_default = False
         if source is None and architecture is None:
             source = DEFAULT_MODEL
-            using_default = True
 
         # §2.2 steps 2-3: resolve a ModelCard from an alias or config-bearing
         # directory/repo.
@@ -141,13 +150,15 @@ class ReIDModel:
             resolved_arch = architecture if architecture is not None else card.architecture
             resolved_weights = card.weights
             resolved_preprocessing = preprocessing if preprocessing is not None else card.preprocessing
-            resolved_warning = card.domain_warning if using_default else None
+            resolved_warning = card.domain_warning
 
         elif source is None:
             # §2.2 step 5: architecture-only; no external weights loaded.
             resolved_arch = architecture
             resolved_weights = None
-            resolved_preprocessing = preprocessing if preprocessing is not None else ReIDPreprocessing()
+            resolved_preprocessing = (
+                preprocessing if preprocessing is not None else _default_preprocessing_for_architecture(architecture)
+            )
             resolved_warning = None
 
         else:
@@ -162,7 +173,9 @@ class ReIDModel:
                 )
             resolved_arch = architecture
             resolved_weights = source
-            resolved_preprocessing = preprocessing if preprocessing is not None else ReIDPreprocessing()
+            resolved_preprocessing = (
+                preprocessing if preprocessing is not None else _default_preprocessing_for_architecture(architecture)
+            )
             resolved_warning = None
 
         if resolved_warning:
@@ -176,7 +189,13 @@ class ReIDModel:
 
         if resolved_weights is not None:
             local_path = resolve_weights(resolved_weights)
-            report = load_state_dict_into(backbone, local_path, resolved_device)
+            arch_name = resolved_arch if isinstance(resolved_arch, str) else ""
+            report = load_state_dict_for_architecture(
+                backbone,
+                local_path,
+                resolved_device,
+                arch_name,
+            )
             logger.info("ReIDModel weights (%s): %s", resolved_weights, report.summary())
 
         backbone.to(resolved_device)

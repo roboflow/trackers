@@ -48,6 +48,11 @@ def build_architecture(
         # pretrained is intentionally ignored here.
         return build_osnet(variant=_OSNET_VARIANTS[architecture], num_classes=num_classes)
 
+    if architecture == "fastreid_sbs_resnest50":
+        from trackers.core.reid.architectures.fastreid_sbs import build_fastreid_sbs_resnest50
+
+        return build_fastreid_sbs_resnest50(num_classes=num_classes, pretrained=pretrained)
+
     raise ValueError(
         f"Unknown architecture {architecture!r}. Choose a registered name "
         f"({list_architectures()}), a timm model as 'timm:<name>' (e.g. "
@@ -56,5 +61,5 @@ def build_architecture(
 
 
 def list_architectures() -> list[str]:
-    """Return registered OSNet variant names (timm models use ``timm:<name>``)."""
-    return sorted(_OSNET_VARIANTS)
+    """Return registered architecture names (timm models use ``timm:<name>``)."""
+    return sorted([*_OSNET_VARIANTS, "fastreid_sbs_resnest50"])

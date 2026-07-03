@@ -13,9 +13,10 @@ from trackers.core.reid.feature_bank import FeatureBank
 from trackers.core.reid.model import ReIDModel
 from trackers.core.reid.models.loaders import KeyReport, resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
-from trackers.core.reid.models.registry import ModelCard, resolve_model_card
+from trackers.core.reid.models.registry import FASTREID_MOT17_SBS50, ModelCard, resolve_model_card
 
 __all__ = [
+    "FASTREID_MOT17_SBS50",
     "FeatureBank",
     "KeyReport",
     "ModelCard",

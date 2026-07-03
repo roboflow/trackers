@@ -41,6 +41,18 @@ _DOMAIN_WARNING = (
 
 DEFAULT_MODEL = "osnet_x1_0_msmt17_combineall"
 
+# BoT-SORT MOT17 SBS-S50 (ResNeSt50 + GeM + BNNeck), trained on MOT17 train-half GT crops.
+# Weights: https://github.com/niraharon/bot-sort#model-zoo
+_FASTREID_MOT17_WEIGHTS = "gd://1QZFWpoa80rqo7O-HXmlss8J8CnS7IUsN/mot17_sbs_S50.pth"
+_FASTREID_MOT17_PREPROCESSING = ReIDPreprocessing(input_size=(384, 128))
+_FASTREID_MOT17_WARNING = (
+    "The fastreid_mot17_sbs50 weights were trained on MOT17 pedestrian crops. "
+    "Use this encoder for MOT tracking benchmarks (BoT-SORT-ReID replication); "
+    "cross-domain retrieval on Market-1501 / MSMT17 is expected to underperform."
+)
+
+FASTREID_MOT17_SBS50 = "fastreid_mot17_sbs50"
+
 
 @dataclass
 class ModelCard:
@@ -58,6 +70,12 @@ ALIASES: dict[str, ModelCard] = {
         weights=_DEFAULT_OSNET_WEIGHTS,
         preprocessing=ReIDPreprocessing(),
         domain_warning=_DOMAIN_WARNING,
+    ),
+    FASTREID_MOT17_SBS50: ModelCard(
+        architecture="fastreid_sbs_resnest50",
+        weights=_FASTREID_MOT17_WEIGHTS,
+        preprocessing=_FASTREID_MOT17_PREPROCESSING,
+        domain_warning=_FASTREID_MOT17_WARNING,
     ),
 }
 

@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     import torch.nn as nn
 
 _HF_PREFIX = "hf://"
+_GD_PREFIX = "gd://"
+_FASTREID_SBS_ARCH = "fastreid_sbs_resnest50"
 
 # State-dict key prefixes dropped before matching. Classification heads differ
 # per dataset (num_classes) and are unused at inference — re-ID reads the
@@ -46,9 +48,11 @@ class KeyReport:
 
 
 def resolve_weights(source: str) -> str:
-    """Resolve a local path or ``hf://repo/file`` URL to a local weights file."""
+    """Resolve a local path, ``hf://``, or ``gd://`` URL to a local weights file."""
     if source.startswith(_HF_PREFIX):
         return _resolve_hf(source)
+    if source.startswith(_GD_PREFIX):
+        return _resolve_gd(source)
 
     import os
 
@@ -73,6 +77,105 @@ def _resolve_hf(source: str) -> str:
         repo_id, revision = repo_id.split("@", 1)
 
     return hf_hub_download(repo_id=repo_id, filename=filename, revision=revision)
+
+
+def _resolve_gd(source: str) -> str:
+    """Download a Google Drive file once and cache under ``~/.cache/trackers/weights``."""
+    import os
+
+    rest = source[len(_GD_PREFIX) :]
+    file_id, _, filename = rest.partition("/")
+    if not file_id:
+        raise ValueError(f"Malformed gd:// weights URL {source!r}. Expected 'gd://<file_id>/<filename>'.")
+    if not filename:
+        filename = f"{file_id}.pth"
+
+    cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "trackers", "weights")
+    os.makedirs(cache_dir, exist_ok=True)
+    path = os.path.join(cache_dir, filename)
+    if os.path.exists(path):
+        return path
+
+    try:
+        import gdown
+    except ImportError as exc:
+        raise ImportError(
+            "Google Drive weights (gd://...) require gdown. Install with:  pip install gdown"
+        ) from exc
+
+    gdown.download(id=file_id, output=path, quiet=False)
+    return path
+
+
+def remap_fastreid_sbs_state_dict(state_dict: dict) -> dict:
+    """Map BoT-SORT / FastReID SBS checkpoint keys onto :class:`FastReIDSBSResNeSt50`."""
+    mapped: dict = {}
+    for key, value in state_dict.items():
+        key = key[7:] if key.startswith("module.") else key
+        if key.startswith("backbone."):
+            mapped[key] = value
+        elif key == "heads.pool_layer.p":
+            mapped["pool.p"] = value
+        elif key.startswith("heads.bottleneck.0."):
+            mapped["bottleneck." + key[len("heads.bottleneck.0.") :]] = value
+        # Skip heads.weight and other training-only keys.
+    return mapped
+
+
+def load_fastreid_sbs_state_dict_into(
+    module: nn.Module,
+    path: str,
+    device: torch.device,
+    *,
+    warn_threshold: float = 0.5,
+) -> KeyReport:
+    """Load a BoT-SORT / FastReID SBS ``.pth`` checkpoint into :class:`FastReIDSBSResNeSt50`."""
+    state_dict = _read_state_dict(path, device)
+    cleaned = remap_fastreid_sbs_state_dict(state_dict)
+
+    target = module.state_dict()
+    matched: dict = {}
+    unexpected: list[str] = []
+    for key, value in cleaned.items():
+        if key in target and target[key].shape == value.shape:
+            matched[key] = value
+        else:
+            unexpected.append(key)
+
+    target.update(matched)
+    module.load_state_dict(target)
+
+    missing = [key for key in target if key not in matched]
+    report = KeyReport(
+        matched=len(matched),
+        total=len(target),
+        missing=missing,
+        unexpected=unexpected,
+    )
+
+    if report.matched_fraction < warn_threshold:
+        warnings.warn(
+            f"Only {report.summary()} from {path!r}. The weights likely do not "
+            f"match {_FASTREID_SBS_ARCH!r}.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    return report
+
+
+def load_state_dict_for_architecture(
+    module: nn.Module,
+    path: str,
+    device: torch.device,
+    architecture: str,
+    *,
+    warn_threshold: float = 0.5,
+) -> KeyReport:
+    """Load *path* using the loader appropriate for *architecture*."""
+    if architecture == _FASTREID_SBS_ARCH:
+        return load_fastreid_sbs_state_dict_into(module, path, device, warn_threshold=warn_threshold)
+    return load_state_dict_into(module, path, device, warn_threshold=warn_threshold)
 
 
 def _read_state_dict(path: str, device: torch.device) -> dict:

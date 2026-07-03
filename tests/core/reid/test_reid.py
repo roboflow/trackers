@@ -28,6 +28,7 @@ from trackers.core.reid.models.loaders import resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (
     DEFAULT_MODEL,
+    FASTREID_MOT17_SBS50,
     resolve_model_card,
 )
 
@@ -74,6 +75,14 @@ class TestRegistry:
         assert card is not None
         assert card.architecture == "osnet_x1_0"
         assert card.weights is not None
+        assert card.domain_warning is not None
+
+    def test_resolve_fastreid_mot17_alias(self) -> None:
+        card = resolve_model_card(FASTREID_MOT17_SBS50)
+        assert card is not None
+        assert card.architecture == "fastreid_sbs_resnest50"
+        assert card.weights is not None
+        assert card.preprocessing.input_size == (384, 128)
         assert card.domain_warning is not None
 
     def test_local_dir_with_config(self, tmp_path) -> None:
@@ -157,6 +166,64 @@ class TestLoaders:
                 load_state_dict_into(target, tmp_path, torch.device("cpu"))
         finally:
             os.unlink(tmp_path)
+
+    def test_remap_fastreid_sbs_keys(self) -> None:
+        pytest.importorskip("torch")
+        import torch
+
+        from trackers.core.reid.models.loaders import remap_fastreid_sbs_state_dict
+
+        raw = {
+            "backbone.conv1.0.weight": torch.zeros(1),
+            "heads.pool_layer.p": torch.tensor([1.5]),
+            "heads.bottleneck.0.weight": torch.zeros(2048),
+            "heads.weight": torch.zeros(487, 2048),
+        }
+        mapped = remap_fastreid_sbs_state_dict(raw)
+        assert "backbone.conv1.0.weight" in mapped
+        assert "pool.p" in mapped
+        assert "bottleneck.weight" in mapped
+        assert "heads.weight" not in mapped
+
+    def test_load_fastreid_sbs_from_synthetic_checkpoint(self) -> None:
+        pytest.importorskip("torch")
+        import torch
+
+        from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.models.loaders import load_fastreid_sbs_state_dict_into
+
+        model = build_architecture("fastreid_sbs_resnest50")
+        source = model.state_dict()
+        wrapped: dict = {}
+        for key, value in source.items():
+            if key.startswith("backbone."):
+                wrapped[key] = value
+            elif key == "pool.p":
+                wrapped["heads.pool_layer.p"] = value
+            elif key.startswith("bottleneck."):
+                wrapped[f"heads.bottleneck.0.{key[len('bottleneck.') :]}"] = value
+
+        with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
+            tmp_path = f.name
+        try:
+            torch.save(wrapped, tmp_path)
+            report = load_fastreid_sbs_state_dict_into(model, tmp_path, torch.device("cpu"))
+            assert report.matched == report.total
+            assert report.matched_fraction == 1.0
+        finally:
+            os.unlink(tmp_path)
+
+    def test_fastreid_sbs_forward_shape(self) -> None:
+        pytest.importorskip("torch")
+        import torch
+
+        from trackers.core.reid.architectures import build_architecture
+
+        model = build_architecture("fastreid_sbs_resnest50")
+        model.eval()
+        with torch.inference_mode():
+            out = model(torch.randn(2, 3, 384, 128))
+        assert out.shape == (2, 2048)
 
 
 # ---------------------------------------------------------------------------
