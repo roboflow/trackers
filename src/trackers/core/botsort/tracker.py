@@ -256,7 +256,7 @@ class BoTSORTTracker(BaseTracker):
                 mask_boxes = high_boxes if len(high_boxes) > 0 else None
                 H = self.cmc.estimate(frame, mask_boxes)
                 CMC.apply_batch(H, self.tracks)
-            else if use_precalculated_cmc:
+            elif use_precalculated_cmc:
                 CMC.apply_batch(h_cmc, self.tracks)
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
