@@ -29,6 +29,7 @@ from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (
     DEFAULT_MODEL,
     FASTREID_MOT17_SBS50,
+    default_preprocessing_for_architecture,
     resolve_model_card,
 )
 
@@ -84,6 +85,13 @@ class TestRegistry:
         assert card.weights is not None
         assert card.preprocessing.input_size == (384, 128)
         assert card.domain_warning is not None
+
+    def test_default_preprocessing_for_architecture(self) -> None:
+        osnet = default_preprocessing_for_architecture("osnet_x1_0")
+        assert osnet.input_size == (256, 128)
+        fastreid = default_preprocessing_for_architecture("fastreid_sbs_resnest50")
+        assert fastreid.input_size == (384, 128)
+        assert default_preprocessing_for_architecture("timm:resnet50").input_size == (256, 128)
 
     def test_local_dir_with_config(self, tmp_path) -> None:
         import json

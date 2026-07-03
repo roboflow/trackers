@@ -16,24 +16,14 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.reid.models.loaders import load_state_dict_for_architecture, resolve_weights
-from trackers.core.reid.models.preprocessing import REID_INPUT_SIZE, ReIDPreprocessing
+from trackers.core.reid.models.preprocessing import ReIDPreprocessing
+from trackers.core.reid.models.registry import default_preprocessing_for_architecture
 
 if TYPE_CHECKING:
     import torch
     import torch.nn as nn
 
 logger = logging.getLogger(__name__)
-
-# Input geometry tied to a named architecture (when loading bare weight files).
-_ARCHITECTURE_DEFAULT_PREPROCESSING: dict[str, ReIDPreprocessing] = {
-    "fastreid_sbs_resnest50": ReIDPreprocessing(input_size=(384, 128)),
-}
-
-
-def _default_preprocessing_for_architecture(architecture: str | nn.Module | None) -> ReIDPreprocessing:
-    if isinstance(architecture, str) and architecture in _ARCHITECTURE_DEFAULT_PREPROCESSING:
-        return _ARCHITECTURE_DEFAULT_PREPROCESSING[architecture]
-    return ReIDPreprocessing(input_size=REID_INPUT_SIZE)
 
 
 def _clamp_xyxy_to_frame(box: np.ndarray, height: int, width: int) -> np.ndarray:
@@ -157,7 +147,11 @@ class ReIDModel:
             resolved_arch = architecture
             resolved_weights = None
             resolved_preprocessing = (
-                preprocessing if preprocessing is not None else _default_preprocessing_for_architecture(architecture)
+                preprocessing
+                if preprocessing is not None
+                else default_preprocessing_for_architecture(
+                    architecture if isinstance(architecture, str) else None
+                )
             )
             resolved_warning = None
 
@@ -174,7 +168,11 @@ class ReIDModel:
             resolved_arch = architecture
             resolved_weights = source
             resolved_preprocessing = (
-                preprocessing if preprocessing is not None else _default_preprocessing_for_architecture(architecture)
+                preprocessing
+                if preprocessing is not None
+                else default_preprocessing_for_architecture(
+                    architecture if isinstance(architecture, str) else None
+                )
             )
             resolved_warning = None
 

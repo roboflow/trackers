@@ -14,8 +14,8 @@ from dataclasses import dataclass
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
-# Standard person re-ID input geometry (height, width). OSNet, BoT, FastReID, …
-# all train at 256x128; this is intentionally portrait, not square.
+# Standard person re-ID input geometry (height, width). OSNet and most backbones
+# train at 256×128; BoT-SORT FastReID SBS uses 384×128 (see registry overrides).
 REID_INPUT_SIZE = (256, 128)
 
 

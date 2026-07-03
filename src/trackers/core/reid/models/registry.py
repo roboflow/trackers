@@ -12,6 +12,7 @@ import json
 import os
 from dataclasses import dataclass
 
+from trackers.core.reid.architectures import list_architectures
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 
 # ---------------------------------------------------------------------------
@@ -41,10 +42,34 @@ _DOMAIN_WARNING = (
 
 DEFAULT_MODEL = "osnet_x1_0_msmt17_combineall"
 
+# Default preprocessing for registered architectures (bare `.pth` loads, no ModelCard).
+# OSNet variants use 256×128; only non-default geometries are listed explicitly.
+DEFAULT_ARCHITECTURE_PREPROCESSING = ReIDPreprocessing()
+
+_NON_DEFAULT_ARCHITECTURE_PREPROCESSING: dict[str, ReIDPreprocessing] = {
+    "fastreid_sbs_resnest50": ReIDPreprocessing(input_size=(384, 128)),
+}
+
+
+def _build_architecture_default_preprocessing() -> dict[str, ReIDPreprocessing]:
+    mapping = {name: DEFAULT_ARCHITECTURE_PREPROCESSING for name in list_architectures()}
+    mapping.update(_NON_DEFAULT_ARCHITECTURE_PREPROCESSING)
+    return mapping
+
+
+ARCHITECTURE_DEFAULT_PREPROCESSING = _build_architecture_default_preprocessing()
+
+
+def default_preprocessing_for_architecture(architecture: str | None) -> ReIDPreprocessing:
+    """Return default preprocessing for a named architecture (bare weight loads)."""
+    if architecture is None:
+        return DEFAULT_ARCHITECTURE_PREPROCESSING
+    return ARCHITECTURE_DEFAULT_PREPROCESSING.get(architecture, DEFAULT_ARCHITECTURE_PREPROCESSING)
+
+
 # BoT-SORT MOT17 SBS-S50 (ResNeSt50 + GeM + BNNeck), trained on MOT17 train-half GT crops.
 # Weights: https://github.com/niraharon/bot-sort#model-zoo
 _FASTREID_MOT17_WEIGHTS = "gd://1QZFWpoa80rqo7O-HXmlss8J8CnS7IUsN/mot17_sbs_S50.pth"
-_FASTREID_MOT17_PREPROCESSING = ReIDPreprocessing(input_size=(384, 128))
 _FASTREID_MOT17_WARNING = (
     "The fastreid_mot17_sbs50 weights were trained on MOT17 pedestrian crops. "
     "Use this encoder for MOT tracking benchmarks (BoT-SORT-ReID replication); "
@@ -68,13 +93,13 @@ ALIASES: dict[str, ModelCard] = {
     DEFAULT_MODEL: ModelCard(
         architecture="osnet_x1_0",
         weights=_DEFAULT_OSNET_WEIGHTS,
-        preprocessing=ReIDPreprocessing(),
+        preprocessing=DEFAULT_ARCHITECTURE_PREPROCESSING,
         domain_warning=_DOMAIN_WARNING,
     ),
     FASTREID_MOT17_SBS50: ModelCard(
         architecture="fastreid_sbs_resnest50",
         weights=_FASTREID_MOT17_WEIGHTS,
-        preprocessing=_FASTREID_MOT17_PREPROCESSING,
+        preprocessing=ARCHITECTURE_DEFAULT_PREPROCESSING["fastreid_sbs_resnest50"],
         domain_warning=_FASTREID_MOT17_WARNING,
     ),
 }
