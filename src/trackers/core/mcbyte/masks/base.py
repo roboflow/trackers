@@ -62,3 +62,18 @@ class MaskPropagator(ABC):
         frame: np.ndarray,
     ) -> MaskOutput | None:
         """Propagate masks to the current frame."""
+
+    @abstractmethod
+    def add_masks(
+        self,
+        frame: np.ndarray,
+        mask_output: MaskOutput,
+    ) -> None:
+        """Add masks to existing propagation state."""
+
+    @abstractmethod
+    def remove_masks(
+        self,
+        tracklet_ids: list[int],
+    ) -> None:
+        """Remove masks from existing propagation state."""
