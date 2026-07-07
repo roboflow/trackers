@@ -16,6 +16,7 @@ from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.core.reid.distance import appearance_similarity
 from trackers.core.reid.extraction import extract_detection_embeddings
+from trackers.core.reid.fusion_methods import fuse_botsort_reid_association
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -96,9 +97,7 @@ class BoTSORTTracker(BaseTracker):
         reid_emb_dist_threshold: Appearance distance gate for gated-min fusion.
             Default ``0.25``.
         reid_iou_dist_threshold: IoU distance gate before appearance is used.
-            Default ``0.5``.
-        reid_gated_app_distance_scale: Appearance distance scale when gated.
-            Default ``0.5``.
+            Default ``0.5`` (``proximity_thresh`` in BoT-SORT).
         reid_iou_dist_threshold_lost: IoU distance gate for lost tracks. Defaults
             to ``reid_iou_dist_threshold``.
         reid_emb_dist_threshold_lost: Appearance distance gate for lost tracks.
@@ -147,7 +146,6 @@ class BoTSORTTracker(BaseTracker):
         reid_ema_alpha: float = 0.9,
         reid_emb_dist_threshold: float = 0.25,
         reid_iou_dist_threshold: float = 0.5,
-        reid_gated_app_distance_scale: float = 0.5,
         reid_iou_dist_threshold_lost: float | None = None,
         reid_emb_dist_threshold_lost: float | None = None,
     ) -> None:
@@ -177,11 +175,8 @@ class BoTSORTTracker(BaseTracker):
             raise ValueError(f"reid_emb_dist_threshold must be in [0, 2], got {reid_emb_dist_threshold}")
         if not 0.0 <= reid_iou_dist_threshold <= 1.0:
             raise ValueError(f"reid_iou_dist_threshold must be in [0, 1], got {reid_iou_dist_threshold}")
-        if not 0.0 <= reid_gated_app_distance_scale <= 1.0:
-            raise ValueError(f"reid_gated_app_distance_scale must be in [0, 1], got {reid_gated_app_distance_scale}")
         self.reid_emb_dist_threshold = reid_emb_dist_threshold
         self.reid_iou_dist_threshold = reid_iou_dist_threshold
-        self.reid_gated_app_distance_scale = reid_gated_app_distance_scale
         self.reid_iou_dist_threshold_lost = (
             reid_iou_dist_threshold if reid_iou_dist_threshold_lost is None else reid_iou_dist_threshold_lost
         )
@@ -286,24 +281,16 @@ class BoTSORTTracker(BaseTracker):
         iou_sim_raw = self.iou.normalize_for_fusion(iou_matrix)
         iou_sim_fused = _fuse_score(iou_sim_raw, high_scores)
 
-        lost_track_mask: np.ndarray | None = None
-        if lost_tracks:
-            lost_track_mask = np.array(
-                [False] * len(confirmed_tracks) + [True] * len(lost_tracks),
-                dtype=bool,
-            )
-
         if det_embeddings is not None and len(strack_pool) > 0:
             track_feats = [
                 t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
                 for t in strack_pool
             ]
             app_sim = appearance_similarity(track_feats, det_embeddings)
-            similarity_matrix = self._fuse_botsort_gated_min(
+            similarity_matrix = self._fuse_botsort_reid(
                 iou_sim_raw,
                 iou_sim_fused,
                 app_sim,
-                lost_track_mask=lost_track_mask,
             )
         else:
             similarity_matrix = iou_sim_fused
@@ -393,7 +380,7 @@ class BoTSORTTracker(BaseTracker):
                     for t in unconfirmed_tracks
                 ]
                 app_sim = appearance_similarity(track_feats, uh_embeddings)
-                similarity_matrix = self._fuse_botsort_gated_min(
+                similarity_matrix = self._fuse_botsort_reid(
                     iou_sim_raw,
                     iou_sim_fused,
                     app_sim,
@@ -532,34 +519,20 @@ class BoTSORTTracker(BaseTracker):
         unmatched_det_local = [idx for idx in unmatched_det_local if idx not in recovered_dets]
         return unmatched_pool, unmatched_det_local
 
-    def _fuse_botsort_gated_min(
+    def _fuse_botsort_reid(
         self,
         iou_similarity_raw: np.ndarray,
         iou_similarity_fused: np.ndarray,
         appearance_similarity: np.ndarray,
-        lost_track_mask: np.ndarray | None = None,
     ) -> np.ndarray:
-        """Fuse IoU and appearance using BoT-SORT gated-min fusion."""
-        d_iou_raw = 1.0 - iou_similarity_raw
-        d_iou_fused = 1.0 - iou_similarity_fused
-        d_app = 1.0 - appearance_similarity
-
-        iou_thresh = np.full_like(d_iou_raw, self.reid_iou_dist_threshold, dtype=np.float32)
-        emb_thresh = np.full_like(d_app, self.reid_emb_dist_threshold, dtype=np.float32)
-        iou_gate = d_iou_raw < iou_thresh
-        if lost_track_mask is not None and lost_track_mask.any():
-            lost_rows = lost_track_mask.reshape(-1, 1)
-            iou_thresh = np.where(lost_rows, self.reid_iou_dist_threshold_lost, iou_thresh)
-            emb_thresh = np.where(lost_rows, self.reid_emb_dist_threshold_lost, emb_thresh)
-            if self.reid_iou_dist_threshold_lost >= 1.0:
-                iou_gate = np.where(lost_rows, True, iou_gate)
-            else:
-                iou_gate = np.where(lost_rows, d_iou_raw < iou_thresh, iou_gate)
-
-        gate = (d_app < emb_thresh) & iou_gate
-        d_app_gated = np.where(gate, self.reid_gated_app_distance_scale * d_app, 1.0)
-        fused_distance = np.minimum(d_iou_fused, d_app_gated)
-        return 1.0 - fused_distance
+        """Fuse IoU and appearance using BoT-SORT ``bot_sort.py`` min-cost ReID."""
+        return fuse_botsort_reid_association(
+            iou_similarity_raw,
+            iou_similarity_fused,
+            appearance_similarity,
+            proximity_thresh=self.reid_iou_dist_threshold,
+            appearance_thresh=self.reid_emb_dist_threshold,
+        )
 
     def _match_lost_tracks_by_appearance(
         self,
