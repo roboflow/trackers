@@ -320,13 +320,9 @@ class BoTSORTTracker(BaseTracker):
             out_tracker_ids=out_tracker_ids,
         )
 
-        low_det_embeddings: np.ndarray | None = None
-        if self.reid_model is not None and frame is not None and len(low_boxes) > 0:
-            low_det_embeddings = extract_detection_embeddings(self.reid_model, frame, low_boxes)
-
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks, following the original ByteTrack).
-        # No score fusing in second association.
+        # No score fusing or ReID in second association (upstream bot_sort.py).
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
         iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
@@ -335,7 +331,7 @@ class BoTSORTTracker(BaseTracker):
             self._assign_track_detection(
                 remaining_tracked[row],
                 low_boxes[col],
-                low_det_embeddings[col] if low_det_embeddings is not None else None,
+                None,
                 int(low_indices[col]),
                 out_det_indices,
                 out_tracker_ids,
@@ -347,7 +343,7 @@ class BoTSORTTracker(BaseTracker):
             unmatched_pool=unmatched_pool,
             unmatched_det_local=unmatched_low_list,
             det_boxes=low_boxes,
-            det_embeddings=low_det_embeddings,
+            det_embeddings=None,
             det_index_map=low_indices,
             out_det_indices=out_det_indices,
             out_tracker_ids=out_tracker_ids,
