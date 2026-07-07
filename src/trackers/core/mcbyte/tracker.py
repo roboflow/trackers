@@ -333,16 +333,15 @@ class McByteTracker(BaseTracker):
         )
         return result
 
-    """Convert tracker output detections into mask-manager tracklet snapshots.
-
-    Only detections with valid non-negative tracker IDs are converted. The returned
-    snapshots contain the tracker ID and ``xyxy`` box needed by mask generators.
-    """
-
     def _detections_to_tracklet_snapshots(
         self,
         detections: sv.Detections,
     ) -> list[TrackletSnapshot]:
+        """Convert tracker output detections into mask-manager tracklet snapshots.
+
+        Only detections with valid non-negative tracker IDs are converted. The returned
+        snapshots contain the tracker ID and ``xyxy`` box needed by mask generators.
+        """
         if detections.tracker_id is None:
             return []
 

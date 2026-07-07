@@ -126,6 +126,31 @@ def test_mask_manager_uses_propagator_after_initialization() -> None:
     assert second_output.tracklet_mask_dict == first_output.tracklet_mask_dict
 
 
+def test_mask_manager_propagates_after_initialization_without_visible_tracklets() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+    )
+
+    first_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            TrackletSnapshot(3, np.array([5, 6, 25, 30], dtype=np.float32)),
+        ],
+    )
+
+    second_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[],
+    )
+
+    assert first_output is not None
+    assert second_output is not None
+    assert second_output.tracklet_mask_dict == {3: 0}
+
+
 def test_mask_manager_reset_clears_state() -> None:
     manager = MaskManager(
         mask_generator=DummyBoxMaskGenerator(),

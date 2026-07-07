@@ -76,7 +76,10 @@ class MaskManager:
             previous frame/tracklet state, no propagator is configured, or
             propagation fails.
         """
-        if previous_frame is None or len(previous_tracklets) == 0:
+        if previous_frame is None:
+            return None
+
+        if not self._initialized and len(previous_tracklets) == 0:
             return None
 
         if self.mask_propagator is None:
