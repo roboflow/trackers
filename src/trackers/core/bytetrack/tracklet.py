@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from trackers.core.reid.feature_bank import FeatureBank
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.state_representations import (
     BaseStateEstimator,
@@ -27,9 +26,6 @@ class ByteTrackTracklet(BaseTracklet):
         # Count initial bbox as first successful update (matches original
         # ByteTrackKalmanBoxTracker behavior where hits started at 1)
         self.number_of_successful_consecutive_updates = 1
-        # Optional appearance feature bank — set by ByteTrackTracker when a
-        # ReIDModel is provided.  None means no appearance information.
-        self.feature_bank: FeatureBank | None = None
 
     def update(self, bbox: np.ndarray) -> None:
         """Update tracklet state with a new bounding-box observation.

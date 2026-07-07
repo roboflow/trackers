@@ -4,7 +4,11 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Shared appearance–IoU fusion helpers for weighted-fusion trackers."""
+"""Shared appearance–IoU fusion helpers for weighted-fusion trackers.
+
+Kept for future tracker integrations (e.g. a deferred ByteTrack+ReID hook).
+BoT-SORT uses gated-min fusion in ``botsort/tracker.py`` instead.
+"""
 
 from __future__ import annotations
 
