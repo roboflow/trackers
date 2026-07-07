@@ -147,13 +147,15 @@ def parse_args() -> argparse.Namespace:
         help="Disable camera-motion compensation (faster on a static webcam).",
     )
     parser.add_argument(
-        "--reid-emb-dist-threshold",
+        "--appearance-threshold",
+        dest="appearance_threshold",
         type=float,
         default=0.40,
         help=("Appearance distance gate θ_emb for BoT-SORT ReID fusion (default: 0.40; paper uses 0.25)."),
     )
     parser.add_argument(
-        "--reid-iou-dist-threshold",
+        "--proximity-threshold",
+        dest="proximity_threshold",
         type=float,
         default=0.85,
         help=(
@@ -797,8 +799,8 @@ def main() -> None:
         instant_first_frame_activation=True,
         enable_cmc=not args.no_cmc,
         reid_model=reid_model,
-        reid_emb_dist_threshold=args.reid_emb_dist_threshold,
-        reid_iou_dist_threshold=args.reid_iou_dist_threshold,
+        appearance_threshold=args.appearance_threshold,
+        proximity_threshold=args.proximity_threshold,
     )
     max_lost_frames = tracker.maximum_frames_without_update
 
@@ -810,8 +812,8 @@ def main() -> None:
         min_activation_frames=MIN_ACTIVATION_FRAMES,
         lost_buffer=args.lost_buffer,
         max_lost_frames=max_lost_frames,
-        emb_threshold=args.reid_emb_dist_threshold,
-        iou_threshold=args.reid_iou_dist_threshold,
+        emb_threshold=args.appearance_threshold,
+        iou_threshold=args.proximity_threshold,
         cmc_enabled=not args.no_cmc,
     )
 
