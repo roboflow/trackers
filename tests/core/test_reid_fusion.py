@@ -50,8 +50,8 @@ class TestFuseBotsortReidAssociation:
             iou_raw,
             iou_fused,
             app_sim,
-            proximity_thresh=0.5,
-            appearance_thresh=0.25,
+            proximity_threshold=0.5,
+            appearance_threshold=0.25,
         )
         assert fused[0, 0] == pytest.approx(0.9)
 
@@ -63,8 +63,8 @@ class TestFuseBotsortReidAssociation:
             iou_raw,
             iou_fused,
             app_sim,
-            proximity_thresh=0.5,
-            appearance_thresh=0.25,
+            proximity_threshold=0.5,
+            appearance_threshold=0.25,
         )
         assert fused[0, 0] == pytest.approx(0.36)
 
@@ -76,8 +76,8 @@ class TestFuseBotsortReidAssociation:
             iou_raw,
             iou_fused,
             app_sim,
-            proximity_thresh=0.5,
-            appearance_thresh=0.25,
+            proximity_threshold=0.5,
+            appearance_threshold=0.25,
         )
         np.testing.assert_allclose(fused, iou_fused)
 
@@ -93,5 +93,14 @@ class TestBoTSORTReidFusion:
 
     def test_reid_threshold_defaults(self) -> None:
         tracker = BoTSORTTracker(enable_cmc=False)
-        assert tracker.reid_emb_dist_threshold == 0.25
-        assert tracker.reid_iou_dist_threshold == 0.5
+        assert tracker.appearance_threshold == 0.25
+        assert tracker.proximity_threshold == 0.5
+        assert tracker.reid_ema_alpha == 0.9
+
+    def test_appearance_threshold_kwarg(self) -> None:
+        tracker = BoTSORTTracker(enable_cmc=False, appearance_threshold=0.2)
+        assert tracker.appearance_threshold == 0.2
+
+    def test_proximity_threshold_kwarg(self) -> None:
+        tracker = BoTSORTTracker(enable_cmc=False, proximity_threshold=0.4)
+        assert tracker.proximity_threshold == 0.4

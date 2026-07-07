@@ -94,10 +94,11 @@ class BoTSORTTracker(BaseTracker):
             Requires ``frame`` in :meth:`update`. When ``None`` (default),
             behaviour matches the geometry-only BoT-SORT baseline.
         reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
-        reid_emb_dist_threshold: Appearance distance gate for gated-min fusion.
-            Default ``0.25`` (``appearance_thresh`` in BoT-SORT).
-        reid_iou_dist_threshold: IoU distance gate before appearance is used.
-            Default ``0.5`` (``proximity_thresh`` in BoT-SORT).
+        appearance_threshold: Appearance distance gate θ_emb. Rejects matches when
+            halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this value.
+            Default ``0.25``; use ``0.2`` for MOT17 FastReID (re-ID study Table 8).
+        proximity_threshold: IoU distance gate before appearance is used.
+            Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires IoU > 0.5).
 
     Notes:
         - `maximum_frames_without_update` is computed as:
@@ -140,8 +141,8 @@ class BoTSORTTracker(BaseTracker):
         iou: BaseIoU | None = None,
         reid_model: "ReIDModel | None" = None,
         reid_ema_alpha: float = 0.9,
-        reid_emb_dist_threshold: float = 0.25,
-        reid_iou_dist_threshold: float = 0.5,
+        appearance_threshold: float = 0.25,
+        proximity_threshold: float = 0.5,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -165,12 +166,12 @@ class BoTSORTTracker(BaseTracker):
 
         self.reid_model = reid_model
         self.reid_ema_alpha = reid_ema_alpha
-        if not 0.0 <= reid_emb_dist_threshold <= 2.0:
-            raise ValueError(f"reid_emb_dist_threshold must be in [0, 2], got {reid_emb_dist_threshold}")
-        if not 0.0 <= reid_iou_dist_threshold <= 1.0:
-            raise ValueError(f"reid_iou_dist_threshold must be in [0, 1], got {reid_iou_dist_threshold}")
-        self.reid_emb_dist_threshold = reid_emb_dist_threshold
-        self.reid_iou_dist_threshold = reid_iou_dist_threshold
+        if not 0.0 <= appearance_threshold <= 2.0:
+            raise ValueError(f"appearance_threshold must be in [0, 2], got {appearance_threshold}")
+        if not 0.0 <= proximity_threshold <= 1.0:
+            raise ValueError(f"proximity_threshold must be in [0, 1], got {proximity_threshold}")
+        self.appearance_threshold = appearance_threshold
+        self.proximity_threshold = proximity_threshold
 
     def update(
         self,
@@ -431,8 +432,8 @@ class BoTSORTTracker(BaseTracker):
             iou_similarity_raw,
             iou_similarity_fused,
             appearance_similarity,
-            proximity_thresh=self.reid_iou_dist_threshold,
-            appearance_thresh=self.reid_emb_dist_threshold,
+            proximity_threshold=self.proximity_threshold,
+            appearance_threshold=self.appearance_threshold,
         )
 
     def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:

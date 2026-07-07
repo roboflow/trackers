@@ -42,8 +42,8 @@ def fuse_botsort_reid_association(
     iou_similarity_fused: np.ndarray,
     appearance_similarity: np.ndarray,
     *,
-    proximity_thresh: float,
-    appearance_thresh: float,
+    proximity_threshold: float,
+    appearance_threshold: float,
 ) -> np.ndarray:
     """Fuse IoU and appearance the way BoT-SORT ``bot_sort.py`` does.
 
@@ -54,7 +54,7 @@ def fuse_botsort_reid_association(
     d_iou = 1.0 - iou_similarity_fused
     d_iou_raw = 1.0 - iou_similarity_raw
     d_app = 0.5 * (1.0 - appearance_similarity)
-    d_app = np.where(d_app > appearance_thresh, 1.0, d_app)
-    d_app = np.where(d_iou_raw > proximity_thresh, 1.0, d_app)
+    d_app = np.where(d_app > appearance_threshold, 1.0, d_app)
+    d_app = np.where(d_iou_raw > proximity_threshold, 1.0, d_app)
     fused_cost = np.minimum(d_iou, d_app)
     return 1.0 - fused_cost
