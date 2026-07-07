@@ -95,5 +95,3 @@ class TestBoTSORTReidFusion:
         tracker = BoTSORTTracker(enable_cmc=False)
         assert tracker.reid_emb_dist_threshold == 0.25
         assert tracker.reid_iou_dist_threshold == 0.5
-        assert tracker.reid_emb_dist_threshold_lost == 0.25
-        assert tracker.reid_iou_dist_threshold_lost == 0.5

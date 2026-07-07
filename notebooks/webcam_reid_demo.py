@@ -157,26 +157,8 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.85,
         help=(
-            "IoU distance gate θ_iou for active tracks — requires IoU > 1−θ "
+            "IoU distance gate θ_iou — requires IoU > 1−θ "
             "(default: 0.85 → IoU > 0.15; paper uses 0.5 → IoU > 0.5)."
-        ),
-    )
-    parser.add_argument(
-        "--reid-iou-dist-threshold-lost",
-        type=float,
-        default=0.95,
-        help=(
-            "IoU distance gate θ_iou for lost tracks — requires IoU > 1−θ "
-            "(default: 0.95 → IoU > 0.05; use 1.0 to skip IoU gating entirely)."
-        ),
-    )
-    parser.add_argument(
-        "--reid-emb-dist-threshold-lost",
-        type=float,
-        default=0.55,
-        help=(
-            "Appearance distance gate θ_emb for lost tracks (default: 0.55 → "
-            "cos > 0.45; looser than active tracks for re-entry)."
         ),
     )
     return parser.parse_args()
@@ -327,9 +309,7 @@ class PanelConfig:
     lost_buffer: int
     max_lost_frames: int
     emb_threshold: float
-    emb_threshold_lost: float
     iou_threshold: float
-    iou_threshold_lost: float
     cmc_enabled: bool
 
 
@@ -490,14 +470,8 @@ def _draw_params_section(panel: np.ndarray, y: int, config: PanelConfig, live: P
     y = _draw_param_row(
         panel,
         y,
-        "ReID active",
+        "ReID gates",
         f"cos > {1.0 - config.emb_threshold:.2f}, IoU > {1.0 - config.iou_threshold:.2f}",
-    )
-    y = _draw_param_row(
-        panel,
-        y,
-        "ReID lost",
-        f"cos > {1.0 - config.emb_threshold_lost:.2f}, IoU > {1.0 - config.iou_threshold_lost:.2f}",
     )
     y = _draw_param_row(panel, y, "CMC", "on" if config.cmc_enabled else "off")
     y = _panel_rule(panel, y)
@@ -825,8 +799,6 @@ def main() -> None:
         reid_model=reid_model,
         reid_emb_dist_threshold=args.reid_emb_dist_threshold,
         reid_iou_dist_threshold=args.reid_iou_dist_threshold,
-        reid_iou_dist_threshold_lost=args.reid_iou_dist_threshold_lost,
-        reid_emb_dist_threshold_lost=args.reid_emb_dist_threshold_lost,
     )
     max_lost_frames = tracker.maximum_frames_without_update
 
@@ -839,9 +811,7 @@ def main() -> None:
         lost_buffer=args.lost_buffer,
         max_lost_frames=max_lost_frames,
         emb_threshold=args.reid_emb_dist_threshold,
-        emb_threshold_lost=args.reid_emb_dist_threshold_lost,
         iou_threshold=args.reid_iou_dist_threshold,
-        iou_threshold_lost=args.reid_iou_dist_threshold_lost,
         cmc_enabled=not args.no_cmc,
     )
 

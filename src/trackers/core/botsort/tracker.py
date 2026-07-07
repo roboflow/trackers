@@ -95,13 +95,9 @@ class BoTSORTTracker(BaseTracker):
             behaviour matches the geometry-only BoT-SORT baseline.
         reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
         reid_emb_dist_threshold: Appearance distance gate for gated-min fusion.
-            Default ``0.25``.
+            Default ``0.25`` (``appearance_thresh`` in BoT-SORT).
         reid_iou_dist_threshold: IoU distance gate before appearance is used.
             Default ``0.5`` (``proximity_thresh`` in BoT-SORT).
-        reid_iou_dist_threshold_lost: IoU distance gate for lost tracks. Defaults
-            to ``reid_iou_dist_threshold``.
-        reid_emb_dist_threshold_lost: Appearance distance gate for lost tracks.
-            Defaults to ``reid_emb_dist_threshold``.
 
     Notes:
         - `maximum_frames_without_update` is computed as:
@@ -146,8 +142,6 @@ class BoTSORTTracker(BaseTracker):
         reid_ema_alpha: float = 0.9,
         reid_emb_dist_threshold: float = 0.25,
         reid_iou_dist_threshold: float = 0.5,
-        reid_iou_dist_threshold_lost: float | None = None,
-        reid_emb_dist_threshold_lost: float | None = None,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -177,16 +171,6 @@ class BoTSORTTracker(BaseTracker):
             raise ValueError(f"reid_iou_dist_threshold must be in [0, 1], got {reid_iou_dist_threshold}")
         self.reid_emb_dist_threshold = reid_emb_dist_threshold
         self.reid_iou_dist_threshold = reid_iou_dist_threshold
-        self.reid_iou_dist_threshold_lost = (
-            reid_iou_dist_threshold if reid_iou_dist_threshold_lost is None else reid_iou_dist_threshold_lost
-        )
-        self.reid_emb_dist_threshold_lost = (
-            reid_emb_dist_threshold if reid_emb_dist_threshold_lost is None else reid_emb_dist_threshold_lost
-        )
-        if not 0.0 <= self.reid_iou_dist_threshold_lost <= 1.0:
-            raise ValueError(f"reid_iou_dist_threshold_lost must be in [0, 1], got {self.reid_iou_dist_threshold_lost}")
-        if not 0.0 <= self.reid_emb_dist_threshold_lost <= 2.0:
-            raise ValueError(f"reid_emb_dist_threshold_lost must be in [0, 2], got {self.reid_emb_dist_threshold_lost}")
 
     def update(
         self,
@@ -309,17 +293,6 @@ class BoTSORTTracker(BaseTracker):
                 out_tracker_ids,
             )
 
-        unmatched_pool, unmatched_high = self._recover_lost_tracks_from_pool(
-            strack_pool=strack_pool,
-            unmatched_pool=unmatched_pool,
-            unmatched_det_local=unmatched_high,
-            det_boxes=high_boxes,
-            det_embeddings=det_embeddings,
-            det_index_map=high_indices,
-            out_det_indices=out_det_indices,
-            out_tracker_ids=out_tracker_ids,
-        )
-
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks, following the original ByteTrack).
         # No score fusing or ReID in second association (upstream bot_sort.py).
@@ -338,16 +311,6 @@ class BoTSORTTracker(BaseTracker):
             )
 
         unmatched_low_list = sorted(unmatched_low)
-        unmatched_pool, unmatched_low_list = self._recover_lost_tracks_from_pool(
-            strack_pool=strack_pool,
-            unmatched_pool=unmatched_pool,
-            unmatched_det_local=unmatched_low_list,
-            det_boxes=low_boxes,
-            det_embeddings=None,
-            det_index_map=low_indices,
-            out_det_indices=out_det_indices,
-            out_tracker_ids=out_tracker_ids,
-        )
 
         for det_local_idx in unmatched_low_list:
             out_det_indices.append(int(low_indices[det_local_idx]))
@@ -410,17 +373,6 @@ class BoTSORTTracker(BaseTracker):
             remove_ids = {id(unconfirmed_tracks[i]) for i in unmatched_uc_indices}
             self.tracks = [t for t in self.tracks if id(t) not in remove_ids]
 
-        unmatched_pool, unmatched_high = self._recover_lost_tracks_from_pool(
-            strack_pool=strack_pool,
-            unmatched_pool=unmatched_pool,
-            unmatched_det_local=unmatched_high,
-            det_boxes=high_boxes,
-            det_embeddings=det_embeddings,
-            det_index_map=high_indices,
-            out_det_indices=out_det_indices,
-            out_tracker_ids=out_tracker_ids,
-        )
-
         self._spawn_new_tracks(
             detection_boxes,
             confidences,
@@ -468,53 +420,6 @@ class BoTSORTTracker(BaseTracker):
         out_det_indices.append(global_det_index)
         out_tracker_ids.append(track.tracker_id)
 
-    def _recover_lost_tracks_from_pool(
-        self,
-        *,
-        strack_pool: list[BoTSORTTracklet],
-        unmatched_pool: list[int],
-        unmatched_det_local: list[int],
-        det_boxes: np.ndarray,
-        det_embeddings: np.ndarray | None,
-        det_index_map: np.ndarray,
-        out_det_indices: list[int],
-        out_tracker_ids: list[int],
-    ) -> tuple[list[int], list[int]]:
-        """Recover lost tracks via appearance-only matching."""
-        if self.reid_model is None or det_embeddings is None or not unmatched_det_local:
-            return unmatched_pool, unmatched_det_local
-
-        lost_pool_indices = [pool_idx for pool_idx in unmatched_pool if strack_pool[pool_idx].time_since_update > 1]
-        if not lost_pool_indices:
-            return unmatched_pool, unmatched_det_local
-
-        reid_matches = self._match_lost_tracks_by_appearance(
-            [strack_pool[i] for i in lost_pool_indices],
-            unmatched_det_local,
-            det_embeddings,
-        )
-        if not reid_matches:
-            return unmatched_pool, unmatched_det_local
-
-        recovered_dets: set[int] = set()
-        recovered_pool: set[int] = set()
-        for lost_local, det_local in reid_matches:
-            pool_row = lost_pool_indices[lost_local]
-            self._assign_track_detection(
-                strack_pool[pool_row],
-                det_boxes[det_local],
-                det_embeddings[det_local],
-                int(det_index_map[det_local]),
-                out_det_indices,
-                out_tracker_ids,
-            )
-            recovered_dets.add(det_local)
-            recovered_pool.add(pool_row)
-
-        unmatched_pool = [idx for idx in unmatched_pool if idx not in recovered_pool]
-        unmatched_det_local = [idx for idx in unmatched_det_local if idx not in recovered_dets]
-        return unmatched_pool, unmatched_det_local
-
     def _fuse_botsort_reid(
         self,
         iou_similarity_raw: np.ndarray,
@@ -529,29 +434,6 @@ class BoTSORTTracker(BaseTracker):
             proximity_thresh=self.reid_iou_dist_threshold,
             appearance_thresh=self.reid_emb_dist_threshold,
         )
-
-    def _match_lost_tracks_by_appearance(
-        self,
-        lost_tracks: list[BoTSORTTracklet],
-        unmatched_det_local: list[int],
-        det_embeddings: np.ndarray,
-    ) -> list[tuple[int, int]]:
-        """Match lost tracks to detections using appearance only."""
-        if self.reid_model is None or not lost_tracks or not unmatched_det_local:
-            return []
-
-        track_feats = [
-            track.feature_bank.feature if track.feature_bank is not None and track.feature_bank.is_initialized else None
-            for track in lost_tracks
-        ]
-        if all(feature is None for feature in track_feats):
-            return []
-
-        det_cols = np.array(unmatched_det_local, dtype=int)
-        app_sim = appearance_similarity(track_feats, det_embeddings[det_cols])
-        min_sim = max(0.0, 1.0 - self.reid_emb_dist_threshold_lost)
-        matched, _, _ = self._get_associated_indices(app_sim, min_sim)
-        return [(lost_idx, int(det_cols[det_pos])) for lost_idx, det_pos in matched]
 
     def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:
