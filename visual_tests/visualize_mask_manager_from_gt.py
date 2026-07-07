@@ -1,6 +1,3 @@
-# NOTE: visually works great.
-# TODO: check it and verify it well before committing and pushing!
-
 # ------------------------------------------------------------------------
 # Trackers
 # Copyright (c) 2026 Roboflow. All Rights Reserved.
