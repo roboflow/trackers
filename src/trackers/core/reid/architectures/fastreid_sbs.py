@@ -23,7 +23,12 @@ FASTREID_SBS_EMBED_DIM = 2048
 
 
 class GeneralizedMeanPooling(nn.Module):
-    """GeM pooling used by FastReID SBS (learnable exponent *p*)."""
+    """GeM pooling used by FastReID SBS (learnable exponent *p*).
+
+    ``p`` defaults to 3.0 only until checkpoint load; MOT17 SBS-S50 stores the
+    trained value under ``heads.pool_layer.p`` (≈1.72). See
+    :func:`~trackers.core.reid.models.loaders.remap_fastreid_sbs_state_dict`.
+    """
 
     def __init__(self, p: float = 3.0, eps: float = 1e-6) -> None:
         super().__init__()
@@ -37,20 +42,25 @@ class GeneralizedMeanPooling(nn.Module):
 
 
 class FastReIDSBSResNeSt50(nn.Module):
-    """ResNeSt50 SBS re-ID encoder matching BoT-SORT / FastReID MOT17 checkpoints."""
+    """ResNeSt50 SBS re-ID encoder matching BoT-SORT / FastReID MOT17 checkpoints.
+
+    Inference path: backbone → GeM (:attr:`pool`) → BNNeck (:attr:`bottleneck`).
+    Weights for all three stages are loaded together from a BoT-SORT ``.pth`` file.
+    """
 
     def __init__(self) -> None:
         super().__init__()
         import timm
 
+        # Feature maps only (no timm classifier/pool); GeM + BNNeck follow below.
         self.backbone = timm.create_model(
             "resnest50d",
             num_classes=0,
             global_pool="",
             output_stride=16,
         )
-        self.pool = GeneralizedMeanPooling()
-        self.bottleneck = nn.BatchNorm1d(FASTREID_SBS_EMBED_DIM)
+        self.pool = GeneralizedMeanPooling()  # pool.p overwritten from checkpoint
+        self.bottleneck = nn.BatchNorm1d(FASTREID_SBS_EMBED_DIM)  # heads.bottleneck.0.*
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.backbone(x)

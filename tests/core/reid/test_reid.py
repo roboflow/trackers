@@ -221,6 +221,37 @@ class TestLoaders:
         finally:
             os.unlink(tmp_path)
 
+    def test_fastreid_sbs_loads_gem_p_from_checkpoint(self) -> None:
+        """GeM ``p`` must come from ``heads.pool_layer.p``, not the 3.0 constructor default."""
+        pytest.importorskip("torch")
+        import torch
+
+        from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.models.loaders import load_fastreid_sbs_state_dict_into
+
+        mot17_gem_p = 1.7194522619247437  # heads.pool_layer.p in mot17_sbs_S50.pth
+
+        model = build_architecture("fastreid_sbs_resnest50")
+        assert model.pool.p.item() == pytest.approx(3.0)
+
+        wrapped: dict = {"heads.pool_layer.p": torch.tensor([mot17_gem_p])}
+        for key, value in model.state_dict().items():
+            if key.startswith("backbone."):
+                wrapped[key] = value
+            elif key.startswith("bottleneck."):
+                wrapped[f"heads.bottleneck.0.{key[len('bottleneck.') :]}"] = value
+
+        with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
+            tmp_path = f.name
+        try:
+            torch.save(wrapped, tmp_path)
+            report = load_fastreid_sbs_state_dict_into(model, tmp_path, torch.device("cpu"))
+            assert report.matched == report.total
+            assert model.pool.p.item() == pytest.approx(mot17_gem_p)
+            assert model.pool.p.item() != pytest.approx(3.0)
+        finally:
+            os.unlink(tmp_path)
+
     def test_fastreid_sbs_forward_shape(self) -> None:
         pytest.importorskip("torch")
         import torch

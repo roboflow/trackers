@@ -108,17 +108,22 @@ def _resolve_gd(source: str) -> str:
 
 
 def remap_fastreid_sbs_state_dict(state_dict: dict) -> dict:
-    """Map BoT-SORT / FastReID SBS checkpoint keys onto :class:`FastReIDSBSResNeSt50`."""
+    """Map BoT-SORT / FastReID SBS checkpoint keys onto :class:`FastReIDSBSResNeSt50`.
+
+    Renames FastReID ``heads.*`` keys to ``pool.*`` / ``bottleneck.*`` and passes
+    ``backbone.*`` through unchanged. Skips ``heads.weight`` (classifier). GeM
+    ``heads.pool_layer.p`` becomes ``pool.p`` and replaces the 3.0 init default.
+    """
     mapped: dict = {}
     for key, value in state_dict.items():
         key = key[7:] if key.startswith("module.") else key
         if key.startswith("backbone."):
             mapped[key] = value
         elif key == "heads.pool_layer.p":
-            mapped["pool.p"] = value
+            mapped["pool.p"] = value  # GeM exponent; overwrites GeneralizedMeanPooling default
         elif key.startswith("heads.bottleneck.0."):
             mapped["bottleneck." + key[len("heads.bottleneck.0.") :]] = value
-        # Skip heads.weight and other training-only keys.
+        # Skip heads.weight (identity classifier; unused at inference).
     return mapped
 
 
