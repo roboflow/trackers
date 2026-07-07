@@ -381,17 +381,39 @@ class BoTSORTTracker(BaseTracker):
             uh_scores = high_scores[unmatched_high_list]
 
             iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
-            iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), uh_scores)
+            iou_sim_raw = self.iou.normalize_for_fusion(iou_matrix)
+            iou_sim_fused = _fuse_score(iou_sim_raw, uh_scores)
+
+            if det_embeddings is not None:
+                uh_embeddings = det_embeddings[unmatched_high_list]
+                track_feats = [
+                    t.feature_bank.feature
+                    if t.feature_bank is not None and t.feature_bank.is_initialized
+                    else None
+                    for t in unconfirmed_tracks
+                ]
+                app_sim = appearance_similarity(track_feats, uh_embeddings)
+                similarity_matrix = self._fuse_botsort_gated_min(
+                    iou_sim_raw,
+                    iou_sim_fused,
+                    app_sim,
+                )
+            else:
+                similarity_matrix = iou_sim_fused
+
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
-                iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
+                similarity_matrix, self.minimum_iou_threshold_unconfirmed_assoc
             )
 
             for row, col in matched_uc:
                 orig_high_idx = unmatched_high_list[col]
+                embedding = (
+                    det_embeddings[orig_high_idx] if det_embeddings is not None else None
+                )
                 self._assign_track_detection(
                     unconfirmed_tracks[row],
                     high_boxes[orig_high_idx],
-                    None,
+                    embedding,
                     int(high_indices[orig_high_idx]),
                     out_det_indices,
                     out_tracker_ids,
