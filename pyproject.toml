@@ -90,6 +90,14 @@ sources = ["src"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/trackers"]
 
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "src/trackers",
+    "LICENSE",
+    "README.md",
+    "pyproject.toml",
+]
+
 [tool.ruff]
 target-version = "py310"
 
