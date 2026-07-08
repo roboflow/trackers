@@ -65,7 +65,8 @@ class CMCConfig:
             - Speeds up feature extraction / optical flow.
 
             Behavior:
-            - Frames are resized to (W//downscale, H//downscale) for motion estimation.
+            - Frames are resized to (max(1, W//downscale), max(1, H//downscale))
+              for motion estimation so tiny inputs still produce a valid image.
             - The resulting affine translation components H[0,2], H[1,2] are scaled back
               by multiplying by `downscale`, so the transform is in original image
               coordinates.
