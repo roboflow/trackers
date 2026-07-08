@@ -28,10 +28,10 @@ def test_cmc_downscale_tiny_frame_first_call_returns_identity(
     cmc = CMC(cfg)
     frame = np.zeros((*frame_shape, 3), dtype=np.uint8)
 
-    H = cmc.estimate(frame)
+    affine_mtx = cmc.estimate(frame)
 
-    assert H.shape == (2, 3)
-    np.testing.assert_array_equal(H, np.eye(2, 3, dtype=np.float32))
+    assert affine_mtx.shape == (2, 3)
+    np.testing.assert_array_equal(affine_mtx, np.eye(2, 3, dtype=np.float32))
 
 
 @pytest.mark.parametrize("method", CMC_METHODS)
@@ -46,10 +46,10 @@ def test_cmc_downscale_tiny_frame_second_call_returns_identity(
     frame = np.zeros((*frame_shape, 3), dtype=np.uint8)
 
     cmc.estimate(frame)
-    H = cmc.estimate(frame)
+    affine_mtx = cmc.estimate(frame)
 
-    assert H.shape == (2, 3)
-    np.testing.assert_array_equal(H, np.eye(2, 3, dtype=np.float32))
+    assert affine_mtx.shape == (2, 3)
+    np.testing.assert_array_equal(affine_mtx, np.eye(2, 3, dtype=np.float32))
 
 
 @pytest.mark.parametrize("method", CMC_METHODS)
@@ -63,10 +63,10 @@ def test_cmc_recovers_after_tiny_frame_first_call_returns_identity(
     normal_frame = np.zeros((64, 64, 3), dtype=np.uint8)
     normal_frame[16:48, 16:48] = 255
 
-    H = cmc.estimate(normal_frame)
+    affine_mtx = cmc.estimate(normal_frame)
 
-    assert H.shape == (2, 3)
-    np.testing.assert_array_equal(H, np.eye(2, 3, dtype=np.float32))
+    assert affine_mtx.shape == (2, 3)
+    np.testing.assert_array_equal(affine_mtx, np.eye(2, 3, dtype=np.float32))
 
 
 @pytest.mark.parametrize("method", CMC_METHODS)
@@ -84,10 +84,10 @@ def test_cmc_recovers_after_tiny_frame_tiny_call_returns_identity(
     tiny_frame = np.zeros((*frame_shape, 3), dtype=np.uint8)
 
     cmc.estimate(normal_frame)
-    H = cmc.estimate(tiny_frame)
+    affine_mtx = cmc.estimate(tiny_frame)
 
-    assert H.shape == (2, 3)
-    np.testing.assert_array_equal(H, np.eye(2, 3, dtype=np.float32))
+    assert affine_mtx.shape == (2, 3)
+    np.testing.assert_array_equal(affine_mtx, np.eye(2, 3, dtype=np.float32))
 
 
 @pytest.mark.parametrize("method", CMC_METHODS)
@@ -106,7 +106,7 @@ def test_cmc_recovers_after_tiny_frame_followup_call_returns_identity(
 
     cmc.estimate(normal_frame)
     cmc.estimate(tiny_frame)
-    H = cmc.estimate(normal_frame)
+    affine_mtx = cmc.estimate(normal_frame)
 
-    assert H.shape == (2, 3)
-    np.testing.assert_array_equal(H, np.eye(2, 3, dtype=np.float32))
+    assert affine_mtx.shape == (2, 3)
+    np.testing.assert_array_equal(affine_mtx, np.eye(2, 3, dtype=np.float32))
