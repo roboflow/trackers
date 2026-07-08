@@ -37,6 +37,7 @@ jobs:
           uv sync --frozen --group build
           uv build
           uv run twine check --strict dist/*
+          ls -l dist/
 
       - name: 📤 Upload distribution artifacts
         uses: actions/upload-artifact@v7
