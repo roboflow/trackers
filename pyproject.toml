@@ -202,6 +202,7 @@ ignore-words-list = "mot"
 python_version = "3.10"
 mypy_path = "src"
 plugins = ["numpy.typing.mypy_plugin"]
+files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
 module = [
