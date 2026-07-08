@@ -34,7 +34,7 @@ jobs:
       contents: read # Required for checkout
     steps:
       - name: 📥 Download distribution artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.1.8
         with:
           name: dist
           path: dist/
@@ -64,7 +64,7 @@ jobs:
         run: ls -lh dist/
 
       - name: 📦 Upload release assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2.2.1
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/*

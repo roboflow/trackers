@@ -39,32 +39,49 @@ def _tile(frame: np.ndarray, label: str) -> np.ndarray:
 
 
 def main() -> int:
-    caps = [(label, cv2.VideoCapture(str(path))) for label, path in VIDEOS]
-    fps = caps[0][1].get(cv2.CAP_PROP_FPS) or 25.0
-    width, height = CELL_SIZE
-    writer = cv2.VideoWriter(
-        str(OUTPUT_VIDEO),
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
-        (width * 2, height * 3),
-    )
-    for _, cap in caps:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, SKIP_FRAMES)
+    caps: list[tuple[str, Path, cv2.VideoCapture]] = []
+    writer: cv2.VideoWriter | None = None
+    try:
+        for label, path in VIDEOS:
+            cap = cv2.VideoCapture(str(path))
+            if not cap.isOpened():
+                raise RuntimeError(f"Could not open input video for {label}: {path}")
+            caps.append((label, path, cap))
 
-    while True:
-        frames = [(label, _read(cap)) for label, cap in caps]
-        if any(frame is None for _, frame in frames):
-            break
+        fps = caps[0][2].get(cv2.CAP_PROP_FPS) or 25.0
+        width, height = CELL_SIZE
+        writer = cv2.VideoWriter(
+            str(OUTPUT_VIDEO),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            fps,
+            (width * 2, height * 3),
+        )
+        if not writer.isOpened():
+            raise RuntimeError(f"Could not open output video writer: {OUTPUT_VIDEO}")
 
-        tiles = [_tile(frame, label) for label, frame in frames if frame is not None]
-        writer.write(np.vstack([np.hstack(tiles[:2]), np.hstack(tiles[2:4]), np.hstack(tiles[4:])]))
-        print(f"\rWrote frame {int(caps[0][1].get(cv2.CAP_PROP_POS_FRAMES))}", end="", flush=True)
+        for _, _, cap in caps:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, SKIP_FRAMES)
 
-    writer.release()
-    for _, cap in caps:
-        cap.release()
-    print(f"\nWrote {OUTPUT_VIDEO}")
-    return 0
+        frames_written = 0
+        while True:
+            frames = [(label, _read(cap)) for label, _, cap in caps]
+            if any(frame is None for _, frame in frames):
+                raise RuntimeError(
+                    f"Stopped after {frames_written} frames because one input video ended early: {OUTPUT_VIDEO}"
+                )
+
+            tiles = [_tile(frame, label) for label, frame in frames if frame is not None]
+            writer.write(np.vstack([np.hstack(tiles[:2]), np.hstack(tiles[2:4]), np.hstack(tiles[4:])]))
+            frames_written += 1
+            print(f"\rWrote frame {int(caps[0][2].get(cv2.CAP_PROP_POS_FRAMES))}", end="", flush=True)
+
+        print(f"\nWrote {OUTPUT_VIDEO}")
+        return 0
+    finally:
+        if writer is not None:
+            writer.release()
+        for _, _, cap in caps:
+            cap.release()
 
 
 if __name__ == "__main__":

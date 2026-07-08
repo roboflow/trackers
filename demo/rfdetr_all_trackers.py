@@ -178,10 +178,10 @@ def _format_labels(detections: sv.Detections, class_names: list[str]) -> list[st
 
 
 def _detections_to_json(detections: sv.Detections, class_names: list[str]) -> list[dict[str, object]]:
-    rows = []
+    rows: list[dict[str, object]] = []
     for idx in range(len(detections)):
         class_id = int(detections.class_id[idx]) if detections.class_id is not None else None
-        row = {
+        row: dict[str, object] = {
             "xyxy": [float(v) for v in detections.xyxy[idx]],
             "confidence": float(detections.confidence[idx]) if detections.confidence is not None else None,
             "class_id": class_id,
@@ -228,7 +228,7 @@ def main() -> int:
         name: sv.TraceAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK) for name in trackers
     }
     detection_frames = []
-    tracking_frames = {name: [] for name in TRACKERS}
+    tracking_frames: dict[str, list[dict[str, object]]] = {name: [] for name in TRACKERS}
 
     sinks = {
         name: sv.VideoSink(str(OUTPUT_DIR / f"{source.stem}-{name}.mp4"), video_info=video_info) for name in trackers
