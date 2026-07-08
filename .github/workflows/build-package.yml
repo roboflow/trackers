@@ -4,6 +4,15 @@ permissions:
   contents: read
 
 on:
+  push:
+    branches: ['release/*', 'develop']
+  pull_request:
+    branches: ['release/*', 'develop']
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/build-package.yml'
   workflow_call:
     inputs:
       python-version:
@@ -29,6 +38,7 @@ jobs:
           uv sync --frozen --group build
           uv build
           uv run twine check --strict dist/*
+          ls -l dist/
 
       - name: 📤 Upload distribution artifacts
         uses: actions/upload-artifact@v7
