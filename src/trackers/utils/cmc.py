@@ -65,7 +65,8 @@ class CMCConfig:
             - Speeds up feature extraction / optical flow.
 
             Behavior:
-            - Frames are resized to (W//downscale, H//downscale) for motion estimation.
+            - Frames are resized to (max(1, W//downscale), max(1, H//downscale))
+              for motion estimation so tiny inputs still produce a valid image.
             - The resulting affine translation components H[0,2], H[1,2] are scaled back
               by multiplying by `downscale`, so the transform is in original image
               coordinates.
@@ -379,7 +380,9 @@ class CMC:
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
 
         if self.downscale > 1:
-            gray = cv2.resize(gray, (img_w // self.downscale, img_h // self.downscale))
+            new_w = max(1, img_w // self.downscale)
+            new_h = max(1, img_h // self.downscale)
+            gray = cv2.resize(gray, (new_w, new_h))
         H, W = gray.shape[:2]
 
         # Build mask: central ROI + remove detections (background features)
@@ -404,11 +407,16 @@ class CMC:
                 if x2b > x1b and y2b > y1b:
                     mask[y1b:y2b, x1b:x2b] = 0
 
-        # Detect + describe (ORB / SIFT). Mypy cannot narrow instance attrs here.
-        kps = self.detector.detect(gray, mask)  # type: ignore[union-attr]
-        kps, desc = self.extractor.compute(gray, kps)  # type: ignore[union-attr]
-
         affine_mtx = np.eye(2, 3, dtype=np.float32)
+
+        # Detect + describe (ORB / SIFT). Mypy cannot narrow instance attrs here.
+        try:
+            kps = self.detector.detect(gray, mask)  # type: ignore[union-attr]
+            kps, desc = self.extractor.compute(gray, kps)  # type: ignore[union-attr]
+        except cv2.error as e:
+            logger.warning("CMC: Feature detection failed (%s), using identity", e)
+            self.frames_failed += 1
+            return affine_mtx
 
         # First frame init
         if not self._initialized:
@@ -500,7 +508,9 @@ class CMC:
 
         # Downscale
         if self.downscale > 1:
-            frame = cv2.resize(frame, (img_w // self.downscale, img_h // self.downscale))
+            new_w = max(1, img_w // self.downscale)
+            new_h = max(1, img_h // self.downscale)
+            frame = cv2.resize(frame, (new_w, new_h))
 
         # Find keypoints in current frame
         keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)
@@ -600,7 +610,9 @@ class CMC:
 
         if self.downscale > 1:
             frame = cv2.GaussianBlur(frame, (3, 3), 1.5)
-            frame = cv2.resize(frame, (img_w // self.downscale, img_h // self.downscale))
+            new_w = max(1, img_w // self.downscale)
+            new_h = max(1, img_h // self.downscale)
+            frame = cv2.resize(frame, (new_w, new_h))
 
         if not self._initialized:
             self._prev_frame_gray = frame.copy()
