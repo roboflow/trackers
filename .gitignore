@@ -178,6 +178,16 @@ wandb/
 
 # AI tools
 *.local.*
+.claude/
+.plans/
+.experiments/
 .developments/
 .reports/
 .temp/
+.python-version
+releases/
+outputs/
+
+autotune/mot17/
+autotune/pretrained/
+autotune/*.zip

@@ -66,4 +66,5 @@ repos:
     rev: 'v2.1.0'
     hooks:
       - id: mypy
+        pass_filenames: false
         additional_dependencies: [numpy,types-aiofiles]

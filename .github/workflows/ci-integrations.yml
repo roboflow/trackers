@@ -1,6 +1,8 @@
 name: Integration Tests
 
 on:
+  push:
+    branches: ['release/*', 'develop']
   pull_request:
     paths:
       - 'src/trackers/core/**'
