@@ -4,6 +4,14 @@ permissions:
   contents: read
 
 on:
+  push:
+    branches: ['release/*', 'develop']
+  pull_request:
+    branches: ['release/*', 'develop']
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/build-package.yml'
   workflow_call:
     inputs:
       python-version:
