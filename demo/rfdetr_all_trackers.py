@@ -82,7 +82,18 @@ TRACKER_KWARGS: dict[str, dict[str, object]] = {
 
 COLOR_PALETTE = sv.ColorPalette.from_hex(
     [
-        "#ffff00", "#ff9b00", "#ff8080", "#ff66b2", "#ff66ff", "#b266ff", "#9999ff", "#3399ff", "#66ffff", "#33ff99", "#66ff66", "#99ff00"
+        "#ffff00",
+        "#ff9b00",
+        "#ff8080",
+        "#ff66b2",
+        "#ff66ff",
+        "#b266ff",
+        "#9999ff",
+        "#3399ff",
+        "#66ffff",
+        "#33ff99",
+        "#66ff66",
+        "#99ff00",
     ]
 )
 
