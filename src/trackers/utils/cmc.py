@@ -412,8 +412,8 @@ class CMC:
         try:
             kps = self.detector.detect(gray, mask)  # type: ignore[union-attr]
             kps, desc = self.extractor.compute(gray, kps)  # type: ignore[union-attr]
-        except cv2.error:
-            logger.warning("CMC: Feature detection failed (image too small), using identity")
+        except cv2.error as e:
+            logger.warning("CMC: Feature detection failed (%s), using identity", e)
             self.frames_failed += 1
             return affine_mtx
 
