@@ -23,6 +23,13 @@ def _write_zip(zip_path: Path, members: list[tuple[str | zipfile.ZipInfo, str]])
             zip_file.writestr(member, contents)
 
 
+def _raw_zip_info(filename: str) -> zipfile.ZipInfo:
+    """Create a ZIP member name without platform separator normalization."""
+    zip_info = zipfile.ZipInfo("placeholder")
+    zip_info.filename = filename
+    return zip_info
+
+
 def test_extract_zip_extracts_safe_members(tmp_path: Path) -> None:
     """Safe members are extracted beneath the requested output directory."""
     zip_path = tmp_path / "archive.zip"
@@ -48,7 +55,7 @@ def test_extract_zip_extracts_safe_members(tmp_path: Path) -> None:
         ("../escape.txt", "escapes output directory"),
         ("/escape.txt", "escapes output directory"),
         ("nested/../../escape.txt", "escapes output directory"),
-        ("nested\\escape.txt", "escapes output directory"),
+        (_raw_zip_info("nested\\escape.txt"), "escapes output directory"),
         ("C:escape.txt", "escapes output directory"),
         ("C:/escape.txt", "escapes output directory"),
         (zipfile.ZipInfo(""), "empty member name"),
