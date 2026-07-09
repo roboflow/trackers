@@ -1,11 +1,8 @@
 name: Publish Trackers Releases to PyPI
 
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
   release:
-    types: [created]
+    types: [published]
   pull_request:
     branches: ['release/*', 'develop']
     paths:
@@ -23,7 +20,7 @@ jobs:
   publish-release:
     name: Publish Release Package
     needs: build
-    if: github.event_name == 'push'
+    if: github.event_name == 'release' && github.event.release.prerelease != true
     runs-on: ubuntu-latest
     environment:
       name: release
@@ -42,15 +39,15 @@ jobs:
         run: ls -lh dist/
 
       - name: 🚀 Publish to PyPi
-        if: github.event_name != 'pull_request'
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
+        # We only want to publish to PyPi if the event is a release and it's not a pre-release.
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           attestations: true
 
   publish-github-release:
     name: Upload GitHub Release Artifacts
     needs: build
-    if: github.event_name == 'release' && github.event.action == 'created'
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to create and update GitHub Releases
