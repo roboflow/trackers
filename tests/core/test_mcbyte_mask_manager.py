@@ -432,3 +432,23 @@ def test_mask_manager_removes_terminated_tracklet_from_pending_pool() -> None:
     assert output is not None
     assert output.tracklet_mask_dict == {2: 0}
     assert manager._pending_tracklet_ids == set()
+
+
+def test_mask_manager_removes_terminated_tracklet_from_pending_pool_before_initialization() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+        mask_creation_bbox_overlap_threshold=0.6,
+    )
+
+    manager._pending_tracklet_ids = {1}
+
+    output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[],
+        removed_tracklet_ids=[1],
+    )
+
+    assert output is None
+    assert manager._pending_tracklet_ids == set()

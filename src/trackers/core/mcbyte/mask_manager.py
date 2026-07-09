@@ -84,6 +84,8 @@ class MaskManager:
     ) -> None:
         self.mask_generator = mask_generator
         self.mask_propagator = mask_propagator
+        if not 0.0 <= mask_creation_bbox_overlap_threshold <= 1.0:
+            raise ValueError("mask_creation_bbox_overlap_threshold must be between 0 and 1.")
         self.mask_creation_bbox_overlap_threshold = mask_creation_bbox_overlap_threshold
         self._initialized = False
         self._pending_tracklet_ids: set[int] = set()
@@ -147,16 +149,16 @@ class MaskManager:
         if previous_frame is None:
             return None
 
+        new_tracklets = [] if new_tracklets is None else new_tracklets
+        removed_tracklet_ids = [] if removed_tracklet_ids is None else removed_tracklet_ids
+
+        self._remove_pending_tracklets(removed_tracklet_ids)
+
         if not self._initialized and len(previous_tracklets) == 0:
             return None
 
         if self.mask_propagator is None:
             return None
-
-        new_tracklets = [] if new_tracklets is None else new_tracklets
-        removed_tracklet_ids = [] if removed_tracklet_ids is None else removed_tracklet_ids
-
-        self._remove_pending_tracklets(removed_tracklet_ids)
 
         if not self._initialized:
             candidates = previous_tracklets
