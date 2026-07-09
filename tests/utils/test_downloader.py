@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from trackers.utils import downloader
-from trackers.utils.downloader import _extract_zip
+from trackers.utils.downloader import _extract_zip, _safe_zip_member_parts
 
 
 def _write_zip(zip_path: Path, members: list[tuple[str | zipfile.ZipInfo, str]]) -> None:
@@ -55,7 +55,14 @@ def test_extract_zip_extracts_safe_members(tmp_path: Path) -> None:
         ("../escape.txt", "escapes output directory"),
         ("/escape.txt", "escapes output directory"),
         ("nested/../../escape.txt", "escapes output directory"),
-        (_raw_zip_info("nested\\escape.txt"), "escapes output directory"),
+        pytest.param(
+            _raw_zip_info("nested\\escape.txt"),
+            "escapes output directory",
+            marks=pytest.mark.skipif(
+                os.name == "nt",
+                reason="zipfile normalizes backslash member names while reading on Windows",
+            ),
+        ),
         ("C:escape.txt", "escapes output directory"),
         ("C:/escape.txt", "escapes output directory"),
         (zipfile.ZipInfo(""), "empty member name"),
@@ -85,6 +92,12 @@ def test_extract_zip_rejects_unsafe_members(
 
     assert list(output_dir.iterdir()) == []
     assert outside_target.read_text() == "sentinel"
+
+
+def test_safe_zip_member_parts_rejects_raw_backslash() -> None:
+    """Raw ZIP member validation rejects backslash separators."""
+    with pytest.raises(ValueError, match="escapes output directory"):
+        _safe_zip_member_parts("nested\\escape.txt")
 
 
 @pytest.mark.skipif(os.name == "nt", reason="fd-anchored swap probe is Unix-only")
