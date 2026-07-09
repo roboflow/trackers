@@ -87,7 +87,28 @@ def _download_file(
     return True
 
 
+def _validate_zip_member_path(output_dir: Path, member_name: str) -> None:
+    """Reject ZIP members that would extract outside `output_dir`."""
+    if not member_name:
+        raise ValueError("ZIP archive contains an empty member name")
+
+    member_path = Path(member_name)
+    if member_path.is_absolute():
+        raise ValueError(f"ZIP member path escapes output directory: {member_name}")
+
+    target_path = (output_dir / member_path).resolve()
+    if not target_path.is_relative_to(output_dir):
+        raise ValueError(f"ZIP member path escapes output directory: {member_name}")
+
+
 def _extract_zip(zip_path: Path, output_dir: Path) -> None:
-    """Extract a ZIP archive into `output_dir`."""
+    """Extract a ZIP archive into `output_dir`.
+
+    Raises:
+        ValueError: If any member would extract outside `output_dir`.
+    """
+    output_dir = output_dir.resolve()
     with zipfile.ZipFile(zip_path, "r") as zip_file:
+        for member_name in zip_file.namelist():
+            _validate_zip_member_path(output_dir, member_name)
         zip_file.extractall(output_dir)
