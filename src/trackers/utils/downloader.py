@@ -11,6 +11,7 @@ import os
 import shutil
 import stat
 import zipfile
+from contextlib import suppress
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import requests
@@ -117,10 +118,8 @@ def _safe_zip_member_parts(member_name: str) -> tuple[str, ...]:
 
 def _open_child_directory(parent_fd: int, directory_name: str) -> int:
     """Open a child directory below `parent_fd`, creating it if needed."""
-    try:
+    with suppress(FileExistsError):
         os.mkdir(directory_name, mode=0o777, dir_fd=parent_fd)
-    except FileExistsError:
-        pass
 
     directory_fd = os.open(
         directory_name,
