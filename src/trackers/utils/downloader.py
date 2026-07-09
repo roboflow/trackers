@@ -7,8 +7,11 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import shutil
+import stat
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import requests
 from rich.progress import (
@@ -87,28 +90,111 @@ def _download_file(
     return True
 
 
-def _validate_zip_member_path(output_dir: Path, member_name: str) -> None:
-    """Reject ZIP members that would extract outside `output_dir`."""
+def _safe_zip_member_parts(member_name: str) -> tuple[str, ...]:
+    """Return sanitized ZIP path parts for a member.
+
+    ZIP member names are treated as forward-slash paths. Backslashes and
+    Windows drive-rooted forms are rejected so the extraction contract is
+    consistent across platforms.
+    """
     if not member_name:
         raise ValueError("ZIP archive contains an empty member name")
 
-    member_path = Path(member_name)
-    if member_path.is_absolute():
+    if "\\" in member_name:
         raise ValueError(f"ZIP member path escapes output directory: {member_name}")
 
-    target_path = (output_dir / member_path).resolve()
-    if not target_path.is_relative_to(output_dir):
+    posix_path = PurePosixPath(member_name)
+    windows_path = PureWindowsPath(member_name)
+    if posix_path.is_absolute() or windows_path.drive or windows_path.root:
         raise ValueError(f"ZIP member path escapes output directory: {member_name}")
+
+    parts = posix_path.parts
+    if any(part in {"", ".", ".."} for part in parts):
+        raise ValueError(f"ZIP member path escapes output directory: {member_name}")
+
+    return parts
+
+
+def _open_child_directory(parent_fd: int, directory_name: str) -> int:
+    """Open a child directory below `parent_fd`, creating it if needed."""
+    try:
+        os.mkdir(directory_name, mode=0o777, dir_fd=parent_fd)
+    except FileExistsError:
+        pass
+
+    directory_fd = os.open(
+        directory_name,
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+        dir_fd=parent_fd,
+    )
+    try:
+        if not stat.S_ISDIR(os.fstat(directory_fd).st_mode):
+            raise NotADirectoryError(directory_name)
+    except Exception:
+        os.close(directory_fd)
+        raise
+    return directory_fd
+
+
+def _open_directory_path(root_fd: int, directory_parts: tuple[str, ...]) -> int:
+    """Open a directory path below `root_fd`, creating missing levels."""
+    directory_fd = os.dup(root_fd)
+    try:
+        for directory_name in directory_parts:
+            next_fd = _open_child_directory(directory_fd, directory_name)
+            os.close(directory_fd)
+            directory_fd = next_fd
+        return directory_fd
+    except Exception:
+        os.close(directory_fd)
+        raise
+
+
+def _extract_zip_member(zip_file: zipfile.ZipFile, zip_info: zipfile.ZipInfo, root_fd: int) -> None:
+    """Extract a single ZIP member relative to `root_fd`."""
+    member_parts = _safe_zip_member_parts(zip_info.filename)
+
+    if zip_info.is_dir():
+        directory_fd = _open_directory_path(root_fd, member_parts)
+        os.close(directory_fd)
+        return
+
+    parent_fd = _open_directory_path(root_fd, member_parts[:-1])
+    try:
+        file_fd = os.open(
+            member_parts[-1],
+            os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+            0o666,
+            dir_fd=parent_fd,
+        )
+        with os.fdopen(file_fd, "wb") as target, zip_file.open(zip_info, "r") as source:
+            shutil.copyfileobj(source, target, length=_CHUNK_SIZE_BYTES)
+    finally:
+        os.close(parent_fd)
 
 
 def _extract_zip(zip_path: Path, output_dir: Path) -> None:
-    """Extract a ZIP archive into `output_dir`.
+    """Extract a ZIP archive into `output_dir` without following symlinks.
+
+    Extraction is anchored to the directory opened before members are written,
+    so a path swap after validation cannot redirect writes outside `output_dir`.
 
     Raises:
         ValueError: If any member would extract outside `output_dir`.
     """
     output_dir = output_dir.resolve()
-    with zipfile.ZipFile(zip_path, "r") as zip_file:
-        for member_name in zip_file.namelist():
-            _validate_zip_member_path(output_dir, member_name)
-        zip_file.extractall(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    root_fd = os.open(
+        output_dir,
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+    )
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zip_file:
+            member_infos = zip_file.infolist()
+            for zip_info in member_infos:
+                _safe_zip_member_parts(zip_info.filename)
+            for zip_info in member_infos:
+                _extract_zip_member(zip_file, zip_info, root_fd)
+    finally:
+        os.close(root_fd)

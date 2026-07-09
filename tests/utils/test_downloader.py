@@ -6,19 +6,21 @@
 
 from __future__ import annotations
 
+import os
 import zipfile
 from pathlib import Path
 
 import pytest
 
+from trackers.utils import downloader
 from trackers.utils.downloader import _extract_zip
 
 
-def _write_zip(zip_path: Path, members: dict[str, str]) -> None:
+def _write_zip(zip_path: Path, members: list[tuple[str | zipfile.ZipInfo, str]]) -> None:
     """Write a ZIP archive containing the provided text members."""
     with zipfile.ZipFile(zip_path, "w") as zip_file:
-        for name, contents in members.items():
-            zip_file.writestr(name, contents)
+        for member, contents in members:
+            zip_file.writestr(member, contents)
 
 
 def test_extract_zip_extracts_safe_members(tmp_path: Path) -> None:
@@ -28,10 +30,10 @@ def test_extract_zip_extracts_safe_members(tmp_path: Path) -> None:
     output_dir.mkdir()
     _write_zip(
         zip_path,
-        {
-            "nested/file.txt": "payload",
-            "root.txt": "top",
-        },
+        [
+            ("nested/file.txt", "payload"),
+            ("root.txt", "top"),
+        ],
     )
 
     _extract_zip(zip_path, output_dir)
@@ -41,27 +43,79 @@ def test_extract_zip_extracts_safe_members(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "member_name",
+    ("member_name", "message"),
     [
-        "../escape.txt",
-        "/escape.txt",
-        "nested/../../escape.txt",
+        ("../escape.txt", "escapes output directory"),
+        ("/escape.txt", "escapes output directory"),
+        ("nested/../../escape.txt", "escapes output directory"),
+        ("nested\\escape.txt", "escapes output directory"),
+        ("C:escape.txt", "escapes output directory"),
+        ("C:/escape.txt", "escapes output directory"),
+        (zipfile.ZipInfo(""), "empty member name"),
     ],
 )
-def test_extract_zip_rejects_unsafe_members(tmp_path: Path, member_name: str) -> None:
+def test_extract_zip_rejects_unsafe_members(
+    tmp_path: Path,
+    member_name: str | zipfile.ZipInfo,
+    message: str,
+) -> None:
     """Unsafe member names fail before any files are extracted."""
     zip_path = tmp_path / "archive.zip"
     output_dir = tmp_path / "output"
+    outside_target = tmp_path / "escape.txt"
     output_dir.mkdir()
+    outside_target.write_text("sentinel")
     _write_zip(
         zip_path,
-        {
-            "safe.txt": "safe",
-            member_name: "evil",
-        },
+        [
+            ("safe.txt", "safe"),
+            (member_name, "evil"),
+        ],
     )
 
-    with pytest.raises(ValueError, match="escapes output directory"):
+    with pytest.raises(ValueError, match=message):
         _extract_zip(zip_path, output_dir)
 
     assert list(output_dir.iterdir()) == []
+    assert outside_target.read_text() == "sentinel"
+
+
+def test_extract_zip_survives_output_dir_swap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A path swap after opening `output_dir` does not redirect writes."""
+    zip_path = tmp_path / "archive.zip"
+    output_dir = tmp_path / "output"
+    backup_dir = tmp_path / "output-real"
+    outside_dir = tmp_path / "outside"
+    output_dir.mkdir()
+    outside_dir.mkdir()
+    _write_zip(zip_path, [("payload.txt", "payload")])
+
+    original_open = downloader.os.open
+    swapped = False
+
+    def open_wrapper(
+        path: os.PathLike[str] | str,
+        flags: int,
+        mode: int = 0o777,
+        *,
+        dir_fd: int | None = None,
+    ) -> int:
+        nonlocal swapped
+        if dir_fd is None:
+            fd = original_open(path, flags, mode)
+        else:
+            fd = original_open(path, flags, mode, dir_fd=dir_fd)
+
+        if not swapped and dir_fd is None:
+            output_dir.rename(backup_dir)
+            output_dir.symlink_to(outside_dir, target_is_directory=True)
+            swapped = True
+
+        return fd
+
+    monkeypatch.setattr(downloader.os, "open", open_wrapper)
+
+    _extract_zip(zip_path, output_dir)
+
+    assert (backup_dir / "payload.txt").read_text() == "payload"
+    assert not (outside_dir / "payload.txt").exists()
