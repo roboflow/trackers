@@ -80,6 +80,7 @@ def test_extract_zip_rejects_unsafe_members(
     assert outside_target.read_text() == "sentinel"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="fd-anchored swap probe is Unix-only")
 def test_extract_zip_survives_output_dir_swap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A path swap after opening `output_dir` does not redirect writes."""
     zip_path = tmp_path / "archive.zip"

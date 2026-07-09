@@ -172,11 +172,36 @@ def _extract_zip_member(zip_file: zipfile.ZipFile, zip_info: zipfile.ZipInfo, ro
         os.close(parent_fd)
 
 
-def _extract_zip(zip_path: Path, output_dir: Path) -> None:
-    """Extract a ZIP archive into `output_dir` without following symlinks.
+def _extract_zip_member_by_path(
+    zip_file: zipfile.ZipFile,
+    zip_info: zipfile.ZipInfo,
+    output_dir: Path,
+) -> None:
+    """Extract a single ZIP member using validated paths.
 
-    Extraction is anchored to the directory opened before members are written,
-    so a path swap after validation cannot redirect writes outside `output_dir`.
+    Windows does not expose the dir-fd primitives used by the Unix path, so
+    the fallback keeps the same member validation and writes to resolved
+    absolute paths.
+    """
+    member_parts = _safe_zip_member_parts(zip_info.filename)
+    member_path = output_dir.joinpath(*member_parts)
+
+    if zip_info.is_dir():
+        member_path.mkdir(parents=True, exist_ok=True)
+        return
+
+    member_path.parent.mkdir(parents=True, exist_ok=True)
+    with zip_file.open(zip_info, "r") as source, open(member_path, "wb") as target:
+        shutil.copyfileobj(source, target, length=_CHUNK_SIZE_BYTES)
+
+
+def _extract_zip(zip_path: Path, output_dir: Path) -> None:
+    """Extract a ZIP archive into `output_dir`.
+
+    On Unix, extraction is anchored to the directory opened before members are
+    written, so a path swap after validation cannot redirect writes outside
+    `output_dir`. On Windows, the fallback keeps the member validation but uses
+    resolved absolute paths because dir-fd containment is unavailable.
 
     Raises:
         ValueError: If any member would extract outside `output_dir`.
@@ -184,16 +209,22 @@ def _extract_zip(zip_path: Path, output_dir: Path) -> None:
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    root_fd = os.open(
-        output_dir,
-        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
-    )
-    try:
-        with zipfile.ZipFile(zip_path, "r") as zip_file:
-            member_infos = zip_file.infolist()
+    with zipfile.ZipFile(zip_path, "r") as zip_file:
+        member_infos = zip_file.infolist()
+        for zip_info in member_infos:
+            _safe_zip_member_parts(zip_info.filename)
+
+        if os.name == "nt":
             for zip_info in member_infos:
-                _safe_zip_member_parts(zip_info.filename)
+                _extract_zip_member_by_path(zip_file, zip_info, output_dir)
+            return
+
+        root_fd = os.open(
+            output_dir,
+            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0),
+        )
+        try:
             for zip_info in member_infos:
                 _extract_zip_member(zip_file, zip_info, root_fd)
-    finally:
-        os.close(root_fd)
+        finally:
+            os.close(root_fd)
