@@ -17,6 +17,16 @@ def _make_frame(h: int = 100, w: int = 120) -> np.ndarray:
     return np.zeros((h, w, 3), dtype=np.uint8)
 
 
+def _tracklet(
+    tracker_id: int,
+    xyxy: tuple[float, float, float, float],
+) -> TrackletSnapshot:
+    return TrackletSnapshot(
+        tracker_id=tracker_id,
+        xyxy=np.array(xyxy, dtype=np.float32),
+    )
+
+
 def test_dummy_box_mask_generator_returns_expected_shape() -> None:
     generator = DummyBoxMaskGenerator()
     frame = _make_frame()
@@ -247,3 +257,198 @@ def test_mask_manager_removes_tracklets_after_initialization() -> None:
     assert output.masks is not None
     assert output.masks.shape == (1, 100, 120)
     assert output.tracklet_mask_dict == {9: 0}
+
+
+def test_mask_manager_initializes_clean_tracklets_and_delays_occluded_ones() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+        mask_creation_bbox_overlap_threshold=0.6,
+    )
+
+    output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(1, (10, 10, 30, 50)),  # upper / occluded
+            _tracklet(2, (10, 20, 30, 60)),  # lower-bottom occluder
+        ],
+    )
+
+    assert output is not None
+    assert output.tracklet_mask_dict == {2: 0}
+    assert manager._pending_tracklet_ids == {1}
+
+
+def test_mask_manager_late_initializes_when_first_valid_tracklets_appear_later() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+    )
+
+    first_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=None,
+        previous_tracklets=[],
+    )
+
+    second_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[],
+    )
+
+    third_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(7, (10, 20, 30, 40)),
+        ],
+    )
+
+    assert first_output is None
+    assert second_output is None
+    assert third_output is not None
+    assert third_output.tracklet_mask_dict == {7: 0}
+
+
+def test_mask_manager_initialization_retries_pending_tracklet_with_latest_box() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+        mask_creation_bbox_overlap_threshold=0.6,
+    )
+
+    first_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(1, (10, 10, 30, 50)),  # occluded
+            _tracklet(2, (10, 20, 30, 60)),
+        ],
+    )
+
+    assert manager._pending_tracklet_ids == {1}
+    assert first_output is not None
+    assert first_output.tracklet_mask_dict == {2: 0}
+
+    second_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(1, (60, 10, 80, 50)),  # now clean
+            _tracklet(2, (10, 20, 30, 60)),
+        ],
+    )
+
+    assert manager._pending_tracklet_ids == set()
+    assert second_output is not None
+    assert second_output.tracklet_mask_dict == {2: 0, 1: 1}
+
+
+def test_mask_manager_delays_and_retries_new_tracklet_after_initialization() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+        mask_creation_bbox_overlap_threshold=0.6,
+    )
+
+    manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(2, (10, 20, 30, 60)),
+        ],
+    )
+
+    delayed_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(1, (10, 10, 30, 50)),
+            _tracklet(2, (10, 20, 30, 60)),
+        ],
+        new_tracklets=[
+            _tracklet(1, (10, 10, 30, 50)),
+        ],
+    )
+
+    assert delayed_output is not None
+    assert delayed_output.tracklet_mask_dict == {2: 0}
+    assert manager._pending_tracklet_ids == {1}
+
+    retried_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(1, (60, 10, 80, 50)),
+            _tracklet(2, (10, 20, 30, 60)),
+        ],
+    )
+
+    assert retried_output is not None
+    assert retried_output.tracklet_mask_dict == {2: 0, 1: 1}
+    assert manager._pending_tracklet_ids == set()
+
+
+def test_mask_manager_removes_terminated_tracklet_from_pending_pool() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+        mask_creation_bbox_overlap_threshold=0.6,
+    )
+
+    manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(2, (10, 20, 30, 60)),
+        ],
+    )
+
+    manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(1, (10, 10, 30, 50)),
+            _tracklet(2, (10, 20, 30, 60)),
+        ],
+        new_tracklets=[
+            _tracklet(1, (10, 10, 30, 50)),
+        ],
+    )
+
+    assert manager._pending_tracklet_ids == {1}
+
+    output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            _tracklet(2, (10, 20, 30, 60)),
+        ],
+        removed_tracklet_ids=[1],
+    )
+
+    assert output is not None
+    assert output.tracklet_mask_dict == {2: 0}
+    assert manager._pending_tracklet_ids == set()
+
+
+def test_mask_manager_removes_terminated_tracklet_from_pending_pool_before_initialization() -> None:
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+        mask_creation_bbox_overlap_threshold=0.6,
+    )
+
+    manager._pending_tracklet_ids = {1}
+
+    output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[],
+        removed_tracklet_ids=[1],
+    )
+
+    assert output is None
+    assert manager._pending_tracklet_ids == set()
