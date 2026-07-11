@@ -1,6 +1,6 @@
 ---
 title: Quickstart — Multi-Object Tracking in Python | Trackers
-comments: true
+comments: false
 description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, and BoT-SORT, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.
 ---
 
@@ -12,8 +12,9 @@ description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-
 
 Roboflow Trackers achieves 60.5 HOTA (ByteTrack) and 62.0 HOTA (OC-SORT) on MOT17, benchmarked across four standard datasets. Apache 2.0, Python 3.10+, 71K+ monthly PyPI installs.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" controls muted loop preload="none" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
+  <track src="assets/track-objects-page.vtt" kind="captions" srclang="en" label="English" default>
 </video>
 
 ---
@@ -30,7 +31,7 @@ For more options, see the [install guide](learn/install.md).
 
 ---
 
-[![Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers](https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png)](https://www.youtube.com/watch?v=u0k2dTZ0vfs)
+<a href="https://www.youtube.com/watch?v=u0k2dTZ0vfs"><img src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png" alt="Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers" width="960" height="540" loading="lazy" decoding="async"></a>
 
 ---
 
@@ -158,7 +159,7 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
-    [![](https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/sort-sample.png)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb)
+    <a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-sort-tracker.ipynb"><img src="https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/sort-sample.png" alt="SORT tracker tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
 
     End-to-end example showing how to run RF-DETR detection with the SORT tracker.
 
@@ -168,7 +169,7 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
-    [![](https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/bytetrack-sample.png)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb)
+    <a href="https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb"><img src="https://storage.googleapis.com/com-roboflow-marketing/trackers/assets/bytetrack-sample.png" alt="ByteTrack tracker tutorial preview" width="1920" height="1080" loading="lazy" decoding="async"></a>
 
     End-to-end example showing how to run RF-DETR detection with the ByteTrack tracker.
 

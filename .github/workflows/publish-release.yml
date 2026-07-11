@@ -1,10 +1,8 @@
 name: Publish Trackers Releases to PyPI
 
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
-  workflow_dispatch:
+  release:
+    types: [published]
   pull_request:
     branches: ['release/*', 'develop']
     paths:
@@ -22,6 +20,7 @@ jobs:
   publish-release:
     name: Publish Release Package
     needs: build
+    if: github.event_name == 'release' && github.event.release.prerelease != true
     runs-on: ubuntu-latest
     environment:
       name: release
@@ -32,7 +31,7 @@ jobs:
       contents: read # Required for checkout
     steps:
       - name: 📥 Download distribution artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.1.8
         with:
           name: dist
           path: dist/
@@ -40,7 +39,31 @@ jobs:
         run: ls -lh dist/
 
       - name: 🚀 Publish to PyPi
-        if: github.event_name != 'pull_request'
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
+        # We only want to publish to PyPi if the event is a release and it's not a pre-release.
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           attestations: true
+
+  publish-github-release:
+    name: Upload GitHub Release Artifacts
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create and update GitHub Releases
+    steps:
+      - name: 📥 Download distribution artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: List distribution artifacts
+        run: ls -lh dist/
+
+      - name: 📦 Upload release assets
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2.2.1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true

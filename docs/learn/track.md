@@ -318,6 +318,14 @@ Save tracking results as annotated video files or display them in real time.
 
 ---
 
+## Dynamic frame rate {#variable-frame-rate}
+
+By default, each `update()` assumes one frame at a steady rate. If your pipeline skips frames or has irregular timing, pass an optional monotonic **`timestamp`** (seconds) to `tracker.update()` so Kalman prediction and lost-track pruning match the real gap. Omit `timestamp` to keep fixed-rate behaviour.
+
+See the [Dynamic Frame Rate guide](dynamic-frame-rate.md) for when to enable it, `frame_step` semantics, edge cases, and a Python example.
+
+---
+
 ## CLI Reference
 
 All arguments accepted by the `trackers track` command.
