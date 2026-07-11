@@ -63,8 +63,8 @@ class DetectionOptions:
     Attributes:
         model: Model ID (e.g. ``rfdetr-nano``) or
             ``workspace/project/version`` for a Roboflow custom model.
-            Ignored when ``detections`` is set.
-        detections: Path to a pre-computed MOT-format detections file.
+            Ignored when ``mot_file`` is set.
+        mot_file: Path to a pre-computed MOT-format detector-output file.
             Mutually exclusive with ``model``; supply one or the other.
         confidence: Detection confidence threshold.
         device: Inference device: ``auto``, ``cpu``, ``cuda``, ``cuda:0``,
@@ -73,7 +73,7 @@ class DetectionOptions:
     """
 
     model: str = DEFAULT_MODEL
-    detections: Path | None = None
+    mot_file: Path | None = None
     confidence: float = DEFAULT_CONFIDENCE
     device: str = DEFAULT_DEVICE
     api_key: str | None = None
@@ -96,28 +96,17 @@ class FilteringOptions:
 
 @dataclass
 class OutputOptions:
-    """Output paths and write options.
+    """Output paths and write policy.
 
     Attributes:
-        output: Annotated-video output path.
+        video: Annotated-video output path.
         mot_results: MOT-format predictions output path.
         overwrite: Overwrite existing output files without prompting.
     """
 
-    output: Path | None = None
+    video: Path | None = None
     mot_results: Path | None = None
     overwrite: bool = False
-
-
-@dataclass
-class VisualizationOptions:
-    """Live preview and display settings.
-
-    Attributes:
-        display: Show a live preview window during tracking.
-    """
-
-    display: bool = False
 
 
 @dataclass
@@ -194,23 +183,23 @@ def track(
     filters: FilteringOptions | None = None,
     tracker: str = DEFAULT_TRACKER,
     tracker_params: TrackerParams | None = None,
-    out: OutputOptions | None = None,
-    vis: VisualizationOptions | None = None,
+    output: OutputOptions | None = None,
+    display: bool = False,
     show: ShowOptions | None = None,
 ) -> int:
     """Run detection and tracking over a video, webcam, RTSP, or image directory.
 
     Args:
         source: Video file, webcam index (e.g. ``"0"``), RTSP URL, or image
-            directory. Required unless ``detection.detections`` is supplied.
+            directory. Required unless ``detection.mot_file`` is supplied.
         detection: Detection model and inference options.
         filters: Class and track-ID filters applied to detections and tracks.
         tracker: Tracking algorithm ID. Discoverable via
             ``BaseTracker._registered_trackers()``.
         tracker_params: Optional tracker parameter overrides; only fields
             matching the chosen tracker's ``__init__`` are forwarded.
-        out: Output path and overwrite options.
-        vis: Live preview and display options.
+        output: Output paths.
+        display: Show a live preview window during tracking.
         show: Annotation elements to draw on each frame.
 
     Returns:
@@ -220,23 +209,20 @@ def track(
         detection = DetectionOptions()
     if filters is None:
         filters = FilteringOptions()
-    if out is None:
-        out = OutputOptions()
-    if vis is None:
-        vis = VisualizationOptions()
+    if output is None:
+        output = OutputOptions()
     if show is None:
         show = ShowOptions()
     model = detection.model
-    detections = detection.detections
+    mot_file = detection.mot_file
     confidence = detection.confidence
     device = detection.device
     api_key = detection.api_key
     classes = filters.classes
     track_ids = filters.track_ids
-    output = out.output
-    mot_results = out.mot_results
-    overwrite = out.overwrite
-    display = vis.display
+    video = output.video
+    mot_results = output.mot_results
+    overwrite = output.overwrite
     show_boxes = show.boxes
     show_masks = show.masks
     show_labels = show.labels
@@ -244,23 +230,23 @@ def track(
     show_confidence = show.confidence
     show_trajectories = show.trajectories
 
-    needs_frames = output is not None or display
+    needs_frames = video is not None or display
 
-    if source is None and detections is None:
-        print("Error: --source is required when not using --detections.", file=sys.stderr)
+    if source is None and mot_file is None:
+        print("Error: --source is required when not using --detection.mot_file.", file=sys.stderr)
         return 1
     if needs_frames and source is None:
-        print("Error: --source is required when using --output or --display.", file=sys.stderr)
+        print("Error: --source is required when using --output.video or --display.", file=sys.stderr)
         return 1
 
-    if output:
-        _validate_output_path(_resolve_video_output_path(output), overwrite=overwrite)
+    if video:
+        _validate_output_path(_resolve_video_output_path(video), overwrite=overwrite)
     if mot_results:
         _validate_output_path(mot_results, overwrite=overwrite)
 
-    if detections is not None:
+    if mot_file is not None:
         model_obj: AnyModel | None = None
-        detections_data: dict | None = load_mot_file(detections)
+        detections_data: dict | None = load_mot_file(mot_file)
         class_names: list[str] = []
     else:
         model_obj = _init_model(model, device=device, api_key=api_key)
@@ -285,7 +271,7 @@ def track(
             class_filter=class_filter,
             track_id_filter=track_id_filter,
             tracker=tracker_obj,
-            output=output,
+            output=video,
             mot_results=mot_results,
             display=display,
             show_boxes=show_boxes,

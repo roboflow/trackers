@@ -41,7 +41,7 @@ Point at a video, webcam, RTSP stream, or image directory. Get tracked output.
 ```bash
 trackers track \
     --source video.mp4 \
-    --out.output output.mp4 \
+    --output.video output.mp4 \
     --detection.model rfdetr-medium \
     --tracker bytetrack \
     --show.labels \

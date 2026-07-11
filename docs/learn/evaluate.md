@@ -90,13 +90,13 @@ For more download options, see the [download guide](download.md).
 
 Feed the pre-computed detections into a tracker and write the results to a file for evaluation.
 
-Pass `--detection.detections` to provide input detections and `--out.mot_results` to save the tracker output in MOT format.
+Pass `--detection.mot_file` to provide precomputed MOT detector output and `--output.mot_results` to save the tracker output in MOT format.
 
 ```text
 trackers track \
-    --detection.detections ./data/mot17/val/MOT17-02-FRCNN/det/det.txt \
+    --detection.mot_file ./data/mot17/val/MOT17-02-FRCNN/det/det.txt \
     --tracker bytetrack \
-    --out.mot_results results/MOT17-02-FRCNN.txt
+    --output.mot_results results/MOT17-02-FRCNN.txt
 ```
 
 ---

@@ -49,7 +49,7 @@ Read frames from video files, webcams, RTSP streams, or image directories. Each 
     Track objects with one command. Uses RF-DETR Nano and ByteTrack by default.
 
     ```text
-    trackers track --source source.mp4 --output output.mp4
+    trackers track --source source.mp4 --output.video output.mp4
     ```
 
 === "Python"
@@ -188,7 +188,7 @@ Visualization renders tracking results for debugging, demos, and qualitative eva
     ```text
     trackers track \
         --source source.mp4 \
-        --vis.display \
+        --display \
         --show.labels \
         --show.confidence \
         --show.trajectories
@@ -274,7 +274,7 @@ Save tracking results as annotated video files or display them in real time.
     Specify an output path to save annotated video.
 
     ```text
-    trackers track --source source.mp4 --out.output output.mp4 --out.overwrite
+    trackers track --source source.mp4 --output.video output.mp4 --output.overwrite
     ```
 
 === "Python"
@@ -342,12 +342,12 @@ All arguments accepted by the `trackers track` command.
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--out.output</code></td>
+      <td><code>--output.video</code></td>
       <td>Path for output video. If a directory is given, saves as <code>output.mp4</code> inside it.</td>
       <td>none</td>
     </tr>
     <tr>
-      <td><code>--out.overwrite</code></td>
+      <td><code>--output.overwrite</code></td>
       <td>Allow overwriting existing output files. Without this flag, existing files cause an error.</td>
       <td><code>false</code></td>
     </tr>
@@ -407,7 +407,7 @@ All arguments accepted by the `trackers track` command.
       <td><code>iou</code></td>
     </tr>
     <tr>
-      <td><code>--vis.display</code></td>
+      <td><code>--display</code></td>
       <td>Opens a live preview window. Press <code>q</code> or <code>ESC</code> to quit.</td>
       <td><code>false</code></td>
     </tr>

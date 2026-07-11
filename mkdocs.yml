@@ -129,6 +129,7 @@ nav:
   - Guides:
     - Install Trackers: learn/install.md
     - Track Objects: learn/track.md
+    - CLI Migration Guide: learn/cli-migration.md
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
     - Tune Trackers: learn/tune.md

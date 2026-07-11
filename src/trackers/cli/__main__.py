@@ -9,25 +9,310 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import warnings
+from importlib.metadata import version
 
 from jsonargparse import CLI, ActionYesNo, ArgumentParser
 
 from trackers.cli.download import download
 from trackers.cli.eval import eval_cmd
-from trackers.cli.track import track
+from trackers.cli.track import (
+    DetectionOptions,
+    FilteringOptions,
+    OutputOptions,
+    ShowOptions,
+    TrackerParams,
+    track,
+)
 from trackers.cli.tune import tune
+from trackers.core.base import BaseTracker
+
+_SUBCOMMANDS = frozenset({"track", "eval", "tune", "download"})
+_DEVELOP_TRACK_ARGUMENTS = {
+    "--model": "--detection.model",
+    "--detections": "--detection.mot_file",
+    "--model.confidence": "--detection.confidence",
+    "--model.device": "--detection.device",
+    "--model.api_key": "--detection.api_key",
+    "--classes": "--filters.classes",
+    "--track_ids": "--filters.track_ids",
+    "-o": "--output.video",
+    "--output": "--output.video",
+    "--mot-output": "--output.mot_results",
+    "--overwrite": "--output.overwrite",
+    "--show-boxes": "--show.boxes=true",
+    "--show-masks": "--show.masks",
+    "--show-labels": "--show.labels",
+    "--show-ids": "--show.ids=true",
+    "--show-confidence": "--show.confidence",
+    "--show-trajectories": "--show.trajectories",
+}
+_PR_ERA_TRACK_ARGUMENTS = {
+    "--detection.detections": "--detection.mot_file",
+    "--out.output": "--output.video",
+    "--out.mot_results": "--output.mot_results",
+    "--out.overwrite": "--output.overwrite",
+    "--vis.display": "--display",
+}
+_LEGACY_ARGUMENTS = {
+    "track": {**_DEVELOP_TRACK_ARGUMENTS, **_PR_ERA_TRACK_ARGUMENTS},
+    "eval": {
+        "-o": "--output",
+    },
+    "tune": {
+        "-o": "--output",
+    },
+    "download": {
+        "--list": "--list_available",
+        "-o": "--output",
+    },
+}
+_LEGACY_LIST_ARGUMENTS = {
+    "eval": frozenset({"--metrics", "--columns"}),
+    "tune": frozenset({"--metrics"}),
+}
+_DOWNLOAD_VALUE_OPTIONS = frozenset({"--dataset", "--split", "--asset", "-o", "--output", "--cache-dir", "--cache_dir"})
 
 
-class _BoolFlagParser(ArgumentParser):
-    """Render plain ``bool`` fields as ``--flag`` / ``--no-flag`` pairs."""
+class _CLIParser(ArgumentParser):
+    """Expose track dataclasses while preserving intentional boolean syntax."""
 
     def add_argument(self, *args, **kwargs):  # type: ignore[override]
-        if kwargs.get("type") is bool:
+        if kwargs.get("type") is bool and not {"--show.boxes", "--show.ids"}.intersection(args):
             kwargs.pop("type")
             kwargs["action"] = ActionYesNo(yes_prefix="", no_prefix="no-")
         return super().add_argument(*args, **kwargs)
+
+    def add_function_arguments(self, function, *args, **kwargs):  # type: ignore[override]
+        if function is track:
+            return _add_track_arguments(self)
+        return super().add_function_arguments(function, *args, **kwargs)
+
+
+def _add_track_arguments(parser: ArgumentParser) -> list[str]:
+    """Register track arguments while preserving their nested dataclass paths."""
+    parser.add_argument(
+        "--source",
+        type=str,
+        default=None,
+        help="Video file, webcam index, RTSP URL, or image directory.",
+    )
+    added_args = ["source"]
+    for option_class, nested_key in (
+        (DetectionOptions, "detection"),
+        (FilteringOptions, "filters"),
+        (TrackerParams, "tracker_params"),
+        (OutputOptions, "output"),
+        (ShowOptions, "show"),
+    ):
+        added_args.extend(parser.add_class_arguments(option_class, nested_key))
+    parser.add_argument("--tracker", type=str, default="bytetrack", help="Tracking algorithm ID.")
+    parser.add_argument("--display", action="store_true", help="Show a live preview window.")
+    added_args.extend(["tracker", "display"])
+    return added_args
+
+
+def _translate_legacy_args(args: list[str]) -> list[str]:
+    """Translate deprecated CLI spellings to their current argument paths.
+
+    The translator runs before jsonargparse sees argv, allowing legacy scalar
+    arguments to target fields in the track command's nested option dataclasses.
+    """
+    subcommand_index = next((index for index, arg in enumerate(args) if arg in _SUBCOMMANDS), None)
+    if subcommand_index is None:
+        return args
+
+    subcommand = args[subcommand_index]
+    command_args = args[subcommand_index + 1 :]
+    command_args = _translate_legacy_list_args(subcommand, command_args)
+    legacy_arguments = _LEGACY_ARGUMENTS[subcommand]
+    provided_targets = _provided_targets(subcommand, command_args, legacy_arguments)
+    translated = args[: subcommand_index + 1]
+
+    if subcommand == "download":
+        command_args = _translate_download_positional(command_args, provided_targets)
+
+    for index, arg in enumerate(command_args):
+        if arg == "--":
+            translated.extend(command_args[index:])
+            break
+        option, separator, value = arg.partition("=")
+        replacement = _legacy_replacement(subcommand, option, legacy_arguments)
+        if replacement is None:
+            translated.append(_normalise_option(arg))
+            continue
+
+        target = _target_for_option(replacement)
+        _raise_for_canonical_conflict(target, option, replacement, provided_targets)
+        warnings.warn(
+            f"{option} is deprecated; use {replacement} instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        translated.append(f"{replacement}{separator}{value}" if separator else replacement)
+
+    if subcommand == "track":
+        _raise_for_detection_source_conflict(translated[subcommand_index + 1 :])
+    return translated
+
+
+def _translate_legacy_list_args(subcommand: str, args: list[str]) -> list[str]:
+    """Translate argparse's space-separated list syntax to JSON-list values."""
+    list_arguments = _LEGACY_LIST_ARGUMENTS.get(subcommand, frozenset())
+    if not list_arguments:
+        return args
+
+    translated: list[str] = []
+    index = 0
+    while index < len(args):
+        option, separator, first_value = args[index].partition("=")
+        if option not in list_arguments:
+            translated.append(args[index])
+            index += 1
+            continue
+        if first_value.startswith("["):
+            translated.append(args[index])
+            index += 1
+            continue
+        if not separator and index + 1 < len(args) and args[index + 1].startswith("["):
+            translated.extend(args[index : index + 2])
+            index += 2
+            continue
+
+        values = [first_value] if separator else []
+        index += 1
+        while index < len(args) and not args[index].startswith("-"):
+            values.append(args[index])
+            index += 1
+        if not values:
+            translated.append(option)
+            continue
+
+        warnings.warn(
+            f"space-separated {option} values are deprecated; use a JSON list instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        translated.extend([option, json.dumps(values)])
+    return translated
+
+
+def _translate_download_positional(args: list[str], provided_targets: set[str]) -> list[str]:
+    """Translate a legacy download dataset positional without touching option values."""
+    translated = list(args)
+    expects_value = False
+    for index, arg in enumerate(translated):
+        if arg == "--":
+            break
+        if expects_value:
+            expects_value = False
+            continue
+
+        option = arg.partition("=")[0]
+        if option in _DOWNLOAD_VALUE_OPTIONS:
+            expects_value = "=" not in arg
+            continue
+        if arg.startswith("-"):
+            continue
+
+        _raise_for_canonical_conflict("dataset", "positional dataset", "--dataset", provided_targets)
+        warnings.warn(
+            "The positional dataset argument is deprecated; use --dataset instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        translated[index : index + 1] = ["--dataset", arg]
+        break
+    return translated
+
+
+def _provided_targets(
+    subcommand: str,
+    args: list[str],
+    legacy_arguments: dict[str, str],
+) -> set[str]:
+    """Return current logical targets explicitly present in one command invocation."""
+    targets: set[str] = set()
+    for arg in args:
+        if arg == "--":
+            break
+        option = arg.partition("=")[0]
+        if _legacy_replacement(subcommand, option, legacy_arguments) is not None:
+            continue
+        target = _target_for_option(_normalise_option(arg))
+        if target:
+            targets.add(target)
+    return targets
+
+
+def _legacy_replacement(subcommand: str, option: str, legacy_arguments: dict[str, str]) -> str | None:
+    """Return a canonical option for one deprecated spelling, if any."""
+    if subcommand == "track" and option.startswith("--tracker."):
+        parameter_name = option.removeprefix("--tracker.")
+        return _tracker_parameter_replacement(parameter_name)
+    return legacy_arguments.get(option)
+
+
+def _tracker_parameter_replacement(parameter_name: str) -> str:
+    """Map one legacy tracker option, preserving its old boolean toggle behavior."""
+    replacement = f"--tracker_params.{parameter_name}"
+    for tracker_id in BaseTracker._registered_trackers():
+        tracker_info = BaseTracker._lookup_tracker(tracker_id)
+        if tracker_info is None or parameter_name not in tracker_info.parameters:
+            continue
+        parameter = tracker_info.parameters[parameter_name]
+        if parameter.param_type is bool:
+            return f"{replacement}={'false' if parameter.default_value else 'true'}"
+        break
+    return replacement
+
+
+def _target_for_option(option: str) -> str:
+    """Return a normalized logical target for conflict detection."""
+    option_name = option.partition("=")[0]
+    if not option_name.startswith("--"):
+        return ""
+    target = option_name.removeprefix("--")
+    if target.startswith("no-"):
+        target = target.removeprefix("no-")
+    return target.replace("-", "_")
+
+
+def _normalise_option(arg: str) -> str:
+    """Allow hyphenated spellings for option names that use underscores."""
+    option, separator, value = arg.partition("=")
+    if not option.startswith("--"):
+        return arg
+    name = option.removeprefix("--")
+    prefix = "no-" if name.startswith("no-") else ""
+    normalized = f"--{prefix}{name.removeprefix(prefix).replace('-', '_')}"
+    return f"{normalized}{separator}{value}" if separator else normalized
+
+
+def _raise_for_detection_source_conflict(args: list[str]) -> None:
+    """Preserve develop's mutually exclusive detector-source CLI contract."""
+    targets: set[str] = set()
+    for arg in args:
+        if arg == "--":
+            break
+        target = _target_for_option(arg)
+        if target:
+            targets.add(target)
+    if {"detection.model", "detection.mot_file"}.issubset(targets):
+        raise ValueError("--detection.model cannot be combined with --detection.mot_file.")
+
+
+def _raise_for_canonical_conflict(
+    target: str,
+    legacy_option: str,
+    replacement: str,
+    canonical_targets: set[str],
+) -> None:
+    """Reject a deprecated option when its current spelling is also present."""
+    if target and target in canonical_targets:
+        raise ValueError(f"{legacy_option} cannot be combined with {replacement}. Use only the current spelling.")
 
 
 def main() -> int:
@@ -37,12 +322,21 @@ def main() -> int:
         UserWarning,
         stacklevel=2,
     )
+    try:
+        args = _translate_legacy_args(sys.argv[1:])
+    except ValueError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 2
+    if args == ["--version"]:
+        print(f"trackers {version('trackers')}")
+        return 0
     rc = CLI(
         {"track": track, "eval": eval_cmd, "tune": tune, "download": download},
+        args=args,
         as_positional=False,
         prog="trackers",
         description="Command-line tools for multi-object tracking.",
-        parser_class=_BoolFlagParser,
+        parser_class=_CLIParser,
     )
     return int(rc) if rc is not None else 0
 

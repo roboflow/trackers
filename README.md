@@ -75,7 +75,7 @@ Prefer the terminal? Point `trackers track` at a video, webcam feed, RTSP stream
 ```bash
 trackers track \
     --source video.mp4 \
-    --out.output output.mp4 \
+    --output.video output.mp4 \
     --detection.model rfdetr-medium \
     --tracker bytetrack \
     --show.labels \
