@@ -76,6 +76,21 @@ _LEGACY_LIST_ARGUMENTS = {
 _DOWNLOAD_VALUE_OPTIONS = frozenset({"--dataset", "--split", "--asset", "-o", "--output", "--cache-dir", "--cache_dir"})
 
 
+def _legacy_removal_version() -> str:
+    """Return the release three minor versions after the installed package."""
+    major, minor, *_ = version("trackers").split(".")
+    return f"{major}.{int(minor) + 3}.0"
+
+
+def _warn_legacy_cli(message: str) -> None:
+    """Warn about one legacy CLI form with its scheduled removal release."""
+    warnings.warn(
+        f"{message} It will be removed in {_legacy_removal_version()}.",
+        FutureWarning,
+        stacklevel=3,
+    )
+
+
 class _CLIParser(ArgumentParser):
     """Expose track dataclasses while preserving intentional boolean syntax."""
 
@@ -146,11 +161,7 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
 
         target = _target_for_option(replacement)
         _raise_for_canonical_conflict(target, option, replacement, provided_targets)
-        warnings.warn(
-            f"{option} is deprecated; use {replacement} instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
+        _warn_legacy_cli(f"{option} is deprecated; use {replacement} instead.")
         translated.append(f"{replacement}{separator}{value}" if separator else replacement)
 
     if subcommand == "track":
@@ -190,11 +201,7 @@ def _translate_legacy_list_args(subcommand: str, args: list[str]) -> list[str]:
             translated.append(option)
             continue
 
-        warnings.warn(
-            f"space-separated {option} values are deprecated; use a JSON list instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
+        _warn_legacy_cli(f"space-separated {option} values are deprecated; use a JSON list instead.")
         translated.extend([option, json.dumps(values)])
     return translated
 
@@ -218,11 +225,7 @@ def _translate_download_positional(args: list[str], provided_targets: set[str]) 
             continue
 
         _raise_for_canonical_conflict("dataset", "positional dataset", "--dataset", provided_targets)
-        warnings.warn(
-            "The positional dataset argument is deprecated; use --dataset instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
+        _warn_legacy_cli("The positional dataset argument is deprecated; use --dataset instead.")
         translated[index : index + 1] = ["--dataset", arg]
         break
     return translated

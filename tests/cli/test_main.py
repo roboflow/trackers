@@ -8,7 +8,9 @@
 
 from __future__ import annotations
 
+import re
 from argparse import ArgumentError
+from importlib.metadata import version
 from pathlib import Path
 
 import pytest
@@ -322,6 +324,22 @@ class TestCliMigration:
         args = ["eval", "--metrics", "[CLEAR,HOTA]", "--columns=[MOTA,HOTA]"]
 
         assert _translate_legacy_args(args) == args
+
+    @pytest.mark.parametrize(
+        "args",
+        [
+            ["track", "--model", "rfdetr-base"],
+            ["eval", "--metrics", "CLEAR", "HOTA"],
+            ["download", "mot17"],
+        ],
+    )
+    def test_legacy_warnings_state_the_scheduled_removal_release(self, args: list[str]) -> None:
+        """Every legacy CLI transition names the release in which it is removed."""
+        major, minor, *_ = version("trackers").split(".")
+        removal_version = f"{major}.{int(minor) + 3}.0"
+
+        with pytest.warns(FutureWarning, match=re.escape(f"removed in {removal_version}")):
+            _translate_legacy_args(args)
 
     @pytest.mark.parametrize(
         ("hyphenated", "canonical"),
