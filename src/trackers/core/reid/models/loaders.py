@@ -99,9 +99,7 @@ def _resolve_gd(source: str) -> str:
     try:
         import gdown
     except ImportError as exc:
-        raise ImportError(
-            "Google Drive weights (gd://...) require gdown. Install with:  pip install gdown"
-        ) from exc
+        raise ImportError("Google Drive weights (gd://...) require gdown. Install with:  pip install gdown") from exc
 
     gdown.download(id=file_id, output=path, quiet=False)
     return path

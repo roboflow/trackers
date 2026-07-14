@@ -149,9 +149,7 @@ class ReIDModel:
             resolved_preprocessing = (
                 preprocessing
                 if preprocessing is not None
-                else default_preprocessing_for_architecture(
-                    architecture if isinstance(architecture, str) else None
-                )
+                else default_preprocessing_for_architecture(architecture if isinstance(architecture, str) else None)
             )
             resolved_warning = None
 
@@ -170,9 +168,7 @@ class ReIDModel:
             resolved_preprocessing = (
                 preprocessing
                 if preprocessing is not None
-                else default_preprocessing_for_architecture(
-                    architecture if isinstance(architecture, str) else None
-                )
+                else default_preprocessing_for_architecture(architecture if isinstance(architecture, str) else None)
             )
             resolved_warning = None
 

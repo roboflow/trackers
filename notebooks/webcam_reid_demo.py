@@ -158,10 +158,7 @@ def parse_args() -> argparse.Namespace:
         dest="proximity_threshold",
         type=float,
         default=0.85,
-        help=(
-            "IoU distance gate θ_iou — requires IoU > 1−θ "
-            "(default: 0.85 → IoU > 0.15; paper uses 0.5 → IoU > 0.5)."
-        ),
+        help=("IoU distance gate θ_iou — requires IoU > 1−θ (default: 0.85 → IoU > 0.15; paper uses 0.5 → IoU > 0.5)."),
     )
     return parser.parse_args()
 
