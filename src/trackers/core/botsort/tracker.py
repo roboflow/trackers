@@ -362,9 +362,7 @@ class BoTSORTTracker(BaseTracker):
             if det_embeddings is not None:
                 uh_embeddings = det_embeddings[unmatched_high_list]
                 track_feats = [
-                    t.feature_bank.feature
-                    if t.feature_bank is not None and t.feature_bank.is_initialized
-                    else None
+                    t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
                     for t in unconfirmed_tracks
                 ]
                 app_sim = appearance_similarity(track_feats, uh_embeddings)
@@ -382,9 +380,7 @@ class BoTSORTTracker(BaseTracker):
 
             for row, col in matched_uc:
                 orig_high_idx = unmatched_high_list[col]
-                embedding = (
-                    det_embeddings[orig_high_idx] if det_embeddings is not None else None
-                )
+                embedding = det_embeddings[orig_high_idx] if det_embeddings is not None else None
                 self._assign_track_detection(
                     unconfirmed_tracks[row],
                     high_boxes[orig_high_idx],
