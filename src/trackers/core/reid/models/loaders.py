@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,6 @@ if TYPE_CHECKING:
 
 _HF_PREFIX = "hf://"
 _GD_PREFIX = "gd://"
-_FASTREID_SBS_ARCH = "fastreid_sbs_resnest50"
 
 # State-dict key prefixes dropped before matching. Classification heads differ
 # per dataset (num_classes) and are unused at inference — re-ID reads the
@@ -107,68 +107,6 @@ def _resolve_gd(source: str) -> str:
     return path
 
 
-def remap_fastreid_sbs_state_dict(state_dict: dict) -> dict:
-    """Map BoT-SORT / FastReID SBS checkpoint keys onto :class:`FastReIDSBSResNeSt50`.
-
-    Renames FastReID ``heads.*`` keys to ``pool.*`` / ``bottleneck.*`` and passes
-    ``backbone.*`` through unchanged. Skips ``heads.weight`` (classifier). GeM
-    ``heads.pool_layer.p`` becomes ``pool.p`` and replaces the 3.0 init default.
-    """
-    mapped: dict = {}
-    for key, value in state_dict.items():
-        key = key[7:] if key.startswith("module.") else key
-        if key.startswith("backbone."):
-            mapped[key] = value
-        elif key == "heads.pool_layer.p":
-            mapped["pool.p"] = value  # GeM exponent; overwrites GeneralizedMeanPooling default
-        elif key.startswith("heads.bottleneck.0."):
-            mapped["bottleneck." + key[len("heads.bottleneck.0.") :]] = value
-        # Skip heads.weight (identity classifier; unused at inference).
-    return mapped
-
-
-def load_fastreid_sbs_state_dict_into(
-    module: nn.Module,
-    path: str,
-    device: torch.device,
-    *,
-    warn_threshold: float = 0.5,
-) -> KeyReport:
-    """Load a BoT-SORT / FastReID SBS ``.pth`` checkpoint into :class:`FastReIDSBSResNeSt50`."""
-    state_dict = _read_state_dict(path, device)
-    cleaned = remap_fastreid_sbs_state_dict(state_dict)
-
-    target = module.state_dict()
-    matched: dict = {}
-    unexpected: list[str] = []
-    for key, value in cleaned.items():
-        if key in target and target[key].shape == value.shape:
-            matched[key] = value
-        else:
-            unexpected.append(key)
-
-    target.update(matched)
-    module.load_state_dict(target)
-
-    missing = [key for key in target if key not in matched]
-    report = KeyReport(
-        matched=len(matched),
-        total=len(target),
-        missing=missing,
-        unexpected=unexpected,
-    )
-
-    if report.matched_fraction < warn_threshold:
-        warnings.warn(
-            f"Only {report.summary()} from {path!r}. The weights likely do not "
-            f"match {_FASTREID_SBS_ARCH!r}.",
-            UserWarning,
-            stacklevel=2,
-        )
-
-    return report
-
-
 def load_state_dict_for_architecture(
     module: nn.Module,
     path: str,
@@ -178,9 +116,16 @@ def load_state_dict_for_architecture(
     warn_threshold: float = 0.5,
 ) -> KeyReport:
     """Load *path* using the loader appropriate for *architecture*."""
-    if architecture == _FASTREID_SBS_ARCH:
-        return load_fastreid_sbs_state_dict_into(module, path, device, warn_threshold=warn_threshold)
-    return load_state_dict_into(module, path, device, warn_threshold=warn_threshold)
+    from trackers.core.reid.architectures import checkpoint_remap_for_architecture
+
+    remap = checkpoint_remap_for_architecture(architecture)
+    return load_state_dict_into(
+        module,
+        path,
+        device,
+        remap=remap,
+        warn_threshold=warn_threshold,
+    )
 
 
 def _read_state_dict(path: str, device: torch.device) -> dict:
@@ -207,17 +152,21 @@ def load_state_dict_into(
     device: torch.device,
     *,
     drop_prefixes: tuple[str, ...] = _DEFAULT_DROP_PREFIXES,
+    remap: Callable[[dict], dict] | None = None,
     warn_threshold: float = 0.5,
 ) -> KeyReport:
     """Load *path* into *module* by name and shape (classifier keys skipped)."""
     state_dict = _read_state_dict(path, device)
 
-    cleaned: dict = {}
-    for k, v in state_dict.items():
-        key = k[7:] if k.startswith("module.") else k
-        if any(key.startswith(p) for p in drop_prefixes):
-            continue
-        cleaned[key] = v
+    if remap is not None:
+        cleaned = remap(state_dict)
+    else:
+        cleaned: dict = {}
+        for k, v in state_dict.items():
+            key = k[7:] if k.startswith("module.") else k
+            if any(key.startswith(p) for p in drop_prefixes):
+                continue
+            cleaned[key] = v
 
     target = module.state_dict()
     matched: dict = {}

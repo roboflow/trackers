@@ -8,10 +8,8 @@
 
 from trackers.core.reid.models.loaders import (
     KeyReport,
-    load_fastreid_sbs_state_dict_into,
     load_state_dict_for_architecture,
     load_state_dict_into,
-    remap_fastreid_sbs_state_dict,
     resolve_weights,
 )
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
@@ -32,11 +30,9 @@ __all__ = [
     "ModelCard",
     "ReIDPreprocessing",
     "default_preprocessing_for_architecture",
-    "load_fastreid_sbs_state_dict_into",
     "load_model_config",
     "load_state_dict_for_architecture",
     "load_state_dict_into",
-    "remap_fastreid_sbs_state_dict",
     "resolve_model_card",
     "resolve_weights",
     "save_model_config",

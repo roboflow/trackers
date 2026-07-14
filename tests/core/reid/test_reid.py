@@ -22,6 +22,7 @@ from __future__ import annotations
 import os
 import tempfile
 
+import numpy as np
 import pytest
 
 from trackers.core.reid.models.loaders import resolve_weights
@@ -45,15 +46,35 @@ class TestReIDPreprocessing:
         t = ReIDPreprocessing().build_transform()
         from PIL import Image
 
-        img = Image.new("RGB", (64, 128))
+        img = Image.new("RGB", (128, 256))  # PIL (width, height) = (W, H)
         out = t(img)
         assert out.shape == (3, 256, 128)
 
+    def test_stretch_resize_matches_target_size(self) -> None:
+        pytest.importorskip("cv2")
+        crop = np.zeros((100, 50, 3), dtype=np.uint8)
+        out = ReIDPreprocessing(input_size=(384, 128), resize_mode="stretch").resize_crop(crop)
+        assert out.shape == (384, 128, 3)
+
+    def test_letterbox_preserves_aspect_and_pads(self) -> None:
+        pytest.importorskip("cv2")
+        crop = np.full((200, 100, 3), 255, dtype=np.uint8)
+        out = ReIDPreprocessing(input_size=(384, 128), resize_mode="letterbox").resize_crop(crop)
+        assert out.shape == (384, 128, 3)
+        assert out[0, 0, 0] == 255
+        assert out[-1, 0, 0] == 114
+
+    def test_fastreid_default_uses_stretch(self) -> None:
+        fastreid = default_preprocessing_for_architecture("fastreid_sbs_resnest50")
+        assert fastreid.input_size == (384, 128)
+        assert fastreid.resize_mode == "stretch"
+
     def test_unknown_interpolation_raises(self) -> None:
+        pytest.importorskip("cv2")
         p = ReIDPreprocessing(interpolation="lanczos")
-        pytest.importorskip("torchvision")
+        crop = np.zeros((32, 16, 3), dtype=np.uint8)
         with pytest.raises(ValueError, match="lanczos"):
-            p.build_transform()
+            p.resize_crop(crop)
 
     def test_to_dict_from_dict_roundtrip(self) -> None:
         p = ReIDPreprocessing(input_size=(128, 64), interpolation="bicubic", to_rgb=False)
@@ -179,7 +200,7 @@ class TestLoaders:
         pytest.importorskip("torch")
         import torch
 
-        from trackers.core.reid.models.loaders import remap_fastreid_sbs_state_dict
+        from trackers.core.reid.architectures.fastreid_sbs import remap_fastreid_sbs_state_dict
 
         raw = {
             "backbone.conv1.0.weight": torch.zeros(1),
@@ -198,7 +219,7 @@ class TestLoaders:
         import torch
 
         from trackers.core.reid.architectures import build_architecture
-        from trackers.core.reid.models.loaders import load_fastreid_sbs_state_dict_into
+        from trackers.core.reid.models.loaders import load_state_dict_for_architecture
 
         model = build_architecture("fastreid_sbs_resnest50")
         source = model.state_dict()
@@ -215,7 +236,9 @@ class TestLoaders:
             tmp_path = f.name
         try:
             torch.save(wrapped, tmp_path)
-            report = load_fastreid_sbs_state_dict_into(model, tmp_path, torch.device("cpu"))
+            report = load_state_dict_for_architecture(
+                model, tmp_path, torch.device("cpu"), "fastreid_sbs_resnest50"
+            )
             assert report.matched == report.total
             assert report.matched_fraction == 1.0
         finally:
@@ -227,7 +250,7 @@ class TestLoaders:
         import torch
 
         from trackers.core.reid.architectures import build_architecture
-        from trackers.core.reid.models.loaders import load_fastreid_sbs_state_dict_into
+        from trackers.core.reid.models.loaders import load_state_dict_for_architecture
 
         mot17_gem_p = 1.7194522619247437  # heads.pool_layer.p in mot17_sbs_S50.pth
 
@@ -245,7 +268,9 @@ class TestLoaders:
             tmp_path = f.name
         try:
             torch.save(wrapped, tmp_path)
-            report = load_fastreid_sbs_state_dict_into(model, tmp_path, torch.device("cpu"))
+            report = load_state_dict_for_architecture(
+                model, tmp_path, torch.device("cpu"), "fastreid_sbs_resnest50"
+            )
             assert report.matched == report.total
             assert model.pool.p.item() == pytest.approx(mot17_gem_p)
             assert model.pool.p.item() != pytest.approx(3.0)

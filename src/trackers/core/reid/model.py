@@ -267,7 +267,8 @@ class ReIDModel:
             tensors = []
             for p in batch_paths:
                 img = PILImage.open(p).convert("RGB")
-                tensors.append(self._transforms(img))
+                crop = self._preprocessing.resize_crop(np.asarray(img))
+                tensors.append(self._transforms(PILImage.fromarray(crop)))
 
             batch = torch.stack(tensors).to(self._device)
             with torch.inference_mode():
@@ -303,10 +304,9 @@ class ReIDModel:
         for box in detections.xyxy:
             safe_box = _clamp_xyxy_to_frame(box, frame_h, frame_w)
             crop = sv.crop_image(image=frame, xyxy=safe_box.astype(int))
-            if crop.size == 0:
-                crop = np.zeros((1, 1, 3), dtype=frame.dtype)
             if self._preprocessing.to_rgb:
                 crop = crop[:, :, ::-1].copy()
+            crop = self._preprocessing.resize_crop(crop)
             pil_crop = PILImage.fromarray(crop)
             crops.append(self._transforms(pil_crop))
 

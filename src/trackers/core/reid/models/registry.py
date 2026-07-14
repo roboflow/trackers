@@ -47,7 +47,8 @@ DEFAULT_MODEL = "osnet_x1_0_msmt17_combineall"
 DEFAULT_ARCHITECTURE_PREPROCESSING = ReIDPreprocessing()
 
 _NON_DEFAULT_ARCHITECTURE_PREPROCESSING: dict[str, ReIDPreprocessing] = {
-    "fastreid_sbs_resnest50": ReIDPreprocessing(input_size=(384, 128)),
+    # BoT-SORT FastReIDInterface: cv2 stretch to 384×128 (letterbox exists but is commented out upstream).
+    "fastreid_sbs_resnest50": ReIDPreprocessing(input_size=(384, 128), resize_mode="stretch"),
 }
 
 

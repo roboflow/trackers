@@ -4,10 +4,11 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID backbone builders (OSNet variants and ``timm:`` models)."""
+"""Re-ID backbone builders (OSNet, FastReID ResNeSt SBS, and ``timm:`` models)."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -63,3 +64,12 @@ def build_architecture(
 def list_architectures() -> list[str]:
     """Return registered architecture names (timm models use ``timm:<name>``)."""
     return sorted([*_OSNET_VARIANTS, "fastreid_sbs_resnest50"])
+
+
+def checkpoint_remap_for_architecture(architecture: str) -> Callable[[dict], dict] | None:
+    """Return a checkpoint key remap for *architecture*, if one is registered."""
+    if architecture == "fastreid_sbs_resnest50":
+        from trackers.core.reid.architectures.fastreid_sbs import remap_fastreid_sbs_state_dict
+
+        return remap_fastreid_sbs_state_dict
+    return None

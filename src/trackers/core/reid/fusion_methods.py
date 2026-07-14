@@ -3,6 +3,12 @@
 # Copyright (c) 2026 Roboflow. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
+#
+# Adapted from NirAharon/BoT-SORT (MIT)
+# Copyright (c) 2022 Nir Aharon
+# Source: https://github.com/NirAharon/BoT-SORT
+# Reference: tracker/bot_sort.py (ReID appearance–IoU cost fusion)
+# ------------------------------------------------------------------------
 
 """Shared appearance–IoU fusion helpers for weighted-fusion trackers.
 
