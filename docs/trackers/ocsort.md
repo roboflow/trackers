@@ -43,14 +43,14 @@ Together, these three mechanisms make OC-SORT effective for group dancing, sport
 
 ## Key Parameters
 
-| Parameter                      | Purpose                                                   | Tuning guidance                                                                                                                    |
-| ------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `lost_track_buffer`            | Frames to keep an unmatched track alive before deletion.  | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions.       |
-| `minimum_consecutive_frames`   | Consecutive detections required to confirm a new track.   | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                              |
-| `minimum_iou_threshold`        | Minimum IoU to accept a track-detection match.            | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                        |
-| `direction_consistency_weight` | Strength of the OCV velocity direction penalty.           | 0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.                                       |
-| `high_conf_det_threshold`      | Minimum detection confidence used for association.        | 0.5-0.7 typical. Lower values include more detections in association; higher values keep association to more confident detections. |
-| `delta_t`                      | Frame gap for OCM velocity re-estimation after occlusion. | 1-3 typical. Larger values smooth velocity estimate over more frames.                                                              |
+| Parameter                      | Purpose                                                                                                                     | Tuning guidance                                                                                                                    |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `lost_track_buffer`            | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions.       |
+| `minimum_consecutive_frames`   | Consecutive detections required to confirm a new track.                                                                     | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                              |
+| `minimum_iou_threshold`        | Minimum IoU to accept a track-detection match.                                                                              | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                        |
+| `direction_consistency_weight` | Strength of the OCV velocity direction penalty.                                                                             | 0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.                                       |
+| `high_conf_det_threshold`      | Minimum detection confidence used for association.                                                                          | 0.5-0.7 typical. Lower values include more detections in association; higher values keep association to more confident detections. |
+| `delta_t`                      | Frame gap for OCM velocity re-estimation after occlusion.                                                                   | 1-3 typical. Larger values smooth velocity estimate over more frames.                                                              |
 
 !!! warning "Frame input is ignored by OC-SORT"
 

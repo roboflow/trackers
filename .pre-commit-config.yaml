@@ -39,7 +39,7 @@ repos:
       - id: mixed-line-ending
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.18
+    rev: v0.15.20
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -66,4 +66,5 @@ repos:
     rev: 'v2.1.0'
     hooks:
       - id: mypy
+        pass_filenames: false
         additional_dependencies: [numpy,types-aiofiles]

@@ -18,6 +18,8 @@ Sections
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
@@ -192,3 +194,38 @@ def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
     tracklet.update(re_match_bbox)
     assert tracklet._frozen_state is None  # _unfreeze() cleared it
     assert tracklet._observed is True
+
+
+def test_ocsort_oru_unfreeze_uses_timing_frame_step_predicts(bbox: np.ndarray) -> None:
+    """ORU virtual trajectory passes timing.frame_step to each sub-step predict.
+
+    Each sub-step calls ``state_estimator.predict(timing.frame_step)`` so that
+    variable-FPS gaps are scaled correctly, not fixed at 1.0.
+    """
+    from trackers.utils.predict_timing import PredictTiming
+
+    timing = PredictTiming(frame_step=2.5, elapsed_seconds=0.1)
+
+    tracklet = OCSORTTracklet(bbox)
+    tracklet.predict()
+    tracklet.update(np.array([15.0, 25.0, 35.0, 45.0]))
+
+    missed_frames = 3
+    for _ in range(missed_frames):
+        tracklet.predict()
+
+    re_match_bbox = np.array([20.0, 30.0, 40.0, 50.0])
+    tracklet.predict()
+    expected_gap = missed_frames + 1
+
+    with patch.object(
+        tracklet.state_estimator,
+        "predict",
+        wraps=tracklet.state_estimator.predict,
+    ) as mock_predict:
+        tracklet.update(re_match_bbox, timing)
+
+    assert mock_predict.call_count == expected_gap - 1
+    for call in mock_predict.call_args_list:
+        frame_step = call.args[0] if call.args else call.kwargs.get("frame_step", 1.0)
+        assert frame_step == pytest.approx(2.5)
