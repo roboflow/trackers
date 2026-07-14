@@ -22,8 +22,8 @@ inference path as FastReID ``EmbeddingHead`` in eval.
 
 from __future__ import annotations
 
-import torch
 import timm
+import torch
 from torch import nn
 from torch.nn import functional as F
 
