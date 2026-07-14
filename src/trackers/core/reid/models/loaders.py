@@ -8,14 +8,17 @@
 
 from __future__ import annotations
 
+import os
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import torch
-    import torch.nn as nn
+import torch
+import torch.nn as nn
+from huggingface_hub import hf_hub_download
+from safetensors.torch import load_file
+
+from trackers.core.reid.architectures import checkpoint_remap_for_architecture
 
 _HF_PREFIX = "hf://"
 _GD_PREFIX = "gd://"
@@ -54,16 +57,12 @@ def resolve_weights(source: str) -> str:
     if source.startswith(_GD_PREFIX):
         return _resolve_gd(source)
 
-    import os
-
     if not os.path.exists(source):
         raise FileNotFoundError(f"Weights file not found: {source}")
     return source
 
 
 def _resolve_hf(source: str) -> str:
-    from huggingface_hub import hf_hub_download
-
     rest = source[len(_HF_PREFIX) :]
     parts = rest.split("/")
     if len(parts) < 3:
@@ -81,8 +80,6 @@ def _resolve_hf(source: str) -> str:
 
 def _resolve_gd(source: str) -> str:
     """Download a Google Drive file once and cache under ``~/.cache/trackers/weights``."""
-    import os
-
     rest = source[len(_GD_PREFIX) :]
     file_id, _, filename = rest.partition("/")
     if not file_id:
@@ -114,8 +111,6 @@ def load_state_dict_for_architecture(
     warn_threshold: float = 0.5,
 ) -> KeyReport:
     """Load *path* using the loader appropriate for *architecture*."""
-    from trackers.core.reid.architectures import checkpoint_remap_for_architecture
-
     remap = checkpoint_remap_for_architecture(architecture)
     return load_state_dict_into(
         module,
@@ -129,11 +124,7 @@ def load_state_dict_for_architecture(
 def _read_state_dict(path: str, device: torch.device) -> dict:
     """Read a raw state dict from a ``.pth`` or ``.safetensors`` file."""
     if path.endswith(".safetensors"):
-        from safetensors.torch import load_file
-
         return load_file(path, device=str(device))
-
-    import torch
 
     state_dict = torch.load(path, map_location=device, weights_only=False)
     # Some checkpoints wrap the tensors in {"state_dict": ...} (or "model").

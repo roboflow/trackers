@@ -9,19 +9,27 @@
 from __future__ import annotations
 
 import logging
+import os
 import warnings
-from typing import TYPE_CHECKING
 
 import numpy as np
 import supervision as sv
+import torch
+import torch.nn as nn
+from PIL import Image as PILImage
+from safetensors.torch import save_file
 
+from trackers.core.reid.architectures import build_architecture
 from trackers.core.reid.models.loaders import load_state_dict_for_architecture, resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
-from trackers.core.reid.models.registry import default_preprocessing_for_architecture
-
-if TYPE_CHECKING:
-    import torch
-    import torch.nn as nn
+from trackers.core.reid.models.registry import (
+    DEFAULT_MODEL,
+    ModelCard,
+    default_preprocessing_for_architecture,
+    resolve_model_card,
+    save_model_config,
+)
+from trackers.utils.device import _best_device
 
 logger = logging.getLogger(__name__)
 
@@ -38,24 +46,9 @@ def _clamp_xyxy_to_frame(box: np.ndarray, height: int, width: int) -> np.ndarray
     return np.array([x1, y1, x2, y2], dtype=np.float32)
 
 
-def _require_reid_deps() -> None:
-    """Raise a descriptive ImportError when the reid optional deps are absent."""
-    try:
-        import torch  # noqa: F401
-        import torchvision  # noqa: F401
-    except ImportError as exc:
-        raise ImportError(
-            "The reid feature requires optional dependencies. Install them with:  pip install trackers[reid]"
-        ) from exc
-
-
 def _select_device(device: str) -> torch.device:
     """Resolve ``"auto"`` or a device string to a :class:`torch.device`."""
-    import torch
-
     if device == "auto":
-        from trackers.utils.device import _best_device
-
         return _best_device()
     return torch.device(device)
 
@@ -120,10 +113,6 @@ class ReIDModel:
         Returns:
             Loaded :class:`ReIDModel`.
         """
-        from trackers.core.reid.architectures import build_architecture
-        from trackers.core.reid.models.registry import DEFAULT_MODEL, resolve_model_card
-
-        _require_reid_deps()
         resolved_device = _select_device(device)
 
         # §2.2 step 1: no source and no architecture → use the default alias.
@@ -201,10 +190,6 @@ class ReIDModel:
 
     def save_pretrained(self, directory: str) -> None:
         """Write ``weights.safetensors`` and ``reid_config.json`` to *directory*."""
-        from safetensors.torch import save_file
-
-        from trackers.core.reid.models.registry import ModelCard, save_model_config
-
         if self._architecture is None:
             raise ValueError(
                 "Cannot save a model whose architecture name is unknown. "
@@ -212,8 +197,6 @@ class ReIDModel:
                 "architecture (e.g. 'osnet_x1_0', 'timm:resnet50') to "
                 "enable save_pretrained()."
             )
-
-        import os
 
         os.makedirs(directory, exist_ok=True)
 
@@ -253,9 +236,6 @@ class ReIDModel:
         if not image_paths:
             return np.empty((0, 0), dtype=np.float32)
 
-        import torch
-        from PIL import Image as PILImage
-
         all_embeddings: list[np.ndarray] = []
 
         for start in range(0, len(image_paths), batch_size):
@@ -291,9 +271,6 @@ class ReIDModel:
         """
         if len(detections) == 0:
             return np.empty((0, 0), dtype=np.float32)
-
-        import torch
-        from PIL import Image as PILImage
 
         frame_h, frame_w = frame.shape[:2]
         crops = []

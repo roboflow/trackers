@@ -12,6 +12,8 @@ import json
 import os
 from dataclasses import dataclass
 
+from huggingface_hub import hf_hub_download
+
 from trackers.core.reid.architectures import list_architectures
 from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
@@ -180,8 +182,6 @@ def save_model_config(card: ModelCard, directory: str) -> None:
 
 def _load_hf_repo_config(hf_repo_url: str) -> ModelCard:
     """Download and parse ``reid_config.json`` from an HF repo URL."""
-    from huggingface_hub import hf_hub_download
-
     rest = hf_repo_url[len("hf://") :]
     parts = [p for p in rest.split("/") if p]
     repo_id = "/".join(parts[:2])

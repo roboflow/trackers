@@ -23,6 +23,7 @@ inference path as FastReID ``EmbeddingHead`` in eval.
 from __future__ import annotations
 
 import torch
+import timm
 from torch import nn
 from torch.nn import functional as F
 
@@ -83,8 +84,6 @@ class FastReIDSBSResNeSt50(nn.Module):
 
     def __init__(self) -> None:
         super().__init__()
-        import timm
-
         backbone = timm.create_model(
             "resnest50d",
             pretrained=False,

@@ -11,7 +11,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+import cv2
 import numpy as np
+from torchvision.transforms import Compose, Normalize, ToTensor
 
 # ImageNet statistics — shared by every OSNet / timm ImageNet-pretrained backbone.
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
@@ -58,8 +60,6 @@ class ReIDPreprocessing:
         ``letterbox`` is optional (aspect-preserving pad); BoT-SORT leaves it
         commented out upstream, so registered FastReID defaults use stretch.
         """
-        import cv2
-
         if crop.size == 0:
             target_h, target_w = self.input_size
             channels = crop.shape[2] if crop.ndim == 3 else 1
@@ -86,8 +86,6 @@ class ReIDPreprocessing:
 
     def build_transform(self):
         """Tensor normalisation for a crop already at :attr:`input_size` (RGB PIL in)."""
-        from torchvision.transforms import Compose, Normalize, ToTensor
-
         return Compose(
             [
                 ToTensor(),
@@ -132,8 +130,6 @@ class ReIDPreprocessing:
 
 
 def _opencv_interpolation(name: str) -> int:
-    import cv2
-
     modes = {
         "bilinear": cv2.INTER_LINEAR,
         "bicubic": cv2.INTER_CUBIC,

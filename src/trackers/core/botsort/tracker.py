@@ -16,6 +16,7 @@ from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.core.reid.distance import appearance_similarity
 from trackers.core.reid.extraction import extract_detection_embeddings
+from trackers.core.reid.feature_bank import FeatureBank
 from trackers.core.reid.fusion_methods import fuse_botsort_reid_association
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
@@ -520,8 +521,6 @@ class BoTSORTTracker(BaseTracker):
         det_embeddings: np.ndarray | None = None,
     ) -> None:
         """Create new tracklets from unmatched high-confidence detections."""
-        from trackers.core.reid.feature_bank import FeatureBank
-
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
             conf = float(confidences[global_idx])
