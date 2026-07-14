@@ -96,7 +96,7 @@ class BoTSORTTracker(BaseTracker):
         reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
         appearance_threshold: Appearance distance gate θ_emb. Rejects matches when
             halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this value.
-            Default ``0.25``; use ``0.2`` for MOT17 FastReID (re-ID study Table 8).
+            Default ``0.25`` (BoT-SORT ``appearance_thresh``).
         proximity_threshold: IoU distance gate before appearance is used.
             Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires IoU > 0.5).
 

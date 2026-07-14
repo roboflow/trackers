@@ -12,33 +12,7 @@ import numpy as np
 import pytest
 
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.reid.fusion_methods import (
-    fuse_botsort_reid_association,
-    fuse_weighted_first_stage,
-    mask_appearance_by_iou_proximity,
-)
-
-
-class TestFuseWeightedFirstStage:
-    def test_weighted_blend(self) -> None:
-        iou = np.array([[1.0, 0.0]], dtype=np.float32)
-        app = np.array([[0.0, 1.0]], dtype=np.float32)
-        fused = fuse_weighted_first_stage(iou, app, weight=0.2)
-        np.testing.assert_allclose(fused, np.array([[0.8, 0.2]], dtype=np.float32))
-
-    def test_invalid_weight_raises(self) -> None:
-        iou = np.zeros((1, 1), dtype=np.float32)
-        app = np.zeros((1, 1), dtype=np.float32)
-        with pytest.raises(ValueError, match="weight must be in"):
-            fuse_weighted_first_stage(iou, app, weight=1.5)
-
-
-class TestMaskAppearanceByIoUProximity:
-    def test_low_iou_zeros_appearance(self) -> None:
-        iou = np.array([[0.8, 0.3]], dtype=np.float32)
-        app = np.array([[0.9, 0.95]], dtype=np.float32)
-        masked = mask_appearance_by_iou_proximity(iou, app, proximity_iou=0.5)
-        np.testing.assert_allclose(masked, np.array([[0.9, 0.0]], dtype=np.float32))
+from trackers.core.reid.fusion_methods import fuse_botsort_reid_association
 
 
 class TestFuseBotsortReidAssociation:

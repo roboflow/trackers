@@ -55,7 +55,8 @@ class ReIDPreprocessing:
 
         ``stretch`` matches BoT-SORT ``FastReIDInterface`` inference
         (``cv2.resize`` to ``SIZE_TEST``, aspect ratio not preserved).
-        ``letterbox`` preserves aspect ratio and pads with :attr:`pad_value`.
+        ``letterbox`` is optional (aspect-preserving pad); BoT-SORT leaves it
+        commented out upstream, so registered FastReID defaults use stretch.
         """
         import cv2
 

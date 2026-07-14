@@ -22,15 +22,13 @@ inference path as FastReID ``EmbeddingHead`` in eval.
 
 from __future__ import annotations
 
-import timm
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn
+from torch.nn import functional as F
 
 __all__ = [
     "FASTREID_SBS_ARCHITECTURE",
     "FastReIDSBSResNeSt50",
-    "GeneralizedMeanPooling",
     "build_fastreid_sbs_resnest50",
     "remap_fastreid_sbs_state_dict",
 ]
@@ -85,6 +83,8 @@ class FastReIDSBSResNeSt50(nn.Module):
 
     def __init__(self) -> None:
         super().__init__()
+        import timm
+
         backbone = timm.create_model(
             "resnest50d",
             pretrained=False,
@@ -93,8 +93,8 @@ class FastReIDSBSResNeSt50(nn.Module):
             output_stride=16,
         )
         self.backbone = _patch_resnest50d_for_fastreid_last_stride(backbone)
-        self.pool = GeneralizedMeanPooling()  # pool.p overwritten from checkpoint
-        self.bottleneck = nn.BatchNorm1d(FASTREID_SBS_EMBED_DIM)  # heads.bottleneck.0.*
+        self.pool = GeneralizedMeanPooling()
+        self.bottleneck = nn.BatchNorm1d(FASTREID_SBS_EMBED_DIM)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.backbone(x)
@@ -121,7 +121,7 @@ def remap_fastreid_sbs_state_dict(state_dict: dict) -> dict:
         if key.startswith("backbone."):
             mapped[key] = value
         elif key == "heads.pool_layer.p":
-            mapped["pool.p"] = value  # GeM exponent; overwrites GeneralizedMeanPooling default
+            mapped["pool.p"] = value
         elif key.startswith("heads.bottleneck.0."):
             mapped["bottleneck." + key[len("heads.bottleneck.0.") :]] = value
         # Skip heads.weight (identity classifier; unused at inference).

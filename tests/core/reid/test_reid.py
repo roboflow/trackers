@@ -65,7 +65,9 @@ class TestReIDPreprocessing:
         assert out[-1, 0, 0] == 114
 
     def test_fastreid_default_uses_stretch(self) -> None:
-        fastreid = default_preprocessing_for_architecture("fastreid_sbs_resnest50")
+        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
+
+        fastreid = default_preprocessing_for_architecture(FASTREID_SBS_ARCHITECTURE)
         assert fastreid.input_size == (384, 128)
         assert fastreid.resize_mode == "stretch"
 
@@ -100,17 +102,21 @@ class TestRegistry:
         assert card.domain_warning is not None
 
     def test_resolve_fastreid_mot17_alias(self) -> None:
+        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
+
         card = resolve_model_card(FASTREID_MOT17_SBS50)
         assert card is not None
-        assert card.architecture == "fastreid_sbs_resnest50"
+        assert card.architecture == FASTREID_SBS_ARCHITECTURE
         assert card.weights is not None
         assert card.preprocessing.input_size == (384, 128)
         assert card.domain_warning is not None
 
     def test_default_preprocessing_for_architecture(self) -> None:
+        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
+
         osnet = default_preprocessing_for_architecture("osnet_x1_0")
         assert osnet.input_size == (256, 128)
-        fastreid = default_preprocessing_for_architecture("fastreid_sbs_resnest50")
+        fastreid = default_preprocessing_for_architecture(FASTREID_SBS_ARCHITECTURE)
         assert fastreid.input_size == (384, 128)
         assert default_preprocessing_for_architecture("timm:resnet50").input_size == (256, 128)
 
@@ -200,7 +206,10 @@ class TestLoaders:
         pytest.importorskip("torch")
         import torch
 
-        from trackers.core.reid.architectures.fastreid_sbs import remap_fastreid_sbs_state_dict
+        from trackers.core.reid.architectures.fastreid_sbs import (
+            FASTREID_SBS_ARCHITECTURE,
+            remap_fastreid_sbs_state_dict,
+        )
 
         raw = {
             "backbone.conv1.0.weight": torch.zeros(1),
@@ -219,9 +228,10 @@ class TestLoaders:
         import torch
 
         from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
         from trackers.core.reid.models.loaders import load_state_dict_for_architecture
 
-        model = build_architecture("fastreid_sbs_resnest50")
+        model = build_architecture(FASTREID_SBS_ARCHITECTURE)
         source = model.state_dict()
         wrapped: dict = {}
         for key, value in source.items():
@@ -237,7 +247,7 @@ class TestLoaders:
         try:
             torch.save(wrapped, tmp_path)
             report = load_state_dict_for_architecture(
-                model, tmp_path, torch.device("cpu"), "fastreid_sbs_resnest50"
+                model, tmp_path, torch.device("cpu"), FASTREID_SBS_ARCHITECTURE
             )
             assert report.matched == report.total
             assert report.matched_fraction == 1.0
@@ -250,11 +260,12 @@ class TestLoaders:
         import torch
 
         from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
         from trackers.core.reid.models.loaders import load_state_dict_for_architecture
 
         mot17_gem_p = 1.7194522619247437  # heads.pool_layer.p in mot17_sbs_S50.pth
 
-        model = build_architecture("fastreid_sbs_resnest50")
+        model = build_architecture(FASTREID_SBS_ARCHITECTURE)
         assert model.pool.p.item() == pytest.approx(3.0)
 
         wrapped: dict = {"heads.pool_layer.p": torch.tensor([mot17_gem_p])}
@@ -269,7 +280,7 @@ class TestLoaders:
         try:
             torch.save(wrapped, tmp_path)
             report = load_state_dict_for_architecture(
-                model, tmp_path, torch.device("cpu"), "fastreid_sbs_resnest50"
+                model, tmp_path, torch.device("cpu"), FASTREID_SBS_ARCHITECTURE
             )
             assert report.matched == report.total
             assert model.pool.p.item() == pytest.approx(mot17_gem_p)
@@ -277,13 +288,32 @@ class TestLoaders:
         finally:
             os.unlink(tmp_path)
 
+    def test_fastreid_sbs_last_stride_patch(self) -> None:
+        """``layer4[0]`` must match FastReID LAST_STRIDE=1 (not raw timm output_stride=16)."""
+        pytest.importorskip("torch")
+        pytest.importorskip("timm")
+        import torch.nn as nn
+
+        from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
+
+        model = build_architecture(FASTREID_SBS_ARCHITECTURE)
+        block = model.backbone.layer4[0]
+        assert isinstance(block.downsample[0], nn.AvgPool2d)
+        assert block.downsample[0].kernel_size == (1, 1) or block.downsample[0].kernel_size == 1
+        assert block.downsample[0].stride == (1, 1) or block.downsample[0].stride == 1
+        assert isinstance(block.avd_last, nn.AvgPool2d)
+        assert block.avd_last.kernel_size == (3, 3) or block.avd_last.kernel_size == 3
+        assert block.avd_last.stride == (1, 1) or block.avd_last.stride == 1
+
     def test_fastreid_sbs_forward_shape(self) -> None:
         pytest.importorskip("torch")
         import torch
 
         from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
 
-        model = build_architecture("fastreid_sbs_resnest50")
+        model = build_architecture(FASTREID_SBS_ARCHITECTURE)
         model.eval()
         with torch.inference_mode():
             out = model(torch.randn(2, 3, 384, 128))

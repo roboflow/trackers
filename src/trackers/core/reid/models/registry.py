@@ -13,6 +13,7 @@ import os
 from dataclasses import dataclass
 
 from trackers.core.reid.architectures import list_architectures
+from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 
 # ---------------------------------------------------------------------------
@@ -48,7 +49,7 @@ DEFAULT_ARCHITECTURE_PREPROCESSING = ReIDPreprocessing()
 
 _NON_DEFAULT_ARCHITECTURE_PREPROCESSING: dict[str, ReIDPreprocessing] = {
     # BoT-SORT FastReIDInterface: cv2 stretch to 384×128 (letterbox exists but is commented out upstream).
-    "fastreid_sbs_resnest50": ReIDPreprocessing(input_size=(384, 128), resize_mode="stretch"),
+    FASTREID_SBS_ARCHITECTURE: ReIDPreprocessing(input_size=(384, 128), resize_mode="stretch"),
 }
 
 
@@ -98,9 +99,9 @@ ALIASES: dict[str, ModelCard] = {
         domain_warning=_DOMAIN_WARNING,
     ),
     FASTREID_MOT17_SBS50: ModelCard(
-        architecture="fastreid_sbs_resnest50",
+        architecture=FASTREID_SBS_ARCHITECTURE,
         weights=_FASTREID_MOT17_WEIGHTS,
-        preprocessing=ARCHITECTURE_DEFAULT_PREPROCESSING["fastreid_sbs_resnest50"],
+        preprocessing=ARCHITECTURE_DEFAULT_PREPROCESSING[FASTREID_SBS_ARCHITECTURE],
         domain_warning=_FASTREID_MOT17_WARNING,
     ),
 }
