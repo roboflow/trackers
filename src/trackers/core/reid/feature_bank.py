@@ -74,9 +74,7 @@ class FeatureBank:
                 f"embedding shape {cleaned.shape} does not match stored feature shape {self._feature.shape}"
             )
 
-        self._feature = (self._alpha * self._feature + (1.0 - self._alpha) * cleaned).astype(
-            np.float32
-        )
+        self._feature = (self._alpha * self._feature + (1.0 - self._alpha) * cleaned).astype(np.float32)
 
     def reset(self) -> None:
         """Clear the stored feature."""
