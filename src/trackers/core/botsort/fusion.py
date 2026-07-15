@@ -7,10 +7,10 @@
 # Adapted from NirAharon/BoT-SORT (MIT)
 # Copyright (c) 2022 Nir Aharon
 # Source: https://github.com/NirAharon/BoT-SORT
-# Reference: tracker/bot_sort.py (ReID appearance–IoU cost fusion)
+# Reference: tracker/bot_sort.py (ReID appearance-IoU cost fusion)
 # ------------------------------------------------------------------------
 
-"""Appearance–IoU fusion for BoT-SORT ReID association."""
+"""Appearance-IoU fusion for BoT-SORT ReID association."""
 
 from __future__ import annotations
 

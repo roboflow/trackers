@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -284,12 +285,15 @@ class TestLoaders:
         import torch
 
         from trackers.core.reid.architectures import build_architecture
-        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
+        from trackers.core.reid.architectures.fastreid_sbs import (
+            FASTREID_SBS_ARCHITECTURE,
+            FastReIDSBSResNeSt50,
+        )
         from trackers.core.reid.models.loaders import load_state_dict_for_architecture
 
         mot17_gem_p = 1.7194522619247437  # heads.pool_layer.p in mot17_sbs_S50.pth
 
-        model = build_architecture(FASTREID_SBS_ARCHITECTURE)
+        model = cast(FastReIDSBSResNeSt50, build_architecture(FASTREID_SBS_ARCHITECTURE))
         assert model.pool.p.item() == pytest.approx(3.0)
 
         wrapped: dict = {"heads.pool_layer.p": torch.tensor([mot17_gem_p])}
@@ -317,10 +321,13 @@ class TestLoaders:
         import torch.nn as nn
 
         from trackers.core.reid.architectures import build_architecture
-        from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
+        from trackers.core.reid.architectures.fastreid_sbs import (
+            FASTREID_SBS_ARCHITECTURE,
+            FastReIDSBSResNeSt50,
+        )
 
-        model = build_architecture(FASTREID_SBS_ARCHITECTURE)
-        block = model.backbone.layer4[0]
+        model = cast(FastReIDSBSResNeSt50, build_architecture(FASTREID_SBS_ARCHITECTURE))
+        block = cast(Any, cast(Any, model.backbone).layer4[0])
         assert isinstance(block.downsample[0], nn.AvgPool2d)
         assert block.downsample[0].kernel_size == (1, 1) or block.downsample[0].kernel_size == 1
         assert block.downsample[0].stride == (1, 1) or block.downsample[0].stride == 1

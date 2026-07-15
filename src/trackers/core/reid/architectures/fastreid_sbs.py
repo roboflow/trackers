@@ -22,6 +22,8 @@ inference path as FastReID ``EmbeddingHead`` in eval.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import timm
 import torch
 from torch import nn
@@ -49,7 +51,8 @@ def _patch_resnest50d_for_fastreid_last_stride(backbone: nn.Module) -> nn.Module
     and leaves ``avd_last`` unset on ``layer4[0]``, which shifts embeddings even
     when checkpoint keys load 100%.
     """
-    block = backbone.layer4[0]
+    backbone_any = cast(Any, backbone)
+    block = backbone_any.layer4[0]
     block.downsample[0] = nn.AvgPool2d(kernel_size=1, stride=1, padding=0)
     block.avd_last = nn.AvgPool2d(kernel_size=3, stride=1, padding=1)
     return backbone

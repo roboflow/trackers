@@ -206,7 +206,7 @@ markers = [
 
 [tool.codespell]
 skip = "*.pth"
-ignore-words-list = "mot"
+ignore-words-list = "mot,iterm"
 
 [tool.mypy]
 python_version = "3.10"
@@ -224,6 +224,8 @@ module = [
     "timm",
     "timm.*",
     "huggingface_hub",
+    "gdown",
+    "safetensors",
     "firerequests",
     "scipy",
     "scipy.*",

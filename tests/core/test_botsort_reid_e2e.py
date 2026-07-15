@@ -46,7 +46,7 @@ class _KeyedReIDEncoder:
             return np.empty((0, 0), dtype=np.float32)
         rows = []
         for box in detections.xyxy:
-            key = (int(round(float(box[0]))), int(round(float(box[1]))))
+            key = (round(float(box[0])), round(float(box[1])))
             rows.append(self.table.get(key, _norm(np.array([float(box[0]), float(box[1]), 1.0, 0.0]))))
         return np.stack(rows)
 
@@ -76,8 +76,8 @@ class TestBoTSORTReIDE2E:
             def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
                 rows = []
                 for box in detections.xyxy:
-                    x1 = int(round(float(box[0])))
-                    y1 = int(round(float(box[1])))
+                    x1 = round(float(box[0]))
+                    y1 = round(float(box[1]))
                     if self.phase == 1:
                         rows.append(identity)
                     elif (x1, y1) == (10, 10):
@@ -88,17 +88,22 @@ class TestBoTSORTReIDE2E:
 
         encoder = _PhaseEncoder()
         frame = _frame(1)
-        shared = dict(
+
+        geo = BoTSORTTracker(
             enable_cmc=False,
             minimum_iou_threshold_first_assoc=0.01,
             appearance_threshold=0.6,
             proximity_threshold=0.99,
         )
-
-        geo = BoTSORTTracker(**shared)
         geo.update(_det((10.0, 10.0, 30.0, 30.0)), frame=frame)
 
-        reid = BoTSORTTracker(**shared, reid_model=encoder)
+        reid = BoTSORTTracker(
+            enable_cmc=False,
+            minimum_iou_threshold_first_assoc=0.01,
+            appearance_threshold=0.6,
+            proximity_threshold=0.99,
+            reid_model=encoder,
+        )
         reid.update(_det((10.0, 10.0, 30.0, 30.0)), frame=frame)
         track_id = int(reid.tracks[0].tracker_id)
 
@@ -118,7 +123,9 @@ class TestBoTSORTReIDE2E:
         reid_out = reid.update(competitors, frame=frame)
 
         def _matched_top_left(out: sv.Detections, tid: int) -> tuple[float, float]:
-            mask = out.tracker_id == tid
+            tracker_ids = out.tracker_id
+            assert tracker_ids is not None
+            mask = tracker_ids == tid
             assert mask.any(), f"track {tid} not found in output"
             box = out.xyxy[mask][0]
             return float(box[0]), float(box[1])
@@ -137,13 +144,17 @@ class TestBoTSORTReIDE2E:
             proximity_threshold=0.99,
         )
         first = tracker.update(_det((10.0, 10.0, 30.0, 30.0)), frame=frame)
-        track_id = int(first.tracker_id[0])
+        first_ids = first.tracker_id
+        assert first_ids is not None
+        track_id = int(first_ids[0])
 
         tracker.update(sv.Detections.empty(), frame=frame)
         assert any(t.tracker_id == track_id for t in tracker.tracks)
 
         recovered = tracker.update(_det((12.0, 12.0, 32.0, 32.0)), frame=frame)
-        assert track_id in recovered.tracker_id.tolist()
+        recovered_ids = recovered.tracker_id
+        assert recovered_ids is not None
+        assert track_id in recovered_ids.tolist()
 
     def test_no_reid_parity_unchanged(self) -> None:
         boxes = sv.Detections(

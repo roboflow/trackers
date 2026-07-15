@@ -9,15 +9,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
 
 from trackers.core.reid.eval.datasets import ReIDSplit
 from trackers.core.reid.eval.metrics import ReIDMetrics, compute_reid_metrics
-
-if TYPE_CHECKING:
-    from trackers.core.reid.model import ReIDModel
+from trackers.core.reid.protocols import ReIDPathEncoder
 
 
 @dataclass
@@ -35,7 +32,7 @@ ReidResult = ReIDResult
 
 
 def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.ndarray:
-    """Build a query×gallery distance matrix (``cosine`` or ``euclidean``)."""
+    """Build a query x gallery distance matrix (``cosine`` or ``euclidean``)."""
     if metric == "cosine":
         qn = (q_embs / (np.linalg.norm(q_embs, axis=1, keepdims=True) + 1e-12)).astype(np.float32, copy=False)
         gn = (g_embs / (np.linalg.norm(g_embs, axis=1, keepdims=True) + 1e-12)).astype(np.float32, copy=False)
@@ -55,14 +52,15 @@ def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.
 
 
 class ReIDEvaluator:
-    """Run embedding extraction and retrieval metrics for a :class:`ReIDModel`.
+    """Run embedding extraction and retrieval metrics for a Re-ID encoder.
 
     Args:
-        model: Appearance model to evaluate.
+        model: Encoder implementing :class:`~trackers.core.reid.protocols.ReIDPathEncoder`
+            (for example :class:`~trackers.core.reid.model.ReIDModel`).
         batch_size: Images per forward pass.
     """
 
-    def __init__(self, model: ReIDModel, batch_size: int = 64) -> None:
+    def __init__(self, model: ReIDPathEncoder, batch_size: int = 64) -> None:
         if batch_size < 1:
             raise ValueError(f"batch_size must be >= 1, got {batch_size}")
         self._model = model

@@ -139,7 +139,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--list-cameras",
         action="store_true",
-        help="Probe camera indices 0–4 and exit.",
+        help="Probe camera indices 0-4 and exit.",
     )
     parser.add_argument(
         "--no-cmc",
@@ -158,7 +158,7 @@ def parse_args() -> argparse.Namespace:
         dest="proximity_threshold",
         type=float,
         default=0.85,
-        help=("IoU distance gate θ_iou — requires IoU > 1−θ (default: 0.85 → IoU > 0.15; paper uses 0.5 → IoU > 0.5)."),
+        help=("IoU distance gate theta_iou: requires IoU > 1-theta (default: 0.85 means IoU > 0.15; paper uses 0.5)."),
     )
     return parser.parse_args()
 

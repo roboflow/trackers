@@ -43,11 +43,11 @@ _DOMAIN_WARNING = (
 DEFAULT_MODEL = "osnet_x1_0_msmt17_combineall"
 
 # Default preprocessing for registered architectures (bare `.pth` loads, no ModelCard).
-# OSNet variants use 256×128; only non-default geometries are listed explicitly.
+# OSNet variants use 256x128; only non-default geometries are listed explicitly.
 DEFAULT_ARCHITECTURE_PREPROCESSING = ReIDPreprocessing()
 
 _NON_DEFAULT_ARCHITECTURE_PREPROCESSING: dict[str, ReIDPreprocessing] = {
-    # BoT-SORT FastReIDInterface: cv2 stretch to 384×128 (letterbox exists but is commented out upstream).
+    # BoT-SORT FastReIDInterface: cv2 stretch to 384x128 (letterbox exists but is commented out upstream).
     FASTREID_SBS_ARCHITECTURE: ReIDPreprocessing(input_size=(384, 128), resize_mode="stretch"),
 }
 

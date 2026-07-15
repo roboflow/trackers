@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
@@ -15,6 +15,7 @@ from trackers.core.base import BaseTracker
 from trackers.core.botsort.fusion import fuse_botsort_reid_association
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
+from trackers.core.reid.protocols import ReIDEncoder
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -22,9 +23,6 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
 )
-
-if TYPE_CHECKING:
-    from trackers.core.reid.model import ReIDModel
 
 
 class BoTSORTTracker(BaseTracker):
@@ -88,8 +86,9 @@ class BoTSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
-        reid_model: Optional :class:`~trackers.core.reid.model.ReIDModel` for
-            appearance-based association in the first high-confidence stage.
+        reid_model: Optional :class:`~trackers.core.reid.protocols.ReIDEncoder`
+            for appearance-based association in the first high-confidence stage.
+            :class:`~trackers.core.reid.model.ReIDModel` satisfies this protocol.
             Requires ``frame`` in :meth:`update`. When ``None`` (default),
             behaviour matches the geometry-only BoT-SORT baseline.
         reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
@@ -139,7 +138,7 @@ class BoTSORTTracker(BaseTracker):
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
-        reid_model: "ReIDModel | None" = None,
+        reid_model: ReIDEncoder | None = None,
         reid_ema_alpha: float = 0.9,
         appearance_threshold: float = 0.25,
         proximity_threshold: float = 0.5,

@@ -54,7 +54,7 @@ def compute_reid_metrics(
     *,
     gallery_junk_pids: frozenset[int] = frozenset({-1}),
 ) -> ReIDMetrics:
-    """Compute CMC, mAP, and mINP from a query×gallery distance matrix.
+    """Compute CMC, mAP, and mINP from a query x gallery distance matrix.
 
     Excludes same-(pid, camid) gallery matches and gallery junk person IDs
     (``pid in gallery_junk_pids``). Market-1501 gallery distractors use

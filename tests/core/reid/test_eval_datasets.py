@@ -8,9 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
-import pytest
-
 from trackers.core.reid.eval.datasets import (
     MARKET1501_GALLERY_JUNK_PIDS,
     ReIDSplit,

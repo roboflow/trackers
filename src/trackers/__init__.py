@@ -8,13 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from trackers.core.reid._lazy import REID_INSTALL_HINT, import_reid_symbol
-
 from trackers.annotators.trace import MotionAwareTraceAnnotator
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
+from trackers.core.reid._lazy import REID_INSTALL_HINT, import_reid_symbol
 from trackers.core.sort.tracker import SORTTracker
 from trackers.datasets.download import download_dataset
 from trackers.datasets.manifest import Dataset, DatasetAsset, DatasetSplit

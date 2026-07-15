@@ -20,7 +20,7 @@ IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
 # Standard person re-ID input geometry (height, width). OSNet and most backbones
-# train at 256×128; BoT-SORT FastReID SBS uses 384×128 (see registry overrides).
+# train at 256x128; BoT-SORT FastReID SBS uses 384x128 (see registry overrides).
 REID_INPUT_SIZE = (256, 128)
 
 # Gray padding used by YOLO / FastReID letterbox helpers (BoT-SORT ``preprocess()``).
@@ -53,7 +53,7 @@ class ReIDPreprocessing:
         )
 
     def resize_crop(self, crop: np.ndarray) -> np.ndarray:
-        """Resize an ``H×W×C`` crop to :attr:`input_size` using OpenCV.
+        """Resize an ``HxWxC`` crop to :attr:`input_size` using OpenCV.
 
         ``stretch`` matches BoT-SORT ``FastReIDInterface`` inference
         (``cv2.resize`` to ``SIZE_TEST``, aspect ratio not preserved).
@@ -72,8 +72,8 @@ class ReIDPreprocessing:
         if self.resize_mode == "letterbox":
             height, width = crop.shape[:2]
             scale = min(target_h / height, target_w / width)
-            new_w = max(int(round(width * scale)), 1)
-            new_h = max(int(round(height * scale)), 1)
+            new_w = max(round(width * scale), 1)
+            new_h = max(round(height * scale), 1)
             resized = cv2.resize(crop, (new_w, new_h), interpolation=interpolation)
             if crop.ndim == 3:
                 padded = np.full((target_h, target_w, crop.shape[2]), self.pad_value, dtype=crop.dtype)

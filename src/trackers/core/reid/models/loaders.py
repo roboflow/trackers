@@ -79,8 +79,7 @@ def _resolve_hf(source: str) -> str:
         return hf_hub_download(repo_id=repo_id, filename=filename, revision=revision)
     except (HfHubHTTPError, EntryNotFoundError, OSError) as exc:
         raise RuntimeError(
-            f"Failed to download Hugging Face weights from {source!r} "
-            f"(repo_id={repo_id!r}, filename={filename!r})."
+            f"Failed to download Hugging Face weights from {source!r} (repo_id={repo_id!r}, filename={filename!r})."
         ) from exc
 
 
@@ -194,10 +193,11 @@ def load_state_dict_into(
     """Load *path* into *module* by name and shape (classifier keys skipped)."""
     state_dict = _read_state_dict(path, device)
 
+    cleaned: dict
     if remap is not None:
         cleaned = remap(state_dict)
     else:
-        cleaned: dict = {}
+        cleaned = {}
         for k, v in state_dict.items():
             key = _strip_common_prefixes(k)
             if any(key.startswith(p) for p in drop_prefixes):

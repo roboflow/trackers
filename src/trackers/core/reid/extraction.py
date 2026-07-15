@@ -8,17 +8,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
 import supervision as sv
 
-if TYPE_CHECKING:
-    from trackers.core.reid.model import ReIDModel
+from trackers.core.reid.protocols import ReIDEncoder
 
 
 def extract_detection_embeddings(
-    model: ReIDModel,
+    model: ReIDEncoder,
     frame: np.ndarray,
     boxes: np.ndarray,
 ) -> np.ndarray:

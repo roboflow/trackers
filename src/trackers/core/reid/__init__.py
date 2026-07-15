@@ -10,9 +10,9 @@ from trackers.core.reid._lazy import import_reid_symbol
 
 __all__ = [
     "FASTREID_MOT17_SBS50",
+    "MARKET1501_GALLERY_JUNK_PIDS",
     "FeatureBank",
     "KeyReport",
-    "MARKET1501_GALLERY_JUNK_PIDS",
     "ModelCard",
     "ReIDEvaluator",
     "ReIDMetrics",
@@ -35,16 +35,16 @@ __all__ = [
 ]
 
 # NumPy-only symbols — safe to import without torch/timm/HF.
-from trackers.core.reid.distance import appearance_similarity  # noqa: E402
-from trackers.core.reid.eval.datasets import (  # noqa: E402
+from trackers.core.reid.distance import appearance_similarity
+from trackers.core.reid.eval.datasets import (
     MARKET1501_GALLERY_JUNK_PIDS,
     ReIDSplit,
     ReidSplit,
     load_market1501,
     load_msmt17,
 )
-from trackers.core.reid.eval.metrics import ReIDMetrics, ReidMetrics, compute_reid_metrics  # noqa: E402
-from trackers.core.reid.feature_bank import FeatureBank  # noqa: E402
+from trackers.core.reid.eval.metrics import ReIDMetrics, ReidMetrics, compute_reid_metrics
+from trackers.core.reid.feature_bank import FeatureBank
 
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "ReIDModel": ("trackers.core.reid.model", "ReIDModel"),

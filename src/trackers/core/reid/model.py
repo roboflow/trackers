@@ -134,6 +134,8 @@ class ReIDModel:
 
         elif source is None:
             # §2.2 step 5: architecture-only; no external weights loaded.
+            if architecture is None:
+                raise ValueError("architecture is required when source is None")
             resolved_arch = architecture
             resolved_weights = None
             resolved_preprocessing = (

@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from trackers.core.reid.feature_bank import FeatureBank
@@ -28,7 +30,7 @@ def sanitize_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
 
 
 def appearance_similarity(
-    track_features: list[np.ndarray | None],
+    track_features: Sequence[np.ndarray | None],
     det_embeddings: np.ndarray,
 ) -> np.ndarray:
     """Compute cosine similarity between track features and detection embeddings.

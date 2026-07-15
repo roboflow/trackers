@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import pytest
 
@@ -92,7 +94,7 @@ class TestComputeReidMetrics:
         g_embs = np.ones((2, 4), dtype=np.float32)
 
         class _StubModel:
-            def extract_features_from_paths(self, *args, **kwargs):  # noqa: ANN002, ANN003
+            def extract_features_from_paths(self, *args, **kwargs):
                 raise AssertionError("should not be called")
 
         ReIDEvaluator(_StubModel()).evaluate(
@@ -112,7 +114,14 @@ class TestComputeReidMetrics:
 
     def test_evaluator_rejects_invalid_batch_size(self) -> None:
         class _StubModel:
-            pass
+            def extract_features_from_paths(
+                self,
+                image_paths: Sequence[str],
+                *,
+                batch_size: int = 64,
+                normalize: bool = True,
+            ) -> np.ndarray:
+                raise NotImplementedError
 
         with pytest.raises(ValueError, match="batch_size"):
             ReIDEvaluator(_StubModel(), batch_size=0)

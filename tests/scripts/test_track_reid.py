@@ -81,11 +81,13 @@ def test_validate_reid_requires_source_before_load(monkeypatch: pytest.MonkeyPat
     assert params == {}
 
 
-def test_apply_reid_passes_architecture(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_apply_reid_passes_architecture(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("trackers.core.reid._lazy.load_reid_model_class", lambda: _FakeReIDModel)
+    weights = tmp_path / "weights.pth"
+    weights.touch()
     args = argparse.Namespace(
         tracker_reid_enable=False,
-        tracker_reid_model="/tmp/weights.pth",
+        tracker_reid_model=str(weights),
         tracker_reid_device="cpu",
         tracker_reid_architecture="osnet_x1_0",
         source="video.mp4",
@@ -93,21 +95,23 @@ def test_apply_reid_passes_architecture(monkeypatch: pytest.MonkeyPatch) -> None
     params, err = _apply_reid_tracker_params("botsort", args, {})
     assert err is None
     assert _FakeReIDModel.last_kwargs is not None
-    assert _FakeReIDModel.last_kwargs["source"] == "/tmp/weights.pth"
+    assert _FakeReIDModel.last_kwargs["source"] == str(weights)
     assert _FakeReIDModel.last_kwargs["architecture"] == "osnet_x1_0"
     assert "reid_model" in params
 
 
-def test_apply_reid_model_load_error_is_concise(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_apply_reid_model_load_error_is_concise(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     class _FailingModel:
         @classmethod
         def from_pretrained(cls, **kwargs: object) -> None:
             raise ValueError("architecture is required")
 
     monkeypatch.setattr("trackers.core.reid._lazy.load_reid_model_class", lambda: _FailingModel)
+    bare_weights = tmp_path / "bare.pth"
+    bare_weights.touch()
     args = argparse.Namespace(
         tracker_reid_enable=True,
-        tracker_reid_model="/tmp/bare.pth",
+        tracker_reid_model=str(bare_weights),
         tracker_reid_device="cpu",
         tracker_reid_architecture=None,
         source="video.mp4",

@@ -89,16 +89,16 @@ CLI (requires `--source` so frames are available for embedding extraction):
 
 ```bash
 trackers track \
-  --source video.mp4 \
-  --output tracked.mp4 \
-  --tracker botsort \
-  --tracker.reid.enable \
-  --tracker.reid.model fastreid_mot17_sbs50 \
-  --tracker.reid.architecture fastreid_sbs_resnest50 \
-  --tracker.reid.device auto \
-  --tracker.appearance_threshold 0.2 \
-  --tracker.proximity_threshold 0.5 \
-  --tracker.reid_ema_alpha 0.9
+    --source video.mp4 \
+    --output tracked.mp4 \
+    --tracker botsort \
+    --tracker.reid.enable \
+    --tracker.reid.model fastreid_mot17_sbs50 \
+    --tracker.reid.architecture fastreid_sbs_resnest50 \
+    --tracker.reid.device auto \
+    --tracker.appearance_threshold 0.2 \
+    --tracker.proximity_threshold 0.5 \
+    --tracker.reid_ema_alpha 0.9
 ```
 
 For a bare local weights file, pass the matching `--tracker.reid.architecture` (for example `osnet_x1_0`).

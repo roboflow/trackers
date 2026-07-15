@@ -55,14 +55,14 @@ class _ConvBnRelu(nn.Module):
 
 
 class _Conv1x1(_ConvBnRelu):
-    """1×1 conv + BN + ReLU."""
+    """1x1 conv + BN + ReLU."""
 
     def __init__(self, in_channels: int, out_channels: int, stride: int = 1, groups: int = 1) -> None:
         super().__init__(in_channels, out_channels, 1, stride=stride, padding=0, groups=groups)
 
 
 class _Conv1x1Linear(nn.Module):
-    """1×1 conv + BN (no non-linearity)."""
+    """1x1 conv + BN (no non-linearity)."""
 
     def __init__(self, in_channels: int, out_channels: int, stride: int = 1) -> None:
         super().__init__()
@@ -74,7 +74,7 @@ class _Conv1x1Linear(nn.Module):
 
 
 class _LightConv3x3(nn.Module):
-    """Lightweight 3×3 conv: 1×1 linear + depthwise 3×3 + BN + ReLU."""
+    """Lightweight 3x3 conv: 1x1 linear + depthwise 3x3 + BN + ReLU."""
 
     def __init__(self, in_channels: int, out_channels: int) -> None:
         super().__init__()
@@ -112,7 +112,7 @@ class OSBlock(nn.Module):
     """Omni-scale feature learning residual block.
 
     Aggregates features from four parallel streams with different effective
-    receptive-field depths (1, 2, 3, 4 stacked lightweight 3×3 convs) gated
+    receptive-field depths (1, 2, 3, 4 stacked lightweight 3x3 convs) gated
     by a shared channel-wise gate before the residual addition.
     """
 
@@ -182,7 +182,8 @@ class OSNet(nn.Module):
         feature_dim: int = 512,
     ) -> None:
         super().__init__()
-        assert len(blocks) == len(layers) == len(channels) - 1
+        if len(blocks) != len(layers) or len(layers) != len(channels) - 1:
+            raise ValueError("blocks, layers, and channels must have consistent lengths")
 
         self.feature_dim = feature_dim
         self.conv1 = _ConvBnRelu(3, channels[0], 7, stride=2, padding=3)
