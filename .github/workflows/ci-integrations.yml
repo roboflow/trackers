@@ -31,6 +31,10 @@ jobs:
 
 
       - name: 🧪 Run Integration Tests
-        # Restrict to tests/ so src doctests (and heavy ReID modules) are not
-        # collected — this job installs `--group dev` without `--extra reid`.
-        run: uv run pytest tests -m integration -v --tb=short
+        # Explicit paths only: this job installs `--group dev` without
+        # `--extra reid`, so do not collect heavy ReID / src doctest modules.
+        run: >
+          uv run pytest
+          tests/core/test_tracker_integration.py
+          tests/eval/test_integration.py
+          -m integration -v --tb=short
