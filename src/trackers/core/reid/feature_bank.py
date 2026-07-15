@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import numpy as np
 
+_NORM_EPS = 1e-12
+
 
 class FeatureBank:
     """EMA-smoothed appearance embedding for a single track.
 
-    Every ingested vector is L2-normalised. Non-finite, zero-norm, or
-    incompatible-shape inputs are ignored: the bank keeps its previous state
-    (or stays uninitialized).
+    Every ingested vector is L2-normalised (``eps`` floor on the norm, same
+    idea as ``torch.nn.functional.normalize``).
 
     Args:
         alpha: EMA momentum in ``[0, 1]`` (``0.9`` default).
@@ -35,44 +36,36 @@ class FeatureBank:
 
     @property
     def is_initialized(self) -> bool:
-        """``True`` once at least one valid embedding has been ingested."""
+        """``True`` once at least one embedding has been ingested."""
         return self._feature is not None
 
     @staticmethod
-    def normalize_embedding(embedding: np.ndarray) -> np.ndarray | None:
-        """Return an L2-normalised 1-D vector, or ``None`` when unusable."""
+    def normalize_embedding(embedding: np.ndarray) -> np.ndarray:
+        """Return an L2-normalised 1-D vector."""
         flat = np.asarray(embedding, dtype=np.float64).reshape(-1)
-        if flat.size == 0 or not np.all(np.isfinite(flat)):
-            return None
+        if flat.size == 0:
+            raise ValueError("embedding must be non-empty")
+        if not np.all(np.isfinite(flat)):
+            raise ValueError("embedding must contain only finite values")
         norm = float(np.linalg.norm(flat))
-        if norm < 1e-8:
-            return None
-        return (flat / norm).astype(np.float32)
+        return (flat / max(norm, _NORM_EPS)).astype(np.float32)
 
-    def update(self, embedding: np.ndarray) -> bool:
-        """Blend a normalised *embedding* into the stored feature.
-
-        Returns:
-            ``True`` when the bank accepted the vector; ``False`` when the
-            input was skipped (non-finite, zero norm, incompatible shape, etc.).
-        """
+    def update(self, embedding: np.ndarray) -> None:
+        """Blend a normalised *embedding* into the stored feature."""
         normalized = self.normalize_embedding(embedding)
-        if normalized is None:
-            return False
 
         if self._feature is None:
             self._feature = normalized.copy()
-            return True
+            return
 
         if self._feature.shape != normalized.shape:
-            return False
+            raise ValueError(
+                f"embedding shape {normalized.shape} does not match "
+                f"stored feature shape {self._feature.shape}"
+            )
 
         blended = self._alpha * self._feature + (1.0 - self._alpha) * normalized
-        blended_norm = self.normalize_embedding(blended)
-        if blended_norm is None:
-            return False
-        self._feature = blended_norm
-        return True
+        self._feature = self.normalize_embedding(blended)
 
     def reset(self) -> None:
         """Clear the stored feature."""

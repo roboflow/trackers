@@ -26,27 +26,37 @@ class TestFeatureBank:
         from trackers.core.reid.feature_bank import FeatureBank
 
         bank = FeatureBank(alpha=0.9)
-        assert bank.update(np.array([3.0, 4.0], dtype=np.float32))
+        bank.update(np.array([3.0, 4.0], dtype=np.float32))
         feature = bank.feature
         assert feature is not None
         np.testing.assert_allclose(np.linalg.norm(feature), 1.0, atol=1e-6)
 
-    def test_zero_and_non_finite_embeddings_are_skipped(self) -> None:
+    def test_zero_embedding_is_accepted(self) -> None:
         from trackers.core.reid.feature_bank import FeatureBank
 
         bank = FeatureBank()
-        assert bank.update(np.zeros(8, dtype=np.float32)) is False
-        assert bank.update(np.array([1.0, np.nan], dtype=np.float32)) is False
+        bank.update(np.zeros(8, dtype=np.float32))
+        feature = bank.feature
+        assert feature is not None
+        np.testing.assert_allclose(feature, 0.0)
+
+    def test_non_finite_embedding_raises(self) -> None:
+        from trackers.core.reid.feature_bank import FeatureBank
+
+        bank = FeatureBank()
+        with pytest.raises(ValueError, match="finite"):
+            bank.update(np.array([1.0, np.nan], dtype=np.float32))
         assert not bank.is_initialized
 
-    def test_shape_change_is_rejected(self) -> None:
+    def test_shape_change_raises(self) -> None:
         from trackers.core.reid.feature_bank import FeatureBank
 
         bank = FeatureBank()
         bank.update(np.array([1.0, 0.0], dtype=np.float32))
         before = bank.feature
         assert before is not None
-        assert bank.update(np.array([1.0, 0.0, 0.0], dtype=np.float32)) is False
+        with pytest.raises(ValueError, match="shape"):
+            bank.update(np.array([1.0, 0.0, 0.0], dtype=np.float32))
         after = bank.feature
         assert after is not None
         np.testing.assert_allclose(before, after)

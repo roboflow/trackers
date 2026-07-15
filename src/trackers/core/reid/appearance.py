@@ -61,10 +61,9 @@ def appearance_similarity(
     for track_idx, feature in enumerate(track_features):
         if feature is None:
             continue
-        normalized = FeatureBank.normalize_embedding(feature)
-        if normalized is None or normalized.shape[0] != embed_dim:
+        if feature.shape[0] != embed_dim:
             continue
-        track_rows.append(normalized)
+        track_rows.append(FeatureBank.normalize_embedding(feature))
         kept_indices.append(track_idx)
 
     if not track_rows:

@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Optional `trackers[reid]` extra** — torch/timm/Hugging Face ReID stack plus `safetensors`, `Pillow`, and `gdown` for curated checkpoints (OSNet and `timm:` backbones).
 - **Standalone `ReIDModel`** — architecture-agnostic loading (`from_pretrained` / `save_pretrained`), OSNet + `timm:` backbones, and curated alias `osnet_x1_0_msmt17_combineall`.
 - **ReID evaluation helpers** — Market-1501 / MSMT17 loaders, gallery `pid=0` distractor handling, safer CMC padding, and `ReIDMetrics.mean_average_precision`.
-- **FeatureBank + appearance distance** — per-track EMA embeddings with normalize/sanitize; incompatible shapes rejected while preserving state.
+- **FeatureBank + appearance distance** — per-track EMA embeddings with L2 normalisation; incompatible shapes raise.
 
 ### 🌱 Changed
 
