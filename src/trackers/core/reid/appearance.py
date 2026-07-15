@@ -50,8 +50,7 @@ def appearance_similarity(
     """Compute cosine similarity between track features and detection embeddings.
 
     Both sides are L2-normalised before the dot product. Tracks with ``None``
-    features receive similarity ``0.0``. Non-finite values or mismatched
-    embedding dimensions raise ``ValueError``.
+    features receive similarity ``0.0``.
 
     Args:
         track_features: One embedding per track (``None`` = no feature yet).
@@ -59,6 +58,9 @@ def appearance_similarity(
 
     Returns:
         Similarity matrix of shape ``(T, N)``.
+
+    Raises:
+        ValueError: If embeddings are non-finite or dimensions do not match.
     """
     n_tracks = len(track_features)
     det_embeddings = _l2_normalize_rows(_require_embedding_matrix(det_embeddings))

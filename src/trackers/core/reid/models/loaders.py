@@ -133,7 +133,7 @@ def load_state_dict_for_architecture(
     required_match_fraction: float | None = None,
     remap: Callable[[dict], dict] | None = None,
 ) -> KeyReport:
-    """Load *path* into *module*, optionally remapping checkpoint keys."""
+    """Load ``path`` into ``module``, optionally remapping checkpoint keys."""
     report = load_state_dict_into(
         module,
         path,
@@ -188,7 +188,7 @@ def load_state_dict_into(
     remap: Callable[[dict], dict] | None = None,
     warn_threshold: float = 0.5,
 ) -> KeyReport:
-    """Load *path* into *module* by name and shape (classifier keys skipped)."""
+    """Load ``path`` into ``module`` by name and shape (classifier keys skipped)."""
     state_dict = _read_state_dict(path, device)
 
     cleaned: dict

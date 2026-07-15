@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID crop and embedding preprocessing."""
+"""ReID crop and embedding preprocessing."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ ResizeMode = Literal["stretch", "letterbox"]
 
 @dataclass(frozen=True)
 class ReIDPreprocessing:
-    """Crop resize, colour handling, and optional embedding L2."""
+    """Crop resize, colour conversion, and optional embedding L2 normalisation."""
 
     input_size: tuple[int, int] = REID_INPUT_SIZE
     mean: tuple[float, float, float] = IMAGENET_MEAN
@@ -57,6 +57,9 @@ class ReIDPreprocessing:
 
         ``stretch`` ignores aspect ratio (``cv2.resize`` to the target size).
         ``letterbox`` preserves aspect ratio and pads with ``pad_value``.
+
+        Returns:
+            Crop resized to ``input_size``.
         """
         if crop.size == 0:
             target_h, target_w = self.input_size

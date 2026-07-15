@@ -4,12 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID backbone builders (OSNet and ``timm:`` models).
-
-Register new network topologies here via ``build_architecture``. Curated
-pretrained *aliases* (short names → weights + preprocessing) live in
-``trackers.core.reid.models.registry``, not in this package.
-"""
+"""ReID backbone builders (OSNet and ``timm:`` models)."""
 
 from __future__ import annotations
 
@@ -18,7 +13,7 @@ import torch.nn as nn
 
 from trackers.core.reid.architectures.osnet import build_osnet
 
-# Width variants of the clean-room OSNet implementation.
+# OSNet width variants.
 _OSNET_VARIANTS: dict[str, str] = {
     "osnet_x0_25": "x0_25",
     "osnet_x0_5": "x0_5",
@@ -39,6 +34,14 @@ def build_architecture(
 
     ``pretrained=True`` only affects ``timm:<name>`` models (ImageNet weights).
     OSNet ignores it because checkpoints are always loaded explicitly.
+
+    Args:
+        architecture: Registered name, ``timm:<name>``, or an ``nn.Module``.
+        num_classes: Classifier head size (``0`` for embedding-only).
+        pretrained: Load ImageNet weights for ``timm:`` models when ``True``.
+
+    Returns:
+        Backbone module ready for weight loading or inference.
     """
     if not isinstance(architecture, str):
         # Pre-built module: use as-is, ignoring num_classes and pretrained.

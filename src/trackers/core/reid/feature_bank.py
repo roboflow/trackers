@@ -12,7 +12,9 @@ import numpy as np
 
 
 class FeatureBank:
-    """EMA-smoothed appearance embedding for a single track.
+    """Per-track EMA appearance embedding.
+
+    Each ``update`` blends a new crop embedding into one stored vector.
 
     Args:
         alpha: EMA momentum in ``[0, 1]`` (``0.9`` default).
@@ -45,7 +47,11 @@ class FeatureBank:
         return flat
 
     def update(self, embedding: np.ndarray) -> None:
-        """Blend *embedding* into the stored feature."""
+        """Blend an embedding into the stored feature via EMA.
+
+        Raises:
+            ValueError: If the embedding is empty, non-finite, or changes shape.
+        """
         cleaned = self._require_embedding(embedding)
 
         if self._feature is None:

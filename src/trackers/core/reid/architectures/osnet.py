@@ -281,7 +281,7 @@ def build_osnet(variant: str = "x1_0", num_classes: int = 0) -> OSNet:
         An initialised ``OSNet`` in training mode.
 
     Raises:
-        ValueError: If *variant* is not one of the supported values.
+        ValueError: If ``variant`` is not one of the supported values.
 
     Examples:
         >>> model = build_osnet("x1_0")

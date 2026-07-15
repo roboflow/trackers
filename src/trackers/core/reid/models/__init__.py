@@ -4,12 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Model loading helpers: preprocessing, curated registry, and checkpoint I/O.
-
-The registry (``registry.py``) picks a pretrained *recipe*. Loaders fetch and
-apply weight files. Preprocessing covers crop / resize / optional embedding L2.
-Architecture builders live under ``trackers.core.reid.architectures``.
-"""
+"""Model loading helpers: preprocessing, curated registry, and checkpoint I/O."""
 
 from trackers.core.reid.models.loaders import (
     KeyReport,

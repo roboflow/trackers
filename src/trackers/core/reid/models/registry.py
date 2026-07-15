@@ -4,25 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Curated ReID recipes: aliases, ``ModelCard``, and ``reid_config.json``.
-
-This module answers *which pretrained model to load*, not *how to build a
-backbone*.
-
-- ``ALIASES`` maps short names (for example
-  ``osnet_x1_0_msmt17_combineall``) to a ``ModelCard``.
-- A ``ModelCard`` holds the four load axes: architecture name, weights
-  source (``hf://`` / ``gd://`` / local path), ``ReIDPreprocessing``, and
-  an optional domain warning.
-- ``resolve_model_card`` looks up an alias, a local
-  ``save_pretrained`` directory, or an HF repo that ships ``reid_config.json``.
-- ``save_model_config`` / ``load_model_config`` round-trip the card for
-  self-describing checkpoints.
-
-Architecture construction lives in ``trackers.core.reid.architectures``.
-Checkpoint I/O lives in ``trackers.core.reid.models.loaders``.
-``ReIDModel.from_pretrained`` ties those pieces together.
-"""
+"""Curated ReID aliases, ``ModelCard``, and ``reid_config.json`` I/O."""
 
 from __future__ import annotations
 
@@ -37,9 +19,8 @@ from trackers.core.reid.architectures import list_architectures
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 
 # OSNet x1.0 trained on MSMT17 with combineall (train + query + gallery).
-# Produces the strongest general-purpose pedestrian features, which is why it
-# is the library default — but because it trains on the MSMT17 test identities
-# it MUST NOT be used to benchmark MSMT17.
+# Strong general-purpose pedestrian features, but combineall includes MSMT17
+# test IDs — not suitable for MSMT17 evaluation.
 _DEFAULT_OSNET_WEIGHTS = (
     "hf://kaiyangzhou/osnet/"
     "osnet_x1_0_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10"
@@ -81,10 +62,10 @@ def default_preprocessing_for_architecture(architecture: str | None) -> ReIDPrep
 
 @dataclass
 class ModelCard:
-    """One pretrained ReID recipe (architecture + weights + preprocessing).
+    """Architecture, weights source, preprocessing, and optional domain warning.
 
-    Produced by curated :data:`ALIASES` entries or by loading
-    ``reid_config.json`` from a ``save_pretrained`` directory / HF repo.
+    Produced by curated ``ALIASES`` entries or by loading ``reid_config.json``
+    from a ``save_pretrained`` directory / HF repo.
     """
 
     architecture: str
@@ -108,7 +89,10 @@ ALIASES: dict[str, ModelCard] = {
 
 
 def resolve_model_card(source: str) -> ModelCard | None:
-    """Return a card for a curated alias or a directory/repo with ``reid_config.json``."""
+    """Resolve an alias or ``reid_config.json`` directory/repo to a ``ModelCard``.
+
+    Returns ``None`` when ``source`` is a bare weights path without a config.
+    """
     if source in ALIASES:
         return ALIASES[source]
 
@@ -135,7 +119,10 @@ def resolve_model_card(source: str) -> ModelCard | None:
 
 
 def load_model_config(directory_or_repo: str) -> ModelCard:
-    """Load a ``ModelCard`` from ``reid_config.json`` (and local ``weights.safetensors`` if present)."""
+    """Load a ``ModelCard`` from ``reid_config.json``.
+
+    Local directories may also include ``weights.safetensors``.
+    """
     if directory_or_repo.startswith("hf://"):
         return _load_hf_repo_config(directory_or_repo)
 
@@ -152,7 +139,7 @@ def load_model_config(directory_or_repo: str) -> ModelCard:
 
 
 def save_model_config(card: ModelCard, directory: str) -> None:
-    """Write ``reid_config.json`` to *directory*."""
+    """Write ``reid_config.json`` to ``directory``."""
     if not isinstance(card.architecture, str):
         raise ValueError(
             "Cannot save a ModelCard whose architecture is an nn.Module. "

@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID retrieval metrics (CMC, mAP, mINP)."""
+"""ReID retrieval metrics (CMC, mAP, mINP)."""
 
 from __future__ import annotations
 
@@ -58,12 +58,14 @@ def compute_reid_metrics(
         g_pids: Gallery person IDs.
         q_camids: Query camera IDs.
         g_camids: Gallery camera IDs.
-        max_rank: Highest CMC rank to compute (must be ``>= 10`` so
-            ``rank5`` / ``rank10`` are defined).
+        max_rank: Highest CMC rank to compute (must be ``>= 10``).
         gallery_junk_pids: Gallery person IDs treated as junk during ranking.
 
     Returns:
         ``ReIDMetrics`` with scores as percentages.
+
+    Raises:
+        ValueError: If ID lengths do not match ``distmat``, or ``max_rank < 10``.
     """
     num_q, num_g = distmat.shape
 

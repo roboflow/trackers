@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""End-to-end re-ID evaluation pipeline."""
+"""End-to-end ReID evaluation pipeline."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ReIDResult:
-    """Evaluation output: metrics, raw embeddings, and optional distance matrix."""
+    """Metrics, embeddings, and optional distance matrix from one evaluation run."""
 
     metrics: ReIDMetrics
     query_embeddings: np.ndarray
@@ -51,7 +51,7 @@ def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.
 
 
 class ReIDEvaluator:
-    """Run embedding extraction and retrieval metrics for a Re-ID encoder.
+    """Run embedding extraction and retrieval metrics for a ReID encoder.
 
     Args:
         model: Encoder implementing ``ReIDPathEncoder`` (for example ``ReIDModel``).
@@ -83,14 +83,15 @@ class ReIDEvaluator:
             max_rank: Highest CMC rank to report.
             verbose: Log progress when ``True``.
             distance: ``"cosine"`` or ``"euclidean"``.
-            query_embeddings: Optional pre-extracted raw query embeddings.
+            query_embeddings: Optional pre-extracted query embeddings.
                 When omitted, query embeddings are extracted from ``query``.
-            gallery_embeddings: Optional pre-extracted raw gallery embeddings.
+            gallery_embeddings: Optional pre-extracted gallery embeddings.
                 When omitted, gallery embeddings are extracted from ``gallery``.
             return_distmat: Return the distance matrix (set ``False`` to save memory).
 
         Returns:
-            ``ReIDResult``.
+            ``ReIDResult`` with metrics, embeddings, and distance matrix
+            (empty distmat when ``return_distmat`` is ``False``).
         """
         if query_embeddings is None:
             if verbose:

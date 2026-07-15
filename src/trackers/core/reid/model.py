@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID appearance encoder: loading, inference, and checkpoint I/O."""
+"""ReID appearance encoder: loading, inference, and checkpoint I/O."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ class ReIDModel:
     """Appearance feature extractor for object re-identification.
 
     Wraps a backbone and preprocessing pipeline. The default checkpoint is
-    pedestrian-trained; pass ``source``/``architecture`` for other domains.
+    pedestrian-trained; pass ``source`` / ``architecture`` for other domains.
 
     Args:
         backbone: Feature-extractor module (``(B, 3, H, W)`` → ``(B, D)`` in eval).
@@ -98,11 +98,11 @@ class ReIDModel:
         preprocessing: ReIDPreprocessing | None = None,
         device: str = "auto",
     ) -> ReIDModel:
-        """Build a ``ReIDModel`` from a checkpoint source.
+        """Load a ``ReIDModel`` from an alias, Hub/local checkpoint, or architecture-only init.
 
         ``source`` may be a curated alias, ``hf://`` repo or file, a local path
         or directory with ``reid_config.json``, or ``None`` for the default
-        model. A bare ``.pth``/``.safetensors`` file requires ``architecture``.
+        model. A bare ``.pth`` / ``.safetensors`` file requires ``architecture``.
 
         Args:
             source: Model source (alias, Hub URL, local path, or ``None``).
@@ -111,7 +111,10 @@ class ReIDModel:
             device: Compute device (``"auto"`` picks the best available).
 
         Returns:
-            Loaded ``ReIDModel``.
+            Loaded model with the backbone on ``device``.
+
+        Raises:
+            ValueError: If a bare weights file is given without ``architecture``.
         """
         resolved_device = _select_device(device)
 
@@ -191,7 +194,14 @@ class ReIDModel:
         return instance
 
     def save_pretrained(self, directory: str) -> None:
-        """Write ``weights.safetensors`` and ``reid_config.json`` to *directory*."""
+        """Persist ``weights.safetensors`` and ``reid_config.json`` for later loads.
+
+        Args:
+            directory: Output directory (created if missing).
+
+        Raises:
+            ValueError: If the architecture name is unknown.
+        """
         if self._architecture is None:
             raise ValueError(
                 "Cannot save a model whose architecture name is unknown. "
@@ -224,17 +234,20 @@ class ReIDModel:
         batch_size: int = 64,
         normalize: bool = False,
     ) -> np.ndarray:
-        """Extract embeddings from pre-cropped image paths (evaluation use).
+        """Extract embeddings from pre-cropped image paths.
 
         For bbox crops from a video frame, use ``extract_features``.
 
         Args:
             image_paths: Paths to RGB-ready crop images.
             batch_size: Images per forward pass.
-            normalize: L2-normalise embeddings when ``True`` (default ``False``).
+            normalize: L2-normalise embeddings when ``True``.
 
         Returns:
             Float32 array of shape ``(N, D)``.
+
+        Raises:
+            ValueError: If ``batch_size`` is less than 1.
         """
         if not image_paths:
             return np.empty((0, 0), dtype=np.float32)
@@ -272,15 +285,16 @@ class ReIDModel:
     ) -> np.ndarray:
         """Extract appearance embeddings for each detection.
 
-        By default returns backbone outputs as-is. Set
-        ``preprocessing.normalize_embeddings=True`` to L2-normalise.
-
         Args:
             detections: Detections whose ``xyxy`` boxes define the crops.
             frame: BGR video frame the detections were produced on.
 
         Returns:
             Float32 array of shape ``(N, D)``, or ``(0, 0)`` when empty.
+
+        Note:
+            Embeddings are L2-normalised when
+            ``preprocessing.normalize_embeddings`` is ``True``.
         """
         if len(detections) == 0:
             return np.empty((0, 0), dtype=np.float32)

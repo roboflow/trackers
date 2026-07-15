@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID benchmark dataset loaders (Market-1501, MSMT17)."""
+"""ReID benchmark dataset loaders (Market-1501, MSMT17)."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ class ReIDSplit:
     """Query or gallery split: image paths, person IDs, and camera IDs.
 
     ``gallery_junk_pids`` controls which gallery person IDs are excluded from
-    ranking during retrieval evaluation (see ``compute_reid_metrics``).
+    ranking during retrieval evaluation.
     """
 
     image_paths: list[str]
@@ -51,7 +51,7 @@ def _parse_msmt17_camid(filename: str) -> int:
 
 
 def load_msmt17(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
-    """Load MSMT17 query and gallery splits from *root*.
+    """Load MSMT17 query and gallery splits from ``root``.
 
     Expects ``test/``, ``list_query.txt``, and ``list_gallery.txt``. List files
     may be 2-column (``path pid``; camid from filename) or 3-column.
@@ -60,7 +60,7 @@ def load_msmt17(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
         root: Path to the MSMT17 directory.
 
     Returns:
-        ``(query, gallery)`` ``ReIDSplit`` pair.
+        Query and gallery as ``(ReIDSplit, ReIDSplit)``.
     """
     root = Path(root)
     if not root.exists():
@@ -114,16 +114,16 @@ def _parse_market_filename(filename: str) -> tuple[int, int]:
 
 
 def load_market1501(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
-    """Load Market-1501 query and gallery splits from *root*.
+    """Load Market-1501 query and gallery splits from ``root``.
 
     Expects ``query/`` and ``bounding_box_test/``. Person and camera IDs are
-    parsed from filenames (see ``_parse_market_filename``).
+    parsed from filenames.
 
     Args:
         root: Path to the Market-1501 directory.
 
     Returns:
-        ``(query, gallery)`` ``ReIDSplit`` pair.
+        Query and gallery as ``(ReIDSplit, ReIDSplit)``.
     """
     root = Path(root)
     if not root.exists():
