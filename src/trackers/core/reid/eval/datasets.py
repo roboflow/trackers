@@ -35,10 +35,6 @@ class ReIDSplit:
         return len(self.image_paths)
 
 
-# Backward-compatible alias (notebooks / early API).
-ReidSplit = ReIDSplit
-
-
 # --------------------------------------------------------------------------- #
 # MSMT17
 # --------------------------------------------------------------------------- #

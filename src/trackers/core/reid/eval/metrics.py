@@ -40,10 +40,6 @@ class ReIDMetrics:
         )
 
 
-# Backward-compatible alias (notebooks / early API).
-ReidMetrics = ReIDMetrics
-
-
 def compute_reid_metrics(
     distmat: np.ndarray,
     q_pids: np.ndarray,

@@ -46,8 +46,3 @@ def import_reid_symbol(module_name: str, attr_name: str) -> object:
         return getattr(module, attr_name)
     except ImportError as exc:
         raise ImportError(REID_INSTALL_HINT) from exc
-
-
-def load_reid_model_class():
-    """Import :class:`~trackers.core.reid.model.ReIDModel` on demand."""
-    return import_reid_symbol("trackers.core.reid.model", "ReIDModel")

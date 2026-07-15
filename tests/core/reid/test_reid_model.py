@@ -215,6 +215,29 @@ class TestLoaders:
         finally:
             os.unlink(tmp_path)
 
+    def test_osnet_backbone_loads_with_full_match(self, tmp_path) -> None:
+        """Inference OSNet has no classifier, so strict checkpoint loads succeed."""
+        import torch
+
+        from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.models.loaders import load_state_dict_for_architecture
+
+        source = build_architecture("osnet_x0_25")
+        assert not any(key.startswith("classifier.") for key in source.state_dict())
+
+        path = tmp_path / "osnet.pth"
+        torch.save(source.state_dict(), path)
+
+        target = build_architecture("osnet_x0_25")
+        report = load_state_dict_for_architecture(
+            target,
+            str(path),
+            torch.device("cpu"),
+            "osnet_x0_25",
+            required_match_fraction=1.0,
+        )
+        assert report.matched_fraction == 1.0
+
     def test_remap_fastreid_sbs_keys(self) -> None:
         import torch
 

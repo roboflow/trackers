@@ -27,10 +27,6 @@ class ReIDResult:
     distmat: np.ndarray
 
 
-# Backward-compatible alias (notebooks / early API).
-ReidResult = ReIDResult
-
-
 def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.ndarray:
     """Build a query x gallery distance matrix (``cosine`` or ``euclidean``)."""
     if metric == "cosine":
@@ -136,7 +132,3 @@ class ReIDEvaluator:
             gallery_embeddings=g_embs,
             distmat=distmat,
         )
-
-
-# Backward-compatible alias (notebooks / early API).
-ReidEvaluator = ReIDEvaluator

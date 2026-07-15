@@ -20,6 +20,7 @@ from PIL import Image as PILImage
 from safetensors.torch import save_file
 
 from trackers.core.reid.architectures import build_architecture
+from trackers.core.reid.distance import _sanitize_embedding_matrix
 from trackers.core.reid.models.loaders import load_state_dict_for_architecture, resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (
@@ -222,6 +223,7 @@ class ReIDModel:
     def extract_features_from_paths(
         self,
         image_paths: list[str],
+        *,
         batch_size: int = 64,
         normalize: bool = True,
     ) -> np.ndarray:
@@ -258,9 +260,7 @@ class ReIDModel:
             if normalize:
                 embs = torch.nn.functional.normalize(embs, p=2, dim=1)
             batch_np = embs.cpu().numpy().astype(np.float32)
-            from trackers.core.reid.distance import sanitize_embedding_matrix
-
-            all_embeddings.append(sanitize_embedding_matrix(batch_np))
+            all_embeddings.append(_sanitize_embedding_matrix(batch_np))
 
         return np.concatenate(all_embeddings, axis=0)
 
@@ -299,6 +299,5 @@ class ReIDModel:
 
         if self._preprocessing.normalize_embeddings:
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
-        from trackers.core.reid.distance import sanitize_embedding_matrix
 
-        return sanitize_embedding_matrix(embeddings.cpu().numpy().astype(np.float32))
+        return _sanitize_embedding_matrix(embeddings.cpu().numpy().astype(np.float32))

@@ -15,13 +15,13 @@ import numpy as np
 from trackers.core.reid.feature_bank import FeatureBank
 
 
-def sanitize_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
+def _sanitize_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
     """Replace non-finite rows with zeros so cosine similarity stays safe."""
     if embeddings.size == 0:
         return embeddings
     cleaned = np.asarray(embeddings, dtype=np.float32)
     if cleaned.ndim != 2:
-        raise ValueError(f"det_embeddings must be 2-D, got shape {cleaned.shape}")
+        raise ValueError(f"embeddings must be 2-D, got shape {cleaned.shape}")
     row_finite = np.isfinite(cleaned).all(axis=1)
     if not np.all(row_finite):
         cleaned = cleaned.copy()
@@ -48,7 +48,7 @@ def appearance_similarity(
         Similarity matrix of shape ``(T, N)``.
     """
     n_tracks = len(track_features)
-    det_embeddings = sanitize_embedding_matrix(det_embeddings)
+    det_embeddings = _sanitize_embedding_matrix(det_embeddings)
     n_dets = det_embeddings.shape[0]
     sim = np.zeros((n_tracks, n_dets), dtype=np.float32)
 

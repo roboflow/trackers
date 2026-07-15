@@ -160,13 +160,13 @@ class OSNet(nn.Module):
         Zhou et al. *Omni-Scale Feature Learning for Person Re-Identification*. ICCV, 2019.
         Zhou et al. *Learning Generalisable Omni-Scale Representations for Person Re-Identification*. TPAMI, 2021.
 
-    At inference (``model.eval()``) ``forward()`` returns the L2-normalizable
-    ``feature_dim``-dimensional embedding vector **before** the classifier, so
-    ``num_classes`` is only relevant when training from scratch.
+    At inference (``model.eval()``), and whenever no classifier was built
+    (``num_classes <= 0``), ``forward()`` returns the ``feature_dim`` embedding.
+    Classifier logits are returned only in ``train()`` mode with a head.
 
     Args:
-        num_classes: Number of identity classes for the classification head
-            (only used during training).
+        num_classes: Number of identity classes for the classification head.
+            Use ``0`` (or less) to omit the head for inference-only models.
         blocks: List of block classes for each stage.
         layers: Number of blocks per stage.
         channels: Channel widths ``[stem, stage1, stage2, stage3]``.
@@ -198,7 +198,10 @@ class OSNet(nn.Module):
             nn.BatchNorm1d(feature_dim),
             nn.ReLU(inplace=True),
         )
-        self.classifier = nn.Linear(feature_dim, num_classes)
+        # Inference builds use num_classes=0 and omit the head so checkpoints
+        # that drop classifier.* can load with required_match_fraction=1.0.
+        if num_classes > 0:
+            self.classifier = nn.Linear(feature_dim, num_classes)
         self._init_params()
 
     @staticmethod
@@ -241,15 +244,16 @@ class OSNet(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Run a forward pass.
 
-        Returns the embedding vector at inference time (``model.eval()``) and
-        classifier logits during training (``model.train()``).
+        Returns the embedding at inference time (``model.eval()``) and when no
+        classifier was built. Returns classifier logits only in training mode
+        with ``num_classes > 0``.
         """
         x = self._featuremaps(x)
         v = self.global_avgpool(x).view(x.size(0), -1)
         v = self.fc(v)
-        if not self.training:
-            return v
-        return self.classifier(v)
+        if self.training and hasattr(self, "classifier"):
+            return self.classifier(v)
+        return v
 
 
 # --------------------------------------------------------------------------- #
@@ -264,14 +268,14 @@ _CONFIGS: dict[str, dict] = {
 }
 
 
-def build_osnet(variant: str = "x1_0", num_classes: int = 1) -> OSNet:
+def build_osnet(variant: str = "x1_0", num_classes: int = 0) -> OSNet:
     """Instantiate an OSNet architecture without loading weights.
 
     Args:
         variant: Width multiplier variant. One of ``"x1_0"`` (default),
             ``"x0_75"``, ``"x0_5"``, ``"x0_25"``.
-        num_classes: Number of output classes for the classification head.
-            Only used during training; ignored at inference (``model.eval()``).
+        num_classes: Identity classes for the classification head. Use ``0``
+            (default) for inference-only models with no classifier.
 
     Returns:
         An initialised :class:`OSNet` in training mode.
