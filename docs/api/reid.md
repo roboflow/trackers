@@ -18,16 +18,16 @@ and appearance helpers). Tracker association wiring is documented with BoT-SORT.
 For contributors: the package splits three loading axes that look similar but
 are not interchangeable.
 
-| Area | Role |
-| --- | --- |
-| `architectures/` | Build a backbone (`osnet_*`, `timm:<name>`, or a raw `nn.Module`). |
-| `models/registry.py` | Resolve *which* pretrained recipe to use: curated aliases and `reid_config.json` → `ModelCard`. |
-| `models/loaders.py` | Fetch and load checkpoint bytes (`hf://`, `gd://`, local) into a module. |
-| `models/preprocessing.py` | Crop resize / colour / embedding L2 contract. |
-| `model.py` | Public facade: `ReIDModel.from_pretrained` / `save_pretrained` / `extract_features`. |
-| `appearance.py` / `feature_bank.py` | Association helpers (cosine similarity, per-track EMA). |
-| `eval/` | Gallery metrics and Market-1501 / MSMT17 loaders. |
-| `encoder.py` | Lightweight protocols for custom encoders. |
+| Area                                | Role                                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `architectures/`                    | Build a backbone (`osnet_*`, `timm:<name>`, or a raw `nn.Module`).                              |
+| `models/registry.py`                | Resolve *which* pretrained recipe to use: curated aliases and `reid_config.json` → `ModelCard`. |
+| `models/loaders.py`                 | Fetch and load checkpoint bytes (`hf://`, `gd://`, local) into a module.                        |
+| `models/preprocessing.py`           | Crop resize / colour / embedding L2 contract.                                                   |
+| `model.py`                          | Public facade: `ReIDModel.from_pretrained` / `save_pretrained` / `extract_features`.            |
+| `appearance.py` / `feature_bank.py` | Association helpers (cosine similarity, per-track EMA).                                         |
+| `eval/`                             | Gallery metrics and Market-1501 / MSMT17 loaders.                                               |
+| `encoder.py`                        | Lightweight protocols for custom encoders.                                                      |
 
 **Common confusion:** the registry is not the architecture factory. Adding a
 new backbone means teaching `build_architecture`. Shipping a one-line
@@ -56,13 +56,13 @@ flowchart LR
 ```
 
 - **Curated alias** (or a directory / HF repo with `reid_config.json`) →
-  `resolve_model_card` returns a `ModelCard` with architecture, weights URL,
-  preprocessing, and optional domain warning.
+    `resolve_model_card` returns a `ModelCard` with architecture, weights URL,
+    preprocessing, and optional domain warning.
 - **Bare weights file** → you must pass `architecture=`; loaders resolve the
-  path and load the state dict; preprocessing falls back to the architecture
-  default.
+    path and load the state dict; preprocessing falls back to the architecture
+    default.
 - **Architecture only** (`source=None`, named `architecture=`) → randomly
-  initialised backbone, no network download.
+    initialised backbone, no network download.
 
 ## Encoders
 
