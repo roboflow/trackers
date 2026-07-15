@@ -686,9 +686,7 @@ def _apply_reid_tracker_params(
         )
 
     try:
-        from trackers.core.reid._lazy import load_reid_model_class
-
-        reid_model_cls = load_reid_model_class()
+        from trackers.core.reid.model import ReIDModel
     except ImportError:
         return params, (
             "Error: ReID tracking requires the optional `trackers[reid]` extra.\n"
@@ -705,7 +703,7 @@ def _apply_reid_tracker_params(
         load_kwargs["architecture"] = architecture
 
     try:
-        reid_model = reid_model_cls.from_pretrained(**load_kwargs)
+        reid_model = ReIDModel.from_pretrained(**load_kwargs)
     except KeyboardInterrupt:
         raise
     except ImportError:

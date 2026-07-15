@@ -258,7 +258,10 @@ class TestLoaders:
     def test_load_fastreid_sbs_from_synthetic_checkpoint(self) -> None:
         import torch
 
-        from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.architectures import (
+            build_architecture,
+            checkpoint_remap_for_architecture,
+        )
         from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
         from trackers.core.reid.models.loaders import load_state_dict_for_architecture
 
@@ -277,7 +280,13 @@ class TestLoaders:
             tmp_path = f.name
         try:
             torch.save(wrapped, tmp_path)
-            report = load_state_dict_for_architecture(model, tmp_path, torch.device("cpu"), FASTREID_SBS_ARCHITECTURE)
+            report = load_state_dict_for_architecture(
+                model,
+                tmp_path,
+                torch.device("cpu"),
+                FASTREID_SBS_ARCHITECTURE,
+                remap=checkpoint_remap_for_architecture(FASTREID_SBS_ARCHITECTURE),
+            )
             assert report.matched == report.total
             assert report.matched_fraction == 1.0
         finally:
@@ -287,7 +296,10 @@ class TestLoaders:
         """GeM ``p`` must come from ``heads.pool_layer.p``, not the 3.0 constructor default."""
         import torch
 
-        from trackers.core.reid.architectures import build_architecture
+        from trackers.core.reid.architectures import (
+            build_architecture,
+            checkpoint_remap_for_architecture,
+        )
         from trackers.core.reid.architectures.fastreid_sbs import (
             FASTREID_SBS_ARCHITECTURE,
             FastReIDSBSResNeSt50,
@@ -310,7 +322,13 @@ class TestLoaders:
             tmp_path = f.name
         try:
             torch.save(wrapped, tmp_path)
-            report = load_state_dict_for_architecture(model, tmp_path, torch.device("cpu"), FASTREID_SBS_ARCHITECTURE)
+            report = load_state_dict_for_architecture(
+                model,
+                tmp_path,
+                torch.device("cpu"),
+                FASTREID_SBS_ARCHITECTURE,
+                remap=checkpoint_remap_for_architecture(FASTREID_SBS_ARCHITECTURE),
+            )
             assert report.matched == report.total
             assert model.pool.p.item() == pytest.approx(mot17_gem_p)
         finally:
