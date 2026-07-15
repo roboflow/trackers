@@ -31,7 +31,7 @@ ResizeMode = Literal["stretch", "letterbox"]
 
 @dataclass(frozen=True)
 class ReIDPreprocessing:
-    """Crop resize/normalisation and optional embedding L2 (off by default)."""
+    """Crop resize, colour handling, and optional embedding L2."""
 
     input_size: tuple[int, int] = REID_INPUT_SIZE
     mean: tuple[float, float, float] = IMAGENET_MEAN

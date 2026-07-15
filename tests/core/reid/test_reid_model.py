@@ -244,7 +244,7 @@ class TestModelSmoke:
         embs = model.extract_features(dets, frame)
         assert embs.shape[0] == 1
         assert embs.dtype == np.float32
-        # Default: raw embeddings (cosine association owns L2)
+        # Default: embeddings are not L2-normalised
         norms = np.linalg.norm(embs, axis=1)
         assert not np.allclose(norms, np.ones_like(norms), atol=1e-5)
 
@@ -326,7 +326,6 @@ class TestModelSmoke:
         assert embs.ndim == 2
         assert embs.shape[0] == 1
         assert embs.dtype == np.float32
-        # Default preprocessing leaves embeddings un-normalised.
         norms = np.linalg.norm(embs, axis=1)
         assert not np.allclose(norms, np.ones_like(norms), atol=1e-5)
 

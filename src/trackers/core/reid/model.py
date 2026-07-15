@@ -227,8 +227,6 @@ class ReIDModel:
         """Extract embeddings from pre-cropped image paths (evaluation use).
 
         For bbox crops from a video frame, use :meth:`extract_features`.
-        Cosine association L2-normalises at compare time; leave ``normalize``
-        off unless a caller needs unit vectors explicitly.
 
         Args:
             image_paths: Paths to RGB-ready crop images.
@@ -274,9 +272,8 @@ class ReIDModel:
     ) -> np.ndarray:
         """Extract appearance embeddings for each detection.
 
-        Embeddings are raw backbone outputs by default. Set
-        ``preprocessing.normalize_embeddings=True`` for unit vectors; cosine
-        association still L2-normalises at compare time either way.
+        By default returns backbone outputs as-is. Set
+        ``preprocessing.normalize_embeddings=True`` to L2-normalise.
 
         Args:
             detections: Detections whose ``xyxy`` boxes define the crops.

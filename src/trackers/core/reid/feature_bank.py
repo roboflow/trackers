@@ -16,10 +16,6 @@ _NORM_EPS = 1e-12
 class FeatureBank:
     """EMA-smoothed appearance embedding for a single track.
 
-    Embeddings are stored as raw finite vectors. L2 normalisation for cosine
-    comparison is owned by
-    :func:`~trackers.core.reid.appearance.appearance_similarity`.
-
     Args:
         alpha: EMA momentum in ``[0, 1]`` (``0.9`` default).
     """
@@ -53,7 +49,7 @@ class FeatureBank:
 
     @staticmethod
     def _require_embedding(embedding: np.ndarray) -> np.ndarray:
-        """Return a finite 1-D float32 vector without L2-normalising."""
+        """Return a finite 1-D float32 vector."""
         flat = np.asarray(embedding, dtype=np.float32).reshape(-1)
         if flat.size == 0:
             raise ValueError("embedding must be non-empty")
@@ -62,7 +58,7 @@ class FeatureBank:
         return flat
 
     def update(self, embedding: np.ndarray) -> None:
-        """Blend *embedding* into the stored feature (no L2 normalisation)."""
+        """Blend *embedding* into the stored feature."""
         cleaned = self._require_embedding(embedding)
 
         if self._feature is None:

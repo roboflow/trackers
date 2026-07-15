@@ -38,9 +38,9 @@ def appearance_similarity(
 ) -> np.ndarray:
     """Compute cosine similarity between track features and detection embeddings.
 
-    Both sides are L2-normalised before the dot product (cosine owns
-    normalisation). Tracks with ``None`` features receive similarity ``0.0``.
-    Non-finite values or mismatched embedding dimensions raise ``ValueError``.
+    Both sides are L2-normalised before the dot product. Tracks with ``None``
+    features receive similarity ``0.0``. Non-finite values or mismatched
+    embedding dimensions raise ``ValueError``.
 
     Args:
         track_features: One embedding per track (``None`` = no feature yet).
