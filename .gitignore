@@ -192,5 +192,6 @@ autotune/mot17/
 autotune/pretrained/
 autotune/*.zip
 
-# Internal design notes (kept locally, not published)
+# Local design docs (kept on disk, not published)
+rfcs/
 docs/design/dynamic-frame-rate.md
