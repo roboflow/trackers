@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
@@ -15,6 +16,8 @@ import numpy as np
 from trackers.core.reid.encoder import ReIDPathEncoder
 from trackers.core.reid.eval.datasets import ReIDSplit
 from trackers.core.reid.eval.metrics import ReIDMetrics, compute_reid_metrics
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -79,7 +82,7 @@ class ReIDEvaluator:
             query: Query split.
             gallery: Gallery split.
             max_rank: Highest CMC rank to report.
-            verbose: Print progress to stdout.
+            verbose: Log progress when ``True``.
             distance: ``"cosine"`` or ``"euclidean"``.
             query_embeddings: Optional pre-extracted raw query embeddings.
             gallery_embeddings: Optional pre-extracted raw gallery embeddings.
@@ -90,13 +93,13 @@ class ReIDEvaluator:
         """
         if query_embeddings is None or gallery_embeddings is None:
             if verbose:
-                print(f"Extracting query embeddings  ({len(query)} images)…")
+                logger.info("Extracting query embeddings (%s images)…", len(query))
             q_embs = self._model.extract_features_from_paths(
                 query.image_paths, batch_size=self._batch_size, normalize=False
             )
 
             if verbose:
-                print(f"Extracting gallery embeddings ({len(gallery)} images)…")
+                logger.info("Extracting gallery embeddings (%s images)…", len(gallery))
             g_embs = self._model.extract_features_from_paths(
                 gallery.image_paths, batch_size=self._batch_size, normalize=False
             )
@@ -104,11 +107,11 @@ class ReIDEvaluator:
             q_embs, g_embs = query_embeddings, gallery_embeddings
 
         if verbose:
-            print(f"Computing distance matrix ({distance})…")
+            logger.info("Computing distance matrix (%s)…", distance)
         distmat = _distance_matrix(q_embs, g_embs, distance)
 
         if verbose:
-            print("Computing metrics…")
+            logger.info("Computing metrics…")
         metrics = compute_reid_metrics(
             distmat=distmat,
             q_pids=query.pids,
@@ -120,7 +123,7 @@ class ReIDEvaluator:
         )
 
         if verbose:
-            print(f"\nResults ({distance})\n{'-' * 50}\n{metrics}\n{'-' * 50}")
+            logger.info("Results (%s)\n%s\n%s\n%s", distance, "-" * 50, metrics, "-" * 50)
 
         if not return_distmat:
             del distmat

@@ -198,12 +198,11 @@ addopts = [
   "--doctest-modules",
   "--color=yes",
   "-m",
-  "not integration and not slow",
+  "not integration",
 ]
 doctest_optionflags = "ELLIPSIS NORMALIZE_WHITESPACE"
 markers = [
     "integration: marks tests that download MOT datasets and run end-to-end tracker/eval checks",
-    "slow: marks costly unit tests (large model weight downloads / heavy compute)",
 ]
 
 [tool.codespell]

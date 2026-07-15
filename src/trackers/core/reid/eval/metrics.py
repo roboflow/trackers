@@ -24,11 +24,6 @@ class ReIDMetrics:
     minp: float
     num_queries: int
 
-    @property
-    def map(self) -> float:
-        """Backward-compatible alias for :attr:`mean_average_precision`."""
-        return self.mean_average_precision
-
     def __str__(self) -> str:
         return (
             f"mAP: {self.mean_average_precision:.1f}%  "

@@ -97,7 +97,7 @@ Install development dependencies:
 uv sync --group dev
 ```
 
-1. **Unit Tests**: Run the standard suite (skips integration and slow tests by default):
+1. **Unit Tests**: Run the standard suite (skips integration tests by default):
 
     ```bash
     uv run pytest
@@ -109,19 +109,13 @@ uv sync --group dev
     uv run pytest --doctest-modules trackers/ --ignore=tests/
     ```
 
-3. **Slow Tests**: Costly unit tests (large downloads / heavy compute). Reserved for follow-ups such as FastReID weight smokes; also run in main CI when present:
-
-    ```bash
-    uv run pytest -m slow
-    ```
-
-4. **Integration Tests**: Validate eval parity and tracker correctness against TrackEval on real MOT datasets (~50MB download):
+3. **Integration Tests**: Validate eval parity and tracker correctness against TrackEval on real MOT datasets (~50MB download):
 
     ```bash
     uv run pytest -m integration
     ```
 
-5. **All Tests**: Run unit, slow, and integration together:
+4. **All Tests**: Run unit and integration together:
 
     ```bash
     uv run pytest -o addopts="--doctest-modules --color=yes"

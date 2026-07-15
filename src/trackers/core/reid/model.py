@@ -132,7 +132,7 @@ class ReIDModel:
             resolved_warning = card.domain_warning
 
         elif source is None:
-            # Architecture-only build; no external weights loaded.
+            # Architecture-only build: random init, no network downloads.
             if architecture is None:
                 raise ValueError("architecture is required when source is None")
             resolved_arch = architecture
@@ -166,10 +166,9 @@ class ReIDModel:
         if resolved_warning:
             warnings.warn(resolved_warning, UserWarning, stacklevel=2)
 
-        # Build the backbone; use the architecture's own pretrained weights
-        # (e.g. ImageNet via timm) only when no external weights will be loaded.
-        use_pretrained = resolved_weights is None
-        backbone = build_architecture(resolved_arch, pretrained=use_pretrained)
+        # Always build offline here. Checkpoint weights (when present) are loaded
+        # explicitly below; architecture-only builds stay randomly initialised.
+        backbone = build_architecture(resolved_arch, pretrained=False)
         backbone.eval()
 
         if resolved_weights is not None:

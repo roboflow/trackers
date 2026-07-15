@@ -8,8 +8,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-
 import timm
 import torch.nn as nn
 
@@ -32,7 +30,11 @@ def build_architecture(
     num_classes: int = 0,
     pretrained: bool = False,
 ) -> nn.Module:
-    """Build a backbone from ``osnet_*``, ``timm:<name>``, or a pre-built module."""
+    """Build a backbone from ``osnet_*``, ``timm:<name>``, or a pre-built module.
+
+    ``pretrained=True`` only affects ``timm:<name>`` models (ImageNet weights).
+    OSNet ignores it because checkpoints are always loaded explicitly.
+    """
     if not isinstance(architecture, str):
         # Pre-built module: use as-is, ignoring num_classes and pretrained.
         return architecture
@@ -56,9 +58,3 @@ def build_architecture(
 def list_architectures() -> list[str]:
     """Return registered architecture names (timm models use ``timm:<name>``)."""
     return sorted(_OSNET_VARIANTS)
-
-
-def checkpoint_remap_for_architecture(architecture: str) -> Callable[[dict], dict] | None:
-    """Return a checkpoint key remap for *architecture*, if one is registered."""
-    _ = architecture
-    return None

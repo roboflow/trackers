@@ -20,8 +20,6 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError, HfHubHTTPError
 from safetensors.torch import load_file
 
-from trackers.core.reid.architectures import checkpoint_remap_for_architecture
-
 _HF_PREFIX = "hf://"
 _GD_PREFIX = "gd://"
 
@@ -133,9 +131,9 @@ def load_state_dict_for_architecture(
     *,
     warn_threshold: float = 0.5,
     required_match_fraction: float | None = None,
+    remap: Callable[[dict], dict] | None = None,
 ) -> KeyReport:
-    """Load *path* using the loader appropriate for *architecture*."""
-    remap = checkpoint_remap_for_architecture(architecture)
+    """Load *path* into *module*, optionally remapping checkpoint keys."""
     report = load_state_dict_into(
         module,
         path,

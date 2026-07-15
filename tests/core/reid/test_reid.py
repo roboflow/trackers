@@ -121,7 +121,7 @@ class TestComputeReidMetrics:
             minp=4.0,
             num_queries=1,
         )
-        assert metrics.map == pytest.approx(42.0)
+        assert metrics.mean_average_precision == pytest.approx(42.0)
 
 
 class TestMarket1501Loader:

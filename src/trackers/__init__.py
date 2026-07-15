@@ -13,7 +13,7 @@ from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
-from trackers.core.reid import REID_INSTALL_HINT
+from trackers.core.reid import REID_INSTALL_HINT, _is_optional_reid_import_error
 from trackers.core.sort.tracker import SORTTracker
 from trackers.datasets.download import download_dataset
 from trackers.datasets.manifest import Dataset, DatasetAsset, DatasetSplit
@@ -75,7 +75,9 @@ def __getattr__(name: str) -> object:
             module = __import__(_LAZY_EXPORTS[name], fromlist=[name])
             value = getattr(module, name)
         except ImportError as exc:
-            raise ImportError(REID_INSTALL_HINT) from exc
+            if _is_optional_reid_import_error(exc):
+                raise ImportError(REID_INSTALL_HINT) from exc
+            raise
         globals()[name] = value
         return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
