@@ -61,6 +61,10 @@ def load_msmt17(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
 
     Returns:
         Query and gallery as ``(ReIDSplit, ReIDSplit)``.
+
+    Raises:
+        FileNotFoundError: If ``root``, ``list_query.txt``, or ``list_gallery.txt``
+            does not exist.
     """
     root = Path(root)
     if not root.exists():
@@ -124,6 +128,10 @@ def load_market1501(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
 
     Returns:
         Query and gallery as ``(ReIDSplit, ReIDSplit)``.
+
+    Raises:
+        FileNotFoundError: If ``root``, ``query/``, or ``bounding_box_test/``
+            does not exist.
     """
     root = Path(root)
     if not root.exists():
