@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Lightweight typing protocols for optional Re-ID integration."""
+"""Minimal encoder interfaces for tracker association and gallery evaluation."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ class ReIDEncoder(Protocol):
     Any object implementing :meth:`extract_features` may be used as a
     ``reid_model`` by trackers that support appearance matching.
     The concrete :class:`~trackers.core.reid.model.ReIDModel` satisfies this
-    protocol but is not required for tests or custom encoders.
+    interface but is not required for tests or custom encoders.
     """
 
     def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
@@ -34,7 +34,7 @@ class ReIDPathEncoder(Protocol):
 
     :class:`~trackers.core.reid.eval.evaluator.ReIDEvaluator` accepts any object
     that can embed image paths in batches. :class:`~trackers.core.reid.model.ReIDModel`
-    implements this protocol.
+    implements this interface.
     """
 
     def extract_features_from_paths(

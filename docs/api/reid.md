@@ -13,15 +13,15 @@ pip install 'trackers[reid]'
 This page covers the standalone ReID stack (model loading, gallery evaluation,
 and appearance helpers). Tracker association wiring is documented with BoT-SORT.
 
-## Protocols
+## Encoders
 
 :class:`~trackers.core.reid.eval.evaluator.ReIDEvaluator` and custom encoders
-can use these lightweight protocol types instead of the full
+can use these lightweight interfaces instead of the full
 :class:`~trackers.core.reid.model.ReIDModel` stack:
 
-::: trackers.core.reid.protocols.ReIDEncoder
+::: trackers.core.reid.encoder.ReIDEncoder
 
-::: trackers.core.reid.protocols.ReIDPathEncoder
+::: trackers.core.reid.encoder.ReIDPathEncoder
 
 ## Model
 

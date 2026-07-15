@@ -12,9 +12,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from trackers.core.reid.encoder import ReIDPathEncoder
 from trackers.core.reid.eval.datasets import ReIDSplit
 from trackers.core.reid.eval.metrics import ReIDMetrics, compute_reid_metrics
-from trackers.core.reid.protocols import ReIDPathEncoder
 
 
 @dataclass
@@ -51,7 +51,7 @@ class ReIDEvaluator:
     """Run embedding extraction and retrieval metrics for a Re-ID encoder.
 
     Args:
-        model: Encoder implementing :class:`~trackers.core.reid.protocols.ReIDPathEncoder`
+        model: Encoder implementing :class:`~trackers.core.reid.encoder.ReIDPathEncoder`
             (for example :class:`~trackers.core.reid.model.ReIDModel`).
         batch_size: Images per forward pass.
     """

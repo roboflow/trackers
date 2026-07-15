@@ -21,17 +21,15 @@ __all__ = [
 
 
 def __getattr__(name: str) -> object:
-    if name == "ReIDEvaluator":
-        from trackers.core.reid._lazy import import_reid_symbol
+    if name in ("ReIDEvaluator", "ReIDResult"):
+        from trackers.core.reid import REID_INSTALL_HINT
 
-        value = import_reid_symbol("trackers.core.reid.eval.evaluator", "ReIDEvaluator")
-        globals()["ReIDEvaluator"] = value
-        return value
-    if name == "ReIDResult":
-        from trackers.core.reid._lazy import import_reid_symbol
-
-        value = import_reid_symbol("trackers.core.reid.eval.evaluator", "ReIDResult")
-        globals()["ReIDResult"] = value
+        try:
+            from trackers.core.reid.eval import evaluator as _evaluator
+        except ImportError as exc:
+            raise ImportError(REID_INSTALL_HINT) from exc
+        value = getattr(_evaluator, name)
+        globals()[name] = value
         return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

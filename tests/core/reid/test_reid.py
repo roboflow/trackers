@@ -54,7 +54,7 @@ class TestFeatureBank:
 
 class TestAppearanceSimilarity:
     def test_non_finite_detection_rows_are_sanitized(self) -> None:
-        from trackers.core.reid.distance import appearance_similarity
+        from trackers.core.reid.appearance import appearance_similarity
 
         sim = appearance_similarity(
             [np.array([1.0, 0.0], dtype=np.float32)],
@@ -65,7 +65,7 @@ class TestAppearanceSimilarity:
         assert sim[0, 1] == pytest.approx(0.0)
 
     def test_skips_incompatible_track_dimensions(self) -> None:
-        from trackers.core.reid.distance import appearance_similarity
+        from trackers.core.reid.appearance import appearance_similarity
 
         sim = appearance_similarity(
             [np.array([1.0, 0.0, 0.0], dtype=np.float32)],

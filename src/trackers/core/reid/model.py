@@ -19,8 +19,8 @@ import torch.nn as nn
 from PIL import Image as PILImage
 from safetensors.torch import save_file
 
+from trackers.core.reid.appearance import _sanitize_embedding_matrix
 from trackers.core.reid.architectures import build_architecture
-from trackers.core.reid.distance import _sanitize_embedding_matrix
 from trackers.core.reid.models.loaders import load_state_dict_for_architecture, resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (

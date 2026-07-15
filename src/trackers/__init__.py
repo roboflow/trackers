@@ -13,7 +13,7 @@ from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
-from trackers.core.reid._lazy import REID_INSTALL_HINT, import_reid_symbol
+from trackers.core.reid import REID_INSTALL_HINT
 from trackers.core.sort.tracker import SORTTracker
 from trackers.datasets.download import download_dataset
 from trackers.datasets.manifest import Dataset, DatasetAsset, DatasetSplit
@@ -64,16 +64,16 @@ __all__ = [
     "xyxy_to_xcycsr",
 ]
 
-_LAZY_EXPORTS: dict[str, tuple[str, str]] = {
-    "ReIDModel": ("trackers.core.reid.model", "ReIDModel"),
+_LAZY_EXPORTS: dict[str, str] = {
+    "ReIDModel": "trackers.core.reid.model",
 }
 
 
 def __getattr__(name: str) -> object:
     if name in _LAZY_EXPORTS:
-        module_name, attr_name = _LAZY_EXPORTS[name]
         try:
-            value = import_reid_symbol(module_name, attr_name)
+            module = __import__(_LAZY_EXPORTS[name], fromlist=[name])
+            value = getattr(module, name)
         except ImportError as exc:
             raise ImportError(REID_INSTALL_HINT) from exc
         globals()[name] = value

@@ -4,14 +4,16 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Appearance similarity utilities for tracker association."""
+"""Appearance embedding helpers for tracker association."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
 import numpy as np
+import supervision as sv
 
+from trackers.core.reid.encoder import ReIDEncoder
 from trackers.core.reid.feature_bank import FeatureBank
 
 
@@ -27,6 +29,27 @@ def _sanitize_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
         cleaned = cleaned.copy()
         cleaned[~row_finite] = 0.0
     return cleaned
+
+
+def extract_detection_embeddings(
+    model: ReIDEncoder,
+    frame: np.ndarray,
+    boxes: np.ndarray,
+) -> np.ndarray:
+    """Extract L2-normalised appearance embeddings for detection boxes.
+
+    Args:
+        model: Re-ID encoder used to embed each crop.
+        frame: BGR video frame containing the detections.
+        boxes: Detection bounding boxes, shape ``(N, 4)`` in ``xyxy`` format.
+
+    Returns:
+        Embedding matrix of shape ``(N, D)``.  Returns ``(0, 0)`` when
+        ``boxes`` is empty.
+    """
+    if len(boxes) == 0:
+        return np.empty((0, 0), dtype=np.float32)
+    return model.extract_features(sv.Detections(xyxy=boxes), frame)
 
 
 def appearance_similarity(
