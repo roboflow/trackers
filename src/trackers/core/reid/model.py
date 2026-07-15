@@ -25,7 +25,6 @@ from trackers.core.reid.models.loaders import load_state_dict_for_architecture, 
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (
     DEFAULT_MODEL,
-    FASTREID_MOT17_SBS50,
     ModelCard,
     default_preprocessing_for_architecture,
     resolve_model_card,
@@ -176,7 +175,7 @@ class ReIDModel:
         if resolved_weights is not None:
             local_path = resolve_weights(resolved_weights)
             arch_name = resolved_arch if isinstance(resolved_arch, str) else ""
-            required_fraction = 1.0 if source in (FASTREID_MOT17_SBS50, DEFAULT_MODEL) else None
+            required_fraction = 1.0 if source == DEFAULT_MODEL else None
             report = load_state_dict_for_architecture(
                 backbone,
                 local_path,

@@ -20,11 +20,11 @@ IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
 # Standard person re-ID input geometry (height, width). OSNet and most backbones
-# train at 256x128; BoT-SORT FastReID SBS uses 384x128 (see registry overrides).
+# train at 256x128.
 REID_INPUT_SIZE = (256, 128)
 
-# Gray padding used by YOLO / FastReID letterbox helpers (BoT-SORT ``preprocess()``).
-FASTREID_PAD_VALUE = 114
+# Gray padding used by letterbox resize.
+LETTERBOX_PAD_VALUE = 114
 
 ResizeMode = Literal["stretch", "letterbox"]
 
@@ -40,7 +40,7 @@ class ReIDPreprocessing:
     to_rgb: bool = True
     normalize_embeddings: bool = True
     resize_mode: ResizeMode = "stretch"
-    pad_value: int = FASTREID_PAD_VALUE
+    pad_value: int = LETTERBOX_PAD_VALUE
 
     def describe(self) -> str:
         """Human-readable one-line summary."""
@@ -55,10 +55,8 @@ class ReIDPreprocessing:
     def resize_crop(self, crop: np.ndarray) -> np.ndarray:
         """Resize an ``HxWxC`` crop to :attr:`input_size` using OpenCV.
 
-        ``stretch`` matches BoT-SORT ``FastReIDInterface`` inference
-        (``cv2.resize`` to ``SIZE_TEST``, aspect ratio not preserved).
-        ``letterbox`` is optional (aspect-preserving pad); BoT-SORT leaves it
-        commented out upstream, so registered FastReID defaults use stretch.
+        ``stretch`` ignores aspect ratio (``cv2.resize`` to the target size).
+        ``letterbox`` preserves aspect ratio and pads with :attr:`pad_value`.
         """
         if crop.size == 0:
             target_h, target_w = self.input_size

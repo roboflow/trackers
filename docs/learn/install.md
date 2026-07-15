@@ -76,7 +76,7 @@ The `detection` extra installs `inference-models`, enabling the CLI to run detec
 
 ### ReID (appearance embeddings)
 
-The `reid` extra installs PyTorch, timm, Hugging Face Hub, safetensors, Pillow, and gdown for ReID model loading (OSNet, FastReID SBS, and `timm:` backbones).
+The `reid` extra installs PyTorch, timm, Hugging Face Hub, safetensors, Pillow, and gdown for ReID model loading (OSNet and `timm:` backbones).
 
 === "pip"
 

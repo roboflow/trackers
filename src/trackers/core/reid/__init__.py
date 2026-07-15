@@ -9,7 +9,6 @@ from __future__ import annotations
 import importlib
 
 __all__ = [
-    "FASTREID_MOT17_SBS50",
     "FeatureBank",
     "ReIDEvaluator",
     "ReIDMetrics",
@@ -38,7 +37,6 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "ReIDModel": ("trackers.core.reid.model", "ReIDModel"),
     "ReIDPreprocessing": ("trackers.core.reid.models.preprocessing", "ReIDPreprocessing"),
     "resolve_model_card": ("trackers.core.reid.models.registry", "resolve_model_card"),
-    "FASTREID_MOT17_SBS50": ("trackers.core.reid.models.registry", "FASTREID_MOT17_SBS50"),
     "ReIDEvaluator": ("trackers.core.reid.eval.evaluator", "ReIDEvaluator"),
     "ReIDResult": ("trackers.core.reid.eval.evaluator", "ReIDResult"),
 }

@@ -109,7 +109,7 @@ uv sync --group dev
     uv run pytest --doctest-modules trackers/ --ignore=tests/
     ```
 
-3. **Slow Tests**: Costly unit tests such as large ReID weight downloads (also run in main CI):
+3. **Slow Tests**: Costly unit tests (large downloads / heavy compute). Reserved for follow-ups such as FastReID weight smokes; also run in main CI when present:
 
     ```bash
     uv run pytest -m slow

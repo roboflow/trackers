@@ -33,7 +33,6 @@ _HEAVY_SRC_MARKERS = (
 _HEAVY_TEST_NAMES = frozenset(
     {
         "test_reid_model.py",
-        "test_fastreid_integration.py",
     }
 )
 
