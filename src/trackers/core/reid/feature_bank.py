@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import numpy as np
 
-_NORM_EPS = 1e-12
-
 
 class FeatureBank:
     """EMA-smoothed appearance embedding for a single track.
@@ -35,17 +33,6 @@ class FeatureBank:
     def is_initialized(self) -> bool:
         """``True`` once at least one embedding has been ingested."""
         return self._feature is not None
-
-    @staticmethod
-    def normalize_embedding(embedding: np.ndarray) -> np.ndarray:
-        """Return an L2-normalised 1-D vector (eps floor on the norm)."""
-        flat = np.asarray(embedding, dtype=np.float64).reshape(-1)
-        if flat.size == 0:
-            raise ValueError("embedding must be non-empty")
-        if not np.all(np.isfinite(flat)):
-            raise ValueError("embedding must contain only finite values")
-        norm = float(np.linalg.norm(flat))
-        return (flat / max(norm, _NORM_EPS)).astype(np.float32)
 
     @staticmethod
     def _require_embedding(embedding: np.ndarray) -> np.ndarray:

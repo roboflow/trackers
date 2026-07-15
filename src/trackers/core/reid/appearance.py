@@ -12,7 +12,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from trackers.core.reid.feature_bank import FeatureBank
+_NORM_EPS = 1e-12
 
 
 def _require_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
@@ -25,11 +25,22 @@ def _require_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
     return cleaned
 
 
+def _l2_normalize(embedding: np.ndarray) -> np.ndarray:
+    """Return an L2-normalised 1-D vector (eps floor on the norm)."""
+    flat = np.asarray(embedding, dtype=np.float64).reshape(-1)
+    if flat.size == 0:
+        raise ValueError("embedding must be non-empty")
+    if not np.all(np.isfinite(flat)):
+        raise ValueError("embedding must contain only finite values")
+    norm = float(np.linalg.norm(flat))
+    return (flat / max(norm, _NORM_EPS)).astype(np.float32)
+
+
 def _l2_normalize_rows(embeddings: np.ndarray) -> np.ndarray:
     """L2-normalise each row (eps floor), preserving shape ``(N, D)``."""
     if embeddings.size == 0:
         return embeddings
-    return np.stack([FeatureBank.normalize_embedding(row) for row in embeddings])
+    return np.stack([_l2_normalize(row) for row in embeddings])
 
 
 def appearance_similarity(
@@ -69,7 +80,7 @@ def appearance_similarity(
                 f"track feature dim {flat.shape[0]} does not match detection "
                 f"embedding dim {embed_dim} (track index {track_idx})"
             )
-        track_rows.append(FeatureBank.normalize_embedding(flat))
+        track_rows.append(_l2_normalize(flat))
         kept_indices.append(track_idx)
 
     if not track_rows:
