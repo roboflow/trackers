@@ -40,7 +40,7 @@ pip install git+https://github.com/roboflow/trackers.git
 
 For more options, see the [install guide](https://trackers.roboflow.com/develop/learn/install/).
 
-Optional appearance ReID models:
+Optional appearance-based ReID for BoT-SORT:
 
 ```bash
 pip install 'trackers[reid]'

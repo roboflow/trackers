@@ -12,7 +12,7 @@ pip install 'trackers[reid]'
 
 ## Protocols
 
-Trackers and :class:`~trackers.core.reid.eval.evaluator.ReIDEvaluator` accept lightweight
+BoT-SORT and :class:`~trackers.core.reid.eval.evaluator.ReIDEvaluator` accept lightweight
 protocol types so tests and custom encoders do not need the full
 :class:`~trackers.core.reid.model.ReIDModel` stack:
 

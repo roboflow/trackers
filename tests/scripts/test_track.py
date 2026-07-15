@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import argparse
+from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -13,10 +15,13 @@ import pytest
 import supervision as sv
 
 from trackers.scripts.track import (
+    _apply_reid_tracker_params,
     _format_labels,
     _init_annotators,
+    _reid_requested,
     _resolve_class_filter,
     _resolve_track_id_filter,
+    add_track_subparser,
 )
 
 
@@ -194,3 +199,77 @@ class TestResolveTrackIdFilter:
         result = _resolve_track_id_filter("abc,def")
         assert result is None
         assert "abc" in capsys.readouterr().err
+
+
+class _FakeReIDModel:
+    last_kwargs: dict | None = None
+
+    @classmethod
+    def from_pretrained(cls, **kwargs: object) -> _FakeReIDModel:
+        cls.last_kwargs = dict(kwargs)
+        return cls()
+
+
+class TestReidTrackCli:
+    def test_model_source_implies_enable(self) -> None:
+        args = argparse.Namespace(
+            tracker_reid_enable=False,
+            tracker_reid_model="osnet_x1_0_msmt17_combineall",
+        )
+        assert _reid_requested(args)
+
+    def test_requires_source_before_load(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            "trackers.core.reid._lazy.load_reid_model_class",
+            lambda: _FakeReIDModel,
+        )
+        args = argparse.Namespace(
+            tracker_reid_enable=True,
+            tracker_reid_model=None,
+            tracker_reid_device="cpu",
+            tracker_reid_architecture=None,
+            source=None,
+        )
+        params, err = _apply_reid_tracker_params("botsort", args, {})
+        assert err is not None and "--source" in err
+        assert params == {}
+
+    def test_passes_architecture(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        monkeypatch.setattr(
+            "trackers.core.reid._lazy.load_reid_model_class",
+            lambda: _FakeReIDModel,
+        )
+        weights = tmp_path / "weights.pth"
+        weights.touch()
+        args = argparse.Namespace(
+            tracker_reid_enable=False,
+            tracker_reid_model=str(weights),
+            tracker_reid_device="cpu",
+            tracker_reid_architecture="osnet_x1_0",
+            source="video.mp4",
+        )
+        params, err = _apply_reid_tracker_params("botsort", args, {})
+        assert err is None
+        assert _FakeReIDModel.last_kwargs is not None
+        assert _FakeReIDModel.last_kwargs["architecture"] == "osnet_x1_0"
+        assert "reid_model" in params
+
+    def test_rejects_non_botsort_tracker(self) -> None:
+        args = argparse.Namespace(
+            tracker_reid_enable=True,
+            tracker_reid_model=None,
+            tracker_reid_device="cpu",
+            tracker_reid_architecture=None,
+            source="video.mp4",
+        )
+        _, error = _apply_reid_tracker_params("bytetrack", args, {})
+        assert error is not None and "botsort" in error
+
+    def test_help_lists_reid_flags(self) -> None:
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        add_track_subparser(subparsers)
+        help_text = subparsers.choices["track"].format_help()
+        assert "--tracker.reid.enable" in help_text
+        assert "--tracker.reid.architecture" in help_text
+        assert "--tracker.appearance_threshold" in help_text

@@ -25,12 +25,11 @@ class ByteTrackTracker(BaseTracker):
     """ByteTrack operates online by processing all detector outputs, categorizing them
     by confidence thresholds to enable a two-stage association process. High-score boxes
     are initially linked to tracklets via Kalman filter predictions and IoU-based
-    Hungarian matching, optionally enhanced with appearance features. Low-score boxes
-    follow in a secondary matching phase using pure motion similarity to revive occluded
-    tracks. Tracks without matches are kept briefly for potential re-association,
-    preventing premature termination. This inclusive approach addresses common pitfalls
-    in detection filtering, establishing ByteTrack as a flexible enhancer for existing
-    tracking frameworks.
+    Hungarian matching. Low-score boxes follow in a secondary matching phase using pure
+    motion similarity to revive occluded tracks. Tracks without matches are kept briefly
+    for potential re-association, preventing premature termination. This inclusive
+    approach addresses common pitfalls in detection filtering, establishing ByteTrack as
+    a flexible enhancer for existing tracking frameworks.
 
     ByteTrack excels in dense environments, where its low-score recovery mechanism
     minimizes missed detections and enhances overall trajectory completeness. It

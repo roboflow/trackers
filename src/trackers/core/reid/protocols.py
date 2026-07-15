@@ -18,8 +18,8 @@ import supervision as sv
 class ReIDEncoder(Protocol):
     """Minimal encoder surface for tracker appearance association.
 
-    Any object implementing :meth:`extract_features` may be used as a
-    ``reid_model`` by trackers that support appearance matching.
+    Any object implementing :meth:`extract_features` may be passed as
+    ``reid_model`` to :class:`~trackers.core.botsort.tracker.BoTSORTTracker`.
     The concrete :class:`~trackers.core.reid.model.ReIDModel` satisfies this
     protocol but is not required for tests or custom encoders.
     """
