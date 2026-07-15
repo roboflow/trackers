@@ -19,6 +19,10 @@ import tempfile
 import numpy as np
 import pytest
 
+pytest.importorskip("timm")
+pytest.importorskip("huggingface_hub")
+pytest.importorskip("safetensors")
+
 from trackers.core.reid.models.loaders import resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (

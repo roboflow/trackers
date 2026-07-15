@@ -112,7 +112,7 @@ uv sync --group dev
 3. **Integration Tests**: Validate eval parity and tracker correctness against TrackEval on real MOT datasets (~50MB download):
 
     ```bash
-    uv run pytest -m integration
+    uv run pytest tests -m integration
     ```
 
 4. **All Tests**: Run unit and integration together:

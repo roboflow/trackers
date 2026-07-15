@@ -31,4 +31,6 @@ jobs:
 
 
       - name: 🧪 Run Integration Tests
-        run: uv run pytest -m integration -v --tb=short
+        # Restrict to tests/ so src doctests (and heavy ReID modules) are not
+        # collected — this job installs `--group dev` without `--extra reid`.
+        run: uv run pytest tests -m integration -v --tb=short
