@@ -4,7 +4,12 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID backbone builders (OSNet and ``timm:`` models)."""
+"""Re-ID backbone builders (OSNet and ``timm:`` models).
+
+Register new network topologies here via :func:`build_architecture`. Curated
+pretrained *aliases* (short names → weights + preprocessing) live in
+``trackers.core.reid.models.registry``, not in this package.
+"""
 
 from __future__ import annotations
 

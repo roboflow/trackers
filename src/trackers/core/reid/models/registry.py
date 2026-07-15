@@ -4,7 +4,25 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Model cards, curated aliases, and ``reid_config.json`` (de)serialization."""
+"""Curated ReID recipes: aliases, ``ModelCard``, and ``reid_config.json``.
+
+This module answers *which pretrained model to load*, not *how to build a
+backbone*.
+
+- ``ALIASES`` maps short names (for example
+  ``osnet_x1_0_msmt17_combineall``) to a :class:`ModelCard`.
+- A :class:`ModelCard` holds the four load axes: architecture name, weights
+  source (``hf://`` / ``gd://`` / local path), :class:`ReIDPreprocessing`, and
+  an optional domain warning.
+- :func:`resolve_model_card` looks up an alias, a local
+  ``save_pretrained`` directory, or an HF repo that ships ``reid_config.json``.
+- :func:`save_model_config` / :func:`load_model_config` round-trip the card for
+  self-describing checkpoints.
+
+Architecture construction lives in ``trackers.core.reid.architectures``.
+Checkpoint I/O lives in ``trackers.core.reid.models.loaders``.
+``ReIDModel.from_pretrained`` ties those pieces together.
+"""
 
 from __future__ import annotations
 
@@ -40,6 +58,8 @@ _DOMAIN_WARNING = (
 # ---------------------------------------------------------------------------
 
 DEFAULT_MODEL = "osnet_x1_0_msmt17_combineall"
+"""Curated alias used when :meth:`ReIDModel.from_pretrained` gets no ``source``."""
+
 
 # Default preprocessing for registered architectures (bare `.pth` loads, no ModelCard).
 DEFAULT_ARCHITECTURE_PREPROCESSING = ReIDPreprocessing()
@@ -61,7 +81,11 @@ def default_preprocessing_for_architecture(architecture: str | None) -> ReIDPrep
 
 @dataclass
 class ModelCard:
-    """Architecture, weights source, preprocessing, and optional domain warning."""
+    """One pretrained ReID recipe (architecture + weights + preprocessing).
+
+    Produced by curated :data:`ALIASES` entries or by loading
+    ``reid_config.json`` from a ``save_pretrained`` directory / HF repo.
+    """
 
     architecture: str
     weights: str | None
