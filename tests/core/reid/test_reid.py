@@ -63,26 +63,23 @@ class TestFeatureBank:
 
 
 class TestAppearanceSimilarity:
-    def test_non_finite_detection_rows_are_sanitized(self) -> None:
+    def test_non_finite_detection_rows_raise(self) -> None:
         from trackers.core.reid.appearance import appearance_similarity
 
-        sim = appearance_similarity(
-            [np.array([1.0, 0.0], dtype=np.float32)],
-            np.array([[1.0, 0.0], [np.nan, 1.0]], dtype=np.float32),
-        )
-        assert np.isfinite(sim).all()
-        assert sim[0, 0] == pytest.approx(1.0)
-        assert sim[0, 1] == pytest.approx(0.0)
+        with pytest.raises(ValueError, match="finite"):
+            appearance_similarity(
+                [np.array([1.0, 0.0], dtype=np.float32)],
+                np.array([[1.0, 0.0], [np.nan, 1.0]], dtype=np.float32),
+            )
 
-    def test_skips_incompatible_track_dimensions(self) -> None:
+    def test_incompatible_track_dimensions_raise(self) -> None:
         from trackers.core.reid.appearance import appearance_similarity
 
-        sim = appearance_similarity(
-            [np.array([1.0, 0.0, 0.0], dtype=np.float32)],
-            np.array([[1.0, 0.0]], dtype=np.float32),
-        )
-        assert sim.shape == (1, 1)
-        assert sim[0, 0] == pytest.approx(0.0)
+        with pytest.raises(ValueError, match="dim"):
+            appearance_similarity(
+                [np.array([1.0, 0.0, 0.0], dtype=np.float32)],
+                np.array([[1.0, 0.0]], dtype=np.float32),
+            )
 
 
 # ---------------------------------------------------------------------------

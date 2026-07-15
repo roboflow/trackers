@@ -15,17 +15,13 @@ import numpy as np
 from trackers.core.reid.feature_bank import FeatureBank
 
 
-def _sanitize_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
-    """Replace non-finite rows with zeros so cosine similarity stays safe."""
-    if embeddings.size == 0:
-        return embeddings
+def _require_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
+    """Return embeddings as float32 ``(N, D)``, raising on bad shape or values."""
     cleaned = np.asarray(embeddings, dtype=np.float32)
     if cleaned.ndim != 2:
         raise ValueError(f"embeddings must be 2-D, got shape {cleaned.shape}")
-    row_finite = np.isfinite(cleaned).all(axis=1)
-    if not np.all(row_finite):
-        cleaned = cleaned.copy()
-        cleaned[~row_finite] = 0.0
+    if cleaned.size > 0 and not np.all(np.isfinite(cleaned)):
+        raise ValueError("embeddings must contain only finite values")
     return cleaned
 
 
@@ -36,9 +32,8 @@ def appearance_similarity(
     """Compute cosine similarity between track features and detection embeddings.
 
     Both inputs are expected to be L2-normalised. Tracks with ``None`` features
-    receive similarity ``0.0``. Non-finite detection rows are zeroed before the
-    dot product so they cannot poison assignment. Track rows whose embedding
-    dimension does not match the detection matrix are treated as unavailable.
+    receive similarity ``0.0``. Non-finite values or mismatched embedding
+    dimensions raise ``ValueError``.
 
     Args:
         track_features: One embedding per track (``None`` = no feature yet).
@@ -48,7 +43,7 @@ def appearance_similarity(
         Similarity matrix of shape ``(T, N)``.
     """
     n_tracks = len(track_features)
-    det_embeddings = _sanitize_embedding_matrix(det_embeddings)
+    det_embeddings = _require_embedding_matrix(det_embeddings)
     n_dets = det_embeddings.shape[0]
     sim = np.zeros((n_tracks, n_dets), dtype=np.float32)
 
@@ -61,9 +56,13 @@ def appearance_similarity(
     for track_idx, feature in enumerate(track_features):
         if feature is None:
             continue
-        if feature.shape[0] != embed_dim:
-            continue
-        track_rows.append(FeatureBank.normalize_embedding(feature))
+        flat = np.asarray(feature, dtype=np.float32).reshape(-1)
+        if flat.shape[0] != embed_dim:
+            raise ValueError(
+                f"track feature dim {flat.shape[0]} does not match detection "
+                f"embedding dim {embed_dim} (track index {track_idx})"
+            )
+        track_rows.append(FeatureBank.normalize_embedding(flat))
         kept_indices.append(track_idx)
 
     if not track_rows:

@@ -19,7 +19,7 @@ import torch.nn as nn
 from PIL import Image as PILImage
 from safetensors.torch import save_file
 
-from trackers.core.reid.appearance import _sanitize_embedding_matrix
+from trackers.core.reid.appearance import _require_embedding_matrix
 from trackers.core.reid.architectures import build_architecture
 from trackers.core.reid.models.loaders import load_state_dict_for_architecture, resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
@@ -258,7 +258,7 @@ class ReIDModel:
             if normalize:
                 embs = torch.nn.functional.normalize(embs, p=2, dim=1)
             batch_np = embs.cpu().numpy().astype(np.float32)
-            all_embeddings.append(_sanitize_embedding_matrix(batch_np))
+            all_embeddings.append(_require_embedding_matrix(batch_np))
 
         return np.concatenate(all_embeddings, axis=0)
 
@@ -298,4 +298,4 @@ class ReIDModel:
         if self._preprocessing.normalize_embeddings:
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
-        return _sanitize_embedding_matrix(embeddings.cpu().numpy().astype(np.float32))
+        return _require_embedding_matrix(embeddings.cpu().numpy().astype(np.float32))
