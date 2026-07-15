@@ -25,15 +25,22 @@ def _require_embedding_matrix(embeddings: np.ndarray) -> np.ndarray:
     return cleaned
 
 
+def _l2_normalize_rows(embeddings: np.ndarray) -> np.ndarray:
+    """L2-normalise each row (eps floor), preserving shape ``(N, D)``."""
+    if embeddings.size == 0:
+        return embeddings
+    return np.stack([FeatureBank.normalize_embedding(row) for row in embeddings])
+
+
 def appearance_similarity(
     track_features: Sequence[np.ndarray | None],
     det_embeddings: np.ndarray,
 ) -> np.ndarray:
     """Compute cosine similarity between track features and detection embeddings.
 
-    Both inputs are expected to be L2-normalised. Tracks with ``None`` features
-    receive similarity ``0.0``. Non-finite values or mismatched embedding
-    dimensions raise ``ValueError``.
+    Both sides are L2-normalised before the dot product (cosine owns
+    normalisation). Tracks with ``None`` features receive similarity ``0.0``.
+    Non-finite values or mismatched embedding dimensions raise ``ValueError``.
 
     Args:
         track_features: One embedding per track (``None`` = no feature yet).
@@ -43,7 +50,7 @@ def appearance_similarity(
         Similarity matrix of shape ``(T, N)``.
     """
     n_tracks = len(track_features)
-    det_embeddings = _require_embedding_matrix(det_embeddings)
+    det_embeddings = _l2_normalize_rows(_require_embedding_matrix(det_embeddings))
     n_dets = det_embeddings.shape[0]
     sim = np.zeros((n_tracks, n_dets), dtype=np.float32)
 

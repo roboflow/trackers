@@ -19,7 +19,6 @@ import torch.nn as nn
 from PIL import Image as PILImage
 from safetensors.torch import save_file
 
-from trackers.core.reid.appearance import _require_embedding_matrix
 from trackers.core.reid.architectures import build_architecture
 from trackers.core.reid.models.loaders import load_state_dict_for_architecture, resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
@@ -258,7 +257,11 @@ class ReIDModel:
             if normalize:
                 embs = torch.nn.functional.normalize(embs, p=2, dim=1)
             batch_np = embs.cpu().numpy().astype(np.float32)
-            all_embeddings.append(_require_embedding_matrix(batch_np))
+            if batch_np.ndim != 2:
+                raise ValueError(f"embeddings must be 2-D, got shape {batch_np.shape}")
+            if batch_np.size > 0 and not np.all(np.isfinite(batch_np)):
+                raise ValueError("embeddings must contain only finite values")
+            all_embeddings.append(batch_np)
 
         return np.concatenate(all_embeddings, axis=0)
 
@@ -298,4 +301,9 @@ class ReIDModel:
         if self._preprocessing.normalize_embeddings:
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
-        return _require_embedding_matrix(embeddings.cpu().numpy().astype(np.float32))
+        out = embeddings.cpu().numpy().astype(np.float32)
+        if out.ndim != 2:
+            raise ValueError(f"embeddings must be 2-D, got shape {out.shape}")
+        if out.size > 0 and not np.all(np.isfinite(out)):
+            raise ValueError("embeddings must contain only finite values")
+        return out

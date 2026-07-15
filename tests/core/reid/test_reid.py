@@ -31,6 +31,20 @@ class TestFeatureBank:
         assert feature is not None
         np.testing.assert_allclose(np.linalg.norm(feature), 1.0, atol=1e-6)
 
+    def test_second_update_blends_then_renormalizes(self) -> None:
+        from trackers.core.reid.feature_bank import FeatureBank
+
+        alpha = 0.75
+        bank = FeatureBank(alpha=alpha)
+        bank.update(np.array([1.0, 0.0], dtype=np.float32))
+        bank.update(np.array([0.0, 1.0], dtype=np.float32))
+        feature = bank.feature
+        assert feature is not None
+        expected = np.array([alpha, 1.0 - alpha], dtype=np.float64)
+        expected = expected / np.linalg.norm(expected)
+        np.testing.assert_allclose(feature, expected.astype(np.float32), atol=1e-6)
+        np.testing.assert_allclose(np.linalg.norm(feature), 1.0, atol=1e-6)
+
     def test_zero_embedding_is_accepted(self) -> None:
         from trackers.core.reid.feature_bank import FeatureBank
 
@@ -63,6 +77,50 @@ class TestFeatureBank:
 
 
 class TestAppearanceSimilarity:
+    def test_identical_unit_vectors_are_one(self) -> None:
+        from trackers.core.reid.appearance import appearance_similarity
+
+        track = np.array([1.0, 0.0], dtype=np.float32)
+        dets = np.array([[1.0, 0.0]], dtype=np.float32)
+        sim = appearance_similarity([track], dets)
+        np.testing.assert_allclose(sim, [[1.0]], atol=1e-6)
+
+    def test_orthogonal_unit_vectors_are_zero(self) -> None:
+        from trackers.core.reid.appearance import appearance_similarity
+
+        track = np.array([1.0, 0.0], dtype=np.float32)
+        dets = np.array([[0.0, 1.0]], dtype=np.float32)
+        sim = appearance_similarity([track], dets)
+        np.testing.assert_allclose(sim, [[0.0]], atol=1e-6)
+
+    def test_unnormalized_parallel_vectors_are_one(self) -> None:
+        from trackers.core.reid.appearance import appearance_similarity
+
+        track = np.array([3.0, 4.0], dtype=np.float32)
+        dets = np.array([[6.0, 8.0]], dtype=np.float32)
+        sim = appearance_similarity([track], dets)
+        np.testing.assert_allclose(sim, [[1.0]], atol=1e-6)
+
+    def test_none_track_yields_zero_row(self) -> None:
+        from trackers.core.reid.appearance import appearance_similarity
+
+        dets = np.array([[1.0, 0.0]], dtype=np.float32)
+        sim = appearance_similarity([None, np.array([1.0, 0.0], dtype=np.float32)], dets)
+        np.testing.assert_allclose(sim[0], [0.0], atol=1e-6)
+        np.testing.assert_allclose(sim[1], [1.0], atol=1e-6)
+
+    def test_empty_inputs_return_empty_matrix(self) -> None:
+        from trackers.core.reid.appearance import appearance_similarity
+
+        sim = appearance_similarity([], np.empty((0, 4), dtype=np.float32))
+        assert sim.shape == (0, 0)
+
+        sim = appearance_similarity(
+            [np.array([1.0, 0.0], dtype=np.float32)],
+            np.empty((0, 2), dtype=np.float32),
+        )
+        assert sim.shape == (1, 0)
+
     def test_non_finite_detection_rows_raise(self) -> None:
         from trackers.core.reid.appearance import appearance_similarity
 
@@ -98,7 +156,7 @@ class TestComputeReidMetrics:
             g_pids=np.array([0, 1, 2]),
             q_camids=np.array([0]),
             g_camids=np.array([0, 1, 0]),
-            max_rank=3,
+            max_rank=10,
             gallery_junk_pids=MARKET1501_GALLERY_JUNK_PIDS,
         )
         assert metrics.rank1 == pytest.approx(100.0)
@@ -112,10 +170,23 @@ class TestComputeReidMetrics:
             g_pids=np.array([3, 8]),
             q_camids=np.array([0]),
             g_camids=np.array([1, 0]),
-            max_rank=5,
+            max_rank=10,
         )
         assert metrics.rank1 == pytest.approx(0.0)
         assert metrics.rank5 == pytest.approx(100.0)
+
+    def test_max_rank_below_ten_raises(self) -> None:
+        from trackers.core.reid.eval.metrics import compute_reid_metrics
+
+        with pytest.raises(ValueError, match="max_rank"):
+            compute_reid_metrics(
+                np.array([[0.1, 0.2]], dtype=np.float32),
+                q_pids=np.array([1]),
+                g_pids=np.array([1, 2]),
+                q_camids=np.array([0]),
+                g_camids=np.array([1, 0]),
+                max_rank=5,
+            )
 
     def test_computes_map_cmc_and_minp_on_controlled_ranking(self) -> None:
         """One query, two true gallery matches after junk removal.
@@ -189,6 +260,51 @@ class TestReIDEvaluator:
         )
         assert encoder.calls == [[str(gallery_img)]]
         np.testing.assert_array_equal(result.query_embeddings, provided_query)
+
+    def test_wrong_length_provided_embeddings_raise(self, tmp_path: Path) -> None:
+        from trackers.core.reid.eval.datasets import ReIDSplit
+        from trackers.core.reid.eval.evaluator import ReIDEvaluator
+
+        query_img = tmp_path / "q.jpg"
+        gallery_img = tmp_path / "g.jpg"
+        query_img.write_bytes(b"jpeg")
+        gallery_img.write_bytes(b"jpeg")
+        query = ReIDSplit(
+            image_paths=[str(query_img)],
+            pids=np.array([1]),
+            camids=np.array([0]),
+        )
+        gallery = ReIDSplit(
+            image_paths=[str(gallery_img)],
+            pids=np.array([1]),
+            camids=np.array([1]),
+        )
+
+        class _Encoder:
+            def extract_features_from_paths(
+                self,
+                image_paths: list[str],
+                *,
+                batch_size: int = 64,
+                normalize: bool = True,
+            ) -> np.ndarray:
+                return np.ones((len(image_paths), 2), dtype=np.float32)
+
+        evaluator = ReIDEvaluator(_Encoder())
+        with pytest.raises(ValueError, match="query_embeddings"):
+            evaluator.evaluate(
+                query,
+                gallery,
+                query_embeddings=np.ones((2, 2), dtype=np.float32),
+                verbose=False,
+            )
+        with pytest.raises(ValueError, match="gallery_embeddings"):
+            evaluator.evaluate(
+                query,
+                gallery,
+                gallery_embeddings=np.ones((3, 2), dtype=np.float32),
+                verbose=False,
+            )
 
 
 class TestMarket1501Loader:

@@ -100,6 +100,11 @@ class ReIDEvaluator:
                 query.image_paths, batch_size=self._batch_size, normalize=False
             )
         else:
+            if query_embeddings.shape[0] != len(query):
+                raise ValueError(
+                    f"query_embeddings rows ({query_embeddings.shape[0]}) must "
+                    f"match query length ({len(query)})"
+                )
             q_embs = query_embeddings
 
         if gallery_embeddings is None:
@@ -109,6 +114,11 @@ class ReIDEvaluator:
                 gallery.image_paths, batch_size=self._batch_size, normalize=False
             )
         else:
+            if gallery_embeddings.shape[0] != len(gallery):
+                raise ValueError(
+                    f"gallery_embeddings rows ({gallery_embeddings.shape[0]}) must "
+                    f"match gallery length ({len(gallery)})"
+                )
             g_embs = gallery_embeddings
 
         if verbose:

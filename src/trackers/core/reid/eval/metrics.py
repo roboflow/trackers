@@ -58,7 +58,8 @@ def compute_reid_metrics(
         g_pids: Gallery person IDs.
         q_camids: Query camera IDs.
         g_camids: Gallery camera IDs.
-        max_rank: Highest CMC rank to compute.
+        max_rank: Highest CMC rank to compute (must be ``>= 10`` so
+            ``rank5`` / ``rank10`` are defined).
         gallery_junk_pids: Gallery person IDs treated as junk during ranking.
 
     Returns:
@@ -70,8 +71,8 @@ def compute_reid_metrics(
         raise ValueError("q_pids / q_camids length must match distmat rows.")
     if len(g_pids) != num_g or len(g_camids) != num_g:
         raise ValueError("g_pids / g_camids length must match distmat columns.")
-    if max_rank < 1:
-        raise ValueError(f"max_rank must be >= 1, got {max_rank}")
+    if max_rank < 10:
+        raise ValueError(f"max_rank must be >= 10, got {max_rank}")
 
     cmc_accumulator = np.zeros(max_rank, dtype=np.float64)
     ap_list: list[float] = []
