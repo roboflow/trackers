@@ -33,13 +33,7 @@ def _run_isolated(code: str) -> subprocess.CompletedProcess[str]:
 
 def test_base_package_import_without_reid_extra() -> None:
     """Fresh process: base `import trackers` works with ReID heavy modules blocked."""
-    code = (
-        "import sys; "
-        f"{_block_modules_stmt()}; "
-        "import trackers; "
-        "assert trackers.BoTSORTTracker; "
-        "print('ok')"
-    )
+    code = f"import sys; {_block_modules_stmt()}; import trackers; assert trackers.BoTSORTTracker; print('ok')"
     result = _run_isolated(code)
     assert result.returncode == 0, result.stderr or result.stdout
 

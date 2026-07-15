@@ -79,8 +79,7 @@ def _resolve_hf(source: str) -> str:
         return hf_hub_download(repo_id=repo_id, filename=filename, revision=revision)
     except (HfHubHTTPError, EntryNotFoundError, OSError) as exc:
         raise RuntimeError(
-            f"Failed to download Hugging Face weights from {source!r} "
-            f"(repo_id={repo_id!r}, filename={filename!r})."
+            f"Failed to download Hugging Face weights from {source!r} (repo_id={repo_id!r}, filename={filename!r})."
         ) from exc
 
 

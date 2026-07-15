@@ -92,7 +92,7 @@ class TestComputeReidMetrics:
         g_embs = np.ones((2, 4), dtype=np.float32)
 
         class _StubModel:
-            def extract_features_from_paths(self, *args, **kwargs):  # noqa: ANN002, ANN003
+            def extract_features_from_paths(self, *args, **kwargs):
                 raise AssertionError("should not be called")
 
         ReIDEvaluator(_StubModel()).evaluate(

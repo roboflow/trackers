@@ -11,8 +11,7 @@ from __future__ import annotations
 import importlib
 
 REID_INSTALL_HINT = (
-    "ReID features require the optional `trackers[reid]` extra. "
-    "Install with: pip install 'trackers[reid]'"
+    "ReID features require the optional `trackers[reid]` extra. Install with: pip install 'trackers[reid]'"
 )
 
 # Modules that must be importable for the ReID stack. Checked in order so the

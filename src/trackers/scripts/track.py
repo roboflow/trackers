@@ -677,9 +677,7 @@ def _apply_reid_tracker_params(
         return params, None
 
     if tracker_id != "botsort":
-        return params, (
-            f"Error: --tracker.reid.* options apply only to --tracker botsort, got {tracker_id!r}."
-        )
+        return params, (f"Error: --tracker.reid.* options apply only to --tracker botsort, got {tracker_id!r}.")
 
     if getattr(args, "source", None) is None:
         return params, (
