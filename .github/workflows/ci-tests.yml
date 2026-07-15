@@ -32,10 +32,6 @@ jobs:
       - name: 🚀 Install Packages
         run: uv sync --frozen --group dev --extra reid
 
-      - name: 🧪 Run base import regression (no heavy ReID imports)
-        shell: bash
-        run: uv run pytest tests/core/test_import_isolation.py -q
-
       - name: 🧪 Run the Test
         shell: bash
         run: |
