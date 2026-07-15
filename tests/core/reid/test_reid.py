@@ -11,6 +11,7 @@ These do not require ``trackers[reid]`` and run in every CI job.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -240,10 +241,10 @@ class TestReIDEvaluator:
 
             def extract_features_from_paths(
                 self,
-                image_paths: list[str],
+                image_paths: Sequence[str],
                 *,
                 batch_size: int = 64,
-                normalize: bool = True,
+                normalize: bool = False,
             ) -> np.ndarray:
                 self.calls.append(list(image_paths))
                 return np.ones((len(image_paths), 2), dtype=np.float32)
@@ -281,10 +282,10 @@ class TestReIDEvaluator:
         class _Encoder:
             def extract_features_from_paths(
                 self,
-                image_paths: list[str],
+                image_paths: Sequence[str],
                 *,
                 batch_size: int = 64,
-                normalize: bool = True,
+                normalize: bool = False,
             ) -> np.ndarray:
                 return np.ones((len(image_paths), 2), dtype=np.float32)
 
