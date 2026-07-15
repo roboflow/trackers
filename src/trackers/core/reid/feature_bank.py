@@ -60,8 +60,7 @@ class FeatureBank:
 
         if self._feature.shape != normalized.shape:
             raise ValueError(
-                f"embedding shape {normalized.shape} does not match "
-                f"stored feature shape {self._feature.shape}"
+                f"embedding shape {normalized.shape} does not match stored feature shape {self._feature.shape}"
             )
 
         blended = self._alpha * self._feature + (1.0 - self._alpha) * normalized
