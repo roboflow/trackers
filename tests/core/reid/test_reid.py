@@ -24,6 +24,13 @@ from typing import Any, cast
 import numpy as np
 import pytest
 
+# Heavy ReID deps live behind the optional extra; skip collection when absent.
+pytest.importorskip("torch")
+pytest.importorskip("torchvision")
+pytest.importorskip("timm")
+pytest.importorskip("huggingface_hub")
+pytest.importorskip("safetensors")
+
 from trackers.core.reid.models.loaders import resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (

@@ -59,7 +59,6 @@ def reset_random_seeds() -> None:
             torch.cuda.manual_seed_all(42)
     except ImportError:
         pass
-        pass
 
 
 def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:
