@@ -8,7 +8,7 @@
 
 Requires ``trackers[reid]`` (torch, timm, huggingface_hub, safetensors).
 Installed and run in CI via ``uv sync --group dev --extra reid``.
-No network downloads (see ``test_fastreid_integration.py``).
+No weight downloads (see the ``@pytest.mark.slow`` test in ``test_fastreid_integration.py``).
 """
 
 from __future__ import annotations

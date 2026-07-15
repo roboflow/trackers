@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 
-@pytest.mark.network
+@pytest.mark.slow
 def test_fastreid_mot17_alias_loads_with_finite_normalized_output() -> None:
     import numpy as np
     import supervision as sv
