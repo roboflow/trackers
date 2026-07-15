@@ -117,18 +117,32 @@ class TestComputeReidMetrics:
         assert metrics.rank1 == pytest.approx(0.0)
         assert metrics.rank5 == pytest.approx(100.0)
 
-    def test_reid_metrics_map_alias(self) -> None:
-        from trackers.core.reid.eval.metrics import ReIDMetrics
+    def test_computes_map_cmc_and_minp_on_controlled_ranking(self) -> None:
+        """One query, two true gallery matches after junk removal.
 
-        metrics = ReIDMetrics(
-            mean_average_precision=42.0,
-            rank1=1.0,
-            rank5=2.0,
-            rank10=3.0,
-            minp=4.0,
-            num_queries=1,
+        Distance order of gallery ids ``[2, 1, 1, 1]`` with cams ``[1, 1, 0, 2]``.
+        Same-(pid, camid) as the query (third gallery entry) is junk, so the
+        valid ranking is distractor → match → match.
+
+        Hand-computed: Rank-1 = 0%, AP = 7/12, mINP = 2/3.
+        """
+        from trackers.core.reid.eval.metrics import compute_reid_metrics
+
+        metrics = compute_reid_metrics(
+            np.array([[0.1, 0.2, 0.3, 0.4]], dtype=np.float32),
+            q_pids=np.array([1]),
+            g_pids=np.array([2, 1, 1, 1]),
+            q_camids=np.array([0]),
+            g_camids=np.array([1, 1, 0, 2]),
+            max_rank=10,
+            gallery_junk_pids=frozenset(),
         )
-        assert metrics.mean_average_precision == pytest.approx(42.0)
+        assert metrics.num_queries == 1
+        assert metrics.rank1 == pytest.approx(0.0)
+        assert metrics.rank5 == pytest.approx(100.0)
+        assert metrics.rank10 == pytest.approx(100.0)
+        assert metrics.mean_average_precision == pytest.approx((7.0 / 12.0) * 100.0)
+        assert metrics.minp == pytest.approx((2.0 / 3.0) * 100.0)
 
 
 class TestReIDEvaluator:
