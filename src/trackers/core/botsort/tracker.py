@@ -12,8 +12,10 @@ from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
+from trackers.core.botsort.fusion import fuse_botsort_reid_association
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
+from trackers.core.reid.protocols import ReIDEncoder
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -84,13 +86,25 @@ class BoTSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
+        reid_model: Optional :class:`~trackers.core.reid.protocols.ReIDEncoder`
+            for appearance-based association in the first high-confidence stage.
+            :class:`~trackers.core.reid.model.ReIDModel` satisfies this protocol.
+            Requires ``frame`` in :meth:`update`. When ``None`` (default),
+            behaviour matches the geometry-only BoT-SORT baseline.
+        reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
+        appearance_threshold: Appearance distance gate θ_emb. Rejects matches when
+            halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this value.
+            Default ``0.25`` (BoT-SORT ``appearance_thresh``).
+        proximity_threshold: Standard IoU distance gate before appearance is used.
+            Computed from true IoU even when ``iou=`` is GIoU/DIoU/CIoU.
+            Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires IoU > 0.5).
 
     Notes:
         - Positive `maximum_frames_without_update` values are scaled by
           ``frame_rate`` and rounded up to at least one missed frame. Explicit
           zero-buffer configurations remain zero.
-        - When CMC is enabled, pass the current video frame via the ``frame``
-          argument of :meth:`update`.
+        - When CMC or ReID is enabled, pass the current video frame via the
+          ``frame`` argument of :meth:`update`.
     """
 
     tracker_id = "botsort"
@@ -124,6 +138,10 @@ class BoTSORTTracker(BaseTracker):
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
+        reid_model: ReIDEncoder | None = None,
+        reid_ema_alpha: float = 0.9,
+        appearance_threshold: float = 0.25,
+        proximity_threshold: float = 0.5,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
             lost_track_buffer=lost_track_buffer,
@@ -140,12 +158,23 @@ class BoTSORTTracker(BaseTracker):
         self.tracks: list[BoTSORTTracklet] = []
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+        self._proximity_iou = IoU()
         self.frame_id: int = 0
         self._reset_id_allocator()
 
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
 
+        self.reid_model = reid_model
+        if not 0.0 <= reid_ema_alpha <= 1.0:
+            raise ValueError(f"reid_ema_alpha must be in [0, 1], got {reid_ema_alpha}")
+        self.reid_ema_alpha = reid_ema_alpha
+        if not 0.0 <= appearance_threshold <= 2.0:
+            raise ValueError(f"appearance_threshold must be in [0, 2], got {appearance_threshold}")
+        if not 0.0 <= proximity_threshold <= 1.0:
+            raise ValueError(f"proximity_threshold must be in [0, 1], got {proximity_threshold}")
+        self.appearance_threshold = appearance_threshold
+        self.proximity_threshold = proximity_threshold
         self._init_timestamp_state(frame_rate)
 
     def update(
@@ -182,10 +211,10 @@ class BoTSORTTracker(BaseTracker):
                 the last state.
 
         Notes:
-            - If CMC is enabled, pass the current video frame via ``frame`` so the
-              tracker can estimate a global affine transform and warp predicted
-              track states before association. When ``frame=None`` and
-              ``enable_cmc=True``, CMC is silently skipped for that step.
+            - If CMC or ReID is enabled, pass the current video frame via ``frame``
+              so the tracker can estimate camera motion and/or extract appearance
+              embeddings. When ``frame=None`` and ``enable_cmc=True``, CMC is
+              silently skipped for that step; ReID requires ``frame`` and raises.
         """
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
@@ -247,41 +276,79 @@ class BoTSORTTracker(BaseTracker):
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(frame, mask_boxes)
             CMC.apply_batch(H, self.tracks)
+
+        # Appearance: extract embeddings once for all high-confidence detections.
+        # When reid_model is None this block is skipped entirely and behaviour
+        # is identical to the geometry-only baseline.
+        det_embeddings: np.ndarray | None = None
+        if self.reid_model is not None:
+            if frame is None:
+                raise ValueError(f"{type(self).__name__}.update() requires frame when reid_model is set.")
+            if len(high_boxes) > 0:
+                from trackers.core.reid.extraction import extract_detection_embeddings
+
+                det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
+
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
         iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
-        iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
+        iou_sim_raw = self.iou.normalize_for_fusion(iou_matrix)
+        iou_sim_fused = _fuse_score(iou_sim_raw, high_scores)
+
+        if det_embeddings is not None and len(strack_pool) > 0:
+            from trackers.core.reid.distance import appearance_similarity
+
+            track_feats = [
+                t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
+                for t in strack_pool
+            ]
+            app_sim = appearance_similarity(track_feats, det_embeddings)
+            proximity_iou = self._get_proximity_iou_matrix(strack_pool, high_boxes)
+            similarity_matrix = self._fuse_botsort_reid(
+                iou_sim_raw,
+                iou_sim_fused,
+                app_sim,
+                proximity_iou,
+            )
+        else:
+            similarity_matrix = iou_sim_fused
+
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold_first_assoc
+            similarity_matrix, self.minimum_iou_threshold_first_assoc
         )
 
         for row, col in matched:
-            track = strack_pool[row]
-            track.update(high_boxes[col])
-            if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                track.tracker_id = self._allocate_tracker_id()
-            out_det_indices.append(int(high_indices[col]))
-            out_tracker_ids.append(track.tracker_id)
+            self._assign_track_detection(
+                strack_pool[row],
+                high_boxes[col],
+                det_embeddings[col] if det_embeddings is not None else None,
+                int(high_indices[col]),
+                out_det_indices,
+                out_tracker_ids,
+            )
 
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks, following the original ByteTrack).
-        # No score fusing in second association.
+        # No score fusing or ReID in second association (upstream bot_sort.py).
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
         iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
-            track = remaining_tracked[row]
-            track.update(low_boxes[col])
-            if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                track.tracker_id = self._allocate_tracker_id()
-            out_det_indices.append(int(low_indices[col]))
-            out_tracker_ids.append(track.tracker_id)
+            self._assign_track_detection(
+                remaining_tracked[row],
+                low_boxes[col],
+                None,
+                int(low_indices[col]),
+                out_det_indices,
+                out_tracker_ids,
+            )
 
-        # Unmatched low-confidence detections
-        for det_local_idx in sorted(unmatched_low):
+        unmatched_low_list = sorted(unmatched_low)
+
+        for det_local_idx in unmatched_low_list:
             out_det_indices.append(int(low_indices[det_local_idx]))
             out_tracker_ids.append(-1)
 
@@ -296,21 +363,44 @@ class BoTSORTTracker(BaseTracker):
             uh_scores = high_scores[unmatched_high_list]
 
             iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
-            iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), uh_scores)
+            iou_sim_raw = self.iou.normalize_for_fusion(iou_matrix)
+            iou_sim_fused = _fuse_score(iou_sim_raw, uh_scores)
+
+            if det_embeddings is not None:
+                from trackers.core.reid.distance import appearance_similarity
+
+                uh_embeddings = det_embeddings[unmatched_high_list]
+                track_feats = [
+                    t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
+                    for t in unconfirmed_tracks
+                ]
+                app_sim = appearance_similarity(track_feats, uh_embeddings)
+                proximity_iou = self._get_proximity_iou_matrix(unconfirmed_tracks, uh_boxes)
+                similarity_matrix = self._fuse_botsort_reid(
+                    iou_sim_raw,
+                    iou_sim_fused,
+                    app_sim,
+                    proximity_iou,
+                )
+            else:
+                similarity_matrix = iou_sim_fused
+
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
-                iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
+                similarity_matrix, self.minimum_iou_threshold_unconfirmed_assoc
             )
 
             for row, col in matched_uc:
-                track = unconfirmed_tracks[row]
                 orig_high_idx = unmatched_high_list[col]
-                track.update(high_boxes[orig_high_idx])
-                if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
-                    track.tracker_id = self._allocate_tracker_id()
-                out_det_indices.append(int(high_indices[orig_high_idx]))
-                out_tracker_ids.append(track.tracker_id)
+                embedding = det_embeddings[orig_high_idx] if det_embeddings is not None else None
+                self._assign_track_detection(
+                    unconfirmed_tracks[row],
+                    high_boxes[orig_high_idx],
+                    embedding,
+                    int(high_indices[orig_high_idx]),
+                    out_det_indices,
+                    out_tracker_ids,
+                )
 
-            # Only remaining unmatched high-conf dets proceed to spawning
             unmatched_high = [unmatched_high_list[i] for i in remaining_uh]
 
         # Remove unmatched unconfirmed tracks (following original ByteTrack,
@@ -319,7 +409,6 @@ class BoTSORTTracker(BaseTracker):
             remove_ids = {id(unconfirmed_tracks[i]) for i in unmatched_uc_indices}
             self.tracks = [t for t in self.tracks if id(t) not in remove_ids]
 
-        # Spawn new tracks from unmatched high-confidence detections
         self._spawn_new_tracks(
             detection_boxes,
             confidences,
@@ -328,6 +417,7 @@ class BoTSORTTracker(BaseTracker):
             out_det_indices,
             out_tracker_ids,
             is_first_frame=(self.frame_id == 1),
+            det_embeddings=det_embeddings,
         )
 
         # Full lifecycle prune: removes immature+unmatched and any remaining expired
@@ -348,6 +438,48 @@ class BoTSORTTracker(BaseTracker):
         result = cast(sv.Detections, detections[idx])
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
+
+    def _assign_track_detection(
+        self,
+        track: BoTSORTTracklet,
+        bbox: np.ndarray,
+        embedding: np.ndarray | None,
+        global_det_index: int,
+        out_det_indices: list[int],
+        out_tracker_ids: list[int],
+    ) -> None:
+        """Update a track from a matched detection and record output indices."""
+        track.update(bbox)
+        if track.feature_bank is not None and embedding is not None:
+            track.feature_bank.update(embedding)
+        if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
+            track.tracker_id = self._allocate_tracker_id()
+        out_det_indices.append(global_det_index)
+        out_tracker_ids.append(track.tracker_id)
+
+    def _fuse_botsort_reid(
+        self,
+        iou_similarity_raw: np.ndarray,
+        iou_similarity_fused: np.ndarray,
+        appearance_similarity: np.ndarray,
+        proximity_iou_similarity: np.ndarray,
+    ) -> np.ndarray:
+        """Fuse IoU and appearance using BoT-SORT ``bot_sort.py`` min-cost ReID."""
+        return fuse_botsort_reid_association(
+            iou_similarity_raw,
+            iou_similarity_fused,
+            appearance_similarity,
+            proximity_iou_similarity=proximity_iou_similarity,
+            proximity_threshold=self.proximity_threshold,
+            appearance_threshold=self.appearance_threshold,
+        )
+
+    def _get_proximity_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
+        if len(tracklets) == 0:
+            tracklet_boxes = np.empty((0, 4))
+        else:
+            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+        return self._proximity_iou.compute(tracklet_boxes, detections)
 
     def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:
@@ -405,14 +537,9 @@ class BoTSORTTracker(BaseTracker):
         out_det_indices: list[int],
         out_tracker_ids: list[int],
         is_first_frame: bool = False,
+        det_embeddings: np.ndarray | None = None,
     ) -> None:
-        """Create new tracklets from unmatched high-confidence detections.
-
-        On the very first frame, new tracklets are immediately activated with a
-        real tracker ID, following the original ByteTrack convention where
-        ``activate()`` sets ``is_activated = True`` only when
-        ``frame_id == 1``.
-        """
+        """Create new tracklets from unmatched high-confidence detections."""
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
             conf = float(confidences[global_idx])
@@ -422,6 +549,12 @@ class BoTSORTTracker(BaseTracker):
                     initial_bbox=detection_boxes[global_idx],
                     state_estimator_class=self.state_estimator_class,
                 )
+                if self.reid_model is not None:
+                    from trackers.core.reid.feature_bank import FeatureBank
+
+                    tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
+                    if det_embeddings is not None:
+                        tracklet.feature_bank.update(det_embeddings[det_local_idx])
                 if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = self._allocate_tracker_id()
                 self.tracks.append(tracklet)
