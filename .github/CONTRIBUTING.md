@@ -91,11 +91,14 @@ When releasing a patch with only specific fixes:
 
 ## Running Tests
 
-Install development dependencies:
+Install development dependencies. ReID model tests need the optional extra:
 
 ```bash
-uv sync --group dev
+uv sync --group dev --extra reid
 ```
+
+Use `uv sync --group dev` alone only when you are not collecting
+`tests/core/reid/test_reid_model.py` (that module imports torch/timm).
 
 1. **Unit Tests**: Run the standard suite (skips integration tests by default):
 

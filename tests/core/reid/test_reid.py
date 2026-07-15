@@ -131,6 +131,52 @@ class TestComputeReidMetrics:
         assert metrics.mean_average_precision == pytest.approx(42.0)
 
 
+class TestReIDEvaluator:
+    def test_reuses_provided_query_embeddings_only(self, tmp_path: Path) -> None:
+        from trackers.core.reid.eval.datasets import ReIDSplit
+        from trackers.core.reid.eval.evaluator import ReIDEvaluator
+
+        query_img = tmp_path / "q.jpg"
+        gallery_img = tmp_path / "g.jpg"
+        query_img.write_bytes(b"jpeg")
+        gallery_img.write_bytes(b"jpeg")
+        query = ReIDSplit(
+            image_paths=[str(query_img)],
+            pids=np.array([1]),
+            camids=np.array([0]),
+        )
+        gallery = ReIDSplit(
+            image_paths=[str(gallery_img)],
+            pids=np.array([1]),
+            camids=np.array([1]),
+        )
+
+        class _Encoder:
+            def __init__(self) -> None:
+                self.calls: list[list[str]] = []
+
+            def extract_features_from_paths(
+                self,
+                image_paths: list[str],
+                *,
+                batch_size: int = 64,
+                normalize: bool = True,
+            ) -> np.ndarray:
+                self.calls.append(list(image_paths))
+                return np.ones((len(image_paths), 2), dtype=np.float32)
+
+        encoder = _Encoder()
+        provided_query = np.array([[0.0, 1.0]], dtype=np.float32)
+        result = ReIDEvaluator(encoder).evaluate(
+            query,
+            gallery,
+            query_embeddings=provided_query,
+            verbose=False,
+        )
+        assert encoder.calls == [[str(gallery_img)]]
+        np.testing.assert_array_equal(result.query_embeddings, provided_query)
+
+
 class TestMarket1501Loader:
     def test_load_market1501_from_temp_tree(self, tmp_path) -> None:
         from trackers.core.reid.eval.datasets import (

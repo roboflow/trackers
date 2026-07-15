@@ -85,26 +85,31 @@ class ReIDEvaluator:
             verbose: Log progress when ``True``.
             distance: ``"cosine"`` or ``"euclidean"``.
             query_embeddings: Optional pre-extracted raw query embeddings.
+                When omitted, query embeddings are extracted from ``query``.
             gallery_embeddings: Optional pre-extracted raw gallery embeddings.
+                When omitted, gallery embeddings are extracted from ``gallery``.
             return_distmat: Return the distance matrix (set ``False`` to save memory).
 
         Returns:
             :class:`ReIDResult`.
         """
-        if query_embeddings is None or gallery_embeddings is None:
+        if query_embeddings is None:
             if verbose:
                 logger.info("Extracting query embeddings (%s images)…", len(query))
             q_embs = self._model.extract_features_from_paths(
                 query.image_paths, batch_size=self._batch_size, normalize=False
             )
+        else:
+            q_embs = query_embeddings
 
+        if gallery_embeddings is None:
             if verbose:
                 logger.info("Extracting gallery embeddings (%s images)…", len(gallery))
             g_embs = self._model.extract_features_from_paths(
                 gallery.image_paths, batch_size=self._batch_size, normalize=False
             )
         else:
-            q_embs, g_embs = query_embeddings, gallery_embeddings
+            g_embs = gallery_embeddings
 
         if verbose:
             logger.info("Computing distance matrix (%s)…", distance)
