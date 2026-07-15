@@ -277,9 +277,7 @@ class TestLoaders:
             tmp_path = f.name
         try:
             torch.save(wrapped, tmp_path)
-            report = load_state_dict_for_architecture(
-                model, tmp_path, torch.device("cpu"), FASTREID_SBS_ARCHITECTURE
-            )
+            report = load_state_dict_for_architecture(model, tmp_path, torch.device("cpu"), FASTREID_SBS_ARCHITECTURE)
             assert report.matched == report.total
             assert report.matched_fraction == 1.0
         finally:
@@ -312,9 +310,7 @@ class TestLoaders:
             tmp_path = f.name
         try:
             torch.save(wrapped, tmp_path)
-            report = load_state_dict_for_architecture(
-                model, tmp_path, torch.device("cpu"), FASTREID_SBS_ARCHITECTURE
-            )
+            report = load_state_dict_for_architecture(model, tmp_path, torch.device("cpu"), FASTREID_SBS_ARCHITECTURE)
             assert report.matched == report.total
             assert model.pool.p.item() == pytest.approx(mot17_gem_p)
         finally:

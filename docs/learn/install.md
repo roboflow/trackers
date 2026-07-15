@@ -77,6 +77,7 @@ The `detection` extra installs `inference-models`, enabling the CLI to run detec
 ### ReID (BoT-SORT appearance)
 
 The `reid` extra installs PyTorch, timm, Hugging Face Hub, safetensors, Pillow, and gdown for ReID model loading (OSNet, FastReID SBS, and `timm:` backbones) and BoT-SORT appearance association.
+
 === "pip"
 
     ```bash
