@@ -40,6 +40,12 @@ pip install git+https://github.com/roboflow/trackers.git
 
 For more options, see the [install guide](https://trackers.roboflow.com/develop/learn/install/).
 
+Optional appearance ReID models:
+
+```bash
+pip install 'trackers[reid]'
+```
+
 [![Watch: Building Real-Time Multi-Object Tracking with RF-DETR and Trackers](https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/roboflow-piotr-rf-detr-trackers-v1b-callout.png)](https://www.youtube.com/watch?v=u0k2dTZ0vfs)
 
 ## Quick Start
