@@ -244,7 +244,30 @@ class TestModelSmoke:
         embs = model.extract_features(dets, frame)
         assert embs.shape[0] == 1
         assert embs.dtype == np.float32
-        # Verify L2 normalization (default normalize_embeddings=True)
+        # Default: raw embeddings (cosine association owns L2)
+        norms = np.linalg.norm(embs, axis=1)
+        assert not np.allclose(norms, np.ones_like(norms), atol=1e-5)
+
+    def test_extract_features_optional_l2_normalize(self) -> None:
+        import numpy as np
+        import supervision as sv
+        import torch
+        import torch.nn as nn
+
+        from trackers.core.reid.model import ReIDModel
+        from trackers.core.reid.models.preprocessing import ReIDPreprocessing
+
+        class _TinyEncoder(nn.Module):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return x.flatten(1)[:, :16]
+
+        device = torch.device("cpu")
+        preprocessing = ReIDPreprocessing(normalize_embeddings=True)
+        model = ReIDModel(_TinyEncoder(), device, preprocessing)
+
+        frame = np.zeros((128, 128, 3), dtype=np.uint8)
+        dets = sv.Detections(xyxy=np.array([[0, 0, 64, 64]], dtype=np.float32))
+        embs = model.extract_features(dets, frame)
         norms = np.linalg.norm(embs, axis=1)
         np.testing.assert_allclose(norms, np.ones_like(norms), atol=1e-5)
 
@@ -302,8 +325,10 @@ class TestModelSmoke:
         embs = model.extract_features(dets, frame)
         assert embs.ndim == 2
         assert embs.shape[0] == 1
+        assert embs.dtype == np.float32
+        # Default preprocessing leaves embeddings un-normalised.
         norms = np.linalg.norm(embs, axis=1)
-        np.testing.assert_allclose(norms, np.ones_like(norms), atol=1e-5)
+        assert not np.allclose(norms, np.ones_like(norms), atol=1e-5)
 
 
 # ---------------------------------------------------------------------------

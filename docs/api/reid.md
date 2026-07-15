@@ -20,9 +20,9 @@ and appearance helpers). Tracker association wiring is documented with BoT-SORT.
 | `architectures/`                    | Build a backbone (`osnet_*`, `timm:<name>`, or a raw `nn.Module`).                                             |
 | `models/registry.py`                | Curated aliases and `reid_config.json` → `ModelCard` (architecture, weights, preprocessing, optional warning). |
 | `models/loaders.py`                 | Fetch and load checkpoint bytes (`hf://`, `gd://`, local) into a module.                                       |
-| `models/preprocessing.py`           | Crop resize / colour / embedding L2 contract.                                                                  |
+| `models/preprocessing.py`           | Crop resize / colour; optional embedding L2 (off by default).                                                  |
 | `model.py`                          | Public facade: `ReIDModel.from_pretrained` / `save_pretrained` / `extract_features`.                           |
-| `appearance.py` / `feature_bank.py` | Association helpers (cosine similarity, per-track EMA).                                                        |
+| `appearance.py` / `feature_bank.py` | Association helpers (cosine owns L2; per-track EMA stores raw).                                                |
 | `eval/`                             | Gallery metrics and Market-1501 / MSMT17 loaders.                                                              |
 | `encoder.py`                        | Lightweight protocols for custom encoders.                                                                     |
 

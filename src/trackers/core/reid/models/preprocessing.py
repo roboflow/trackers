@@ -31,14 +31,14 @@ ResizeMode = Literal["stretch", "letterbox"]
 
 @dataclass(frozen=True)
 class ReIDPreprocessing:
-    """Crop resize/normalisation and optional L2-normalised embeddings."""
+    """Crop resize/normalisation and optional embedding L2 (off by default)."""
 
     input_size: tuple[int, int] = REID_INPUT_SIZE
     mean: tuple[float, float, float] = IMAGENET_MEAN
     std: tuple[float, float, float] = IMAGENET_STD
     interpolation: str = "bilinear"
     to_rgb: bool = True
-    normalize_embeddings: bool = True
+    normalize_embeddings: bool = False
     resize_mode: ResizeMode = "stretch"
     pad_value: int = LETTERBOX_PAD_VALUE
 

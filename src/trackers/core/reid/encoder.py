@@ -25,7 +25,7 @@ class ReIDEncoder(Protocol):
     """
 
     def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
-        """Return L2-normalised embeddings for each detection box."""
+        """Return appearance embeddings for each detection box."""
         ...
 
 
@@ -42,7 +42,7 @@ class ReIDPathEncoder(Protocol):
         image_paths: Sequence[str],
         *,
         batch_size: int = 64,
-        normalize: bool = True,
+        normalize: bool = False,
     ) -> np.ndarray:
         """Embed images read from disk."""
         ...

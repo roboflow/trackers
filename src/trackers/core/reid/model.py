@@ -222,16 +222,18 @@ class ReIDModel:
         image_paths: list[str],
         *,
         batch_size: int = 64,
-        normalize: bool = True,
+        normalize: bool = False,
     ) -> np.ndarray:
         """Extract embeddings from pre-cropped image paths (evaluation use).
 
         For bbox crops from a video frame, use :meth:`extract_features`.
+        Cosine association L2-normalises at compare time; leave ``normalize``
+        off unless a caller needs unit vectors explicitly.
 
         Args:
             image_paths: Paths to RGB-ready crop images.
             batch_size: Images per forward pass.
-            normalize: L2-normalise embeddings when ``True`` (default).
+            normalize: L2-normalise embeddings when ``True`` (default ``False``).
 
         Returns:
             Float32 array of shape ``(N, D)``.
@@ -270,7 +272,11 @@ class ReIDModel:
         detections: sv.Detections,
         frame: np.ndarray,
     ) -> np.ndarray:
-        """Extract L2-normalised appearance embeddings for each detection.
+        """Extract appearance embeddings for each detection.
+
+        Embeddings are raw backbone outputs by default. Set
+        ``preprocessing.normalize_embeddings=True`` for unit vectors; cosine
+        association still L2-normalises at compare time either way.
 
         Args:
             detections: Detections whose ``xyxy`` boxes define the crops.

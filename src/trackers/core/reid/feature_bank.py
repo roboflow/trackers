@@ -16,8 +16,9 @@ _NORM_EPS = 1e-12
 class FeatureBank:
     """EMA-smoothed appearance embedding for a single track.
 
-    Every ingested vector is L2-normalised (``eps`` floor on the norm, same
-    idea as ``torch.nn.functional.normalize``).
+    Embeddings are stored as raw finite vectors. L2 normalisation for cosine
+    comparison is owned by
+    :func:`~trackers.core.reid.appearance.appearance_similarity`.
 
     Args:
         alpha: EMA momentum in ``[0, 1]`` (``0.9`` default).
@@ -31,7 +32,7 @@ class FeatureBank:
 
     @property
     def feature(self) -> np.ndarray | None:
-        """Current L2-normalised embedding, or ``None`` if never updated."""
+        """Current stored embedding, or ``None`` if never updated."""
         return None if self._feature is None else self._feature.copy()
 
     @property
@@ -41,7 +42,7 @@ class FeatureBank:
 
     @staticmethod
     def normalize_embedding(embedding: np.ndarray) -> np.ndarray:
-        """Return an L2-normalised 1-D vector."""
+        """Return an L2-normalised 1-D vector (eps floor on the norm)."""
         flat = np.asarray(embedding, dtype=np.float64).reshape(-1)
         if flat.size == 0:
             raise ValueError("embedding must be non-empty")
@@ -50,21 +51,32 @@ class FeatureBank:
         norm = float(np.linalg.norm(flat))
         return (flat / max(norm, _NORM_EPS)).astype(np.float32)
 
+    @staticmethod
+    def _require_embedding(embedding: np.ndarray) -> np.ndarray:
+        """Return a finite 1-D float32 vector without L2-normalising."""
+        flat = np.asarray(embedding, dtype=np.float32).reshape(-1)
+        if flat.size == 0:
+            raise ValueError("embedding must be non-empty")
+        if not np.all(np.isfinite(flat)):
+            raise ValueError("embedding must contain only finite values")
+        return flat
+
     def update(self, embedding: np.ndarray) -> None:
-        """Blend a normalised *embedding* into the stored feature."""
-        normalized = self.normalize_embedding(embedding)
+        """Blend *embedding* into the stored feature (no L2 normalisation)."""
+        cleaned = self._require_embedding(embedding)
 
         if self._feature is None:
-            self._feature = normalized.copy()
+            self._feature = cleaned.copy()
             return
 
-        if self._feature.shape != normalized.shape:
+        if self._feature.shape != cleaned.shape:
             raise ValueError(
-                f"embedding shape {normalized.shape} does not match stored feature shape {self._feature.shape}"
+                f"embedding shape {cleaned.shape} does not match stored feature shape {self._feature.shape}"
             )
 
-        blended = self._alpha * self._feature + (1.0 - self._alpha) * normalized
-        self._feature = self.normalize_embedding(blended)
+        self._feature = (self._alpha * self._feature + (1.0 - self._alpha) * cleaned).astype(
+            np.float32
+        )
 
     def reset(self) -> None:
         """Clear the stored feature."""

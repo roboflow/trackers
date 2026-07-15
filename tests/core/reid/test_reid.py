@@ -22,16 +22,16 @@ import pytest
 
 
 class TestFeatureBank:
-    def test_first_update_normalizes(self) -> None:
+    def test_first_update_stores_raw_embedding(self) -> None:
         from trackers.core.reid.feature_bank import FeatureBank
 
         bank = FeatureBank(alpha=0.9)
         bank.update(np.array([3.0, 4.0], dtype=np.float32))
         feature = bank.feature
         assert feature is not None
-        np.testing.assert_allclose(np.linalg.norm(feature), 1.0, atol=1e-6)
+        np.testing.assert_allclose(feature, [3.0, 4.0], atol=1e-6)
 
-    def test_second_update_blends_then_renormalizes(self) -> None:
+    def test_second_update_blends_without_renormalizing(self) -> None:
         from trackers.core.reid.feature_bank import FeatureBank
 
         alpha = 0.75
@@ -40,10 +40,8 @@ class TestFeatureBank:
         bank.update(np.array([0.0, 1.0], dtype=np.float32))
         feature = bank.feature
         assert feature is not None
-        expected = np.array([alpha, 1.0 - alpha], dtype=np.float64)
-        expected = expected / np.linalg.norm(expected)
-        np.testing.assert_allclose(feature, expected.astype(np.float32), atol=1e-6)
-        np.testing.assert_allclose(np.linalg.norm(feature), 1.0, atol=1e-6)
+        expected = np.array([alpha, 1.0 - alpha], dtype=np.float32)
+        np.testing.assert_allclose(feature, expected, atol=1e-6)
 
     def test_zero_embedding_is_accepted(self) -> None:
         from trackers.core.reid.feature_bank import FeatureBank
