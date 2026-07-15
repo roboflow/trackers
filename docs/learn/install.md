@@ -78,11 +78,23 @@ The `detection` extra installs `inference-models`, enabling the CLI to run detec
 
 The `reid` extra installs PyTorch, timm, Hugging Face Hub, safetensors, Pillow, and gdown for ReID model loading (OSNet, FastReID SBS, and `timm:` backbones).
 
-```bash
-pip install "trackers[reid]"
-```
+=== "pip"
 
-Use programmatically with `ReIDModel.from_pretrained(...)`.
+    ```bash
+    pip install "trackers[reid]"
+    ```
+
+=== "uv"
+
+    ```bash
+    uv pip install "trackers[reid]"
+    ```
+
+Use programmatically with `ReIDModel.from_pretrained(...)` for embeddings and gallery evaluation.
+
+!!! tip "GPU Acceleration"
+
+    For GPU support, ensure PyTorch is installed with CUDA or MPS.
 
 ---
 

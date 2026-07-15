@@ -116,12 +116,11 @@ class ReIDModel:
         """
         resolved_device = _select_device(device)
 
-        # §2.2 step 1: no source and no architecture → use the default alias.
+        # No source and no architecture → use the default curated alias.
         if source is None and architecture is None:
             source = DEFAULT_MODEL
 
-        # §2.2 steps 2-3: resolve a ModelCard from an alias or config-bearing
-        # directory/repo.
+        # Resolve a ModelCard from an alias or config-bearing directory/repo.
         card = None
         if source is not None:
             card = resolve_model_card(source)
@@ -133,7 +132,7 @@ class ReIDModel:
             resolved_warning = card.domain_warning
 
         elif source is None:
-            # §2.2 step 5: architecture-only; no external weights loaded.
+            # Architecture-only build; no external weights loaded.
             if architecture is None:
                 raise ValueError("architecture is required when source is None")
             resolved_arch = architecture
@@ -146,7 +145,7 @@ class ReIDModel:
             resolved_warning = None
 
         else:
-            # §2.2 step 4: bare weights file — architecture is required.
+            # Bare weights file — architecture is required.
             if architecture is None:
                 raise ValueError(
                     f"Cannot load {source!r}: it appears to be a bare weights "
