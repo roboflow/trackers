@@ -102,8 +102,7 @@ class ReIDEvaluator:
         else:
             if query_embeddings.shape[0] != len(query):
                 raise ValueError(
-                    f"query_embeddings rows ({query_embeddings.shape[0]}) must "
-                    f"match query length ({len(query)})"
+                    f"query_embeddings rows ({query_embeddings.shape[0]}) must match query length ({len(query)})"
                 )
             q_embs = query_embeddings
 
