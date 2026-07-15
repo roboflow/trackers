@@ -15,6 +15,7 @@ from trackers.core.reid.models.loaders import (
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (
     DEFAULT_MODEL,
+    FASTREID_MOT17_SBS50,
     ModelCard,
     default_preprocessing_for_architecture,
     load_model_config,
@@ -24,6 +25,7 @@ from trackers.core.reid.models.registry import (
 
 __all__ = [
     "DEFAULT_MODEL",
+    "FASTREID_MOT17_SBS50",
     "KeyReport",
     "ModelCard",
     "ReIDPreprocessing",

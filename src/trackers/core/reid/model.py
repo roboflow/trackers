@@ -19,11 +19,12 @@ import torch.nn as nn
 from PIL import Image as PILImage
 from safetensors.torch import save_file
 
-from trackers.core.reid.architectures import build_architecture
+from trackers.core.reid.architectures import build_architecture, checkpoint_remap_for_architecture
 from trackers.core.reid.models.loaders import load_state_dict_for_architecture, resolve_weights
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (
     DEFAULT_MODEL,
+    FASTREID_MOT17_SBS50,
     ModelCard,
     default_preprocessing_for_architecture,
     resolve_model_card,
@@ -178,13 +179,14 @@ class ReIDModel:
         if resolved_weights is not None:
             local_path = resolve_weights(resolved_weights)
             arch_name = resolved_arch if isinstance(resolved_arch, str) else ""
-            required_fraction = 1.0 if source == DEFAULT_MODEL else None
+            required_fraction = 1.0 if source in (DEFAULT_MODEL, FASTREID_MOT17_SBS50) else None
             report = load_state_dict_for_architecture(
                 backbone,
                 local_path,
                 resolved_device,
                 arch_name,
                 required_match_fraction=required_fraction,
+                remap=checkpoint_remap_for_architecture(arch_name) if arch_name else None,
             )
             logger.info("ReIDModel weights (%s): %s", resolved_weights, report.summary())
 

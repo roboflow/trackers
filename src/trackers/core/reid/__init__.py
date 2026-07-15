@@ -9,12 +9,15 @@ from __future__ import annotations
 import importlib
 
 __all__ = [
+    "FASTREID_MOT17_SBS50",
+    "FeatureBank",
     "ReIDEvaluator",
     "ReIDMetrics",
     "ReIDModel",
     "ReIDPreprocessing",
     "ReIDResult",
     "ReIDSplit",
+    "appearance_similarity",
     "compute_reid_metrics",
     "load_market1501",
     "load_msmt17",
@@ -37,13 +40,16 @@ _REID_OPTIONAL_ROOTS = frozenset(
 )
 
 # NumPy-only symbols — safe to import without torch/timm/HF.
+from trackers.core.reid.appearance import appearance_similarity
 from trackers.core.reid.eval.datasets import ReIDSplit, load_market1501, load_msmt17
 from trackers.core.reid.eval.evaluator import ReIDEvaluator, ReIDResult
 from trackers.core.reid.eval.metrics import ReIDMetrics, compute_reid_metrics
+from trackers.core.reid.feature_bank import FeatureBank
 
 _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "ReIDModel": ("trackers.core.reid.model", "ReIDModel"),
     "ReIDPreprocessing": ("trackers.core.reid.models.preprocessing", "ReIDPreprocessing"),
+    "FASTREID_MOT17_SBS50": ("trackers.core.reid.models.registry", "FASTREID_MOT17_SBS50"),
 }
 
 

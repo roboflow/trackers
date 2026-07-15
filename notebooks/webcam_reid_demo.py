@@ -52,8 +52,7 @@ import supervision as sv
 
 from trackers import BoTSORTTracker
 from trackers.core.reid import ReIDModel
-from trackers.core.reid.distance import appearance_similarity
-from trackers.core.reid.extraction import extract_detection_embeddings
+from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
 from trackers.core.reid.models.registry import DEFAULT_MODEL
 from trackers.utils.iou import IoU
 

@@ -15,7 +15,8 @@ from trackers.core.base import BaseTracker
 from trackers.core.botsort.fusion import fuse_botsort_reid_association
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-from trackers.core.reid.protocols import ReIDEncoder
+from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.core.reid.encoder import ReIDEncoder
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -86,7 +87,7 @@ class BoTSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
-        reid_model: Optional :class:`~trackers.core.reid.protocols.ReIDEncoder`
+        reid_model: Optional :class:`~trackers.core.reid.encoder.ReIDEncoder`
             for appearance-based association in the first high-confidence stage.
             :class:`~trackers.core.reid.model.ReIDModel` satisfies this protocol.
             Requires ``frame`` in :meth:`update`. When ``None`` (default),
@@ -285,8 +286,6 @@ class BoTSORTTracker(BaseTracker):
             if frame is None:
                 raise ValueError(f"{type(self).__name__}.update() requires frame when reid_model is set.")
             if len(high_boxes) > 0:
-                from trackers.core.reid.extraction import extract_detection_embeddings
-
                 det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
 
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
@@ -298,8 +297,6 @@ class BoTSORTTracker(BaseTracker):
         iou_sim_fused = _fuse_score(iou_sim_raw, high_scores)
 
         if det_embeddings is not None and len(strack_pool) > 0:
-            from trackers.core.reid.distance import appearance_similarity
-
             track_feats = [
                 t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
                 for t in strack_pool
@@ -367,8 +364,6 @@ class BoTSORTTracker(BaseTracker):
             iou_sim_fused = _fuse_score(iou_sim_raw, uh_scores)
 
             if det_embeddings is not None:
-                from trackers.core.reid.distance import appearance_similarity
-
                 uh_embeddings = det_embeddings[unmatched_high_list]
                 track_feats = [
                     t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
