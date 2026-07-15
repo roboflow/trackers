@@ -6,21 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### 🚀 Added
-
-- **Optional `trackers[reid]` extra** — torch/timm/Hugging Face ReID stack plus `safetensors`, `Pillow`, and `gdown` for curated checkpoints (OSNet and `timm:` backbones).
-- **Standalone `ReIDModel`** — architecture-agnostic loading (`from_pretrained` / `save_pretrained`), OSNet + `timm:` backbones, and curated alias `osnet_x1_0_msmt17_combineall`.
-- **ReID evaluation helpers** — Market-1501 / MSMT17 loaders, gallery `pid=0` distractor handling, safer CMC padding, and `ReIDMetrics.mean_average_precision`.
-- **FeatureBank + appearance distance** — per-track EMA embeddings with L2 normalisation; incompatible shapes raise.
-
-### 🌱 Changed
-
-- **Lazy ReID imports** — `import trackers` no longer requires torch; `ReIDModel` loads on first access with a `trackers[reid]` install hint.
-
-### 🔧 Fixed
-
-- **ReID loaders** — preserve Hugging Face errors, `weights_only=True` when supported, atomic `gd://` cache writes, stricter curated-alias load validation.
-
 ## [2.6.0] — 2026-07-08
 
 ### 🚀 Added
