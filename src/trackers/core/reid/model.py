@@ -47,7 +47,7 @@ def _clamp_xyxy_to_frame(box: np.ndarray, height: int, width: int) -> np.ndarray
 
 
 def _select_device(device: str) -> torch.device:
-    """Resolve ``"auto"`` or a device string to a :class:`torch.device`."""
+    """Resolve ``"auto"`` or a device string to a ``torch.device``."""
     if device == "auto":
         return _best_device()
     return torch.device(device)
@@ -98,7 +98,7 @@ class ReIDModel:
         preprocessing: ReIDPreprocessing | None = None,
         device: str = "auto",
     ) -> ReIDModel:
-        """Build a :class:`ReIDModel` from a checkpoint source.
+        """Build a ``ReIDModel`` from a checkpoint source.
 
         ``source`` may be a curated alias, ``hf://`` repo or file, a local path
         or directory with ``reid_config.json``, or ``None`` for the default
@@ -111,7 +111,7 @@ class ReIDModel:
             device: Compute device (``"auto"`` picks the best available).
 
         Returns:
-            Loaded :class:`ReIDModel`.
+            Loaded ``ReIDModel``.
         """
         resolved_device = _select_device(device)
 
@@ -226,7 +226,7 @@ class ReIDModel:
     ) -> np.ndarray:
         """Extract embeddings from pre-cropped image paths (evaluation use).
 
-        For bbox crops from a video frame, use :meth:`extract_features`.
+        For bbox crops from a video frame, use ``extract_features``.
 
         Args:
             image_paths: Paths to RGB-ready crop images.

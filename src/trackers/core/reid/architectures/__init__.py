@@ -6,7 +6,7 @@
 
 """Re-ID backbone builders (OSNet and ``timm:`` models).
 
-Register new network topologies here via :func:`build_architecture`. Curated
+Register new network topologies here via ``build_architecture``. Curated
 pretrained *aliases* (short names → weights + preprocessing) live in
 ``trackers.core.reid.models.registry``, not in this package.
 """

@@ -278,7 +278,7 @@ def build_osnet(variant: str = "x1_0", num_classes: int = 0) -> OSNet:
             (default) for inference-only models with no classifier.
 
     Returns:
-        An initialised :class:`OSNet` in training mode.
+        An initialised ``OSNet`` in training mode.
 
     Raises:
         ValueError: If *variant* is not one of the supported values.

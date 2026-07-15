@@ -63,7 +63,7 @@ def compute_reid_metrics(
         gallery_junk_pids: Gallery person IDs treated as junk during ranking.
 
     Returns:
-        :class:`ReIDMetrics` with scores as percentages.
+        ``ReIDMetrics`` with scores as percentages.
     """
     num_q, num_g = distmat.shape
 

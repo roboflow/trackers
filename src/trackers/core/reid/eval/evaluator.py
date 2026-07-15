@@ -54,8 +54,7 @@ class ReIDEvaluator:
     """Run embedding extraction and retrieval metrics for a Re-ID encoder.
 
     Args:
-        model: Encoder implementing :class:`~trackers.core.reid.encoder.ReIDPathEncoder`
-            (for example :class:`~trackers.core.reid.model.ReIDModel`).
+        model: Encoder implementing ``ReIDPathEncoder`` (for example ``ReIDModel``).
         batch_size: Images per forward pass.
     """
 
@@ -91,7 +90,7 @@ class ReIDEvaluator:
             return_distmat: Return the distance matrix (set ``False`` to save memory).
 
         Returns:
-            :class:`ReIDResult`.
+            ``ReIDResult``.
         """
         if query_embeddings is None:
             if verbose:

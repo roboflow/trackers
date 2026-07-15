@@ -23,7 +23,7 @@ class ReIDSplit:
     """Query or gallery split: image paths, person IDs, and camera IDs.
 
     ``gallery_junk_pids`` controls which gallery person IDs are excluded from
-    ranking during retrieval evaluation (see :func:`compute_reid_metrics`).
+    ranking during retrieval evaluation (see ``compute_reid_metrics``).
     """
 
     image_paths: list[str]
@@ -60,7 +60,7 @@ def load_msmt17(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
         root: Path to the MSMT17 directory.
 
     Returns:
-        ``(query, gallery)`` :class:`ReIDSplit` pair.
+        ``(query, gallery)`` ``ReIDSplit`` pair.
     """
     root = Path(root)
     if not root.exists():
@@ -117,13 +117,13 @@ def load_market1501(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
     """Load Market-1501 query and gallery splits from *root*.
 
     Expects ``query/`` and ``bounding_box_test/``. Person and camera IDs are
-    parsed from filenames (see :func:`_parse_market_filename`).
+    parsed from filenames (see ``_parse_market_filename``).
 
     Args:
         root: Path to the Market-1501 directory.
 
     Returns:
-        ``(query, gallery)`` :class:`ReIDSplit` pair.
+        ``(query, gallery)`` ``ReIDSplit`` pair.
     """
     root = Path(root)
     if not root.exists():

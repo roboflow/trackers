@@ -72,9 +72,8 @@ A new weight file for an architecture that already exists only needs step 4
 
 ## Encoders
 
-:class:`~trackers.core.reid.eval.evaluator.ReIDEvaluator` and custom encoders
-can use these lightweight interfaces instead of the full
-:class:`~trackers.core.reid.model.ReIDModel` stack:
+``ReIDEvaluator`` and custom encoders can use these lightweight interfaces
+instead of the full ``ReIDModel`` stack:
 
 ::: trackers.core.reid.encoder.ReIDEncoder
 

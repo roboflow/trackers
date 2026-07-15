@@ -53,10 +53,10 @@ class ReIDPreprocessing:
         )
 
     def resize_crop(self, crop: np.ndarray) -> np.ndarray:
-        """Resize an ``HxWxC`` crop to :attr:`input_size` using OpenCV.
+        """Resize an ``HxWxC`` crop to ``input_size`` using OpenCV.
 
         ``stretch`` ignores aspect ratio (``cv2.resize`` to the target size).
-        ``letterbox`` preserves aspect ratio and pads with :attr:`pad_value`.
+        ``letterbox`` preserves aspect ratio and pads with ``pad_value``.
         """
         if crop.size == 0:
             target_h, target_w = self.input_size
@@ -83,7 +83,7 @@ class ReIDPreprocessing:
         return cv2.resize(crop, (target_w, target_h), interpolation=interpolation)
 
     def build_transform(self):
-        """Tensor normalisation for a crop already at :attr:`input_size` (RGB PIL in)."""
+        """Tensor normalisation for a crop already at ``input_size`` (RGB PIL in)."""
         return Compose(
             [
                 ToTensor(),

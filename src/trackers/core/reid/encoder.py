@@ -18,10 +18,10 @@ import supervision as sv
 class ReIDEncoder(Protocol):
     """Minimal encoder surface for tracker appearance association.
 
-    Any object implementing :meth:`extract_features` may be used as a
+    Any object implementing ``extract_features`` may be used as a
     ``reid_model`` by trackers that support appearance matching.
-    The concrete :class:`~trackers.core.reid.model.ReIDModel` satisfies this
-    interface but is not required for tests or custom encoders.
+    The concrete ``ReIDModel`` satisfies this interface but is not required
+    for tests or custom encoders.
     """
 
     def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
@@ -32,9 +32,8 @@ class ReIDEncoder(Protocol):
 class ReIDPathEncoder(Protocol):
     """Minimal encoder surface for dataset / retrieval evaluation.
 
-    :class:`~trackers.core.reid.eval.evaluator.ReIDEvaluator` accepts any object
-    that can embed image paths in batches. :class:`~trackers.core.reid.model.ReIDModel`
-    implements this interface.
+    ``ReIDEvaluator`` accepts any object that can embed image paths in batches.
+    ``ReIDModel`` implements this interface.
     """
 
     def extract_features_from_paths(

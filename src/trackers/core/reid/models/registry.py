@@ -10,13 +10,13 @@ This module answers *which pretrained model to load*, not *how to build a
 backbone*.
 
 - ``ALIASES`` maps short names (for example
-  ``osnet_x1_0_msmt17_combineall``) to a :class:`ModelCard`.
-- A :class:`ModelCard` holds the four load axes: architecture name, weights
-  source (``hf://`` / ``gd://`` / local path), :class:`ReIDPreprocessing`, and
+  ``osnet_x1_0_msmt17_combineall``) to a ``ModelCard``.
+- A ``ModelCard`` holds the four load axes: architecture name, weights
+  source (``hf://`` / ``gd://`` / local path), ``ReIDPreprocessing``, and
   an optional domain warning.
-- :func:`resolve_model_card` looks up an alias, a local
+- ``resolve_model_card`` looks up an alias, a local
   ``save_pretrained`` directory, or an HF repo that ships ``reid_config.json``.
-- :func:`save_model_config` / :func:`load_model_config` round-trip the card for
+- ``save_model_config`` / ``load_model_config`` round-trip the card for
   self-describing checkpoints.
 
 Architecture construction lives in ``trackers.core.reid.architectures``.
@@ -58,7 +58,7 @@ _DOMAIN_WARNING = (
 # ---------------------------------------------------------------------------
 
 DEFAULT_MODEL = "osnet_x1_0_msmt17_combineall"
-"""Curated alias used when :meth:`ReIDModel.from_pretrained` gets no ``source``."""
+"""Curated alias used when ``ReIDModel.from_pretrained`` gets no ``source``."""
 
 
 # Default preprocessing for registered architectures (bare `.pth` loads, no ModelCard).
@@ -135,7 +135,7 @@ def resolve_model_card(source: str) -> ModelCard | None:
 
 
 def load_model_config(directory_or_repo: str) -> ModelCard:
-    """Load a :class:`ModelCard` from ``reid_config.json`` (and local ``weights.safetensors`` if present)."""
+    """Load a ``ModelCard`` from ``reid_config.json`` (and local ``weights.safetensors`` if present)."""
     if directory_or_repo.startswith("hf://"):
         return _load_hf_repo_config(directory_or_repo)
 
@@ -193,7 +193,7 @@ def _load_hf_repo_config(hf_repo_url: str) -> ModelCard:
 
 
 def _parse_config_file(config_path: str, *, weights_source: str | None) -> ModelCard:
-    """Parse a ``reid_config.json`` file into a :class:`ModelCard`."""
+    """Parse a ``reid_config.json`` file into a ``ModelCard``."""
     with open(config_path) as f:
         data = json.load(f)
 
