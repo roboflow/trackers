@@ -14,25 +14,34 @@ import numpy as np
 
 
 @dataclass
-class ReidMetrics:
+class ReIDMetrics:
     """CMC / mAP / mINP scores (percentages) for one evaluation run."""
 
-    map: float
+    mean_average_precision: float
     rank1: float
     rank5: float
     rank10: float
     minp: float
     num_queries: int
 
+    @property
+    def map(self) -> float:
+        """Backward-compatible alias for :attr:`mean_average_precision`."""
+        return self.mean_average_precision
+
     def __str__(self) -> str:
         return (
-            f"mAP: {self.map:.1f}%  "
+            f"mAP: {self.mean_average_precision:.1f}%  "
             f"Rank-1: {self.rank1:.1f}%  "
             f"Rank-5: {self.rank5:.1f}%  "
             f"Rank-10: {self.rank10:.1f}%  "
             f"mINP: {self.minp:.1f}%  "
             f"(n={self.num_queries})"
         )
+
+
+# Backward-compatible alias (notebooks / early API).
+ReidMetrics = ReIDMetrics
 
 
 def compute_reid_metrics(
@@ -42,10 +51,15 @@ def compute_reid_metrics(
     q_camids: np.ndarray,
     g_camids: np.ndarray,
     max_rank: int = 10,
-) -> ReidMetrics:
+    *,
+    gallery_junk_pids: frozenset[int] = frozenset({-1}),
+) -> ReIDMetrics:
     """Compute CMC, mAP, and mINP from a query×gallery distance matrix.
 
-    Excludes same-(pid, camid) gallery matches and ``pid == -1`` junk items.
+    Excludes same-(pid, camid) gallery matches and gallery junk person IDs
+    (``pid in gallery_junk_pids``). Market-1501 gallery distractors use
+    ``gallery_junk_pids=frozenset({-1, 0})``; datasets where ``pid=0`` is
+    valid should keep the default ``{-1}`` only.
 
     Args:
         distmat: Distance matrix ``(num_queries, num_gallery)`` (lower = closer).
@@ -54,9 +68,10 @@ def compute_reid_metrics(
         q_camids: Query camera IDs.
         g_camids: Gallery camera IDs.
         max_rank: Highest CMC rank to compute.
+        gallery_junk_pids: Gallery person IDs treated as junk during ranking.
 
     Returns:
-        :class:`ReidMetrics` with scores as percentages.
+        :class:`ReIDMetrics` with scores as percentages.
     """
     num_q, num_g = distmat.shape
 
@@ -64,24 +79,26 @@ def compute_reid_metrics(
         raise ValueError("q_pids / q_camids length must match distmat rows.")
     if len(g_pids) != num_g or len(g_camids) != num_g:
         raise ValueError("g_pids / g_camids length must match distmat columns.")
-    if max_rank > num_g:
-        raise ValueError(f"max_rank ({max_rank}) exceeds gallery size ({num_g}).")
+    if max_rank < 1:
+        raise ValueError(f"max_rank must be >= 1, got {max_rank}")
 
     cmc_accumulator = np.zeros(max_rank, dtype=np.float64)
     ap_list: list[float] = []
     inp_list: list[float] = []
 
+    junk_pid_array = np.array(sorted(gallery_junk_pids), dtype=g_pids.dtype) if gallery_junk_pids else np.empty(0)
+
     for q_idx in range(num_q):
         q_pid = q_pids[q_idx]
         q_camid = q_camids[q_idx]
 
-        # Sort gallery indices by ascending distance (closest first).
         order = np.argsort(distmat[q_idx])
         sorted_g_pids = g_pids[order]
         sorted_g_camids = g_camids[order]
 
-        # Junk mask: trivial same-camera matches + Market-1501 distractors.
-        junk = ((sorted_g_pids == q_pid) & (sorted_g_camids == q_camid)) | (sorted_g_pids == -1)
+        junk = (sorted_g_pids == q_pid) & (sorted_g_camids == q_camid)
+        if junk_pid_array.size > 0:
+            junk |= np.isin(sorted_g_pids, junk_pid_array)
         valid = ~junk
 
         sorted_g_pids_valid = sorted_g_pids[valid]
@@ -89,32 +106,40 @@ def compute_reid_metrics(
 
         num_rel = int(matches.sum())
         if num_rel == 0:
-            # No valid positives for this query — skip (happens on corrupted splits).
             continue
 
-        # --- CMC ---
-        # cmc_q[k] = 1 if any correct match in top (k+1).
         cmc_q = np.minimum(matches.cumsum(), 1.0)
-        cmc_accumulator += cmc_q[:max_rank]
+        if len(cmc_q) < max_rank:
+            if len(cmc_q) == 0:
+                continue
+            cmc_q = np.pad(cmc_q, (0, max_rank - len(cmc_q)), constant_values=cmc_q[-1])
+        else:
+            cmc_q = cmc_q[:max_rank]
+        cmc_accumulator += cmc_q
 
-        # --- mAP ---
         num_valid = len(matches)
         precision_at_k = matches.cumsum() / (np.arange(num_valid) + 1)
         ap = float((precision_at_k * matches).sum() / num_rel)
         ap_list.append(ap)
 
-        # --- mINP ---
-        last_true = int(np.where(matches)[0][-1]) + 1  # 1-indexed position
+        last_true = int(np.where(matches)[0][-1]) + 1
         inp_list.append(num_rel / last_true)
 
     n = len(ap_list)
     if n == 0:
-        return ReidMetrics(map=0.0, rank1=0.0, rank5=0.0, rank10=0.0, minp=0.0, num_queries=0)
+        return ReIDMetrics(
+            mean_average_precision=0.0,
+            rank1=0.0,
+            rank5=0.0,
+            rank10=0.0,
+            minp=0.0,
+            num_queries=0,
+        )
 
     cmc = (cmc_accumulator / n) * 100.0
 
-    return ReidMetrics(
-        map=float(np.mean(ap_list)) * 100.0,
+    return ReIDMetrics(
+        mean_average_precision=float(np.mean(ap_list)) * 100.0,
         rank1=float(cmc[0]),
         rank5=float(cmc[min(4, max_rank - 1)]),
         rank10=float(cmc[min(9, max_rank - 1)]),

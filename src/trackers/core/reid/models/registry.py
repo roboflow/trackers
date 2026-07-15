@@ -13,14 +13,11 @@ import os
 from dataclasses import dataclass
 
 from huggingface_hub import hf_hub_download
+from huggingface_hub.utils import EntryNotFoundError, HfHubHTTPError
 
 from trackers.core.reid.architectures import list_architectures
 from trackers.core.reid.architectures.fastreid_sbs import FASTREID_SBS_ARCHITECTURE
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
-
-# ---------------------------------------------------------------------------
-# Default checkpoint URL
-# ---------------------------------------------------------------------------
 
 # OSNet x1.0 trained on MSMT17 with combineall (train + query + gallery).
 # Produces the strongest general-purpose pedestrian features, which is why it
@@ -134,8 +131,8 @@ def resolve_model_card(source: str) -> ModelCard | None:
         if len(parts) == 2:
             try:
                 return _load_hf_repo_config(source)
-            except Exception:
-                return None
+            except (HfHubHTTPError, EntryNotFoundError, OSError, ValueError) as exc:
+                raise RuntimeError(f"Failed to resolve Hugging Face repo config for {source!r}.") from exc
 
     return None
 

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -16,6 +17,7 @@ from dataclasses import dataclass, field
 import torch
 import torch.nn as nn
 from huggingface_hub import hf_hub_download
+from huggingface_hub.utils import EntryNotFoundError, HfHubHTTPError
 from safetensors.torch import load_file
 
 from trackers.core.reid.architectures import checkpoint_remap_for_architecture
@@ -23,10 +25,8 @@ from trackers.core.reid.architectures import checkpoint_remap_for_architecture
 _HF_PREFIX = "hf://"
 _GD_PREFIX = "gd://"
 
-# State-dict key prefixes dropped before matching. Classification heads differ
-# per dataset (num_classes) and are unused at inference — re-ID reads the
-# pre-classifier embedding.
 _DEFAULT_DROP_PREFIXES = ("classifier",)
+_COMMON_KEY_PREFIXES = ("module.", "model.", "encoder.")
 
 
 @dataclass
@@ -75,7 +75,21 @@ def _resolve_hf(source: str) -> str:
     if "@" in repo_id:
         repo_id, revision = repo_id.split("@", 1)
 
-    return hf_hub_download(repo_id=repo_id, filename=filename, revision=revision)
+    try:
+        return hf_hub_download(repo_id=repo_id, filename=filename, revision=revision)
+    except (HfHubHTTPError, EntryNotFoundError, OSError) as exc:
+        raise RuntimeError(
+            f"Failed to download Hugging Face weights from {source!r} "
+            f"(repo_id={repo_id!r}, filename={filename!r})."
+        ) from exc
+
+
+def _validate_downloaded_file(path: str) -> str:
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Downloaded weights file is missing: {path}")
+    if os.path.getsize(path) < 1:
+        raise OSError(f"Downloaded weights file is empty: {path}")
+    return path
 
 
 def _resolve_gd(source: str) -> str:
@@ -91,15 +105,25 @@ def _resolve_gd(source: str) -> str:
     os.makedirs(cache_dir, exist_ok=True)
     path = os.path.join(cache_dir, filename)
     if os.path.exists(path):
-        return path
+        return _validate_downloaded_file(path)
 
     try:
         import gdown
     except ImportError as exc:
-        raise ImportError("Google Drive weights (gd://...) require gdown. Install with:  pip install gdown") from exc
+        raise ImportError("Google Drive weights (gd://...) require gdown. Install with: pip install gdown") from exc
 
-    gdown.download(id=file_id, output=path, quiet=False)
-    return path
+    fd, tmp_path = tempfile.mkstemp(prefix=f"{filename}.", suffix=".part", dir=cache_dir)
+    os.close(fd)
+    try:
+        gdown.download(id=file_id, output=tmp_path, quiet=False)
+        _validate_downloaded_file(tmp_path)
+        os.replace(tmp_path, path)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
+
+    return _validate_downloaded_file(path)
 
 
 def load_state_dict_for_architecture(
@@ -109,16 +133,36 @@ def load_state_dict_for_architecture(
     architecture: str,
     *,
     warn_threshold: float = 0.5,
+    required_match_fraction: float | None = None,
 ) -> KeyReport:
     """Load *path* using the loader appropriate for *architecture*."""
     remap = checkpoint_remap_for_architecture(architecture)
-    return load_state_dict_into(
+    report = load_state_dict_into(
         module,
         path,
         device,
         remap=remap,
         warn_threshold=warn_threshold,
     )
+    if required_match_fraction is not None and report.matched_fraction < required_match_fraction:
+        raise ValueError(
+            f"Checkpoint {path!r} matched only {report.matched_fraction:.0%} of "
+            f"{architecture!r} parameters (required >= {required_match_fraction:.0%}). "
+            f"{report.summary()}"
+        )
+    return report
+
+
+def _strip_common_prefixes(key: str) -> str:
+    stripped = key
+    changed = True
+    while changed:
+        changed = False
+        for prefix in _COMMON_KEY_PREFIXES:
+            if stripped.startswith(prefix):
+                stripped = stripped[len(prefix) :]
+                changed = True
+    return stripped
 
 
 def _read_state_dict(path: str, device: torch.device) -> dict:
@@ -126,10 +170,13 @@ def _read_state_dict(path: str, device: torch.device) -> dict:
     if path.endswith(".safetensors"):
         return load_file(path, device=str(device))
 
-    state_dict = torch.load(path, map_location=device, weights_only=False)
-    # Some checkpoints wrap the tensors in {"state_dict": ...} (or "model").
-    for wrapper_key in ("state_dict", "model"):
-        if isinstance(state_dict, dict) and wrapper_key in state_dict:
+    try:
+        state_dict = torch.load(path, map_location=device, weights_only=True)
+    except TypeError:
+        state_dict = torch.load(path, map_location=device, weights_only=False)
+
+    for wrapper_key in ("state_dict", "model", "encoder"):
+        if isinstance(state_dict, dict) and wrapper_key in state_dict and isinstance(state_dict[wrapper_key], dict):
             state_dict = state_dict[wrapper_key]
             break
     return state_dict
@@ -152,7 +199,7 @@ def load_state_dict_into(
     else:
         cleaned: dict = {}
         for k, v in state_dict.items():
-            key = k[7:] if k.startswith("module.") else k
+            key = _strip_common_prefixes(k)
             if any(key.startswith(p) for p in drop_prefixes):
                 continue
             cleaned[key] = v

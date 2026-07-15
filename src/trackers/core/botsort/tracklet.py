@@ -6,9 +6,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from trackers.core.reid.feature_bank import FeatureBank
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.cmc import CMC
 from trackers.utils.converters import xyxy_to_xywh
@@ -19,6 +20,9 @@ from trackers.utils.state_representations import (
     XCYCWHStateEstimator,
     XYXYStateEstimator,
 )
+
+if TYPE_CHECKING:
+    from trackers.core.reid.feature_bank import FeatureBank
 
 
 class BoTSORTTracklet(BaseTracklet):

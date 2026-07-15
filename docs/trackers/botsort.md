@@ -49,10 +49,61 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 | `minimum_iou_threshold_unconfirmed_assoc` | Minimum IoU when associating unconfirmed tracks.                                                                            | Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.                                                                                                              |
 | `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.                                                                    | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                                                                                                                                 |
 | `enable_cmc`                              | Enables camera motion compensation before association.                                                                      | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                         |
-| `reid_model`                              | Optional ReID model for appearance-based association.                                                                       | Requires `frame` in :meth:`update`. When set, each track stores an EMA feature bank and upstream BoT-SORT min-cost ReID fusion is applied in the first and unconfirmed association stages.                                             |
 | `reid_ema_alpha`                          | EMA momentum for track appearance embeddings.                                                                               | Default `0.9`.                                                                                                                                                                                                                         |
 | `appearance_threshold`                    | Appearance distance gate θ_emb.                                                                                             | Default `0.25`. On MOT17 with a MOT-trained encoder, `0.2` matches the re-ID study Table 8 row ([SCCAI 2025](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf)).                                    |
-| `proximity_threshold`                     | IoU distance gate before appearance is used for active tracks.                                                              | Default `0.5` (IoU > 0.5). Increase to loosen proximity gating.                                                                                                                                                                        |
+| `proximity_threshold`                     | Standard IoU distance gate before appearance is used (always true IoU, independent of `iou=`).                              | Default `0.5` (IoU > 0.5). Increase to loosen proximity gating.                                                                                                                                                                        |
+
+## ReID appearance (optional)
+
+Install the extra first:
+
+```bash
+pip install 'trackers[reid]'
+```
+
+Programmatic BoT-SORT + ReID:
+
+```python
+import cv2
+import supervision as sv
+from trackers import BoTSORTTracker, ReIDModel
+
+reid = ReIDModel.from_pretrained("fastreid_mot17_sbs50", device="auto")
+tracker = BoTSORTTracker(
+    reid_model=reid,
+    appearance_threshold=0.2,
+    proximity_threshold=0.5,
+    reid_ema_alpha=0.9,
+)
+
+cap = cv2.VideoCapture("video.mp4")
+while cap.isOpened():
+    ok, frame_bgr = cap.read()
+    if not ok:
+        break
+    detections = ...  # sv.Detections with xyxy + confidence
+    tracked = tracker.update(detections, frame=frame_bgr)
+```
+
+CLI (requires `--source` so frames are available for embedding extraction):
+
+```bash
+trackers track \
+  --source video.mp4 \
+  --output tracked.mp4 \
+  --tracker botsort \
+  --tracker.reid.enable \
+  --tracker.reid.model fastreid_mot17_sbs50 \
+  --tracker.reid.architecture fastreid_sbs_resnest50 \
+  --tracker.reid.device auto \
+  --tracker.appearance_threshold 0.2 \
+  --tracker.proximity_threshold 0.5 \
+  --tracker.reid_ema_alpha 0.9
+```
+
+For a bare local weights file, pass the matching `--tracker.reid.architecture` (for example `osnet_x1_0`).
+
+`reid_model` is constructed by the CLI from `--tracker.reid.*` flags (not exposed as a raw argparse type).
 
 ## Run on video, webcam, or RTSP stream
 

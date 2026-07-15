@@ -12,12 +12,9 @@ from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
+from trackers.core.botsort.fusion import fuse_botsort_reid_association
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-from trackers.core.reid.distance import appearance_similarity
-from trackers.core.reid.extraction import extract_detection_embeddings
-from trackers.core.reid.feature_bank import FeatureBank
-from trackers.core.reid.fusion_methods import fuse_botsort_reid_association
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -99,7 +96,8 @@ class BoTSORTTracker(BaseTracker):
         appearance_threshold: Appearance distance gate θ_emb. Rejects matches when
             halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this value.
             Default ``0.25`` (BoT-SORT ``appearance_thresh``).
-        proximity_threshold: IoU distance gate before appearance is used.
+        proximity_threshold: Standard IoU distance gate before appearance is used.
+            Computed from true IoU even when ``iou=`` is GIoU/DIoU/CIoU.
             Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires IoU > 0.5).
 
     Notes:
@@ -161,6 +159,7 @@ class BoTSORTTracker(BaseTracker):
         self.tracks: list[BoTSORTTracklet] = []
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
+        self._proximity_iou = IoU()
         self.frame_id: int = 0
         self._reset_id_allocator()
 
@@ -285,6 +284,8 @@ class BoTSORTTracker(BaseTracker):
             if frame is None:
                 raise ValueError(f"{type(self).__name__}.update() requires frame when reid_model is set.")
             if len(high_boxes) > 0:
+                from trackers.core.reid.extraction import extract_detection_embeddings
+
                 det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
 
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
@@ -296,15 +297,19 @@ class BoTSORTTracker(BaseTracker):
         iou_sim_fused = _fuse_score(iou_sim_raw, high_scores)
 
         if det_embeddings is not None and len(strack_pool) > 0:
+            from trackers.core.reid.distance import appearance_similarity
+
             track_feats = [
                 t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
                 for t in strack_pool
             ]
             app_sim = appearance_similarity(track_feats, det_embeddings)
+            proximity_iou = self._get_proximity_iou_matrix(strack_pool, high_boxes)
             similarity_matrix = self._fuse_botsort_reid(
                 iou_sim_raw,
                 iou_sim_fused,
                 app_sim,
+                proximity_iou,
             )
         else:
             similarity_matrix = iou_sim_fused
@@ -361,16 +366,20 @@ class BoTSORTTracker(BaseTracker):
             iou_sim_fused = _fuse_score(iou_sim_raw, uh_scores)
 
             if det_embeddings is not None:
+                from trackers.core.reid.distance import appearance_similarity
+
                 uh_embeddings = det_embeddings[unmatched_high_list]
                 track_feats = [
                     t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
                     for t in unconfirmed_tracks
                 ]
                 app_sim = appearance_similarity(track_feats, uh_embeddings)
+                proximity_iou = self._get_proximity_iou_matrix(unconfirmed_tracks, uh_boxes)
                 similarity_matrix = self._fuse_botsort_reid(
                     iou_sim_raw,
                     iou_sim_fused,
                     app_sim,
+                    proximity_iou,
                 )
             else:
                 similarity_matrix = iou_sim_fused
@@ -452,15 +461,24 @@ class BoTSORTTracker(BaseTracker):
         iou_similarity_raw: np.ndarray,
         iou_similarity_fused: np.ndarray,
         appearance_similarity: np.ndarray,
+        proximity_iou_similarity: np.ndarray,
     ) -> np.ndarray:
         """Fuse IoU and appearance using BoT-SORT ``bot_sort.py`` min-cost ReID."""
         return fuse_botsort_reid_association(
             iou_similarity_raw,
             iou_similarity_fused,
             appearance_similarity,
+            proximity_iou_similarity=proximity_iou_similarity,
             proximity_threshold=self.proximity_threshold,
             appearance_threshold=self.appearance_threshold,
         )
+
+    def _get_proximity_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
+        if len(tracklets) == 0:
+            tracklet_boxes = np.empty((0, 4))
+        else:
+            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+        return self._proximity_iou.compute(tracklet_boxes, detections)
 
     def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:
@@ -531,6 +549,8 @@ class BoTSORTTracker(BaseTracker):
                     state_estimator_class=self.state_estimator_class,
                 )
                 if self.reid_model is not None:
+                    from trackers.core.reid.feature_bank import FeatureBank
+
                     tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
                     if det_embeddings is not None:
                         tracklet.feature_bank.update(det_embeddings[det_local_idx])

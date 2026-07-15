@@ -146,6 +146,7 @@ nav:
 
   - API Reference:
     - Trackers: api/trackers.md
+    - ReID: api/reid.md
     - Motion: api/motion.md
     - Datasets: api/datasets.md
     - Evals: api/evals.md

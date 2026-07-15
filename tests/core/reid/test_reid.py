@@ -202,6 +202,33 @@ class TestLoaders:
         finally:
             os.unlink(tmp_path)
 
+    def test_generic_loader_preserves_backbone_prefix(self) -> None:
+        pytest.importorskip("torch")
+        import torch
+        import torch.nn as nn
+
+        from trackers.core.reid.models.loaders import load_state_dict_into
+
+        class _BackboneModel(nn.Module):
+            def __init__(self) -> None:
+                super().__init__()
+                self.backbone = nn.Linear(4, 2)
+
+        model = _BackboneModel()
+        wrapped = {
+            "backbone.weight": model.backbone.weight.detach().clone(),
+            "backbone.bias": model.backbone.bias.detach().clone(),
+        }
+        with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
+            tmp_path = f.name
+        try:
+            torch.save(wrapped, tmp_path)
+            report = load_state_dict_into(model, tmp_path, torch.device("cpu"))
+            assert report.matched == report.total
+            assert report.matched_fraction == 1.0
+        finally:
+            os.unlink(tmp_path)
+
     def test_remap_fastreid_sbs_keys(self) -> None:
         pytest.importorskip("torch")
         import torch

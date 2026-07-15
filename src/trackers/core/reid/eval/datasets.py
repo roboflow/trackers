@@ -13,17 +13,30 @@ from pathlib import Path
 
 import numpy as np
 
+# Market-1501 gallery ``0000_*`` images are distractors (pid 0). Query identities
+# remain valid when pid=0 on other datasets (e.g. MSMT17).
+MARKET1501_GALLERY_JUNK_PIDS = frozenset({-1, 0})
+
 
 @dataclass
-class ReidSplit:
-    """Query or gallery split: image paths, person IDs, and camera IDs."""
+class ReIDSplit:
+    """Query or gallery split: image paths, person IDs, and camera IDs.
+
+    ``gallery_junk_pids`` controls which gallery person IDs are excluded from
+    ranking during retrieval evaluation (see :func:`compute_reid_metrics`).
+    """
 
     image_paths: list[str]
     pids: np.ndarray
     camids: np.ndarray
+    gallery_junk_pids: frozenset[int] = frozenset({-1})
 
     def __len__(self) -> int:
         return len(self.image_paths)
+
+
+# Backward-compatible alias (notebooks / early API).
+ReidSplit = ReIDSplit
 
 
 # --------------------------------------------------------------------------- #
@@ -41,7 +54,7 @@ def _parse_msmt17_camid(filename: str) -> int:
     return int(stem.split("_")[2]) - 1
 
 
-def load_msmt17(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
+def load_msmt17(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
     """Load MSMT17 query and gallery splits from *root*.
 
     Expects ``test/``, ``list_query.txt``, and ``list_gallery.txt``. List files
@@ -51,13 +64,13 @@ def load_msmt17(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
         root: Path to the MSMT17 directory.
 
     Returns:
-        ``(query, gallery)`` :class:`ReidSplit` pair.
+        ``(query, gallery)`` :class:`ReIDSplit` pair.
     """
     root = Path(root)
     if not root.exists():
         raise FileNotFoundError(f"MSMT17 root not found: {root}")
 
-    def _parse_list(list_file: Path, image_root: Path) -> ReidSplit:
+    def _parse_list(list_file: Path, image_root: Path) -> ReIDSplit:
         if not list_file.exists():
             raise FileNotFoundError(f"MSMT17 list file not found: {list_file}")
         paths, pids, camids = [], [], []
@@ -74,10 +87,11 @@ def load_msmt17(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
             paths.append(str(image_root / rel_path))
             pids.append(pid)
             camids.append(camid)
-        return ReidSplit(
+        return ReIDSplit(
             image_paths=paths,
             pids=np.array(pids, dtype=np.int32),
             camids=np.array(camids, dtype=np.int32),
+            gallery_junk_pids=frozenset({-1}),
         )
 
     test_root = root / "test"
@@ -100,11 +114,10 @@ def _parse_market_filename(filename: str) -> tuple[int, int]:
     parts = stem.split("_")
     pid = int(parts[0])
     camid = int(parts[1][1]) - 1  # "c1" → 0
-
     return pid, camid
 
 
-def load_market1501(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
+def load_market1501(root: str | Path) -> tuple[ReIDSplit, ReIDSplit]:
     """Load Market-1501 query and gallery splits from *root*.
 
     Expects ``query/`` and ``bounding_box_test/``. Person and camera IDs are
@@ -114,13 +127,13 @@ def load_market1501(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
         root: Path to the Market-1501 directory.
 
     Returns:
-        ``(query, gallery)`` :class:`ReidSplit` pair.
+        ``(query, gallery)`` :class:`ReIDSplit` pair.
     """
     root = Path(root)
     if not root.exists():
         raise FileNotFoundError(f"Market-1501 root not found: {root}")
 
-    def _load_dir(subdir: Path) -> ReidSplit:
+    def _load_dir(subdir: Path, *, gallery_junk_pids: frozenset[int]) -> ReIDSplit:
         if not subdir.exists():
             raise FileNotFoundError(f"Market-1501 sub-directory not found: {subdir}")
         paths, pids, camids = [], [], []
@@ -129,12 +142,13 @@ def load_market1501(root: str | Path) -> tuple[ReidSplit, ReidSplit]:
             paths.append(str(img_path))
             pids.append(pid)
             camids.append(camid)
-        return ReidSplit(
+        return ReIDSplit(
             image_paths=paths,
             pids=np.array(pids, dtype=np.int32),
             camids=np.array(camids, dtype=np.int32),
+            gallery_junk_pids=gallery_junk_pids,
         )
 
-    query = _load_dir(root / "query")
-    gallery = _load_dir(root / "bounding_box_test")
+    query = _load_dir(root / "query", gallery_junk_pids=frozenset({-1}))
+    gallery = _load_dir(root / "bounding_box_test", gallery_junk_pids=MARKET1501_GALLERY_JUNK_PIDS)
     return query, gallery

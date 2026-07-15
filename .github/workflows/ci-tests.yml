@@ -30,16 +30,17 @@ jobs:
           prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
-        run: uv sync --frozen --group dev
+        run: uv sync --frozen --group dev --extra reid
 
-      - name: 🧪 Run the Import test
-        run: uv run python -c "import trackers"
+      - name: 🧪 Run base import regression (no heavy ReID imports)
+        shell: bash
+        run: uv run pytest tests/core/test_import_isolation.py -q
 
       - name: 🧪 Run the Test
         shell: bash
         run: |
           if [ -d tests ] && [ "$(find tests -type f \( -name 'test_*.py' -o -name '*_test.py' \) | wc -l)" -gt 0 ]; then
-            uv run pytest -m "not integration"
+            uv run pytest -m "not integration and not network"
           else
             echo "No tests found. Skipping pytest."
           fi

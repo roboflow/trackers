@@ -24,6 +24,7 @@ from trackers.core.reid.models.loaders import load_state_dict_for_architecture, 
 from trackers.core.reid.models.preprocessing import ReIDPreprocessing
 from trackers.core.reid.models.registry import (
     DEFAULT_MODEL,
+    FASTREID_MOT17_SBS50,
     ModelCard,
     default_preprocessing_for_architecture,
     resolve_model_card,
@@ -173,11 +174,13 @@ class ReIDModel:
         if resolved_weights is not None:
             local_path = resolve_weights(resolved_weights)
             arch_name = resolved_arch if isinstance(resolved_arch, str) else ""
+            required_fraction = 1.0 if source in (FASTREID_MOT17_SBS50, DEFAULT_MODEL) else None
             report = load_state_dict_for_architecture(
                 backbone,
                 local_path,
                 resolved_device,
                 arch_name,
+                required_match_fraction=required_fraction,
             )
             logger.info("ReIDModel weights (%s): %s", resolved_weights, report.summary())
 
@@ -235,6 +238,8 @@ class ReIDModel:
         """
         if not image_paths:
             return np.empty((0, 0), dtype=np.float32)
+        if batch_size < 1:
+            raise ValueError(f"batch_size must be >= 1, got {batch_size}")
 
         all_embeddings: list[np.ndarray] = []
 
@@ -251,7 +256,10 @@ class ReIDModel:
                 embs = self._backbone(batch)
             if normalize:
                 embs = torch.nn.functional.normalize(embs, p=2, dim=1)
-            all_embeddings.append(embs.cpu().numpy().astype(np.float32))
+            batch_np = embs.cpu().numpy().astype(np.float32)
+            from trackers.core.reid.distance import sanitize_embedding_matrix
+
+            all_embeddings.append(sanitize_embedding_matrix(batch_np))
 
         return np.concatenate(all_embeddings, axis=0)
 
@@ -290,4 +298,6 @@ class ReIDModel:
 
         if self._preprocessing.normalize_embeddings:
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
-        return embeddings.cpu().numpy().astype(np.float32)
+        from trackers.core.reid.distance import sanitize_embedding_matrix
+
+        return sanitize_embedding_matrix(embeddings.cpu().numpy().astype(np.float32))

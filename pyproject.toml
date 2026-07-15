@@ -52,6 +52,9 @@ reid = [
     "torchvision>=0.15.0",
     "timm>=1.0.0",
     "huggingface-hub>=0.20.0",
+    "safetensors>=0.4.0",
+    "Pillow>=10.0.0",
+    "gdown>=5.0.0",
 ]
 
 [project.scripts]
@@ -198,6 +201,7 @@ addopts = [
 doctest_optionflags = "ELLIPSIS NORMALIZE_WHITESPACE"
 markers = [
     "integration: marks tests as integration tests (require external data download)",
+    "network: marks tests that require network access to download model weights",
 ]
 
 [tool.codespell]

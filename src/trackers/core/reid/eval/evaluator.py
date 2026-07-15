@@ -9,35 +9,39 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from trackers.core.reid.eval.datasets import ReidSplit
-from trackers.core.reid.eval.metrics import ReidMetrics, compute_reid_metrics
-from trackers.core.reid.model import ReIDModel
+from trackers.core.reid.eval.datasets import ReIDSplit
+from trackers.core.reid.eval.metrics import ReIDMetrics, compute_reid_metrics
+
+if TYPE_CHECKING:
+    from trackers.core.reid.model import ReIDModel
 
 
 @dataclass
-class ReidResult:
+class ReIDResult:
     """Evaluation output: metrics, raw embeddings, and optional distance matrix."""
 
-    metrics: ReidMetrics
+    metrics: ReIDMetrics
     query_embeddings: np.ndarray
     gallery_embeddings: np.ndarray
     distmat: np.ndarray
 
 
+# Backward-compatible alias (notebooks / early API).
+ReidResult = ReIDResult
+
+
 def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.ndarray:
     """Build a query×gallery distance matrix (``cosine`` or ``euclidean``)."""
-    # All ops below are done in place on a single (Nq, Ng) array to keep peak
-    # memory at one distance matrix — important for large galleries (e.g.
-    # MSMT17's 11.7k × 82.2k matrix is ~3.8 GB on its own).
     if metric == "cosine":
         qn = (q_embs / (np.linalg.norm(q_embs, axis=1, keepdims=True) + 1e-12)).astype(np.float32, copy=False)
         gn = (g_embs / (np.linalg.norm(g_embs, axis=1, keepdims=True) + 1e-12)).astype(np.float32, copy=False)
-        distmat = qn @ gn.T  # cosine similarity
+        distmat = qn @ gn.T
         distmat *= -1.0
-        distmat += 1.0  # → 1 − cosine similarity
+        distmat += 1.0
         return distmat
     if metric == "euclidean":
         distmat = (q_embs @ g_embs.T).astype(np.float32, copy=False)
@@ -50,7 +54,7 @@ def _distance_matrix(q_embs: np.ndarray, g_embs: np.ndarray, metric: str) -> np.
     raise ValueError(f"Unknown distance metric: {metric!r}. Use 'cosine' or 'euclidean'.")
 
 
-class ReidEvaluator:
+class ReIDEvaluator:
     """Run embedding extraction and retrieval metrics for a :class:`ReIDModel`.
 
     Args:
@@ -59,20 +63,22 @@ class ReidEvaluator:
     """
 
     def __init__(self, model: ReIDModel, batch_size: int = 64) -> None:
+        if batch_size < 1:
+            raise ValueError(f"batch_size must be >= 1, got {batch_size}")
         self._model = model
         self._batch_size = batch_size
 
     def evaluate(
         self,
-        query: ReidSplit,
-        gallery: ReidSplit,
+        query: ReIDSplit,
+        gallery: ReIDSplit,
         max_rank: int = 10,
         verbose: bool = True,
         distance: str = "cosine",
         query_embeddings: np.ndarray | None = None,
         gallery_embeddings: np.ndarray | None = None,
         return_distmat: bool = True,
-    ) -> ReidResult:
+    ) -> ReIDResult:
         """Extract embeddings (unless provided) and compute retrieval metrics.
 
         Args:
@@ -86,7 +92,7 @@ class ReidEvaluator:
             return_distmat: Return the distance matrix (set ``False`` to save memory).
 
         Returns:
-            :class:`ReidResult`.
+            :class:`ReIDResult`.
         """
         if query_embeddings is None or gallery_embeddings is None:
             if verbose:
@@ -116,6 +122,7 @@ class ReidEvaluator:
             q_camids=query.camids,
             g_camids=gallery.camids,
             max_rank=max_rank,
+            gallery_junk_pids=gallery.gallery_junk_pids,
         )
 
         if verbose:
@@ -125,9 +132,13 @@ class ReidEvaluator:
             del distmat
             distmat = np.empty((0, 0), dtype=np.float32)
 
-        return ReidResult(
+        return ReIDResult(
             metrics=metrics,
             query_embeddings=q_embs,
             gallery_embeddings=g_embs,
             distmat=distmat,
         )
+
+
+# Backward-compatible alias (notebooks / early API).
+ReidEvaluator = ReIDEvaluator
