@@ -85,7 +85,24 @@ def build_retrieval_split(
     min_crops: int = 2,
     identities: list[str] | None = None,
 ) -> tuple[list[str], ReIDSplit, ReIDSplit]:
-    """Build query/gallery splits from eligible identities under ``crop_root``."""
+    """Build query/gallery splits from eligible identities under ``crop_root``.
+
+    Query crops use synthetic ``camid`` 0 and gallery crops use ``camid`` 1 so
+    single-camera MOT folders still produce valid retrieval pairs.
+
+    Args:
+        crop_root: Identity-folder crop dataset root.
+        queries_per_id: Query images taken from the start of each identity folder.
+        min_crops: Minimum crops required for an identity to be eligible.
+        identities: Optional identity-folder whitelist.
+
+    Returns:
+        ``(identity_names, query, gallery)``.
+
+    Raises:
+        FileNotFoundError: If ``crop_root`` is missing.
+        ValueError: If no identity has enough crops.
+    """
     crop_root = Path(crop_root)
     if not crop_root.is_dir():
         raise FileNotFoundError(f"Crop dataset root not found: {crop_root}")
@@ -110,7 +127,22 @@ def build_identity_holdout_split(
     min_crops: int = 2,
     seed: int = 0,
 ) -> tuple[list[str], list[str], ReIDSplit, ReIDSplit]:
-    """Hold out a fraction of identities for retrieval; return train + eval splits."""
+    """Hold out a fraction of identities for retrieval; return train + eval splits.
+
+    Args:
+        crop_root: Identity-folder crop dataset root.
+        holdout_fraction: Fraction of eligible identities reserved for retrieval.
+        queries_per_id: Query images per held-out identity.
+        min_crops: Minimum crops required for an identity to be eligible.
+        seed: Shuffle seed for the holdout draw.
+
+    Returns:
+        ``(train_identities, holdout_identities, query, gallery)``.
+
+    Raises:
+        FileNotFoundError: If ``crop_root`` is missing.
+        ValueError: If no identity has enough crops.
+    """
     crop_root = Path(crop_root)
     if not crop_root.is_dir():
         raise FileNotFoundError(f"Crop dataset root not found: {crop_root}")

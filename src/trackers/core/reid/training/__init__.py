@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID training utilities (patch generation, fine-tuning, retrieval splits)."""
+"""ReID training utilities (patch generation, fine-tuning, retrieval splits)."""
 
 from typing import TYPE_CHECKING
 
@@ -34,15 +34,18 @@ __all__ = [
     "train_reid",
 ]
 
-# Lazily expose the torch-backed training entry points so that importing this
-# package (e.g. for patch generation) does not require the optional [reid]
-# dependencies. They are imported on first attribute access.
-_LAZY_TRAINER_SYMBOLS = {"TrainConfig", "TrainResult", "train_reid"}
+_LAZY_TRAINER_SYMBOLS = frozenset({"TrainConfig", "TrainResult", "train_reid"})
 
 
 def __getattr__(name: str):
     if name in _LAZY_TRAINER_SYMBOLS:
         from trackers.core.reid.training import trainer
 
-        return getattr(trainer, name)
+        value = getattr(trainer, name)
+        globals()[name] = value
+        return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

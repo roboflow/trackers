@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Fine-tune a re-ID encoder on a per-identity crop dataset."""
+"""Fine-tune a ReID encoder on a per-identity crop dataset."""
 
 from __future__ import annotations
 
@@ -26,7 +26,30 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TrainConfig:
-    """Hyper-parameters for :func:`train_reid`."""
+    """Hyper-parameters for :func:`train_reid`.
+
+    Args:
+        epochs: Training epochs.
+        p: Identities per PK batch.
+        k: Instances per identity per PK batch.
+        lr: Adam learning rate.
+        weight_decay: Adam weight decay.
+        warmup_epochs: Linear LR warmup length.
+        lr_milestones: Epochs where LR is multiplied by ``lr_gamma``.
+        lr_gamma: Multiplicative LR decay at each milestone.
+        margin: Batch-hard triplet margin.
+        label_smoothing: Cross-entropy label smoothing.
+        triplet_weight: Weight on the triplet term.
+        use_center: Enable optional center loss.
+        center_weight: Weight on the center term when enabled.
+        center_lr: Dedicated Adam LR for center parameters.
+        freeze_backbone_epochs: Freeze backbone (except head) for this many epochs.
+        num_workers: DataLoader workers.
+        amp: Use CUDA autocast + GradScaler when on GPU.
+        device: Torch device string, or ``"auto"``.
+        seed: RNG seed.
+        log_interval: Log every N optimizer steps.
+    """
 
     epochs: int = 30
     p: int = 8
@@ -159,13 +182,17 @@ def train_reid(
     output_dir: str | Path | None = None,
     include_identities: list[str] | None = None,
 ) -> TrainResult:
-    """Fine-tune a re-ID encoder on crops under ``data_root/<identity>/``.
+    """Fine-tune a ReID encoder on crops under ``data_root/<identity>/``.
 
     Args:
         data_root: Crop dataset root (e.g. from :func:`generate_mot_patches`).
         config: Training hyper-parameters.
-        architecture: Backbone name override.
-        pretrained: Weights source / alias to warm-start from.
+        architecture: Backbone name override. When set with ``pretrained=None``,
+            the backbone is randomly initialised (no warm-start).
+        pretrained: Weights source / alias to warm-start from. When
+            ``architecture`` is omitted, ``None`` resolves to the default curated
+            alias (warm-start included). When ``architecture`` is set, ``None``
+            means no warm-start weights.
         preprocessing: Preprocessing override.
         output_dir: If set, save via :meth:`ReIDModel.save_pretrained`.
         include_identities: Optional identity folder whitelist.

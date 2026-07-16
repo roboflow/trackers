@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Re-ID fine-tuning losses (label-smoothed CE, batch-hard triplet, optional center)."""
+"""ReID fine-tuning losses (label-smoothed CE, batch-hard triplet, optional center)."""
 
 from __future__ import annotations
 
@@ -38,7 +38,11 @@ def _pairwise_euclidean(embeddings: torch.Tensor) -> torch.Tensor:
 
 
 class BatchHardTripletLoss(nn.Module):
-    """Batch-hard triplet loss (hardest positive/negative per anchor)."""
+    """Batch-hard triplet loss (hardest positive/negative per anchor).
+
+    For each anchor, the hardest positive is the farthest same-identity sample
+    and the hardest negative is the nearest different-identity sample.
+    """
 
     def __init__(self, margin: float = 0.3, normalize: bool = True) -> None:
         super().__init__()
@@ -53,19 +57,14 @@ class BatchHardTripletLoss(nn.Module):
         distances = _pairwise_euclidean(embeddings)
         same = labels.unsqueeze(0) == labels.unsqueeze(1)
         different = ~same
-        # Exclude self-pairs from the positive set.
         positive_mask = same.clone()
         positive_mask.fill_diagonal_(False)
 
-        # Hardest positive: largest distance among same-identity (non-self).
         hardest_positive = (distances * positive_mask).max(dim=1).values
-        # Hardest negative: smallest distance among different-identity.
         masked = distances.clone()
         masked[~different] = float("inf")
         hardest_negative = masked.min(dim=1).values
 
-        if self.margin is None:
-            return F.softplus(hardest_positive - hardest_negative).mean()
         return F.relu(self.margin + hardest_positive - hardest_negative).mean()
 
 
@@ -85,7 +84,7 @@ class CenterLoss(nn.Module):
 
 
 class ReIDLoss(nn.Module):
-    """Combined CE + triplet (+ optional center) re-ID objective."""
+    """Combined CE + triplet (+ optional center) ReID objective."""
 
     def __init__(
         self,

@@ -1,5 +1,5 @@
 ---
-description: ReID model loading, evaluation, and tracker utilities in Roboflow Trackers.
+description: ReID model loading, evaluation, tracker utilities, and MOT fine-tuning in Roboflow Trackers.
 ---
 
 # ReID API

@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Dataset, PK sampler, and train transforms for re-ID fine-tuning."""
+"""Dataset, PK sampler, and train transforms for ReID fine-tuning."""
 
 from __future__ import annotations
 
@@ -127,7 +127,7 @@ class PKSampler(Sampler[list[int]]):
         k: int,
         seed: int | None = None,
     ) -> None:
-        """Initialise the PK sampler.
+        """Initialize the PK sampler.
 
         Args:
             labels: Per-sample identity labels.

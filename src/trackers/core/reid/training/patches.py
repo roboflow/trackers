@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Generate per-identity re-ID crops from MOT-format sequences.
+"""Generate per-identity ReID crops from MOT-format sequences.
 
 Use ``split="train_half"`` to stay frame-disjoint from the standard MOT17
 val-half tracking evaluation.
