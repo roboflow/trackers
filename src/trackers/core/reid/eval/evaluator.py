@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from trackers.core.reid.encoder import ReIDPathEncoder
+from trackers.core.reid.encoder import ReIDEncoder
 from trackers.core.reid.eval.datasets import ReIDSplit
 from trackers.core.reid.eval.metrics import ReIDMetrics, compute_reid_metrics
 
@@ -54,11 +54,11 @@ class ReIDEvaluator:
     """Run embedding extraction and retrieval metrics for a ReID encoder.
 
     Args:
-        model: Encoder implementing ``ReIDPathEncoder`` (for example ``ReIDModel``).
+        model: Encoder implementing ``ReIDEncoder`` (for example ``ReIDModel``).
         batch_size: Images per forward pass.
     """
 
-    def __init__(self, model: ReIDPathEncoder, batch_size: int = 64) -> None:
+    def __init__(self, model: ReIDEncoder, batch_size: int = 64) -> None:
         if batch_size < 1:
             raise ValueError(f"batch_size must be >= 1, got {batch_size}")
         self._model = model

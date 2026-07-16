@@ -54,10 +54,12 @@ def _select_device(device: str) -> torch.device:
 
 
 class ReIDModel:
-    """Appearance feature extractor for object re-identification.
+    """Appearance encoder with loading, preprocessing, and checkpoint I/O.
 
-    Wraps a backbone and preprocessing pipeline. The default checkpoint is
-    pedestrian-trained; pass ``source`` / ``architecture`` for other domains.
+    Implements ``ReIDEncoder`` (``extract_features`` and
+    ``extract_features_from_paths``), plus ``from_pretrained`` and
+    ``save_pretrained``. The default checkpoint is pedestrian-trained; pass
+    ``source`` / ``architecture`` for other domains.
 
     Args:
         backbone: Feature-extractor module (``(B, 3, H, W)`` → ``(B, D)`` in eval).

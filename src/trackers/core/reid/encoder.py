@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Encoder protocol for gallery evaluation."""
+"""Encoder protocol for ReID association and gallery evaluation."""
 
 from __future__ import annotations
 
@@ -12,14 +12,27 @@ from collections.abc import Sequence
 from typing import Protocol
 
 import numpy as np
+import supervision as sv
 
 
-class ReIDPathEncoder(Protocol):
-    """Gallery-evaluation interface for embedding image paths.
+class ReIDEncoder(Protocol):
+    """Appearance encoder used for tracking association and gallery evaluation.
 
-    ``ReIDEvaluator`` accepts any object with ``extract_features_from_paths``.
-    ``ReIDModel`` implements this protocol.
+    ``ReIDModel`` is the concrete encoder. Trackers use ``extract_features``;
+    gallery eval uses ``extract_features_from_paths``.
     """
+
+    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+        """Return appearance embeddings for each detection box.
+
+        Args:
+            detections: Boxes to embed (``xyxy``).
+            frame: BGR frame the detections were produced on.
+
+        Returns:
+            Float32 array of shape ``(N, D)``, or ``(0, 0)`` when empty.
+        """
+        ...
 
     def extract_features_from_paths(
         self,

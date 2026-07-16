@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import supervision as sv
 
 # ---------------------------------------------------------------------------
 # Eval metrics + dataset loaders
@@ -117,6 +118,9 @@ class TestReIDEvaluator:
             def __init__(self) -> None:
                 self.calls: list[list[str]] = []
 
+            def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+                raise NotImplementedError
+
             def extract_features_from_paths(
                 self,
                 image_paths: Sequence[str],
@@ -158,6 +162,9 @@ class TestReIDEvaluator:
         )
 
         class _Encoder:
+            def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+                raise NotImplementedError
+
             def extract_features_from_paths(
                 self,
                 image_paths: Sequence[str],

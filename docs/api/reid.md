@@ -11,8 +11,7 @@ pip install 'trackers[reid]'
 ```
 
 This page covers ReID model loading and gallery evaluation. Tracker association
-utilities (`FeatureBank`, cosine similarity, `ReIDEncoder`) land with BoT-SORT
-wiring.
+utilities (`FeatureBank`, cosine similarity) land with BoT-SORT wiring.
 
 ## Ways to load a model
 
@@ -51,12 +50,13 @@ Use `ReIDModel.from_pretrained(...)`. Pick the form that matches what you have:
     `ARCHITECTURE_DEFAULT_PREPROCESSING` in `models/registry.py`.
 4. Optionally add a curated alias in `ALIASES`.
 
-## Encoders
+## Encoder
 
-`ReIDPathEncoder` is the gallery-eval interface used by `ReIDEvaluator`.
-`ReIDModel` implements it.
+`ReIDEncoder` is the appearance-encoder interface: `extract_features` for
+tracker association and `extract_features_from_paths` for gallery evaluation.
+`ReIDModel` is the concrete encoder we ship.
 
-::: trackers.core.reid.encoder.ReIDPathEncoder
+::: trackers.core.reid.encoder.ReIDEncoder
 
 ## Model
 
