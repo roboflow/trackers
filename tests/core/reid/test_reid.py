@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""NumPy-only ReID tests (FeatureBank, appearance distance, gallery eval).
+"""NumPy-only ReID gallery evaluation tests.
 
 These do not require ``trackers[reid]`` and run in every CI job.
 """
@@ -16,128 +16,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
-# ---------------------------------------------------------------------------
-# Feature bank + appearance distance
-# ---------------------------------------------------------------------------
-
-
-class TestFeatureBank:
-    def test_first_update_stores_raw_embedding(self) -> None:
-        from trackers.core.reid.feature_bank import FeatureBank
-
-        bank = FeatureBank(alpha=0.9)
-        bank.update(np.array([3.0, 4.0], dtype=np.float32))
-        feature = bank.feature
-        assert feature is not None
-        np.testing.assert_allclose(feature, [3.0, 4.0], atol=1e-6)
-
-    def test_second_update_blends_without_renormalizing(self) -> None:
-        from trackers.core.reid.feature_bank import FeatureBank
-
-        alpha = 0.75
-        bank = FeatureBank(alpha=alpha)
-        bank.update(np.array([1.0, 0.0], dtype=np.float32))
-        bank.update(np.array([0.0, 1.0], dtype=np.float32))
-        feature = bank.feature
-        assert feature is not None
-        expected = np.array([alpha, 1.0 - alpha], dtype=np.float32)
-        np.testing.assert_allclose(feature, expected, atol=1e-6)
-
-    def test_zero_embedding_is_accepted(self) -> None:
-        from trackers.core.reid.feature_bank import FeatureBank
-
-        bank = FeatureBank()
-        bank.update(np.zeros(8, dtype=np.float32))
-        feature = bank.feature
-        assert feature is not None
-        np.testing.assert_allclose(feature, 0.0)
-
-    def test_non_finite_embedding_raises(self) -> None:
-        from trackers.core.reid.feature_bank import FeatureBank
-
-        bank = FeatureBank()
-        with pytest.raises(ValueError, match="finite"):
-            bank.update(np.array([1.0, np.nan], dtype=np.float32))
-        assert not bank.is_initialized
-
-    def test_shape_change_raises(self) -> None:
-        from trackers.core.reid.feature_bank import FeatureBank
-
-        bank = FeatureBank()
-        bank.update(np.array([1.0, 0.0], dtype=np.float32))
-        before = bank.feature
-        assert before is not None
-        with pytest.raises(ValueError, match="shape"):
-            bank.update(np.array([1.0, 0.0, 0.0], dtype=np.float32))
-        after = bank.feature
-        assert after is not None
-        np.testing.assert_allclose(before, after)
-
-
-class TestAppearanceSimilarity:
-    def test_identical_unit_vectors_are_one(self) -> None:
-        from trackers.core.reid.appearance import appearance_similarity
-
-        track = np.array([1.0, 0.0], dtype=np.float32)
-        dets = np.array([[1.0, 0.0]], dtype=np.float32)
-        sim = appearance_similarity([track], dets)
-        np.testing.assert_allclose(sim, [[1.0]], atol=1e-6)
-
-    def test_orthogonal_unit_vectors_are_zero(self) -> None:
-        from trackers.core.reid.appearance import appearance_similarity
-
-        track = np.array([1.0, 0.0], dtype=np.float32)
-        dets = np.array([[0.0, 1.0]], dtype=np.float32)
-        sim = appearance_similarity([track], dets)
-        np.testing.assert_allclose(sim, [[0.0]], atol=1e-6)
-
-    def test_unnormalized_parallel_vectors_are_one(self) -> None:
-        from trackers.core.reid.appearance import appearance_similarity
-
-        track = np.array([3.0, 4.0], dtype=np.float32)
-        dets = np.array([[6.0, 8.0]], dtype=np.float32)
-        sim = appearance_similarity([track], dets)
-        np.testing.assert_allclose(sim, [[1.0]], atol=1e-6)
-
-    def test_none_track_yields_zero_row(self) -> None:
-        from trackers.core.reid.appearance import appearance_similarity
-
-        dets = np.array([[1.0, 0.0]], dtype=np.float32)
-        sim = appearance_similarity([None, np.array([1.0, 0.0], dtype=np.float32)], dets)
-        np.testing.assert_allclose(sim[0], [0.0], atol=1e-6)
-        np.testing.assert_allclose(sim[1], [1.0], atol=1e-6)
-
-    def test_empty_inputs_return_empty_matrix(self) -> None:
-        from trackers.core.reid.appearance import appearance_similarity
-
-        sim = appearance_similarity([], np.empty((0, 4), dtype=np.float32))
-        assert sim.shape == (0, 0)
-
-        sim = appearance_similarity(
-            [np.array([1.0, 0.0], dtype=np.float32)],
-            np.empty((0, 2), dtype=np.float32),
-        )
-        assert sim.shape == (1, 0)
-
-    def test_non_finite_detection_rows_raise(self) -> None:
-        from trackers.core.reid.appearance import appearance_similarity
-
-        with pytest.raises(ValueError, match="finite"):
-            appearance_similarity(
-                [np.array([1.0, 0.0], dtype=np.float32)],
-                np.array([[1.0, 0.0], [np.nan, 1.0]], dtype=np.float32),
-            )
-
-    def test_incompatible_track_dimensions_raise(self) -> None:
-        from trackers.core.reid.appearance import appearance_similarity
-
-        with pytest.raises(ValueError, match="dim"):
-            appearance_similarity(
-                [np.array([1.0, 0.0, 0.0], dtype=np.float32)],
-                np.array([[1.0, 0.0]], dtype=np.float32),
-            )
-
 
 # ---------------------------------------------------------------------------
 # Eval metrics + dataset loaders
