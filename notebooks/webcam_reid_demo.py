@@ -51,7 +51,7 @@ import numpy as np
 import supervision as sv
 
 from trackers import BoTSORTTracker, ReIDModel
-from trackers.core.botsort.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
 from trackers.utils.iou import IoU
 
 MSMT17_REID = "osnet_x1_0_msmt17_combineall"

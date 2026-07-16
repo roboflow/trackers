@@ -22,7 +22,7 @@ from trackers.utils.state_representations import (
 )
 
 if TYPE_CHECKING:
-    from trackers.core.botsort.appearance import FeatureBank
+    from trackers.core.reid.feature_bank import FeatureBank
 
 
 class BoTSORTTracklet(BaseTracklet):

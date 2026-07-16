@@ -1,5 +1,5 @@
 ---
-description: ReID model loading and evaluation in Roboflow Trackers.
+description: ReID model loading, evaluation, and tracker utilities in Roboflow Trackers.
 ---
 
 # ReID API
@@ -10,8 +10,8 @@ Requires the optional extra:
 pip install 'trackers[reid]'
 ```
 
-This page covers ReID model loading and gallery evaluation. Tracker association
-is documented with BoT-SORT.
+This page covers ReID model loading, gallery evaluation, and shared tracker
+utilities. Tracker association is documented with BoT-SORT.
 
 ## Ways to load a model
 
@@ -85,3 +85,11 @@ tracker association and `extract_features_from_paths` for gallery evaluation.
 ::: trackers.core.reid.eval.datasets.load_market1501
 
 ::: trackers.core.reid.eval.datasets.load_msmt17
+
+## Feature bank
+
+::: trackers.core.reid.feature_bank.FeatureBank
+
+## Appearance
+
+::: trackers.core.reid.appearance.appearance_similarity

@@ -12,15 +12,12 @@ from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.botsort.appearance import (
-    FeatureBank,
-    ReIDEncoder,
-    appearance_similarity,
-    extract_detection_embeddings,
-)
 from trackers.core.botsort.fusion import fuse_botsort_reid_association
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
+from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.core.reid.encoder import ReIDEncoder
+from trackers.core.reid.feature_bank import FeatureBank
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU

@@ -15,13 +15,13 @@ import numpy as np
 import pytest
 import supervision as sv
 
-from trackers.core.botsort.appearance import (
-    FeatureBank,
+from trackers.core.botsort.fusion import fuse_botsort_reid_association
+from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.reid.appearance import (
     appearance_similarity,
     extract_detection_embeddings,
 )
-from trackers.core.botsort.fusion import fuse_botsort_reid_association
-from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.reid.feature_bank import FeatureBank
 
 
 def _detection(xyxy: tuple[float, float, float, float], conf: float = 0.9) -> sv.Detections:
@@ -59,7 +59,7 @@ class _KeyedReIDEncoder:
         return np.stack(rows)
 
 
-def test_botsort_import_does_not_load_internal_reid_package() -> None:
+def test_botsort_import_does_not_load_reid_model_stack() -> None:
     result = subprocess.run(
         [
             sys.executable,
@@ -67,8 +67,9 @@ def test_botsort_import_does_not_load_internal_reid_package() -> None:
             (
                 "import sys; "
                 "import trackers.core.botsort.tracker; "
-                "assert not any(name == 'trackers.core.reid' or "
-                "name.startswith('trackers.core.reid.') for name in sys.modules)"
+                "assert 'trackers.core.reid.model' not in sys.modules; "
+                "assert not any(name.startswith('trackers.core.reid.architectures') or "
+                "name.startswith('trackers.core.reid.models') for name in sys.modules)"
             ),
         ],
         check=False,
