@@ -18,8 +18,10 @@ import supervision as sv
 class ReIDEncoder(Protocol):
     """Appearance encoder used for tracking association and gallery evaluation.
 
-    ``ReIDModel`` is the concrete encoder. Trackers use ``extract_features``;
-    gallery eval uses ``extract_features_from_paths``.
+    ``ReIDModel`` is the concrete encoder (load/save/preprocess plus both
+    methods). Trackers use ``extract_features``; gallery eval uses
+    ``extract_features_from_paths``. Custom or test encoders may implement this
+    protocol without depending on the full model stack.
     """
 
     def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:

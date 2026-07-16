@@ -103,7 +103,9 @@ trackers track \
 
 For a bare local weights file, pass the matching `--tracker.reid.architecture` (for example `osnet_x1_0`).
 
-`reid_model` is constructed by the CLI from `--tracker.reid.*` flags (not exposed as a raw argparse type).
+`reid_model` expects a `ReIDEncoder` (`extract_features` on detections + frame).
+Pass a `ReIDModel` in normal use. The CLI builds that from `--tracker.reid.*`
+flags (not exposed as a raw argparse type).
 
 ## Run on video, webcam, or RTSP stream
 
