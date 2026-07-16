@@ -11,7 +11,7 @@ pip install 'trackers[reid]'
 ```
 
 This page covers ReID model loading and gallery evaluation. Tracker association
-utilities (`FeatureBank`, cosine similarity) land with BoT-SORT wiring.
+is documented with BoT-SORT.
 
 ## Ways to load a model
 

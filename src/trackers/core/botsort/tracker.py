@@ -12,11 +12,15 @@ from deprecate import deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
+from trackers.core.botsort.appearance import (
+    FeatureBank,
+    ReIDEncoder,
+    appearance_similarity,
+    extract_detection_embeddings,
+)
 from trackers.core.botsort.fusion import fuse_botsort_reid_association
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
-from trackers.core.reid.encoder import ReIDEncoder
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -87,10 +91,9 @@ class BoTSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
-        reid_model: Optional :class:`~trackers.core.reid.encoder.ReIDEncoder`
-            for appearance-based association in the first high-confidence stage.
-            :class:`~trackers.core.reid.model.ReIDModel` satisfies this protocol.
-            Requires ``frame`` in :meth:`update`. When ``None`` (default),
+        reid_model: Optional encoder for appearance-based association in the
+            first high-confidence stage. ``ReIDModel`` satisfies this protocol.
+            Requires ``frame`` in ``update``. When ``None`` (default),
             behaviour matches the geometry-only BoT-SORT baseline.
         reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
         appearance_threshold: Appearance distance gate θ_emb. Rejects matches when
@@ -545,8 +548,6 @@ class BoTSORTTracker(BaseTracker):
                     state_estimator_class=self.state_estimator_class,
                 )
                 if self.reid_model is not None:
-                    from trackers.core.reid.feature_bank import FeatureBank
-
                     tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
                     if det_embeddings is not None:
                         tracklet.feature_bank.update(det_embeddings[det_local_idx])

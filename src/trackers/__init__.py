@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from trackers._reid import import_reid_model
 from trackers.annotators.trace import MotionAwareTraceAnnotator
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
-from trackers.core.reid import REID_INSTALL_HINT, _is_optional_reid_import_error
 from trackers.core.sort.tracker import SORTTracker
 from trackers.datasets.download import download_dataset
 from trackers.datasets.manifest import Dataset, DatasetAsset, DatasetSplit
@@ -30,7 +30,7 @@ from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr
 from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU
 
 if TYPE_CHECKING:
-    from trackers.core.reid.model import ReIDModel
+    from trackers._reid import ReIDModel
 
 __all__ = [
     "CMC",
@@ -64,20 +64,10 @@ __all__ = [
     "xyxy_to_xcycsr",
 ]
 
-_LAZY_EXPORTS: dict[str, str] = {
-    "ReIDModel": "trackers.core.reid.model",
-}
-
 
 def __getattr__(name: str) -> object:
-    if name in _LAZY_EXPORTS:
-        try:
-            module = __import__(_LAZY_EXPORTS[name], fromlist=[name])
-            value = getattr(module, name)
-        except ImportError as exc:
-            if _is_optional_reid_import_error(exc):
-                raise ImportError(REID_INSTALL_HINT) from exc
-            raise
+    if name == "ReIDModel":
+        value = import_reid_model()
         globals()[name] = value
         return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
