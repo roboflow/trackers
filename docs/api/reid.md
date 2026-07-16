@@ -10,8 +10,9 @@ Requires the optional extra:
 pip install 'trackers[reid]'
 ```
 
-This page covers ReID model loading, gallery evaluation, and shared tracker
-utilities. Tracker association is documented with BoT-SORT.
+This page covers ReID model loading, gallery evaluation, shared tracker
+utilities, and MOT crop fine-tuning. Tracker association is documented with
+BoT-SORT.
 
 ## Ways to load a model
 
@@ -94,3 +95,20 @@ and preprocessing.
 ## Appearance
 
 ::: trackers.core.reid.appearance.appearance_similarity
+
+## Training
+
+Fine-tune an OSNet-style encoder on MOT identity crops
+(`generate_mot_patches` → `train_reid` → `ReIDModel.save_pretrained`).
+The notebook `notebooks/train_reid_mot17.ipynb` walks through MOT17 train-half
+patches, retrieval eval, and BoT-SORT A/B.
+
+::: trackers.core.reid.training.patches.generate_mot_patches
+
+::: trackers.core.reid.training.trainer.TrainConfig
+
+::: trackers.core.reid.training.trainer.train_reid
+
+::: trackers.core.reid.training.retrieval.build_retrieval_split
+
+::: trackers.core.reid.training.retrieval.build_identity_holdout_split
