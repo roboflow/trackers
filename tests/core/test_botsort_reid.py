@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from collections.abc import Sequence
 
 import numpy as np
 import pytest
@@ -57,6 +58,15 @@ class _KeyedReIDEncoder:
             key = (round(float(box[0])), round(float(box[1])))
             rows.append(self.table.get(key, _norm(np.array([float(box[0]), float(box[1]), 1.0, 0.0]))))
         return np.stack(rows)
+
+    def extract_features_from_paths(
+        self,
+        image_paths: Sequence[str],
+        *,
+        batch_size: int = 64,
+        normalize: bool = False,
+    ) -> np.ndarray:
+        raise NotImplementedError
 
 
 def test_botsort_import_does_not_load_reid_model_stack() -> None:
@@ -175,6 +185,15 @@ class TestAppearanceSimilarity:
             def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
                 return np.empty((0, 4), dtype=np.float32)
 
+            def extract_features_from_paths(
+                self,
+                image_paths: Sequence[str],
+                *,
+                batch_size: int = 64,
+                normalize: bool = False,
+            ) -> np.ndarray:
+                raise NotImplementedError
+
         with pytest.raises(ValueError, match="rows"):
             extract_detection_embeddings(
                 _WrongLengthEncoder(),
@@ -252,6 +271,15 @@ class TestBoTSORTTrackerReID:
                     else:
                         rows.append(identity)
                 return np.stack(rows)
+
+            def extract_features_from_paths(
+                self,
+                image_paths: Sequence[str],
+                *,
+                batch_size: int = 64,
+                normalize: bool = False,
+            ) -> np.ndarray:
+                raise NotImplementedError
 
         encoder = _PhaseEncoder()
         frame = _frame(1)

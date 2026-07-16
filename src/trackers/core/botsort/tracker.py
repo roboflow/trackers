@@ -89,8 +89,7 @@ class BoTSORTTracker(BaseTracker):
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
         reid_model: Optional ``ReIDEncoder`` for appearance association in the
-            first high-confidence stage. Pass a ``ReIDModel`` in normal use;
-            any object with ``extract_features(detections, frame)`` works.
+            first high-confidence stage. Pass a ``ReIDModel`` in normal use.
             Requires ``frame`` in ``update``. When ``None`` (default),
             behaviour matches the geometry-only BoT-SORT baseline.
         reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.

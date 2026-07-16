@@ -54,7 +54,8 @@ Use `ReIDModel.from_pretrained(...)`. Pick the form that matches what you have:
 
 `ReIDEncoder` is the appearance-encoder interface: `extract_features` for
 tracker association and `extract_features_from_paths` for gallery evaluation.
-`ReIDModel` is the concrete encoder we ship.
+`ReIDModel` is the concrete encoder we ship; it also handles loading, saving,
+and preprocessing.
 
 ::: trackers.core.reid.encoder.ReIDEncoder
 
