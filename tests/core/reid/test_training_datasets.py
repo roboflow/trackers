@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+"""Unit tests for ReID crop datasets and the PK sampler."""
+
 from __future__ import annotations
 
 from collections import Counter

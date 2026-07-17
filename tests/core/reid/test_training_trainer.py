@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+"""Smoke tests for ``train_reid`` (requires ``trackers[reid]``)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,8 +27,8 @@ def _make_crops(root: Path, num_ids: int, num_per: int) -> None:
             Image.fromarray(array).save(identity_dir / f"{j}.jpg")
 
 
-def test_train_reid_smoke_random_init_cpu(tmp_path: Path) -> None:
-    # Tiny offline fine-tune: random-init small OSNet, no curated weights.
+def test_train_reid_smoke_saves_and_embeds(tmp_path: Path) -> None:
+    """One epoch of random-init OSNet writes a loadable checkpoint and embeds."""
     data_root = tmp_path / "crops"
     _make_crops(data_root, num_ids=4, num_per=4)
 
@@ -52,20 +54,10 @@ def test_train_reid_smoke_random_init_cpu(tmp_path: Path) -> None:
     assert result.num_classes == 4
     assert len(result.history) == 1
     assert "total" in result.history[0]
-    # Checkpoint is self-describing and reloadable.
     assert (out_dir / "weights.safetensors").exists()
     assert (out_dir / "reid_config.json").exists()
-
-
-def test_train_reid_output_is_usable_for_inference(tmp_path: Path) -> None:
-    data_root = tmp_path / "crops"
-    _make_crops(data_root, num_ids=4, num_per=4)
-
-    config = TrainConfig(epochs=1, p=2, k=2, warmup_epochs=0, num_workers=0, amp=False, device="cpu")
-    result = train_reid(data_root, config, architecture="osnet_x0_25", pretrained=None)
 
     frame = np.zeros((128, 128, 3), dtype=np.uint8)
     detections = sv.Detections(xyxy=np.array([[10, 10, 40, 80]], dtype=float))
     embeddings = result.model.extract_features(detections, frame)
-    assert embeddings.shape[0] == 1
-    assert embeddings.shape[1] == 512
+    assert embeddings.shape == (1, 512)
