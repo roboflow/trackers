@@ -522,8 +522,16 @@ class CMC:
             self._initialized = True
             return affine_mtx
 
-        # If we don't have points, re-init
-        if self._prev_frame_gray is None or self._prev_points is None or keypoints is None:
+        # If we don't have points, or the frame size changed (e.g. a video
+        # source that renegotiates resolution mid-stream), re-init and return
+        # identity. calcOpticalFlowPyrLK asserts that both frames share the
+        # same size, so a mismatch would crash it.
+        if (
+            self._prev_frame_gray is None
+            or self._prev_points is None
+            or keypoints is None
+            or self._prev_frame_gray.shape != frame.shape
+        ):
             self._prev_frame_gray = frame.copy()
             self._prev_points = copy.copy(keypoints)
             return affine_mtx

@@ -118,6 +118,18 @@ class MotionEstimator:
 
         current_features = self._find_features(grayscale)
 
+        # A frame size change (e.g. a source that renegotiates resolution
+        # mid-stream) breaks the pixel coordinate frame the accumulated
+        # homography lives in, so reset it as reset() does before re-syncing.
+        # Returning the stale homography would hand back coordinates in the old
+        # resolution's scale, and calcOpticalFlowPyrLK would assert on the
+        # mismatched sizes.
+        if self._previous_grayscale.shape != grayscale.shape:
+            self._accumulated_homography = np.eye(3, dtype=np.float64)
+            self._previous_grayscale = grayscale
+            self._previous_features = current_features
+            return self._get_current_transformation()
+
         if self._previous_features is None or len(self._previous_features) < _MIN_POINTS_FOR_HOMOGRAPHY:
             self._previous_grayscale = grayscale
             self._previous_features = current_features
