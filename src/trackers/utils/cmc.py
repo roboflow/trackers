@@ -329,7 +329,9 @@ class CMC:
 
         Returns:
             Affine transform matrix of shape (2, 3), dtype float32.
-            Identity if not enough correspondences or if not initialized yet.
+            Identity if not enough correspondences, if not initialized yet, or if
+            the current frame size differs from the previous frame's (mid-stream
+            resolution change).
 
         Examples:
             >>> import numpy as np
@@ -631,6 +633,11 @@ class CMC:
             self._prev_frame_gray = frame.copy()
             return affine_mtx
 
+        # A mid-stream resolution/size change is already handled here: a shape
+        # mismatch between self._prev_frame_gray and frame makes findTransformECC
+        # raise cv2.error internally, which the except below catches and turns
+        # into an identity transform (with self._prev_frame_gray refreshed after).
+        # So ECC needs no explicit size guard like _estimate_sparse_optflow has.
         try:
             _cc, affine_est = cv2.findTransformECC(
                 self._prev_frame_gray,
