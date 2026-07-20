@@ -4,6 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+from dataclasses import dataclass
+from pathlib import Path
 from typing import cast
 
 import numpy as np
@@ -12,12 +14,19 @@ from deprecate import deprecated  # type: ignore[import-untyped]
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
-from trackers.core.mcbyte.mask_manager import MaskManager
-from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
-from trackers.core.mcbyte.masks.dummy import (
-    DummyBoxMaskGenerator,
-    DummyIdentityMaskPropagator,
+from trackers.core.mcbyte.mask_association import (
+    MINIMUM_MASK_AVERAGE_CONFIDENCE,
+    MINIMUM_MASK_COVERAGE,
+    MINIMUM_MASK_FILL_RATIO,
+    condition_similarity_with_masks,
 )
+from trackers.core.mcbyte.mask_manager import (
+    MASK_CREATION_BBOX_OVERLAP_THRESHOLD,
+    MaskManager,
+)
+from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
+from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
+from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.core.mcbyte.utils import _fuse_score, get_alive_tracklets
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
@@ -29,44 +38,155 @@ from trackers.utils.state_representations import (
 )
 
 
-class McByteTracker(BaseTracker):
-    """McByte-style multi-object tracker.
+@dataclass(frozen=True)
+class McByteMaskConfig:
+    """Configuration for McByte's SAM and Cutie mask pipeline.
 
-    This tracker builds on ByteTrack-style two-stage IoU association with
-    Kalman-filter-based tracklets, optional camera motion compensation, and optional
-    McByte mask-manager support.
-
-    When a mask manager is configured, the tracker follows the original McByte
-    timing: masks for frame ``t`` are prepared before association on frame ``t``,
-    using tracker outputs from frame ``t-1``. Tracklets that are temporarily lost
-    but still alive keep their masks; masks are removed only when tracklets are
-    terminated by tracker pruning.
+    The configuration is used only when ``McByteTracker`` automatically creates
+    its default real ``MaskManager``. It is ignored when a custom manager is
+    supplied directly.
 
     Args:
-        lost_track_buffer: Time buffer, in frames at 30 FPS, for keeping lost
-            tracks alive before deletion. This value is scaled by ``frame_rate``.
-        frame_rate: Video frame rate used to scale ``lost_track_buffer``.
-        track_activation_threshold: Minimum confidence required to spawn a new
-            track.
-        minimum_consecutive_frames: Number of successful updates required before
-            assigning a stable track ID.
-        minimum_iou_threshold_first_assoc: Minimum similarity threshold for the
-            first association stage.
-        minimum_iou_threshold_second_assoc: Minimum similarity threshold for the
-            second association stage.
-        minimum_iou_threshold_unconfirmed_assoc: Minimum similarity threshold for
-            matching unconfirmed tracks.
-        high_conf_det_threshold: Confidence threshold used to split detections
-            into high- and low-confidence groups.
-        enable_cmc: Whether to enable camera motion compensation.
+        device: Device shared by SAM and Cutie, for example ``"cuda"``,
+            ``"cuda:0"``, or ``"cpu"``.
+        sam_checkpoint_path: Optional SAM checkpoint path. When omitted, the
+            default checkpoint for ``sam_model_type`` is used and downloaded
+            automatically when necessary.
+        sam_model_type: SAM model variant used for box-prompted mask generation.
+        cutie_weights_path: Optional Cutie checkpoint path. When omitted, the
+            default checkpoint for ``cutie_model_type`` is used and downloaded
+            automatically when necessary.
+        cutie_model_type: Cutie model variant used for temporal propagation.
+        cutie_config_path: Optional Cutie Hydra configuration directory. When
+            omitted, it is inferred from the installed Cutie package.
+        cutie_config_name: Hydra configuration name loaded by Cutie.
+        cutie_use_amp: Whether Cutie may use automatic mixed precision. AMP is
+            activated only when Cutie runs on a CUDA device.
+        mask_creation_bbox_overlap_threshold: Bounding-box overlap fraction at
+            or above which mask creation is delayed by ``MaskManager``.
+    """
+
+    device: str = "cuda"
+
+    sam_checkpoint_path: str | Path | None = None
+    sam_model_type: str = "vit_b"
+
+    cutie_weights_path: str | Path | None = None
+    cutie_model_type: str = "base-mega"
+    cutie_config_path: str | Path | None = None
+    cutie_config_name: str = "eval_config"
+    cutie_use_amp: bool = True
+
+    mask_creation_bbox_overlap_threshold: float = MASK_CREATION_BBOX_OVERLAP_THRESHOLD
+
+
+def _build_default_mask_manager(
+    config: McByteMaskConfig,
+) -> MaskManager:
+    """Create McByte's standard SAM + Cutie mask-management pipeline."""
+    mask_generator = SAMBoxMaskGenerator(
+        checkpoint_path=config.sam_checkpoint_path,
+        model_type=config.sam_model_type,
+        device=config.device,
+    )
+
+    mask_propagator = CutieMaskPropagator(
+        weights_path=config.cutie_weights_path,
+        model_type=config.cutie_model_type,
+        config_path=config.cutie_config_path,
+        config_name=config.cutie_config_name,
+        device=config.device,
+        use_amp=config.cutie_use_amp,
+    )
+
+    return MaskManager(
+        mask_generator=mask_generator,
+        mask_propagator=mask_propagator,
+        mask_creation_bbox_overlap_threshold=(config.mask_creation_bbox_overlap_threshold),
+    )
+
+
+class McByteTracker(BaseTracker):
+    """McByte multi-object tracker with optional mask-conditioned association.
+
+    McByte extends a ByteTrack-style multi-stage tracking pipeline with
+    clear-match locking, reduced assignment, optional camera motion
+    compensation, and optional propagated-mask evidence.
+
+    The tracker can operate in two configurations:
+
+    - without a ``MaskManager``, association uses the McByte clear-match locking
+      and reduced-assignment procedure with IoU-based similarities;
+    - with a ``MaskManager`` (full McByte), masks are additionally used to condition
+      ambiguous associations and, when enabled, isolated positive-IoU associations
+      below the normal stage threshold.
+
+    When ``enable_mask_manager=True``, the default mask pipeline initializes
+    masks from detection boxes using SAM and propagates them temporally using
+    Cutie. A custom ``MaskManager`` may instead be supplied directly, for
+    example to inject alternative mask components or lightweight test doubles.
+
+    Mask processing follows the original McByte timing. At frame ``t``, masks
+    are updated before association using the frame, visible tracklets, newly
+    created tracklets, and removed-tracklet events stored after processing frame
+    ``t - 1``. Temporarily lost but still active tracklets retain their masks.
+    Masks are removed only after the corresponding tracklets are terminated
+    during tracker pruning.
+
+    Input frames are expected in RGB channel order. A frame is required when
+    mask management is enabled and is also needed for camera motion
+    compensation. When no frame is supplied, those frame-dependent operations
+    are skipped.
+
+    Args:
+        lost_track_buffer: Time buffer, expressed as a number of frames at
+            30 FPS, for retaining unmatched tracks before deletion. The value
+            is scaled according to ``frame_rate``.
+        frame_rate: Sequence frame rate used to scale ``lost_track_buffer``.
+        track_activation_threshold: Minimum detection confidence required to
+            create a new tracklet.
+        minimum_consecutive_frames: Number of successful tracklet updates
+            required before assigning a confirmed non-negative tracker ID.
+        minimum_iou_threshold_first_assoc: Minimum association similarity for
+            matching high-confidence detections to confirmed and lost tracks.
+        minimum_iou_threshold_second_assoc: Minimum association similarity for
+            matching low-confidence detections to remaining tracked tracks.
+        minimum_iou_threshold_unconfirmed_assoc: Minimum association similarity
+            for matching unconfirmed tracks to remaining high-confidence
+            detections.
+        high_conf_det_threshold: Confidence threshold separating high- and
+            low-confidence detections. Detections with confidence at or below
+            0.1 are discarded.
+        enable_cmc: Whether to apply camera motion compensation before
+            association.
         cmc_method: Camera motion compensation method.
-        cmc_downscale: Downscale factor used by camera motion compensation.
-        instant_first_frame_activation: Whether tracks spawned on the first frame
-            receive confirmed IDs immediately.
-        state_estimator_class: State estimator class used by McByte tracklets.
-        iou: IoU implementation used for association.
-        enable_mask_manager: Whether to create the default dummy mask manager.
-        mask_manager: Optional custom mask manager instance.
+        cmc_downscale: Image downscale factor used during camera motion
+            estimation.
+        instant_first_frame_activation: Whether tracklets created on the first
+            frame receive confirmed tracker IDs immediately.
+        state_estimator_class: State estimator class used by newly created
+            ``McByteTracklet`` instances.
+        iou: IoU implementation used to compute association similarities. When
+            omitted, the default ``IoU`` implementation is used.
+        enable_mask_manager: Whether to construct McByte's default SAM and
+            Cutie mask pipeline. It is disabled by default to avoid loading
+            optional heavyweight models when mask-conditioned tracking is not
+            requested.
+        mask_manager: Optional custom ``MaskManager``. When supplied, it is used
+            directly regardless of ``enable_mask_manager``, and automatic
+            SAM/Cutie construction is skipped.
+        mask_config: Configuration for automatic construction of the default
+            SAM/Cutie pipeline. It requires ``enable_mask_manager=True`` and
+            cannot be combined with a custom ``mask_manager``.
+        minimum_mask_average_confidence: Minimum average confidence of a
+            propagated mask before it may influence association.
+        minimum_mask_coverage: Minimum fraction of the visible tracklet mask
+            that must lie inside a candidate detection box.
+        minimum_mask_fill_ratio: Minimum fraction of a candidate detection-box
+            area that must be occupied by the tracklet mask.
+        enable_isolated_mask_matching: Whether mask evidence may rescue an
+            isolated candidate with positive IoU whose association similarity
+            is below the normal stage threshold.
     """
 
     tracker_id = "mcbyte"
@@ -77,7 +197,7 @@ class McByteTracker(BaseTracker):
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.7,
         minimum_consecutive_frames: int = 2,
-        minimum_iou_threshold_first_assoc: float = 0.2,
+        minimum_iou_threshold_first_assoc: float = 0.1,
         minimum_iou_threshold_second_assoc: float = 0.5,
         minimum_iou_threshold_unconfirmed_assoc: float = 0.3,
         high_conf_det_threshold: float = 0.6,
@@ -89,6 +209,11 @@ class McByteTracker(BaseTracker):
         iou: BaseIoU | None = None,
         enable_mask_manager: bool = False,
         mask_manager: MaskManager | None = None,
+        mask_config: McByteMaskConfig | None = None,
+        minimum_mask_average_confidence: float = MINIMUM_MASK_AVERAGE_CONFIDENCE,
+        minimum_mask_coverage: float = MINIMUM_MASK_COVERAGE,
+        minimum_mask_fill_ratio: float = MINIMUM_MASK_FILL_RATIO,
+        enable_isolated_mask_matching: bool = False,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -101,6 +226,10 @@ class McByteTracker(BaseTracker):
         self.track_activation_threshold = track_activation_threshold
         self.high_conf_det_threshold = high_conf_det_threshold
         self.instant_first_frame_activation = instant_first_frame_activation
+        self.minimum_mask_average_confidence = minimum_mask_average_confidence
+        self.minimum_mask_coverage = minimum_mask_coverage
+        self.minimum_mask_fill_ratio = minimum_mask_fill_ratio
+        self.enable_isolated_mask_matching = enable_isolated_mask_matching
         self.tracks: list[McByteTracklet] = []
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
@@ -109,12 +238,20 @@ class McByteTracker(BaseTracker):
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
 
-        self.mask_manager = mask_manager
-        if self.mask_manager is None and enable_mask_manager:
-            self.mask_manager = MaskManager(
-                mask_generator=DummyBoxMaskGenerator(),
-                mask_propagator=DummyIdentityMaskPropagator(),
+        self.mask_manager: MaskManager | None
+
+        if mask_manager is not None and mask_config is not None:
+            raise ValueError("mask_config cannot be used together with a custom mask_manager.")
+        if mask_config is not None and not enable_mask_manager:
+            raise ValueError("mask_config requires enable_mask_manager=True when no custom mask_manager is supplied.")
+        if mask_manager is not None:
+            self.mask_manager = mask_manager
+        elif enable_mask_manager:
+            self.mask_manager = _build_default_mask_manager(
+                mask_config if mask_config is not None else McByteMaskConfig()
             )
+        else:
+            self.mask_manager = None
 
         self._previous_frame: np.ndarray | None = None
         self._previous_tracklets: list[TrackletSnapshot] = []
@@ -223,10 +360,21 @@ class McByteTracker(BaseTracker):
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
-        iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
-        matched, unmatched_pool, unmatched_high = self._get_associated_indices(
-            iou_matrix, self.minimum_iou_threshold_first_assoc
+        raw_iou_similarity = self._get_iou_matrix(
+            strack_pool,
+            high_boxes,
+        )
+        association_similarity = _fuse_score(
+            self.iou.normalize_for_fusion(raw_iou_similarity.copy()),
+            high_scores,
+        )
+
+        matched, unmatched_pool, unmatched_high = self._get_mask_conditioned_associated_indices(
+            similarity_matrix=association_similarity,
+            raw_iou_similarity=raw_iou_similarity,
+            tracklets=strack_pool,
+            detection_boxes=high_boxes,
+            min_similarity_thresh=self.minimum_iou_threshold_first_assoc,
         )
 
         for row, col in matched:
@@ -241,8 +389,20 @@ class McByteTracker(BaseTracker):
         # only (excluding lost tracks, following the original ByteTrack).
         # No score fusing in second association.
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
-        iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
-        matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
+        raw_iou_similarity = self._get_iou_matrix(
+            remaining_tracked,
+            low_boxes,
+        )
+
+        # There is no score fusion in stage 2, so the assignment matrix
+        # and raw-IoU matrix are the same.
+        matched, _, unmatched_low = self._get_mask_conditioned_associated_indices(
+            similarity_matrix=raw_iou_similarity,
+            raw_iou_similarity=raw_iou_similarity,
+            tracklets=remaining_tracked,
+            detection_boxes=low_boxes,
+            min_similarity_thresh=self.minimum_iou_threshold_second_assoc,
+        )
 
         for row, col in matched:
             track = remaining_tracked[row]
@@ -267,10 +427,21 @@ class McByteTracker(BaseTracker):
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
 
-            iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
-            iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), uh_scores)
-            matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
-                iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
+            raw_iou_similarity = self._get_iou_matrix(
+                unconfirmed_tracks,
+                uh_boxes,
+            )
+            association_similarity = _fuse_score(
+                self.iou.normalize_for_fusion(raw_iou_similarity.copy()),
+                uh_scores,
+            )
+
+            matched_uc, unmatched_uc_indices, remaining_uh = self._get_mask_conditioned_associated_indices(
+                similarity_matrix=association_similarity,
+                raw_iou_similarity=raw_iou_similarity,
+                tracklets=unconfirmed_tracks,
+                detection_boxes=uh_boxes,
+                min_similarity_thresh=self.minimum_iou_threshold_unconfirmed_assoc,
             )
 
             for row, col in matched_uc:
@@ -416,6 +587,96 @@ class McByteTracker(BaseTracker):
         else:
             tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
         return self.iou.compute(tracklet_boxes, detections)
+
+    def _get_mask_conditioned_associated_indices(
+        self,
+        similarity_matrix: np.ndarray,
+        raw_iou_similarity: np.ndarray,
+        tracklets: list[McByteTracklet],
+        detection_boxes: np.ndarray,
+        min_similarity_thresh: float,
+    ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
+        """Associate tracklets and detections using McByte mask conditioning.
+
+        Clear threshold-valid pairs are locked before assignment when they are the
+        only eligible candidate in both their row and column. The remaining
+        association problem is conditioned with propagated-mask evidence for
+        ambiguous pairs and, optionally, isolated positive-IoU pairs below the
+        normal threshold.
+
+        Hungarian assignment is applied only to the remaining reduced matrix.
+        Reduced row and column indices are then mapped back to the original
+        ``tracklets`` and ``detection_boxes`` index spaces and combined with the
+        locked matches.
+
+        When no propagated mask output is available, mask-based score updates are
+        skipped. Clear-match locking and assignment of the remaining problem still
+        follow the McByte association pipeline.
+
+        Args:
+            similarity_matrix: Stage-specific association similarity matrix with
+                shape ``(num_tracklets, num_detections)``. This is score-fused IoU
+                for the first and unconfirmed association stages, and raw IoU for
+                the second association stage.
+            raw_iou_similarity: Unfused IoU similarity matrix with the same shape.
+                It is used to determine optional isolated geometric candidates.
+            tracklets: Tracklets corresponding, in order, to the rows of both
+                similarity matrices.
+            detection_boxes: Detection boxes in ``xyxy`` format corresponding, in
+                order, to the columns of both similarity matrices.
+            min_similarity_thresh: Minimum stage-specific similarity required for
+                a valid association.
+
+        Returns:
+            A tuple containing:
+
+            - matched original ``(tracklet_index, detection_index)`` pairs;
+            - sorted original indices of unmatched tracklets;
+            - sorted original indices of unmatched detections.
+        """
+        conditioned_association = condition_similarity_with_masks(
+            similarity=similarity_matrix,
+            raw_iou_similarity=raw_iou_similarity,
+            tracklet_ids=[int(tracklet.tracker_id) for tracklet in tracklets],
+            detection_boxes=detection_boxes,
+            mask_output=self._last_mask_output,
+            minimum_similarity=min_similarity_thresh,
+            minimum_mask_average_confidence=self.minimum_mask_average_confidence,
+            minimum_mask_coverage=self.minimum_mask_coverage,
+            minimum_mask_fill_ratio=self.minimum_mask_fill_ratio,
+            enable_isolated_mask_matching=self.enable_isolated_mask_matching,
+        )
+
+        (
+            reduced_matches,
+            reduced_unmatched_track_indices,
+            reduced_unmatched_detection_indices,
+        ) = self._get_associated_indices(
+            similarity_matrix=conditioned_association.conditioned_similarity,
+            min_similarity_thresh=min_similarity_thresh,
+        )
+
+        remapped_matches = [
+            (
+                conditioned_association.remaining_track_indices[reduced_track_index],
+                conditioned_association.remaining_detection_indices[reduced_detection_index],
+            )
+            for reduced_track_index, reduced_detection_index in reduced_matches
+        ]
+
+        matched = sorted(conditioned_association.locked_matches + remapped_matches)
+
+        unmatched_tracks = sorted(
+            conditioned_association.remaining_track_indices[reduced_track_index]
+            for reduced_track_index in reduced_unmatched_track_indices
+        )
+
+        unmatched_detections = sorted(
+            conditioned_association.remaining_detection_indices[reduced_detection_index]
+            for reduced_detection_index in reduced_unmatched_detection_indices
+        )
+
+        return matched, unmatched_tracks, unmatched_detections
 
     def _get_associated_indices(
         self,
