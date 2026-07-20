@@ -258,16 +258,16 @@ class CMC:
         self.extractor: Any | None = None
         self.matcher: Any | None = None
         if self.cfg.method == "orb":
-            self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)
-            self.extractor = cv2.ORB_create()
+            self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)  # type: ignore[attr-defined]
+            self.extractor = cv2.ORB_create()  # type: ignore[attr-defined]
             self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
         elif self.cfg.method == "sift":
-            self.detector = cv2.SIFT_create(
+            self.detector = cv2.SIFT_create(  # type: ignore[attr-defined]
                 nOctaveLayers=self.cfg.sift_n_octave_layers,
                 contrastThreshold=self.cfg.sift_contrast_threshold,
                 edgeThreshold=int(self.cfg.sift_edge_threshold),
             )
-            self.extractor = cv2.SIFT_create(
+            self.extractor = cv2.SIFT_create(  # type: ignore[attr-defined]
                 nOctaveLayers=self.cfg.sift_n_octave_layers,
                 contrastThreshold=self.cfg.sift_contrast_threshold,
                 edgeThreshold=int(self.cfg.sift_edge_threshold),
@@ -515,7 +515,7 @@ class CMC:
             frame = cv2.resize(frame, (new_w, new_h))
 
         # Find keypoints in current frame
-        keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)
+        keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)  # type: ignore[call-overload]
 
         # First frame: init and return identity
         if not self._initialized:
@@ -562,7 +562,9 @@ class CMC:
 
         # Optical flow correspondences
         # calcOpticalFlowPyrLK will throw or return nonsense if we give it None
-        matched, status, _err = cv2.calcOpticalFlowPyrLK(self._prev_frame_gray, frame, self._prev_points, None)
+        matched, status, _err = cv2.calcOpticalFlowPyrLK(  # type: ignore[call-overload]
+            self._prev_frame_gray, frame, self._prev_points, None
+        )
 
         if status is None or matched is None:
             self._prev_frame_gray = frame.copy()
@@ -661,7 +663,7 @@ class CMC:
         # into an identity transform (with self._prev_frame_gray refreshed after).
         # So ECC needs no explicit size guard like _estimate_sparse_optflow has.
         try:
-            _cc, affine_est = cv2.findTransformECC(
+            _cc, affine_est = cv2.findTransformECC(  # type: ignore[call-overload]
                 self._prev_frame_gray,
                 frame,
                 affine_mtx,

@@ -166,7 +166,7 @@ class MotionEstimator:
             self._previous_features = current_features
             return self._get_current_transformation()
 
-        tracked_points, status, _ = cv2.calcOpticalFlowPyrLK(
+        tracked_points, status, _ = cv2.calcOpticalFlowPyrLK(  # type: ignore[call-overload]
             self._previous_grayscale,
             grayscale,
             self._previous_features,
