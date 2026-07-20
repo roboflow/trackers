@@ -187,8 +187,8 @@ class TestCBIoUZeroBufferEquivalence:
             )
             if len(r_cbiou) > 0:
                 np.testing.assert_allclose(
-                    r_cbiou.xyxy,
-                    r_botsort.xyxy,
+                    r_cbiou.xyxy.astype(np.float32),
+                    r_botsort.xyxy.astype(np.float32),
                     err_msg=f"frame {frame_idx}: different boxes",
                 )
 
@@ -231,6 +231,7 @@ class TestCBIoUUnmatchedLowConfidence:
             )
         )
         assert len(result) == 1
+        assert result.tracker_id is not None
         assert result.tracker_id[0] == -1
 
 
@@ -277,6 +278,7 @@ class TestCBIoUStickyMaturity:
         obj = (10.0, 10.0, 50.0, 50.0)
 
         first = tracker.update(_detection(obj))
+        assert first.tracker_id is not None
         track_id = int(first.tracker_id[0])
 
         tracker.update(sv.Detections.empty())  # miss 1: time_since_update=1 → confirmed
@@ -285,6 +287,7 @@ class TestCBIoUStickyMaturity:
         assert any(t.tracker_id == track_id for t in tracker.tracks)
 
         returned = tracker.update(_detection(obj))
+        assert returned.tracker_id is not None
         assert track_id in returned.tracker_id.tolist()
 
     @pytest.mark.parametrize(
@@ -301,6 +304,7 @@ class TestCBIoUStickyMaturity:
         obj = (10.0, 10.0, 50.0, 50.0)
 
         first = tracker.update(_detection(obj))
+        assert first.tracker_id is not None
         track_id = int(first.tracker_id[0])
 
         tracker.update(sv.Detections.empty())
@@ -308,4 +312,5 @@ class TestCBIoUStickyMaturity:
         assert any(t.tracker_id == track_id for t in tracker.tracks)
 
         returned = tracker.update(_detection(obj))
+        assert returned.tracker_id is not None
         assert track_id in returned.tracker_id.tolist()
