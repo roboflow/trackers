@@ -110,3 +110,63 @@ def test_cmc_recovers_after_tiny_frame_followup_call_returns_identity(
 
     assert affine_mtx.shape == (2, 3)
     np.testing.assert_array_equal(affine_mtx, np.eye(2, 3, dtype=np.float32))
+
+
+@pytest.mark.parametrize("method", CMC_METHODS)
+def test_cmc_survives_resolution_change(
+    method: Literal["sparseOptFlow", "orb", "sift", "ecc"],
+) -> None:
+    """No CMC method crashes when the frame size changes mid-stream.
+
+    A source that renegotiates resolution (e.g. an RTSP camera after a
+    reconnect, or switching clips without a reset) feeds consecutive frames of
+    different sizes. sparseOptFlow feeds both into calcOpticalFlowPyrLK, which
+    asserts they share the same size, so it used to crash; the others already
+    coped. Every method must return a finite affine matrix.
+    """
+    rng = np.random.default_rng(0)
+    small = rng.integers(0, 255, (480, 640, 3), dtype=np.uint8)
+    large = rng.integers(0, 255, (720, 1280, 3), dtype=np.uint8)
+
+    cmc = CMC(CMCConfig(method=method, downscale=2))
+    cmc.estimate(small)
+    affine_mtx = cmc.estimate(large)  # resolution changed between the two frames
+
+    assert affine_mtx.shape == (2, 3)
+    assert np.all(np.isfinite(affine_mtx))
+
+
+def test_cmc_sparse_optflow_returns_identity_on_resolution_change() -> None:
+    """sparseOptFlow re-inits and returns identity when the frame size changes.
+
+    This is the guarded path: the cached previous frame no longer matches the
+    new frame size, so the optical-flow step is skipped for that frame.
+    """
+    rng = np.random.default_rng(0)
+    small = rng.integers(0, 255, (480, 640, 3), dtype=np.uint8)
+    large = rng.integers(0, 255, (720, 1280, 3), dtype=np.uint8)
+
+    cmc = CMC(CMCConfig(method="sparseOptFlow", downscale=2))
+    cmc.estimate(small)
+    affine_mtx = cmc.estimate(large)
+
+    np.testing.assert_array_equal(affine_mtx, np.eye(2, 3, dtype=np.float32))
+
+
+@pytest.mark.parametrize("method", CMC_METHODS)
+def test_cmc_recovers_after_resolution_change(
+    method: Literal["sparseOptFlow", "orb", "sift", "ecc"],
+) -> None:
+    """After a resolution change CMC keeps estimating on the new size."""
+    rng = np.random.default_rng(1)
+    small = rng.integers(0, 255, (480, 640, 3), dtype=np.uint8)
+    large_a = rng.integers(0, 255, (720, 1280, 3), dtype=np.uint8)
+    large_b = rng.integers(0, 255, (720, 1280, 3), dtype=np.uint8)
+
+    cmc = CMC(CMCConfig(method=method, downscale=2))
+    cmc.estimate(small)
+    cmc.estimate(large_a)  # change: re-syncs on the new size
+    affine_mtx = cmc.estimate(large_b)  # same new size again: no crash, finite output
+
+    assert affine_mtx.shape == (2, 3)
+    assert np.all(np.isfinite(affine_mtx))
