@@ -524,18 +524,40 @@ class CMC:
             self._initialized = True
             return affine_mtx
 
-        # If we don't have points, or the frame size changed (e.g. a video
-        # source that renegotiates resolution mid-stream), re-init and return
-        # identity. calcOpticalFlowPyrLK asserts that both frames share the
-        # same size, so a mismatch would crash it.
-        if (
-            self._prev_frame_gray is None
-            or self._prev_points is None
-            or keypoints is None
-            or self._prev_frame_gray.shape != frame.shape
-        ):
+        # No usable prior state (no previous frame / points) or no keypoints in
+        # the current frame: re-init and return identity.
+        if self._prev_frame_gray is None or self._prev_points is None or keypoints is None:
             self._prev_frame_gray = frame.copy()
-            self._prev_points = copy.copy(keypoints)
+            self._prev_points = None if keypoints is None else keypoints.copy()
+            return affine_mtx
+
+        # A mid-stream frame-size change (e.g. a video source that renegotiates
+        # resolution) is an expected event, not a failure, so it is surfaced via
+        # a debug log below and does NOT bump frames_failed (which counts genuine
+        # estimation failures). calcOpticalFlowPyrLK asserts that both frames
+        # share the same size, so a mismatch would crash it. Known limitation: the
+        # guard only compares against the immediately-previous frame, so a source
+        # sustaining a resolution oscillation (thrashing between two sizes, e.g.
+        # from a flaky transcoder or flapping bitrate ladder) re-inits on every
+        # frame, effectively disabling CMC for the duration of the oscillation.
+        # This guard mirrors MotionEstimator.update in motion/estimator.py;
+        # the two are parallel sparse-optical-flow pipelines, deliberately not
+        # merged (divergent resets/return types) — tracked debt to consolidate.
+        # Known, untested, low-risk edge (downscale-collapse): when downscale > 1
+        # the shapes compared below are the already-downscaled ones, so two
+        # different input resolutions that floor-divide to the same downscaled
+        # shape slip past this guard. calcOpticalFlowPyrLK then runs on the
+        # equal-sized downscaled frames without asserting, so it does not crash;
+        # the only cost is one frame of slightly degraded motion estimate. No
+        # test covers this and none is added — the real-world risk is negligible.
+        if self._prev_frame_gray.shape != frame.shape:
+            logger.debug(
+                "CMC: frame size changed (%s -> %s); re-syncing sparse optical flow",
+                self._prev_frame_gray.shape,
+                frame.shape,
+            )
+            self._prev_frame_gray = frame.copy()
+            self._prev_points = keypoints.copy()
             return affine_mtx
 
         # Optical flow correspondences
