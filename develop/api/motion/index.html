@@ -2288,6 +2288,22 @@ first frame or if motion estimation fails.</p>
     </table>
 
 
+<details class="note" open>
+  <summary>Note</summary>
+  <p>If the frame shape changes versus the previous frame (e.g. a source
+that renegotiates resolution mid-stream), the accumulated homography
+is reset to identity, re-baselining the world coordinate system to
+the new resolution. Absolute coordinates are therefore not
+continuous across a resolution change. Callers relying on
+absolute-coordinate continuity should call <code>reset()</code> themselves and
+re-establish any world-space references after such a change. Because
+the guard only compares against the immediately-previous frame, a
+source that sustains a resolution oscillation (thrashing between two
+sizes, e.g. from a flaky transcoder or a flapping bitrate ladder)
+re-baselines on every frame, effectively disabling motion
+compensation for the duration of the oscillation.</p>
+</details>
+
     </div>
 
 </div>
