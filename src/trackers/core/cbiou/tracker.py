@@ -76,6 +76,9 @@ class CBIoUTracker(BoTSORTTracker):
         that are not associated in Step 2 appear in the output with ``tracker_id == -1``,
         consistent with ``BoTSORTTracker`` behaviour. Callers filtering by
         ``tracker_id >= 0`` will silently drop these rows.
+        Tracks that already hold a real ``tracker_id`` (for example, instant-activated
+        tracks) remain confirmed on a miss even before ``minimum_consecutive_frames`` is
+        reached.
 
     Example:
         Run C-BIoU on a batch of detections::
