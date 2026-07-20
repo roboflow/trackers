@@ -76,6 +76,9 @@ class CBIoUTracker(BoTSORTTracker):
         that are not associated in Step 2 appear in the output with ``tracker_id == -1``,
         consistent with ``BoTSORTTracker`` behaviour. Callers filtering by
         ``tracker_id >= 0`` will silently drop these rows.
+        Tracks that already hold a real ``tracker_id`` (for example, instant-activated
+        tracks) remain confirmed on a miss even before ``minimum_consecutive_frames`` is
+        reached.
 
     Example:
         Run C-BIoU on a batch of detections::
@@ -231,7 +234,12 @@ class CBIoUTracker(BoTSORTTracker):
         for track in self.tracks:
             if track.time_since_update > 1:
                 lost_tracks.append(track)
-            elif track.number_of_successful_updates >= self.minimum_consecutive_frames:
+            elif track.tracker_id != -1 or track.number_of_successful_updates >= self.minimum_consecutive_frames:
+                # Maturity is sticky: a track that already holds a real
+                # tracker_id (e.g. an instant-activated first-frame track) stays
+                # confirmed even before it reaches minimum_consecutive_frames.
+                # On a miss it is kept as a confirmed (then eventually lost)
+                # track rather than discarded as an unconfirmed one.
                 confirmed_tracks.append(track)
             else:
                 unconfirmed_tracks.append(track)
