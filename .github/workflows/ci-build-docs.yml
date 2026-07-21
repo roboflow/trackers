@@ -29,7 +29,8 @@ jobs:
           activate-environment: true
 
       - name: 🏗️ Install dependencies
-        run: uv sync --frozen --group docs
+        # Exclude the default `dev` group (pins private git dep roboflow-reid).
+        run: uv sync --frozen --no-default-groups --group docs
 
       - name: 🧪 Test Docs Build
         run: uv run mkdocs build --verbose
