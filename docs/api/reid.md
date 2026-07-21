@@ -1,25 +1,25 @@
 ---
-description: Appearance-ReID association utilities in Roboflow Trackers.
+description: ReID encoder protocol, feature bank, and appearance association utilities in Roboflow Trackers.
 ---
 
 # ReID API
 
-Appearance-based re-identification (ReID) lets BoT-SORT match tracks across
-frames using visual appearance in addition to motion. It requires the optional
-extra:
+Requires the optional extra:
 
 ```bash
 pip install 'trackers[reid]'
 ```
 
-Trackers ships only the numpy-only association glue documented below. The
-appearance encoder, pretrained weights, preprocessing, model catalog, and
-gallery evaluation live in the standalone [`reid`](https://github.com/roboflow/re-ID)
-package (`roboflow-reid`), which the `trackers[reid]` extra installs for you.
+This page covers the `ReIDEncoder` protocol, `FeatureBank`, and appearance
+association helpers in `trackers.core.reid`. ReID model loading, gallery
+evaluation, and MOT fine-tuning are documented in the standalone
+[`reid`](https://github.com/roboflow/re-ID) package. BoT-SORT usage is on the
+[BoT-SORT](../trackers/botsort.md) page.
 
-## Loading a model
+## Use with BoT-SORT
 
-Import the encoder from `reid` and pass it to BoT-SORT:
+Import the encoder from `reid` and pass any object that implements
+`ReIDEncoder` to `BoTSORTTracker`:
 
 ```python
 from reid import ReIDModel
@@ -31,16 +31,14 @@ tracker = BoTSORTTracker(reid_model=reid_model)
 ```
 
 See the [`reid` package documentation](https://github.com/roboflow/re-ID) for
-the full model catalog, `from_pretrained` sources (curated aliases, `hf://`
-repos, local checkpoints, architecture-only init), gallery evaluation
-(`ReIDEvaluator`, `load_market1501`, `load_msmt17`), and how to add
-architectures.
+the model catalog, `from_pretrained` sources, gallery evaluation, and MOT
+fine-tuning.
 
 ## Encoder protocol
 
-`ReIDEncoder` is the minimal interface BoT-SORT depends on: a single
-`extract_features` method. `reid.ReIDModel` satisfies it, and you can implement
-it yourself for a custom encoder without depending on the model stack.
+`ReIDEncoder` is the interface BoT-SORT expects: a single `extract_features`
+method. `reid.ReIDModel` satisfies it; custom encoders can implement the
+protocol without the model stack.
 
 ::: trackers.core.reid.encoder.ReIDEncoder
 
@@ -48,7 +46,7 @@ it yourself for a custom encoder without depending on the model stack.
 
 ::: trackers.core.reid.feature_bank.FeatureBank
 
-## Appearance similarity
+## Appearance
 
 ::: trackers.core.reid.appearance.appearance_similarity
 
