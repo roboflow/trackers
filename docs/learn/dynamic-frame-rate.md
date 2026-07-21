@@ -67,6 +67,7 @@ On each predict, the filter adjusts how far it extrapolates and how uncertain it
 
 - **Position** moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (`frame_step`).
 - **Process noise** grows on longer gaps so the box does not stay artificially tight. At `frame_step = 1.0` you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.
+- **Scale velocity** is frozen if the projected area over the gap would go non-positive.
 
 ---
 
