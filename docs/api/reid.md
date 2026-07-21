@@ -25,9 +25,9 @@ uses the same split and detector with `fastreid_mot17_sbs50` and
 `appearance_threshold=0.2` (MOT17 re-ID study Table 8); run it for
 trackers-local results.
 
-| Config | HOTA | MOTA | IDF1 |
-| :----- | :--: | :--: | :--: |
-| BoT-SORT | 69.11 | 78.39 | 81.53 |
+| Config          | HOTA  | MOTA  | IDF1  |
+| :-------------- | :---: | :---: | :---: |
+| BoT-SORT        | 69.11 | 78.39 | 81.53 |
 | BoT-SORT + ReID | 69.17 | 78.46 | 82.07 |
 
 The MOT17 re-ID study
