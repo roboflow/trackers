@@ -73,11 +73,11 @@ detections = tracker.update(detections, frame=frame)
 
 Tuning knobs:
 
-| Parameter | Default | Purpose |
-| --------- | ------- | ------- |
-| `reid_ema_alpha` | 0.9 | EMA momentum for a track's appearance feature; higher retains more history. |
-| `appearance_threshold` | 0.25 | Appearance-distance gate. A match is rejected when the halved cosine distance `0.5 * (1 - cos_sim)` exceeds this value. |
-| `proximity_threshold` | 0.5 | Standard-IoU gate applied before appearance is used (requires IoU > `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU. |
+| Parameter              | Default | Purpose                                                                                                                                                   |
+| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reid_ema_alpha`       | 0.9     | EMA momentum for a track's appearance feature; higher retains more history.                                                                               |
+| `appearance_threshold` | 0.25    | Appearance-distance gate. A match is rejected when the halved cosine distance `0.5 * (1 - cos_sim)` exceeds this value.                                   |
+| `proximity_threshold`  | 0.5     | Standard-IoU gate applied before appearance is used (requires IoU > `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU. |
 
 Install the optional extra and see the [ReID API](../api/reid.md) for the
 encoder protocol, feature bank, and association utilities:
