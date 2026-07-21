@@ -249,11 +249,16 @@ class XCYCSRStateEstimator(BaseStateEstimator):
         ``predict`` extrapolates scale as ``s + frame_step * vs``. A negative
         ``vs`` that passes the one-frame check (``s + vs > 0``) can still drive
         the projection non-positive over a gap (``frame_step > 1``), and
-        ``xcycsr_to_xyxy`` decodes a non-positive scale as NaN.
+        ``xcycsr_to_xyxy`` decodes a non-positive scale as NaN. If the motion
+        model stops being linear in scale, this clamp should be revisited.
 
         Args:
             frame_step: Elapsed time in frame units for the upcoming predict.
         """
+        # Clamp is intentionally hard: if the projected scale would go non-positive, we
+        # freeze vs to 0 instead of soft-clamping to keep behavior simple and defensive.
+        # Growth is unchecked here by design; any resulting non-finite boxes are caught by
+        # BaseIoU.compute()'s np.isfinite guard (iou.py:62-65).
         if (self.kf.state[2] + frame_step * self.kf.state[6]) <= 0:
             self.kf.state[6] = 0.0
 
@@ -286,7 +291,13 @@ class XCYCWHStateEstimator(BaseStateEstimator):
         return xywh_to_xyxy(self.kf.state[:4].reshape((4,)))
 
     def clamp_velocity(self, frame_step: float = 1.0) -> None:
-        pass
+        """Ignore `frame_step`; kept for interface compatibility.
+
+        No-op by design: unlike XCYCSR, this representation has no sqrt-decode
+        step, so a negative projected `w`/`h` over a large gap yields a
+        finite (not NaN) inverted box rather than crashing. This pre-existing
+        gap is tracked separately, out of scope for the frame_step clamp fix.
+        """
 
 
 class XYXYStateEstimator(BaseStateEstimator):
@@ -312,7 +323,7 @@ class XYXYStateEstimator(BaseStateEstimator):
         return self.kf.state[:4].reshape((4,))
 
     def clamp_velocity(self, frame_step: float = 1.0) -> None:
-        pass
+        """Ignore `frame_step`; kept for interface compatibility because XYXY-style velocity is unconstrained."""
 
 
 # ---------------------------------------------------------------------------
