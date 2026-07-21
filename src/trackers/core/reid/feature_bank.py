@@ -10,9 +10,17 @@ from __future__ import annotations
 
 import numpy as np
 
+_NORM_EPS = 1e-12
+
 
 class FeatureBank:
-    """Per-track EMA appearance embedding.
+    """Per-track EMA appearance embedding, kept on the unit hypersphere.
+
+    Following upstream BoT-SORT (``STrack.update_features``), every incoming
+    embedding is L2-normalized before it is blended, and the resulting EMA is
+    L2-normalized again. The stored feature is therefore always a unit vector,
+    so cosine similarity against it is a plain dot product. ``reid.ReIDModel``
+    returns raw (unnormalized) embeddings; normalization happens here.
 
     Args:
         alpha: EMA momentum in ``[0, 1]``.
@@ -26,7 +34,7 @@ class FeatureBank:
 
     @property
     def feature(self) -> np.ndarray | None:
-        """Current stored embedding, or ``None`` if never updated."""
+        """Current stored unit embedding, or ``None`` if never updated."""
         return None if self._feature is None else self._feature.copy()
 
     @property
@@ -35,11 +43,11 @@ class FeatureBank:
         return self._feature is not None
 
     def update(self, embedding: np.ndarray) -> None:
-        """Blend an embedding into the stored feature."""
-        cleaned = _require_embedding(embedding)
+        """Blend an L2-normalized embedding into the stored unit feature."""
+        cleaned = _l2_normalize(_require_embedding(embedding))
 
         if self._feature is None:
-            self._feature = cleaned.copy()
+            self._feature = cleaned
             return
 
         if self._feature.shape != cleaned.shape:
@@ -47,7 +55,8 @@ class FeatureBank:
                 f"embedding shape {cleaned.shape} does not match stored feature shape {self._feature.shape}"
             )
 
-        self._feature = (self._alpha * self._feature + (1.0 - self._alpha) * cleaned).astype(np.float32)
+        blended = self._alpha * self._feature + (1.0 - self._alpha) * cleaned
+        self._feature = _l2_normalize(blended)
 
     def reset(self) -> None:
         """Clear the stored feature."""
@@ -62,3 +71,9 @@ def _require_embedding(embedding: np.ndarray) -> np.ndarray:
     if not np.all(np.isfinite(flat)):
         raise ValueError("embedding must contain only finite values")
     return flat
+
+
+def _l2_normalize(vec: np.ndarray) -> np.ndarray:
+    """Return a unit-norm float32 vector (zero vectors are returned unchanged)."""
+    norm = float(np.linalg.norm(vec))
+    return (vec / max(norm, _NORM_EPS)).astype(np.float32)

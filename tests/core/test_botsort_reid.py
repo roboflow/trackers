@@ -75,20 +75,26 @@ def test_botsort_import_does_not_load_reid_model_stack() -> None:
 
 
 class TestFeatureBank:
-    def test_first_update_stores_raw_embedding(self) -> None:
+    def test_first_update_normalizes_embedding(self) -> None:
         bank = FeatureBank(alpha=0.9)
         bank.update(np.array([3.0, 4.0], dtype=np.float32))
         feature = bank.feature
         assert feature is not None
-        np.testing.assert_allclose(feature, [3.0, 4.0])
+        # Incoming embedding is L2-normalized before storage (unit sphere).
+        np.testing.assert_allclose(feature, [0.6, 0.8], atol=1e-6)
 
-    def test_stores_and_blends_raw_embeddings(self) -> None:
+    def test_blends_on_unit_sphere(self) -> None:
         bank = FeatureBank(alpha=0.75)
         bank.update(np.array([1.0, 0.0], dtype=np.float32))
         bank.update(np.array([0.0, 1.0], dtype=np.float32))
         feature = bank.feature
         assert feature is not None
-        np.testing.assert_allclose(feature, [0.75, 0.25])
+        # EMA of two unit vectors, then re-normalized: 0.75*[1,0] + 0.25*[0,1]
+        # = [0.75, 0.25], normalized by its norm sqrt(0.625).
+        expected = np.array([0.75, 0.25], dtype=np.float32)
+        expected /= np.linalg.norm(expected)
+        np.testing.assert_allclose(feature, expected, atol=1e-6)
+        np.testing.assert_allclose(np.linalg.norm(feature), 1.0, atol=1e-6)
 
     def test_zero_embedding_is_accepted(self) -> None:
         bank = FeatureBank()

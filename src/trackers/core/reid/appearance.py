@@ -43,7 +43,9 @@ def _l2_normalize_rows(embeddings: np.ndarray) -> np.ndarray:
     """L2-normalise each row in an embedding matrix."""
     if embeddings.size == 0:
         return embeddings
-    return np.stack([_l2_normalize(row) for row in embeddings])
+    mat = embeddings.astype(np.float64)
+    norms = np.linalg.norm(mat, axis=1, keepdims=True)
+    return (mat / np.maximum(norms, _NORM_EPS)).astype(np.float32)
 
 
 def extract_detection_embeddings(
