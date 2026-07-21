@@ -33,4 +33,4 @@ jobs:
         run: uv sync --frozen --no-default-groups --group docs
 
       - name: 🧪 Test Docs Build
-        run: uv run mkdocs build --verbose
+        run: uv run --no-sync mkdocs build --verbose

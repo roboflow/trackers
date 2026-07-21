@@ -4227,7 +4227,6 @@ build = [
 dev = [
     { name = "pre-commit" },
     { name = "pytest" },
-    { name = "roboflow-reid" },
     { name = "torch" },
     { name = "torchvision" },
     { name = "uv" },
@@ -4270,7 +4269,6 @@ build = [
 dev = [
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.3" },
-    { name = "roboflow-reid", git = "https://github.com/roboflow/re-ID.git?rev=feat%2Fport-model-stack" },
     { name = "torch" },
     { name = "torchvision" },
     { name = "uv", specifier = ">=0.4.20" },

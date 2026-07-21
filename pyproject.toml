@@ -62,8 +62,6 @@ dev = [
     "pre-commit>=4.2.0",
     "torch",
     "torchvision",
-    # Real ReID encoder for association / integration tests.
-    "roboflow-reid @ git+https://github.com/roboflow/re-ID.git@feat/port-model-stack",
 ]
 docs = [
     "mkdocs>=1.6.1",

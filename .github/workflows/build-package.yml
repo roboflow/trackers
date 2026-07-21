@@ -38,7 +38,7 @@ jobs:
           # Exclude the default `dev` group (pins private git dep roboflow-reid).
           uv sync --frozen --no-default-groups --group build
           uv build
-          uv run twine check --strict dist/*
+          uv run --no-sync twine check --strict dist/*
           ls -l dist/
 
       - name: 📤 Upload distribution artifacts

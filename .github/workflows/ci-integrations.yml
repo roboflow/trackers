@@ -20,9 +20,6 @@ jobs:
       - name: 📥 Checkout the repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: 🔐 Configure git for private dependencies
-        run: git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-
       - name: 🐍 Install uv and set Python version
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with:
@@ -30,6 +27,7 @@ jobs:
           activate-environment: true
 
       - name: 🚀 Install Packages
+        # ReID integration smoke test skips when roboflow-reid is unavailable.
         run: uv sync --frozen --group dev
 
 
