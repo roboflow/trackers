@@ -36,19 +36,27 @@ class ParameterInfo:
     description: str
 
 
+# Constructor arguments that are injected programmatically and must not be
+# surfaced as CLI flags (e.g. an instantiated ReID model or IoU metric object).
+_CLI_EXCLUDED_PARAMS = frozenset({"reid_model"})
+
+
 class TrackerParameters(dict[str, ParameterInfo]):
-    """Tracker parameter mapping with CLI-only filtering for IoU metrics."""
+    """Tracker parameter mapping with CLI-only filtering for injection-only args."""
 
     def items(self) -> Iterator[tuple[str, ParameterInfo]]:  # type: ignore[override]
         try:
             from trackers.utils.iou import BaseIoU
         except ImportError:
-            yield from super().items()
-            return
+            base_iou_type: type | None = None
+        else:
+            base_iou_type = BaseIoU
 
         for name, param_info in super().items():
+            if name in _CLI_EXCLUDED_PARAMS:
+                continue
             param_type = param_info.param_type
-            if isinstance(param_type, type) and issubclass(param_type, BaseIoU):
+            if base_iou_type is not None and isinstance(param_type, type) and issubclass(param_type, base_iou_type):
                 continue
             yield name, param_info
 

@@ -70,6 +70,30 @@ The `detection` extra installs `inference-models`, enabling the CLI to run detec
     uv pip install "trackers[detection]"
     ```
 
+### ReID (BoT-SORT appearance)
+
+The `reid` extra installs the standalone `roboflow-reid` package, which brings
+PyTorch, timm, Hugging Face Hub, safetensors, and related dependencies for ReID
+model loading (OSNet, FastReID SBS, and `timm:` backbones) and BoT-SORT
+appearance association.
+
+=== "pip"
+
+    ```bash
+    pip install "trackers[reid]"
+    ```
+
+=== "uv"
+
+    ```bash
+    uv pip install "trackers[reid]"
+    ```
+
+Use programmatically via `from reid import ReIDModel` and
+`BoTSORTTracker(reid_model=...)`, or via CLI flags such as
+`--tracker.reid.enable` and `--tracker.reid.architecture` on `trackers track`
+(BoT-SORT only).
+
 !!! tip "GPU Acceleration"
 
     For GPU support, ensure PyTorch is installed with CUDA or MPS.

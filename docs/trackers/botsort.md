@@ -50,6 +50,42 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 | `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.                                                                    | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                                                                                                                                 |
 | `enable_cmc`                              | Enables camera motion compensation before association.                                                                      | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                         |
 
+## Appearance ReID
+
+BoT-SORT can optionally fuse appearance embeddings with IoU during association.
+Pass a `reid_model` that implements the `ReIDEncoder` protocol (for example,
+`reid.ReIDModel`) to enable this mode:
+
+```python
+from reid import ReIDModel
+from trackers import BoTSORTTracker
+
+reid_model = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall", device="cpu")
+tracker = BoTSORTTracker(reid_model=reid_model)
+```
+
+When ReID is enabled, pass the current frame to `tracker.update` so the encoder
+can crop detections:
+
+```python
+detections = tracker.update(detections, frame=frame)
+```
+
+Tuning knobs:
+
+| Parameter | Default | Purpose |
+| --------- | ------- | ------- |
+| `reid_ema_alpha` | 0.9 | EMA momentum for a track's appearance feature; higher retains more history. |
+| `appearance_threshold` | 0.25 | Appearance-distance gate. A match is rejected when the halved cosine distance `0.5 * (1 - cos_sim)` exceeds this value. |
+| `proximity_threshold` | 0.5 | Standard-IoU gate applied before appearance is used (requires IoU > `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU. |
+
+Install the optional extra and see the [ReID API](../api/reid.md) for the
+encoder protocol, feature bank, and association utilities:
+
+```bash
+pip install 'trackers[reid]'
+```
+
 ## Run on video, webcam, or RTSP stream
 
 These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.

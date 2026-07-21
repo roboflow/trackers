@@ -30,7 +30,10 @@ jobs:
           prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
-        run: uv sync --frozen --group dev
+        # NOTE: --frozen is dropped while the `reid` extra pins roboflow-reid to a
+        # git ref (see pyproject). Restore `--frozen` once roboflow-reid publishes
+        # to PyPI and uv.lock is regenerated.
+        run: uv sync --group dev --extra reid
 
       - name: 🧪 Run the Import test
         run: uv run python -c "import trackers"
