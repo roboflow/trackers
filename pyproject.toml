@@ -47,6 +47,10 @@ dependencies = [
 [project.optional-dependencies]
 detection = ["inference-models>=0.19.0"]
 tune = ["optuna>=3.0.0"]
+# ReID appearance association sources its model stack from the standalone
+# roboflow-reid package. Pinned to a git ref during review; swap to a PyPI
+# release (e.g. "roboflow-reid>=0.1.0,<0.2") before merge. See re-ID#1.
+reid = ["roboflow-reid @ git+https://github.com/roboflow/re-ID.git@feat/port-model-stack"]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"
@@ -58,6 +62,8 @@ dev = [
     "pre-commit>=4.2.0",
     "torch",
     "torchvision",
+    # Real ReID encoder for association / integration tests.
+    "roboflow-reid @ git+https://github.com/roboflow/re-ID.git@feat/port-model-stack",
 ]
 docs = [
     "mkdocs>=1.6.1",
@@ -219,5 +225,7 @@ module = [
     "rfdetr.*",
     "supervision",
     "supervision.*",
+    "reid",
+    "reid.*",
 ]
 ignore_missing_imports = true
