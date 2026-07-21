@@ -130,7 +130,7 @@ def test_explicit_none_timestamp_matches_omitted(
     t2 = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=frame_rate)
     r2 = t2.update(_DET, timestamp=None)
 
-    assert list(r1.tracker_id) == list(r2.tracker_id)
+    assert r1.tracker_id is not None and r2.tracker_id is not None and list(r1.tracker_id) == list(r2.tracker_id)
 
 
 @pytest.mark.parametrize(
@@ -456,7 +456,7 @@ def _confirmation_pattern(
     for i in range(n_frames):
         ts = i / frame_rate if use_timestamps else None
         result = tracker.update(_DET, timestamp=ts)
-        if len(result.tracker_id):
+        if result.tracker_id is not None and len(result.tracker_id):
             confirmed.append(int(result.tracker_id[0]) >= 0)
         else:
             confirmed.append(False)
@@ -531,7 +531,8 @@ def test_xcycsr_shrinking_box_survives_timestamp_gap_without_nan(
         w *= 0.97
         h *= 0.97
 
-    # NOTE: Large frame-step gaps may trigger pre-existing Kalman covariance RuntimeWarnings in dt^4 propagation; this is intentionally out of scope.
+    # NOTE: Large frame-step gaps may trigger pre-existing Kalman covariance
+    # RuntimeWarnings in dt^4 propagation; this is intentionally out of scope.
     # Half-second gap: frame_step = 15, well within the lost-track horizon.
     result = tracker.update(sv.Detections.empty(), timestamp=t + 0.5)
 
