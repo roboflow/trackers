@@ -491,6 +491,16 @@ def test_same_confirmation_pattern_at_reference_fps(
             {"state_estimator_class": XCYCSRStateEstimator},
             id="bytetrack-xcycsr",
         ),
+        pytest.param(
+            BoTSORTTracker,
+            {"state_estimator_class": XCYCSRStateEstimator, "enable_cmc": False},
+            id="botsort-xcycsr",
+        ),
+        pytest.param(
+            CBIoUTracker,
+            {"state_estimator_class": XCYCSRStateEstimator},
+            id="cbiou-xcycsr",
+        ),
     ],
 )
 def test_xcycsr_shrinking_box_survives_timestamp_gap_without_nan(
@@ -521,9 +531,11 @@ def test_xcycsr_shrinking_box_survives_timestamp_gap_without_nan(
         w *= 0.97
         h *= 0.97
 
+    # NOTE: Large frame-step gaps may trigger pre-existing Kalman covariance RuntimeWarnings in dt^4 propagation; this is intentionally out of scope.
     # Half-second gap: frame_step = 15, well within the lost-track horizon.
     result = tracker.update(sv.Detections.empty(), timestamp=t + 0.5)
 
     assert result is not None
+    assert len(tracker.tracks) > 0, "Tracker lost all tracks after timestamp gap"
     for tracklet in tracker.tracks:
         assert np.all(np.isfinite(tracklet.get_state_bbox()))
