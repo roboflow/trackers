@@ -25,8 +25,6 @@ from trackers.core.mcbyte.mask_manager import (
     MaskManager,
 )
 from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
-from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
-from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.core.mcbyte.utils import _fuse_score, get_alive_tracklets
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
@@ -84,6 +82,10 @@ def _build_default_mask_manager(
     config: McByteMaskConfig,
 ) -> MaskManager:
     """Create McByte's standard SAM + Cutie mask-management pipeline."""
+
+    from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
+    from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
+
     mask_generator = SAMBoxMaskGenerator(
         checkpoint_path=config.sam_checkpoint_path,
         model_type=config.sam_model_type,
@@ -149,6 +151,10 @@ class McByteTracker(BaseTracker):
             required before assigning a confirmed non-negative tracker ID.
         minimum_iou_threshold_first_assoc: Minimum association similarity for
             matching high-confidence detections to confirmed and lost tracks.
+            The default of ``0.1`` is intentionally lower than in BoT-SORT and
+            other trackers, allowing mask-conditioned association to evaluate
+            a broader set of plausible candidates before resolving ambiguities
+            and optional isolations.
         minimum_iou_threshold_second_assoc: Minimum association similarity for
             matching low-confidence detections to remaining tracked tracks.
         minimum_iou_threshold_unconfirmed_assoc: Minimum association similarity

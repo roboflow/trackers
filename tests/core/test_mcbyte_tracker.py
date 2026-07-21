@@ -6,12 +6,14 @@
 
 from __future__ import annotations
 
+import sys
+from types import ModuleType
+
 import numpy as np
 import pytest
 import supervision as sv
 from pytest import MonkeyPatch
 
-import trackers.core.mcbyte.tracker as mcbyte_tracker_module
 from trackers.core.mcbyte.mask_manager import MaskManager
 from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
 from trackers.core.mcbyte.masks.dummy import (
@@ -459,15 +461,24 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
         def reset(self) -> None:
             pass
 
-    monkeypatch.setattr(
-        mcbyte_tracker_module,
-        "SAMBoxMaskGenerator",
-        FakeSAMBoxMaskGenerator,
+    # mcbyte_tracker_module.SAMBoxMaskGenerator and
+    # mcbyte_tracker_module.CutieMaskPropagator are imported locally in
+    # _build_default_mask_manager() in tracker.py
+    fake_sam_module = ModuleType("trackers.core.mcbyte.masks.sam")
+    fake_sam_module.SAMBoxMaskGenerator = FakeSAMBoxMaskGenerator  # type: ignore[attr-defined]
+
+    fake_cutie_module = ModuleType("trackers.core.mcbyte.masks.cutie")
+    fake_cutie_module.CutieMaskPropagator = FakeCutieMaskPropagator  # type: ignore[attr-defined]
+
+    monkeypatch.setitem(
+        sys.modules,
+        "trackers.core.mcbyte.masks.sam",
+        fake_sam_module,
     )
-    monkeypatch.setattr(
-        mcbyte_tracker_module,
-        "CutieMaskPropagator",
-        FakeCutieMaskPropagator,
+    monkeypatch.setitem(
+        sys.modules,
+        "trackers.core.mcbyte.masks.cutie",
+        fake_cutie_module,
     )
 
     # "cuda:1" only for testing of the passed values. No actual CUDA device is used,
