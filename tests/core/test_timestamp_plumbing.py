@@ -29,6 +29,7 @@ from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracker import SORTTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.state_representations import XCYCSRStateEstimator
 
 TIMESTAMP_AWARE_TRACKERS: list[Any] = [
     pytest.param(SORTTracker, SORTTracklet, {}, id="sort"),
@@ -129,7 +130,7 @@ def test_explicit_none_timestamp_matches_omitted(
     t2 = _make_timestamp_aware_tracker(tracker_cls, tracklet_cls, extra_kwargs, frame_rate=frame_rate)
     r2 = t2.update(_DET, timestamp=None)
 
-    assert list(r1.tracker_id) == list(r2.tracker_id)
+    assert r1.tracker_id is not None and r2.tracker_id is not None and list(r1.tracker_id) == list(r2.tracker_id)
 
 
 @pytest.mark.parametrize(
@@ -455,7 +456,7 @@ def _confirmation_pattern(
     for i in range(n_frames):
         ts = i / frame_rate if use_timestamps else None
         result = tracker.update(_DET, timestamp=ts)
-        if len(result.tracker_id):
+        if result.tracker_id is not None and len(result.tracker_id):
             confirmed.append(int(result.tracker_id[0]) >= 0)
         else:
             confirmed.append(False)
@@ -474,3 +475,68 @@ def test_same_confirmation_pattern_at_reference_fps(
     fixed_pattern = _confirmation_pattern(tracker_cls, tracklet_cls, extra_kwargs, use_timestamps=False)
     dynamic_pattern = _confirmation_pattern(tracker_cls, tracklet_cls, extra_kwargs, use_timestamps=True)
     assert fixed_pattern == dynamic_pattern
+
+
+@pytest.mark.parametrize(
+    ("tracker_cls", "extra_kwargs"),
+    [
+        pytest.param(OCSORTTracker, {}, id="ocsort-default-xcycsr"),
+        pytest.param(
+            SORTTracker,
+            {"state_estimator_class": XCYCSRStateEstimator},
+            id="sort-xcycsr",
+        ),
+        pytest.param(
+            ByteTrackTracker,
+            {"state_estimator_class": XCYCSRStateEstimator},
+            id="bytetrack-xcycsr",
+        ),
+        pytest.param(
+            BoTSORTTracker,
+            {"state_estimator_class": XCYCSRStateEstimator, "enable_cmc": False},
+            id="botsort-xcycsr",
+        ),
+        pytest.param(
+            CBIoUTracker,
+            {"state_estimator_class": XCYCSRStateEstimator},
+            id="cbiou-xcycsr",
+        ),
+    ],
+)
+def test_xcycsr_shrinking_box_survives_timestamp_gap_without_nan(
+    tracker_cls: type[BaseTracker], extra_kwargs: dict[str, Any]
+) -> None:
+    """A shrinking box plus a sub-second timestamp gap must not crash XCYCSR trackers.
+
+    The XCYCSR filter tracks scale (area) with a velocity term. A box that
+    shrinks each frame builds a negative scale velocity ``vs`` that still passes
+    the one-frame guard (``s + vs > 0``). In timestamp mode a gap produces
+    ``frame_step = elapsed * frame_rate > 1``, and ``predict`` extrapolates scale
+    as ``s + frame_step * vs``. Guarding only the one-frame case let the scale go
+    negative, so ``xcycsr_to_xyxy`` took ``sqrt`` of it and emitted NaN boxes,
+    crashing association with ``ValueError: boxes_1 contains non-finite values``.
+    The clamp now guards the projected scale over ``frame_step``. OC-SORT uses
+    XCYCSR by default; SORT and ByteTrack hit the same path when configured
+    with it.
+    """
+    params: dict[str, Any] = {"frame_rate": 30.0, **extra_kwargs}  # defaults otherwise
+    tracker = tracker_cls(**params)
+    fps = 30.0
+    t = 0.0
+    w, h = 120.0, 260.0
+    for _ in range(8):  # establish a shrinking track -> negative scale velocity
+        x1, y1 = 500 - w / 2, 300 - h / 2
+        tracker.update(_make_detections([[x1, y1, x1 + w, y1 + h]], [0.9]), timestamp=t)
+        t += 1.0 / fps
+        w *= 0.97
+        h *= 0.97
+
+    # NOTE: Large frame-step gaps may trigger pre-existing Kalman covariance
+    # RuntimeWarnings in dt^4 propagation; this is intentionally out of scope.
+    # Half-second gap: frame_step = 15, well within the lost-track horizon.
+    result = tracker.update(sv.Detections.empty(), timestamp=t + 0.5)
+
+    assert result is not None
+    assert len(tracker.tracks) > 0, "Tracker lost all tracks after timestamp gap"
+    for tracklet in tracker.tracks:
+        assert np.all(np.isfinite(tracklet.get_state_bbox()))

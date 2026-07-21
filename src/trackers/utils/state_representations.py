@@ -130,11 +130,17 @@ class BaseStateEstimator(ABC):
         """
 
     @abstractmethod
-    def clamp_velocity(self) -> None:
+    def clamp_velocity(self, frame_step: float = 1.0) -> None:
         """Clamp velocity components to prevent degenerate predictions.
 
         Called before `predict` to ensure physical plausibility
         (e.g. non-negative scale). Modifies the filter state in-place.
+
+        Args:
+            frame_step: Elapsed time in frame units for the upcoming predict.
+                The guard must consider the *projected* state over this step
+                (state + frame_step * velocity), because `predict` extrapolates
+                by `frame_step`, not by a single nominal frame.
         """
 
     def predict(self, frame_step: float = 1.0) -> None:
@@ -145,7 +151,7 @@ class BaseStateEstimator(ABC):
                 frame. Pass a larger value after a gap between updates so the
                 filter extrapolates further and widens process noise accordingly.
         """
-        self.clamp_velocity()
+        self.clamp_velocity(frame_step)
         self.motion.apply(self.kf, frame_step)
         self.kf.predict()
 
@@ -237,8 +243,23 @@ class XCYCSRStateEstimator(BaseStateEstimator):
     def state_to_bbox(self) -> np.ndarray:
         return xcycsr_to_xyxy(self.kf.state[:4].reshape((4,)))
 
-    def clamp_velocity(self) -> None:
-        if (self.kf.state[6] + self.kf.state[2]) <= 0:
+    def clamp_velocity(self, frame_step: float = 1.0) -> None:
+        """Freeze scale velocity when the projected scale would turn non-positive.
+
+        ``predict`` extrapolates scale as ``s + frame_step * vs``. A negative
+        ``vs`` that passes the one-frame check (``s + vs > 0``) can still drive
+        the projection non-positive over a gap (``frame_step > 1``), and
+        ``xcycsr_to_xyxy`` decodes a non-positive scale as NaN. If the motion
+        model stops being linear in scale, this clamp should be revisited.
+
+        Args:
+            frame_step: Elapsed time in frame units for the upcoming predict.
+        """
+        # Clamp is intentionally hard: if the projected scale would go non-positive, we
+        # freeze vs to 0 instead of soft-clamping to keep behavior simple and defensive.
+        # Growth is unchecked here by design; any resulting non-finite boxes are caught by
+        # BaseIoU.compute()'s np.isfinite guard (iou.py:62-65).
+        if (self.kf.state[2] + frame_step * self.kf.state[6]) <= 0:
             self.kf.state[6] = 0.0
 
 
@@ -269,8 +290,14 @@ class XCYCWHStateEstimator(BaseStateEstimator):
     def state_to_bbox(self) -> np.ndarray:
         return xywh_to_xyxy(self.kf.state[:4].reshape((4,)))
 
-    def clamp_velocity(self) -> None:
-        pass
+    def clamp_velocity(self, frame_step: float = 1.0) -> None:
+        """Ignore `frame_step`; kept for interface compatibility.
+
+        No-op by design: unlike XCYCSR, this representation has no sqrt-decode
+        step, so a negative projected `w`/`h` over a large gap yields a
+        finite (not NaN) inverted box rather than crashing. This pre-existing
+        gap is tracked separately, out of scope for the frame_step clamp fix.
+        """
 
 
 class XYXYStateEstimator(BaseStateEstimator):
@@ -295,8 +322,8 @@ class XYXYStateEstimator(BaseStateEstimator):
     def state_to_bbox(self) -> np.ndarray:
         return self.kf.state[:4].reshape((4,))
 
-    def clamp_velocity(self) -> None:
-        pass
+    def clamp_velocity(self, frame_step: float = 1.0) -> None:
+        """Ignore `frame_step`; kept for interface compatibility because XYXY-style velocity is unconstrained."""
 
 
 # ---------------------------------------------------------------------------
