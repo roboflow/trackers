@@ -305,7 +305,12 @@ class BoTSORTTracker(BaseTracker):
                 for t in strack_pool
             ]
             app_sim = appearance_similarity(track_feats, det_embeddings)
-            proximity_iou = self._get_proximity_iou_matrix(strack_pool, high_boxes)
+            # Proximity uses raw standard IoU (before score fusion), matching BoT-SORT.
+            # Reuse the association matrix when it is already plain IoU.
+            if isinstance(self.iou, IoU):
+                proximity_iou = iou_sim_raw
+            else:
+                proximity_iou = self._get_proximity_iou_matrix(strack_pool, high_boxes)
             similarity_matrix = self._fuse_botsort_reid(iou_sim_fused, app_sim, proximity_iou)
         else:
             similarity_matrix = iou_sim_fused
@@ -367,7 +372,10 @@ class BoTSORTTracker(BaseTracker):
                     for t in unconfirmed_tracks
                 ]
                 app_sim = appearance_similarity(track_feats, uh_embeddings)
-                proximity_iou = self._get_proximity_iou_matrix(unconfirmed_tracks, uh_boxes)
+                if isinstance(self.iou, IoU):
+                    proximity_iou = iou_sim_raw
+                else:
+                    proximity_iou = self._get_proximity_iou_matrix(unconfirmed_tracks, uh_boxes)
                 similarity_matrix = self._fuse_botsort_reid(iou_sim_fused, app_sim, proximity_iou)
             else:
                 similarity_matrix = iou_sim_fused
@@ -447,13 +455,13 @@ class BoTSORTTracker(BaseTracker):
 
     def _fuse_botsort_reid(
         self,
-        iou_similarity_fused: np.ndarray,
+        association_similarity: np.ndarray,
         appearance_similarity: np.ndarray,
         proximity_iou_similarity: np.ndarray,
     ) -> np.ndarray:
         """Fuse IoU and appearance using BoT-SORT ``bot_sort.py`` min-cost ReID."""
         return fuse_botsort_reid_association(
-            iou_similarity_fused,
+            association_similarity,
             appearance_similarity,
             proximity_iou_similarity=proximity_iou_similarity,
             proximity_threshold=self.proximity_threshold,
