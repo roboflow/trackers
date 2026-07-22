@@ -291,9 +291,7 @@ class BoTSORTTracker(BaseTracker):
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        similarity_matrix = self._association_similarity(
-            strack_pool, high_boxes, high_scores, det_embeddings
-        )
+        similarity_matrix = self._association_similarity(strack_pool, high_boxes, high_scores, det_embeddings)
 
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             similarity_matrix, self.minimum_iou_threshold_first_assoc
@@ -339,12 +337,8 @@ class BoTSORTTracker(BaseTracker):
         if len(unconfirmed_tracks) > 0 and len(unmatched_high_list) > 0:
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
-            uh_embeddings = (
-                det_embeddings[unmatched_high_list] if det_embeddings is not None else None
-            )
-            similarity_matrix = self._association_similarity(
-                unconfirmed_tracks, uh_boxes, uh_scores, uh_embeddings
-            )
+            uh_embeddings = det_embeddings[unmatched_high_list] if det_embeddings is not None else None
+            similarity_matrix = self._association_similarity(unconfirmed_tracks, uh_boxes, uh_scores, uh_embeddings)
 
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 similarity_matrix, self.minimum_iou_threshold_unconfirmed_assoc
