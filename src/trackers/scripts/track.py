@@ -348,11 +348,6 @@ def run_track(args: argparse.Namespace) -> int:
 
     track_id_filter = _resolve_track_id_filter(args.track_ids)
 
-    reid_error = _validate_reid_cli_prerequisites(args)
-    if reid_error is not None:
-        print(reid_error, file=sys.stderr)
-        return 1
-
     # Create tracker
     tracker_params = _extract_tracker_params(args.tracker, args)
     tracker_params, reid_error = _apply_reid_tracker_params(args.tracker, args, tracker_params)
@@ -653,20 +648,6 @@ def _reid_requested(args: argparse.Namespace) -> bool:
     return bool(getattr(args, "tracker_reid_enable", False)) or getattr(args, "tracker_reid_model", None) is not None
 
 
-def _validate_reid_cli_prerequisites(args: argparse.Namespace) -> str | None:
-    """Validate ReID CLI options before loading any checkpoint."""
-    if not _reid_requested(args):
-        return None
-    if args.tracker != "botsort":
-        return f"Error: --tracker.reid.* options apply only to --tracker botsort, got {args.tracker!r}."
-    if args.source is None:
-        return (
-            "Error: ReID-enabled BoT-SORT requires --source (video/webcam/images) "
-            "so appearance embeddings can be extracted from frames."
-        )
-    return None
-
-
 def _apply_reid_tracker_params(
     tracker_id: str,
     args: argparse.Namespace,
@@ -696,6 +677,12 @@ def _apply_reid_tracker_params(
     device = getattr(args, "tracker_reid_device", DEFAULT_DEVICE)
     model_source = getattr(args, "tracker_reid_model", None)
     architecture = getattr(args, "tracker_reid_architecture", None)
+    if architecture is not None and model_source is None:
+        return params, (
+            "Error: --tracker.reid.architecture requires --tracker.reid.model "
+            "(bare weights need a checkpoint path)."
+        )
+
     load_kwargs: dict[str, object] = {"device": device}
     if model_source is not None:
         load_kwargs["source"] = model_source

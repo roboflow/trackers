@@ -264,6 +264,18 @@ class TestReidTrackCli:
         _, error = _apply_reid_tracker_params("bytetrack", args, {})
         assert error is not None and "botsort" in error
 
+    def test_architecture_requires_model(self) -> None:
+        args = argparse.Namespace(
+            tracker_reid_enable=True,
+            tracker_reid_model=None,
+            tracker_reid_device="cpu",
+            tracker_reid_architecture="osnet_x0_25",
+            source="video.mp4",
+        )
+        params, error = _apply_reid_tracker_params("botsort", args, {})
+        assert error is not None and "--tracker.reid.model" in error
+        assert params == {}
+
     def test_help_lists_reid_flags(self) -> None:
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers()
