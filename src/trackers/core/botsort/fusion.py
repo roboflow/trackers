@@ -18,24 +18,27 @@ import numpy as np
 
 
 def fuse_botsort_reid_association(
-    iou_similarity_fused: np.ndarray,
+    association_similarity: np.ndarray,
     appearance_similarity: np.ndarray,
     *,
-    proximity_iou_similarity: np.ndarray,
     proximity_threshold: float,
     appearance_threshold: float,
+    proximity_iou_similarity: np.ndarray | None = None,
 ) -> np.ndarray:
     """Fuse IoU and appearance the way BoT-SORT ``bot_sort.py`` does.
 
-    Computes ``min(score_fused_iou_cost, halved_appearance_cost)`` with
-    proximity and appearance caps, then returns the corresponding similarity
-    matrix (``1 - cost``).
+    Computes ``min(association_cost, capped_appearance_cost)`` with proximity
+    and appearance gates, then returns the corresponding similarity matrix
+    (``1 - cost``).
 
-    Proximity gating always uses *standard IoU* similarity via
-    ``proximity_iou_similarity``, even when association scoring uses GIoU,
-    DIoU, or CIoU.
+    ``proximity_iou_similarity`` is the standard-IoU gate (defaults to
+    ``association_similarity``). Pass it separately when association uses
+    GIoU/DIoU/CIoU so proximity still uses plain IoU.
     """
-    d_iou = 1.0 - iou_similarity_fused
+    if proximity_iou_similarity is None:
+        proximity_iou_similarity = association_similarity
+
+    d_iou = 1.0 - association_similarity
     d_iou_proximity = 1.0 - proximity_iou_similarity
     d_app = 0.5 * (1.0 - appearance_similarity)
     d_app = np.where(d_app > appearance_threshold, 1.0, d_app)

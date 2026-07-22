@@ -187,25 +187,23 @@ class TestAppearanceSimilarity:
 
 class TestFuseBotsortReidAssociation:
     def test_appearance_can_win_when_proximity_passes(self) -> None:
-        # Standard IoU 0.7 clears the proximity gate (needs IoU > 1 - 0.5 = 0.5),
-        # so a strong appearance score can beat the weaker IoU score (0.63 → 0.9).
+        # Association IoU 0.63 clears the proximity gate (needs IoU > 1 - 0.5 = 0.5),
+        # so a strong appearance score can beat it (0.63 → 0.9).
         fused = fuse_botsort_reid_association(
-            iou_similarity_fused=np.array([[0.63]], dtype=np.float32),
-            appearance_similarity=np.array([[0.8]], dtype=np.float32),
-            proximity_iou_similarity=np.array([[0.7]], dtype=np.float32),
+            np.array([[0.63]], dtype=np.float32),
+            np.array([[0.8]], dtype=np.float32),
             proximity_threshold=0.5,
             appearance_threshold=0.25,
         )
         assert fused[0, 0] == pytest.approx(0.9)
 
     def test_low_proximity_ignores_appearance(self) -> None:
-        # Standard IoU 0.4 fails the proximity gate (needs IoU > 1 - 0.5 = 0.5),
+        # Association IoU 0.36 fails the proximity gate (needs IoU > 1 - 0.5 = 0.5),
         # so appearance is discarded even though it is strong (0.9). Score stays IoU-only.
         iou_only = np.array([[0.36]], dtype=np.float32)
         fused = fuse_botsort_reid_association(
-            iou_similarity_fused=iou_only,
-            appearance_similarity=np.array([[0.9]], dtype=np.float32),
-            proximity_iou_similarity=np.array([[0.4]], dtype=np.float32),
+            iou_only,
+            np.array([[0.9]], dtype=np.float32),
             proximity_threshold=0.5,
             appearance_threshold=0.25,
         )
@@ -216,11 +214,11 @@ class TestFuseBotsortReidAssociation:
         # only 0.35 and fails the proximity gate, so appearance must not be used.
         association_iou = np.array([[0.80]], dtype=np.float32)
         fused = fuse_botsort_reid_association(
-            iou_similarity_fused=association_iou,
-            appearance_similarity=np.array([[0.95]], dtype=np.float32),
-            proximity_iou_similarity=np.array([[0.35]], dtype=np.float32),
+            association_iou,
+            np.array([[0.95]], dtype=np.float32),
             proximity_threshold=0.5,
             appearance_threshold=0.25,
+            proximity_iou_similarity=np.array([[0.35]], dtype=np.float32),
         )
         assert fused[0, 0] == pytest.approx(float(association_iou[0, 0]))
 
