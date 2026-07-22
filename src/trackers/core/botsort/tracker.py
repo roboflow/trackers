@@ -159,8 +159,6 @@ class BoTSORTTracker(BaseTracker):
         self.tracks: list[BoTSORTTracklet] = []
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
-        # Proximity gating always uses standard IoU, independent of ``iou``.
-        self._proximity_iou = IoU()
         self.frame_id: int = 0
         self._reset_id_allocator()
 
@@ -310,7 +308,7 @@ class BoTSORTTracker(BaseTracker):
             if isinstance(self.iou, IoU):
                 proximity_iou = iou_sim_raw
             else:
-                proximity_iou = self._get_proximity_iou_matrix(strack_pool, high_boxes)
+                proximity_iou = self._standard_iou_matrix(strack_pool, high_boxes)
             similarity_matrix = self._fuse_botsort_reid(iou_sim_fused, app_sim, proximity_iou)
         else:
             similarity_matrix = iou_sim_fused
@@ -375,7 +373,7 @@ class BoTSORTTracker(BaseTracker):
                 if isinstance(self.iou, IoU):
                     proximity_iou = iou_sim_raw
                 else:
-                    proximity_iou = self._get_proximity_iou_matrix(unconfirmed_tracks, uh_boxes)
+                    proximity_iou = self._standard_iou_matrix(unconfirmed_tracks, uh_boxes)
                 similarity_matrix = self._fuse_botsort_reid(iou_sim_fused, app_sim, proximity_iou)
             else:
                 similarity_matrix = iou_sim_fused
@@ -468,12 +466,13 @@ class BoTSORTTracker(BaseTracker):
             appearance_threshold=self.appearance_threshold,
         )
 
-    def _get_proximity_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
+    def _standard_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
+        """Standard IoU for ReID proximity when association uses a variant metric."""
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
             tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
-        return self._proximity_iou.compute(tracklet_boxes, detections)
+        return IoU().compute(tracklet_boxes, detections)
 
     def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
         if len(tracklets) == 0:
