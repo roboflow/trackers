@@ -11,6 +11,7 @@ import numpy as np
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.cmc import CMC
 from trackers.utils.converters import xyxy_to_xywh
+from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
@@ -36,8 +37,6 @@ class McByteTracklet(BaseTracklet):
     * ``apply_cmc(H)`` applies a 2x3 affine camera-motion transform to the
       internal Kalman state and covariance.
     """
-
-    count_id: int = 0
 
     # Noise sigma constants (scale-aware noise for McByte)
     _SIGMA_P: float = 0.05
@@ -110,7 +109,7 @@ class McByteTracklet(BaseTracklet):
         if initial:
             if isinstance(self.state_estimator, XCYCSRStateEstimator):
                 s = np.sqrt(max(w * h, 1e-6))
-                P = np.diag(
+                state_covariance = np.diag(
                     [
                         (2 * sp * w) ** 2,
                         (2 * sp * h) ** 2,
@@ -122,7 +121,7 @@ class McByteTracklet(BaseTracklet):
                     ]
                 )
             else:
-                P = np.diag(
+                state_covariance = np.diag(
                     [
                         (2 * sp * w) ** 2,
                         (2 * sp * h) ** 2,
@@ -134,9 +133,11 @@ class McByteTracklet(BaseTracklet):
                         (10 * sv * h) ** 2,
                     ]
                 )
-            self.state_estimator.set_kf_covariances(R=R, Q=Q, P=P)
+            self.state_estimator.set_kf_covariances(
+                measurement_noise=R, process_noise=Q, state_covariance=state_covariance
+            )
         else:
-            self.state_estimator.set_kf_covariances(R=R, Q=Q)
+            self.state_estimator.set_kf_covariances(measurement_noise=R, process_noise=Q)
 
     def _refresh_noise_from_state(self) -> None:
         """Recompute Q and R from the current bbox size."""
@@ -167,7 +168,7 @@ class McByteTracklet(BaseTracklet):
 
     def _clamp_state_bbox(self) -> None:
         """Clamp geometric components based on active state representation."""
-        kf_x = self.state_estimator.kf.x
+        kf_x = self.state_estimator.kf.state
         if isinstance(self.state_estimator, XYXYStateEstimator):
             self._clamp_xyxy_state(kf_x)
         elif isinstance(self.state_estimator, XCYCWHStateEstimator):
@@ -189,13 +190,17 @@ class McByteTracklet(BaseTracklet):
         self.time_since_update = 0
         self.number_of_successful_updates += 1
 
-    def predict(self) -> np.ndarray:
+    def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict the next bounding-box position.
 
         Increments ``time_since_update`` to track how many frames have
         elapsed since the last matched measurement — this replaces the
         ``update(None)`` call used in ByteTrack/SORT.
         """
+        # Accepted for compatibility with the current BaseTracklet interface.
+        # McByte currently does not distinguish prediction timing.
+        _ = timing
+
         self._refresh_noise_from_state()
         self.state_estimator.predict()
         self._clamp_state_bbox()

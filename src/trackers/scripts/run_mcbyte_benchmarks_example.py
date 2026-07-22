@@ -472,6 +472,10 @@ def run_dataset(
     result file. Missing or failed sequences are recorded while processing
     continues with the remaining sequences.
     """
+    if config.detection_root == Path("") or config.image_root == Path(""):
+        raise ValueError(
+            f"Please configure DATASETS['{config.name}'] detection_root and image_root before running this script."
+        )
     if not config.detection_root.is_dir():
         raise NotADirectoryError(config.detection_root)
     if not config.image_root.is_dir():
