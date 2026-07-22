@@ -371,14 +371,8 @@ def test_mcbyte_mask_conditioned_association_changes_ambiguous_assignment() -> N
         min_similarity_thresh=0.5,
     )
 
-    assert matches_without_masks == [
-        (0, 1),
-        (1, 0),
-    ]
-    assert matches_with_masks == [
-        (0, 0),
-        (1, 1),
-    ]
+    assert matches_without_masks == [(0, 1), (1, 0)]
+    assert matches_with_masks == [(0, 0), (1, 1)]
     assert unmatched_tracks == []
     assert unmatched_detections == []
 

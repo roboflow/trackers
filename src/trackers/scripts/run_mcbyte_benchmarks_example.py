@@ -452,17 +452,6 @@ def run_sequence(
         cleanup_tracker(tracker, logger, sequence)
 
 
-def record_failure(
-    failure_file: TextIO,
-    dataset: str,
-    sequence: str,
-    reason: str,
-) -> None:
-    """Record one failure and flush it immediately."""
-    failure_file.write(f"{dataset}\t{sequence}\t{reason}\n")
-    failure_file.flush()
-
-
 def run_dataset(
     *,
     config: DatasetConfig,
@@ -474,7 +463,6 @@ def run_dataset(
     cmc_downscale: int,
     skip_existing: bool,
     keep_partial_results: bool,
-    failure_file: TextIO,
     logger: logging.Logger,
 ) -> tuple[int, int, int]:
     """Run every sequence in one dataset.
@@ -520,19 +508,12 @@ def run_dataset(
                 keep_partial_results=keep_partial_results,
                 logger=logger,
             )
-        except torch.cuda.OutOfMemoryError as exc:
+        except torch.cuda.OutOfMemoryError:
             failed += 1
-            logger.exception("CUDA OOM: %s/%s", config.name, seq)
-            record_failure(failure_file, config.name, seq, f"CUDA OOM: {exc}")
-        except Exception as exc:
+            logger.exception("CUDA OOM while processing %s/%s", config.name, seq)
+        except Exception:
             failed += 1
-            logger.exception("Failed: %s/%s", config.name, seq)
-            record_failure(
-                failure_file,
-                config.name,
-                seq,
-                f"{type(exc).__name__}: {exc}",
-            )
+            logger.exception("Failed while processing %s/%s", config.name, seq)
         else:
             completed += 1
             logger.info("Completed %s/%s (%d frames)", config.name, seq, last_frame)
@@ -585,47 +566,38 @@ def main() -> None:
     logger.info("Isolation: %s", args.enable_isolated_mask_matching)
 
     total_completed = total_skipped = total_failed = 0
-    failure_path = run_root / "failed_sequences.txt"
 
-    with failure_path.open("w", encoding="utf-8") as failure_file:
-        for name in selected:
-            config = DATASETS[name]
-            raw_dir = run_root / name / "raw"
-            try:
-                completed, skipped, failed = run_dataset(
-                    config=config,
-                    output_dir=raw_dir,
-                    device=args.device,
-                    enable_isolated_mask_matching=args.enable_isolated_mask_matching,
-                    enable_cmc=not args.disable_cmc,
-                    cmc_method=args.cmc_method,
-                    cmc_downscale=args.cmc_downscale,
-                    skip_existing=args.skip_existing,
-                    keep_partial_results=args.keep_partial_results,
-                    failure_file=failure_file,
-                    logger=logger,
-                )
-            except Exception as exc:
-                logger.exception("Dataset setup failed: %s", name)
-                record_failure(
-                    failure_file,
-                    name,
-                    "<dataset setup>",
-                    f"{type(exc).__name__}: {exc}",
-                )
-                total_failed += 1
-                continue
+    for name in selected:
+        config = DATASETS[name]
+        raw_dir = run_root / name / "raw"
+        try:
+            completed, skipped, failed = run_dataset(
+                config=config,
+                output_dir=raw_dir,
+                device=args.device,
+                enable_isolated_mask_matching=args.enable_isolated_mask_matching,
+                enable_cmc=not args.disable_cmc,
+                cmc_method=args.cmc_method,
+                cmc_downscale=args.cmc_downscale,
+                skip_existing=args.skip_existing,
+                keep_partial_results=args.keep_partial_results,
+                logger=logger,
+            )
+        except Exception:
+            logger.exception("Dataset setup failed: %s", name)
+            total_failed += 1
+            continue
 
-            total_completed += completed
-            total_skipped += skipped
-            total_failed += failed
+        total_completed += completed
+        total_skipped += skipped
+        total_failed += failed
 
-            if name == "mot17":
-                prepare_mot17_submission(
-                    raw_dir,
-                    run_root / "mot17" / "submission",
-                    logger,
-                )
+        if name == "mot17":
+            prepare_mot17_submission(
+                raw_dir,
+                run_root / "mot17" / "submission",
+                logger,
+            )
 
     logger.info(
         "Finished: completed=%d skipped=%d failed=%d",
@@ -633,7 +605,6 @@ def main() -> None:
         total_skipped,
         total_failed,
     )
-    logger.info("Failure report: %s", failure_path)
 
 
 if __name__ == "__main__":

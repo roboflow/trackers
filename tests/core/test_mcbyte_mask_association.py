@@ -15,18 +15,6 @@ from trackers.core.mcbyte.mask_association import (
 from trackers.core.mcbyte.masks.base import MaskOutput
 
 
-def _mask_output(
-    masks: np.ndarray,
-    tracklet_mask_dict: dict[int, int],
-    confidences: dict[int, float],
-) -> MaskOutput:
-    return MaskOutput(
-        masks=masks,
-        tracklet_mask_dict=tracklet_mask_dict,
-        mask_avg_prob_dict=confidences,
-    )
-
-
 def _full_mask(
     height: int = 10,
     width: int = 10,
@@ -100,10 +88,10 @@ def test_ambiguous_row_receives_mask_fill_bonus() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=masks,
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.9},
+            mask_avg_prob_dict={10: 0.9},
         ),
         minimum_similarity=0.5,
     )
@@ -137,13 +125,13 @@ def test_ambiguous_column_pair_receives_mask_fill_bonus() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=masks,
             tracklet_mask_dict={
                 10: 0,
                 20: 1,
             },
-            confidences={
+            mask_avg_prob_dict={
                 10: 0.9,
                 20: 0.9,
             },
@@ -189,13 +177,13 @@ def test_ambiguity_is_computed_from_original_similarity_matrix() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=masks,
             tracklet_mask_dict={
                 10: 0,
                 20: 1,
             },
-            confidences={
+            mask_avg_prob_dict={
                 10: 0.9,
                 20: 0.9,
             },
@@ -285,13 +273,13 @@ def test_multiple_ambiguous_pairs_receive_independent_mask_bonuses() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=masks,
             tracklet_mask_dict={
                 10: 0,
                 20: 1,
             },
-            confidences={
+            mask_avg_prob_dict={
                 10: 0.9,
                 20: 0.9,
             },
@@ -325,10 +313,10 @@ def test_mask_bonus_is_not_clamped_to_one() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.9},
+            mask_avg_prob_dict={10: 0.9},
         ),
         minimum_similarity=0.5,
     )
@@ -374,10 +362,10 @@ def test_missing_tracklet_mask_keeps_scores_unchanged() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             tracklet_mask_dict={99: 0},
-            confidences={99: 0.9},
+            mask_avg_prob_dict={99: 0.9},
         ),
         minimum_similarity=0.5,
     )
@@ -402,13 +390,13 @@ def test_invalid_mask_index_keeps_scores_unchanged() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             # valid mask index in this case would be 0
             tracklet_mask_dict={
                 10: 5,
             },
-            confidences={
+            mask_avg_prob_dict={
                 10: 0.9,
             },
         ),
@@ -435,12 +423,12 @@ def test_missing_mask_confidence_keeps_scores_unchanged() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             tracklet_mask_dict={
                 10: 0,
             },
-            confidences={},
+            mask_avg_prob_dict={},
         ),
         minimum_similarity=0.5,
     )
@@ -465,10 +453,10 @@ def test_low_mask_confidence_keeps_scores_unchanged() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.5},
+            mask_avg_prob_dict={10: 0.5},
         ),
         minimum_similarity=0.5,
         minimum_mask_average_confidence=0.6,
@@ -494,10 +482,10 @@ def test_low_mask_coverage_keeps_entry_unchanged() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.9},
+            mask_avg_prob_dict={10: 0.9},
         ),
         minimum_similarity=0.5,
         minimum_mask_coverage=0.9,
@@ -525,10 +513,10 @@ def test_low_mask_fill_ratio_keeps_entry_unchanged() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([mask]),
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.9},
+            mask_avg_prob_dict={10: 0.9},
         ),
         minimum_similarity=0.5,
         minimum_mask_coverage=0.9,
@@ -555,10 +543,10 @@ def test_empty_mask_keeps_scores_unchanged() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.zeros((1, 10, 10), dtype=bool),
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.9},
+            mask_avg_prob_dict={10: 0.9},
         ),
         minimum_similarity=0.5,
     )
@@ -577,10 +565,10 @@ def test_isolated_below_threshold_pair_is_unchanged_when_disabled() -> None:
         raw_iou_similarity=similarity,
         tracklet_ids=[10],
         detection_boxes=np.array([[0, 0, 10, 10]], dtype=np.float32),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.9},
+            mask_avg_prob_dict={10: 0.9},
         ),
         minimum_similarity=0.5,
         enable_isolated_mask_matching=False,
@@ -600,10 +588,10 @@ def test_isolated_below_threshold_pair_is_boosted_when_enabled() -> None:
         raw_iou_similarity=similarity,
         tracklet_ids=[10],
         detection_boxes=np.array([[0, 0, 10, 10]], dtype=np.float32),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.9},
+            mask_avg_prob_dict={10: 0.9},
         ),
         minimum_similarity=0.5,
         enable_isolated_mask_matching=True,
@@ -631,10 +619,10 @@ def test_below_threshold_pair_is_not_rescued_when_not_isolated() -> None:
             ],
             dtype=np.float32,
         ),
-        mask_output=_mask_output(
+        mask_output=MaskOutput(
             masks=np.stack([_full_mask()]),
             tracklet_mask_dict={10: 0},
-            confidences={10: 0.9},
+            mask_avg_prob_dict={10: 0.9},
         ),
         minimum_similarity=0.5,
         enable_isolated_mask_matching=True,
