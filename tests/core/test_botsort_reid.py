@@ -171,7 +171,8 @@ class TestAppearanceSimilarity:
                 np.array([[1.0, 0.0]], dtype=np.float32),
             )
 
-    def test_extraction_rejects_wrong_row_count(self) -> None:
+    def test_extract_detection_embeddings_requires_one_row_per_box(self) -> None:
+        # Encoder must return embeddings.shape[0] == len(boxes).
         class _WrongLengthEncoder:
             def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
                 return np.empty((0, 4), dtype=np.float32)
@@ -186,34 +187,42 @@ class TestAppearanceSimilarity:
 
 class TestFuseBotsortReidAssociation:
     def test_appearance_can_win_when_proximity_passes(self) -> None:
+        # Standard IoU 0.7 clears the proximity gate (needs IoU > 1 - 0.5 = 0.5),
+        # so a strong appearance score can beat the weaker IoU score (0.63 → 0.9).
         fused = fuse_botsort_reid_association(
-            np.array([[0.63]], dtype=np.float32),
-            np.array([[0.8]], dtype=np.float32),
+            iou_similarity_fused=np.array([[0.63]], dtype=np.float32),
+            appearance_similarity=np.array([[0.8]], dtype=np.float32),
             proximity_iou_similarity=np.array([[0.7]], dtype=np.float32),
             proximity_threshold=0.5,
             appearance_threshold=0.25,
         )
         assert fused[0, 0] == pytest.approx(0.9)
 
-    def test_low_proximity_zeros_appearance(self) -> None:
+    def test_low_proximity_ignores_appearance(self) -> None:
+        # Standard IoU 0.4 fails the proximity gate (needs IoU > 1 - 0.5 = 0.5),
+        # so appearance is discarded even though it is strong (0.9). Score stays IoU-only.
+        iou_only = np.array([[0.36]], dtype=np.float32)
         fused = fuse_botsort_reid_association(
-            np.array([[0.36]], dtype=np.float32),
-            np.array([[0.9]], dtype=np.float32),
+            iou_similarity_fused=iou_only,
+            appearance_similarity=np.array([[0.9]], dtype=np.float32),
             proximity_iou_similarity=np.array([[0.4]], dtype=np.float32),
             proximity_threshold=0.5,
             appearance_threshold=0.25,
         )
-        assert fused[0, 0] == pytest.approx(0.36)
+        assert fused[0, 0] == pytest.approx(float(iou_only[0, 0]))
 
     def test_proximity_uses_standard_iou_not_giou(self) -> None:
+        # Association score uses a high GIoU-like value (0.80), but standard IoU is
+        # only 0.35 and fails the proximity gate, so appearance must not be used.
+        association_iou = np.array([[0.80]], dtype=np.float32)
         fused = fuse_botsort_reid_association(
-            np.array([[0.80]], dtype=np.float32),
-            np.array([[0.95]], dtype=np.float32),
+            iou_similarity_fused=association_iou,
+            appearance_similarity=np.array([[0.95]], dtype=np.float32),
             proximity_iou_similarity=np.array([[0.35]], dtype=np.float32),
             proximity_threshold=0.5,
             appearance_threshold=0.25,
         )
-        assert fused[0, 0] == pytest.approx(0.80)
+        assert fused[0, 0] == pytest.approx(float(association_iou[0, 0]))
 
 
 class TestBoTSORTTrackerReID:
