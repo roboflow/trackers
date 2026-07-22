@@ -27,7 +27,7 @@ jobs:
           activate-environment: true
 
       - name: 🚀 Install Packages
-        run: uv sync --frozen --group dev
+        run: uv sync --frozen --group dev --extra reid
 
 
       - name: 🧪 Run Integration Tests
