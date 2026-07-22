@@ -16,11 +16,15 @@ _NORM_EPS = 1e-12
 class FeatureBank:
     """Per-track EMA appearance embedding, kept on the unit hypersphere.
 
-    Following upstream BoT-SORT (``STrack.update_features``), every incoming
-    embedding is L2-normalized before it is blended, and the resulting EMA is
-    L2-normalized again. The stored feature is therefore always a unit vector,
-    so cosine similarity against it is a plain dot product. ``reid.ReIDModel``
-    returns raw (unnormalized) embeddings; normalization happens here.
+    Matches BoT-SORT's ``STrack.update_features``
+    (https://github.com/NirAharon/BoT-SORT/blob/main/tracker/bot_sort.py):
+    L2-normalize the incoming embedding, blend with EMA momentum ``alpha``,
+    then L2-normalize the result again so the stored template stays unit-norm.
+
+    That is tracker association policy, not the standalone ``reid`` package.
+    ``reid.ReIDModel.extract_features`` returns raw embeddings; gallery eval in
+    ``reid`` L2-normalizes only when computing cosine distance. Here the bank
+    normalizes on update so EMA is taken on the unit sphere, as in BoT-SORT.
 
     Args:
         alpha: EMA momentum in ``[0, 1]``.
