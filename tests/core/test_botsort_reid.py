@@ -307,3 +307,27 @@ class TestBoTSORTTrackerReID:
         after = bank.feature
         assert after is not None
         np.testing.assert_allclose(before, after)
+
+    @pytest.mark.integration
+    def test_real_reid_model_runs_over_frames(self) -> None:
+        """Smoke the ``trackers`` → ``reid`` boundary with a real encoder."""
+        import reid
+
+        reid_model = reid.ReIDModel.from_pretrained(architecture="osnet_x0_25", device="cpu")
+        tracker = BoTSORTTracker(enable_cmc=False, reid_model=reid_model)
+
+        rng = np.random.default_rng(0)
+        box = np.array([30.0, 30.0, 70.0, 90.0], dtype=np.float32)
+        for _ in range(3):
+            frame = rng.integers(0, 255, (128, 128, 3), dtype=np.uint8)
+            detections = sv.Detections(
+                xyxy=box[None, :].copy(),
+                confidence=np.array([0.9], dtype=np.float32),
+            )
+            result = tracker.update(detections, frame=frame)
+            assert result.tracker_id is not None
+            box = box + np.array([2.0, 1.0, 2.0, 1.0], dtype=np.float32)
+
+        assert len(tracker.tracks) == 1
+        bank = tracker.tracks[0].feature_bank
+        assert bank is not None and bank.is_initialized

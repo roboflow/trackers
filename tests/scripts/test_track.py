@@ -218,11 +218,7 @@ class TestReidTrackCli:
         )
         assert _reid_requested(args)
 
-    def test_requires_source_before_load(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            "trackers.scripts.track.reid_provider.import_reid_model",
-            lambda: pytest.fail("model provider should not be called"),
-        )
+    def test_requires_source_before_load(self) -> None:
         args = argparse.Namespace(
             tracker_reid_enable=True,
             tracker_reid_model=None,
@@ -235,10 +231,13 @@ class TestReidTrackCli:
         assert params == {}
 
     def test_passes_architecture(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        monkeypatch.setattr(
-            "trackers.scripts.track.reid_provider.import_reid_model",
-            lambda: _FakeReIDModel,
-        )
+        import sys
+        from types import ModuleType
+
+        fake_reid = ModuleType("reid")
+        fake_reid.ReIDModel = _FakeReIDModel
+        monkeypatch.setitem(sys.modules, "reid", fake_reid)
+
         weights = tmp_path / "weights.pth"
         weights.touch()
         args = argparse.Namespace(

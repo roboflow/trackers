@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import supervision as sv
 
-from trackers import _reid as reid_provider
 from trackers import frames_from_source
 from trackers.core.base import BaseTracker
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
@@ -687,7 +686,7 @@ def _apply_reid_tracker_params(
         )
 
     try:
-        ReIDModel = reid_provider.import_reid_model()
+        from reid import ReIDModel
     except ImportError:
         return params, (
             "Error: ReID tracking requires the optional `trackers[reid]` extra.\n"
@@ -707,11 +706,6 @@ def _apply_reid_tracker_params(
         reid_model = ReIDModel.from_pretrained(**load_kwargs)
     except KeyboardInterrupt:
         raise
-    except ImportError:
-        return params, (
-            "Error: ReID tracking requires the optional `trackers[reid]` extra.\n"
-            "Install with: pip install 'trackers[reid]'"
-        )
     except (OSError, ValueError, RuntimeError) as exc:
         return params, f"Error: Failed to load ReID model: {exc}"
 
