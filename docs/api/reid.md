@@ -67,15 +67,10 @@ protocol without the model stack.
 Per-track EMA of appearance embeddings. L2-normalize before and after the EMA
 blend, following BoT-SORT
 [`STrack.update_features`](https://github.com/NirAharon/BoT-SORT/blob/main/tracker/bot_sort.py).
-The standalone `reid` package leaves embeddings raw at extract time and
-normalizes only for cosine distance; this bank is BoT-SORT association policy.
 
 ::: trackers.core.reid.feature_bank.FeatureBank
 
 ## Appearance
-
-Cosine similarity with L2 on both sides at distance time (same as `reid`
-gallery eval for the cosine metric).
 
 ::: trackers.core.reid.appearance.appearance_similarity
 

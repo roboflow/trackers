@@ -66,12 +66,7 @@ def appearance_similarity(
     track_features: Sequence[np.ndarray | None],
     det_embeddings: np.ndarray,
 ) -> np.ndarray:
-    """Cosine similarity between track and detection embeddings.
-
-    L2-normalizes both sides before the dot product (same place gallery eval in
-    ``reid`` normalizes for cosine distance). Track rows are usually already
-    unit-norm when they come from :class:`~trackers.core.reid.feature_bank.FeatureBank`.
-    """
+    """Cosine similarity between track and detection embeddings."""
     n_tracks = len(track_features)
     det_embeddings = _l2_normalize_rows(_require_embedding_matrix(det_embeddings))
     n_dets = det_embeddings.shape[0]

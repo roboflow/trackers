@@ -21,11 +21,6 @@ class FeatureBank:
     L2-normalize the incoming embedding, blend with EMA momentum ``alpha``,
     then L2-normalize the result again so the stored template stays unit-norm.
 
-    That is tracker association policy, not the standalone ``reid`` package.
-    ``reid.ReIDModel.extract_features`` returns raw embeddings; gallery eval in
-    ``reid`` L2-normalizes only when computing cosine distance. Here the bank
-    normalizes on update so EMA is taken on the unit sphere, as in BoT-SORT.
-
     Args:
         alpha: EMA momentum in ``[0, 1]``.
     """
