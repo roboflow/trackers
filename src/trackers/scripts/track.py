@@ -679,8 +679,7 @@ def _apply_reid_tracker_params(
     architecture = getattr(args, "tracker_reid_architecture", None)
     if architecture is not None and model_source is None:
         return params, (
-            "Error: --tracker.reid.architecture requires --tracker.reid.model "
-            "(bare weights need a checkpoint path)."
+            "Error: --tracker.reid.architecture requires --tracker.reid.model (bare weights need a checkpoint path)."
         )
 
     load_kwargs: dict[str, object] = {"device": device}
