@@ -27,7 +27,6 @@ jobs:
           activate-environment: true
 
       - name: 🚀 Install Packages
-        # ReID integration smoke test skips when roboflow-reid is unavailable.
         run: uv sync --frozen --group dev
 
 

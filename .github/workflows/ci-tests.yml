@@ -30,9 +30,7 @@ jobs:
           prune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - name: 🚀 Install Packages
-        # ReID extra is omitted in CI until roboflow-reid is on PyPI or a PAT
-        # secret can read the private roboflow/re-ID repo.
-        run: uv sync --group dev
+        run: uv sync --frozen --group dev
 
       - name: 🧪 Run the Import test
         run: uv run python -c "import trackers"

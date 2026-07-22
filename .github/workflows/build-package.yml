@@ -35,10 +35,9 @@ jobs:
 
       - name: 🏗️ Build source and wheel distributions
         run: |
-          # Exclude the default `dev` group (pins private git dep roboflow-reid).
-          uv sync --frozen --no-default-groups --group build
+          uv sync --frozen --group build
           uv build
-          uv run --no-sync twine check --strict dist/*
+          uv run twine check --strict dist/*
           ls -l dist/
 
       - name: 📤 Upload distribution artifacts

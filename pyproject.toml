@@ -47,9 +47,7 @@ dependencies = [
 [project.optional-dependencies]
 detection = ["inference-models>=0.19.0"]
 tune = ["optuna>=3.0.0"]
-# ReID appearance association sources its model stack from the standalone
-# roboflow-reid package. Pinned to a git ref during review; swap to a PyPI
-# release (e.g. "roboflow-reid>=0.1.0,<0.2") before merge. See re-ID#1.
+# Swap the git pin for a PyPI release (e.g. "roboflow-reid>=0.1.0,<0.2") before merge.
 reid = ["roboflow-reid @ git+https://github.com/roboflow/re-ID.git@feat/port-model-stack"]
 
 [project.scripts]
