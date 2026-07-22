@@ -38,11 +38,11 @@ class BoTSORTTracker(BaseTracker):
       3) Split tracks into confirmed, unconfirmed, and lost
       4) Apply camera motion compensation to predicted tracks
       5) Associate high-confidence detections to confirmed + lost tracks
-         (IoU fused with detection scores + assignment)
+         (IoU fused with detection scores, optional appearance)
       6) Associate low-confidence detections to remaining tracks
-         (excluding lost tracks)
+         (excluding lost tracks; geometry only)
       7) Match remaining unmatched high-confidence detections to unconfirmed tracks
-         and remove unmatched unconfirmed tracks
+         (optional appearance) and remove unmatched unconfirmed tracks
       8) Spawn new tracks from still unmatched high-confidence detections
          (instantly activated on the very first frame)
       9) Remove tracks that have been lost for too long
@@ -98,7 +98,8 @@ class BoTSORTTracker(BaseTracker):
             Default ``0.25`` (BoT-SORT ``appearance_thresh``).
         proximity_threshold: Standard-IoU distance gate applied before appearance
             is used. Computed from true IoU even when ``iou`` is GIoU/DIoU/CIoU.
-            Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires IoU > 0.5).
+            Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires
+            ``IoU >= 1 - proximity_threshold``).
 
     Notes:
         - Positive `maximum_frames_without_update` values are scaled by
@@ -279,9 +280,6 @@ class BoTSORTTracker(BaseTracker):
             H = self.cmc.estimate(frame, mask_boxes)
             CMC.apply_batch(H, self.tracks)
 
-        # Appearance: extract embeddings once for all high-confidence detections.
-        # When reid_model is None this block is skipped entirely and behaviour
-        # is identical to the geometry-only baseline.
         det_embeddings: np.ndarray | None = None
         if self.reid_model is not None:
             if frame is None:
@@ -293,25 +291,9 @@ class BoTSORTTracker(BaseTracker):
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
-        iou_sim_raw = self.iou.normalize_for_fusion(iou_matrix)
-        iou_sim_fused = _fuse_score(iou_sim_raw, high_scores)
-
-        if det_embeddings is not None and len(strack_pool) > 0:
-            track_feats = [
-                t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
-                for t in strack_pool
-            ]
-            app_sim = appearance_similarity(track_feats, det_embeddings)
-            # Proximity uses raw standard IoU (before score fusion), matching BoT-SORT.
-            # Reuse the association matrix when it is already plain IoU.
-            if isinstance(self.iou, IoU):
-                proximity_iou = iou_sim_raw
-            else:
-                proximity_iou = self._standard_iou_matrix(strack_pool, high_boxes)
-            similarity_matrix = self._fuse_botsort_reid(iou_sim_fused, app_sim, proximity_iou)
-        else:
-            similarity_matrix = iou_sim_fused
+        similarity_matrix = self._association_similarity(
+            strack_pool, high_boxes, high_scores, det_embeddings
+        )
 
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             similarity_matrix, self.minimum_iou_threshold_first_assoc
@@ -329,7 +311,6 @@ class BoTSORTTracker(BaseTracker):
 
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks, following the original ByteTrack).
-        # No score fusing or ReID in second association (upstream bot_sort.py).
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
         iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
@@ -358,25 +339,12 @@ class BoTSORTTracker(BaseTracker):
         if len(unconfirmed_tracks) > 0 and len(unmatched_high_list) > 0:
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
-
-            iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
-            iou_sim_raw = self.iou.normalize_for_fusion(iou_matrix)
-            iou_sim_fused = _fuse_score(iou_sim_raw, uh_scores)
-
-            if det_embeddings is not None:
-                uh_embeddings = det_embeddings[unmatched_high_list]
-                track_feats = [
-                    t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
-                    for t in unconfirmed_tracks
-                ]
-                app_sim = appearance_similarity(track_feats, uh_embeddings)
-                if isinstance(self.iou, IoU):
-                    proximity_iou = iou_sim_raw
-                else:
-                    proximity_iou = self._standard_iou_matrix(unconfirmed_tracks, uh_boxes)
-                similarity_matrix = self._fuse_botsort_reid(iou_sim_fused, app_sim, proximity_iou)
-            else:
-                similarity_matrix = iou_sim_fused
+            uh_embeddings = (
+                det_embeddings[unmatched_high_list] if det_embeddings is not None else None
+            )
+            similarity_matrix = self._association_similarity(
+                unconfirmed_tracks, uh_boxes, uh_scores, uh_embeddings
+            )
 
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 similarity_matrix, self.minimum_iou_threshold_unconfirmed_assoc
@@ -451,35 +419,46 @@ class BoTSORTTracker(BaseTracker):
         out_det_indices.append(global_det_index)
         out_tracker_ids.append(track.tracker_id)
 
-    def _fuse_botsort_reid(
+    def _association_similarity(
         self,
-        association_similarity: np.ndarray,
-        appearance_similarity: np.ndarray,
-        proximity_iou_similarity: np.ndarray,
+        tracklets: list[BoTSORTTracklet],
+        boxes: np.ndarray,
+        scores: np.ndarray,
+        embeddings: np.ndarray | None,
     ) -> np.ndarray:
-        """Fuse IoU and appearance using BoT-SORT ``bot_sort.py`` min-cost ReID."""
+        """Score-fused association similarity, with optional BoT-SORT ReID fusion."""
+        iou_sim_raw = self.iou.normalize_for_fusion(self._get_iou_matrix(tracklets, boxes))
+        iou_sim_fused = _fuse_score(iou_sim_raw, scores)
+        if embeddings is None or len(tracklets) == 0:
+            return iou_sim_fused
+
+        track_feats = [
+            t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
+            for t in tracklets
+        ]
+        proximity_iou = (
+            iou_sim_raw if isinstance(self.iou, IoU) else self._get_iou_matrix(tracklets, boxes, metric=IoU())
+        )
         return fuse_botsort_reid_association(
-            association_similarity,
-            appearance_similarity,
-            proximity_iou_similarity=proximity_iou_similarity,
+            iou_sim_fused,
+            appearance_similarity(track_feats, embeddings),
+            proximity_iou_similarity=proximity_iou,
             proximity_threshold=self.proximity_threshold,
             appearance_threshold=self.appearance_threshold,
         )
 
-    def _standard_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
-        """Standard IoU for ReID proximity when association uses a variant metric."""
+    def _get_iou_matrix(
+        self,
+        tracklets: list[BoTSORTTracklet],
+        detections: np.ndarray,
+        *,
+        metric: BaseIoU | None = None,
+    ) -> np.ndarray:
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
             tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
-        return IoU().compute(tracklet_boxes, detections)
-
-    def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
-        if len(tracklets) == 0:
-            tracklet_boxes = np.empty((0, 4))
-        else:
-            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
-        return self.iou.compute(tracklet_boxes, detections)
+        return (metric or self.iou).compute(tracklet_boxes, detections)
 
     def _get_associated_indices(
         self,

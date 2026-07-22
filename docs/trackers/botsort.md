@@ -80,7 +80,7 @@ on MOT17 val.
 | ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `reid_ema_alpha`       | 0.9     | EMA momentum for a track's appearance feature; higher retains more history.                                                                                                       |
 | `appearance_threshold` | 0.25    | Appearance-distance gate (BoT-SORT paper default). Rejects matches when `0.5 * (1 - cos_sim)` exceeds this value. The MOT17 eval notebook uses `0.2` per the re-ID study Table 8. |
-| `proximity_threshold`  | 0.5     | Standard-IoU gate applied before appearance is used (requires IoU > `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU.                         |
+| `proximity_threshold`  | 0.5     | Standard-IoU gate applied before appearance is used (requires IoU ≥ `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU.                         |
 
 ## Run on video, webcam, or RTSP stream
 

@@ -58,7 +58,7 @@ class BoTSORTTracklet(BaseTracklet):
         # Count initial bbox as first successful update so that
         # number_of_successful_updates starts at 1.
         self.number_of_successful_updates = 1
-        # Optional appearance feature bank, populated by BoTSORTTracker.
+        # Optional appearance feature bank, set by BoTSORTTracker when ReID is enabled.
         self.feature_bank: FeatureBank | None = None
 
     def _configure_initial_noise(self, bbox: np.ndarray) -> None:
