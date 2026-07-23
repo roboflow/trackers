@@ -47,8 +47,8 @@ dependencies = [
 [project.optional-dependencies]
 detection = ["inference-models>=0.19.0"]
 tune = ["optuna>=3.0.0"]
-# Private git pin for review. Swap to PyPI before merge (test CI uses --extra reid).
-reid = ["roboflow-reid @ git+https://github.com/roboflow/re-ID.git@feat/port-model-stack"]
+# Temporary git pin until reid is on PyPI. Swap to reid>=0.1.0,<0.2 before merge.
+reid = ["reid @ git+https://github.com/roboflow/re-ID.git@main"]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"

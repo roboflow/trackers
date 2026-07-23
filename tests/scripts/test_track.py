@@ -211,6 +211,8 @@ class _FakeReIDModel:
 
 
 class TestReidTrackCli:
+    """CLI wiring for optional BoT-SORT ReID model loading."""
+
     def test_model_source_implies_enable(self) -> None:
         args = argparse.Namespace(
             tracker_reid_enable=False,
@@ -235,7 +237,7 @@ class TestReidTrackCli:
         from types import ModuleType
 
         fake_reid = ModuleType("reid")
-        fake_reid.ReIDModel = _FakeReIDModel
+        setattr(fake_reid, "ReIDModel", _FakeReIDModel)
         monkeypatch.setitem(sys.modules, "reid", fake_reid)
 
         weights = tmp_path / "weights.pth"
@@ -264,7 +266,14 @@ class TestReidTrackCli:
         _, error = _apply_reid_tracker_params("bytetrack", args, {})
         assert error is not None and "botsort" in error
 
-    def test_architecture_requires_model(self) -> None:
+    def test_architecture_requires_model(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import sys
+        from types import ModuleType
+
+        fake_reid = ModuleType("reid")
+        setattr(fake_reid, "ReIDModel", object)
+        monkeypatch.setitem(sys.modules, "reid", fake_reid)
+
         args = argparse.Namespace(
             tracker_reid_enable=True,
             tracker_reid_model=None,

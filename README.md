@@ -22,7 +22,7 @@ Keeping track of objects across video frames is one of those problems that sound
 - **Benchmarked across four datasets.** MOT17, SportsMOT, SoccerNet, and DanceTrack — at default parameters and after hyperparameter tuning, so you know what to expect before you deploy.
 - **Tunable out of the box.** Built-in Optuna-based hyperparameter search via `trackers tune` so you can optimize for your specific scene and detector.
 - **Camera motion compensation.** BoT-SORT handles moving cameras natively, keeping track IDs stable even when the whole frame shifts.
-- **Optional appearance ReID.** BoT-SORT can fuse visual embeddings with motion for harder association scenes — install `trackers[reid]` (pulls in the standalone `roboflow-reid` package) and pass a `reid.ReIDModel` as `reid_model`.
+- **Optional appearance ReID.** BoT-SORT can fuse visual embeddings with motion for harder association scenes: install `trackers[reid]` (pulls in the standalone [`reid`](https://github.com/roboflow/re-ID) package) and pass a `reid.ReIDModel` as `reid_model`.
 
 ## Install
 

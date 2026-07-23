@@ -4,13 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""NumPy-only appearance-ReID association glue.
-
-This package intentionally contains no model stack. The encoder, weights,
-preprocessing, and gallery evaluation live in the standalone ``reid`` package
-(``pip install 'trackers[reid]'``); import ``ReIDModel`` and evaluation helpers
-from there. Everything exported here is importable without torch.
-"""
+"""Appearance-ReID association helpers for multi-object trackers."""
 
 from __future__ import annotations
 

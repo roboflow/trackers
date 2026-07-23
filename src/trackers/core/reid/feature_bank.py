@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-_NORM_EPS = 1e-12
+from trackers.core.reid.appearance import _l2_normalize
 
 
 class FeatureBank:
@@ -70,9 +70,3 @@ def _require_embedding(embedding: np.ndarray) -> np.ndarray:
     if not np.all(np.isfinite(flat)):
         raise ValueError("embedding must contain only finite values")
     return flat
-
-
-def _l2_normalize(vec: np.ndarray) -> np.ndarray:
-    """Return a unit-norm float32 vector (zero vectors are returned unchanged)."""
-    norm = float(np.linalg.norm(vec))
-    return (vec / max(norm, _NORM_EPS)).astype(np.float32)

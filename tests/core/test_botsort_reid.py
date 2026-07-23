@@ -65,7 +65,11 @@ def test_botsort_import_does_not_load_reid_model_stack() -> None:
         [
             sys.executable,
             "-c",
-            ("import sys; import trackers.core.botsort.tracker; assert 'reid' not in sys.modules"),
+            (
+                "import sys; import trackers.core.botsort.tracker; "
+                "assert 'reid' not in sys.modules; "
+                "assert 'torch' not in sys.modules"
+            ),
         ],
         check=False,
         capture_output=True,
@@ -75,6 +79,8 @@ def test_botsort_import_does_not_load_reid_model_stack() -> None:
 
 
 class TestFeatureBank:
+    """Unit tests for ``FeatureBank`` L2 + EMA behavior."""
+
     def test_first_update_normalizes_embedding(self) -> None:
         # BoT-SORT STrack.update_features: L2-normalize before storage.
         bank = FeatureBank(alpha=0.9)
@@ -122,6 +128,8 @@ class TestFeatureBank:
 
 
 class TestAppearanceSimilarity:
+    """Unit tests for cosine ``appearance_similarity`` and embedding extraction."""
+
     def test_identical_vectors_are_one(self) -> None:
         similarity = appearance_similarity(
             [np.array([1.0, 0.0], dtype=np.float32)],
@@ -186,6 +194,8 @@ class TestAppearanceSimilarity:
 
 
 class TestFuseBotsortReidAssociation:
+    """Unit tests for BoT-SORT IoU/appearance fusion gates."""
+
     def test_appearance_can_win_when_proximity_passes(self) -> None:
         # Association IoU 0.63 clears the proximity gate (needs IoU > 1 - 0.5 = 0.5),
         # so a strong appearance score can beat it (0.63 → 0.9).
@@ -224,6 +234,8 @@ class TestFuseBotsortReidAssociation:
 
 
 class TestBoTSORTTrackerReID:
+    """Integration-style tests for BoT-SORT tracker appearance association."""
+
     def test_rejects_invalid_reid_ema_alpha(self) -> None:
         with pytest.raises(ValueError, match="reid_ema_alpha"):
             BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder(), reid_ema_alpha=1.5)
