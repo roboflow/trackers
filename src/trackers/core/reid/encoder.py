@@ -15,12 +15,7 @@ import supervision as sv
 
 
 class ReIDEncoder(Protocol):
-    """Appearance encoder used for tracking association.
-
-    Trackers only depend on ``extract_features``. ``reid.ReIDModel`` structurally
-    satisfies this protocol, and custom or test encoders may implement it without
-    depending on the full model stack.
-    """
+    """Encoder with ``extract_features(detections, frame)``."""
 
     def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
         """Return appearance embeddings for each detection box.

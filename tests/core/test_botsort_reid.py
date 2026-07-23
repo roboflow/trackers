@@ -113,7 +113,7 @@ class TestFeatureBank:
         bank = FeatureBank()
         with pytest.raises(ValueError, match="finite"):
             bank.update(np.array([1.0, np.nan], dtype=np.float32))
-        assert not bank.is_initialized
+        assert bank.feature is None
 
     def test_shape_change_raises(self) -> None:
         bank = FeatureBank()
@@ -249,7 +249,7 @@ class TestBoTSORTTrackerReID:
         tracker = BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder())
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame())
         bank = tracker.tracks[0].feature_bank
-        assert bank is not None and bank.is_initialized
+        assert bank is not None and bank.feature is not None
 
     def test_appearance_changes_assignment_vs_geometry_only(self) -> None:
         identity = _norm(np.array([1.0, 0.0, 0.0, 0.0]))
@@ -349,4 +349,4 @@ class TestBoTSORTTrackerReID:
 
         assert len(tracker.tracks) == 1
         bank = tracker.tracks[0].feature_bank
-        assert bank is not None and bank.is_initialized
+        assert bank is not None and bank.feature is not None

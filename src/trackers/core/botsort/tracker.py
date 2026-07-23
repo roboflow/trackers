@@ -426,10 +426,7 @@ class BoTSORTTracker(BaseTracker):
         if embeddings is None or len(tracklets) == 0:
             return iou_sim_fused
 
-        track_feats = [
-            t.feature_bank.feature if t.feature_bank is not None and t.feature_bank.is_initialized else None
-            for t in tracklets
-        ]
+        track_feats = [None if t.feature_bank is None else t.feature_bank.feature for t in tracklets]
         proximity_iou = (
             iou_sim_raw if isinstance(self.iou, IoU) else self._get_iou_matrix(tracklets, boxes, metric=IoU())
         )

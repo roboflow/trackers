@@ -645,7 +645,7 @@ def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Dete
 
 
 def _reid_requested(args: argparse.Namespace) -> bool:
-    return bool(getattr(args, "tracker_reid_enable", False)) or getattr(args, "tracker_reid_model", None) is not None
+    return bool(args.tracker_reid_enable) or args.tracker_reid_model is not None
 
 
 def _apply_reid_tracker_params(
@@ -660,7 +660,7 @@ def _apply_reid_tracker_params(
     if tracker_id != "botsort":
         return params, (f"Error: --tracker.reid.* options apply only to --tracker botsort, got {tracker_id!r}.")
 
-    if getattr(args, "source", None) is None:
+    if args.source is None:
         return params, (
             "Error: ReID-enabled BoT-SORT requires --source (video/webcam/images) "
             "so appearance embeddings can be extracted from frames."
@@ -674,15 +674,14 @@ def _apply_reid_tracker_params(
             "Install with: pip install 'trackers[reid]'"
         )
 
-    device = getattr(args, "tracker_reid_device", DEFAULT_DEVICE)
-    model_source = getattr(args, "tracker_reid_model", None)
-    architecture = getattr(args, "tracker_reid_architecture", None)
+    model_source = args.tracker_reid_model
+    architecture = args.tracker_reid_architecture
     if architecture is not None and model_source is None:
         return params, (
             "Error: --tracker.reid.architecture requires --tracker.reid.model (bare weights need a checkpoint path)."
         )
 
-    load_kwargs: dict[str, object] = {"device": device}
+    load_kwargs: dict[str, object] = {"device": args.tracker_reid_device}
     if model_source is not None:
         load_kwargs["source"] = model_source
     if architecture is not None:
