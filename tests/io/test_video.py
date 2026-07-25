@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
@@ -228,3 +229,73 @@ class TestVideoOutputFPS:
         actual_fps = cap.get(cv2.CAP_PROP_FPS)
         cap.release()
         assert actual_fps == pytest.approx(_DEFAULT_OUTPUT_FPS, abs=0.1)
+
+
+def _count_written_frames(path: Path) -> int:
+    """Count the frames actually persisted in a written video file."""
+    cap = cv2.VideoCapture(str(path))
+    count = 0
+    while True:
+        ok, _ = cap.read()
+        if not ok:
+            break
+        count += 1
+    cap.release()
+    return count
+
+
+class TestVideoOutputResolutionChange:
+    def test_all_same_size_frames_are_written(self, tmp_path: Path) -> None:
+        output_path = tmp_path / "same_size.mp4"
+        num_frames = 3
+
+        with _VideoOutput(output_path) as video:
+            for index in range(num_frames):
+                assert video.write(create_frame(index)) is True
+
+        assert _count_written_frames(output_path) == num_frames
+
+    def test_mismatched_frame_is_kept_not_dropped(self, tmp_path: Path) -> None:
+        # cv2.VideoWriter silently discards frames whose size differs from the
+        # writer's; without resizing the middle frame vanishes from the output.
+        output_path = tmp_path / "resized.mp4"
+        first = create_frame(1)
+        odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+        last = create_frame(3)
+
+        with _VideoOutput(output_path) as video:
+            assert video.write(first) is True
+            assert video.write(odd) is True
+            assert video.write(last) is True
+
+        assert _count_written_frames(output_path) == 3
+
+    def test_mismatched_frame_is_resized_to_writer_size(self, tmp_path: Path) -> None:
+        output_path = tmp_path / "check_size.mp4"
+        with _VideoOutput(output_path) as video:
+            video.write(create_frame(1))
+            odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+            resized = video._match_writer_size(odd)
+
+        assert resized.shape == (FRAME_HEIGHT, FRAME_WIDTH, 3)
+
+    def test_size_mismatch_is_warned_once(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        output_path = tmp_path / "warn_once.mp4"
+        odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+
+        with caplog.at_level(logging.WARNING, logger="trackers.io.video"):
+            with _VideoOutput(output_path) as video:
+                video.write(create_frame(1))
+                video.write(odd)
+                video.write(odd)
+
+        mismatch_warnings = [r for r in caplog.records if "differs from the writer" in r.message]
+        assert len(mismatch_warnings) == 1
+
+    def test_none_path_ignores_frame_size(self) -> None:
+        # A no-op sink must not track sizes or warn on a resolution change.
+        with _VideoOutput(None) as video:
+            assert video.write(create_frame(1)) is True
+            odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+            assert video.write(odd) is True
+        assert video._frame_size is None
