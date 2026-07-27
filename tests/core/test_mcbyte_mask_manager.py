@@ -7,10 +7,33 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from trackers.core.mcbyte.mask_manager import MaskManager
 from trackers.core.mcbyte.masks import TrackletSnapshot
+from trackers.core.mcbyte.masks.base import MaskOutput
 from trackers.core.mcbyte.masks.dummy import DummyBoxMaskGenerator, DummyIdentityMaskPropagator
+
+
+class _FlakyMaskPropagator(DummyIdentityMaskPropagator):
+    """Propagator that succeeds a bounded number of times, then fails.
+
+    Unlike ``DummyIdentityMaskPropagator``, which never returns ``None`` once
+    initialized, this test double reproduces a propagation-runtime failure
+    (e.g. an external backend such as Cutie losing its internal memory)
+    occurring mid-sequence, after the manager has already been initialized.
+    """
+
+    def __init__(self, succeed_calls: int = 1) -> None:
+        super().__init__()
+        self._succeed_calls = succeed_calls
+        self._propagate_calls = 0
+
+    def propagate(self, frame: np.ndarray) -> MaskOutput | None:
+        self._propagate_calls += 1
+        if self._propagate_calls > self._succeed_calls:
+            return None
+        return super().propagate(frame)
 
 
 def _make_frame(h: int = 100, w: int = 120) -> np.ndarray:
@@ -452,3 +475,49 @@ def test_mask_manager_removes_terminated_tracklet_from_pending_pool_before_initi
 
     assert output is None
     assert manager._pending_tracklet_ids == set()
+
+
+def test_mask_manager_resets_initialized_flag_when_propagation_fails_after_init() -> None:
+    """Scenario: propagate() returns None after a prior successful init.
+
+    The manager must reset ``_initialized`` to False so that a later call
+    re-attempts mask creation from scratch instead of assuming a still-valid
+    propagator state.
+    """
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=_FlakyMaskPropagator(succeed_calls=1),
+    )
+
+    first_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            TrackletSnapshot(3, np.array([5, 6, 25, 30], dtype=np.float32)),
+        ],
+    )
+
+    assert first_output is not None
+    assert manager._initialized is True
+
+    second_output = manager.get_updated_masks(
+        frame=_make_frame(),
+        previous_frame=_make_frame(),
+        previous_tracklets=[
+            TrackletSnapshot(3, np.array([5, 6, 25, 30], dtype=np.float32)),
+        ],
+    )
+
+    assert second_output is None
+    assert manager._initialized is False
+
+
+def test_mask_manager_init_raises_value_error_for_out_of_range_threshold() -> None:
+    """Scenario: constructing MaskManager with an overlap threshold outside
+    [0, 1] must raise ValueError instead of silently accepting it."""
+    with pytest.raises(ValueError, match="mask_creation_bbox_overlap_threshold"):
+        MaskManager(
+            mask_generator=DummyBoxMaskGenerator(),
+            mask_propagator=DummyIdentityMaskPropagator(),
+            mask_creation_bbox_overlap_threshold=1.5,
+        )
