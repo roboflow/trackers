@@ -18,18 +18,19 @@ evaluation, and MOT fine-tuning are documented in the standalone
 
 ## BoT-SORT with and without ReID
 
-Reference scores on MOT17 val-half with YOLOX detections from the
-[BoT-SORT paper](https://arxiv.org/abs/2206.14651) Table 1. The
-[`eval_trackers_reid.ipynb`](../../notebooks/eval_trackers_reid.ipynb) notebook
-uses the same split and detector with `fastreid_mot17_sbs50` and
-`appearance_threshold=0.2` (MOT17 re-ID study Table 8); run it for
-trackers-local results.
+When using FastReID weights trained for BoTSORT on MOT17 validation half, we obtain:
+
+
 
 | Config          | HOTA  | MOTA  | IDF1  |
 | :-------------- | :---: | :---: | :---: |
 | BoT-SORT        | 69.11 | 78.39 | 81.53 |
 | BoT-SORT + ReID | 69.17 | 78.46 | 82.07 |
 
+```yaml
+ReIDEncoder: fastreid_mot17_sbs50
+appearance_threshold=0.2
+```
 The MOT17 re-ID study
 ([*Does Re-ID Really Help in Multi-Object Tracking?*](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf),
 Table 8 + Table 13 combined row, app th=0.2) reports HOTA 68.43 / IDF1 80.92
