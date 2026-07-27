@@ -265,21 +265,37 @@ def _compute_mask_avg_prob_dict(
     averaged over pixels where that object's current temporary ID wins the argmax
     prediction.
     """
-    mask_maxes = torch.max(prob, dim=0).indices
-    mask_avg_prob_dict: dict[int, float] = {}
+    num_channels = int(prob.shape[0])
+    max_result = torch.max(prob, dim=0)
+    # At each pixel the winning channel's probability equals the per-pixel maximum,
+    # so prob[tmp_id][mask_maxes == tmp_id] is exactly the set of maxima won by that
+    # channel. Cast to float32 so the summation below is stable for half-precision
+    # AMP outputs.
+    max_values = max_result.values.reshape(-1).float()
+    max_indices = max_result.indices.reshape(-1)
 
+    # Per-channel sum of winning-pixel probabilities and count of winning pixels.
+    # A channel's mean confidence over the pixels it wins is therefore sum / count.
+    # Both reductions stay on-device; stacking lets the host read them back with a
+    # single GPU->CPU synchronization for the whole frame instead of one per object.
+    winning_prob_sums = torch.bincount(max_indices, weights=max_values, minlength=num_channels)
+    winning_pixel_counts = torch.bincount(max_indices, minlength=num_channels).to(winning_prob_sums.dtype)
+    stats = torch.stack((winning_prob_sums, winning_pixel_counts)).cpu().numpy()
+    winning_prob_sums_cpu, winning_pixel_counts_cpu = stats[0], stats[1]
+
+    mask_avg_prob_dict: dict[int, float] = {}
     for object_id in object_ids:
         tmp_id = object_id_to_tmp_id.get(object_id)
         if tmp_id is None:
             continue
 
-        object_prob = prob[tmp_id][mask_maxes == tmp_id]
-        if object_prob.numel() == 0:
+        winning_pixel_count = winning_pixel_counts_cpu[tmp_id]
+        if winning_pixel_count == 0:
             continue
 
-        avg_prob = object_prob.mean().item()
+        avg_prob = winning_prob_sums_cpu[tmp_id] / winning_pixel_count
         if not np.isnan(avg_prob):
-            mask_avg_prob_dict[object_id] = avg_prob
+            mask_avg_prob_dict[object_id] = float(avg_prob)
 
     return mask_avg_prob_dict
 
@@ -299,9 +315,12 @@ class CutieMaskPropagator(MaskPropagator):
     preservation are intentionally left for later MaskManager-level integration.
 
     Args:
-        weights_path: Optional path to Cutie checkpoint weights. If not provided,
-            the default checkpoint path for ``model_type`` is used. If the file is
-            missing, it is downloaded automatically.
+        weights_path: Optional path to Cutie checkpoint weights. When provided,
+            the file must already exist and is used as-is: a user-supplied
+            checkpoint is never validated against the default-asset checksum nor
+            overwritten, and a missing path raises ``FileNotFoundError``. When not
+            provided, the default checkpoint for ``model_type`` is downloaded and
+            checksum-validated if absent.
         config_path: Optional path to Cutie's Hydra config directory. If not
             provided, the path is inferred from the installed ``cutie`` package.
         config_name: Hydra config name used by Cutie.
@@ -341,12 +360,22 @@ class CutieMaskPropagator(MaskPropagator):
         if asset is None:
             raise ValueError(f"Unsupported model_type={model_type!r}. Supported types: {sorted(CUTIE_ASSETS)}")
 
-        self.weights_path = Path(weights_path) if weights_path is not None else asset.default_path
-
-        _ensure_weights_exist(
-            weights_path=self.weights_path,
-            model_type=model_type,
-        )
+        if weights_path is not None:
+            # A user-supplied checkpoint (e.g. a fine-tuned Cutie model) is honored
+            # as-is. Running the default-asset MD5 check here would detect a
+            # mismatch, delete the user's file, and re-download the canonical
+            # default over it — silent data loss. Download-if-missing is also
+            # wrong for a custom path, so an absent file is reported explicitly.
+            self.weights_path = Path(weights_path)
+            if not self.weights_path.exists():
+                raise FileNotFoundError(f"Cutie checkpoint not found at the provided weights_path: {self.weights_path}")
+        else:
+            # No checkpoint provided: fetch and checksum-validate the default asset.
+            self.weights_path = asset.default_path
+            _ensure_weights_exist(
+                weights_path=self.weights_path,
+                model_type=model_type,
+            )
 
         cfg = self._load_config(
             cutie_module=cutie,
@@ -358,7 +387,10 @@ class CutieMaskPropagator(MaskPropagator):
         _ = get_dataset_cfg(cfg)
 
         self.cutie = CUTIE(cfg).to(self.device).eval()
-        model_weights = torch.load(self.weights_path, map_location=self.device)
+        # weights_only=True guards against arbitrary-code execution (CWE-502) when
+        # deserializing a checkpoint fetched from an external release URL. The Cutie
+        # checkpoint is a plain state_dict consumed by load_weights, so it loads cleanly.
+        model_weights = torch.load(self.weights_path, map_location=self.device, weights_only=True)
         self.cutie.load_weights(model_weights)
 
         self.processor = InferenceCore(self.cutie, cfg=cfg)

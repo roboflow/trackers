@@ -236,6 +236,131 @@ def test_reset_clears_internal_state(
     assert propagator._last_indexed_mask is None
 
 
+def test_initialize_success_path_builds_state_and_calls_processor_step() -> None:
+    """Scenario: initialize() with valid non-overlapping masks builds tracklet/object state and feeds Cutie memory."""
+
+    class DummyProcessor:
+        def __init__(self) -> None:
+            self.step_calls: list[dict[str, Any]] = []
+
+        def step(
+            self,
+            frame: Any,
+            mask: Any | None = None,
+            objects: list[int] | None = None,
+            *,
+            idx_mask: bool = True,
+        ) -> Any:
+            self.step_calls.append(
+                {
+                    "frame": frame,
+                    "mask": mask,
+                    "objects": objects,
+                    "idx_mask": idx_mask,
+                }
+            )
+            return torch.zeros((3, 4, 4), dtype=torch.float32)
+
+    processor = DummyProcessor()
+
+    propagator = object.__new__(CutieMaskPropagator)
+    propagator.device = torch.device("cpu")
+    propagator.use_amp = False
+    propagator.processor = processor
+    propagator._tracklet_object_dict = {}
+    propagator._object_ids = []
+    propagator._initialized = False
+    propagator._last_object_id = 0
+    propagator._last_indexed_mask = None
+
+    masks = np.zeros((2, 4, 4), dtype=bool)
+    masks[0, 0:2, 0:2] = True
+    masks[1, 2:4, 2:4] = True
+
+    mask_output = MaskOutput(
+        masks=masks,
+        tracklet_mask_dict={10: 0, 20: 1},
+        mask_avg_prob_dict=None,
+    )
+
+    propagator.initialize(
+        frame=np.zeros((4, 4, 3), dtype=np.uint8),
+        mask_output=mask_output,
+    )
+
+    assert propagator._tracklet_object_dict == {10: 1, 20: 2}
+    assert propagator._object_ids == [1, 2]
+    assert propagator._last_object_id == 2
+    assert propagator._initialized is True
+
+    expected_indexed_mask = np.zeros((4, 4), dtype=np.int32)
+    expected_indexed_mask[0:2, 0:2] = 1
+    expected_indexed_mask[2:4, 2:4] = 2
+    np.testing.assert_array_equal(propagator._last_indexed_mask, expected_indexed_mask)
+
+    assert len(processor.step_calls) == 1
+    step_call = processor.step_calls[0]
+    assert step_call["objects"] == [1, 2]
+    assert step_call["idx_mask"] is False
+    assert step_call["frame"].shape == (3, 4, 4)
+    np.testing.assert_array_equal(
+        step_call["mask"].cpu().numpy(),
+        masks.astype(np.float32),
+    )
+
+
+@pytest.mark.parametrize(
+    "mask_output",
+    [
+        pytest.param(
+            MaskOutput(masks=None, tracklet_mask_dict={}, mask_avg_prob_dict=None),
+            id="masks-is-none",
+        ),
+        pytest.param(
+            MaskOutput(
+                masks=np.zeros((0, 4, 4), dtype=bool),
+                tracklet_mask_dict={},
+                mask_avg_prob_dict=None,
+            ),
+            id="zero-masks",
+        ),
+    ],
+)
+def test_initialize_resets_cutie_memory_when_no_masks_to_initialize(
+    mask_output: MaskOutput,
+) -> None:
+    """Scenario: initialize() with no masks (masks=None or an empty mask array) clears Cutie memory via reset()."""
+
+    class DummyProcessor:
+        def __init__(self) -> None:
+            self.clear_memory_called = False
+
+        def clear_memory(self) -> None:
+            self.clear_memory_called = True
+
+    processor = DummyProcessor()
+
+    propagator = object.__new__(CutieMaskPropagator)
+    propagator.processor = processor
+    propagator._tracklet_object_dict = {10: 1}
+    propagator._object_ids = [1]
+    propagator._last_object_id = 1
+    propagator._last_indexed_mask = np.ones((4, 4), dtype=np.int32)
+    propagator._initialized = True
+
+    propagator.initialize(
+        frame=np.zeros((4, 4, 3), dtype=np.uint8),
+        mask_output=mask_output,
+    )
+
+    assert processor.clear_memory_called
+    assert propagator._tracklet_object_dict == {}
+    assert propagator._object_ids == []
+    assert propagator._last_object_id == 0
+    assert propagator._last_indexed_mask is None
+    assert not propagator._initialized
+
+
 @pytest.mark.parametrize(
     ("masks", "tracklet_mask_dict", "error_match"),
     [

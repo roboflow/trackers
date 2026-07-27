@@ -176,11 +176,25 @@ def _get_mask_metrics(
         ``(mask_coverage, mask_fill_ratio)`` or ``None`` when the mask is not
         visible or the clipped detection box has no positive area.
     """
-    if mask.ndim != 2:
-        raise ValueError(f"Each mask must have shape (H, W). Got shape {mask.shape}.")
-
     mask_bool = mask.astype(bool, copy=False)
     visible_mask_area = int(mask_bool.sum())
+
+    return _get_mask_metrics_with_visible_area(
+        mask_bool=mask_bool,
+        detection_xyxy=detection_xyxy,
+        visible_mask_area=visible_mask_area,
+    )
+
+
+def _get_mask_metrics_with_visible_area(
+    mask_bool: np.ndarray,
+    detection_xyxy: np.ndarray,
+    visible_mask_area: int,
+) -> tuple[float, float] | None:
+    """Return mask coverage and fill ratio using a precomputed mask area."""
+    if mask_bool.ndim != 2:
+        raise ValueError(f"Each mask must have shape (H, W). Got shape {mask_bool.shape}.")
+
     if visible_mask_area == 0:
         return None
 
@@ -283,6 +297,17 @@ def _apply_mask_similarity_boosts(
     # Local indices in the reduced matrix.
     candidate_rows, candidate_columns = np.where(candidate_matrix)
 
+    # A tracklet may have several candidate detections, but its mask area is shared.
+    mask_areas: dict[int, int] = {}
+    for local_track_index in np.unique(candidate_rows):
+        tracklet_id = tracklet_ids[remaining_track_indices[local_track_index]]
+        mask_index = mask_output.tracklet_mask_dict.get(tracklet_id)
+        if mask_index is None or not 0 <= mask_index < mask_output.masks.shape[0]:
+            continue
+
+        if mask_index not in mask_areas:
+            mask_areas[mask_index] = int(mask_output.masks[mask_index].astype(bool, copy=False).sum())
+
     for local_track_index, local_detection_index in zip(
         candidate_rows,
         candidate_columns,
@@ -303,9 +328,10 @@ def _apply_mask_similarity_boosts(
         if average_confidence is None or average_confidence < minimum_mask_average_confidence:
             continue
 
-        metrics = _get_mask_metrics(
-            mask=mask_output.masks[mask_index],
+        metrics = _get_mask_metrics_with_visible_area(
+            mask_bool=mask_output.masks[mask_index].astype(bool, copy=False),
             detection_xyxy=detection_boxes[original_detection_index],
+            visible_mask_area=mask_areas[mask_index],
         )
         if metrics is None:
             continue

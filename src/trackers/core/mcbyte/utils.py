@@ -5,57 +5,55 @@
 # ------------------------------------------------------------------------
 
 from collections.abc import Sequence
+from typing import cast
 
-import numpy as np
-
+from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.core.botsort.utils import _fuse_score
+from trackers.core.botsort.utils import get_alive_tracklets as _botsort_get_alive_tracklets
 from trackers.core.mcbyte.tracklet import McByteTracklet
+
+# `_fuse_score` is re-exported from BoTSORT so the identical implementation
+# lives in a single place; `tracker.py` keeps importing both symbols from this
+# local module.
+__all__ = ["_fuse_score", "get_alive_tracklets"]
 
 
 def get_alive_tracklets(
     tracklets: Sequence[McByteTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,
+    maximum_time_without_update: float | None = None,
 ) -> list[McByteTracklet]:
-    """
-    Remove dead or immature lost tracklets and return alive ones.
+    """Remove dead or immature lost tracklets and return alive ones.
 
-    A tracklet is kept if it is within ``maximum_frames_without_update`` **and**
-    it is either mature (enough successful updates) or was just updated this
-    frame.
+    Thin wrapper that delegates to
+    :func:`trackers.core.botsort.utils.get_alive_tracklets`. The pruning logic
+    (sticky maturity, the ``<=`` lost-track budget, and the optional seconds
+    budget for variable frame rates) therefore lives in a single place shared
+    with BoTSORT instead of being duplicated here. ``McByteTracklet`` and
+    ``BoTSORTTracklet`` both derive from ``BaseTracklet``, so the shared
+    implementation only touches the common tracklet interface.
 
     Args:
-        tracklets: List of McByteTracklet objects.
-        minimum_consecutive_frames: Number of successful updates that an object
-            must have before it is considered a 'valid' track.
+        tracklets: McByteTracklet objects to filter.
+        minimum_consecutive_frames: Number of successful updates required for
+            maturity. Ignored for tracklets that already hold a real
+            ``tracker_id`` (sticky maturity path).
         maximum_frames_without_update: Maximum number of frames without update
             before a track is considered dead.
+        maximum_time_without_update: Optional seconds budget. When provided, it
+            is used instead of the frame-count budget, enabling correct pruning
+            under variable frame rates.
 
     Returns:
         List of alive tracklets.
     """
-    alive_tracklets = []
-    for tracker in tracklets:
-        is_mature = tracker.number_of_successful_updates >= minimum_consecutive_frames
-        is_active = tracker.time_since_update == 0
-        if tracker.time_since_update < maximum_frames_without_update and (is_mature or is_active):
-            alive_tracklets.append(tracker)
-    return alive_tracklets
-
-
-def _fuse_score(iou_similarity: np.ndarray, scores: np.ndarray) -> np.ndarray:
-    """Fuse IoU similarity matrix with detection confidence scores.
-
-    Following the original ByteTrack implementation, the IoU similarity is
-    multiplied element-wise by the detection scores.  This biases the
-    association toward higher-confidence detections.
-
-    Args:
-        iou_similarity: IoU similarity matrix of shape ``(n_tracks, n_dets)``.
-        scores: Detection confidence scores of shape ``(n_dets,)``.
-
-    Returns:
-        Fused similarity matrix of the same shape.
-    """
-    if iou_similarity.size == 0:
-        return iou_similarity
-    return iou_similarity * scores[np.newaxis, :]
+    return cast(
+        list[McByteTracklet],
+        _botsort_get_alive_tracklets(
+            tracklets=cast(Sequence[BoTSORTTracklet], tracklets),
+            minimum_consecutive_frames=minimum_consecutive_frames,
+            maximum_frames_without_update=maximum_frames_without_update,
+            maximum_time_without_update=maximum_time_without_update,
+        ),
+    )
