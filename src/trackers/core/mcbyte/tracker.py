@@ -4,6 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -34,6 +35,32 @@ from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCWHStateEstimator,
 )
+
+logger = logging.getLogger(__name__)
+
+# Number of consecutive CUDA out-of-memory failures in the mask pipeline after
+# which mask-conditioned association is disabled for the remainder of the run.
+_MAX_CONSECUTIVE_MASK_FAILURES = 3
+
+
+def _is_cuda_out_of_memory(exc: BaseException) -> bool:
+    """Return whether an exception represents a CUDA/torch out-of-memory error.
+
+    Detected without importing ``torch`` (an optional McByte dependency): a
+    ``torch.cuda.OutOfMemoryError`` is a ``RuntimeError`` subclass, so it is
+    recognised by class name, and plain CUDA out-of-memory ``RuntimeError``
+    instances are recognised by their canonical message.
+
+    Args:
+        exc: Exception raised by the mask pipeline.
+
+    Returns:
+        ``True`` when ``exc`` is a CUDA/torch out-of-memory error, otherwise
+        ``False``.
+    """
+    if any(klass.__name__ == "OutOfMemoryError" for klass in type(exc).__mro__):
+        return True
+    return "out of memory" in str(exc).lower()
 
 
 @dataclass(frozen=True)
@@ -224,7 +251,11 @@ class McByteTracker(BaseTracker):
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
         # consistent time-based tracking across different frame rates.
-        self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
+        self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
+            lost_track_buffer=lost_track_buffer,
+            frame_rate=frame_rate,
+        )
+        self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold_first_assoc = minimum_iou_threshold_first_assoc
         self.minimum_iou_threshold_second_assoc = minimum_iou_threshold_second_assoc
@@ -244,6 +275,8 @@ class McByteTracker(BaseTracker):
 
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
+
+        self._init_timestamp_state(frame_rate)
 
         self.mask_manager: MaskManager | None
 
@@ -266,6 +299,7 @@ class McByteTracker(BaseTracker):
         self._previous_new_tracklets: list[TrackletSnapshot] = []
         self._previous_removed_tracklet_ids: list[int] = []
         self._mask_tracklet_ids: set[int] = set()
+        self._consecutive_mask_failures: int = 0
 
     def update(
         self,
@@ -288,15 +322,28 @@ class McByteTracker(BaseTracker):
                 returns a new ``sv.Detections`` with ``tracker_id`` assigned.
             frame: Current RGB frame. Required for camera motion compensation and for
                 mask-manager propagation.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call). When provided,
+                capture times must be non-decreasing; elapsed seconds are converted
+                to Kalman frame units for prediction and used directly for
+                lost-track pruning.
 
         Returns:
             New sv.Detections with tracker_id assigned for each output detection.
             Confirmed tracks have tracker_id >= 0; unmatched/unconfirmed detections have
-            tracker_id of -1.
+            tracker_id of -1. When the update is skipped (backwards or non-finite
+            timestamp), all ``tracker_id`` values are ``-1``.
+
+        Warns:
+            UserWarning: If ``timestamp`` is earlier than the previous call
+                (backwards order); the whole update is skipped and all output
+                IDs are ``-1``. If ``timestamp`` equals the previous call
+                (duplicate); predict is skipped but association still runs on
+                the last state.
         """
-        # Accepted for compatibility with the current BaseTracker interface.
-        # McByte currently does not use timestamps.
-        _ = timestamp
+        timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
 
         self.frame_id += 1
 
@@ -307,13 +354,7 @@ class McByteTracker(BaseTracker):
         terminated_tracklet_ids: list[int] = []
 
         if self.mask_manager is not None and current_frame is not None:
-            self._last_mask_output = self.mask_manager.get_updated_masks(
-                frame=current_frame,
-                previous_frame=self._previous_frame,
-                previous_tracklets=self._previous_tracklets,
-                new_tracklets=self._previous_new_tracklets,
-                removed_tracklet_ids=self._previous_removed_tracklet_ids,
-            )
+            self._last_mask_output = self._run_mask_manager(self.mask_manager, current_frame)
         else:
             self._last_mask_output = None
 
@@ -331,8 +372,12 @@ class McByteTracker(BaseTracker):
         out_tracker_ids: list[int] = []
 
         # Predict new locations for existing tracks
-        for tracker in self.tracks:
-            tracker.predict()
+        self._predict_tracklets(self.tracks, timing)
+
+        # Ghost-ID prevention: budget-only filter before association.
+        # Keeps immature tracks alive for matching; full lifecycle prune runs after.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        self._prune_lost_tracks(timing)
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -358,7 +403,12 @@ class McByteTracker(BaseTracker):
         for track in self.tracks:
             if track.time_since_update > 1:
                 lost_tracks.append(track)
-            elif track.number_of_successful_updates >= self.minimum_consecutive_frames:
+            elif track.tracker_id != -1 or track.number_of_successful_updates >= self.minimum_consecutive_frames:
+                # Maturity is sticky: a track that already holds a real
+                # tracker_id (e.g. an instant-activated first-frame track) stays
+                # confirmed even before it reaches minimum_consecutive_frames.
+                # On a miss it is kept as a confirmed (then eventually lost)
+                # track rather than discarded as an unconfirmed one.
                 confirmed_tracks.append(track)
             else:
                 unconfirmed_tracks.append(track)
@@ -491,6 +541,7 @@ class McByteTracker(BaseTracker):
             tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_time_without_update=_budget,
         )
         tracklet_ids_after_pruning = {int(track.tracker_id) for track in self.tracks if track.tracker_id >= 0}
         terminated_tracklet_ids = sorted(tracklet_ids_before_pruning - tracklet_ids_after_pruning)
@@ -515,6 +566,64 @@ class McByteTracker(BaseTracker):
             removed_tracklet_ids=terminated_tracklet_ids,
         )
         return result
+
+    def _run_mask_manager(
+        self,
+        mask_manager: MaskManager,
+        current_frame: np.ndarray,
+    ) -> MaskOutput | None:
+        """Run the mask pipeline for this frame, degrading gracefully on CUDA OOM.
+
+        The SAM/Cutie step can exhaust GPU memory mid-sequence. A CUDA
+        out-of-memory failure must not crash the whole ``update()`` call, so it
+        is caught, logged, and treated as "no mask evidence for this frame":
+        association then falls back to IoU only. After
+        ``_MAX_CONSECUTIVE_MASK_FAILURES`` consecutive out-of-memory failures the
+        mask manager is disabled for the remainder of the run. Any non-OOM error
+        (for example ``ValueError`` or a non-OOM ``RuntimeError``) propagates
+        unchanged so genuine bugs are not silently swallowed.
+
+        Args:
+            mask_manager: The active mask manager (already narrowed to non-None
+                by the caller).
+            current_frame: Current RGB frame passed to the mask pipeline.
+
+        Returns:
+            The propagated ``MaskOutput`` on success, or ``None`` when the
+            pipeline raised a CUDA out-of-memory error for this frame.
+        """
+        try:
+            mask_output = mask_manager.get_updated_masks(
+                frame=current_frame,
+                previous_frame=self._previous_frame,
+                previous_tracklets=self._previous_tracklets,
+                new_tracklets=self._previous_new_tracklets,
+                removed_tracklet_ids=self._previous_removed_tracklet_ids,
+            )
+        except RuntimeError as exc:
+            if not _is_cuda_out_of_memory(exc):
+                raise
+            self._consecutive_mask_failures += 1
+            logger.warning(
+                "McByte mask pipeline raised a CUDA out-of-memory error on frame %d; "
+                "falling back to IoU-only association for this frame (failure %d/%d): %s",
+                self.frame_id,
+                self._consecutive_mask_failures,
+                _MAX_CONSECUTIVE_MASK_FAILURES,
+                exc,
+            )
+            if self._consecutive_mask_failures >= _MAX_CONSECUTIVE_MASK_FAILURES:
+                logger.error(
+                    "McByte mask pipeline hit %d consecutive out-of-memory failures; "
+                    "disabling mask-conditioned association for the remainder of this "
+                    "run. Association continues using IoU only.",
+                    self._consecutive_mask_failures,
+                )
+                self.mask_manager = None
+            return None
+
+        self._consecutive_mask_failures = 0
+        return mask_output
 
     def _detections_to_tracklet_snapshots(
         self,
@@ -770,6 +879,7 @@ class McByteTracker(BaseTracker):
         """
         self.tracks = []
         self.frame_id = 0
+        self._last_timestamp = None
         self._reset_id_allocator()
         self._previous_frame = None
         self._previous_tracklets = []
@@ -781,6 +891,7 @@ class McByteTracker(BaseTracker):
         self._previous_new_tracklets = []
         self._previous_removed_tracklet_ids = []
         self._mask_tracklet_ids = set()
+        self._consecutive_mask_failures = 0
 
     @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:

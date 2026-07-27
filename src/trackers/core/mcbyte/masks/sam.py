@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+from enum import Enum
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -19,16 +20,30 @@ from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)
 
-# Default download URLs for supported SAM model variants.
-SAM_CHECKPOINT_URLS = {
-    "vit_b": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth",
-}
+SAM_RELEASE_URL = "https://dl.fbaipublicfiles.com/segment_anything"
 
-# Default checkpoint locations for supported SAM model variants.
-# Currently only `vit_b` is used as in the original McByte, but this mapping is kept
-# extensible so additional SAM backbones (vit_h, vit_l) can be added consistently.
-SAM_DEFAULT_CHECKPOINT_PATHS = {
-    "vit_b": Path("models/sam/sam_vit_b_01ec64.pth"),
+
+class SAMAsset(Enum):
+    VIT_B = (
+        "sam_vit_b_01ec64.pth",
+        "01ec64d29a2fca3f0661936605ae66f8",
+    )
+
+    def __init__(self, filename: str, md5_hash: str) -> None:
+        self.filename = filename
+        self.md5_hash = md5_hash
+
+    @property
+    def url(self) -> str:
+        return f"{SAM_RELEASE_URL}/{self.filename}"
+
+    @property
+    def default_path(self) -> Path:
+        return Path("models/sam") / self.filename
+
+
+SAM_ASSETS = {
+    "vit_b": SAMAsset.VIT_B,
 }
 
 
@@ -36,22 +51,23 @@ def _ensure_checkpoint_exists(
     checkpoint_path: Path,
     model_type: str,
 ) -> None:
-    """Download the default SAM checkpoint if it is not available locally."""
-    if checkpoint_path.exists():
-        return
+    """Ensure default SAM checkpoint is available and passes checksum validation."""
+    asset = SAM_ASSETS.get(model_type)
+    if asset is None:
+        raise ValueError(f"No default SAM asset for model_type={model_type!r}. Supported types: {sorted(SAM_ASSETS)}")
 
-    checkpoint_url = SAM_CHECKPOINT_URLS.get(model_type)
-    if checkpoint_url is None:
-        raise ValueError(f"No default checkpoint URL for model_type={model_type!r}.")
-
-    parsed_url = urlparse(checkpoint_url)
+    parsed_url = urlparse(asset.url)
     if parsed_url.scheme != "https":
         raise ValueError(f"Unsupported checkpoint URL scheme: {parsed_url.scheme!r}")
 
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger.info("Downloading SAM checkpoint to %s", checkpoint_path)
-    _download_file(checkpoint_url, checkpoint_path)
+    logger.info("Ensuring SAM checkpoint exists at %s", checkpoint_path)
+    _download_file(
+        asset.url,
+        checkpoint_path,
+        md5=asset.md5_hash,
+    )
 
 
 class SAMBoxMaskGenerator(MaskGenerator):
@@ -92,11 +108,10 @@ class SAMBoxMaskGenerator(MaskGenerator):
             )
             raise ImportError(msg) from exc
 
-        default_checkpoint = SAM_DEFAULT_CHECKPOINT_PATHS.get(model_type)
-        if default_checkpoint is None:
-            raise ValueError(
-                f"Unsupported model_type={model_type!r}. Supported types: {sorted(SAM_DEFAULT_CHECKPOINT_PATHS)}"
-            )
+        asset = SAM_ASSETS.get(model_type)
+        if asset is None:
+            raise ValueError(f"Unsupported model_type={model_type!r}. Supported types: {sorted(SAM_ASSETS)}")
+        default_checkpoint = asset.default_path
         self.checkpoint_path = Path(checkpoint_path) if checkpoint_path is not None else default_checkpoint
 
         _ensure_checkpoint_exists(
