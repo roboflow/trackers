@@ -145,6 +145,31 @@ class MaskManager:
             Propagated mask output for ``frame``. Returns ``None`` when there is no
             previous frame/tracklet state, no propagator is configured, or
             propagation fails.
+
+        Examples:
+            >>> import numpy as np
+            >>> from trackers.core.mcbyte.masks import TrackletSnapshot
+            >>> from trackers.core.mcbyte.masks.dummy import (
+            ...     DummyBoxMaskGenerator,
+            ...     DummyIdentityMaskPropagator,
+            ... )
+            >>> manager = MaskManager(
+            ...     mask_generator=DummyBoxMaskGenerator(),
+            ...     mask_propagator=DummyIdentityMaskPropagator(),
+            ... )
+            >>> frame = np.zeros((100, 120, 3), dtype=np.uint8)
+            >>> tracklet = TrackletSnapshot(
+            ...     tracker_id=1, xyxy=np.array([10, 20, 30, 40], dtype=np.float32)
+            ... )
+            >>> output = manager.get_updated_masks(
+            ...     frame=frame,
+            ...     previous_frame=frame,
+            ...     previous_tracklets=[tracklet],
+            ... )
+            >>> output.tracklet_mask_dict
+            {1: 0}
+            >>> output.masks.shape
+            (1, 100, 120)
         """
         if previous_frame is None:
             return None

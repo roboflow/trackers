@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from trackers.core.mcbyte.mask_association import (
     _get_mask_metrics,
@@ -687,3 +688,98 @@ def test_empty_detection_dimension_is_supported() -> None:
     assert result.remaining_track_indices == [0, 1]
     assert result.remaining_detection_indices == []
     assert result.conditioned_similarity.shape == (2, 0)
+
+
+def _default_kwargs() -> dict:
+    """Return a minimal valid keyword-argument set for the function under test."""
+    return {
+        "similarity": np.array([[0.7]], dtype=np.float32),
+        "raw_iou_similarity": np.array([[0.7]], dtype=np.float32),
+        "tracklet_ids": [10],
+        "detection_boxes": np.array([[0, 0, 5, 5]], dtype=np.float32),
+        "mask_output": None,
+        "minimum_similarity": 0.5,
+    }
+
+
+class TestThresholdValidation:
+    """Cover _validate_threshold's ValueError branch for every threshold arg."""
+
+    @pytest.mark.parametrize(
+        "threshold_name,invalid_value",
+        [
+            pytest.param("minimum_similarity", -0.1, id="minimum_similarity-below-zero"),
+            pytest.param("minimum_similarity", 1.1, id="minimum_similarity-above-one"),
+            pytest.param(
+                "minimum_mask_average_confidence",
+                -0.1,
+                id="minimum_mask_average_confidence-below-zero",
+            ),
+            pytest.param(
+                "minimum_mask_average_confidence",
+                1.1,
+                id="minimum_mask_average_confidence-above-one",
+            ),
+            pytest.param("minimum_mask_coverage", -0.1, id="minimum_mask_coverage-below-zero"),
+            pytest.param("minimum_mask_coverage", 1.1, id="minimum_mask_coverage-above-one"),
+            pytest.param("minimum_mask_fill_ratio", -0.1, id="minimum_mask_fill_ratio-below-zero"),
+            pytest.param("minimum_mask_fill_ratio", 1.1, id="minimum_mask_fill_ratio-above-one"),
+        ],
+    )
+    def test_out_of_range_threshold_raises_value_error(
+        self,
+        threshold_name: str,
+        invalid_value: float,
+    ) -> None:
+        """A threshold outside [0, 1] must raise ValueError naming that argument."""
+        kwargs = _default_kwargs()
+        kwargs[threshold_name] = invalid_value
+
+        with pytest.raises(ValueError, match=f"{threshold_name} must be between 0 and 1"):
+            condition_similarity_with_masks(**kwargs)
+
+
+class TestInputShapeValidation:
+    """Cover _validate_inputs's ValueError branches for matrix/metadata shapes."""
+
+    def test_raises_value_error_when_similarity_is_not_two_dimensional(self) -> None:
+        """A 1-D similarity matrix must raise ValueError instead of failing later."""
+        kwargs = _default_kwargs()
+        kwargs["similarity"] = np.array([0.7], dtype=np.float32)
+        kwargs["raw_iou_similarity"] = np.array([0.7], dtype=np.float32)
+
+        with pytest.raises(ValueError, match="similarity must be a two-dimensional matrix"):
+            condition_similarity_with_masks(**kwargs)
+
+    def test_raises_value_error_when_raw_iou_similarity_shape_mismatches_similarity(self) -> None:
+        """A raw_iou_similarity shape differing from similarity must raise ValueError."""
+        kwargs = _default_kwargs()
+        kwargs["raw_iou_similarity"] = np.array([[0.7, 0.6]], dtype=np.float32)
+
+        with pytest.raises(
+            ValueError,
+            match="raw_iou_similarity must have the same shape as similarity",
+        ):
+            condition_similarity_with_masks(**kwargs)
+
+    def test_raises_value_error_when_tracklet_ids_length_mismatches_similarity_rows(self) -> None:
+        """tracklet_ids length must match the number of similarity rows."""
+        kwargs = _default_kwargs()
+        kwargs["tracklet_ids"] = [10, 20]
+
+        with pytest.raises(
+            ValueError,
+            match="Number of tracklet IDs must match the number of similarity rows",
+        ):
+            condition_similarity_with_masks(**kwargs)
+
+    def test_raises_value_error_when_detection_boxes_shape_is_invalid(self) -> None:
+        """detection_boxes not shaped (num_detections, 4) must raise ValueError."""
+        kwargs = _default_kwargs()
+        kwargs["detection_boxes"] = np.array([[0, 0, 5]], dtype=np.float32)
+
+        with pytest.raises(
+            ValueError,
+            match=r"detection_boxes must have shape \(num_detections, 4\)",
+        ):
+            condition_similarity_with_masks(**kwargs)

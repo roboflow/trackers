@@ -84,6 +84,7 @@ def test_generate_builds_tracklet_mask_dict_and_drives_predictor_plumbing() -> N
     # Bypass __init__() (loads a real SAM checkpoint) and inject a fake predictor instead.
     generator = object.__new__(SAMBoxMaskGenerator)
     generator.device = torch.device("cpu")
+    generator.use_amp = False
     fake_predictor = _FakeSamPredictor(num_masks=2, height=100, width=120)
     generator.predictor = fake_predictor
 

@@ -24,6 +24,17 @@ class DummyBoxMaskGenerator(MaskGenerator):
         frame: np.ndarray,
         tracklets: list[TrackletSnapshot],
     ) -> MaskOutput:
+        """Generate one axis-aligned rectangular mask per tracklet bounding box.
+
+        Args:
+            frame: Current video frame, used only for its ``(H, W)`` shape.
+            tracklets: Tracklets to generate masks for.
+
+        Returns:
+            ``MaskOutput`` with one boolean mask per tracklet, mapping each
+            tracklet ID to its mask index. ``mask_avg_prob_dict`` is always
+            ``None`` since this generator does not estimate confidence.
+        """
         height, width = frame.shape[:2]
         masks = np.zeros((len(tracklets), height, width), dtype=bool)
         tracklet_mask_dict: dict[int, int] = {}

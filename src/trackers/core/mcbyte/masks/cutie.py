@@ -25,6 +25,13 @@ CUTIE_RELEASE_URL = "https://github.com/hkchengrex/Cutie/releases/download/v1.0"
 
 
 class CutieAsset(Enum):
+    """Known downloadable Cutie checkpoint assets.
+
+    Each member pairs a checkpoint filename with its expected MD5 checksum,
+    used to locate, download, and validate the default weights for a given
+    Cutie ``model_type``.
+    """
+
     BASE_MEGA = (
         "cutie-base-mega.pth",
         "a6071de6136982e396851903ab4c083a",
@@ -36,10 +43,12 @@ class CutieAsset(Enum):
 
     @property
     def url(self) -> str:
+        """Full download URL for this checkpoint on the Cutie GitHub release."""
         return f"{CUTIE_RELEASE_URL}/{self.filename}"
 
     @property
     def default_path(self) -> Path:
+        """Default local cache path for this checkpoint, relative to the working directory."""
         return Path("models/cutie") / self.filename
 
 

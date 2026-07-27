@@ -8,17 +8,11 @@ from collections.abc import Sequence
 from typing import cast
 
 from trackers.core.botsort.tracklet import BoTSORTTracklet
-from trackers.core.botsort.utils import _fuse_score
 from trackers.core.botsort.utils import get_alive_tracklets as _botsort_get_alive_tracklets
 from trackers.core.mcbyte.tracklet import McByteTracklet
 
-# `_fuse_score` is re-exported from BoTSORT so the identical implementation
-# lives in a single place; `tracker.py` keeps importing both symbols from this
-# local module.
-__all__ = ["_fuse_score", "get_alive_tracklets"]
 
-
-def get_alive_tracklets(
+def _get_alive_tracklets(
     tracklets: Sequence[McByteTracklet],
     minimum_consecutive_frames: int,
     maximum_frames_without_update: int,

@@ -405,6 +405,30 @@ def condition_similarity_with_masks(
     Returns:
         Prepared reduced association problem, locked clear matches, and the
         original indices represented by the reduced matrix.
+
+    Examples:
+        >>> import numpy as np
+        >>> from trackers.core.mcbyte.masks.base import MaskOutput
+        >>> similarity = np.array([[0.7, 0.6]], dtype=np.float32)
+        >>> masks = np.zeros((1, 10, 10), dtype=bool)
+        >>> masks[0, 0:5, 0:5] = True
+        >>> mask_output = MaskOutput(
+        ...     masks=masks,
+        ...     tracklet_mask_dict={10: 0},
+        ...     mask_avg_prob_dict={10: 0.9},
+        ... )
+        >>> result = condition_similarity_with_masks(
+        ...     similarity=similarity,
+        ...     raw_iou_similarity=similarity,
+        ...     tracklet_ids=[10],
+        ...     detection_boxes=np.array(
+        ...         [[0, 0, 5, 5], [5, 5, 10, 10]], dtype=np.float32
+        ...     ),
+        ...     mask_output=mask_output,
+        ...     minimum_similarity=0.5,
+        ... )
+        >>> result.conditioned_similarity
+        array([[1.7, 0.6]], dtype=float32)
     """
     _validate_threshold("minimum_similarity", minimum_similarity)
     _validate_threshold(

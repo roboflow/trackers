@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import nullcontext
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -70,6 +71,15 @@ def _ensure_checkpoint_exists(
     )
 
 
+def _autocast_context(use_amp: bool) -> Any:
+    """Return the appropriate autocast context for the current AMP setting."""
+    if use_amp:
+        if hasattr(torch, "amp"):
+            return torch.amp.autocast("cuda", enabled=True)
+        return torch.cuda.amp.autocast(enabled=True)
+    return nullcontext()
+
+
 class SAMBoxMaskGenerator(MaskGenerator):
     """Generate binary masks from tracklet bounding boxes using Segment Anything.
 
@@ -87,6 +97,9 @@ class SAMBoxMaskGenerator(MaskGenerator):
         model_type: SAM model type. Currently only ``"vit_b"`` has a default
             checkpoint URL/path.
         device: Device used by SAM, for example ``"cpu"`` or ``"cuda"``.
+        use_amp: Whether to use CUDA automatic mixed precision during SAM
+            inference. Only takes effect when ``device`` is a CUDA device;
+            it is ignored on CPU.
     """
 
     def __init__(
@@ -94,6 +107,7 @@ class SAMBoxMaskGenerator(MaskGenerator):
         checkpoint_path: str | Path | None = None,
         model_type: str = "vit_b",
         device: str = "cpu",
+        use_amp: bool = True,
     ) -> None:
         try:
             from segment_anything import (  # type: ignore[import-untyped]
@@ -119,6 +133,7 @@ class SAMBoxMaskGenerator(MaskGenerator):
             model_type=model_type,
         )
         self.device = torch.device(device)
+        self.use_amp = use_amp and self.device.type == "cuda"
 
         sam_model = sam_model_registry[model_type](checkpoint=str(self.checkpoint_path))
         sam_model.to(device=self.device)
@@ -153,21 +168,25 @@ class SAMBoxMaskGenerator(MaskGenerator):
 
         boxes = np.array([tracklet.xyxy for tracklet in tracklets], dtype=np.float32)
 
-        self.predictor.set_image(frame)
-
         box_tensor = torch.as_tensor(boxes, dtype=torch.float32, device=self.device)
-        transformed_boxes = self.predictor.transform.apply_boxes_torch(
-            box_tensor,
-            frame.shape[:2],
-        )
 
-        # McByte expects one mask per box, hence multimask_output=False
-        masks, _, _ = self.predictor.predict_torch(
-            point_coords=None,
-            point_labels=None,
-            boxes=transformed_boxes,
-            multimask_output=False,
-        )
+        with _autocast_context(self.use_amp):
+            # set_image runs the SAM image encoder and predict_torch the mask
+            # decoder; both are the dominant SAM cost and benefit from AMP on CUDA.
+            self.predictor.set_image(frame)
+
+            transformed_boxes = self.predictor.transform.apply_boxes_torch(
+                box_tensor,
+                frame.shape[:2],
+            )
+
+            # McByte expects one mask per box, hence multimask_output=False
+            masks, _, _ = self.predictor.predict_torch(
+                point_coords=None,
+                point_labels=None,
+                boxes=transformed_boxes,
+                multimask_output=False,
+            )
 
         masks_np = self._convert_masks(masks)
         tracklet_mask_dict = {tracklet.tracker_id: mask_index for mask_index, tracklet in enumerate(tracklets)}

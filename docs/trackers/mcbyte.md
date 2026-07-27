@@ -84,13 +84,13 @@ McByte keeps the same tracking-by-detection backbone as [BoT-SORT](botsort.md) â
 
 ## Run on video
 
-`McByteTracker` is not (yet) exported from the top-level `trackers` package â€” import it directly from its module. The example below runs McByte in its lightweight, mask-free configuration (clear-match locking with IoU only), which needs no extra dependencies beyond `trackers` itself.
+The example below runs McByte in its lightweight, mask-free configuration (clear-match locking with IoU only), which needs no extra dependencies beyond `trackers` itself.
 
 ```python
 import cv2
 import supervision as sv
 from rfdetr import RFDETRMedium
-from trackers.core.mcbyte.tracker import McByteTracker
+from trackers import McByteTracker
 
 tracker = McByteTracker()
 model = RFDETRMedium()

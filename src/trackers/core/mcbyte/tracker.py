@@ -11,10 +11,10 @@ from typing import cast
 
 import numpy as np
 import supervision as sv
-from deprecate import deprecated  # type: ignore[import-untyped]
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
+from trackers.core.botsort.utils import _fuse_score
 from trackers.core.mcbyte.mask_association import (
     MINIMUM_MASK_AVERAGE_CONFIDENCE,
     MINIMUM_MASK_COVERAGE,
@@ -27,7 +27,7 @@ from trackers.core.mcbyte.mask_manager import (
 )
 from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
 from trackers.core.mcbyte.tracklet import McByteTracklet
-from trackers.core.mcbyte.utils import _fuse_score, get_alive_tracklets
+from trackers.core.mcbyte.utils import _get_alive_tracklets
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -41,6 +41,11 @@ logger = logging.getLogger(__name__)
 # Number of consecutive CUDA out-of-memory failures in the mask pipeline after
 # which mask-conditioned association is disabled for the remainder of the run.
 _MAX_CONSECUTIVE_MASK_FAILURES = 3
+
+# Detections with confidence at or below this floor are discarded entirely.
+# Those above it but below ``high_conf_det_threshold`` are treated as
+# low-confidence and used only in the second association stage.
+_MINIMUM_DETECTION_CONFIDENCE = 0.1
 
 
 def _is_cuda_out_of_memory(exc: BaseException) -> bool:
@@ -178,10 +183,13 @@ class McByteTracker(BaseTracker):
             required before assigning a confirmed non-negative tracker ID.
         minimum_iou_threshold_first_assoc: Minimum association similarity for
             matching high-confidence detections to confirmed and lost tracks.
-            The default of ``0.1`` is intentionally lower than in BoT-SORT and
-            other trackers, allowing mask-conditioned association to evaluate
-            a broader set of plausible candidates before resolving ambiguities
-            and optional isolations.
+            The default of ``0.1`` follows ByteTrack's deliberately low
+            first-association threshold: a broad candidate set is admitted and
+            resolved by fused IoU and detection score. In the default mode
+            (``enable_mask_manager=False``) this ByteTrack parity is the sole
+            safety net. When mask management is enabled, the same broad
+            candidate set additionally lets mask-conditioned association resolve
+            ambiguities and optional isolations.
         minimum_iou_threshold_second_assoc: Minimum association similarity for
             matching low-confidence detections to remaining tracked tracks.
         minimum_iou_threshold_unconfirmed_assoc: Minimum association similarity
@@ -384,7 +392,7 @@ class McByteTracker(BaseTracker):
 
         # Split indices into high / low / discarded by confidence
         high_mask = confidences >= self.high_conf_det_threshold
-        low_mask = (confidences > 0.1) & (~high_mask)
+        low_mask = (confidences > _MINIMUM_DETECTION_CONFIDENCE) & (~high_mask)
 
         high_indices = np.where(high_mask)[0]
         low_indices = np.where(low_mask)[0]
@@ -418,6 +426,14 @@ class McByteTracker(BaseTracker):
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(current_frame, mask_boxes)
             CMC.apply_batch(H, self.tracks)
+
+        # Cache each tracklet's predicted state bbox once per update. Track state
+        # is unchanged across the three association stages: a track matched in an
+        # earlier stage never re-enters a later one, and the CMC adjustment above
+        # is already applied. Recomputing get_state_bbox() per stage would be
+        # redundant, so all stages read boxes from this map keyed by ``id()``.
+        predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
+
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
@@ -425,6 +441,7 @@ class McByteTracker(BaseTracker):
         raw_iou_similarity = self._get_iou_matrix(
             strack_pool,
             high_boxes,
+            predicted_state_boxes,
         )
         association_similarity = _fuse_score(
             self.iou.normalize_for_fusion(raw_iou_similarity.copy()),
@@ -454,6 +471,7 @@ class McByteTracker(BaseTracker):
         raw_iou_similarity = self._get_iou_matrix(
             remaining_tracked,
             low_boxes,
+            predicted_state_boxes,
         )
 
         # There is no score fusion in stage 2, so the assignment matrix
@@ -492,6 +510,7 @@ class McByteTracker(BaseTracker):
             raw_iou_similarity = self._get_iou_matrix(
                 unconfirmed_tracks,
                 uh_boxes,
+                predicted_state_boxes,
             )
             association_similarity = _fuse_score(
                 self.iou.normalize_for_fusion(raw_iou_similarity.copy()),
@@ -537,7 +556,7 @@ class McByteTracker(BaseTracker):
 
         # Kill terminated tracks. Temporarily lost tracks remain alive and keep masks.
         tracklet_ids_before_pruning = {int(track.tracker_id) for track in self.tracks if track.tracker_id >= 0}
-        self.tracks = get_alive_tracklets(
+        self.tracks = _get_alive_tracklets(
             tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
@@ -696,17 +715,29 @@ class McByteTracker(BaseTracker):
         self._previous_frame = frame
         self._previous_tracklets = current_tracklets
 
-    def _get_iou_matrix(self, tracklets: list[McByteTracklet], detections: np.ndarray) -> np.ndarray:
+    def _get_iou_matrix(
+        self,
+        tracklets: list[McByteTracklet],
+        detections: np.ndarray,
+        tracklet_boxes_by_id: dict[int, np.ndarray],
+    ) -> np.ndarray:
         """Compute IoU similarity between tracklet states and detection boxes.
 
         Returns an ``(N, M)`` matrix where ``N`` is the number of tracklets and ``M`` is
         the number of detections. Empty inputs are handled by returning an empty matrix
         with the expected shape.
+
+        Args:
+            tracklets: Tracklets forming the rows of the returned matrix.
+            detections: Detection boxes in ``xyxy`` format forming the columns.
+            tracklet_boxes_by_id: Mapping from ``id(track)`` to the track's
+                predicted state bbox, computed once per ``update()`` and reused
+                across association stages to avoid recomputing ``get_state_bbox``.
         """
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
-            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+            tracklet_boxes = np.array([tracklet_boxes_by_id[id(tracklet)] for tracklet in tracklets])
         return self.iou.compute(tracklet_boxes, detections)
 
     def _get_mask_conditioned_associated_indices(
@@ -893,12 +924,12 @@ class McByteTracker(BaseTracker):
         self._mask_tracklet_ids = set()
         self._consecutive_mask_failures = 0
 
-    @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:
-        """Apply CMC to all active tracks.
+        """Apply camera motion compensation to all active tracks.
 
-        .. deprecated:: 2.5
-            Use CMC.apply_batch(H, self.tracks) directly.
+        Convenience wrapper around :meth:`CMC.apply_batch` for callers that hold
+        a tracker instance and an affine transform. ``update()`` applies CMC
+        directly and does not rely on this method.
 
         Args:
             H: 2x3 affine transform matrix returned by CMC.estimate().
