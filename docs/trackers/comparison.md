@@ -419,6 +419,8 @@ small relative to the detector, so the trade-off favors identity stability over 
 
 **C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet, reaches the highest tuned IDF1 and MOTA on DanceTrack, and achieves the highest IDF1 on MOT17 among the trackers listed here. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](cbiou.md) for buffer scales **b1** and **b2**.
 
+**McByte** is the choice when you want the highest identity stability and can afford optional SAM/Cutie mask dependencies. It extends BoT-SORT-style association with temporally propagated segmentation masks as an extra matching cue, requiring no per-video tuning. Reported against Trackers' BoT-SORT baseline (without re-identification) at default parameters, McByte improves HOTA and IDF1 on all four datasets in this comparison, with the largest gain on DanceTrack. Use McByte when identity consistency matters more than raw throughput or dependency footprint. See [McByte](mcbyte.md) for setup and the mask-conditioning parameters.
+
 ## Metric Definitions
 
 **HOTA** (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes
