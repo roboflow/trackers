@@ -88,9 +88,9 @@ and BoT-SORT appearance association.
     uv pip install "trackers[reid]"
     ```
 
-Use programmatically via `from reid import ReIDModel` and
+Use via `from reid import ReIDModel` and
 `BoTSORTTracker(reid_model=...)`, or via CLI flags such as
-`--tracker.reid.enable` and `--tracker.reid.architecture` on `trackers track`
+`--tracker.reid.enable` and `--tracker.reid.architecture` on `trackers track` command
 (BoT-SORT only).
 
 !!! tip "GPU Acceleration"
