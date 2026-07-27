@@ -20,8 +20,6 @@ evaluation, and MOT fine-tuning are documented in the standalone
 
 When using FastReID weights trained for BoTSORT on MOT17 validation half, we obtain:
 
-
-
 | Config          | HOTA  | MOTA  | IDF1  |
 | :-------------- | :---: | :---: | :---: |
 | BoT-SORT        | 69.11 | 78.39 | 81.53 |
@@ -31,6 +29,7 @@ When using FastReID weights trained for BoTSORT on MOT17 validation half, we obt
 ReIDEncoder: fastreid_mot17_sbs50
 appearance_threshold=0.2
 ```
+
 The MOT17 re-ID study
 ([*Does Re-ID Really Help in Multi-Object Tracking?*](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf),
 Table 8 + Table 13 combined row, app th=0.2) reports HOTA 68.43 / IDF1 80.92
