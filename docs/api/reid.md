@@ -18,37 +18,56 @@ evaluation, and MOT fine-tuning are documented in the standalone
 
 ## BoT-SORT with and without ReID
 
-When using FastReID weights trained for BoTSORT on MOT17 validation half, we obtain:
+### MOT17 test (Codabench)
 
-| Config          | HOTA  | MOTA  | IDF1  |
-| :-------------- | :---: | :---: | :---: |
-| BoT-SORT        | 69.11 | 78.39 | 81.53 |
-| BoT-SORT + ReID | 69.17 | 78.46 | 82.07 |
+Same YOLOX detections and Codabench MOT17 test protocol as the
+[tracker comparison](../trackers/comparison.md) default table. BoT-SORT runs
+with CMC enabled. The ReID row uses `fastreid_mot17_sbs50` and
+`appearance_threshold=0.2` (MOT17 re-ID study Table 8).
 
-```yaml
-ReIDEncoder: fastreid_mot17_sbs50
-appearance_threshold=0.2
-```
+| Config          |  HOTA  |  IDF1  |  MOTA  |
+| :-------------- | :----: | :----: | :----: |
+| BoT-SORT        |  63.7  |  78.7  | **79.2** |
+| BoT-SORT + ReID | **63.9** | **79.2** | **79.2** |
 
-The MOT17 re-ID study
+### MOT17 val-half
+
+Scores from
+[`eval_trackers_reid.ipynb`](../../notebooks/eval_trackers_reid.ipynb) on MOT17
+val-half with YOLOX detections, CMC on, `fastreid_mot17_sbs50`, and
+`appearance_threshold=0.2`.
+
+| Config          |  HOTA  |  MOTA  |  IDF1  |
+| :-------------- | :----: | :----: | :----: |
+| BoT-SORT        |  68.9  |  78.3  |  81.2  |
+| BoT-SORT + ReID | **69.1** | **78.4** | **81.9** |
+
+For published reference points on the same split, see the MOT17 re-ID study
 ([*Does Re-ID Really Help in Multi-Object Tracking?*](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf),
-Table 8 + Table 13 combined row, app th=0.2) reports HOTA 68.43 / IDF1 80.92
-without ReID and 68.95 / 81.98 with MOT17 FastReID; MOTA is not reported for
-that YOLOX setup.
+Table 8 + Table 13 combined row, app th=0.2): HOTA 68.43 / IDF1 80.92 without
+ReID and 68.95 / 81.98 with MOT17 FastReID (MOTA not reported for that YOLOX
+setup), and the [BoT-SORT paper](https://arxiv.org/abs/2206.14651) Table 1.
 
 ## Use with BoT-SORT
 
 Import the encoder from `reid` and pass any object that implements
-`ReIDEncoder` to `BoTSORTTracker`:
+`ReIDEncoder` to `BoTSORTTracker`. For MOT17-style replication, load the
+official FastReID SBS weights and match the study appearance threshold:
 
 ```python
 from reid import ReIDModel
 
 from trackers import BoTSORTTracker
 
-reid_model = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall", device="cpu")
-tracker = BoTSORTTracker(reid_model=reid_model)
+reid_model = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
+tracker = BoTSORTTracker(reid_model=reid_model, appearance_threshold=0.2)
 ```
+
+| Parameter              | Default | Purpose                                                                                                                                                                           |
+| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reid_ema_alpha`       | 0.9     | EMA momentum for a track's appearance feature; higher retains more history.                                                                                                       |
+| `appearance_threshold` | 0.25    | Appearance-distance gate (BoT-SORT paper default). Rejects matches when `0.5 * (1 - cos_sim)` exceeds this value. MOT17 Codabench / eval uses `0.2` per the re-ID study Table 8. |
+| `proximity_threshold`  | 0.5     | Standard-IoU gate applied before appearance is used (requires IoU ≥ `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU.                         |
 
 See the [`reid` package documentation](https://github.com/roboflow/re-ID) for
 the model catalog, `from_pretrained` sources, gallery evaluation, and MOT

@@ -52,35 +52,9 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 
 ## ReID appearance (optional)
 
-Install the extra first:
-
-```bash
-pip install 'trackers[reid]'
-```
-
-BoT-SORT can fuse appearance embeddings with IoU during association. Pass a
-`reid_model` that implements `ReIDEncoder` (for example, `ReIDModel` from the
-[`reid`](https://github.com/roboflow/re-ID) package) and pass the current frame
-to `tracker.update` so the encoder can crop detections:
-
-```python
-from reid import ReIDModel
-from trackers import BoTSORTTracker
-
-reid_model = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall", device="cpu")
-tracker = BoTSORTTracker(reid_model=reid_model)
-detections = tracker.update(detections, frame=frame)
-```
-
-See the [ReID API](../api/reid.md) for the encoder protocol, feature bank,
-association helpers, and a [with/without ReID comparison](../api/reid.md#botsort-with-and-without-reid)
-on MOT17 val.
-
-| Parameter              | Default | Purpose                                                                                                                                                                           |
-| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `reid_ema_alpha`       | 0.9     | EMA momentum for a track's appearance feature; higher retains more history.                                                                                                       |
-| `appearance_threshold` | 0.25    | Appearance-distance gate (BoT-SORT paper default). Rejects matches when `0.5 * (1 - cos_sim)` exceeds this value. The MOT17 eval notebook uses `0.2` per the re-ID study Table 8. |
-| `proximity_threshold`  | 0.5     | Standard-IoU gate applied before appearance is used (requires IoU ≥ `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU.                         |
+BoT-SORT can fuse appearance embeddings with IoU during association via an
+optional `reid_model`. Install, usage, parameters, and MOT17 with/without ReID
+scores are on the [ReID API](../api/reid.md) page.
 
 ## Run on video, webcam, or RTSP stream
 
