@@ -39,16 +39,48 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 
 ## Key Parameters
 
-| Parameter                                 | Purpose                                                                       | Tuning guidance                                                                                                                                                                                                                        |
-| ----------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lost_track_buffer`                       | Frames to keep an unmatched track alive before deletion.                      | Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps.                                                                                                           |
-| `track_activation_threshold`              | Minimum detection confidence required to start a new track.                   | Higher reduces noisy track creation; lower retains harder objects. 0.5-0.9 typical depending on detector quality. This does not control low-confidence association, which still discards detections at a fixed `0.1` confidence floor. |
-| `minimum_consecutive_frames`              | Consecutive matches required before confirming a new track.                   | 1 for immediate activation; 2-3 improves robustness against flicker and false positives.                                                                                                                                               |
-| `minimum_iou_threshold_first_assoc`       | Minimum IoU for the first association pass with high-confidence detections.   | Lower helps maintain matches under fast motion or imperfect compensation; higher is stricter and reduces risky matches.                                                                                                                |
-| `minimum_iou_threshold_second_assoc`      | Minimum IoU for the second association pass with lower-confidence detections. | Usually set lower than the first-pass threshold to recover weak detections without over-matching.                                                                                                                                      |
-| `minimum_iou_threshold_unconfirmed_assoc` | Minimum IoU when associating unconfirmed tracks.                              | Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.                                                                                                              |
-| `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.                      | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                                                                                                                                 |
-| `enable_cmc`                              | Enables camera motion compensation before association.                        | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                         |
+| Parameter                                 | Purpose                                                                                                                     | Tuning guidance                                                                                                                                                                                                                        |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lost_track_buffer`                       | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps.                                                                                                           |
+| `track_activation_threshold`              | Minimum detection confidence required to start a new track.                                                                 | Higher reduces noisy track creation; lower retains harder objects. 0.5-0.9 typical depending on detector quality. This does not control low-confidence association, which still discards detections at a fixed `0.1` confidence floor. |
+| `minimum_consecutive_frames`              | Consecutive matches required before confirming a new track.                                                                 | 1 for immediate activation; 2-3 improves robustness against flicker and false positives.                                                                                                                                               |
+| `minimum_iou_threshold_first_assoc`       | Minimum IoU for the first association pass with high-confidence detections.                                                 | Lower helps maintain matches under fast motion or imperfect compensation; higher is stricter and reduces risky matches.                                                                                                                |
+| `minimum_iou_threshold_second_assoc`      | Minimum IoU for the second association pass with lower-confidence detections.                                               | Usually set lower than the first-pass threshold to recover weak detections without over-matching.                                                                                                                                      |
+| `minimum_iou_threshold_unconfirmed_assoc` | Minimum IoU when associating unconfirmed tracks.                                                                            | Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.                                                                                                              |
+| `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.                                                                    | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                                                                                                                                 |
+| `enable_cmc`                              | Enables camera motion compensation before association.                                                                      | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                         |
+
+## ReID appearance (optional)
+
+Install the extra first:
+
+```bash
+pip install 'trackers[reid]'
+```
+
+BoT-SORT can fuse appearance embeddings with IoU during association. Pass a
+`reid_model` that implements `ReIDEncoder` (for example, `ReIDModel` from the
+[`reid`](https://github.com/roboflow/re-ID) package) and pass the current frame
+to `tracker.update` so the encoder can crop detections:
+
+```python
+from reid import ReIDModel
+from trackers import BoTSORTTracker
+
+reid_model = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall", device="cpu")
+tracker = BoTSORTTracker(reid_model=reid_model)
+detections = tracker.update(detections, frame=frame)
+```
+
+See the [ReID API](../api/reid.md) for the encoder protocol, feature bank,
+association helpers, and a [with/without ReID comparison](../api/reid.md#botsort-with-and-without-reid)
+on MOT17 val.
+
+| Parameter              | Default | Purpose                                                                                                                                                                           |
+| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reid_ema_alpha`       | 0.9     | EMA momentum for a track's appearance feature; higher retains more history.                                                                                                       |
+| `appearance_threshold` | 0.25    | Appearance-distance gate (BoT-SORT paper default). Rejects matches when `0.5 * (1 - cos_sim)` exceeds this value. The MOT17 eval notebook uses `0.2` per the re-ID study Table 8. |
+| `proximity_threshold`  | 0.5     | Standard-IoU gate applied before appearance is used (requires IoU ≥ `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU.                         |
 
 ## Run on video, webcam, or RTSP stream
 

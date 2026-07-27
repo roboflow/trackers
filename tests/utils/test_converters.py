@@ -23,8 +23,8 @@ class TestXYWHConversion:
     @pytest.mark.parametrize(
         ("xyxy", "expected"),
         [
-            (np.array([0.0, 0.0, 10.0, 20.0]), np.array([5.0, 10.0, 10.0, 20.0])),
-            (np.array([-2.0, -4.0, 2.0, 4.0]), np.array([0.0, 0.0, 4.0, 8.0])),
+            pytest.param(np.array([0.0, 0.0, 10.0, 20.0]), np.array([5.0, 10.0, 10.0, 20.0]), id="origin-rect"),
+            pytest.param(np.array([-2.0, -4.0, 2.0, 4.0]), np.array([0.0, 0.0, 4.0, 8.0]), id="neg-coords"),
         ],
     )
     def test_xyxy_to_xywh(self, xyxy: np.ndarray, expected: np.ndarray) -> None:
@@ -44,8 +44,8 @@ class TestXYWHConversion:
     @pytest.mark.parametrize(
         ("xywh", "expected"),
         [
-            (np.array([5.0, 10.0, 10.0, 20.0]), np.array([0.0, 0.0, 10.0, 20.0])),
-            (np.array([0.0, 0.0, 4.0, 8.0]), np.array([-2.0, -4.0, 2.0, 4.0])),
+            pytest.param(np.array([5.0, 10.0, 10.0, 20.0]), np.array([0.0, 0.0, 10.0, 20.0]), id="origin-rect"),
+            pytest.param(np.array([0.0, 0.0, 4.0, 8.0]), np.array([-2.0, -4.0, 2.0, 4.0]), id="neg-coords"),
         ],
     )
     def test_xywh_to_xyxy(self, xywh: np.ndarray, expected: np.ndarray) -> None:
@@ -65,9 +65,9 @@ class TestXYWHConversion:
     @pytest.mark.parametrize(
         "xyxy",
         [
-            np.array([0.0, 0.0, 10.0, 20.0]),
-            np.array([10.0, 20.0, 30.0, 50.0]),
-            np.array([-2.0, -4.0, 2.0, 4.0]),
+            pytest.param(np.array([0.0, 0.0, 10.0, 20.0]), id="origin-rect"),
+            pytest.param(np.array([10.0, 20.0, 30.0, 50.0]), id="offset-rect"),
+            pytest.param(np.array([-2.0, -4.0, 2.0, 4.0]), id="neg-coords"),
         ],
     )
     def test_roundtrip(self, xyxy: np.ndarray) -> None:
@@ -83,40 +83,40 @@ class TestXCYCSRConversion:
     @pytest.mark.parametrize(
         ("xyxy", "expected"),
         [
-            # Unit square at origin
-            (
+            pytest.param(
                 np.array([0.0, 0.0, 1.0, 1.0]),
                 np.array([0.5, 0.5, 1.0, 1.0]),
+                id="unit-square",
             ),
-            # Rectangle 2x4 at (10, 20)
-            (
+            pytest.param(
                 np.array([10.0, 20.0, 12.0, 24.0]),
                 np.array([11.0, 22.0, 8.0, 0.5]),
+                id="rect-2x4",
             ),
-            # Wide rectangle (aspect ratio > 1)
-            (
+            pytest.param(
                 np.array([0.0, 0.0, 100.0, 50.0]),
                 np.array([50.0, 25.0, 5000.0, 2.0]),
+                id="wide-rect",
             ),
-            # Tall rectangle (aspect ratio < 1)
-            (
+            pytest.param(
                 np.array([5.0, 5.0, 15.0, 55.0]),
                 np.array([10.0, 30.0, 500.0, 0.2]),
+                id="tall-rect",
             ),
-            # Negative coordinates (box crossing origin)
-            (
+            pytest.param(
                 np.array([-5.0, -5.0, 5.0, 5.0]),
                 np.array([0.0, 0.0, 100.0, 1.0]),
+                id="neg-coords",
             ),
-            # Very small box (sub-pixel) - aspect ratio affected by epsilon protection
-            (
+            pytest.param(
                 np.array([0.0, 0.0, 0.001, 0.001]),
                 np.array([0.0005, 0.0005, 0.000001, 0.999001]),
+                id="sub-pixel",
             ),
-            # Very large box
-            (
+            pytest.param(
                 np.array([0.0, 0.0, 10000.0, 10000.0]),
                 np.array([5000.0, 5000.0, 100000000.0, 1.0]),
+                id="large-box",
             ),
         ],
     )
@@ -149,40 +149,40 @@ class TestXCYCSRConversion:
     @pytest.mark.parametrize(
         ("xcycsr", "expected"),
         [
-            # Unit square at (0.5, 0.5)
-            (
+            pytest.param(
                 np.array([0.5, 0.5, 1.0, 1.0]),
                 np.array([0.0, 0.0, 1.0, 1.0]),
+                id="unit-square",
             ),
-            # Rectangle at (11, 22) with area=8, ratio=0.5
-            (
+            pytest.param(
                 np.array([11.0, 22.0, 8.0, 0.5]),
                 np.array([10.0, 20.0, 12.0, 24.0]),
+                id="rect-2x4",
             ),
-            # Wide box
-            (
+            pytest.param(
                 np.array([50.0, 25.0, 5000.0, 2.0]),
                 np.array([0.0, 0.0, 100.0, 50.0]),
+                id="wide-box",
             ),
-            # Tall box
-            (
+            pytest.param(
                 np.array([10.0, 30.0, 500.0, 0.2]),
                 np.array([5.0, 5.0, 15.0, 55.0]),
+                id="tall-box",
             ),
-            # Center at origin
-            (
+            pytest.param(
                 np.array([0.0, 0.0, 100.0, 1.0]),
                 np.array([-5.0, -5.0, 5.0, 5.0]),
+                id="center-at-origin",
             ),
-            # Very small box
-            (
+            pytest.param(
                 np.array([0.0005, 0.0005, 0.000001, 1.0]),
                 np.array([0.0, 0.0, 0.001, 0.001]),
+                id="very-small",
             ),
-            # Very large box
-            (
+            pytest.param(
                 np.array([5000.0, 5000.0, 100000000.0, 1.0]),
                 np.array([0.0, 0.0, 10000.0, 10000.0]),
+                id="very-large",
             ),
         ],
     )
@@ -192,22 +192,44 @@ class TestXCYCSRConversion:
         assert result.shape == (4,)
         np.testing.assert_array_almost_equal(result, expected, decimal=4)
 
-    def test_xcycsr_to_xyxy_zero_scale(self) -> None:
-        """Zero-scale xcycsr decodes with NaN y-coords; x-center is preserved."""
-        xcycsr = np.array([10.0, 20.0, 0.0, 1.0])
+    @pytest.mark.parametrize(
+        "xcycsr",
+        [
+            pytest.param(np.array([10.0, 20.0, 0.0, 1.0]), id="zero-scale"),
+            pytest.param(np.array([10.0, 20.0, 100.0, 0.0]), id="zero-aspect"),
+        ],
+    )
+    def test_xcycsr_to_xyxy_degenerate_collapses_to_point(self, xcycsr: np.ndarray) -> None:
+        """Zero scale or zero aspect-ratio decodes to a finite point box at (cx, cy)."""
         result = xcycsr_to_xyxy(xcycsr)
-        assert result[0] == result[2] == 10.0
-        assert np.isnan(result[1]) and np.isnan(result[3])
+        assert np.isfinite(result).all()
+        np.testing.assert_array_almost_equal(result, [10.0, 20.0, 10.0, 20.0])
 
-    def test_xcycsr_to_xyxy_zero_aspect(self) -> None:
-        """A zero aspect-ratio xcycsr decodes to a non-finite (NaN/Inf) box."""
-        xcycsr = np.array([10.0, 20.0, 100.0, 0.0])
+    def test_xcycsr_to_xyxy_batch_mixed_degenerate(self) -> None:
+        """Batch path handles a mix of normal and degenerate boxes without error."""
+        xcycsr = np.array(
+            [
+                [10.0, 20.0, 100.0, 1.0],  # normal box
+                [10.0, 20.0, 0.0, 1.0],  # zero scale
+                [10.0, 20.0, 100.0, 0.0],  # zero aspect
+            ]
+        )
         result = xcycsr_to_xyxy(xcycsr)
-        assert np.isnan(result).any() or np.isinf(result).any()
+        assert np.isfinite(result).all()
+        assert result.shape == (3, 4)
+        np.testing.assert_array_almost_equal(result[0], [5.0, 15.0, 15.0, 25.0])
+        np.testing.assert_array_almost_equal(result[1], [10.0, 20.0, 10.0, 20.0])
+        np.testing.assert_array_almost_equal(result[2], [10.0, 20.0, 10.0, 20.0])
 
     def test_xcycsr_to_xyxy_negative_scale(self) -> None:
         """A negative-scale xcycsr decodes with NaN entries (sqrt of negative)."""
         xcycsr = np.array([10.0, 20.0, -100.0, 1.0])
+        result = xcycsr_to_xyxy(xcycsr)
+        assert np.isnan(result).any()
+
+    def test_xcycsr_to_xyxy_batch_negative_scale(self) -> None:
+        """Batch path propagates NaN for negative-scale inputs (sqrt of negative)."""
+        xcycsr = np.array([[10.0, 20.0, -100.0, 1.0]])
         result = xcycsr_to_xyxy(xcycsr)
         assert np.isnan(result).any()
 
@@ -227,12 +249,12 @@ class TestXCYCSRConversion:
     @pytest.mark.parametrize(
         "xyxy",
         [
-            np.array([0.0, 0.0, 1.0, 1.0]),
-            np.array([10.0, 20.0, 30.0, 50.0]),
-            np.array([100.0, 200.0, 150.0, 210.0]),
-            np.array([-10.0, -20.0, 10.0, 20.0]),
-            np.array([0.0, 0.0, 0.01, 0.01]),
-            np.array([0.0, 0.0, 1000.0, 500.0]),
+            pytest.param(np.array([0.0, 0.0, 1.0, 1.0]), id="unit-square"),
+            pytest.param(np.array([10.0, 20.0, 30.0, 50.0]), id="offset-rect"),
+            pytest.param(np.array([100.0, 200.0, 150.0, 210.0]), id="medium-rect"),
+            pytest.param(np.array([-10.0, -20.0, 10.0, 20.0]), id="neg-coords"),
+            pytest.param(np.array([0.0, 0.0, 0.01, 0.01]), id="sub-pixel"),
+            pytest.param(np.array([0.0, 0.0, 1000.0, 500.0]), id="wide-large"),
         ],
     )
     def test_roundtrip(self, xyxy: np.ndarray) -> None:
@@ -248,3 +270,11 @@ class TestXCYCSRConversion:
         recovered = xcycsr_to_xyxy(xcycsr)
         assert recovered.shape == (1, 4)
         np.testing.assert_array_almost_equal(recovered, xyxy, decimal=5)
+
+    def test_roundtrip_degenerate_is_lossy(self) -> None:
+        """xyxy → xcycsr → xyxy is lossy for zero-area boxes; asserts the known result."""
+        xyxy = np.array([0.0, 0.0, 10.0, 0.0])
+        xcycsr = xyxy_to_xcycsr(xyxy)
+        recovered = xcycsr_to_xyxy(xcycsr)
+        # scale = w*h = 0 erases size information; width collapses and cannot be recovered.
+        np.testing.assert_array_almost_equal(recovered, [5.0, 0.0, 5.0, 0.0], decimal=5)

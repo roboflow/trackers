@@ -1,6 +1,6 @@
 [project]
 name = "trackers"
-version = "2.4.0"
+version = "2.6.0"
 description = "A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms"
 readme = "README.md"
 maintainers = [
@@ -41,11 +41,14 @@ dependencies = [
     "opencv-python>=4.8.0",
     "rich>=13.0.0",
     "requests>=2.28.0",
+    "pydeprecate>=0.7.0",
 ]
 
 [project.optional-dependencies]
 detection = ["inference-models>=0.19.0"]
 tune = ["optuna>=3.0.0"]
+# Temporary git pin until reid is on PyPI. Swap to reid>=0.1.0,<0.2 before merge.
+reid = ["reid @ git+https://github.com/roboflow/re-ID.git@main"]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"
@@ -80,14 +83,18 @@ mypy-types = [
 ]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build]
-sources = ["src"]
+[tool.setuptools]
+include-package-data = false
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/trackers"]
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["trackers*"]
+
+[tool.setuptools.package-data]
+trackers = ["py.typed"]
 
 [tool.ruff]
 target-version = "py310"
@@ -191,15 +198,17 @@ markers = [
 
 [tool.codespell]
 skip = "*.pth"
-ignore-words-list = "mot"
+ignore-words-list = "mot,STrack"
 
 [tool.mypy]
 python_version = "3.10"
 mypy_path = "src"
 plugins = ["numpy.typing.mypy_plugin"]
+files = ["src", "tests", "demo"]
 
 [[tool.mypy.overrides]]
 module = [
+    "deprecate",
     "requests",
     "torch",
     "torchvision",
@@ -207,5 +216,12 @@ module = [
     "firerequests",
     "scipy",
     "scipy.*",
+    "cv2",
+    "rfdetr",
+    "rfdetr.*",
+    "supervision",
+    "supervision.*",
+    "reid",
+    "reid.*",
 ]
 ignore_missing_imports = true

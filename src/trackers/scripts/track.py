@@ -150,6 +150,46 @@ def add_track_subparser(subparsers: argparse._SubParsersAction) -> None:
     # Add dynamic tracker parameters
     _add_tracker_params(tracker_group)
 
+    reid_group = parser.add_argument_group("reid (BoT-SORT only; requires trackers[reid])")
+    reid_group.add_argument(
+        "--tracker.reid.enable",
+        action="store_true",
+        dest="tracker_reid_enable",
+        help="Enable appearance-based ReID association for BoT-SORT.",
+    )
+    reid_group.add_argument(
+        "--tracker.reid.model",
+        type=str,
+        default=None,
+        dest="tracker_reid_model",
+        metavar="SOURCE",
+        help=(
+            "ReID checkpoint source (curated alias, hf:// URL, local path, or "
+            "save_pretrained directory). Implies --tracker.reid.enable. "
+            "Default alias when omitted: osnet_x1_0_msmt17_combineall."
+        ),
+    )
+    reid_group.add_argument(
+        "--tracker.reid.device",
+        type=str,
+        default=DEFAULT_DEVICE,
+        dest="tracker_reid_device",
+        metavar="DEVICE",
+        help=f"ReID compute device: auto, cpu, cuda, mps. Default: {DEFAULT_DEVICE}",
+    )
+    reid_group.add_argument(
+        "--tracker.reid.architecture",
+        type=str,
+        default=None,
+        dest="tracker_reid_architecture",
+        metavar="NAME",
+        help=(
+            "Backbone architecture for bare local .pth/.safetensors weights "
+            "(e.g. osnet_x1_0, fastreid_sbs_resnest50). Required when "
+            "--tracker.reid.model points to a bare weights file."
+        ),
+    )
+
     # Output options
     output_group = parser.add_argument_group("output")
     output_group.add_argument(
@@ -310,6 +350,10 @@ def run_track(args: argparse.Namespace) -> int:
 
     # Create tracker
     tracker_params = _extract_tracker_params(args.tracker, args)
+    tracker_params, reid_error = _apply_reid_tracker_params(args.tracker, args, tracker_params)
+    if reid_error is not None:
+        print(reid_error, file=sys.stderr)
+        return 1
     tracker = _init_tracker(args.tracker, **tracker_params)
 
     if args.source is not None:
@@ -363,7 +407,7 @@ def _run_frameless(
                     mask = np.isin(detections.class_id, class_filter)
                     detections = detections[mask]  # type: ignore[assignment]
 
-                tracked = tracker.update(detections)
+                tracked = tracker.update(detections, frame=None)
 
                 if track_id_filter is not None and len(tracked) > 0:
                     if tracked.tracker_id is not None:
@@ -598,6 +642,61 @@ def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Dete
         detections = detections[mask]
 
     return detections
+
+
+def _reid_requested(args: argparse.Namespace) -> bool:
+    return bool(args.tracker_reid_enable) or args.tracker_reid_model is not None
+
+
+def _apply_reid_tracker_params(
+    tracker_id: str,
+    args: argparse.Namespace,
+    params: dict[str, object],
+) -> tuple[dict[str, object], str | None]:
+    """Attach a CLI-instantiated ReID model to BoT-SORT tracker params."""
+    if not _reid_requested(args):
+        return params, None
+
+    if tracker_id != "botsort":
+        return params, (f"Error: --tracker.reid.* options apply only to --tracker botsort, got {tracker_id!r}.")
+
+    if args.source is None:
+        return params, (
+            "Error: ReID-enabled BoT-SORT requires --source (video/webcam/images) "
+            "so appearance embeddings can be extracted from frames."
+        )
+
+    try:
+        from reid import ReIDModel
+    except ImportError:
+        return params, (
+            "Error: ReID tracking requires the optional `trackers[reid]` extra.\n"
+            "Install with: pip install 'trackers[reid]'"
+        )
+
+    model_source = args.tracker_reid_model
+    architecture = args.tracker_reid_architecture
+    if architecture is not None and model_source is None:
+        return params, (
+            "Error: --tracker.reid.architecture requires --tracker.reid.model (bare weights need a checkpoint path)."
+        )
+
+    load_kwargs: dict[str, object] = {"device": args.tracker_reid_device}
+    if model_source is not None:
+        load_kwargs["source"] = model_source
+    if architecture is not None:
+        load_kwargs["architecture"] = architecture
+
+    try:
+        reid_model = ReIDModel.from_pretrained(**load_kwargs)
+    except KeyboardInterrupt:
+        raise
+    except (OSError, ValueError, RuntimeError) as exc:
+        return params, f"Error: Failed to load ReID model: {exc}"
+
+    params = dict(params)
+    params["reid_model"] = reid_model
+    return params, None
 
 
 def _extract_tracker_params(tracker_id: str, args: argparse.Namespace) -> dict[str, object]:

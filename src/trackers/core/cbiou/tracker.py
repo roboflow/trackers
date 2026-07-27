@@ -12,6 +12,7 @@ import supervision as sv
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BIoU
 from trackers.utils.state_representations import BaseStateEstimator, XCYCWHStateEstimator
@@ -66,6 +67,8 @@ class CBIoUTracker(BoTSORTTracker):
             be **greater than** ``buffer_ratio_first``.
 
     Raises:
+        ValueError: If ``lost_track_buffer`` is negative or ``frame_rate`` is not a
+            finite positive value (inherited from ``BoTSORTTracker``).
         ValueError: If ``buffer_ratio_first`` or ``buffer_ratio_second`` is negative.
 
     Note:
@@ -73,6 +76,9 @@ class CBIoUTracker(BoTSORTTracker):
         that are not associated in Step 2 appear in the output with ``tracker_id == -1``,
         consistent with ``BoTSORTTracker`` behaviour. Callers filtering by
         ``tracker_id >= 0`` will silently drop these rows.
+        Tracks that already hold a real ``tracker_id`` (for example, instant-activated
+        tracks) remain confirmed on a miss even before ``minimum_consecutive_frames`` is
+        reached.
 
     Example:
         Run C-BIoU on a batch of detections::
@@ -154,6 +160,7 @@ class CBIoUTracker(BoTSORTTracker):
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        timestamp: float | None = None,
     ) -> sv.Detections:
         """Update the C-BIoU tracker with detections from the current frame.
 
@@ -163,12 +170,21 @@ class CBIoUTracker(BoTSORTTracker):
         Args:
             detections: Supervision detections for the current frame.
             frame: Unused. Emits a ``UserWarning`` if provided.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             Detections with ``tracker_id`` assigned. Unmatched
             low-confidence detections are included with ``tracker_id == -1``;
             callers filtering by ``tracker_id >= 0`` will silently drop these rows.
+
+        Warns:
+            UserWarning: If ``frame`` is passed but C-BIoU does not perform
+                camera motion compensation (CMC), the frame is ignored.
         """
+        timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
         self._warn_if_frame_unused(frame)
         self.frame_id += 1
 
@@ -181,8 +197,22 @@ class CBIoUTracker(BoTSORTTracker):
         out_tracker_ids: list[int] = []
 
         # Predict new locations for existing tracks
-        for tracker in self.tracks:
-            tracker.predict()
+        self._predict_tracklets(self.tracks, timing)
+
+        # Ghost-ID prevention: budget-only filter before association (variable-FPS only).
+        # At fixed frame rate the frame-count budget is enforced post-association, so
+        # tracks keep their last-frame re-association opportunity.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        if _budget is not None:
+            self.tracks = [
+                t
+                for t in self.tracks
+                if BaseTracklet.within_lost_track_budget(
+                    t,
+                    maximum_frames_without_update=self.maximum_frames_without_update,
+                    maximum_time_without_update=_budget,
+                )
+            ]
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -204,7 +234,12 @@ class CBIoUTracker(BoTSORTTracker):
         for track in self.tracks:
             if track.time_since_update > 1:
                 lost_tracks.append(track)
-            elif track.number_of_successful_updates >= self.minimum_consecutive_frames:
+            elif track.tracker_id != -1 or track.number_of_successful_updates >= self.minimum_consecutive_frames:
+                # Maturity is sticky: a track that already holds a real
+                # tracker_id (e.g. an instant-activated first-frame track) stays
+                # confirmed even before it reaches minimum_consecutive_frames.
+                # On a miss it is kept as a confirmed (then eventually lost)
+                # track rather than discarded as an unconfirmed one.
                 confirmed_tracks.append(track)
             else:
                 unconfirmed_tracks.append(track)
@@ -288,11 +323,12 @@ class CBIoUTracker(BoTSORTTracker):
             is_first_frame=(self.frame_id == 1),
         )
 
-        # Kill lost tracks
+        # Full lifecycle prune: removes immature+unmatched and any remaining expired
         self.tracks = get_alive_tracklets(
             tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_time_without_update=_budget,
         )
 
         if not out_det_indices:

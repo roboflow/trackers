@@ -40,17 +40,22 @@ SORT models each tracked object with a seven-dimensional state vector `[x, y, s,
 
 ## Key Parameters
 
-| Parameter                    | Purpose                                                     | Tuning guidance                                                                                                              |
-| ---------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `lost_track_buffer`          | Frames to keep an unmatched track alive before deletion.    | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions. |
-| `track_activation_threshold` | Minimum detection confidence to create or continue a track. | Higher reduces spurious tracks; lower catches weak detections. 0.5-0.9 typical.                                              |
-| `minimum_consecutive_frames` | Consecutive detections required to confirm a new track.     | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                        |
-| `minimum_iou_threshold`      | Minimum IoU to accept a track-detection match.              | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                  |
+| Parameter                    | Purpose                                                                                                                     | Tuning guidance                                                                                                              |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `lost_track_buffer`          | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions. |
+| `track_activation_threshold` | Minimum detection confidence to create or continue a track.                                                                 | Higher reduces spurious tracks; lower catches weak detections. 0.5-0.9 typical.                                              |
+| `minimum_consecutive_frames` | Consecutive detections required to confirm a new track.                                                                     | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                        |
+| `minimum_iou_threshold`      | Minimum IoU to accept a track-detection match.                                                                              | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                  |
 
 !!! warning "Frame input is ignored by SORT"
 
     `SORTTracker.update()` accepts `frame` for API consistency with other trackers, but SORT does not use image/frame pixels.
     If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+
+!!! note "SORTTracker is not deprecated"
+
+    `SORTTracker` itself is not deprecated. Only the `tracker.trackers` attribute alias
+    is deprecated in favor of `tracker.tracks`.
 
 ## Run on video, webcam, or RTSP stream
 

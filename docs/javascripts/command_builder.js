@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
     confidence: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
     trackActivationThreshold: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
     minimumIouThreshold: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
-    lostTrackBuffer: { step: 1, min: 1, max: 999, decimals: 0 },
+    lostTrackBuffer: { step: 1, min: 0, max: 999, decimals: 0 },
     minimumConsecutiveFrames: { step: 1, min: 1, max: 99, decimals: 0 },
   };
 
@@ -66,6 +66,12 @@ document.addEventListener("DOMContentLoaded", function () {
     return !isNaN(num) && num > 0 && String(num) === value;
   }
 
+  function isValidNonNegativeInt(value) {
+    if (value === "") return true;
+    const num = parseInt(value, 10);
+    return !isNaN(num) && num >= 0 && String(num) === value;
+  }
+
   function isValidClasses(value) {
     return /^[\w,\s]*$/.test(value);
   }
@@ -97,7 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
     parts.push(`--tracker ${state.tracker}`);
 
     if (state.showTrackerOptions) {
-      if (state.lostTrackBuffer !== defaults.lostTrackBuffer && isValidPositiveInt(state.lostTrackBuffer)) {
+      if (state.lostTrackBuffer !== defaults.lostTrackBuffer && isValidNonNegativeInt(state.lostTrackBuffer)) {
         parts.push(`--tracker.lost_track_buffer ${state.lostTrackBuffer}`);
       }
       if (
@@ -153,8 +159,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (state.showTrackerOptions) {
-      if (state.lostTrackBuffer && !isValidPositiveInt(state.lostTrackBuffer)) {
-        errors.push("lost_track_buffer must be a positive integer");
+      if (state.lostTrackBuffer && !isValidNonNegativeInt(state.lostTrackBuffer)) {
+        errors.push("lost_track_buffer must be a non-negative integer");
       }
       if (state.trackActivationThreshold && !isValidDecimal01(state.trackActivationThreshold, 0.05)) {
         errors.push("track_activation_threshold must be between 0.05 and 1");
