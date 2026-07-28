@@ -44,12 +44,13 @@ detections, CMC on, same encoder and threshold.
 
 Oracle detections, CMC on, SoccerNet-tracking test (same protocol as the
 [tracker comparison](../trackers/comparison.md) default table). ReID:
-`osnet_x1_0_msmt17_combineall` (MSMT17 pretrained), `appearance_threshold=0.2`.
+`osnet_x1_0_msmt17_combineall` (MSMT17 pretrained).
 
-| Config                        |  HOTA  |  IDF1  |  MOTA  |
-| :---------------------------- | :----: | :----: | :----: |
-| BoT-SORT                      |  84.5  |  79.3  | **96.6** |
-| BoT-SORT + OSNet MSMT17 (OOD) | **84.6** | **79.4** | **96.6** |
+| Config                              |  HOTA  |  IDF1  |  MOTA  |
+| :---------------------------------- | :----: | :----: | :----: |
+| BoT-SORT                            |  84.5  |  79.3  | **96.6** |
+| BoT-SORT + OSNet MSMT17 (θ=0.2)     | **84.6** | **79.4** | **96.6** |
+| BoT-SORT + OSNet MSMT17 (θ=0.1)     |  82.9  |  77.7  |  96.5  |
 
 ## Choosing an appearance threshold
 
@@ -69,8 +70,8 @@ BoT-SORT rejects an appearance match when
 ![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.png)
 
 **SoccerNet test, `osnet_x1_0_msmt17_combineall`.** Same-ID and different-ID
-overlap heavily (similar kits). θ=0.2 passes ~50% of different-ID pairs, so
-appearance adds little on this domain (see table above).
+overlap heavily (similar kits). θ=0.2 passes ~50% of different-ID pairs and
+stays flat vs CMC-only; θ=0.1 is too strict (HOTA/IDF1 drop; see table above).
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
 
