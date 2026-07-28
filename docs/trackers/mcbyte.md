@@ -10,6 +10,8 @@ description: McByte extends BoT-SORT-style association with temporally propagate
 
 McByte extends a [BoT-SORT](botsort.md)-style tracking-by-detection pipeline with an optional mask-conditioned association stage. Instead of relying only on IoU and detection confidence, McByte can use a temporally propagated segmentation mask per track as extra evidence when an IoU-based match is ambiguous. Clear, unambiguous matches are locked before mask evidence is considered, so masks only influence genuinely uncertain pairs (and, optionally, isolated low-IoU candidates). Because the mask evidence comes from general-purpose, pre-trained segmentation models, McByte requires no per-video or per-dataset tuning. Mask management is optional and disabled by default: without it, McByte behaves as a clear-match-locking, reduced-assignment variant of the ByteTrack/BoT-SORT association pipeline using IoU alone.
 
+McByte was originally developed by [Tomasz Stańczyk](https://www.linkedin.com/in/tomasz-stanczyk/) at [Inria](https://team.inria.fr/stars/), in the STARS (Spatio-Temporal Activity Recognition of Social interactions) team. The Trackers implementation is a clean-room adaptation of the [original McByte code](https://github.com/tstanczyk95/McByte) and [paper](https://arxiv.org/abs/2506.01373).
+
 !!! note "Optional heavyweight dependencies"
 
     The default mask pipeline uses [Segment Anything (SAM)](https://github.com/facebookresearch/segment-anything) for mask initialization and [Cutie](https://github.com/hkchengrex/Cutie) for temporal mask propagation. Both require `torch`/`torchvision` plus their own installation steps and are **not** installed by `pip install trackers`. `McByteTracker` can be constructed and used without either — set `enable_mask_manager=True` only after installing SAM and Cutie, or supply a custom `mask_manager` (for example a lightweight test double) instead.
@@ -37,11 +39,41 @@ Source: [PR #513](https://github.com/roboflow/trackers/pull/513), reported by th
 
 McByte keeps the same tracking-by-detection backbone as [BoT-SORT](botsort.md) — Kalman prediction, optional camera motion compensation (CMC), and multi-stage confidence-aware IoU association — and adds clear-match locking plus optional mask conditioning around the assignment step.
 
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-pipeline.svg" alt="McByte pipeline: from frame t-1 to t, tracklet boxes are advanced by a Kalman filter and masks by a temporal propagator; detection boxes and propagated masks feed a Hungarian matching assignment enhanced by mask evidence" loading="lazy" decoding="async"/>
+  <figcaption>McByte propagates <strong>two</strong> states from frame <code>t-1</code> to <code>t</code>: the Kalman filter state (tracklet boxes) and the mask state (per-tracklet segmentation masks). Predicted boxes and propagated masks both feed the assignment step — IoU drives matching, and mask evidence resolves the ambiguous or isolated pairs.</figcaption>
+</figure>
+
 **Processing flow.** Detections → Kalman prediction → optional CMC → multi-stage IoU association → clear-match locking → mask-conditioned ambiguous association (if a mask manager is configured) → reduced linear assignment → tracklet lifecycle update.
 
 **Clear-match locking.** Within each association stage, a track-detection pair whose similarity clears the stage threshold is locked immediately when it is the only eligible candidate in both its row and column. Locked pairs skip the Hungarian solver entirely, so mask evidence never has a chance to disturb matches that are already unambiguous.
 
 **Mask conditioning.** The remaining, non-locked pairs form a reduced similarity matrix. When a `MaskManager` is configured and a propagated mask meets its confidence and overlap requirements (`minimum_mask_average_confidence`, `minimum_mask_coverage`, `minimum_mask_fill_ratio`), the mask evidence is added into that pair's similarity score before assignment. Optionally (`enable_isolated_mask_matching`), an isolated candidate with positive but below-threshold IoU can also be rescued by strong mask evidence. The Hungarian algorithm then solves the reduced assignment problem, and matches are mapped back to the original track and detection indices.
+
+**Mask scoring: coverage and fill.** For a tracklet `i` (the mask owner) and a candidate detection box `j`, McByte computes two overlap scores between the tracklet's propagated mask and the detection box:
+
+\[
+mc^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|\mathrm{mask}(tracklet_i)|}, \qquad
+mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
+\]
+
+*Mask coverage* (`mc`, controlled by `minimum_mask_coverage`) is the fraction of the tracklet's mask pixels that fall inside the detection box. *Mask fill* (`mf`, controlled by `minimum_mask_fill_ratio`) is the fraction of the detection box's pixels covered by the mask. `mc` is used **only** as a gating condition; `mf` serves as both a gating condition **and** the value added to the similarity score. The four cases below build the intuition — a strong match needs both scores high:
+
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-mask-scores.svg" alt="Four tracklet-mask versus detection-box cases showing how mask coverage (mc) and mask fill (mf) vary from low to high overlap" loading="lazy" decoding="async"/>
+  <figcaption>Mask coverage (<code>mc</code>) and mask fill (<code>mf</code>) for a mask (blue) against a detection box. A reliable match needs both high: partial overlap lowers <code>mf</code>, a tiny box inside a large mask lowers <code>mf</code>, and a box larger than the mask lowers <code>mc</code>.</figcaption>
+</figure>
+
+Mask evidence is applied only to genuinely uncertain pairs — those that are *ambiguous* (several detections competing for one tracklet) or, with `enable_isolated_mask_matching`, *isolated* (the right detection sits just below the IoU threshold). In both cases the mask nudges the reduced similarity matrix toward the correct assignment:
+
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-ambiguity-isolation.svg" alt="Ambiguity and isolation handling: similarity matrices before and after adding mask fill evidence, steering the assignment to the mask-consistent detection" loading="lazy" decoding="async"/>
+  <figcaption>Ambiguity handling (top) and isolation handling (bottom): adding <code>mf</code> to the similarity matrix steers the Hungarian assignment toward the mask-consistent detection.</figcaption>
+</figure>
+
+!!! note "Similarity matrix, not cost matrix"
+
+    The original ByteTrack/BoT-SORT/McByte formulate association over a **cost** matrix and subtract the mask evidence (`costs[i,j] -= mf`). Trackers uses a **similarity** matrix instead, so the equivalent update is an **increase**: `similarities[i,j] += mf`.
 
 **Mask lifecycle.** With mask management enabled, masks for frame `t` are prepared *before* association on frame `t`, using the tracker state from frame `t-1`: `MaskManager` initializes masks for newly created tracklets with SAM and propagates existing masks forward with Cutie. Temporarily lost (but still alive) tracklets keep their masks; masks are only dropped once a tracklet is pruned. This means a frame is required both for CMC and for mask updates — when no frame is passed to `update()`, both are skipped and McByte behaves as pure clear-match-locking IoU association.
 
@@ -129,6 +161,19 @@ cv2.destroyAllWindows()
 !!! tip "Enabling full mask-conditioned association"
 
     After installing SAM and Cutie (see the [PR #513 installation notes](https://github.com/roboflow/trackers/pull/513)), construct the tracker with `McByteTracker(enable_mask_manager=True)` (optionally passing a `McByteMaskConfig`) to enable the full SAM/Cutie mask pipeline. Passing `frame=frame_bgr` to `update()` remains required for masks to propagate.
+
+## Performance and optimization
+
+The mask pipeline is the expensive part of McByte. **Cutie**, the temporal mask propagator, is the heaviest component: it stores all masks as one `(N, W, H)` tensor (`N` ≈ number of tracklets, `W`×`H` = frame resolution) and recomputes the whole tensor on every frame, so cost grows with both the number of tracked objects and the frame size. **SAM**, the initial mask creator, is lighter because it only runs when new tracklets appear. The mask-free configuration (`enable_mask_manager=False`) has none of this overhead.
+
+Ideas for speeding up the full pipeline, from least to most invasive:
+
+- **Shrink Cutie's internal mask resolution.** Cutie's `max_internal_size` (in its `eval_config`) defaults to `-1` (no resizing). Setting it to the desired shorter edge — e.g. `540` for `1920x1080` input — makes Cutie propagate at `960x540` internally, then resize the mask back before it reaches the tracker. This is the most conservative option (no code changes to Cutie). Smaller masks are less precise, especially under occlusion or for small objects, which can affect association quality.
+- **Propagate less often.** Running Cutie every few frames instead of every frame cuts the dominant cost, but requires changes in `mask_manager.py` / the tracker's `update()` call, and careful handling of the add-mask/remove-mask events when tracklets are created or terminated.
+- **Use a smaller SAM model.** `McByteMaskConfig(sam_model_type=...)` can select a lighter SAM variant, trading initial-mask quality for speed.
+- **Downscale CMC input.** `cmc_downscale` (default `2`) controls the downscale applied before camera motion compensation. Larger values (`4`, `6`) extract motion features from smaller frames — faster, but with less precise motion estimates.
+
+Each of these trades accuracy for speed: any change to the mask (or CMC) output changes the association result and therefore the tracking metrics. Benchmark on your own data before committing to a setting.
 
 ## Reference
 
