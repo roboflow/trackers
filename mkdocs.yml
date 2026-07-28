@@ -104,6 +104,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths: [src]
           options:
             # Controls whether to show symbol types in the table of contents
             show_symbol_type_toc: true
