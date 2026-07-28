@@ -164,7 +164,7 @@ cv2.destroyAllWindows()
 
 ## Performance and optimization
 
-The mask pipeline is the expensive part of McByte. **Cutie**, the temporal mask propagator, is the heaviest component: it stores all masks as one `(N, W, H)` tensor (`N` ≈ number of tracklets, `W`×`H` = frame resolution) and recomputes the whole tensor on every frame, so cost grows with both the number of tracked objects and the frame size. **SAM**, the initial mask creator, is lighter because it only runs when new tracklets appear. The mask-free configuration (`enable_mask_manager=False`) has none of this overhead.
+The mask pipeline is the expensive part of McByte. **Cutie**, the temporal mask propagator, is the heaviest component: it stores all masks as one `(N, H, W)` tensor (`N` ≈ number of tracklets, `H`×`W` = frame resolution) and recomputes the whole tensor on every frame, so cost grows with both the number of tracked objects and the frame size. **SAM**, the initial mask creator, is lighter because it only runs when new tracklets appear. The mask-free configuration (`enable_mask_manager=False`) has none of this overhead.
 
 Ideas for speeding up the full pipeline, from least to most invasive:
 
