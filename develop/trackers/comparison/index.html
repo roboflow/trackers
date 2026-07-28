@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-06-22",
+  "dateModified": "2026-07-27",
   "datePublished": "2026-02-04"
 }
 </script>
@@ -1421,6 +1421,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcbyte/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    McByte
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2442,6 +2470,7 @@ association, which reduces ID switches on panning or handheld footage. Use BoT-S
 broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is
 small relative to the detector, so the trade-off favors identity stability over raw speed.</p>
 <p><strong>C-BIoU</strong> targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet, reaches the highest tuned IDF1 and MOTA on DanceTrack, and achieves the highest IDF1 on MOT17 among the trackers listed here. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See <a href="../cbiou/">C-BIoU</a> for buffer scales <strong>b1</strong> and <strong>b2</strong>.</p>
+<p><strong>McByte</strong> is the choice when you want the highest identity stability and can afford optional SAM/Cutie mask dependencies. It extends BoT-SORT-style association with temporally propagated segmentation masks as an extra matching cue, requiring no per-video tuning. Reported against Trackers' BoT-SORT baseline (without re-identification) at default parameters, McByte improves HOTA and IDF1 on all four datasets in this comparison, with the largest gain on DanceTrack. Use McByte when identity consistency matters more than raw throughput or dependency footprint. See <a href="../mcbyte/">McByte</a> for setup and the mask-conditioning parameters.</p>
 <h2 id="metric-definitions">Metric Definitions</h2>
 <p><strong>HOTA</strong> (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes
 tracking quality into detection accuracy (DetA) and association accuracy (AssA), then takes
@@ -2478,7 +2507,7 @@ near-perfect recall produces high MOTA even when identity switches are frequent.
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="June 22, 2026 11:58:32 UTC">2026-06-22</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 27, 2026 21:10:22 UTC">2026-07-27</span>
   </span>
 
     
