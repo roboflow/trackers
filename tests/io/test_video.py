@@ -54,7 +54,7 @@ def video_factory(tmp_path: Path) -> Callable[[int], Path]:
 
     def _create(n_frames: int) -> Path:
         video_path = tmp_path / f"video_{n_frames}_frames.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
         writer = cv2.VideoWriter(str(video_path), fourcc, 25.0, FRAME_SIZE)
 
         for index in range(n_frames):
