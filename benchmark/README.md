@@ -1,0 +1,217 @@
+# MOT benchmark workflow
+
+Reproduce the numbers in [`docs/trackers/comparison.md`](../docs/trackers/comparison.md) across **MOT17**, **SportsMOT**, **DanceTrack**, and **SoccerNet-tracking**. The Makefile runs tuning, tracking, Codabench submission (where required), and local evaluation, then writes doc-style tables.
+
+Requires trackers ≥ 2.4.
+
+```bash
+cd benchmark
+make setup
+```
+
+## Quick start
+
+```bash
+cd benchmark
+
+export DATA_ROOT="/path/to/your/datasets"
+export CODABENCH_TOKEN="<your-token>"       # see Codabench below
+
+make data-check # check datasets in the expected format
+make benchmark-default TRACKER=bytetrack # benchmark default parameters
+make benchmark-tuned TRACKER=bytetrack N_TRIALS=50 # tune and benchmark
+```
+
+Results:
+
+- Single tracker: `benchmark_outputs/<tracker>/tables.md` (rows = datasets)
+- One dataset, all trackers: `benchmark_outputs/comparison/<dataset>/tables.md` (rows = trackers, same layout as [`comparison.md`](../docs/trackers/comparison.md))
+
+Run **default** and **tuned** on separate days: Codabench limits daily submissions. SoccerNet is scored locally and does not count toward that limit.
+
+## Codabench
+
+MOT17, SportsMOT, and DanceTrack test metrics come from [Codabench](https://www.codabench.org/). Register for each competition before uploading (approval may be required):
+
+| Dataset    | Competition                                            |
+| ---------- | ------------------------------------------------------ |
+| MOT17      | [10049](https://www.codabench.org/competitions/10049/) |
+| SportsMOT  | [13077](https://www.codabench.org/competitions/13077/) |
+| DanceTrack | [14885](https://www.codabench.org/competitions/14885/) |
+
+Request an API token with a one-time `curl` call (Codabench login — only the token is stored):
+
+```bash
+curl -s -X POST https://www.codabench.org/api/api-token-auth/ \
+    -H "Content-Type: application/json" \
+    -d '{"username":"YOUR_USER","password":"YOUR_PASS"}'
+
+export CODABENCH_TOKEN="<your-token>"
+```
+
+Treat `CODABENCH_TOKEN` as a secret, do not publish it. See [Codabench API docs](https://www.codabench.org/api/docs/) if the request fails.
+
+If tracking finished but upload or polling failed (daily limit, pending approval, transient 502), recover without re-tracking:
+
+```bash
+make upload TRACKER=bytetrack DATASET=mot17 CONFIG=tuned CODABENCH_TOKEN=...
+```
+
+Then `make collect TRACKER=bytetrack` to refresh the table.
+
+or `make collect-comparison DATASET=dancetrack` to refresh the comparison table.
+
+## Data setup
+
+Point `DATA_ROOT` at the folder that directly contains `mot17/`, `sportsmot/`, etc. Default: `./data`.
+
+```
+$DATA_ROOT/
+  mot17/MOT17_yolox_dets/{val,test}/...
+  mot17/TrackEval/data/gt/MOT17_yolox_val/train_val/...
+  mot17/{val,test}/<seq>/img1/...              # BoT-SORT CMC only
+  sportsmot/sportsmot_yolox_dets/{val,test}/...
+  sportsmot/TrackEval/data/gt/sportsmot/val/...
+  dancetrack/dancetrack_yolox_dets/{train,val,test}/...
+  dancetrack/TrackEval/data/gt/dancetrack/{train,val}/...
+  dancetrack/{train,val,test}_images/...       # BoT-SORT CMC (all three splits for tune + test submit)
+  soccernet/SoccerNet_dets/...
+  soccernet/TrackEval/data/gt/SoccerNet_tracking/...
+  soccernet/soccernet_data/tracking/{train,test}/...
+```
+
+| Source             | Assets                                                                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MOT17              | `trackers download mot17`; YOLOX dets replicated locally using the [ByteTrack](https://github.com/ifzhang/ByteTrack/tree/main#data-preparation) detector setup (not their pre-packaged det zips) |
+| SportsMOT          | `trackers download sportsmot`; YOLOX dets replicated locally using the [SportsMOT](https://github.com/MCG-NJU/SportsMOT) detector setup                                                          |
+| DanceTrack         | [DanceTrack](https://github.com/DanceTrack/DanceTrack) frames/GT; uses YOLOX dets                                                                                                                |
+| SoccerNet-tracking | [soccer-net.org](https://www.soccer-net.org/data) (2022 tracking); oracle (ground-truth) detections                                                                                              |
+
+MOT17, SportsMOT, and DanceTrack use YOLOX model detections produced in-house, following each benchmark’s published detector configuration. SoccerNet uses oracle boxes from the dataset. See [`docs/trackers/comparison.md`](../docs/trackers/comparison.md#detections).
+
+### MOT17 validation ground truth
+
+YOLOX validation detections for MOT17 cover only the benchmark validation frame range for each sequence—not every frame in the official training labels. Tuning on the full MOT17 GT under `TrackEval/data/gt/MOT17/train_val/` misaligns detection and label frame indices.
+
+After YOLOX val detections and MOT17 GT are in place, run once from `benchmark/`:
+
+```bash
+python scripts/align_mot17_val_gt.py --data-root "$DATA_ROOT"
+```
+
+This filters each sequence’s `gt.txt` to the frame range present in `MOT17_yolox_dets/val/MOT17-XX_val.txt` and writes the result to `mot17/TrackEval/data/gt/MOT17_yolox_val/train_val/`. MOT17 tuning uses that tree.
+
+```bash
+make data-check DATA_ROOT="/path/to/datasets"
+```
+
+## Splits and scoring
+
+| Dataset            | Tune  | Score | Scoring                 |
+| ------------------ | ----- | ----- | ----------------------- |
+| MOT17              | val   | test  | Codabench               |
+| SportsMOT          | val   | test  | Codabench               |
+| DanceTrack         | val   | test  | Codabench               |
+| SoccerNet-tracking | train | test  | Local (`trackers eval`) |
+
+## Commands
+
+Run from `benchmark/`. Pass variables on the command line or export them first (`DATA_ROOT`, `CODABENCH_TOKEN`, …).
+
+| Target                         | Description                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `setup`                        | Install `trackers[tune]` from the repo root                                                            |
+| `data-check`                   | Print present/missing assets under `DATA_ROOT`                                                         |
+| `prep`                         | Prep one dataset (`DATASET=…`) into `benchmark_prep/`                                                  |
+| `prep-all`                     | Prep all four datasets                                                                                 |
+| `tune`                         | Optuna search → `best_params.json` (`TRACKER=`, `DATASET=`, `N_TRIALS=`)                               |
+| `track-default`                | Track test split with registry defaults, then score (`TRACKER=`, `DATASET=`)                           |
+| `track-tuned`                  | Track test split with `best_params.json`, then score (`TRACKER=`, `DATASET=`)                          |
+| `upload`                       | Upload an existing `submission.zip` (`TRACKER=`, `DATASET=`, `CONFIG=default` or `tuned`)              |
+| `poll`                         | Poll an existing Codabench submission for scores (`SUBMISSION_ID=`, `TRACKER=`, `DATASET=`, `CONFIG=`) |
+| `benchmark-default`            | Prep → track-default → tables. One `DATASET` → all four trackers + comparison table                    |
+| `benchmark-tuned`              | Prep → tune + track-tuned → tables. One `DATASET` → all four trackers + comparison table               |
+| `benchmark`                    | Full pipeline; set `BENCHMARK_CONFIG` to `default`, `tuned`, or `all` (default: `default`)             |
+| `benchmark-comparison-default` | Shorthand: `benchmark-default` with `TRACKERS=all` on one `DATASET=`                                   |
+| `benchmark-comparison-tuned`   | Shorthand: `benchmark-tuned` with `TRACKERS=all` on one `DATASET=`                                     |
+| `collect`                      | Rebuild per-tracker `tables.md` (`TRACKER=`, optional `DATASETS=`)                                     |
+| `collect-comparison`           | Rebuild comparison table for one dataset (`DATASET=dancetrack`)                                        |
+| `clean`                        | Remove `benchmark_prep/` and `benchmark_outputs/`                                                      |
+
+## Usage
+
+Full pipeline (all four datasets, single tracker):
+
+```bash
+make benchmark-default TRACKER=bytetrack CODABENCH_TOKEN=...
+
+# Tune + tuned params (another 3 Codabench uploads + SoccerNet)
+make benchmark-tuned TRACKER=bytetrack N_TRIALS=50 CODABENCH_TOKEN=...
+
+# Skip datasets (e.g. MOT17 out of Codabench submissions for today)
+make benchmark-tuned TRACKER=bytetrack N_TRIALS=5 \
+    DATASETS="sportsmot dancetrack soccernet" CODABENCH_TOKEN=...
+
+# Both passes in one command (may hit daily limits)
+make benchmark BENCHMARK_CONFIG=all TRACKER=bytetrack CODABENCH_TOKEN=...
+```
+
+One dataset, all trackers (comparison table like `docs/trackers/comparison.md`):
+
+```bash
+# Runs all comparison trackers (see scripts/datasets.py → COMPARISON_TRACKERS) on DanceTrack test; writes
+# benchmark_outputs/comparison/dancetrack/tables.md
+make benchmark-default DATASETS=dancetrack CODABENCH_TOKEN=...
+
+make benchmark-tuned DATASETS=dancetrack N_TRIALS=50 CODABENCH_TOKEN=...
+
+# Same, explicit form
+make benchmark-comparison-default DATASET=dancetrack CODABENCH_TOKEN=...
+
+# Rebuild comparison table from existing score JSONs only
+make collect-comparison DATASET=dancetrack
+```
+
+Skip datasets (partial run or resume):
+
+```bash
+make benchmark-tuned TRACKER=bytetrack DATASETS="sportsmot soccernet" CODABENCH_TOKEN=...
+```
+
+Single dataset or step:
+
+```bash
+make prep DATASET=mot17
+make tune TRACKER=bytetrack DATASET=mot17 N_TRIALS=50
+make track-default TRACKER=bytetrack DATASET=mot17
+make track-tuned   TRACKER=bytetrack DATASET=mot17
+make upload        TRACKER=bytetrack DATASET=mot17 CONFIG=tuned
+make collect       TRACKER=bytetrack
+make clean
+```
+
+### Variables
+
+| Variable           | Default               | Purpose                                                                                                                                                       |
+| ------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TRACKER`          | `sort`                | Single tracker when `DATASETS` lists more than one dataset                                                                                                    |
+| `TRACKERS`         | —                     | Space-separated list, or `all` (see `COMPARISON_TRACKERS` in `scripts/datasets.py`). When `DATASETS` is a single dataset, defaults to all comparison trackers |
+| `DATA_ROOT`        | `./data`              | Raw dataset tree                                                                                                                                              |
+| `DATASET`          | `mot17`               | Single-dataset targets                                                                                                                                        |
+| `DATASETS`         | all four              | Space-separated subset for `benchmark*`                                                                                                                       |
+| `BENCHMARK_CONFIG` | `default`             | `benchmark`: `default`, `tuned`, or `all`                                                                                                                     |
+| `CONFIG`           | —                     | `upload`: `default` or `tuned`                                                                                                                                |
+| `N_TRIALS`         | `10`                  | Optuna trials per dataset                                                                                                                                     |
+| `CODABENCH_TOKEN`  | —                     | Required for Codabench datasets                                                                                                                               |
+| `PREP_DIR`         | `./benchmark_prep`    | Prepared flat MOT dets/GT                                                                                                                                     |
+| `OUTPUT_DIR`       | `./benchmark_outputs` | Params, preds, scores, tables                                                                                                                                 |
+
+BoT-SORT sets `FIXED_PARAMS={"enable_cmc": true}` and uses frame directories when present.
+
+## Notes
+
+- **MOT17 validation GT.** YOLOX val detections span a subset of frames per sequence; run `scripts/align_mot17_val_gt.py` before tuning so labels match detection indices.
+- **Tracking bypasses `trackers track`.** `scripts/track_split.py` loads the registry directly (workaround for a shared CLI parameter bug; see issue/PR). ByteTrack/SORT/OC-SORT never receive `--images-dir` during tune.
+- **MOT17 server format.** `scripts/mot_format.py` triplicates `MOT17-XX.txt` into FRCNN/SDP/DPM files and stubs missing sequences for Codabench.
+- **Resuming.** Steps are independent. Re-run `collect` after late uploads; use `upload` to submit an existing zip without re-tracking.
+- Paths and splits live in `scripts/datasets.py`.
