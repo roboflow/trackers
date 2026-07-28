@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-07-27",
+  "dateModified": "2026-07-28",
   "datePublished": "2026-07-27"
 }
 </script>
@@ -1366,6 +1366,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#performance-and-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance and optimization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1690,6 +1701,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#performance-and-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance and optimization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1723,17 +1745,20 @@
 <h1 id="mcbyte">McByte</h1>
 <h2 id="overview">Overview</h2>
 <p>McByte extends a <a href="../botsort/">BoT-SORT</a>-style tracking-by-detection pipeline with an optional mask-conditioned association stage. Instead of relying only on IoU and detection confidence, McByte can use a temporally propagated segmentation mask per track as extra evidence when an IoU-based match is ambiguous. Clear, unambiguous matches are locked before mask evidence is considered, so masks only influence genuinely uncertain pairs (and, optionally, isolated low-IoU candidates). Because the mask evidence comes from general-purpose, pre-trained segmentation models, McByte requires no per-video or per-dataset tuning. Mask management is optional and disabled by default: without it, McByte behaves as a clear-match-locking, reduced-assignment variant of the ByteTrack/BoT-SORT association pipeline using IoU alone.</p>
+<p>McByte was originally developed by <a href="https://www.linkedin.com/in/tomasz-stanczyk/">Tomasz Stańczyk</a> at <a href="https://team.inria.fr/stars/">Inria</a>, in the STARS (Spatio-Temporal Activity Recognition of Social interactions) team. The Trackers implementation is a clean-room adaptation of the <a href="https://github.com/tstanczyk95/McByte">original McByte code</a> and <a href="https://arxiv.org/abs/2506.01373">paper</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Optional heavyweight dependencies</p>
 <p>The default mask pipeline uses <a href="https://github.com/facebookresearch/segment-anything">Segment Anything (SAM)</a> for mask initialization and <a href="https://github.com/hkchengrex/Cutie">Cutie</a> for temporal mask propagation. Both require <code>torch</code>/<code>torchvision</code> plus their own installation steps and are <strong>not</strong> installed by <code>pip install trackers</code>. <code>McByteTracker</code> can be constructed and used without either — set <code>enable_mask_manager=True</code> only after installing SAM and Cutie, or supply a custom <code>mask_manager</code> (for example a lightweight test double) instead.</p>
 </div>
 <h2 id="how-does-mcbyte-compare-to-other-trackers">How does McByte compare to other trackers?</h2>
 <p>For comparisons with other trackers, plus dataset context and evaluation details, see the <a href="../comparison/">tracker comparison</a> page.</p>
-<p>The table below compares McByte (mask-conditioned association enabled) against BoT-SORT without re-identification — the baseline association pipeline McByte builds on — using default parameters for both trackers, with no dataset-specific tuning.</p>
+<p>The per-dataset results below compare McByte (mask-conditioned association enabled) against BoT-SORT without re-identification — the baseline association pipeline McByte builds on — using default parameters for both trackers, with no dataset-specific tuning.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">MOT17</label><label for="__tabbed_1_2">SportsMOT</label><label for="__tabbed_1_3">SoccerNet</label><label for="__tabbed_1_4">DanceTrack</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <table>
 <thead>
 <tr>
-<th style="text-align: center;">Dataset</th>
 <th style="text-align: left;">Tracker</th>
 <th style="text-align: center;">HOTA</th>
 <th style="text-align: center;">IDF1</th>
@@ -1742,56 +1767,90 @@
 </thead>
 <tbody>
 <tr>
-<td style="text-align: center;">MOT17</td>
 <td style="text-align: left;">BoT-SORT</td>
 <td style="text-align: center;">63.7</td>
 <td style="text-align: center;">78.7</td>
 <td style="text-align: center;"><strong>79.2</strong></td>
 </tr>
 <tr>
-<td style="text-align: center;">MOT17</td>
 <td style="text-align: left;"><strong>McByte</strong></td>
 <td style="text-align: center;"><strong>64.1</strong></td>
 <td style="text-align: center;"><strong>79.7</strong></td>
 <td style="text-align: center;">79.1</td>
 </tr>
+</tbody>
+</table>
+</div>
+<div class="tabbed-block">
+<table>
+<thead>
 <tr>
-<td style="text-align: center;">SportsMOT</td>
+<th style="text-align: left;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
 <td style="text-align: left;">BoT-SORT</td>
 <td style="text-align: center;">73.8</td>
 <td style="text-align: center;">73.4</td>
 <td style="text-align: center;">96.9</td>
 </tr>
 <tr>
-<td style="text-align: center;">SportsMOT</td>
 <td style="text-align: left;"><strong>McByte</strong></td>
 <td style="text-align: center;"><strong>76.5</strong></td>
 <td style="text-align: center;"><strong>76.9</strong></td>
 <td style="text-align: center;"><strong>97.0</strong></td>
 </tr>
+</tbody>
+</table>
+</div>
+<div class="tabbed-block">
+<table>
+<thead>
 <tr>
-<td style="text-align: center;">SoccerNet</td>
+<th style="text-align: left;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
 <td style="text-align: left;">BoT-SORT</td>
 <td style="text-align: center;">84.5</td>
 <td style="text-align: center;">79.3</td>
 <td style="text-align: center;">96.6</td>
 </tr>
 <tr>
-<td style="text-align: center;">SoccerNet</td>
 <td style="text-align: left;"><strong>McByte</strong></td>
 <td style="text-align: center;"><strong>85.0</strong></td>
 <td style="text-align: center;"><strong>79.9</strong></td>
 <td style="text-align: center;"><strong>97.0</strong></td>
 </tr>
+</tbody>
+</table>
+</div>
+<div class="tabbed-block">
+<table>
+<thead>
 <tr>
-<td style="text-align: center;">DanceTrack</td>
+<th style="text-align: left;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
 <td style="text-align: left;">BoT-SORT</td>
 <td style="text-align: center;">57.8</td>
 <td style="text-align: center;">57.9</td>
 <td style="text-align: center;">92.2</td>
 </tr>
 <tr>
-<td style="text-align: center;">DanceTrack</td>
 <td style="text-align: left;"><strong>McByte</strong></td>
 <td style="text-align: center;"><strong>67.2</strong></td>
 <td style="text-align: center;"><strong>68.6</strong></td>
@@ -1799,12 +1858,41 @@
 </tr>
 </tbody>
 </table>
+</div>
+</div>
+</div>
 <p>Source: <a href="https://github.com/roboflow/trackers/pull/513">PR #513</a>, reported by the McByte author against Trackers' BoT-SORT baseline.</p>
 <h2 id="algorithm">Algorithm</h2>
 <p>McByte keeps the same tracking-by-detection backbone as <a href="../botsort/">BoT-SORT</a> — Kalman prediction, optional camera motion compensation (CMC), and multi-stage confidence-aware IoU association — and adds clear-match locking plus optional mask conditioning around the assignment step.</p>
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-pipeline.webp" alt="McByte pipeline: from frame t-1 to t, tracklet boxes are advanced by a Kalman filter and masks by a temporal propagator; detection boxes and propagated masks feed a Hungarian matching assignment enhanced by mask evidence" loading="lazy" decoding="async"/>
+  <figcaption>McByte propagates <strong>two</strong> states from frame <code>t-1</code> to <code>t</code>: the Kalman filter state (tracklet boxes) and the mask state (per-tracklet segmentation masks). Predicted boxes and propagated masks both feed the assignment step — IoU drives matching, and mask evidence resolves the ambiguous or isolated pairs.</figcaption>
+</figure>
+
 <p><strong>Processing flow.</strong> Detections → Kalman prediction → optional CMC → multi-stage IoU association → clear-match locking → mask-conditioned ambiguous association (if a mask manager is configured) → reduced linear assignment → tracklet lifecycle update.</p>
 <p><strong>Clear-match locking.</strong> Within each association stage, a track-detection pair whose similarity clears the stage threshold is locked immediately when it is the only eligible candidate in both its row and column. Locked pairs skip the Hungarian solver entirely, so mask evidence never has a chance to disturb matches that are already unambiguous.</p>
 <p><strong>Mask conditioning.</strong> The remaining, non-locked pairs form a reduced similarity matrix. When a <code>MaskManager</code> is configured and a propagated mask meets its confidence and overlap requirements (<code>minimum_mask_average_confidence</code>, <code>minimum_mask_coverage</code>, <code>minimum_mask_fill_ratio</code>), the mask evidence is added into that pair's similarity score before assignment. Optionally (<code>enable_isolated_mask_matching</code>), an isolated candidate with positive but below-threshold IoU can also be rescued by strong mask evidence. The Hungarian algorithm then solves the reduced assignment problem, and matches are mapped back to the original track and detection indices.</p>
+<p><strong>Mask scoring: coverage and fill.</strong> For a tracklet <code>i</code> (the mask owner) and a candidate detection box <code>j</code>, McByte computes two overlap scores between the tracklet's propagated mask and the detection box:</p>
+<div class="arithmatex">\[
+mc^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|\mathrm{mask}(tracklet_i)|}, \qquad
+mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
+\]</div>
+<p><em>Mask coverage</em> (<code>mc</code>, controlled by <code>minimum_mask_coverage</code>) is the fraction of the tracklet's mask pixels that fall inside the detection box. <em>Mask fill</em> (<code>mf</code>, controlled by <code>minimum_mask_fill_ratio</code>) is the fraction of the detection box's pixels covered by the mask. <code>mc</code> is used <strong>only</strong> as a gating condition; <code>mf</code> serves as both a gating condition <strong>and</strong> the value added to the similarity score. The four cases below build the intuition — a strong match needs both scores high:</p>
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-mask-scores.svg" alt="Four tracklet-mask versus detection-box cases showing how mask coverage (mc) and mask fill (mf) vary from low to high overlap" loading="lazy" decoding="async"/>
+  <figcaption>Mask coverage (<code>mc</code>) and mask fill (<code>mf</code>) for a mask (blue) against a detection box. A reliable match needs both high: partial overlap lowers <code>mf</code>, a tiny box inside a large mask lowers <code>mf</code>, and a box larger than the mask lowers <code>mc</code>.</figcaption>
+</figure>
+
+<p>Mask evidence is applied only to genuinely uncertain pairs — those that are <em>ambiguous</em> (several detections competing for one tracklet) or, with <code>enable_isolated_mask_matching</code>, <em>isolated</em> (the right detection sits just below the IoU threshold). In both cases the mask nudges the reduced similarity matrix toward the correct assignment:</p>
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-ambiguity-isolation.webp" alt="Ambiguity and isolation handling: similarity matrices before and after adding mask fill evidence, steering the assignment to the mask-consistent detection" loading="lazy" decoding="async"/>
+  <figcaption>Ambiguity handling (top) and isolation handling (bottom): adding <code>mf</code> to the similarity matrix steers the Hungarian assignment toward the mask-consistent detection.</figcaption>
+</figure>
+
+<div class="admonition note">
+<p class="admonition-title">Similarity matrix, not cost matrix</p>
+<p>The original ByteTrack/BoT-SORT/McByte formulate association over a <strong>cost</strong> matrix and subtract the mask evidence (<code>costs[i,j] -= mf</code>). Trackers uses a <strong>similarity</strong> matrix instead, so the equivalent update is an <strong>increase</strong>: <code>similarities[i,j] += mf</code>.</p>
+</div>
 <p><strong>Mask lifecycle.</strong> With mask management enabled, masks for frame <code>t</code> are prepared <em>before</em> association on frame <code>t</code>, using the tracker state from frame <code>t-1</code>: <code>MaskManager</code> initializes masks for newly created tracklets with SAM and propagates existing masks forward with Cutie. Temporarily lost (but still alive) tracklets keep their masks; masks are only dropped once a tracklet is pruned. This means a frame is required both for CMC and for mask updates — when no frame is passed to <code>update()</code>, both are skipped and McByte behaves as pure clear-match-locking IoU association.</p>
 <p><strong>Track lifecycle.</strong> New tracks are created from unmatched high-confidence detections and confirmed after <code>minimum_consecutive_frames</code> consecutive matches. Unmatched unconfirmed tracks are removed; confirmed tracks unmatched for more than <code>lost_track_buffer</code> frames are deleted.</p>
 <h2 id="key-parameters">Key Parameters</h2>
@@ -1812,6 +1900,7 @@
 <thead>
 <tr>
 <th>Parameter</th>
+<th>Default</th>
 <th>Purpose</th>
 <th>Tuning guidance</th>
 </tr>
@@ -1819,78 +1908,111 @@
 <tbody>
 <tr>
 <td><code>lost_track_buffer</code></td>
+<td><code>30</code></td>
 <td>Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by <code>frame_rate</code>).</td>
 <td>Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps.</td>
 </tr>
 <tr>
+<td><code>frame_rate</code></td>
+<td><code>30.0</code></td>
+<td>Frame rate of the source, used to scale <code>lost_track_buffer</code> into real time.</td>
+<td>Set to the video's actual FPS so buffer and occlusion tolerances stay consistent across different frame rates.</td>
+</tr>
+<tr>
 <td><code>track_activation_threshold</code></td>
+<td><code>0.7</code></td>
 <td>Minimum detection confidence required to start a new track.</td>
 <td>Higher reduces noisy track creation; lower retains harder objects. 0.5-0.9 typical depending on detector quality.</td>
 </tr>
 <tr>
 <td><code>minimum_consecutive_frames</code></td>
+<td><code>2</code></td>
 <td>Consecutive matches required before confirming a new track.</td>
 <td>1 for immediate activation; 2-3 improves robustness against flicker and false positives.</td>
 </tr>
 <tr>
+<td><code>instant_first_frame_activation</code></td>
+<td><code>True</code></td>
+<td>Whether tracklets created on the very first frame receive confirmed IDs immediately, bypassing <code>minimum_consecutive_frames</code>.</td>
+<td>Keep <code>True</code> to emit IDs from frame 1; set <code>False</code> to require the normal confirmation streak even at sequence start.</td>
+</tr>
+<tr>
 <td><code>minimum_iou_threshold_first_assoc</code></td>
+<td><code>0.1</code></td>
 <td>Minimum association similarity for the first pass (high-confidence detections vs. confirmed and lost tracks).</td>
-<td>Default <code>0.1</code> is intentionally lower than in BoT-SORT: it only rejects clearly implausible pairs, leaving a broader candidate set for mask-conditioned association to resolve.</td>
+<td>Intentionally lower than in BoT-SORT: it only rejects clearly implausible pairs, leaving a broader candidate set for mask-conditioned association to resolve.</td>
 </tr>
 <tr>
 <td><code>minimum_iou_threshold_second_assoc</code></td>
+<td><code>0.5</code></td>
 <td>Minimum association similarity for the second pass (low-confidence detections vs. remaining tracked tracks).</td>
 <td>Usually set lower than the first-pass threshold to recover weak detections without over-matching.</td>
 </tr>
 <tr>
 <td><code>minimum_iou_threshold_unconfirmed_assoc</code></td>
+<td><code>0.3</code></td>
 <td>Minimum association similarity when associating unconfirmed tracks.</td>
 <td>Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.</td>
 </tr>
 <tr>
 <td><code>high_conf_det_threshold</code></td>
+<td><code>0.6</code></td>
 <td>Confidence split between stage-1 and stage-2 detections.</td>
 <td>0.5-0.7 common. Higher shifts more detections to the recovery stage; lower gives stage-1 broader coverage.</td>
 </tr>
 <tr>
 <td><code>enable_cmc</code></td>
+<td><code>True</code></td>
 <td>Enables camera motion compensation before association.</td>
 <td>Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.</td>
 </tr>
 <tr>
 <td><code>cmc_method</code></td>
+<td><code>"sparseOptFlow"</code></td>
 <td>Camera motion compensation method (see <a href="../botsort/">BoT-SORT</a>).</td>
-<td>Default <code>sparseOptFlow</code> is a good general-purpose choice.</td>
+<td><code>sparseOptFlow</code> is a good general-purpose choice.</td>
+</tr>
+<tr>
+<td><code>cmc_downscale</code></td>
+<td><code>2</code></td>
+<td>Downscale factor applied to frames before camera motion compensation.</td>
+<td>Higher (<code>4</code>, <code>6</code>) is faster but produces coarser motion estimates; see <a href="#performance-and-optimization">Performance and optimization</a>.</td>
 </tr>
 <tr>
 <td><code>enable_mask_manager</code></td>
+<td><code>False</code></td>
 <td>Whether to construct McByte's default SAM + Cutie mask pipeline.</td>
-<td>Disabled by default so importing/using <code>McByteTracker</code> never requires the optional SAM/Cutie dependencies. Enable only after installing them, or pass a custom <code>mask_manager</code>.</td>
+<td>Off by default so importing/using <code>McByteTracker</code> never requires the optional SAM/Cutie dependencies. Enable only after installing them, or pass a custom <code>mask_manager</code>.</td>
 </tr>
 <tr>
 <td><code>mask_config</code></td>
+<td><code>None</code></td>
 <td><code>McByteMaskConfig</code> used to build the default mask pipeline. Requires <code>enable_mask_manager=True</code>; mutually exclusive with <code>mask_manager</code>.</td>
 <td>Adjust when you need a non-default SAM/Cutie checkpoint, model variant, or device.</td>
 </tr>
 <tr>
 <td><code>minimum_mask_average_confidence</code></td>
+<td><code>0.6</code></td>
 <td>Minimum average confidence a propagated mask must have before it can influence association.</td>
 <td>Raise to trust masks only when Cutie is confident; lower to let weaker masks still contribute.</td>
 </tr>
 <tr>
 <td><code>minimum_mask_coverage</code></td>
+<td><code>0.9</code></td>
 <td>Minimum fraction of a tracklet's mask that must fall inside a candidate detection box.</td>
 <td>Raise for stricter geometric consistency between mask and box; lower to tolerate partial occlusion.</td>
 </tr>
 <tr>
 <td><code>minimum_mask_fill_ratio</code></td>
+<td><code>0.05</code></td>
 <td>Minimum fraction of a candidate detection box's area that must be covered by the tracklet mask.</td>
 <td>Raise to avoid matching a small mask fragment to an oversized box; lower to allow slimmer objects to match larger boxes.</td>
 </tr>
 <tr>
 <td><code>enable_isolated_mask_matching</code></td>
+<td><code>False</code></td>
 <td>Whether mask evidence may rescue an isolated candidate with positive IoU below the normal stage threshold.</td>
-<td>Off by default (conservative). Enable to recover more matches under heavy occlusion at the risk of more false positives.</td>
+<td>Conservative default. Enable to recover more matches under heavy occlusion at the risk of more false positives.</td>
 </tr>
 </tbody>
 </table>
@@ -1987,10 +2109,28 @@
 </span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
 </span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
 </span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Enabling full mask-conditioned association</p>
-<p>After installing SAM and Cutie (see the <a href="https://github.com/roboflow/trackers/pull/513">PR #513 installation notes</a>), construct the tracker with <code>McByteTracker(enable_mask_manager=True)</code> (optionally passing a <code>McByteMaskConfig</code>) to enable the full SAM/Cutie mask pipeline. Passing <code>frame=frame_bgr</code> to <code>update()</code> remains required for masks to propagate.</p>
+<p>To enable the full SAM + Cutie mask pipeline, install SAM and Cutie (see the <a href="https://github.com/roboflow/trackers/pull/513">PR #513 installation notes</a>), then construct the tracker with <code>enable_mask_manager=True</code> and, optionally, a <code>McByteMaskConfig</code>. Everything else in the loop above stays the same — only the tracker construction changes:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">McByteMaskConfig</span><span class="p">,</span> <span class="n">McByteTracker</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">McByteTracker</span><span class="p">(</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">enable_mask_manager</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">mask_config</span><span class="o">=</span><span class="n">McByteMaskConfig</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">),</span>  <span class="c1"># SAM + Cutie run on GPU</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span>
+</span></code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">A frame is required for masks to propagate</p>
+<p>Masks (and CMC) update only when a frame is supplied, so keep passing <code>frame=frame_bgr</code> to <code>update()</code>. When <code>update()</code> is called without a frame, McByte silently falls back to pure clear-match-locking IoU association.</p>
 </div>
+<h2 id="performance-and-optimization">Performance and optimization</h2>
+<p>The mask pipeline is the expensive part of McByte. <strong>Cutie</strong>, the temporal mask propagator, is the heaviest component: it stores all masks as one <code>(N, H, W)</code> tensor (<code>N</code> ≈ number of tracklets, <code>H</code>×<code>W</code> = frame resolution) and recomputes the whole tensor on every frame, so cost grows with both the number of tracked objects and the frame size. <strong>SAM</strong>, the initial mask creator, is lighter because it only runs when new tracklets appear. The mask-free configuration (<code>enable_mask_manager=False</code>) has none of this overhead.</p>
+<p>Ideas for speeding up the full pipeline, from least to most invasive:</p>
+<ul>
+<li><strong>Shrink Cutie's internal mask resolution.</strong> Cutie's <code>max_internal_size</code> (in its <code>eval_config</code>) defaults to <code>-1</code> (no resizing). Setting it to the desired shorter edge — e.g. <code>540</code> for <code>1920x1080</code> input — makes Cutie propagate at <code>960x540</code> internally, then resize the mask back before it reaches the tracker. This is the most conservative option (no code changes to Cutie). Smaller masks are less precise, especially under occlusion or for small objects, which can affect association quality.</li>
+<li><strong>Propagate less often.</strong> Running Cutie every few frames instead of every frame cuts the dominant cost, but requires changes in <code>mask_manager.py</code> / the tracker's <code>update()</code> call, and careful handling of the add-mask/remove-mask events when tracklets are created or terminated.</li>
+<li><strong>Use a smaller SAM model.</strong> <code>McByteMaskConfig(sam_model_type=...)</code> can select a lighter SAM variant, trading initial-mask quality for speed.</li>
+<li><strong>Downscale CMC input.</strong> <code>cmc_downscale</code> (default <code>2</code>) controls the downscale applied before camera motion compensation. Larger values (<code>4</code>, <code>6</code>) extract motion features from smaller frames — faster, but with less precise motion estimates.</li>
+</ul>
+<p>Each of these trades accuracy for speed: any change to the mask (or CMC) output changes the association result and therefore the tracking metrics. Benchmark on your own data before committing to a setting.</p>
 <h2 id="reference">Reference</h2>
 <p>Stanczyk, T., Yoon, S., and Bremond, F. (2025). No Train Yet Gain: Towards Generic Multi-Object Tracking in Sports and Beyond. <a href="https://arxiv.org/abs/2506.01373">arXiv:2506.01373</a>. Original implementation: <a href="https://github.com/tstanczyk95/McByte">tstanczyk95/McByte</a>.</p>
 
@@ -2015,7 +2155,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 27, 2026 21:55:26 UTC">2026-07-27</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 28, 2026 15:17:38 UTC">2026-07-28</span>
   </span>
 
     
