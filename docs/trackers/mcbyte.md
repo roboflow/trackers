@@ -40,7 +40,7 @@ Source: [PR #513](https://github.com/roboflow/trackers/pull/513), reported by th
 McByte keeps the same tracking-by-detection backbone as [BoT-SORT](botsort.md) — Kalman prediction, optional camera motion compensation (CMC), and multi-stage confidence-aware IoU association — and adds clear-match locking plus optional mask conditioning around the assignment step.
 
 <figure>
-  <img src="../../assets/mcbyte/mcbyte-pipeline.svg" alt="McByte pipeline: from frame t-1 to t, tracklet boxes are advanced by a Kalman filter and masks by a temporal propagator; detection boxes and propagated masks feed a Hungarian matching assignment enhanced by mask evidence" loading="lazy" decoding="async"/>
+  <img src="../../assets/mcbyte/mcbyte-pipeline.webp" alt="McByte pipeline: from frame t-1 to t, tracklet boxes are advanced by a Kalman filter and masks by a temporal propagator; detection boxes and propagated masks feed a Hungarian matching assignment enhanced by mask evidence" loading="lazy" decoding="async"/>
   <figcaption>McByte propagates <strong>two</strong> states from frame <code>t-1</code> to <code>t</code>: the Kalman filter state (tracklet boxes) and the mask state (per-tracklet segmentation masks). Predicted boxes and propagated masks both feed the assignment step — IoU drives matching, and mask evidence resolves the ambiguous or isolated pairs.</figcaption>
 </figure>
 
@@ -67,7 +67,7 @@ mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
 Mask evidence is applied only to genuinely uncertain pairs — those that are *ambiguous* (several detections competing for one tracklet) or, with `enable_isolated_mask_matching`, *isolated* (the right detection sits just below the IoU threshold). In both cases the mask nudges the reduced similarity matrix toward the correct assignment:
 
 <figure>
-  <img src="../../assets/mcbyte/mcbyte-ambiguity-isolation.svg" alt="Ambiguity and isolation handling: similarity matrices before and after adding mask fill evidence, steering the assignment to the mask-consistent detection" loading="lazy" decoding="async"/>
+  <img src="../../assets/mcbyte/mcbyte-ambiguity-isolation.webp" alt="Ambiguity and isolation handling: similarity matrices before and after adding mask fill evidence, steering the assignment to the mask-consistent detection" loading="lazy" decoding="async"/>
   <figcaption>Ambiguity handling (top) and isolation handling (bottom): adding <code>mf</code> to the similarity matrix steers the Hungarian assignment toward the mask-consistent detection.</figcaption>
 </figure>
 
