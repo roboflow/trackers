@@ -105,7 +105,11 @@ class _VideoOutput:
         cannot hold frames of mixed sizes. A later frame of a different size
         (e.g. a mid-stream resolution change from an RTSP renegotiation) is
         resized to the writer's resolution so it is kept in the output stream
-        rather than being silently dropped by the codec.
+        rather than being silently dropped by the codec. This guarantee only
+        covers height/width mismatches: the writer is opened with
+        `isColor=True` and channel count is not reconciled, so a mid-stream
+        frame with a different number of channels (e.g. single-channel
+        grayscale) can still be silently dropped by the codec.
 
         Returns:
             True if write succeeded or path is None, False on failure.
@@ -144,13 +148,17 @@ class _VideoOutput:
         the one the writer was opened with, so a resolution change mid-stream
         would drop frames from the output without any error. Resizing keeps the
         stream contiguous; the mismatch is logged once to avoid per-frame spam.
+        The resize stretches the frame to the writer's exact dimensions without
+        preserving the source aspect ratio (aspect ratio may be distorted).
         """
         height, width = frame.shape[:2]
         if self._frame_size is None or self._frame_size == (width, height):
             return frame
         if not self._size_mismatch_logged:
             logger.warning(
-                "Video frame size %s differs from the writer size %s; resizing to keep the output stream contiguous.",
+                "Video frame size %s differs from the writer size %s; resizing "
+                "to keep the output stream contiguous (aspect ratio may be "
+                "distorted).",
                 (width, height),
                 self._frame_size,
             )
