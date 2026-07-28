@@ -28,8 +28,9 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
     Parameters were tuned on the validation set. Results are reported on the
     test set via Codabench submission. Detections come from a YOLOX model.
-    BoT-SORT rows are CMC without appearance; for CMC + FastReID on the same
-    MOT17 test protocol see [BoT-SORT with and without ReID](../api/reid.md#botsort-with-and-without-reid).
+    BoT-SORT rows are CMC without appearance; for CMC + FastReID on MOT17 and
+    OSNet MSMT17 on SoccerNet see
+    [BoT-SORT with and without ReID](../api/reid.md#botsort-with-and-without-reid).
 
 === "Default"
 
