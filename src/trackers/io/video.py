@@ -150,6 +150,10 @@ class _VideoOutput:
         stream contiguous; the mismatch is logged once to avoid per-frame spam.
         The resize stretches the frame to the writer's exact dimensions without
         preserving the source aspect ratio (aspect ratio may be distorted).
+        `cv2.INTER_AREA` is used only when downscaling (both writer dimensions
+        are smaller than the source frame's), since it degrades toward
+        nearest-neighbor quality when upscaling; `cv2.INTER_LINEAR` is used for
+        upscaling or mixed-direction resizes.
         """
         height, width = frame.shape[:2]
         if self._frame_size is None or self._frame_size == (width, height):
@@ -163,7 +167,10 @@ class _VideoOutput:
                 self._frame_size,
             )
             self._size_mismatch_logged = True
-        return cv2.resize(frame, self._frame_size)
+        target_width, target_height = self._frame_size
+        is_downscale = target_width < width and target_height < height
+        interpolation = cv2.INTER_AREA if is_downscale else cv2.INTER_LINEAR
+        return cv2.resize(frame, self._frame_size, interpolation=interpolation)
 
     def __enter__(self) -> _VideoOutput:
         return self
