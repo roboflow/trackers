@@ -22,16 +22,33 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 The table below compares McByte (mask-conditioned association enabled) against BoT-SORT without re-identification — the baseline association pipeline McByte builds on — using default parameters for both trackers, with no dataset-specific tuning.
 
-|  Dataset   | Tracker    |   HOTA   |   IDF1   |   MOTA   |
-| :--------: | :--------- | :------: | :------: | :------: |
-|   MOT17    | BoT-SORT   |   63.7   |   78.7   | **79.2** |
-|   MOT17    | **McByte** | **64.1** | **79.7** |   79.1   |
-| SportsMOT  | BoT-SORT   |   73.8   |   73.4   |   96.9   |
-| SportsMOT  | **McByte** | **76.5** | **76.9** | **97.0** |
-| SoccerNet  | BoT-SORT   |   84.5   |   79.3   |   96.6   |
-| SoccerNet  | **McByte** | **85.0** | **79.9** | **97.0** |
-| DanceTrack | BoT-SORT   |   57.8   |   57.9   |   92.2   |
-| DanceTrack | **McByte** | **67.2** | **68.6** | **92.5** |
+=== "MOT17"
+
+    | Tracker    |   HOTA   |   IDF1   |   MOTA   |
+    | :--------- | :------: | :------: | :------: |
+    | BoT-SORT   |   63.7   |   78.7   | **79.2** |
+    | **McByte** | **64.1** | **79.7** |   79.1   |
+
+=== "SportsMOT"
+
+    | Tracker    |   HOTA   |   IDF1   |   MOTA   |
+    | :--------- | :------: | :------: | :------: |
+    | BoT-SORT   |   73.8   |   73.4   |   96.9   |
+    | **McByte** | **76.5** | **76.9** | **97.0** |
+
+=== "SoccerNet"
+
+    | Tracker    |   HOTA   |   IDF1   |   MOTA   |
+    | :--------- | :------: | :------: | :------: |
+    | BoT-SORT   |   84.5   |   79.3   |   96.6   |
+    | **McByte** | **85.0** | **79.9** | **97.0** |
+
+=== "DanceTrack"
+
+    | Tracker    |   HOTA   |   IDF1   |   MOTA   |
+    | :--------- | :------: | :------: | :------: |
+    | BoT-SORT   |   57.8   |   57.9   |   92.2   |
+    | **McByte** | **67.2** | **68.6** | **92.5** |
 
 Source: [PR #513](https://github.com/roboflow/trackers/pull/513), reported by the McByte author against Trackers' BoT-SORT baseline.
 
