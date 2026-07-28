@@ -201,7 +201,7 @@ markers = [
 ]
 
 [tool.codespell]
-skip = "*.pth"
+skip = "*.pth,*.svg"
 ignore-words-list = "mot"
 
 [tool.mypy]
