@@ -55,7 +55,23 @@ def _soccernet_seq(stem: str) -> str:
 
 
 def _mot17_val_seq(stem: str) -> str:
+    """Map YOLOX val det stem (e.g. MOT17-02_val) to the FRCNN GT/image folder name."""
     return stem.split("_")[0] + "-FRCNN"
+
+
+def _mot17_frame_seq(stem: str) -> str:
+    """Map any MOT17 seq id to the FRCNN folder that holds shared ``img1`` frames.
+
+    YOLOX test dets are ``MOT17-01``; official sequences are ``MOT17-01-{FRCNN,SDP,DPM}``
+    with frames only under the FRCNN copy (SDP/DPM are detector variants of the same video).
+    """
+    base = stem.split("_", 1)[0]
+    for suf in _MOT17_SUFFIXES:
+        suffix = f"-{suf}"
+        if base.endswith(suffix):
+            base = base[: -len(suffix)]
+            break
+    return f"{base}-FRCNN"
 
 
 @dataclass(frozen=True)
@@ -66,6 +82,7 @@ class SplitPaths:
     images_dir: Path | None
     seqmap: Path | None
     seq_name_fn: Callable[[str], str] | None = None
+    image_seq_name_fn: Callable[[str], str] | None = None
 
 
 def split_paths(data_root: Path, dataset: str, split: str) -> SplitPaths:
@@ -114,9 +131,18 @@ def split_paths(data_root: Path, dataset: str, split: str) -> SplitPaths:
                 root / "mot17/val",
                 seqmap if seqmap.is_file() else None,
                 _mot17_val_seq,
+                _mot17_frame_seq,
             )
         if split == "test":
-            return SplitPaths(root / "mot17/MOT17_yolox_dets/test", "xyxy", None, root / "mot17/test", None)
+            return SplitPaths(
+                root / "mot17/MOT17_yolox_dets/test",
+                "xyxy",
+                None,
+                root / "mot17/test",
+                None,
+                None,
+                _mot17_frame_seq,
+            )
     raise ValueError(f"unknown (dataset, split): ({dataset!r}, {split!r})")
 
 
@@ -131,8 +157,12 @@ def job_dir(output_dir: Path, tracker: str, dataset: str) -> Path:
 
 
 def needs_frames(tracker: str, params: dict) -> bool:
-    """Whether tracking requires source frames (e.g. BoT-SORT with CMC enabled)."""
-    return tracker == "botsort" and bool(params.get("enable_cmc", False))
+    """Whether tracking requires source frames (CMC and/or ReID appearance)."""
+    if tracker != "botsort":
+        return False
+    if bool(params.get("enable_cmc", False)):
+        return True
+    return params.get("reid_model") is not None
 
 
 def mot17_server_filenames() -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:

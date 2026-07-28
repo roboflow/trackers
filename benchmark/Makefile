@@ -48,6 +48,9 @@ OBJECTIVE ?= HOTA
 THRESHOLD ?= 0.5
 SEED      ?=
 FIXED_PARAMS ?=
+# Optional BoT-SORT appearance: set REID_ENCODER=fastreid_mot17_sbs50 to enable.
+REID_ENCODER ?=
+APPEARANCE_THRESHOLD ?= 0.2
 
 CODABENCH_URL           ?= https://www.codabench.org
 CODABENCH_TOKEN         ?=
@@ -91,7 +94,7 @@ help:
 	@echo "MOT benchmark workflow — run from \`cd benchmark\`"
 	@echo ""
 	@echo "Targets:"
-	@echo "  setup         Install \`trackers[tune]\` from $(REPO_ROOT)"
+	@echo "  setup         Install \`trackers[tune,reid]\` from $(REPO_ROOT)"
 	@echo "  data-check    Print present/missing assets under $(DATA_ROOT)"
 	@echo "  prep          Prep one dataset (DATASET=...) into $(PREP_DIR)"
 	@echo "  prep-all      Prep every dataset"
@@ -109,10 +112,11 @@ help:
 	@echo "  poll              Poll an existing Codabench submission (SUBMISSION_ID=, DATASET=, CONFIG=)"
 	@echo "  clean         Remove $(PREP_DIR) and $(OUTPUT_DIR)"
 	@echo ""
+	@echo "BoT-SORT ReID: pass REID_ENCODER=fastreid_mot17_sbs50 APPEARANCE_THRESHOLD=0.2"
 	@echo "Codabench upload requires CODABENCH_TOKEN. See README for data setup."
 
 setup:
-	$(UV) pip install -e "$(REPO_ROOT)[tune]"
+	$(UV) pip install -e "$(REPO_ROOT)[tune,reid]"
 
 data-check:
 	@$(PYTHON) scripts/data_check.py --data-root "$(DATA_ROOT)"
@@ -162,7 +166,9 @@ _track-and-score:
 	  --tracker $(TRACKER) --dataset $(DATASET) --split $(SCORE_SPLIT) \
 	  --data-root "$(DATA_ROOT)" --prep-dir "$(PREP_DIR)" \
 	  --output-dir "$(OUTPUT_DIR)/$(TRACKER)/$(DATASET)/$(CONFIG)" \
-	  $(if $(filter tuned,$(CONFIG)),--params "$(OUTPUT_DIR)/$(TRACKER)/$(DATASET)/best_params.json",)
+	  $(if $(filter tuned,$(CONFIG)),--params "$(OUTPUT_DIR)/$(TRACKER)/$(DATASET)/best_params.json",) \
+	  $(if $(REID_ENCODER),--reid "$(REID_ENCODER)",) \
+	  $(if $(and $(REID_ENCODER),$(APPEARANCE_THRESHOLD)),--appearance-threshold $(APPEARANCE_THRESHOLD),)
 	@if [ "$(DATASET)" = "soccernet" ]; then \
 	  trackers eval \
 	    --gt-dir "$(PREP_DIR)/soccernet/test/gt" \

@@ -69,7 +69,7 @@ Point `DATA_ROOT` at the folder that directly contains `mot17/`, `sportsmot/`, e
 $DATA_ROOT/
   mot17/MOT17_yolox_dets/{val,test}/...
   mot17/TrackEval/data/gt/MOT17_yolox_val/train_val/...
-  mot17/{val,test}/<seq>/img1/...              # BoT-SORT CMC only
+  mot17/{val,test}/<seq>/img1/...              # BoT-SORT CMC / ReID
   sportsmot/sportsmot_yolox_dets/{val,test}/...
   sportsmot/TrackEval/data/gt/sportsmot/val/...
   dancetrack/dancetrack_yolox_dets/{train,val,test}/...
@@ -120,7 +120,7 @@ Run from `benchmark/`. Pass variables on the command line or export them first (
 
 | Target                         | Description                                                                                            |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `setup`                        | Install `trackers[tune]` from the repo root                                                            |
+| `setup`                        | Install `trackers[tune,reid]` from the repo root                                                       |
 | `data-check`                   | Print present/missing assets under `DATA_ROOT`                                                         |
 | `prep`                         | Prep one dataset (`DATASET=…`) into `benchmark_prep/`                                                  |
 | `prep-all`                     | Prep all four datasets                                                                                 |
@@ -184,6 +184,8 @@ Single dataset or step:
 make prep DATASET=mot17
 make tune TRACKER=bytetrack DATASET=mot17 N_TRIALS=50
 make track-default TRACKER=bytetrack DATASET=mot17
+make track-default TRACKER=botsort DATASET=mot17 \
+  REID_ENCODER=fastreid_mot17_sbs50 APPEARANCE_THRESHOLD=0.2
 make track-tuned   TRACKER=bytetrack DATASET=mot17
 make upload        TRACKER=bytetrack DATASET=mot17 CONFIG=tuned
 make collect       TRACKER=bytetrack
@@ -205,8 +207,10 @@ make clean
 | `CODABENCH_TOKEN`  | —                     | Required for Codabench datasets                                                                                                                               |
 | `PREP_DIR`         | `./benchmark_prep`    | Prepared flat MOT dets/GT                                                                                                                                     |
 | `OUTPUT_DIR`       | `./benchmark_outputs` | Params, preds, scores, tables                                                                                                                                 |
+| `REID_ENCODER`     | —                     | Optional BoT-SORT ReID alias/path (e.g. `fastreid_mot17_sbs50`); requires `trackers[reid]`                                                                    |
+| `APPEARANCE_THRESHOLD` | `0.2`             | Passed with `REID_ENCODER` as BoT-SORT `appearance_threshold`                                                                                                 |
 
-BoT-SORT sets `FIXED_PARAMS={"enable_cmc": true}` and uses frame directories when present.
+BoT-SORT sets `FIXED_PARAMS={"enable_cmc": true}` and uses frame directories when CMC and/or `REID_ENCODER` is set.
 
 ## Notes
 

@@ -23,6 +23,12 @@ Usage (see Makefile for the wiring):
         --data-root ./data --prep-dir ./benchmark_prep \
         --output-dir ./benchmark_outputs/sort/mot17/default \
         [--params best_params.json]
+
+    # BoT-SORT + official FastReID SBS (requires `pip install 'trackers[reid]'`):
+    python track_split.py --tracker botsort --dataset mot17 --split test \
+        --data-root ./data --prep-dir ./benchmark_prep \
+        --output-dir ./benchmark_outputs/botsort/mot17/default \
+        --reid fastreid_mot17_sbs50 --appearance-threshold 0.2
 """
 
 from __future__ import annotations
@@ -72,6 +78,22 @@ def _resolve_params(tracker_id: str, *, params_file: Path | None) -> dict[str, A
     return _init_kwargs(tracker_id, merged)
 
 
+def _load_reid_model(source: str, appearance_threshold: float | None) -> dict[str, Any]:
+    """Load a ``reid.ReIDModel`` and optional appearance threshold overrides."""
+    try:
+        from reid import ReIDModel
+    except ImportError as exc:
+        raise ImportError(
+            "BoT-SORT ReID requires the standalone reid package. "
+            "Install with: pip install 'trackers[reid]'"
+        ) from exc
+
+    overrides: dict[str, Any] = {"reid_model": ReIDModel.from_pretrained(source)}
+    if appearance_threshold is not None:
+        overrides["appearance_threshold"] = appearance_threshold
+    return overrides
+
+
 def _build(tracker_id: str, params: dict[str, Any]) -> BaseTracker:
     info = BaseTracker._lookup_tracker(tracker_id)
     if info is None:
@@ -88,7 +110,25 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--prep-dir", type=Path, required=True)
     p.add_argument("--output-dir", type=Path, required=True, help="Predictions root: writes pred/<seq>.txt under here.")
     p.add_argument("--params", type=Path, default=None, help="Optional tuned best_params.json")
+    p.add_argument(
+        "--reid",
+        default=None,
+        help="Optional reid alias/path for BoT-SORT (e.g. fastreid_mot17_sbs50).",
+    )
+    p.add_argument(
+        "--appearance-threshold",
+        type=float,
+        default=None,
+        help="BoT-SORT appearance_threshold when --reid is set (e.g. 0.2).",
+    )
     args = p.parse_args(argv)
+
+    if args.reid is not None and args.tracker != "botsort":
+        print(f"--reid is only supported for botsort (got {args.tracker!r})", file=sys.stderr)
+        return 1
+    if args.appearance_threshold is not None and args.reid is None:
+        print("--appearance-threshold requires --reid", file=sys.stderr)
+        return 1
 
     dets_dir = args.prep_dir / args.dataset / args.split / "dets"
     if not dets_dir.is_dir():
@@ -96,11 +136,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     params = _resolve_params(args.tracker, params_file=args.params)
-    images_dir = (
-        split_paths(args.data_root, args.dataset, args.split).images_dir if needs_frames(args.tracker, params) else None
-    )
+    if args.reid is not None:
+        params.update(_load_reid_model(args.reid, args.appearance_threshold))
+
+    paths = split_paths(args.data_root, args.dataset, args.split)
+    images_dir = paths.images_dir if needs_frames(args.tracker, params) else None
     if images_dir is not None and not images_dir.is_dir():
-        print(f"missing frames for CMC: {images_dir}", file=sys.stderr)
+        print(f"missing frames for CMC/ReID: {images_dir}", file=sys.stderr)
         return 1
 
     pred_dir = args.output_dir / "pred"
@@ -108,13 +150,15 @@ def main(argv: list[str] | None = None) -> int:
     tracker = _build(args.tracker, params)
     for det_path in sorted(dets_dir.glob("*.txt")):
         seq = det_path.stem
+        # Pred names stay as det stems (MOT17-01); frames may live under MOT17-01-FRCNN.
+        image_seq = paths.image_seq_name_fn(seq) if paths.image_seq_name_fn is not None else seq
         tracker.reset()
         _run_tracker_on_detections(
             tracker,
             det_path,
             pred_dir / f"{seq}.txt",
             images_dir=images_dir,
-            seq_name=seq,
+            seq_name=image_seq,
         )
         print(f"  tracked {seq}")
     return 0
