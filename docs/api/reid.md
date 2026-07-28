@@ -69,9 +69,9 @@ tracker = BoTSORTTracker(reid_model=reid_model, appearance_threshold=0.2)
 | `appearance_threshold` | 0.25    | Appearance-distance gate (BoT-SORT paper default). Rejects matches when `0.5 * (1 - cos_sim)` exceeds this value. MOT17 Codabench / eval uses `0.2` per the re-ID study Table 8. |
 | `proximity_threshold`  | 0.5     | Standard-IoU gate applied before appearance is used (requires IoU ≥ `1 - proximity_threshold`), computed from true IoU even when `iou` is GIoU/DIoU/CIoU.                         |
 
-See the [`reid` package documentation](https://github.com/roboflow/re-ID) for
-the model catalog, `from_pretrained` sources, gallery evaluation, and MOT
-fine-tuning.
+See the [`reid` training guide](https://github.com/roboflow/re-ID/blob/main/docs/learn/train.md)
+for crop generation, `train_reid`, and Colab tips; the package README covers the
+model catalog, `from_pretrained` sources, and gallery evaluation.
 
 ## Encoder protocol
 
