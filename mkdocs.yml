@@ -136,6 +136,7 @@ nav:
     - Detection Quality Matters: learn/detection-quality.md
     - State Estimators: learn/state-estimators.md
     - IoU Variants: learn/iou.md
+    - ReID Appearance: learn/reid.md
     - About: learn/about.md
   - Trackers:
     - Comparison: trackers/comparison.md
