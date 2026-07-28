@@ -17,7 +17,7 @@ package. BoT-SORT usage is on the [BoT-SORT](../trackers/botsort.md) page.
 
 ## BoT-SORT with and without ReID
 
-### MOT17 test (Codabench)
+### MOT17 test
 
 YOLOX detections, CMC on, Codabench MOT17 test (same protocol as the
 [tracker comparison](../trackers/comparison.md) default table). ReID:
