@@ -50,16 +50,19 @@ For the model catalog and fine-tuning, see the
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `reid_model`           | Appearance encoder queried during association.                                                                   | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                      |
 | `reid_ema_alpha`       | EMA momentum for a track's appearance feature.                                                                    | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more.       |
-| `appearance_threshold` | Maximum appearance distance `d_app` accepted for a match.                                                        | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                               |
-| `proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.      | Default 0.5. Lower restricts how far an appearance match may travel between frames.                                    |
+| `appearance_threshold` | Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                              | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                               |
+| `proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.      | Default 0.5. Lower restricts how far apart a pair may be before appearance stops contributing.                          |
 
 ---
 
 ## Choosing an appearance threshold
 
-BoT-SORT rejects an appearance match when `d_app = 0.5 * (1 - cos_sim)` exceeds
-`appearance_threshold` (paper default 0.25). Pick θ on a labeled split with the
-encoder you will track with:
+BoT-SORT fuses costs as `min(d_iou, d_app)` with
+`d_app = 0.5 * (1 - cos_sim)`, and discards the appearance term when `d_app`
+exceeds `appearance_threshold` (paper default 0.25) or when the pair fails the
+`proximity_threshold` IoU gate. Appearance can therefore only lower a pair's
+cost, never veto a geometric match. Pick θ on a labeled split with the encoder
+you will track with:
 
 1. Embed GT crops.
 2. Histogram `d_app` for same-ID vs different-ID pairs.
@@ -77,10 +80,10 @@ Table 8 uses the same threshold).
 
 **SoccerNet test, `osnet_x1_0_msmt17_combineall`.** Same-ID and different-ID
 distances overlap heavily (similar kits). On 1200 same-ID and 2400 different-ID
-GT crop pairs, θ=0.2 keeps 97% of same-ID pairs but also passes 50% of
-different-ID pairs, and tracking stays flat against CMC-only. θ=0.1 cuts
-different-ID pairs to 9% but rejects 24% of same-ID pairs, which costs HOTA and
-IDF1 (see the SoccerNet table below).
+GT crop pairs, θ=0.2 admits 97% of same-ID pairs but also 50% of different-ID
+pairs, and tracking stays flat against CMC-only. θ=0.1 holds different-ID pairs
+to 9%, yet appearance still assists a mix of correct and same-kit pairs and
+costs HOTA and IDF1 (see the SoccerNet table below).
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
 
