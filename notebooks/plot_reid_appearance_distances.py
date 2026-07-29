@@ -69,7 +69,7 @@ def load_gt_boxes(
                 continue
             frame = int(float(parts[0]))
             tid = int(float(parts[1]))
-            l, t, w, h = map(float, parts[2:6])
+            x, y, w, h = map(float, parts[2:6])
             if pedestrian_only:
                 if len(parts) < 8:
                     continue
@@ -78,7 +78,7 @@ def load_gt_boxes(
                     continue
             elif len(parts) >= 7 and float(parts[6]) <= 0:
                 continue
-            by_frame[frame].append((tid, np.array([l, t, l + w, t + h], dtype=np.float32)))
+            by_frame[frame].append((tid, np.array([x, y, x + w, y + h], dtype=np.float32)))
     return by_frame
 
 
