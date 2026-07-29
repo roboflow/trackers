@@ -48,7 +48,7 @@ dependencies = [
 detection = ["inference-models>=0.19.0"]
 tune = ["optuna>=3.0.0"]
 # Temporary git pin until reid is on PyPI. Swap to reid>=0.1.0,<0.2 before merge.
-reid = ["reid @ git+https://github.com/roboflow/re-ID.git@main"]
+reid = ["reid"]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"
