@@ -93,9 +93,10 @@ class BoTSORTTracker(BaseTracker):
             ``frame`` in :meth:`update`. When ``None`` (default), behaviour
             matches the geometry-only BoT-SORT baseline.
         reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
-        appearance_threshold: Appearance distance gate. Rejects matches when the
-            halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this value.
-            Default ``0.25`` (BoT-SORT ``appearance_thresh``).
+        appearance_threshold: Appearance distance gate. Drops the appearance term
+            when the halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this
+            value, leaving the pair scored on geometry alone. Default ``0.25``
+            (BoT-SORT ``appearance_thresh``).
         proximity_threshold: Standard-IoU distance gate applied before appearance
             is used. Computed from true IoU even when ``iou`` is GIoU/DIoU/CIoU.
             Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires
