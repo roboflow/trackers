@@ -65,25 +65,27 @@ cost, never veto a geometric match. Pick θ on a labeled split with the encoder
 you will track with:
 
 1. Embed GT crops.
-2. Histogram `d_app` for same-ID vs different-ID pairs.
+2. Histogram `d_app` for association-local pairs: same video only, with
+   frame gap bounded by the lost-track horizon (default 30 frames). Positives
+   are same-ID; negatives are different-ID that could co-compete.
 3. Choose θ so most same-ID pairs fall below it and most different-ID pairs fall
    above it.
 
 **MOT17 val, `fastreid_mot17_sbs50`.** Same-ID distances peak near 0 and
-different-ID near 0.4. On 1360 same-ID and 2800 different-ID GT crop pairs, θ=0.2
-keeps 88% of same-ID pairs while passing 1% of different-ID pairs, which is why
-it beats the paper default 0.25 here
+different-ID near 0.4. On association-local GT crop pairs (5000 same-ID, 10000
+different-ID), θ=0.2 keeps 77% of same-ID pairs while passing 1% of different-ID
+pairs, which is why it beats the BoT-SORT default 0.25 here
 ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf)
 Table 8 uses the same threshold).
 
 ![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.png)
 
 **SoccerNet test, `osnet_x1_0_msmt17_combineall`.** Same-ID and different-ID
-distances overlap heavily (similar kits). On 1200 same-ID and 2400 different-ID
-GT crop pairs, θ=0.2 admits 97% of same-ID pairs but also 50% of different-ID
-pairs, and tracking stays flat against CMC-only. θ=0.1 holds different-ID pairs
-to 9%, yet appearance still assists a mix of correct and same-kit pairs and
-costs HOTA and IDF1 (see the SoccerNet table below).
+distances overlap heavily (similar kits). On association-local GT crop pairs
+(5000 same-ID, 10000 different-ID), θ=0.2 admits 97% of same-ID pairs but also
+52% of different-ID pairs, and tracking stays flat against CMC-only. θ=0.1 holds
+different-ID pairs to 6%, yet appearance still assists a mix of correct and
+same-kit pairs and costs HOTA and IDF1 (see the SoccerNet table below).
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
 
