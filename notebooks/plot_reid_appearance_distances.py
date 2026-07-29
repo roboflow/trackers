@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
 """Regenerate docs appearance-distance histograms (association-local sampling).
 
 Writes:
@@ -244,10 +250,7 @@ def plot_and_save(
     plt.close(fig)
     print(f"Wrote {out_path}")
     for t in (0.10, 0.20, 0.25):
-        print(
-            f"  θ={t:.2f}: same-ID<{t}={100 * np.mean(intra < t):.1f}%  "
-            f"diff-ID<{t}={100 * np.mean(inter < t):.1f}%"
-        )
+        print(f"  θ={t:.2f}: same-ID<{t}={100 * np.mean(intra < t):.1f}%  diff-ID<{t}={100 * np.mean(inter < t):.1f}%")
 
 
 def mot17_sequences(mot17_val: Path) -> list[tuple[str, Path, Path]]:
@@ -343,8 +346,7 @@ def main() -> None:
         root = args.soccernet_root
         if root is None:
             raise SystemExit(
-                "Pass --soccernet-root to the SoccerNet-tracking test directory "
-                "(contains SNMOT-*/img1 and gt/gt.txt)."
+                "Pass --soccernet-root to the SoccerNet-tracking test directory (contains SNMOT-*/img1 and gt/gt.txt)."
             )
         # Same association-local protocol as notebooks/eval_trackers_reid.ipynb §6b.
         print("=== SoccerNet test / osnet_x1_0_msmt17_combineall ===", flush=True)
