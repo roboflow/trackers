@@ -201,7 +201,9 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
     Parameters were tuned on the train set. Results are reported on the test
     set. SoccerNet-tracking has no validation split. This dataset provides
-    oracle (ground-truth) detections.
+    oracle (ground-truth) detections. The BoT-SORT row is CMC without
+    appearance; for OSNet MSMT17 appearance on this split see
+    [BoT-SORT with and without ReID](../learn/reid.md#bot-sort-with-and-without-reid).
 
 === "Default"
 

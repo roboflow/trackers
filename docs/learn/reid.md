@@ -1,4 +1,5 @@
 ---
+title: ReID Appearance — BoT-SORT Appearance Association | Trackers
 description: Use ReID appearance association with BoT-SORT in Roboflow Trackers, from model loading to appearance threshold selection, with MOT17 and SoccerNet results.
 ---
 
@@ -6,8 +7,7 @@ description: Use ReID appearance association with BoT-SORT in Roboflow Trackers,
 
 BoT-SORT can fuse appearance embeddings with IoU during association. Embeddings
 come from a model in the standalone [`reid`](https://github.com/roboflow/re-ID)
-package; the association helpers are in `trackers.core.reid` (see the
-[ReID API](../api/reid.md)).
+package. See the [ReID API](../api/reid.md) for the association helpers.
 
 **What you'll learn:**
 
@@ -20,18 +20,11 @@ package; the association helpers are in `trackers.core.reid` (see the
 
 ## Install
 
-The `reid` extra installs PyTorch, timm, Hugging Face Hub, safetensors, Pillow,
-and gdown for ReID model loading.
+```bash
+pip install "trackers[reid]"
+```
 
-=== "pip"
-    ```bash
-    pip install "trackers[reid]"
-    ```
-
-=== "uv"
-    ```bash
-    uv pip install "trackers[reid]"
-    ```
+For extra contents and other options, see the [install guide](install.md).
 
 ---
 
@@ -51,13 +44,14 @@ For the model catalog and fine-tuning, see the
 
 ---
 
-## Parameters
+## Key Parameters
 
-| Parameter              | Default | Purpose                                                                                              |
-| ---------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
-| `reid_ema_alpha`       | 0.9     | EMA momentum for a track's appearance feature.                                                       |
-| `appearance_threshold` | 0.25    | Max `d_app` for an appearance match (BoT-SORT paper default; the MOT17 setup below uses 0.2).         |
-| `proximity_threshold`  | 0.5     | IoU gate before appearance (`IoU ≥ 1 - proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU. |
+| Parameter              | Purpose                                                                                                          | Tuning guidance                                                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `reid_model`           | Appearance encoder queried during association.                                                                   | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                      |
+| `reid_ema_alpha`       | EMA momentum for a track's appearance feature.                                                                    | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more.       |
+| `appearance_threshold` | Maximum appearance distance `d_app` accepted for a match.                                                        | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                               |
+| `proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.      | Default 0.5. Lower restricts how far an appearance match may travel between frames.                                    |
 
 ---
 
@@ -72,16 +66,20 @@ encoder you will track with:
 3. Choose θ so most same-ID pairs fall below it and most different-ID pairs fall
    above it.
 
-**MOT17 val, `fastreid_mot17_sbs50`.** Same-ID peaks near 0, different-ID near
-0.4. θ=0.2 keeps ~88% of same-ID pairs and ~1% of different-ID pairs
+**MOT17 val, `fastreid_mot17_sbs50`.** Same-ID distances peak near 0 and
+different-ID near 0.4. On 1360 same-ID and 2800 different-ID GT crop pairs, θ=0.2
+keeps 88% of same-ID pairs while passing 1% of different-ID pairs, which is why
+it beats the paper default 0.25 here
 ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf)
-Table 8; stricter than the paper default 0.25).
+Table 8 uses the same threshold).
 
 ![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.png)
 
 **SoccerNet test, `osnet_x1_0_msmt17_combineall`.** Same-ID and different-ID
-overlap heavily (similar kits). θ=0.2 passes ~50% of different-ID pairs and
-stays flat vs CMC-only; θ=0.1 rejects too many same-ID pairs and costs HOTA and
+distances overlap heavily (similar kits). On 1200 same-ID and 2400 different-ID
+GT crop pairs, θ=0.2 keeps 97% of same-ID pairs but also passes 50% of
+different-ID pairs, and tracking stays flat against CMC-only. θ=0.1 cuts
+different-ID pairs to 9% but rejects 24% of same-ID pairs, which costs HOTA and
 IDF1 (see the SoccerNet table below).
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
@@ -105,18 +103,24 @@ Table 8).
 
 ### MOT17 val-half
 
-YOLOX detections, CMC on, MOT17 val-half split, same encoder and threshold.
+YOLOX detections, CMC on, MOT17 val-half split, same encoder and threshold,
+scored with `trackers eval`.
 
-| Config          |  HOTA  |  MOTA  |  IDF1  |
+| Config          |  HOTA  |  IDF1  |  MOTA  |
 | :-------------- | :----: | :----: | :----: |
-| BoT-SORT        |  68.9  |  78.3  |  81.2  |
-| BoT-SORT + ReID | **69.1** | **78.4** | **81.9** |
+| BoT-SORT        |  68.9  |  81.2  |  78.3  |
+| BoT-SORT + ReID | **69.1** | **81.9** | **78.4** |
+
+The MOT17 re-ID study reports 68.43 HOTA / 80.92 IDF1 without ReID and
+68.95 / 81.98 with, on the same split at `appearance_threshold=0.2`
+(Table 8 and Table 13; MOTA is not reported for that YOLOX setup).
 
 ### SoccerNet test (OSNet MSMT17)
 
 Oracle detections, CMC on, SoccerNet-tracking test (same protocol as the
 [tracker comparison](../trackers/comparison.md) default table). ReID:
-`osnet_x1_0_msmt17_combineall` (MSMT17 pretrained).
+`osnet_x1_0_msmt17_combineall` (MSMT17 pretrained), so this is a cross-domain
+encoder on soccer footage.
 
 | Config                              |  HOTA  |  IDF1  |  MOTA  |
 | :---------------------------------- | :----: | :----: | :----: |

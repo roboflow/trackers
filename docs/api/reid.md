@@ -4,11 +4,8 @@ description: Python API reference for the ReID encoder protocol, feature bank, a
 
 # ReID API
 
-Requires the optional extra:
-
-```bash
-pip install 'trackers[reid]'
-```
+Requires the `reid` extra (`pip install "trackers[reid]"`, see the
+[install guide](../learn/install.md)).
 
 This page covers the `ReIDEncoder` protocol, `FeatureBank`, and appearance
 association helpers in `trackers.core.reid`. For enabling appearance on
