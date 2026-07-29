@@ -48,6 +48,12 @@ dependencies = [
 detection = ["inference-models>=0.19.0"]
 tune = ["optuna>=3.0.0"]
 reid = ["reid>=0.1.0.dev0,<0.2"]
+mask = [
+    "torch",
+    "torchvision",
+    "rf-segment-anything==1.0",
+    "rf-cutie==1.0.0rc2",
+]
 
 [project.scripts]
 trackers = "trackers.scripts.__main__:main"
@@ -196,7 +202,7 @@ markers = [
 ]
 
 [tool.codespell]
-skip = "*.pth"
+skip = "*.pth,*.svg"
 ignore-words-list = "mot,STrack"
 
 [tool.mypy]
@@ -215,6 +221,8 @@ module = [
     "firerequests",
     "scipy",
     "scipy.*",
+    "cutie",
+    "cutie.*",
     "cv2",
     "rfdetr",
     "rfdetr.*",

@@ -99,6 +99,8 @@ Each tracker below is a faithful implementation of its original paper. Pick the 
 
 All scores use default parameters on the standard split. See the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) for tuned numbers and methodology.
 
+`trackers` also ships [McByte](https://trackers.roboflow.com/develop/trackers/mcbyte/), a mask-conditioned tracker that extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an extra matching cue. It requires optional heavyweight dependencies (`torch`, SAM, Cutie) not installed by default — see the [McByte docs](https://trackers.roboflow.com/develop/trackers/mcbyte/) for setup and benchmark numbers.
+
 ## Evaluate
 
 Once you have tracking results, you want to know how good they are. `trackers eval` computes CLEAR, HOTA, and Identity metrics against ground-truth annotations and prints a per-sequence breakdown alongside the combined score.
