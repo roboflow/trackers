@@ -23,6 +23,22 @@ def _full_mask(
     return np.ones((height, width), dtype=bool)
 
 
+def test_condition_similarity_rejects_integer_similarity_dtype() -> None:
+    """An integer similarity matrix is rejected, since in-place mask boosts would truncate to zero."""
+    similarity = np.array([[1, 0], [0, 1]], dtype=np.int32)
+    detection_boxes = np.array([[0, 0, 5, 5], [5, 5, 10, 10]], dtype=np.float32)
+
+    with pytest.raises(ValueError, match="floating-point dtype"):
+        condition_similarity_with_masks(
+            similarity=similarity,
+            raw_iou_similarity=similarity,
+            tracklet_ids=[10, 20],
+            detection_boxes=detection_boxes,
+            mask_output=None,
+            minimum_similarity=0.5,
+        )
+
+
 def test_mask_metrics_compute_coverage_and_fill_ratio() -> None:
     mask = np.zeros((10, 10), dtype=bool)
     mask[2:6, 2:6] = True

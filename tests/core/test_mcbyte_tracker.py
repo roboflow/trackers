@@ -101,6 +101,96 @@ def test_mcbyte_instantiates_and_updates_with_frame_and_sparse_opt_flow_cmc_retu
     assert len(tracker.tracks) == 1
 
 
+def test_mcbyte_emits_unmatched_high_conf_detection_with_placeholder_id() -> None:
+    """A high-conf detection that neither matches nor spawns is still returned with tracker_id -1."""
+    # conf 0.65 is high (>= high_conf_det_threshold 0.6) but below the
+    # activation threshold 0.7, so on an empty tracker it matches nothing and
+    # spawns nothing. It must still be returned with tracker_id -1, matching the
+    # documented contract and the handling of unmatched low-confidence dets.
+    tracker = McByteTracker(
+        enable_cmc=False,
+        enable_mask_manager=False,
+        high_conf_det_threshold=0.6,
+        track_activation_threshold=0.7,
+    )
+
+    result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0), conf=0.65))
+
+    assert len(result) == 1
+    assert result.tracker_id is not None
+    assert result.tracker_id[0] == -1
+    assert len(tracker.tracks) == 0
+
+
+def test_mcbyte_reset_restores_mask_manager_disabled_by_cuda_oom() -> None:
+    """After repeated CUDA-OOM auto-disables the mask manager, reset() re-attaches the original manager."""
+
+    class OOMMaskManager:
+        def __init__(self) -> None:
+            self.reset_calls = 0
+
+        def get_updated_masks(
+            self,
+            frame: np.ndarray,
+            previous_frame: np.ndarray | None,
+            previous_tracklets: list[TrackletSnapshot],
+            new_tracklets: list[TrackletSnapshot] | None = None,
+            removed_tracklet_ids: list[int] | None = None,
+        ) -> MaskOutput | None:
+            raise RuntimeError("CUDA out of memory")
+
+        def reset(self) -> None:
+            self.reset_calls += 1
+
+    manager = OOMMaskManager()
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=manager,  # type: ignore[arg-type]
+        minimum_consecutive_frames=1,
+    )
+
+    frame = _make_frame()
+    for _ in range(3):
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
+
+    # Three consecutive OOM failures disable the pipeline for the run.
+    assert tracker.mask_manager is None
+
+    tracker.reset()
+
+    # reset() (documented new-video boundary) restores and clears the manager.
+    assert tracker.mask_manager is manager
+    assert manager.reset_calls == 1
+    assert tracker._consecutive_mask_failures == 0
+
+
+def test_mcbyte_does_not_advance_masks_on_duplicate_timestamp() -> None:
+    """A duplicate timestamp skips Kalman predict and must not step the mask backend (masks stay in sync)."""
+    mask_manager = SpyMaskManager()
+    tracker = McByteTracker(
+        enable_cmc=False,
+        enable_mask_manager=False,
+        mask_manager=mask_manager,  # type: ignore[arg-type]
+        minimum_consecutive_frames=1,
+    )
+    frame = _make_frame()
+
+    tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=1.0)
+    assert len(mask_manager.calls) == 1
+
+    with pytest.warns(UserWarning, match="duplicate timestamp"):
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=1.0)
+
+    # No extra mask-backend step on the duplicate frame.
+    assert len(mask_manager.calls) == 1
+
+
+def test_mcbyte_rejects_high_conf_threshold_at_or_below_discard_floor() -> None:
+    """high_conf_det_threshold at or below the 0.1 discard floor is rejected to keep the confidence split coherent."""
+    with pytest.raises(ValueError, match="discard"):
+        McByteTracker(enable_cmc=False, enable_mask_manager=False, high_conf_det_threshold=0.05)
+
+
 def test_mcbyte_reset_clears_mask_state() -> None:
     tracker = McByteTracker(
         enable_cmc=False,
