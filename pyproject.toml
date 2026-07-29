@@ -51,7 +51,7 @@ mask = [
     "torch",
     "torchvision",
     "rf-segment-anything==1.0",
-    "cutie @ git+https://github.com/hkchengrex/Cutie.git@v1.0",
+    "rf-cutie==1.0.0rc2",
 ]
 
 [project.scripts]
