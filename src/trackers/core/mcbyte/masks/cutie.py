@@ -113,10 +113,17 @@ def _image_to_torch(
     """
     # Normalize by dtype, not by pixel magnitude. A ``max() > 1`` heuristic
     # mis-scales a near-black uint8 frame whose brightest pixel is 0 or 1
-    # (treated as already-normalized and left un-divided). An integer frame is
-    # always 0-255 and divided by 255; a floating frame is assumed to be
-    # already in [0, 1] per the RGB contract.
-    is_integer_frame = np.issubdtype(frame.dtype, np.integer)
+    # (treated as already-normalized and left un-divided). An unsigned-integer
+    # frame is divided by its dtype maximum (uint8 -> 255, uint16 -> 65535) so
+    # wider integer types are not silently scaled as if they were 0-255. A
+    # floating frame is assumed to be already in [0, 1] per the RGB contract.
+    # Signed-integer frames have an ambiguous value range and are rejected.
+    if np.issubdtype(frame.dtype, np.signedinteger):
+        raise ValueError(
+            "Signed-integer frames are not supported: dtype "
+            f"{frame.dtype} has an ambiguous value range. Provide a uint8 or "
+            "uint16 frame, or a float frame already normalized to [0, 1]."
+        )
 
     frame_torch = (
         torch.from_numpy(frame.transpose(2, 0, 1))
@@ -127,8 +134,8 @@ def _image_to_torch(
         )
     )
 
-    if is_integer_frame:
-        frame_torch /= 255.0
+    if np.issubdtype(frame.dtype, np.unsignedinteger):
+        frame_torch /= float(np.iinfo(frame.dtype).max)
 
     return frame_torch
 

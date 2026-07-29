@@ -75,6 +75,23 @@ def test_image_to_torch_leaves_normalized_float_frame_unscaled() -> None:
     assert torch.allclose(frame_torch, torch.full((3, 2, 2), 0.5))
 
 
+def test_image_to_torch_normalizes_uint16_frame_by_dtype_max() -> None:
+    """A uint16 frame is divided by 65535, not 255, so wide integer types are not mis-scaled."""
+    frame = np.full((2, 2, 3), 65535, dtype=np.uint16)
+
+    frame_torch = _image_to_torch(frame, device=torch.device("cpu"))
+
+    assert torch.allclose(frame_torch, torch.ones((3, 2, 2)))
+
+
+def test_image_to_torch_rejects_signed_integer_frame() -> None:
+    """A signed-integer frame has an ambiguous range and is rejected rather than mis-scaled."""
+    frame = np.zeros((2, 2, 3), dtype=np.int16)
+
+    with pytest.raises(ValueError, match="Signed-integer frames are not supported"):
+        _image_to_torch(frame, device=torch.device("cpu"))
+
+
 def test_binary_masks_to_indexed_mask_accepts_non_bool_masks() -> None:
     """Float masks are coerced to bool so the bitwise overlap resolution stays correct."""
     masks = np.zeros((2, 4, 4), dtype=np.float32)
