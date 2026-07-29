@@ -963,9 +963,9 @@ class McByteTracker(BaseTracker):
         self._last_mask_output = None
         # Re-attach a mask manager that was auto-disabled after repeated CUDA
         # out-of-memory failures. reset() marks the documented new-video
-        # boundary where GPU memory has typically been freed, so the original
-        # manager (default or user-supplied) is restored and cleared.
-        self.mask_manager = self._mask_manager_original
+        # boundary where GPU memory has typically been freed.
+        if self.mask_manager is None and self._consecutive_mask_failures >= _MAX_CONSECUTIVE_MASK_FAILURES:
+            self.mask_manager = self._mask_manager_original
         if self.mask_manager is not None:
             self.mask_manager.reset()
         if self.cmc is not None:
