@@ -111,6 +111,20 @@ def _image_to_torch(
     """Convert an RGB frame from ``(H, W, 3)`` NumPy format to ``(3, H, W)`` Cutie
     tensor format.
     """
+    # Normalize by dtype, not by pixel magnitude. A ``max() > 1`` heuristic
+    # mis-scales a near-black uint8 frame whose brightest pixel is 0 or 1
+    # (treated as already-normalized and left un-divided). An unsigned-integer
+    # frame is divided by its dtype maximum (uint8 -> 255, uint16 -> 65535) so
+    # wider integer types are not silently scaled as if they were 0-255. A
+    # floating frame is assumed to be already in [0, 1] per the RGB contract.
+    # Signed-integer frames have an ambiguous value range and are rejected.
+    if np.issubdtype(frame.dtype, np.signedinteger):
+        raise ValueError(
+            "Signed-integer frames are not supported: dtype "
+            f"{frame.dtype} has an ambiguous value range. Provide a uint8 or "
+            "uint16 frame, or a float frame already normalized to [0, 1]."
+        )
+
     frame_torch = (
         torch.from_numpy(frame.transpose(2, 0, 1))
         .float()
@@ -120,8 +134,8 @@ def _image_to_torch(
         )
     )
 
-    if frame_torch.max() > 1:
-        frame_torch /= 255.0
+    if np.issubdtype(frame.dtype, np.unsignedinteger):
+        frame_torch /= float(np.iinfo(frame.dtype).max)
 
     return frame_torch
 
@@ -152,6 +166,12 @@ def _binary_masks_to_indexed_mask(
             "Number of masks must match number of object IDs. "
             f"Got {masks.shape[0]} masks and {len(object_ids)} object IDs."
         )
+
+    # Coerce to bool: the ``mask & ~occupied`` combination below is a bitwise
+    # op that only behaves as set difference on boolean arrays. MaskOutput.masks
+    # is typed as a bare ndarray, so a float/int custom generator would
+    # otherwise crash or produce wrong regions.
+    masks = masks.astype(bool, copy=False)
 
     indexed_mask = np.zeros(masks.shape[1:], dtype=np.int32)
     occupied = np.zeros(masks.shape[1:], dtype=bool)
@@ -225,6 +245,10 @@ def _binary_masks_to_non_overlapping_torch(
     priority, matching the original McByte initialization behavior. The returned
     tensor has shape ``(N, H, W)``, dtype ``float32``, and values ``0.0`` or ``1.0``.
     """
+    # Coerce to bool for the same reason as _binary_masks_to_indexed_mask:
+    # ``mask & ~occupied`` requires boolean arrays to act as set difference.
+    masks = masks.astype(bool, copy=False)
+
     occupied = np.zeros(masks.shape[1:], dtype=bool)
     non_overlapping_masks = np.zeros_like(masks, dtype=np.float32)
 
@@ -456,6 +480,17 @@ class CutieMaskPropagator(MaskPropagator):
                 "MaskOutput tracklet_mask_dict must map tracklet IDs to local mask "
                 f"indices {expected_indices}. Got {actual_indices}."
             )
+
+        # Start from a clean slate. Cutie's InferenceCore retains temporal and
+        # sensory memory across step() calls, and only reset() clears it. A
+        # mid-sequence re-initialization — MaskManager flips ``_initialized``
+        # back to False after a failed propagate(), or every tracked object is
+        # removed and new ones later enter — would otherwise step Cutie with a
+        # fresh set of object IDs against the previous segment's residual
+        # memory, silently contaminating the new masks and colliding on reused
+        # low object IDs. Clearing here makes initialize() correct regardless of
+        # caller ordering.
+        self.processor.clear_memory()
 
         self._tracklet_object_dict = _build_tracklet_object_dict(mask_output.tracklet_mask_dict)
 
@@ -724,6 +759,10 @@ class CutieMaskPropagator(MaskPropagator):
             self._last_indexed_mask[np.isin(self._last_indexed_mask, object_ids_to_remove)] = 0
 
         # No active objects remain, so propagation has nothing valid to propagate.
+        # Clear Cutie's temporal memory now (not only object mappings) so no
+        # residual state survives into a later re-initialization; this mirrors
+        # reset() and complements the self-cleaning initialize().
         if len(self._object_ids) == 0:
+            self.processor.clear_memory()
             self._last_indexed_mask = None
             self._initialized = False

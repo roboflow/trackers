@@ -32,6 +32,40 @@ def _intersection_area(box_a: np.ndarray, box_b: np.ndarray) -> float:
     return max(x2 - x1, 0.0) * max(y2 - y1, 0.0)
 
 
+def _validate_mask_resolution(
+    mask_output: MaskOutput,
+    frame: np.ndarray,
+) -> None:
+    """Ensure propagated masks share the frame's pixel grid.
+
+    McByte mask-conditioning (:func:`condition_similarity_with_masks`) measures
+    mask coverage and fill ratio in ``mask.shape`` pixel space while detection
+    boxes are expressed in original-frame pixels. The two only agree when the
+    propagated masks have the same height and width as ``frame``. A propagator
+    that internally resizes or pads without upsampling back would silently gate
+    associations in the wrong coordinate space, so the invariant is enforced
+    explicitly.
+
+    Args:
+        mask_output: Propagated mask output returned by the mask propagator.
+        frame: Current frame whose ``(H, W)`` the masks must match.
+
+    Raises:
+        ValueError: If the masks' trailing two dimensions differ from the
+            frame's height and width.
+    """
+    if mask_output.masks is None:
+        return
+
+    frame_hw = frame.shape[:2]
+    mask_hw = mask_output.masks.shape[-2:]
+    if mask_hw != frame_hw:
+        raise ValueError(
+            "Propagated masks must match the frame resolution. "
+            f"Got mask (H, W)={tuple(mask_hw)} for frame (H, W)={tuple(frame_hw)}."
+        )
+
+
 def _get_tracklets_with_lower_bottom(
     tracklet: TrackletSnapshot,
     tracklets: list[TrackletSnapshot],
@@ -211,6 +245,7 @@ class MaskManager:
 
         propagated_output = self.mask_propagator.propagate(frame)
         if propagated_output is not None:
+            _validate_mask_resolution(propagated_output, frame)
             return propagated_output
 
         self._initialized = False

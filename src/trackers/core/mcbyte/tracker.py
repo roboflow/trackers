@@ -275,6 +275,13 @@ class McByteTracker(BaseTracker):
         self.minimum_mask_coverage = minimum_mask_coverage
         self.minimum_mask_fill_ratio = minimum_mask_fill_ratio
         self.enable_isolated_mask_matching = enable_isolated_mask_matching
+        if high_conf_det_threshold <= _MINIMUM_DETECTION_CONFIDENCE:
+            raise ValueError(
+                "high_conf_det_threshold must be greater than the detection discard "
+                f"floor ({_MINIMUM_DETECTION_CONFIDENCE}); otherwise detections at or "
+                f"below the floor would be treated as high-confidence. "
+                f"Got {high_conf_det_threshold}."
+            )
         self.tracks: list[McByteTracklet] = []
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
@@ -300,6 +307,14 @@ class McByteTracker(BaseTracker):
             )
         else:
             self.mask_manager = None
+
+        # Retain the original manager so reset() can re-attach it. The active
+        # ``mask_manager`` is nulled after repeated CUDA out-of-memory failures
+        # (see ``_run_mask_manager``); without this reference a subsequent
+        # reset() — the documented new-video boundary where GPU memory is
+        # typically freed — could never restore mask-conditioned association,
+        # and a user-supplied custom manager would be lost permanently.
+        self._mask_manager_original = self.mask_manager
 
         self._previous_frame: np.ndarray | None = None
         self._previous_tracklets: list[TrackletSnapshot] = []
@@ -328,7 +343,12 @@ class McByteTracker(BaseTracker):
                 ``.xyxy``. Confidence (`detections.confidence`) is optional but
                 recommended. This method does not mutate the input detections; it
                 returns a new ``sv.Detections`` with ``tracker_id`` assigned.
-            frame: Current RGB frame. Required for camera motion compensation and for
+            frame: Current frame in **RGB** channel order, shape ``(H, W, 3)``.
+                Note this deviates from the ``BaseTracker.update`` default of BGR:
+                McByte's SAM and Cutie mask backends consume the frame as RGB
+                without any internal channel conversion, so a BGR frame silently
+                degrades mask quality (and therefore mask-conditioned
+                association). Required for camera motion compensation and for
                 mask-manager propagation.
             timestamp: Absolute time of the current frame in seconds, or ``None``
                 for fixed-rate mode (``frame_step = 1.0`` per call). When provided,
@@ -361,7 +381,15 @@ class McByteTracker(BaseTracker):
         current_frame = frame
         terminated_tracklet_ids: list[int] = []
 
-        if self.mask_manager is not None and current_frame is not None:
+        if timing.skip_predict:
+            # Duplicate timestamp: the Kalman predict step is skipped and
+            # association runs on the last state (see update() "Warns"). Masks
+            # must not advance either — stepping the backend one phantom frame
+            # would match freshly propagated masks against un-advanced track
+            # state (a one-frame mask/state desync). Retain the previous mask
+            # output so masks stay in lockstep with the state used here.
+            pass
+        elif self.mask_manager is not None and current_frame is not None:
             self._last_mask_output = self._run_mask_manager(self.mask_manager, current_frame)
         else:
             self._last_mask_output = None
@@ -683,7 +711,14 @@ class McByteTracker(BaseTracker):
             self._previous_tracklets = []
             self._previous_new_tracklets = []
             self._previous_removed_tracklet_ids = []
-            self._mask_tracklet_ids = set()
+            # Preserve the already-masked tracklet-ID set across an occasional
+            # frame=None call (e.g. a dropped/corrupt frame while the manager is
+            # still active). Clearing it would make the next real frame treat
+            # every visible tracklet as new: SAM would re-prompt all masks and
+            # Cutie's add_masks would raise on tracklets that already own an
+            # object. Only a fully absent mask manager warrants a full clear.
+            if self.mask_manager is None:
+                self._mask_tracklet_ids = set()
             return
 
         # Convert current output detections into TrackletSnapshots.
@@ -890,6 +925,15 @@ class McByteTracker(BaseTracker):
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
             conf = float(confidences[global_idx])
+
+            # Every unmatched high-confidence detection is returned, with
+            # tracker_id -1 when it does not spawn a track. This matches the
+            # documented update() contract ("unmatched/unconfirmed detections
+            # have tracker_id of -1"), the symmetric handling of unmatched
+            # low-confidence detections, and sibling ByteTrack. Only detections
+            # clearing the activation threshold spawn a new tracklet; a
+            # first-frame instant-activated spawn is emitted with its real ID.
+            tracker_id_out = -1
             if conf >= self.track_activation_threshold:
                 tracklet = McByteTracklet(
                     initial_bbox=detection_boxes[global_idx],
@@ -898,8 +942,10 @@ class McByteTracker(BaseTracker):
                 if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = self._allocate_tracker_id()
                 self.tracks.append(tracklet)
-                out_det_indices.append(global_idx)
-                out_tracker_ids.append(tracklet.tracker_id)
+                tracker_id_out = tracklet.tracker_id
+
+            out_det_indices.append(global_idx)
+            out_tracker_ids.append(tracker_id_out)
 
     def reset(self) -> None:
         """Reset tracker, camera-motion, and mask-manager state.
@@ -915,6 +961,11 @@ class McByteTracker(BaseTracker):
         self._previous_frame = None
         self._previous_tracklets = []
         self._last_mask_output = None
+        # Re-attach a mask manager that was auto-disabled after repeated CUDA
+        # out-of-memory failures. reset() marks the documented new-video
+        # boundary where GPU memory has typically been freed.
+        if self.mask_manager is None and self._consecutive_mask_failures >= _MAX_CONSECUTIVE_MASK_FAILURES:
+            self.mask_manager = self._mask_manager_original
         if self.mask_manager is not None:
             self.mask_manager.reset()
         if self.cmc is not None:

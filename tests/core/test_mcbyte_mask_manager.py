@@ -36,6 +36,27 @@ class _FlakyMaskPropagator(DummyIdentityMaskPropagator):
         return super().propagate(frame)
 
 
+class _WrongResolutionMaskPropagator(DummyIdentityMaskPropagator):
+    """Propagator that returns masks at a resolution different from the frame.
+
+    Reproduces a backend that internally resizes or pads without upsampling
+    back to the input frame grid, which would make mask-conditioning gate
+    associations in the wrong coordinate space.
+    """
+
+    def propagate(self, frame: np.ndarray) -> MaskOutput | None:
+        output = super().propagate(frame)
+        if output is None or output.masks is None:
+            return output
+        num_masks = output.masks.shape[0]
+        resized = np.zeros((num_masks, frame.shape[0] + 5, frame.shape[1]), dtype=output.masks.dtype)
+        return MaskOutput(
+            masks=resized,
+            tracklet_mask_dict=output.tracklet_mask_dict,
+            mask_avg_prob_dict=output.mask_avg_prob_dict,
+        )
+
+
 def _make_frame(h: int = 100, w: int = 120) -> np.ndarray:
     return np.zeros((h, w, 3), dtype=np.uint8)
 
@@ -182,6 +203,23 @@ def test_mask_manager_propagates_after_initialization_without_visible_tracklets(
     assert first_output is not None
     assert second_output is not None
     assert second_output.tracklet_mask_dict == {3: 0}
+
+
+def test_mask_manager_rejects_propagated_masks_at_wrong_resolution() -> None:
+    """A propagator returning masks whose (H, W) differ from the frame raises ValueError at the propagate boundary."""
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=_WrongResolutionMaskPropagator(),
+    )
+
+    with pytest.raises(ValueError, match="match the frame resolution"):
+        manager.get_updated_masks(
+            frame=_make_frame(),
+            previous_frame=_make_frame(),
+            previous_tracklets=[
+                TrackletSnapshot(3, np.array([5, 6, 25, 30], dtype=np.float32)),
+            ],
+        )
 
 
 def test_mask_manager_reset_clears_state() -> None:

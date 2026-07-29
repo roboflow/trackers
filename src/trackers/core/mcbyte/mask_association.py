@@ -55,6 +55,15 @@ def _validate_inputs(
     if similarity.ndim != 2:
         raise ValueError(f"similarity must be a two-dimensional matrix. Got shape {similarity.shape}.")
 
+    # Mask evidence is accumulated in place with ``+= mask_fill_ratio``. On an
+    # integer matrix numpy truncates the float right-hand side to 0, silently
+    # discarding the boost, so a floating-point dtype is required.
+    if not np.issubdtype(similarity.dtype, np.floating):
+        raise ValueError(
+            "similarity must have a floating-point dtype so mask evidence can be "
+            f"accumulated without truncation. Got dtype {similarity.dtype}."
+        )
+
     if raw_iou_similarity.shape != similarity.shape:
         raise ValueError(
             "raw_iou_similarity must have the same shape as similarity. "

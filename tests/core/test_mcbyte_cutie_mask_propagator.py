@@ -57,6 +57,55 @@ def test_image_to_torch_converts_rgb_numpy_frame() -> None:
     assert torch.isclose(frame_torch[2, 0, 0], torch.tensor(1.0))
 
 
+def test_image_to_torch_normalizes_near_black_uint8_frame_by_dtype() -> None:
+    """A near-black uint8 frame is divided by 255 based on dtype, not skipped by a max>1 heuristic."""
+    frame = np.ones((2, 2, 3), dtype=np.uint8)
+
+    frame_torch = _image_to_torch(frame, device=torch.device("cpu"))
+
+    assert torch.allclose(frame_torch, torch.full((3, 2, 2), 1 / 255))
+
+
+def test_image_to_torch_leaves_normalized_float_frame_unscaled() -> None:
+    """A float frame already in [0, 1] is passed through without a second division."""
+    frame = np.full((2, 2, 3), 0.5, dtype=np.float32)
+
+    frame_torch = _image_to_torch(frame, device=torch.device("cpu"))
+
+    assert torch.allclose(frame_torch, torch.full((3, 2, 2), 0.5))
+
+
+def test_image_to_torch_normalizes_uint16_frame_by_dtype_max() -> None:
+    """A uint16 frame is divided by 65535, not 255, so wide integer types are not mis-scaled."""
+    frame = np.full((2, 2, 3), 65535, dtype=np.uint16)
+
+    frame_torch = _image_to_torch(frame, device=torch.device("cpu"))
+
+    assert torch.allclose(frame_torch, torch.ones((3, 2, 2)))
+
+
+def test_image_to_torch_rejects_signed_integer_frame() -> None:
+    """A signed-integer frame has an ambiguous range and is rejected rather than mis-scaled."""
+    frame = np.zeros((2, 2, 3), dtype=np.int16)
+
+    with pytest.raises(ValueError, match="Signed-integer frames are not supported"):
+        _image_to_torch(frame, device=torch.device("cpu"))
+
+
+def test_binary_masks_to_indexed_mask_accepts_non_bool_masks() -> None:
+    """Float masks are coerced to bool so the bitwise overlap resolution stays correct."""
+    masks = np.zeros((2, 4, 4), dtype=np.float32)
+    masks[0, 1:3, 1:3] = 1.0
+    masks[1, 2:4, 2:4] = 1.0
+
+    indexed_mask = _binary_masks_to_indexed_mask(masks=masks, object_ids=[1, 2])
+
+    # First mask keeps the shared pixel (2, 2); second mask yields to it.
+    assert indexed_mask[2, 2] == 1
+    assert indexed_mask[3, 3] == 2
+    assert indexed_mask.dtype == np.int32
+
+
 def test_binary_masks_to_non_overlapping_torch_resolves_overlaps_with_first_mask_priority() -> None:
     masks = np.zeros((2, 4, 4), dtype=bool)
     masks[0, 1:3, 1:3] = True
@@ -242,6 +291,10 @@ def test_initialize_success_path_builds_state_and_calls_processor_step() -> None
     class DummyProcessor:
         def __init__(self) -> None:
             self.step_calls: list[dict[str, Any]] = []
+            self.clear_memory_called = False
+
+        def clear_memory(self) -> None:
+            self.clear_memory_called = True
 
         def step(
             self,
@@ -292,6 +345,9 @@ def test_initialize_success_path_builds_state_and_calls_processor_step() -> None
     assert propagator._object_ids == [1, 2]
     assert propagator._last_object_id == 2
     assert propagator._initialized is True
+    # Cutie temporal memory is cleared before the masks-present step so a
+    # mid-sequence re-init never reuses stale memory.
+    assert processor.clear_memory_called is True
 
     expected_indexed_mask = np.zeros((4, 4), dtype=np.int32)
     expected_indexed_mask[0:2, 0:2] = 1
@@ -307,6 +363,66 @@ def test_initialize_success_path_builds_state_and_calls_processor_step() -> None
         step_call["mask"].cpu().numpy(),
         masks.astype(np.float32),
     )
+
+
+def test_initialize_clears_stale_memory_on_mid_sequence_reinitialization() -> None:
+    """Scenario: a second initialize() clears Cutie memory and rebuilds fresh object state, no prior-segment leak."""
+
+    class DummyProcessor:
+        def __init__(self) -> None:
+            self.clear_memory_calls = 0
+            self.step_calls = 0
+
+        def clear_memory(self) -> None:
+            self.clear_memory_calls += 1
+
+        def step(
+            self,
+            frame: Any,
+            mask: Any | None = None,
+            objects: list[int] | None = None,
+            *,
+            idx_mask: bool = True,
+        ) -> Any:
+            self.step_calls += 1
+            return torch.zeros((3, 4, 4), dtype=torch.float32)
+
+    processor = DummyProcessor()
+
+    propagator = object.__new__(CutieMaskPropagator)
+    propagator.device = torch.device("cpu")
+    propagator.use_amp = False
+    propagator.processor = processor
+    propagator._tracklet_object_dict = {}
+    propagator._object_ids = []
+    propagator._initialized = False
+    propagator._last_object_id = 0
+    propagator._last_indexed_mask = None
+
+    first_masks = np.zeros((2, 4, 4), dtype=bool)
+    first_masks[0, 0:2, 0:2] = True
+    first_masks[1, 2:4, 2:4] = True
+    propagator.initialize(
+        frame=np.zeros((4, 4, 3), dtype=np.uint8),
+        mask_output=MaskOutput(masks=first_masks, tracklet_mask_dict={10: 0, 20: 1}),
+    )
+
+    # Simulate the prior segment fully terminating, then a new set of tracklets
+    # entering — MaskManager re-enters the not-initialized branch and calls
+    # initialize() again on the same propagator.
+    second_masks = np.zeros((1, 4, 4), dtype=bool)
+    second_masks[0, 0:3, 0:3] = True
+    propagator.initialize(
+        frame=np.zeros((4, 4, 3), dtype=np.uint8),
+        mask_output=MaskOutput(masks=second_masks, tracklet_mask_dict={99: 0}),
+    )
+
+    assert processor.clear_memory_calls == 2
+    assert processor.step_calls == 2
+    # State reflects only the second segment; no leakage from ids 10/20.
+    assert propagator._tracklet_object_dict == {99: 1}
+    assert propagator._object_ids == [1]
+    assert propagator._last_object_id == 1
 
 
 @pytest.mark.parametrize(
@@ -600,9 +716,13 @@ def test_remove_masks_marks_uninitialized_when_no_objects_remain(
     class DummyProcessor:
         def __init__(self) -> None:
             self.deleted_objects: list[int] | None = None
+            self.clear_memory_called = False
 
         def delete_objects(self, object_ids: list[int]) -> None:
             self.deleted_objects = object_ids
+
+        def clear_memory(self) -> None:
+            self.clear_memory_called = True
 
     processor = DummyProcessor()
 
@@ -621,6 +741,8 @@ def test_remove_masks_marks_uninitialized_when_no_objects_remain(
     assert propagator._last_object_id == 1
     assert propagator._last_indexed_mask is None
     assert not propagator._initialized
+    # Removing the last object clears Cutie temporal memory, not just mappings.
+    assert processor.clear_memory_called is True
 
 
 def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
