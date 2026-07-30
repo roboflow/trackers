@@ -361,7 +361,9 @@ class CutieMaskPropagator(MaskPropagator):
         device: Device used by Cutie, for example ``"cpu"``, ``"cuda"``, or
             ``"mps"``. The default ``"auto"`` selects the best available
             accelerator (CUDA, then Apple MPS, then CPU).
-        use_amp: Whether to use CUDA automatic mixed precision during Cutie calls.
+        use_amp: Whether to use CUDA automatic mixed precision during Cutie
+            calls. Off by default so default runs stay fp32 on every backend;
+            opt in after validating quality parity on your hardware.
         max_internal_size: Maximum shortest side of internally processed
             frames. Larger frames are downscaled before Cutie's encoder and
             the propagated masks are restored to the original resolution by
@@ -382,7 +384,7 @@ class CutieMaskPropagator(MaskPropagator):
         config_path: str | Path | None = None,
         config_name: str = "eval_config",
         device: str = "auto",
-        use_amp: bool = True,
+        use_amp: bool = False,
         max_internal_size: int = 480,
         mem_every: int | None = 10,
         use_long_term: bool | None = True,

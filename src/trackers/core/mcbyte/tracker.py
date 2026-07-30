@@ -96,7 +96,10 @@ class McByteMaskConfig:
             omitted, it is inferred from the installed Cutie package.
         cutie_config_name: Hydra configuration name loaded by Cutie.
         cutie_use_amp: Whether Cutie may use automatic mixed precision. AMP is
-            activated only when Cutie runs on a CUDA device.
+            activated only when Cutie runs on a CUDA device. Disabled by
+            default so that default runs use full fp32 precision on every
+            backend; opt in explicitly after validating tracking-quality
+            parity on your hardware.
         cutie_max_internal_size: Maximum shortest side of frames processed
             internally by Cutie. Larger frames are downscaled before the
             encoder and the propagated masks are restored to the original
@@ -122,7 +125,7 @@ class McByteMaskConfig:
     cutie_model_type: str = "base-mega"
     cutie_config_path: str | Path | None = None
     cutie_config_name: str = "eval_config"
-    cutie_use_amp: bool = True
+    cutie_use_amp: bool = False
     cutie_max_internal_size: int = 480
     cutie_mem_every: int | None = 10
     cutie_use_long_term: bool | None = True

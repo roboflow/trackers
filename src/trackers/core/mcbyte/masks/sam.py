@@ -102,7 +102,8 @@ class SAMBoxMaskGenerator(MaskGenerator):
             accelerator (CUDA, then Apple MPS, then CPU).
         use_amp: Whether to use CUDA automatic mixed precision during SAM
             inference. Only takes effect when ``device`` is a CUDA device;
-            it is ignored on CPU and MPS.
+            it is ignored on CPU and MPS. Off by default so default runs stay
+            fp32 on every backend.
     """
 
     def __init__(
@@ -110,7 +111,7 @@ class SAMBoxMaskGenerator(MaskGenerator):
         checkpoint_path: str | Path | None = None,
         model_type: str = "vit_b",
         device: str = "auto",
-        use_amp: bool = True,
+        use_amp: bool = False,
     ) -> None:
         try:
             from segment_anything import (  # type: ignore[import-untyped]

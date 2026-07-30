@@ -531,7 +531,7 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
             config_path: str | None = None,
             config_name: str = "eval_config",
             device: str = "auto",
-            use_amp: bool = True,
+            use_amp: bool = False,
             max_internal_size: int = 480,
             mem_every: int | None = 10,
             use_long_term: bool | None = True,
