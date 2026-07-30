@@ -179,7 +179,17 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Dataset to run; repeat as needed. Omit to run all datasets.",
     )
-    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        help=(
+            "Device for SAM + Cutie, e.g. 'cuda', 'cpu', or 'mps'. The default "
+            "'auto' resolves to CUDA when available, otherwise CPU; MPS is "
+            "never auto-selected (measured ~an order of magnitude slower than "
+            "CPU for this pipeline) and must be requested explicitly."
+        ),
+    )
     parser.add_argument(
         "--enable-isolated-mask-matching",
         action="store_true",
@@ -209,6 +219,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("cmc-downscale must be positive.")
     if args.device.startswith("cuda") and not torch.cuda.is_available():
         raise RuntimeError("CUDA was requested, but CUDA PyTorch is unavailable.")
+    if args.device.startswith("mps") and not torch.backends.mps.is_available():
+        raise RuntimeError("MPS was requested, but MPS PyTorch is unavailable.")
 
 
 def configure_logging(run_root: Path) -> logging.Logger:
@@ -374,7 +386,7 @@ def cleanup_tracker(
     logger: logging.Logger,
     sequence: str,
 ) -> None:
-    """Reset state, collect Python objects, and release cached CUDA memory."""
+    """Reset state, collect Python objects, and release cached accelerator memory."""
     if tracker is not None:
         try:
             tracker.reset()
@@ -384,6 +396,8 @@ def cleanup_tracker(
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+    elif torch.backends.mps.is_available():
+        torch.mps.empty_cache()
 
 
 def run_sequence(

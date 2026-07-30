@@ -16,8 +16,12 @@ from urllib.parse import urlparse
 import numpy as np
 import torch
 
-from trackers.core.mcbyte.masks.base import MaskGenerator, MaskOutput, TrackletSnapshot
-from trackers.utils.device import _best_device
+from trackers.core.mcbyte.masks.base import (
+    MaskGenerator,
+    MaskOutput,
+    TrackletSnapshot,
+    _resolve_auto_device,
+)
 from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)
@@ -98,8 +102,10 @@ class SAMBoxMaskGenerator(MaskGenerator):
         model_type: SAM model type. Currently only ``"vit_b"`` has a default
             checkpoint URL/path.
         device: Device used by SAM, for example ``"cpu"``, ``"cuda"``, or
-            ``"mps"``. The default ``"auto"`` selects the best available
-            accelerator (CUDA, then Apple MPS, then CPU).
+            ``"mps"``. The default ``"auto"`` resolves to CUDA when available,
+            otherwise CPU. MPS is never auto-selected (measured ~an order of
+            magnitude slower than CPU for this pipeline); pass ``"mps"``
+            explicitly to use it.
         use_amp: Whether to use CUDA automatic mixed precision during SAM
             inference. Only takes effect when ``device`` is a CUDA device;
             it is ignored on CPU and MPS. Off by default so default runs stay
@@ -137,7 +143,7 @@ class SAMBoxMaskGenerator(MaskGenerator):
             model_type=model_type,
         )
         if device == "auto":
-            device = str(_best_device())
+            device = _resolve_auto_device()
         self.device = torch.device(device)
         self.use_amp = use_amp and self.device.type == "cuda"
 
