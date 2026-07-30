@@ -493,7 +493,7 @@ class CMC:
             1) grayscale (+ optional downscale)
             2) detect corners using goodFeaturesToTrack
             3) compute correspondences via calcOpticalFlowPyrLK(prev, curr, prev_points)
-            4) keep only points with status == 1
+            4) keep only points with a nonzero status
             5) estimate affine transform with RANSAC
             6) scale translation back up if downscaled
 
@@ -573,7 +573,7 @@ class CMC:
 
         # Keep only good correspondences
         # status is (N,1) or (N,)
-        good = status.reshape(-1) == 1
+        good = status.reshape(-1) != 0
         prev_pts_np = self._prev_points[good]
         curr_pts_np = matched[good]
 

@@ -153,6 +153,37 @@ def test_cmc_sparse_optflow_returns_identity_on_resolution_change() -> None:
     np.testing.assert_array_equal(affine_mtx, np.eye(2, 3, dtype=np.float32))
 
 
+def test_cmc_sparse_optflow_preserves_nonzero_status_semantics(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sparse optical flow treats every nonzero status as a good match."""
+    points = np.array(
+        [[[0.0, 0.0]], [[1.0, 0.0]], [[0.0, 1.0]], [[1.0, 1.0]], [[2.0, 2.0]]],
+        dtype=np.float32,
+    )
+    matched = points + np.array([2.0, 3.0], dtype=np.float32)
+    status = np.array([[255], [2], [3], [4], [5]], dtype=np.uint8)
+    expected_affine = np.array([[1.0, 0.0, 2.0], [0.0, 1.0, 3.0]], dtype=np.float64)
+
+    monkeypatch.setattr(
+        "trackers.utils.cmc.cv2.goodFeaturesToTrack",
+        lambda frame, mask=None, **kwargs: points.copy(),
+    )
+    monkeypatch.setattr(
+        "trackers.utils.cmc.cv2.calcOpticalFlowPyrLK",
+        lambda previous, current, previous_points, next_points: (matched, status, None),
+    )
+    monkeypatch.setattr(
+        "trackers.utils.cmc.cv2.estimateAffinePartial2D",
+        lambda previous_points, current_points, method: (expected_affine, None),
+    )
+
+    cmc = CMC(CMCConfig(method="sparseOptFlow", downscale=1))
+    frame = np.zeros((32, 32, 3), dtype=np.uint8)
+    cmc.estimate(frame)
+    affine_mtx = cmc.estimate(frame)
+
+    np.testing.assert_array_equal(affine_mtx, expected_affine.astype(np.float32))
+
+
 @pytest.mark.parametrize("method", CMC_METHODS)
 def test_cmc_recovers_after_resolution_change(
     method: Literal["sparseOptFlow", "orb", "sift", "ecc"],
