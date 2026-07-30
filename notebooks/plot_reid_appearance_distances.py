@@ -348,7 +348,7 @@ def main() -> None:
             raise SystemExit(
                 "Pass --soccernet-root to the SoccerNet-tracking test directory (contains SNMOT-*/img1 and gt/gt.txt)."
             )
-        # Same association-local protocol as notebooks/eval_trackers_reid.ipynb §6b.
+        # Same association-local protocol as notebooks/how-to-add-reid-to-trackers.ipynb §6b.
         print("=== SoccerNet test / osnet_x1_0_msmt17_combineall ===", flush=True)
         model = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall")
         emb, ids, frames, seqs = collect_embeddings(
