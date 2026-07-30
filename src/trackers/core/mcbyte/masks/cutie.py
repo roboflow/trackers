@@ -154,6 +154,8 @@ def _apply_backend_perf_options(
     if channels_last:
         model = model.to(memory_format=torch.channels_last)
     if compile_model:
+        if not hasattr(torch, "compile"):
+            raise RuntimeError("compile_model=True requires torch.compile (PyTorch >= 2.0).")
         for method_name in ("encode_image", "transform_key"):
             method = getattr(model, method_name, None)
             if method is not None:
