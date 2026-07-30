@@ -214,8 +214,8 @@ def _output_prob_to_object_indexed_mask(
     # matching the zeros-initialised output of the original remap loop.
     lut = np.zeros(int(prob.shape[0]), dtype=np.int32)
     for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items():
-        lut[tmp_id] = obj.id
-
+        if 0 <= tmp_id < lut.size:
+            lut[tmp_id] = obj.id
     return lut[tmp_id_mask]
 
 
