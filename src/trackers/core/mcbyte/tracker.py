@@ -38,8 +38,9 @@ from trackers.utils.state_representations import (
 
 logger = logging.getLogger(__name__)
 
-# Number of consecutive CUDA out-of-memory failures in the mask pipeline after
-# which mask-conditioned association is disabled for the remainder of the run.
+# Number of consecutive out-of-memory failures (CUDA or MPS) in the mask
+# pipeline after which mask-conditioned association is disabled for the
+# remainder of the run.
 _MAX_CONSECUTIVE_MASK_FAILURES = 3
 
 # Detections with confidence at or below this floor are discarded entirely.
@@ -48,20 +49,22 @@ _MAX_CONSECUTIVE_MASK_FAILURES = 3
 _MINIMUM_DETECTION_CONFIDENCE = 0.1
 
 
-def _is_cuda_out_of_memory(exc: BaseException) -> bool:
-    """Return whether an exception represents a CUDA/torch out-of-memory error.
+def _is_out_of_memory(exc: BaseException) -> bool:
+    """Return whether an exception represents a torch out-of-memory error.
 
     Detected without importing ``torch`` (an optional McByte dependency): a
     ``torch.cuda.OutOfMemoryError`` is a ``RuntimeError`` subclass, so it is
-    recognised by class name, and plain CUDA out-of-memory ``RuntimeError``
-    instances are recognised by their canonical message.
+    recognised by class name, and plain out-of-memory ``RuntimeError``
+    instances are recognised by their canonical message. This also covers the
+    MPS backend, whose OOM is a plain ``RuntimeError`` with an
+    ``"MPS backend out of memory"`` message.
 
     Args:
         exc: Exception raised by the mask pipeline.
 
     Returns:
-        ``True`` when ``exc`` is a CUDA/torch out-of-memory error, otherwise
-        ``False``.
+        ``True`` when ``exc`` is a torch out-of-memory error (CUDA or MPS),
+        otherwise ``False``.
     """
     if any(klass.__name__ == "OutOfMemoryError" for klass in type(exc).__mro__):
         return True
@@ -78,7 +81,9 @@ class McByteMaskConfig:
 
     Args:
         device: Device shared by SAM and Cutie, for example ``"cuda"``,
-            ``"cuda:0"``, or ``"cpu"``.
+            ``"cuda:0"``, ``"mps"``, or ``"cpu"``. The default ``"auto"``
+            selects the best available accelerator (CUDA, then Apple MPS,
+            then CPU).
         sam_checkpoint_path: Optional SAM checkpoint path. When omitted, the
             default checkpoint for ``sam_model_type`` is used and downloaded
             automatically when necessary.
@@ -91,12 +96,27 @@ class McByteMaskConfig:
             omitted, it is inferred from the installed Cutie package.
         cutie_config_name: Hydra configuration name loaded by Cutie.
         cutie_use_amp: Whether Cutie may use automatic mixed precision. AMP is
-            activated only when Cutie runs on a CUDA device.
+            activated only when Cutie runs on a CUDA device. Disabled by
+            default so that default runs use full fp32 precision on every
+            backend; opt in explicitly after validating tracking-quality
+            parity on your hardware.
+        cutie_max_internal_size: Maximum shortest side of frames processed
+            internally by Cutie. Larger frames are downscaled before the
+            encoder and the propagated masks are restored to the original
+            resolution, matching Cutie's own streaming preset. Use ``-1`` to
+            propagate at full input resolution (Cutie's offline-benchmark
+            behavior; substantially slower on high-resolution streams).
+        cutie_mem_every: How often, in frames, Cutie updates its working
+            memory. Higher values speed up processing. ``None`` keeps the
+            value from the loaded Cutie configuration.
+        cutie_use_long_term: Whether Cutie uses bounded long-term memory,
+            recommended for videos longer than roughly one minute. ``None``
+            keeps the value from the loaded Cutie configuration.
         mask_creation_bbox_overlap_threshold: Bounding-box overlap fraction at
             or above which mask creation is delayed by ``MaskManager``.
     """
 
-    device: str = "cpu"
+    device: str = "auto"
 
     sam_checkpoint_path: str | Path | None = None
     sam_model_type: str = "vit_b"
@@ -105,7 +125,10 @@ class McByteMaskConfig:
     cutie_model_type: str = "base-mega"
     cutie_config_path: str | Path | None = None
     cutie_config_name: str = "eval_config"
-    cutie_use_amp: bool = True
+    cutie_use_amp: bool = False
+    cutie_max_internal_size: int = 480
+    cutie_mem_every: int | None = 10
+    cutie_use_long_term: bool | None = True
 
     mask_creation_bbox_overlap_threshold: float = MASK_CREATION_BBOX_OVERLAP_THRESHOLD
 
@@ -131,6 +154,9 @@ def _build_default_mask_manager(
         config_name=config.cutie_config_name,
         device=config.device,
         use_amp=config.cutie_use_amp,
+        max_internal_size=config.cutie_max_internal_size,
+        mem_every=config.cutie_mem_every,
+        use_long_term=config.cutie_use_long_term,
     )
 
     return MaskManager(
@@ -648,7 +674,7 @@ class McByteTracker(BaseTracker):
                 removed_tracklet_ids=self._previous_removed_tracklet_ids,
             )
         except RuntimeError as exc:
-            if not _is_cuda_out_of_memory(exc):
+            if not _is_out_of_memory(exc):
                 raise
             self._consecutive_mask_failures += 1
             logger.warning(

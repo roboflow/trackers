@@ -89,30 +89,43 @@ class ScalableProcessNoise:
     sigma_a2: NDArray[np.float64]
     extra_q_diagonal: NDArray[np.float64]
     _nonkinematic_idx: list[int] = field(default_factory=list, init=False)
+    _needs_calibration: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
         kinematic = {int(i) for i in self.pos_idx} | {int(i) for i in self.vel_idx}
         self._nonkinematic_idx = [i for i in range(self.dim_x) if i not in kinematic]
 
     def calibrate(self, Q: np.ndarray) -> None:
-        """Extract per-axis acceleration variance from Q and store the reference.
+        """Store the new one-frame reference ``Q`` and defer the extraction.
 
-        Called from ``set_kf_covariances``. The velocity-diagonal entries of
-        ``Q`` define ``sigma_a2``, which is used to scale noise for
-        ``frame_step != 1.0`` via DWNA. ``baseline_Q`` stores ``Q`` itself so
-        that ``build_Q(1.0)`` returns it directly, preserving hand-tuned
-        one-frame noise exactly.
+        Called from ``set_kf_covariances``. ``baseline_Q`` stores ``Q`` itself
+        so that ``build_Q(1.0)`` returns it directly, preserving hand-tuned
+        one-frame noise exactly. The DWNA calibration (``sigma_a2``,
+        ``extra_q_diagonal``) is deferred until the first ``build_Q`` with a
+        non-unit frame step, keeping per-frame noise refreshes (e.g. BoT-SORT
+        scale-aware noise) cheap on the fixed-rate path.
 
         Args:
             Q: Configured one-frame process noise matrix of shape
                 ``(dim_x, dim_x)``, as produced by ``_configure_noise`` via
                 ``set_kf_covariances``.
         """
-        self.sigma_a2 = np.asarray([float(Q[v, v]) for v in self.vel_idx], dtype=np.float64)
-        self.extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
         self.baseline_Q = Q.copy()
-        kinematic = {int(i) for i in self.pos_idx} | {int(i) for i in self.vel_idx}
-        self._nonkinematic_idx = [i for i in range(self.dim_x) if i not in kinematic]
+        self._needs_calibration = True
+
+    def _ensure_calibrated(self) -> None:
+        """Extract per-axis acceleration variance from the stored reference Q.
+
+        The velocity-diagonal entries of ``baseline_Q`` define ``sigma_a2``,
+        which scales noise for ``frame_step != 1.0`` via DWNA. Runs only when a
+        ``calibrate`` call marked the extraction as pending.
+        """
+        if not self._needs_calibration:
+            return
+        Q = self.baseline_Q
+        self.sigma_a2 = Q[self.vel_idx, self.vel_idx].astype(np.float64)
+        self.extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
+        self._needs_calibration = False
 
     def build_Q(self, frame_step: float) -> NDArray[np.float64]:
         """Return process noise Q scaled for the given frame step.
@@ -131,6 +144,7 @@ class ScalableProcessNoise:
         """
         if frame_step == 1.0:
             return self.baseline_Q.copy()
+        self._ensure_calibrated()
         return self._dwna(frame_step)
 
     def _dwna(self, frame_step: float) -> NDArray[np.float64]:
@@ -213,39 +227,40 @@ class KalmanMotionModel:
 
         Call this after ``set_kf_covariances`` updates ``process_noise`` on the
         filter so that ``build_Q`` and future cached steps use the new reference.
+        Only the cached ``Q`` is invalidated: the cached transition matrix
+        depends solely on the frame step, so it survives noise-only changes
+        (e.g. BoT-SORT's per-frame scale-aware refresh).
 
         Args:
             process_noise: Reference one-frame process noise matrix, as produced
                 by ``set_kf_covariances``. Shape must be ``(dim_x, dim_x)``.
         """
         self.process_noise.calibrate(process_noise)
-        self.cached_step = None
+        self._cached_process_noise = None
 
     def apply(self, kf: KalmanFilter, frame_step: float) -> None:
         """Set transition_matrix and Q on a Kalman filter for the given frame step.
 
-        Both matrices are cached per unique step value to avoid redundant
-        computation when the same step is repeated across consecutive frames.
+        Both matrices are cached to avoid redundant computation. The transition
+        matrix is cached per unique step value; ``Q`` is additionally
+        invalidated by ``calibrate_from_process_noise`` and rebuilt from the
+        current reference on the next call.
 
         Args:
             kf: ``KalmanFilter`` to update in-place.
             frame_step: Elapsed time in frame units for this predict step.
                 Use ``1.0`` for a single nominal frame; larger values for gaps.
         """
-        if (
-            self.cached_step is not None
-            and frame_step == self.cached_step
-            and self._cached_transition_mtx is not None
-            and self._cached_process_noise is not None
-        ):
-            kf.transition_mtx = self._cached_transition_mtx
-            kf.process_noise = self._cached_process_noise
-            return
-        kf.transition_mtx = constant_velocity_transition_matrix(self.dim_x, self.pos_idx, self.vel_idx, frame_step)
-        kf.process_noise = self.process_noise.build_Q(frame_step)
-        self._cached_transition_mtx = kf.transition_mtx
-        self._cached_process_noise = kf.process_noise
-        self.cached_step = frame_step
+        if frame_step != self.cached_step or self._cached_transition_mtx is None:
+            self._cached_transition_mtx = constant_velocity_transition_matrix(
+                self.dim_x, self.pos_idx, self.vel_idx, frame_step
+            )
+            self.cached_step = frame_step
+            self._cached_process_noise = None
+        if self._cached_process_noise is None:
+            self._cached_process_noise = self.process_noise.build_Q(frame_step)
+        kf.transition_mtx = self._cached_transition_mtx
+        kf.process_noise = self._cached_process_noise
 
     def reset_cache(self) -> None:
         """Clear cached step and matrices.
