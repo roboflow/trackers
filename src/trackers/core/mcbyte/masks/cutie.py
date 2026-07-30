@@ -836,7 +836,9 @@ class CutieMaskPropagator(MaskPropagator):
             and (frame is self._cached_feature_frame or np.array_equal(frame, self._cached_feature_frame))
         ):
             store = self.processor.image_feature_store
-            store._store[self.processor.curr_ti + 1] = store._store[self._cached_feature_ti]
+            store_dict = getattr(store, "_store", None)
+            if isinstance(store_dict, dict) and self._cached_feature_ti in store_dict:
+                store_dict[self._cached_feature_ti + 1] = store_dict[self._cached_feature_ti]
 
         with _autocast_context(self.use_amp):
             prob = self.processor.step(
