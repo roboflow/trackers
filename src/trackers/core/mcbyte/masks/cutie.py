@@ -16,8 +16,7 @@ from urllib.parse import urlparse
 import numpy as np
 import torch
 
-from trackers.core.mcbyte.masks.base import MaskOutput, MaskPropagator
-from trackers.utils.device import _best_device
+from trackers.core.mcbyte.masks.base import MaskOutput, MaskPropagator, _resolve_auto_device
 from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)
@@ -359,8 +358,10 @@ class CutieMaskPropagator(MaskPropagator):
             provided, the path is inferred from the installed ``cutie`` package.
         config_name: Hydra config name used by Cutie.
         device: Device used by Cutie, for example ``"cpu"``, ``"cuda"``, or
-            ``"mps"``. The default ``"auto"`` selects the best available
-            accelerator (CUDA, then Apple MPS, then CPU).
+            ``"mps"``. The default ``"auto"`` resolves to CUDA when available,
+            otherwise CPU. MPS is never auto-selected (measured ~an order of
+            magnitude slower than CPU for this pipeline); pass ``"mps"``
+            explicitly to use it.
         use_amp: Whether to use CUDA automatic mixed precision during Cutie
             calls. Off by default so default runs stay fp32 on every backend;
             opt in after validating quality parity on your hardware.
@@ -405,7 +406,7 @@ class CutieMaskPropagator(MaskPropagator):
             raise ImportError(msg) from exc
 
         if device == "auto":
-            device = str(_best_device())
+            device = _resolve_auto_device()
         self.device = torch.device(device)
 
         self.use_amp = use_amp and self.device.type == "cuda"

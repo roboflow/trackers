@@ -12,6 +12,26 @@ from dataclasses import dataclass
 import numpy as np
 
 
+def _resolve_auto_device() -> str:
+    """Resolve the ``"auto"`` device sentinel for the mask pipeline.
+
+    Returns ``"cuda"`` when available, otherwise ``"cpu"``. Apple MPS is
+    deliberately skipped: the SAM + Cutie inference graph issues hundreds of
+    small kernels per frame, and the per-op dispatch/synchronization overhead
+    on MPS makes the pipeline roughly an order of magnitude slower than the
+    CPU backend on Apple Silicon (measured ~12.7x on torch 2.13, identical
+    outputs). Pass ``device="mps"`` explicitly to opt in regardless.
+
+    Returns:
+        Device string suitable for ``torch.device``.
+    """
+    import torch
+
+    if torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
+
+
 @dataclass(frozen=True)
 class TrackletSnapshot:
     """Minimal tracker state needed by mask components."""
