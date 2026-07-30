@@ -187,10 +187,36 @@ def _binary_masks_to_indexed_mask(
 def _output_prob_to_object_indexed_mask(
     processor: Any,
     prob: torch.Tensor,
+    max_indices: torch.Tensor | None = None,
 ) -> np.ndarray:
-    """Convert Cutie probability output to an object-ID-indexed NumPy mask."""
-    indexed_mask = processor.output_prob_to_mask(prob)
-    return indexed_mask.cpu().numpy().astype(np.int32)
+    """Convert Cutie probability output to an object-ID-indexed NumPy mask.
+
+    Equivalent to ``InferenceCore.output_prob_to_mask`` — channel argmax
+    followed by temporary-ID -> object-ID remapping — but implemented with
+    ``torch.max`` and a lookup-table gather. ``torch.argmax`` over the channel
+    dim runs a slow single-threaded CPU reduction (~260 ms at 1080p) while
+    ``torch.max`` uses a fused kernel returning the same first-occurrence
+    indices in ~4 ms; the original per-object ``new_mask[mask == tmp_id]``
+    boolean-assignment loop is likewise replaced by one integer gather.
+
+    Args:
+        processor: Cutie ``InferenceCore`` whose object manager provides the
+            temporary-ID -> object mapping.
+        prob: Cutie probability tensor with shape ``(num_objects + 1, H, W)``.
+        max_indices: Optional precomputed ``torch.max(prob, dim=0).indices``
+            so callers that already reduced ``prob`` avoid a second pass.
+    """
+    if max_indices is None:
+        max_indices = torch.max(prob, dim=0).indices
+    tmp_id_mask = max_indices.cpu().numpy()
+
+    # Background channel 0 and any tmp_id without a live object map to 0,
+    # matching the zeros-initialised output of the original remap loop.
+    lut = np.zeros(int(prob.shape[0]), dtype=np.int32)
+    for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items():
+        if 0 <= tmp_id < lut.size:
+            lut[tmp_id] = obj.id
+    return lut[tmp_id_mask]
 
 
 def _get_object_id_to_tmp_id(processor: Any) -> dict[int, int]:
@@ -289,6 +315,7 @@ def _compute_mask_avg_prob_dict(
     prob: torch.Tensor,
     object_ids: list[int],
     object_id_to_tmp_id: dict[int, int],
+    max_result: torch.return_types.max | None = None,
 ) -> dict[int, float]:
     """Compute average Cutie confidence for each predicted object region.
 
@@ -296,10 +323,13 @@ def _compute_mask_avg_prob_dict(
     channel 0 is background and channels ``1..num_objects`` follow Cutie's
     current temporary object IDs. For each immutable object ID, confidence is
     averaged over pixels where that object's current temporary ID wins the argmax
-    prediction.
+    prediction. ``max_result`` optionally supplies a precomputed
+    ``torch.max(prob, dim=0)`` so callers that already reduced ``prob`` (for the
+    indexed mask) avoid a second full-resolution pass.
     """
     num_channels = int(prob.shape[0])
-    max_result = torch.max(prob, dim=0)
+    if max_result is None:
+        max_result = torch.max(prob, dim=0)
     # At each pixel the winning channel's probability equals the per-pixel maximum,
     # so prob[tmp_id][mask_maxes == tmp_id] is exactly the set of maxima won by that
     # channel. Cast to float32 so the summation below is stable for half-precision
@@ -563,11 +593,16 @@ class CutieMaskPropagator(MaskPropagator):
         with _autocast_context(self.use_amp):
             prob = self.processor.step(frame_torch)
 
+        # One full-resolution channel reduction shared by the indexed mask and
+        # the per-object confidence stats below.
+        max_result = torch.max(prob, dim=0)
+
         # Convert Cutie's temporary tensor IDs back to immutable object IDs.
         # This is required because temporary IDs may change after object removal.
         indexed_mask = _output_prob_to_object_indexed_mask(
             processor=self.processor,
             prob=prob,
+            max_indices=max_result.indices,
         )
         self._last_indexed_mask = indexed_mask.copy()
 
@@ -588,6 +623,7 @@ class CutieMaskPropagator(MaskPropagator):
             prob=prob,
             object_ids=self._object_ids,
             object_id_to_tmp_id=_get_object_id_to_tmp_id(self.processor),
+            max_result=max_result,
         )
 
         object_id_to_mask_index = {object_id: mask_index for mask_index, object_id in enumerate(self._object_ids)}

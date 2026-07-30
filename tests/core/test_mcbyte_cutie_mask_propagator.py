@@ -23,6 +23,7 @@ from trackers.core.mcbyte.masks.cutie import (  # noqa: E402
     _get_object_id_to_tmp_id,
     _image_to_torch,
     _indexed_mask_to_binary_masks,
+    _output_prob_to_object_indexed_mask,
 )
 
 
@@ -245,6 +246,105 @@ def test_compute_mask_avg_prob_dict_matches_original_mcbyte_logic() -> None:
 
     assert np.isclose(mask_avg_prob_dict[10], np.mean([0.7, 0.8, 0.6]))
     assert np.isclose(mask_avg_prob_dict[20], 0.7)
+
+
+def test_compute_mask_avg_prob_dict_accepts_precomputed_max_result() -> None:
+    """A precomputed torch.max(prob, dim=0) yields the same averages as the internal reduction."""
+    prob = torch.tensor(
+        [
+            [[0.8, 0.1, 0.1], [0.6, 0.2, 0.1]],
+            [[0.1, 0.7, 0.8], [0.3, 0.6, 0.2]],
+            [[0.1, 0.2, 0.1], [0.1, 0.2, 0.7]],
+        ],
+        dtype=torch.float32,
+    )
+
+    mask_avg_prob_dict = _compute_mask_avg_prob_dict(
+        prob=prob,
+        object_ids=[10, 20],
+        object_id_to_tmp_id={10: 1, 20: 2},
+        max_result=torch.max(prob, dim=0),
+    )
+
+    assert np.isclose(mask_avg_prob_dict[10], np.mean([0.7, 0.8, 0.6]))
+    assert np.isclose(mask_avg_prob_dict[20], 0.7)
+
+
+def test_output_prob_to_object_indexed_mask_matches_original_cutie_remap() -> None:
+    """The lookup-table conversion reproduces Cutie's argmax + per-object remap, including tmp-ID gaps and ties."""
+
+    class DummyObject:
+        def __init__(self, object_id: int) -> None:
+            self.id = object_id
+
+    class DummyObjectManager:
+        def __init__(self) -> None:
+            # Gap after object removal: tmp IDs are compacted while object IDs stay immutable.
+            self.tmp_id_to_obj = {
+                1: DummyObject(10),
+                2: DummyObject(30),
+            }
+
+    class DummyProcessor:
+        def __init__(self) -> None:
+            self.object_manager = DummyObjectManager()
+
+    prob = torch.tensor(
+        [
+            [[0.8, 0.5, 0.1], [0.5, 0.2, 0.1]],
+            [[0.1, 0.5, 0.8], [0.5, 0.6, 0.2]],
+            [[0.1, 0.2, 0.1], [0.5, 0.2, 0.7]],
+        ],
+        dtype=torch.float32,
+    )
+    processor = DummyProcessor()
+
+    indexed_mask = _output_prob_to_object_indexed_mask(processor=processor, prob=prob)
+
+    # Reference: original Cutie output_prob_to_mask remap applied to argmax.
+    reference = torch.argmax(prob, dim=0)
+    remapped = torch.zeros_like(reference)
+    for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items():
+        remapped[reference == tmp_id] = obj.id
+
+    assert indexed_mask.dtype == np.int32
+    np.testing.assert_array_equal(indexed_mask, remapped.numpy())
+
+
+def test_output_prob_to_object_indexed_mask_accepts_precomputed_indices() -> None:
+    """Passing precomputed torch.max indices yields the same indexed mask as the internal reduction."""
+
+    class DummyObject:
+        def __init__(self, object_id: int) -> None:
+            self.id = object_id
+
+    class DummyObjectManager:
+        def __init__(self) -> None:
+            self.tmp_id_to_obj = {1: DummyObject(7)}
+
+    class DummyProcessor:
+        def __init__(self) -> None:
+            self.object_manager = DummyObjectManager()
+
+    prob = torch.tensor(
+        [
+            [[0.9, 0.1], [0.4, 0.6]],
+            [[0.1, 0.9], [0.6, 0.4]],
+        ],
+        dtype=torch.float32,
+    )
+    processor = DummyProcessor()
+
+    indexed_mask = _output_prob_to_object_indexed_mask(
+        processor=processor,
+        prob=prob,
+        max_indices=torch.max(prob, dim=0).indices,
+    )
+
+    np.testing.assert_array_equal(
+        indexed_mask,
+        _output_prob_to_object_indexed_mask(processor=processor, prob=prob),
+    )
 
 
 def test_propagate_returns_none_when_not_initialized() -> None:
@@ -537,9 +637,18 @@ def test_add_masks_requires_initialization() -> None:
 def test_add_masks_assigns_new_object_ids_and_updates_state(
     initialized_cutie_propagator: CutieMaskPropagator,
 ) -> None:
+    class DummyObject:
+        def __init__(self, object_id: int) -> None:
+            self.id = object_id
+
+    class DummyObjectManager:
+        def __init__(self) -> None:
+            self.tmp_id_to_obj = {tmp_id: DummyObject(tmp_id) for tmp_id in (1, 2, 3, 4)}
+
     class DummyProcessor:
         def __init__(self) -> None:
             self.step_calls: list[dict[str, Any]] = []
+            self.object_manager = DummyObjectManager()
 
         def step(
             self,
@@ -557,10 +666,9 @@ def test_add_masks_assigns_new_object_ids_and_updates_state(
                     "idx_mask": idx_mask,
                 }
             )
-            return torch.empty((3, 4, 4), dtype=torch.float32)
-
-        def output_prob_to_mask(self, prob: Any) -> Any:
-            return torch.tensor(
+            # One-hot probability whose channel argmax reproduces the
+            # temporary-ID mask [[0,3,3,0],[0,0,4,4],[0,0,0,4],[0,0,0,0]].
+            tmp_id_mask = torch.tensor(
                 [
                     [0, 3, 3, 0],
                     [0, 0, 4, 4],
@@ -569,6 +677,9 @@ def test_add_masks_assigns_new_object_ids_and_updates_state(
                 ],
                 dtype=torch.int64,
             )
+            prob = torch.zeros((5, 4, 4), dtype=torch.float32)
+            prob.scatter_(0, tmp_id_mask.unsqueeze(0), 1.0)
+            return prob
 
     processor = DummyProcessor()
 
