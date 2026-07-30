@@ -1161,11 +1161,18 @@ def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
     assert propagator._cached_feature_frame is not None
 
 
-def test_autocast_context_disabled_returns_nullcontext() -> None:
-    """With AMP off the helper returns a no-op context regardless of device."""
+def test_autocast_context_disabled_returns_nullcontext(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With AMP off the helper returns a no-op context and never constructs an autocast."""
+    autocast_calls: list[tuple[Any, Any]] = []
+    monkeypatch.setattr(
+        "trackers.core.mcbyte.masks.cutie.torch",
+        SimpleNamespace(amp=SimpleNamespace(autocast=lambda *args, **kwargs: autocast_calls.append((args, kwargs)))),
+    )
+
     context = _autocast_context(use_amp=False, device=torch.device("cuda"))
 
     assert isinstance(context, nullcontext)
+    assert autocast_calls == []
 
 
 @pytest.mark.parametrize(
@@ -1193,40 +1200,77 @@ def test_autocast_context_enabled_follows_device_type(device_type: str, monkeypa
     assert calls == [(device_type, True)]
 
 
-def test_apply_backend_perf_options_disabled_returns_model_unchanged() -> None:
-    """Both transforms off leave the model object and its weight layout untouched."""
-    model = torch.nn.Sequential(torch.nn.Conv2d(3, 8, 3))
+class _FakePerfModel:
+    """Cutie-network stub for backend-perf-option tests.
+
+    Records every ``.to`` memory-format call and exposes the four Cutie
+    inference entry points as stable instance attributes, so a test can assert
+    exactly which ones ``_apply_backend_perf_options`` rewires (and how many
+    times ``.to`` runs) without a real model or a real compile.
+    """
+
+    def __init__(self) -> None:
+        self.to_calls: list[Any] = []
+        self.encode_image = lambda image: image
+        self.transform_key = lambda features: features
+        self.segment = lambda *args: args
+        self.encode_mask = lambda *args: args
+
+    def to(self, *, memory_format: Any) -> _FakePerfModel:
+        self.to_calls.append(memory_format)
+        return self
+
+
+def _patch_cutie_backend_torch(monkeypatch: pytest.MonkeyPatch, compile_calls: list[Any]) -> None:
+    """Replace the cutie module's ``torch`` with a stub recording ``torch.compile`` calls.
+
+    ``channels_last`` passes the genuine memory-format sentinel through so the
+    helper still forwards the real value to ``model.to``; ``compile`` appends
+    each wrapped method and returns a distinguishable marker, letting the wiring
+    be asserted without invoking the real (slow) compiler.
+    """
+
+    def fake_compile(method: Any) -> tuple[str, Any]:
+        compile_calls.append(method)
+        return ("compiled", method)
+
+    monkeypatch.setattr(
+        "trackers.core.mcbyte.masks.cutie.torch",
+        SimpleNamespace(channels_last=torch.channels_last, compile=fake_compile),
+    )
+
+
+def test_apply_backend_perf_options_disabled_invokes_no_transform(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Both transforms off: neither model.to nor torch.compile runs and the model is returned as-is."""
+    compile_calls: list[Any] = []
+    _patch_cutie_backend_torch(monkeypatch, compile_calls)
+    model = _FakePerfModel()
 
     result = _apply_backend_perf_options(model, channels_last=False, compile_model=False)
 
     assert result is model
-    # Default 4D convolution weight stays standard-contiguous (not channels_last).
-    assert model[0].weight.is_contiguous()
+    assert model.to_calls == []
+    assert compile_calls == []
 
 
-def test_apply_backend_perf_options_channels_last_converts_conv_weights() -> None:
-    """channels_last=True converts the model's 4D convolution weights in place."""
-    model = torch.nn.Sequential(torch.nn.Conv2d(3, 8, 3))
+def test_apply_backend_perf_options_channels_last_converts_model_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """channels_last=True calls model.to exactly once with the channels_last format and compiles nothing."""
+    compile_calls: list[Any] = []
+    _patch_cutie_backend_torch(monkeypatch, compile_calls)
+    model = _FakePerfModel()
 
     result = _apply_backend_perf_options(model, channels_last=True, compile_model=False)
 
     assert result is model
-    assert model[0].weight.is_contiguous(memory_format=torch.channels_last)
+    assert model.to_calls == [torch.channels_last]
+    assert compile_calls == []
 
 
-def test_apply_backend_perf_options_compiles_only_shape_stable_encoder_methods() -> None:
-    """compile_model=True wraps encode_image/transform_key but leaves the variable-shape methods eager."""
-
-    class _FakeCutieNet:
-        """Network stub whose methods are stable instance attributes for identity checks."""
-
-        def __init__(self) -> None:
-            self.encode_image = lambda image: image
-            self.transform_key = lambda features: features
-            self.segment = lambda *args: args
-            self.encode_mask = lambda *args: args
-
-    model = _FakeCutieNet()
+def test_apply_backend_perf_options_compiles_only_shape_stable_encoder_methods(monkeypatch: pytest.MonkeyPatch) -> None:
+    """compile_model=True compiles exactly encode_image + transform_key, leaving the variable-shape methods eager."""
+    compile_calls: list[Any] = []
+    _patch_cutie_backend_torch(monkeypatch, compile_calls)
+    model = _FakePerfModel()
     original_encode_image = model.encode_image
     original_transform_key = model.transform_key
     original_segment = model.segment
@@ -1235,9 +1279,11 @@ def test_apply_backend_perf_options_compiles_only_shape_stable_encoder_methods()
     result = _apply_backend_perf_options(model, channels_last=False, compile_model=True)
 
     assert result is model
-    # Shape-stable per-frame encoder path is compiled.
-    assert model.encode_image is not original_encode_image
-    assert model.transform_key is not original_transform_key
+    # Exactly the two shape-stable encoder methods are compiled, in order.
+    assert compile_calls == [original_encode_image, original_transform_key]
+    assert model.to_calls == []
+    assert model.encode_image == ("compiled", original_encode_image)
+    assert model.transform_key == ("compiled", original_transform_key)
     # Variable object-count methods stay eager to avoid recompilation churn.
     assert model.segment is original_segment
     assert model.encode_mask is original_encode_mask
