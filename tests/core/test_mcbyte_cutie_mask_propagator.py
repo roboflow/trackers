@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from typing import Any
 
 import numpy as np
@@ -16,6 +17,8 @@ torch = pytest.importorskip("torch")
 from trackers.core.mcbyte.masks.base import MaskOutput  # noqa: E402
 from trackers.core.mcbyte.masks.cutie import (  # noqa: E402
     CutieMaskPropagator,
+    _apply_backend_perf_options,
+    _autocast_context,
     _binary_masks_to_indexed_mask,
     _binary_masks_to_non_overlapping_torch,
     _build_tracklet_object_dict,
@@ -1155,3 +1158,74 @@ def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
     assert propagator.processor.step_delete_buffer is False
     assert propagator._cached_feature_ti == 0
     assert propagator._cached_feature_frame is not None
+
+
+def test_autocast_context_disabled_returns_nullcontext() -> None:
+    """With AMP off the helper returns a no-op context regardless of device."""
+    context = _autocast_context(use_amp=False, device=torch.device("cuda"))
+
+    assert isinstance(context, nullcontext)
+
+
+@pytest.mark.parametrize(
+    "device_type",
+    [
+        pytest.param("cuda", id="cuda"),
+        pytest.param("cpu", id="cpu"),
+    ],
+)
+def test_autocast_context_enabled_follows_device_type(device_type: str) -> None:
+    """With AMP on the autocast backend follows the device type, not a hardcoded 'cuda'."""
+    context = _autocast_context(use_amp=True, device=torch.device(device_type))
+
+    assert context.device == device_type
+
+
+def test_apply_backend_perf_options_disabled_returns_model_unchanged() -> None:
+    """Both transforms off leave the model object and its weight layout untouched."""
+    model = torch.nn.Sequential(torch.nn.Conv2d(3, 8, 3))
+
+    result = _apply_backend_perf_options(model, channels_last=False, compile_model=False)
+
+    assert result is model
+    # Default 4D convolution weight stays standard-contiguous (not channels_last).
+    assert model[0].weight.is_contiguous()
+
+
+def test_apply_backend_perf_options_channels_last_converts_conv_weights() -> None:
+    """channels_last=True converts the model's 4D convolution weights in place."""
+    model = torch.nn.Sequential(torch.nn.Conv2d(3, 8, 3))
+
+    result = _apply_backend_perf_options(model, channels_last=True, compile_model=False)
+
+    assert result is model
+    assert model[0].weight.is_contiguous(memory_format=torch.channels_last)
+
+
+def test_apply_backend_perf_options_compiles_only_shape_stable_encoder_methods() -> None:
+    """compile_model=True wraps encode_image/transform_key but leaves the variable-shape methods eager."""
+
+    class _FakeCutieNet:
+        """Network stub whose methods are stable instance attributes for identity checks."""
+
+        def __init__(self) -> None:
+            self.encode_image = lambda image: image
+            self.transform_key = lambda features: features
+            self.segment = lambda *args: args
+            self.encode_mask = lambda *args: args
+
+    model = _FakeCutieNet()
+    original_encode_image = model.encode_image
+    original_transform_key = model.transform_key
+    original_segment = model.segment
+    original_encode_mask = model.encode_mask
+
+    result = _apply_backend_perf_options(model, channels_last=False, compile_model=True)
+
+    assert result is model
+    # Shape-stable per-frame encoder path is compiled.
+    assert model.encode_image is not original_encode_image
+    assert model.transform_key is not original_transform_key
+    # Variable object-count methods stay eager to avoid recompilation churn.
+    assert model.segment is original_segment
+    assert model.encode_mask is original_encode_mask
