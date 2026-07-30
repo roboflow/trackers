@@ -7,8 +7,8 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
-from types import SimpleNamespace
 from typing import Any
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -1163,16 +1163,13 @@ def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
 
 def test_autocast_context_disabled_returns_nullcontext(monkeypatch: pytest.MonkeyPatch) -> None:
     """With AMP off the helper returns a no-op context and never constructs an autocast."""
-    autocast_calls: list[tuple[Any, Any]] = []
-    monkeypatch.setattr(
-        "trackers.core.mcbyte.masks.cutie.torch",
-        SimpleNamespace(amp=SimpleNamespace(autocast=lambda *args, **kwargs: autocast_calls.append((args, kwargs)))),
-    )
+    autocast_mock = MagicMock()
+    monkeypatch.setattr("trackers.core.mcbyte.masks.cutie.torch.amp.autocast", autocast_mock)
 
     context = _autocast_context(use_amp=False, device=torch.device("cuda"))
 
     assert isinstance(context, nullcontext)
-    assert autocast_calls == []
+    autocast_mock.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -1184,93 +1181,46 @@ def test_autocast_context_disabled_returns_nullcontext(monkeypatch: pytest.Monke
 )
 def test_autocast_context_enabled_follows_device_type(device_type: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """With AMP on the autocast backend follows the device type, not a hardcoded 'cuda'."""
-    calls: list[tuple[str, bool]] = []
+    autocast_mock = MagicMock()
+    monkeypatch.setattr("trackers.core.mcbyte.masks.cutie.torch.amp.autocast", autocast_mock)
 
-    def fake_autocast(actual_device_type: str, *, enabled: bool) -> nullcontext[Any]:
-        calls.append((actual_device_type, enabled))
-        return nullcontext()
-
-    monkeypatch.setattr(
-        "trackers.core.mcbyte.masks.cutie.torch",
-        SimpleNamespace(amp=SimpleNamespace(autocast=fake_autocast)),
-    )
     context = _autocast_context(use_amp=True, device=torch.device(device_type))
 
-    assert isinstance(context, nullcontext)
-    assert calls == [(device_type, True)]
-
-
-class _FakePerfModel:
-    """Cutie-network stub for backend-perf-option tests.
-
-    Records every ``.to`` memory-format call and exposes the four Cutie
-    inference entry points as stable instance attributes, so a test can assert
-    exactly which ones ``_apply_backend_perf_options`` rewires (and how many
-    times ``.to`` runs) without a real model or a real compile.
-    """
-
-    def __init__(self) -> None:
-        self.to_calls: list[Any] = []
-        self.encode_image = lambda image: image
-        self.transform_key = lambda features: features
-        self.segment = lambda *args: args
-        self.encode_mask = lambda *args: args
-
-    def to(self, *, memory_format: Any) -> _FakePerfModel:
-        self.to_calls.append(memory_format)
-        return self
-
-
-def _patch_cutie_backend_torch(monkeypatch: pytest.MonkeyPatch, compile_calls: list[Any]) -> None:
-    """Replace the cutie module's ``torch`` with a stub recording ``torch.compile`` calls.
-
-    ``channels_last`` passes the genuine memory-format sentinel through so the
-    helper still forwards the real value to ``model.to``; ``compile`` appends
-    each wrapped method and returns a distinguishable marker, letting the wiring
-    be asserted without invoking the real (slow) compiler.
-    """
-
-    def fake_compile(method: Any) -> tuple[str, Any]:
-        compile_calls.append(method)
-        return ("compiled", method)
-
-    monkeypatch.setattr(
-        "trackers.core.mcbyte.masks.cutie.torch",
-        SimpleNamespace(channels_last=torch.channels_last, compile=fake_compile),
-    )
+    autocast_mock.assert_called_once_with(device_type, enabled=True)
+    assert context is autocast_mock.return_value
 
 
 def test_apply_backend_perf_options_disabled_invokes_no_transform(monkeypatch: pytest.MonkeyPatch) -> None:
     """Both transforms off: neither model.to nor torch.compile runs and the model is returned as-is."""
-    compile_calls: list[Any] = []
-    _patch_cutie_backend_torch(monkeypatch, compile_calls)
-    model = _FakePerfModel()
+    compile_mock = MagicMock()
+    monkeypatch.setattr("trackers.core.mcbyte.masks.cutie.torch.compile", compile_mock)
+    model = MagicMock()
 
     result = _apply_backend_perf_options(model, channels_last=False, compile_model=False)
 
     assert result is model
-    assert model.to_calls == []
-    assert compile_calls == []
+    model.to.assert_not_called()
+    compile_mock.assert_not_called()
 
 
 def test_apply_backend_perf_options_channels_last_converts_model_once(monkeypatch: pytest.MonkeyPatch) -> None:
     """channels_last=True calls model.to exactly once with the channels_last format and compiles nothing."""
-    compile_calls: list[Any] = []
-    _patch_cutie_backend_torch(monkeypatch, compile_calls)
-    model = _FakePerfModel()
+    compile_mock = MagicMock()
+    monkeypatch.setattr("trackers.core.mcbyte.masks.cutie.torch.compile", compile_mock)
+    model = MagicMock()
 
     result = _apply_backend_perf_options(model, channels_last=True, compile_model=False)
 
-    assert result is model
-    assert model.to_calls == [torch.channels_last]
-    assert compile_calls == []
+    model.to.assert_called_once_with(memory_format=torch.channels_last)
+    assert result is model.to.return_value
+    compile_mock.assert_not_called()
 
 
 def test_apply_backend_perf_options_compiles_only_shape_stable_encoder_methods(monkeypatch: pytest.MonkeyPatch) -> None:
     """compile_model=True compiles exactly encode_image + transform_key, leaving the variable-shape methods eager."""
-    compile_calls: list[Any] = []
-    _patch_cutie_backend_torch(monkeypatch, compile_calls)
-    model = _FakePerfModel()
+    compile_mock = MagicMock()
+    monkeypatch.setattr("trackers.core.mcbyte.masks.cutie.torch.compile", compile_mock)
+    model = MagicMock()
     original_encode_image = model.encode_image
     original_transform_key = model.transform_key
     original_segment = model.segment
@@ -1279,11 +1229,14 @@ def test_apply_backend_perf_options_compiles_only_shape_stable_encoder_methods(m
     result = _apply_backend_perf_options(model, channels_last=False, compile_model=True)
 
     assert result is model
-    # Exactly the two shape-stable encoder methods are compiled, in order.
-    assert compile_calls == [original_encode_image, original_transform_key]
-    assert model.to_calls == []
-    assert model.encode_image == ("compiled", original_encode_image)
-    assert model.transform_key == ("compiled", original_transform_key)
+    model.to.assert_not_called()
+    # Exactly the two shape-stable encoder methods are compiled.
+    assert compile_mock.call_count == 2
+    compile_mock.assert_any_call(original_encode_image)
+    compile_mock.assert_any_call(original_transform_key)
+    # Compiled results are assigned back to those two encoder entry points.
+    assert model.encode_image is compile_mock.return_value
+    assert model.transform_key is compile_mock.return_value
     # Variable object-count methods stay eager to avoid recompilation churn.
     assert model.segment is original_segment
     assert model.encode_mask is original_encode_mask
