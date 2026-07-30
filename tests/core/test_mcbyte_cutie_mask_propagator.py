@@ -1177,10 +1177,7 @@ def test_autocast_context_disabled_returns_nullcontext(monkeypatch: pytest.Monke
 
 @pytest.mark.parametrize(
     "device_type",
-    [
-        pytest.param("cuda", id="cuda"),
-        pytest.param("cpu", id="cpu"),
-    ],
+    ["cuda","cpu"]
 )
 def test_autocast_context_enabled_follows_device_type(device_type: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """With AMP on the autocast backend follows the device type, not a hardcoded 'cuda'."""
