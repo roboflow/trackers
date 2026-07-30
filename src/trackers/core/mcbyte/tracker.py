@@ -82,8 +82,10 @@ class McByteMaskConfig:
     Args:
         device: Device shared by SAM and Cutie, for example ``"cuda"``,
             ``"cuda:0"``, ``"mps"``, or ``"cpu"``. The default ``"auto"``
-            selects the best available accelerator (CUDA, then Apple MPS,
-            then CPU).
+            resolves to CUDA when available, otherwise CPU. Apple MPS is
+            never auto-selected (measured roughly an order of magnitude
+            slower than CPU for this pipeline); pass ``device="mps"``
+            explicitly to use it.
         sam_checkpoint_path: Optional SAM checkpoint path. When omitted, the
             default checkpoint for ``sam_model_type`` is used and downloaded
             automatically when necessary.
