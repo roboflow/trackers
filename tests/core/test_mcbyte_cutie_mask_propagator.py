@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -1174,11 +1175,22 @@ def test_autocast_context_disabled_returns_nullcontext() -> None:
         pytest.param("cpu", id="cpu"),
     ],
 )
-def test_autocast_context_enabled_follows_device_type(device_type: str) -> None:
+def test_autocast_context_enabled_follows_device_type(device_type: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """With AMP on the autocast backend follows the device type, not a hardcoded 'cuda'."""
+    calls: list[tuple[str, bool]] = []
+
+    def fake_autocast(actual_device_type: str, *, enabled: bool) -> nullcontext[Any]:
+        calls.append((actual_device_type, enabled))
+        return nullcontext()
+
+    monkeypatch.setattr(
+        "trackers.core.mcbyte.masks.cutie.torch",
+        SimpleNamespace(amp=SimpleNamespace(autocast=fake_autocast)),
+    )
     context = _autocast_context(use_amp=True, device=torch.device(device_type))
 
-    assert context.device == device_type
+    assert isinstance(context, nullcontext)
+    assert calls == [(device_type, True)]
 
 
 def test_apply_backend_perf_options_disabled_returns_model_unchanged() -> None:
