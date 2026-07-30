@@ -530,8 +530,11 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
             model_type: str = "base-mega",
             config_path: str | None = None,
             config_name: str = "eval_config",
-            device: str = "cuda",
+            device: str = "auto",
             use_amp: bool = True,
+            max_internal_size: int = 480,
+            mem_every: int | None = 10,
+            use_long_term: bool | None = True,
         ) -> None:
             created["cutie"] = {
                 "weights_path": weights_path,
@@ -540,6 +543,9 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
                 "config_name": config_name,
                 "device": device,
                 "use_amp": use_amp,
+                "max_internal_size": max_internal_size,
+                "mem_every": mem_every,
+                "use_long_term": use_long_term,
             }
 
         def reset(self) -> None:
@@ -579,6 +585,9 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
             cutie_model_type="base-mega",
             cutie_config_name="eval_config",
             cutie_use_amp=False,
+            cutie_max_internal_size=576,
+            cutie_mem_every=7,
+            cutie_use_long_term=False,
             mask_creation_bbox_overlap_threshold=0.7,
         ),
     )
@@ -601,6 +610,9 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
         "config_name": "eval_config",
         "device": "cuda:1",
         "use_amp": False,
+        "max_internal_size": 576,
+        "mem_every": 7,
+        "use_long_term": False,
     }
 
     # Verify the MaskManager-specific threshold

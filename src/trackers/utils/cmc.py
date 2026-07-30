@@ -572,21 +572,13 @@ class CMC:
             return affine_mtx
 
         # Keep only good correspondences
-        prev_pts: list[np.ndarray] = []
-        curr_pts: list[np.ndarray] = []
         # status is (N,1) or (N,)
-        status_flat = status.reshape(-1)
-
-        for i in range(len(status_flat)):
-            if status_flat[i]:
-                prev_pts.append(self._prev_points[i])
-                curr_pts.append(matched[i])
-
-        prev_pts_np = np.array(prev_pts)
-        curr_pts_np = np.array(curr_pts)
+        good = status.reshape(-1) == 1
+        prev_pts_np = self._prev_points[good]
+        curr_pts_np = matched[good]
 
         # Find rigid matrix
-        if (np.size(prev_pts_np, 0) > 4) and (np.size(prev_pts_np, 0) == np.size(curr_pts_np, 0)):
+        if np.size(prev_pts_np, 0) > 4:
             affine_est, _ = cv2.estimateAffinePartial2D(
                 prev_pts_np,
                 curr_pts_np,

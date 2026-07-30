@@ -17,6 +17,7 @@ import numpy as np
 import torch
 
 from trackers.core.mcbyte.masks.base import MaskOutput, MaskPropagator
+from trackers.utils.device import _best_device
 from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)
@@ -357,8 +358,21 @@ class CutieMaskPropagator(MaskPropagator):
         config_path: Optional path to Cutie's Hydra config directory. If not
             provided, the path is inferred from the installed ``cutie`` package.
         config_name: Hydra config name used by Cutie.
-        device: Device used by Cutie, for example ``"cpu"`` or ``"cuda"``.
+        device: Device used by Cutie, for example ``"cpu"``, ``"cuda"``, or
+            ``"mps"``. The default ``"auto"`` selects the best available
+            accelerator (CUDA, then Apple MPS, then CPU).
         use_amp: Whether to use CUDA automatic mixed precision during Cutie calls.
+        max_internal_size: Maximum shortest side of internally processed
+            frames. Larger frames are downscaled before Cutie's encoder and
+            the propagated masks are restored to the original resolution by
+            ``InferenceCore``, so returned masks always match the input frame
+            shape. ``-1`` disables internal resizing (full-resolution
+            propagation; substantially slower on high-resolution streams).
+        mem_every: How often, in frames, Cutie updates its working memory.
+            ``None`` keeps the value from the loaded Cutie configuration.
+        use_long_term: Whether Cutie uses bounded long-term memory,
+            recommended for videos longer than roughly one minute. ``None``
+            keeps the value from the loaded Cutie configuration.
     """
 
     def __init__(
@@ -367,8 +381,11 @@ class CutieMaskPropagator(MaskPropagator):
         model_type: str = "base-mega",
         config_path: str | Path | None = None,
         config_name: str = "eval_config",
-        device: str = "cuda",
+        device: str = "auto",
         use_amp: bool = True,
+        max_internal_size: int = 480,
+        mem_every: int | None = 10,
+        use_long_term: bool | None = True,
     ) -> None:
         try:
             import cutie
@@ -385,9 +402,15 @@ class CutieMaskPropagator(MaskPropagator):
             )
             raise ImportError(msg) from exc
 
+        if device == "auto":
+            device = str(_best_device())
         self.device = torch.device(device)
 
         self.use_amp = use_amp and self.device.type == "cuda"
+
+        self.max_internal_size = max_internal_size
+        self.mem_every = mem_every
+        self.use_long_term = use_long_term
 
         asset = CUTIE_ASSETS.get(model_type)
         if asset is None:
@@ -590,7 +613,14 @@ class CutieMaskPropagator(MaskPropagator):
         config_path: str | Path | None,
         config_name: str,
     ) -> Any:
-        """Load Cutie Hydra config and inject the selected weights path."""
+        """Load Cutie Hydra config and inject runtime overrides.
+
+        Besides the selected weights path, streaming-oriented runtime options
+        (``max_internal_size``, ``mem_every``, ``use_long_term``) are written
+        into the top-level config. Non-``None`` top-level values survive
+        Cutie's ``get_dataset_cfg`` escalation and are read by
+        ``InferenceCore`` and ``MemoryManager`` at construction time.
+        """
         try:
             from hydra import compose, initialize_config_dir
             from omegaconf import open_dict
@@ -625,6 +655,11 @@ class CutieMaskPropagator(MaskPropagator):
 
         with open_dict(cfg):
             cfg["weights"] = self.weights_path
+            cfg["max_internal_size"] = self.max_internal_size
+            if self.mem_every is not None:
+                cfg["mem_every"] = self.mem_every
+            if self.use_long_term is not None:
+                cfg["use_long_term"] = self.use_long_term
 
         return cfg
 
