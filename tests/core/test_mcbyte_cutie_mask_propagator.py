@@ -1170,13 +1170,7 @@ def test_autocast_context_disabled_returns_nullcontext(autocast_mock: MagicMock)
     autocast_mock.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "device_type",
-    [
-        pytest.param("cuda", id="cuda"),
-        pytest.param("cpu", id="cpu"),
-    ],
-)
+@pytest.mark.parametrize("device_type", ["cuda", "cpu"])
 @patch("trackers.core.mcbyte.masks.cutie.torch.amp.autocast")
 def test_autocast_context_enabled_follows_device_type(autocast_mock: MagicMock, device_type: str) -> None:
     """With AMP on the autocast backend follows the device type, not a hardcoded 'cuda'."""
