@@ -39,6 +39,11 @@ reid_model = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
 tracker = BoTSORTTracker(reid_model=reid_model, appearance_threshold=0.2)
 ```
 
+!!! warning "A frame is required when ReID is enabled"
+
+    Pass the current video frame as `tracker.update(detections, frame=frame_bgr)`.
+    When `reid_model` is set, `update()` raises if `frame` is omitted.
+
 For the model catalog and fine-tuning, see the
 [`reid` training guide](https://github.com/roboflow/re-ID/blob/main/docs/learn/train.md).
 
