@@ -27,6 +27,186 @@ from trackers.core.mcbyte.masks.cutie import (  # noqa: E402
 )
 
 
+class _FakeObject:
+    """Cutie object stub exposing the immutable ``id`` attribute."""
+
+    def __init__(self, object_id: int) -> None:
+        self.id = object_id
+
+
+class _FakeObjectManager:
+    """ObjectManager stub exposing the temporary-ID -> object mapping."""
+
+    def __init__(self, tmp_id_to_obj: dict[int, _FakeObject]) -> None:
+        self.tmp_id_to_obj = tmp_id_to_obj
+
+
+class _FakeFeatureStore:
+    """ImageFeatureStore stub modeling encode-on-miss plus explicit delete.
+
+    ``encode_count`` records how many distinct time indices were encoded so a
+    test can assert an add_masks reused a prior propagate's features (count
+    unchanged) instead of re-encoding the identical frame.
+    """
+
+    def __init__(self) -> None:
+        self._store: dict[int, tuple[str, int]] = {}
+        self.encode_count = 0
+        self.no_warning = False
+
+    def get_features(self, index: int, image: Any) -> tuple[str, int]:
+        if index not in self._store:
+            self.encode_count += 1
+            self._store[index] = ("features", index)
+        return self._store[index]
+
+    def delete(self, index: int) -> None:
+        self._store.pop(index, None)
+
+
+class _FakeInferenceCore:
+    """InferenceCore stub mirroring curr_ti bookkeeping and delete_buffer.
+
+    ``step`` increments ``curr_ti`` before its feature lookup (as the real core
+    does), encodes on a store miss, and drops the entry when ``delete_buffer`` is
+    True. It returns a fixed probability tensor so the wrapper's downstream mask
+    conversion runs unchanged.
+    """
+
+    def __init__(self, prob: Any, tmp_id_to_obj: dict[int, _FakeObject]) -> None:
+        self.image_feature_store = _FakeFeatureStore()
+        self.object_manager = _FakeObjectManager(tmp_id_to_obj)
+        self.curr_ti = -1
+        self._prob = prob
+
+    def step(
+        self,
+        image: Any,
+        mask: Any | None = None,
+        objects: list[int] | None = None,
+        *,
+        idx_mask: bool = True,
+        delete_buffer: bool = True,
+    ) -> Any:
+        self.curr_ti += 1
+        self.image_feature_store.get_features(self.curr_ti, image)
+        if delete_buffer:
+            self.image_feature_store.delete(self.curr_ti)
+        return self._prob
+
+    def clear_memory(self) -> None:
+        self.curr_ti = -1
+
+
+def _make_reuse_propagator(prob: Any, tmp_id_to_obj: dict[int, _FakeObject]) -> CutieMaskPropagator:
+    """Build an initialized propagator wired to a feature-store-aware fake core."""
+    propagator = object.__new__(CutieMaskPropagator)
+    propagator.device = torch.device("cpu")
+    propagator.use_amp = False
+    propagator.processor = _FakeInferenceCore(prob, tmp_id_to_obj)
+    propagator._initialized = True
+    propagator._tracklet_object_dict = {10: 1}
+    propagator._object_ids = [1]
+    propagator._last_object_id = 1
+    propagator._last_indexed_mask = np.zeros((2, 2), dtype=np.int32)
+    propagator._cached_feature_ti = None
+    propagator._cached_feature_frame = None
+    return propagator
+
+
+def test_drop_cached_features_deletes_store_entry_and_clears_fields() -> None:
+    """_drop_cached_features removes the retained store entry and resets the cache pointers."""
+    prob = torch.zeros((3, 2, 2), dtype=torch.float32)
+    prob[0] = 1.0
+    propagator = _make_reuse_propagator(prob, {1: _FakeObject(1), 2: _FakeObject(2)})
+    propagator.processor.image_feature_store._store[7] = ("features", 7)
+    propagator._cached_feature_ti = 7
+    propagator._cached_feature_frame = np.zeros((2, 2, 3), dtype=np.uint8)
+
+    propagator._drop_cached_features()
+
+    assert 7 not in propagator.processor.image_feature_store._store
+    assert propagator._cached_feature_ti is None
+    assert propagator._cached_feature_frame is None
+
+
+def test_add_masks_reuses_cached_features_for_the_same_frame() -> None:
+    """add_masks on the frame propagate last encoded reuses those features, skipping a re-encode."""
+    prob = torch.zeros((3, 2, 2), dtype=torch.float32)
+    prob[0] = 1.0
+    propagator = _make_reuse_propagator(prob, {1: _FakeObject(1), 2: _FakeObject(2)})
+    frame = np.zeros((2, 2, 3), dtype=np.uint8)
+
+    # Simulate the preceding propagate: features kept at ti=0, cache recorded.
+    store = propagator.processor.image_feature_store
+    propagator.processor.curr_ti = 0
+    store._store[0] = ("features", 0)
+    store.encode_count = 0
+    propagator._cached_feature_ti = 0
+    propagator._cached_feature_frame = frame
+
+    propagator.add_masks(
+        frame=frame,
+        mask_output=MaskOutput(
+            masks=np.ones((1, 2, 2), dtype=bool),
+            tracklet_mask_dict={20: 0},
+            mask_avg_prob_dict=None,
+        ),
+    )
+
+    assert store.encode_count == 0
+    # Both the original entry and the pre-seeded copy are dropped: no leak.
+    assert store._store == {}
+    assert propagator._cached_feature_ti is None
+
+
+def test_add_masks_reencodes_when_frame_differs_from_cache() -> None:
+    """The identity guard falls back to a normal encode when add_masks gets a different frame."""
+    prob = torch.zeros((3, 2, 2), dtype=torch.float32)
+    prob[0] = 1.0
+    propagator = _make_reuse_propagator(prob, {1: _FakeObject(1), 2: _FakeObject(2)})
+
+    store = propagator.processor.image_feature_store
+    propagator.processor.curr_ti = 0
+    store._store[0] = ("features", 0)
+    store.encode_count = 0
+    propagator._cached_feature_ti = 0
+    propagator._cached_feature_frame = np.zeros((2, 2, 3), dtype=np.uint8)
+
+    propagator.add_masks(
+        frame=np.full((2, 2, 3), 255, dtype=np.uint8),
+        mask_output=MaskOutput(
+            masks=np.ones((1, 2, 2), dtype=bool),
+            tracklet_mask_dict={20: 0},
+            mask_avg_prob_dict=None,
+        ),
+    )
+
+    assert store.encode_count == 1
+    assert store._store == {}
+    assert propagator._cached_feature_ti is None
+
+
+def test_propagate_retains_single_feature_entry_and_reset_clears_it() -> None:
+    """propagate keeps exactly one feature entry alive for reuse; reset drops it to avoid ti collisions."""
+    prob = torch.zeros((2, 2, 2), dtype=torch.float32)
+    prob[0] = 1.0
+    propagator = _make_reuse_propagator(prob, {1: _FakeObject(1)})
+    store = propagator.processor.image_feature_store
+
+    propagator.propagate(frame=np.zeros((2, 2, 3), dtype=np.uint8))
+    propagator.propagate(frame=np.zeros((2, 2, 3), dtype=np.uint8))
+
+    # Each propagate drops the previous kept entry before keeping its own.
+    assert len(store._store) == 1
+    assert propagator._cached_feature_ti == propagator.processor.curr_ti
+
+    propagator.reset()
+
+    assert store._store == {}
+    assert propagator._cached_feature_ti is None
+
+
 @pytest.fixture
 def initialized_cutie_propagator() -> CutieMaskPropagator:
     propagator = object.__new__(CutieMaskPropagator)
@@ -37,6 +217,8 @@ def initialized_cutie_propagator() -> CutieMaskPropagator:
     propagator._object_ids = []
     propagator._last_object_id = 0
     propagator._last_indexed_mask = None
+    propagator._cached_feature_ti = None
+    propagator._cached_feature_frame = None
     return propagator
 
 
@@ -425,6 +607,8 @@ def test_initialize_success_path_builds_state_and_calls_processor_step() -> None
     propagator._initialized = False
     propagator._last_object_id = 0
     propagator._last_indexed_mask = None
+    propagator._cached_feature_ti = None
+    propagator._cached_feature_frame = None
 
     masks = np.zeros((2, 4, 4), dtype=bool)
     masks[0, 0:2, 0:2] = True
@@ -498,6 +682,8 @@ def test_initialize_clears_stale_memory_on_mid_sequence_reinitialization() -> No
     propagator._initialized = False
     propagator._last_object_id = 0
     propagator._last_indexed_mask = None
+    propagator._cached_feature_ti = None
+    propagator._cached_feature_frame = None
 
     first_masks = np.zeros((2, 4, 4), dtype=bool)
     first_masks[0, 0:2, 0:2] = True
@@ -563,6 +749,8 @@ def test_initialize_resets_cutie_memory_when_no_masks_to_initialize(
     propagator._last_object_id = 1
     propagator._last_indexed_mask = np.ones((4, 4), dtype=np.int32)
     propagator._initialized = True
+    propagator._cached_feature_ti = None
+    propagator._cached_feature_frame = None
 
     propagator.initialize(
         frame=np.zeros((4, 4, 3), dtype=np.uint8),
@@ -873,8 +1061,12 @@ def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
     class DummyProcessor:
         def __init__(self) -> None:
             self.object_manager = DummyObjectManager()
+            self.curr_ti = 0
+            self.step_delete_buffer: bool | None = None
 
-        def step(self, frame: Any) -> Any:
+        def step(self, frame: Any, *, delete_buffer: bool = True) -> Any:
+            # propagate keeps features alive for a possible next add_masks.
+            self.step_delete_buffer = delete_buffer
             # Channels:
             # 0: background, 1: tmp 1 -> object 1, 2: tmp 2 -> object 3.
             return torch.tensor(
@@ -957,3 +1149,9 @@ def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
             dtype=np.int32,
         ),
     )
+
+    # propagate keeps its image features alive (delete_buffer=False) and records
+    # the store index and frame so a following add_masks can reuse them.
+    assert propagator.processor.step_delete_buffer is False
+    assert propagator._cached_feature_ti == 0
+    assert propagator._cached_feature_frame is not None

@@ -125,14 +125,14 @@ def _image_to_torch(
             "uint16 frame, or a float frame already normalized to [0, 1]."
         )
 
-    frame_torch = (
-        torch.from_numpy(frame.transpose(2, 0, 1))
-        .float()
-        .to(
-            device,
-            non_blocking=True,
-        )
-    )
+    # Upload the compact source dtype (uint8 = 1 byte/pixel) and cast to float
+    # on the target device, rather than materializing a 4x-larger float32 tensor
+    # host-side and copying that across the bus. ``.contiguous()`` collapses the
+    # CHW transpose view so the host->device copy is a single contiguous block;
+    # ``non_blocking`` only helps with pinned memory but is harmless otherwise.
+    # The result is bit-identical to the previous ``.float().to(device)`` path:
+    # uint8 -> float32 -> divide equals float32(uint8) / max exactly.
+    frame_torch = torch.from_numpy(frame.transpose(2, 0, 1)).contiguous().to(device, non_blocking=True).float()
 
     if np.issubdtype(frame.dtype, np.unsignedinteger):
         frame_torch /= float(np.iinfo(frame.dtype).max)
@@ -483,6 +483,12 @@ class CutieMaskPropagator(MaskPropagator):
         self.cutie.load_weights(model_weights)
 
         self.processor = InferenceCore(self.cutie, cfg=cfg)
+        # This propagator manages the image-feature-store buffer lifecycle
+        # itself (see the feature-reuse cache below): propagate() keeps its
+        # features alive past the step and the following add_masks() consumes or
+        # drops them. Silence Cutie's built-in end-of-life leak warning because
+        # one retained entry after the final propagate is by design, not a bug.
+        self.processor.image_feature_store.no_warning = True
         self._tracklet_object_dict: dict[int, int] = {}
         self._object_ids: list[int] = []
         self._initialized = False
@@ -492,10 +498,39 @@ class CutieMaskPropagator(MaskPropagator):
         # inserting new masks into the previous-frame prediction before feeding Cutie
         # again. It is updated during propagation and kept for upcoming lifecycle work.
         self._last_indexed_mask: np.ndarray | None = None
+        # --- Cutie image-feature reuse cache (P3-2) ---
+        # InferenceCore.step encodes the frame's image features and, by default,
+        # drops them at the end of the step. When a new object appears on the
+        # next iteration, MaskManager calls add_masks() on that same (now
+        # "previous") frame, which would re-encode the identical pixels under a
+        # fresh internal time index. propagate() therefore keeps its features
+        # alive (delete_buffer=False) and records the store index plus the frame;
+        # the following add_masks() pre-seeds those features so its step skips one
+        # full image encode. Reuse is bit-identical: image features are a
+        # deterministic function of the (deterministically resized + padded)
+        # frame, so the result matches a fresh encode exactly.
+        self._cached_feature_ti: int | None = None
+        self._cached_feature_frame: np.ndarray | None = None
+
+    def _drop_cached_features(self) -> None:
+        """Delete the image-feature-store entry kept alive for add_masks reuse.
+
+        Called whenever the retained features become unusable: at reset, at
+        (re-)initialization, once an add_masks() has consumed them, and before a
+        new propagate() keeps its own. This is mandatory rather than cosmetic:
+        ``clear_memory`` restarts ``InferenceCore.curr_ti`` at ``-1``, so a stale
+        entry at an old time index would otherwise be silently re-read once the
+        counter cycles back to that index, corrupting a later frame's features.
+        """
+        if self._cached_feature_ti is not None:
+            self.processor.image_feature_store.delete(self._cached_feature_ti)
+            self._cached_feature_ti = None
+            self._cached_feature_frame = None
 
     def reset(self) -> None:
         """Reset Cutie temporal memory and object mappings."""
         self.processor.clear_memory()
+        self._drop_cached_features()
         self._tracklet_object_dict = {}
         self._object_ids = []
         self._last_object_id = 0
@@ -547,6 +582,11 @@ class CutieMaskPropagator(MaskPropagator):
         # low object IDs. Clearing here makes initialize() correct regardless of
         # caller ordering.
         self.processor.clear_memory()
+        # clear_memory restarts curr_ti at -1; drop any feature entry held from a
+        # previous segment so the reused time index cannot collide (see
+        # _drop_cached_features). initialize() does not itself keep features —
+        # the frame it encodes is not the one add_masks runs on next.
+        self._drop_cached_features()
 
         self._tracklet_object_dict = _build_tracklet_object_dict(mask_output.tracklet_mask_dict)
 
@@ -590,8 +630,16 @@ class CutieMaskPropagator(MaskPropagator):
 
         frame_torch = _image_to_torch(frame, self.device)
 
+        # Drop any features kept by an earlier propagate that no add_masks
+        # consumed (a run of frames with no new objects), then keep this frame's
+        # features alive for a possible add_masks on the next iteration.
+        # delete_buffer=False changes only buffer retention, not the returned
+        # probabilities, so propagate output is unaffected.
+        self._drop_cached_features()
         with _autocast_context(self.use_amp):
-            prob = self.processor.step(frame_torch)
+            prob = self.processor.step(frame_torch, delete_buffer=False)
+        self._cached_feature_ti = self.processor.curr_ti
+        self._cached_feature_frame = frame
 
         # One full-resolution channel reduction shared by the indexed mask and
         # the per-object confidence stats below.
@@ -775,6 +823,21 @@ class CutieMaskPropagator(MaskPropagator):
         frame_torch = _image_to_torch(frame, self.device)
         indexed_mask_torch = torch.from_numpy(indexed_mask).long().to(self.device)
 
+        # If this frame is the one the previous propagate already encoded, reuse
+        # those image features instead of re-encoding identical pixels. step()
+        # increments curr_ti before its get_features/get_key lookups, so seed the
+        # store under the next index; step() deletes that copy itself
+        # (delete_buffer defaults True) and _drop_cached_features drops the
+        # original below. The identity guard keeps this correct even if a caller
+        # feeds add_masks a different frame than was last propagated.
+        if (
+            self._cached_feature_ti is not None
+            and self._cached_feature_frame is not None
+            and (frame is self._cached_feature_frame or np.array_equal(frame, self._cached_feature_frame))
+        ):
+            store = self.processor.image_feature_store
+            store._store[self.processor.curr_ti + 1] = store._store[self._cached_feature_ti]
+
         with _autocast_context(self.use_amp):
             prob = self.processor.step(
                 frame_torch,
@@ -782,6 +845,10 @@ class CutieMaskPropagator(MaskPropagator):
                 objects=new_object_ids,
                 idx_mask=True,
             )
+
+        # Kept features are now consumed (or were unusable); drop them so the
+        # store never accumulates entries across iterations.
+        self._drop_cached_features()
 
         self._last_object_id = max(new_object_ids)
         self._tracklet_object_dict.update(zip(sorted_tracklet_ids, new_object_ids))
@@ -838,5 +905,6 @@ class CutieMaskPropagator(MaskPropagator):
         # reset() and complements the self-cleaning initialize().
         if len(self._object_ids) == 0:
             self.processor.clear_memory()
+            self._drop_cached_features()
             self._last_indexed_mask = None
             self._initialized = False
