@@ -3312,7 +3312,7 @@ wheels = [
 
 [[package]]
 name = "rf-cutie"
-version = "1.0.0rc2"
+version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "einops" },
@@ -3320,9 +3320,18 @@ dependencies = [
     { name = "omegaconf" },
     { name = "torch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/22/d9/5bdb1590e7883a666d222ae6de4483188eddbe4c6805cbc67564c8a7736b/rf_cutie-1.0.0rc2.tar.gz", hash = "sha256:48c6e964a6b86f90ff5921c08cfee871071f3d65be91069c6bf1e5b467c25bf3", size = 158701, upload-time = "2026-07-29T16:09:55.424Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/66/406dde4b570dbbfd44646915254653fabedde8caebf37303053a354f109a/rf_cutie-1.0.1.tar.gz", hash = "sha256:4950205c62e6a055b6648ed35e8bf03650d9c83e86d568ac96725a2519451d43", size = 171131, upload-time = "2026-07-30T19:47:52.97Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/93/f5/6deeab355b344dc33660a96d05316e4baa05f8cfb03888be05b4d9207691/rf_cutie-1.0.0rc2-py3-none-any.whl", hash = "sha256:ff6032fa9384f4d61c8cc8d793b8b6c313d55a0a39e4a91c80e065a9b3bd6c2d", size = 171543, upload-time = "2026-07-29T16:09:51.985Z" },
+    { url = "https://files.pythonhosted.org/packages/01/17/a03b5b0aa40cc556447a5b7acfba2e5b07c073ab5ddddbc1943dd857e6c3/rf_cutie-1.0.1-py3-none-any.whl", hash = "sha256:716234075b8d3166b0e028e5e467051a54b722e2dec53157d4ab8f631742ddd3", size = 171982, upload-time = "2026-07-30T19:47:51.604Z" },
+]
+
+[package.optional-dependencies]
+inference = [
+    { name = "hydra-core" },
+    { name = "pillow" },
+    { name = "requests" },
+    { name = "torchvision" },
+    { name = "tqdm" },
 ]
 
 [[package]]
@@ -4151,7 +4160,7 @@ detection = [
     { name = "inference-models" },
 ]
 mask = [
-    { name = "rf-cutie" },
+    { name = "rf-cutie", extra = ["inference"] },
     { name = "rf-segment-anything" },
     { name = "torch" },
     { name = "torchvision" },
@@ -4193,10 +4202,10 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "opencv-python", specifier = ">=4.8.0" },
     { name = "optuna", marker = "extra == 'tune'", specifier = ">=3.0.0" },
-    { name = "pydeprecate", specifier = ">=0.7.0" },
+    { name = "pydeprecate", specifier = ">=0.8.0" },
     { name = "requests", specifier = ">=2.28.0" },
-    { name = "rf-cutie", marker = "extra == 'mask'", specifier = "==1.0.0rc2" },
-    { name = "rf-segment-anything", marker = "extra == 'mask'", specifier = "==1.0" },
+    { name = "rf-cutie", extras = ["inference"], marker = "extra == 'mask'", specifier = ">=1.0.0" },
+    { name = "rf-segment-anything", marker = "extra == 'mask'", specifier = ">=1.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "scipy", specifier = ">=1.13.1" },
     { name = "supervision", specifier = ">=0.26.1" },

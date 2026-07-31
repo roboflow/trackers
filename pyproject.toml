@@ -51,7 +51,7 @@ mask = [
     "torch",
     "torchvision",
     "rf-segment-anything>=1.0",
-    "rf-cutie>=1.0.0",
+    "rf-cutie[inference]>=1.0.0",
 ]
 
 [project.scripts]
