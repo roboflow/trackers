@@ -196,6 +196,7 @@ def test_mcbyte_reset_clears_mask_state() -> None:
         enable_cmc=False,
         mask_manager=_dummy_mask_manager(),
         minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
     )
 
     frame = _make_frame()
@@ -236,6 +237,7 @@ def test_mcbyte_passes_new_tracklets_to_mask_manager_on_next_frame() -> None:
         enable_mask_manager=False,
         mask_manager=mask_manager,  # type: ignore[arg-type]
         minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
     )
 
     frame = _make_frame()
@@ -270,6 +272,7 @@ def test_mcbyte_mask_lifecycle_keeps_missing_tracklet_until_explicit_removal() -
         enable_cmc=False,
         mask_manager=_dummy_mask_manager(),
         minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
     )
 
     frame = _make_frame()
@@ -310,6 +313,79 @@ def test_mcbyte_mask_lifecycle_keeps_missing_tracklet_until_explicit_removal() -
     assert tracker._previous_new_tracklets == []
     assert tracker._previous_removed_tracklet_ids == [7]
     assert tracker._mask_tracklet_ids == set()
+
+
+def _visible_single_tracklet(tracker_id: int = 7) -> sv.Detections:
+    """One confirmed detection with the given tracker ID."""
+    result = sv.Detections(xyxy=np.array([[10.0, 20.0, 30.0, 40.0]], dtype=np.float32))
+    result.tracker_id = np.array([tracker_id], dtype=int)
+    return result
+
+
+def test_mcbyte_defers_mask_creation_until_minimum_frames() -> None:
+    """A confirmed tracklet is masked only after minimum_mask_creation_frames consecutive visible frames."""
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=_dummy_mask_manager(),
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=3,
+    )
+    frame = _make_frame()
+    visible_result = _visible_single_tracklet(7)
+
+    tracker._store_previous_mask_inputs(frame=frame, detections=visible_result, removed_tracklet_ids=[])
+    assert tracker._previous_new_tracklets == []
+    assert tracker._mask_tracklet_ids == set()
+    assert tracker._mask_pending_ages == {7: 1}
+    # A deferred tracklet is invisible to the mask pipeline (not init-masked).
+    assert tracker._previous_tracklets == []
+
+    tracker._store_previous_mask_inputs(frame=frame, detections=visible_result, removed_tracklet_ids=[])
+    assert tracker._previous_new_tracklets == []
+    assert tracker._mask_tracklet_ids == set()
+    assert tracker._mask_pending_ages == {7: 2}
+    assert tracker._previous_tracklets == []
+
+    tracker._store_previous_mask_inputs(frame=frame, detections=visible_result, removed_tracklet_ids=[])
+    assert [snapshot.tracker_id for snapshot in tracker._previous_new_tracklets] == [7]
+    assert tracker._mask_tracklet_ids == {7}
+    assert tracker._mask_pending_ages == {}
+    # Once promoted, the tracklet is exposed to the mask pipeline.
+    assert [snapshot.tracker_id for snapshot in tracker._previous_tracklets] == [7]
+
+
+def test_mcbyte_defer_restarts_when_tracklet_disappears_before_threshold() -> None:
+    """A tracklet that vanishes before the threshold restarts its visible-frame count on reappearance."""
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=_dummy_mask_manager(),
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=3,
+    )
+    frame = _make_frame()
+    visible_result = _visible_single_tracklet(7)
+    empty_result = sv.Detections.empty()
+    empty_result.tracker_id = np.array([], dtype=int)
+
+    tracker._store_previous_mask_inputs(frame=frame, detections=visible_result, removed_tracklet_ids=[])
+    tracker._store_previous_mask_inputs(frame=frame, detections=visible_result, removed_tracklet_ids=[])
+    assert tracker._mask_pending_ages == {7: 2}
+
+    # Tracklet not visible this frame: its pending count is dropped.
+    tracker._store_previous_mask_inputs(frame=frame, detections=empty_result, removed_tracklet_ids=[])
+    assert tracker._mask_pending_ages == {}
+
+    # Reappearing tracklet must accumulate the full window again before masking.
+    tracker._store_previous_mask_inputs(frame=frame, detections=visible_result, removed_tracklet_ids=[])
+    assert tracker._previous_new_tracklets == []
+    assert tracker._mask_tracklet_ids == set()
+    assert tracker._mask_pending_ages == {7: 1}
+
+
+def test_mcbyte_rejects_minimum_mask_creation_frames_below_one() -> None:
+    """minimum_mask_creation_frames below 1 is rejected: 1 already means immediate creation."""
+    with pytest.raises(ValueError, match="minimum_mask_creation_frames must be at least 1"):
+        McByteTracker(enable_cmc=False, enable_mask_manager=False, minimum_mask_creation_frames=0)
 
 
 def test_mcbyte_mask_conditioned_association_combines_locked_and_reduced_matches() -> None:

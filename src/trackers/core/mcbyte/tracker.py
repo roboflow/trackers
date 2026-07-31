@@ -268,6 +268,20 @@ class McByteTracker(BaseTracker):
         enable_isolated_mask_matching: Whether mask evidence may rescue an
             isolated candidate with positive IoU whose association similarity
             is below the normal stage threshold.
+        minimum_mask_creation_frames: Number of consecutive frames a confirmed
+            tracklet must remain visible in tracker output before its mask is
+            created (the SAM prompt plus Cutie ``add_masks``). This defers the
+            per-appearance mask encode for very-short-lived tracklets: those
+            that terminate before reaching the threshold never pay the encode,
+            at the cost of running IoU-only association for those tracklets
+            until their mask exists. Because mask conditioning is deferred, this
+            can alter tracking output and must be validated for CLEAR/HOTA/
+            Identity parity on the target workload. Use ``1`` to create masks on
+            a tracklet's first visible frame (the original immediate-creation
+            timing). A deferred tracklet is withheld from the mask pipeline
+            entirely, including Cutie's initial mask set: when every confirmed
+            tracklet is still inside its defer window the first masks are
+            produced only once at least one tracklet reaches the threshold.
     """
 
     tracker_id = "mcbyte"
@@ -295,6 +309,7 @@ class McByteTracker(BaseTracker):
         minimum_mask_coverage: float = MINIMUM_MASK_COVERAGE,
         minimum_mask_fill_ratio: float = MINIMUM_MASK_FILL_RATIO,
         enable_isolated_mask_matching: bool = False,
+        minimum_mask_creation_frames: int = 3,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
@@ -305,6 +320,12 @@ class McByteTracker(BaseTracker):
         )
         self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
+        if minimum_mask_creation_frames < 1:
+            raise ValueError(
+                "minimum_mask_creation_frames must be at least 1 "
+                f"(1 creates masks immediately). Got {minimum_mask_creation_frames}."
+            )
+        self.minimum_mask_creation_frames = minimum_mask_creation_frames
         self.minimum_iou_threshold_first_assoc = minimum_iou_threshold_first_assoc
         self.minimum_iou_threshold_second_assoc = minimum_iou_threshold_second_assoc
         self.minimum_iou_threshold_unconfirmed_assoc = minimum_iou_threshold_unconfirmed_assoc
@@ -362,6 +383,10 @@ class McByteTracker(BaseTracker):
         self._previous_new_tracklets: list[TrackletSnapshot] = []
         self._previous_removed_tracklet_ids: list[int] = []
         self._mask_tracklet_ids: set[int] = set()
+        # Consecutive-visible-frame counts for confirmed tracklets that are
+        # awaiting mask creation under ``minimum_mask_creation_frames``. Only
+        # populated when the threshold exceeds 1.
+        self._mask_pending_ages: dict[int, int] = {}
         self._consecutive_mask_failures: int = 0
 
     def update(
@@ -770,11 +795,10 @@ class McByteTracker(BaseTracker):
         removed_tracklet_id_set = set(removed_tracklet_ids)
         self._mask_tracklet_ids -= removed_tracklet_id_set
 
-        # Find current visible tracklets that do not yet have masks.
-        # These will be passed to SAM/Cutie on the next frame.
-        new_tracklets = [
-            tracklet for tracklet in current_tracklets if tracklet.tracker_id not in self._mask_tracklet_ids
-        ]
+        # Find current visible tracklets that do not yet have masks and have
+        # been visible long enough to warrant a mask. These will be passed to
+        # SAM/Cutie on the next frame.
+        new_tracklets = self._collect_new_masked_tracklets(current_tracklets)
 
         # Mark those new tracklets as now mask-managed, so if they disappear temporarily
         # and later reappear, they are not treated as new again.
@@ -785,10 +809,68 @@ class McByteTracker(BaseTracker):
         self._previous_new_tracklets = new_tracklets
         self._previous_removed_tracklet_ids = removed_tracklet_ids
 
-        # Stores the current frame and current visible tracklets
-        # as “previous” inputs for the next frame.
+        # Stores the current frame and current visible tracklets as “previous”
+        # inputs for the next frame. Only mask-eligible tracklets (already masked
+        # or promoted this frame) are exposed to the mask manager: tracklets
+        # still inside their ``minimum_mask_creation_frames`` defer window must
+        # be invisible to the pipeline so they are neither masked at Cutie
+        # initialization nor double-added once they cross the threshold. With
+        # ``minimum_mask_creation_frames == 1`` every visible tracklet is
+        # eligible immediately, so this equals ``current_tracklets``.
         self._previous_frame = frame
-        self._previous_tracklets = current_tracklets
+        if self.minimum_mask_creation_frames <= 1:
+            self._previous_tracklets = current_tracklets
+        else:
+            self._previous_tracklets = [
+                tracklet for tracklet in current_tracklets if tracklet.tracker_id in self._mask_tracklet_ids
+            ]
+
+    def _collect_new_masked_tracklets(
+        self,
+        current_tracklets: list[TrackletSnapshot],
+    ) -> list[TrackletSnapshot]:
+        """Select not-yet-masked tracklets ready for mask creation next frame.
+
+        A confirmed tracklet becomes eligible for mask creation only after it has
+        appeared in tracker output for ``minimum_mask_creation_frames`` consecutive
+        frames. Very-short-lived tracklets that terminate before reaching the
+        threshold are never handed to SAM/Cutie, saving the per-appearance mask
+        encode. A tracklet that disappears before reaching the threshold restarts
+        its count if it later reappears, so only stably visible tracklets are
+        masked. With ``minimum_mask_creation_frames == 1`` every not-yet-masked
+        tracklet is returned on its first visible frame, matching the original
+        immediate-creation timing.
+
+        Args:
+            current_tracklets: Tracklet snapshots visible in the current tracker
+                output (already filtered to valid, non-negative tracker IDs).
+
+        Returns:
+            Snapshots whose masks should be created on the next frame.
+        """
+        already_masked = self._mask_tracklet_ids
+        if self.minimum_mask_creation_frames <= 1:
+            return [tracklet for tracklet in current_tracklets if tracklet.tracker_id not in already_masked]
+
+        current_ids = {tracklet.tracker_id for tracklet in current_tracklets}
+        # Drop ages for tracklets no longer visible so a reappearing tracklet
+        # must again accumulate consecutive visible frames before it is masked.
+        self._mask_pending_ages = {
+            tracker_id: age for tracker_id, age in self._mask_pending_ages.items() if tracker_id in current_ids
+        }
+
+        new_tracklets: list[TrackletSnapshot] = []
+        for tracklet in current_tracklets:
+            tracker_id = tracklet.tracker_id
+            if tracker_id in already_masked:
+                continue
+            age = self._mask_pending_ages.get(tracker_id, 0) + 1
+            if age >= self.minimum_mask_creation_frames:
+                new_tracklets.append(tracklet)
+                self._mask_pending_ages.pop(tracker_id, None)
+            else:
+                self._mask_pending_ages[tracker_id] = age
+        return new_tracklets
 
     def _get_iou_matrix(
         self,
@@ -1025,6 +1107,7 @@ class McByteTracker(BaseTracker):
         self._previous_new_tracklets = []
         self._previous_removed_tracklet_ids = []
         self._mask_tracklet_ids = set()
+        self._mask_pending_ages = {}
         self._consecutive_mask_failures = 0
 
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:
