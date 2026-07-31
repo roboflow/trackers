@@ -18,10 +18,13 @@ that case; other values rescale ``F`` and ``Q`` for shorter or longer gaps.
 ``Q`` uses the standard constant-velocity + white-noise-acceleration (DWNA)
 layout for gaps (``frame_step > 1``) and shorter-than-nominal steps
 (``frame_step < 1``): velocity variance scales as ``Δt²``, position as ``Δt⁴``.
-At ``frame_step == 1.0`` the original configured Q (set by ``_configure_noise``
-via ``set_kf_covariances``) is returned unchanged — this preserves the
-hand-tuned per-tracker noise and ensures backward compatibility when
-``timestamp`` is omitted. Same block structure as
+At a *near-nominal* ``frame_step`` — within ``_NOMINAL_FRAME_STEP_TOLERANCE``
+of ``1.0`` — the original configured Q (set by ``_configure_noise`` via
+``set_kf_covariances``) is returned unchanged. This preserves the hand-tuned
+per-tracker noise, keeps backward compatibility when ``timestamp`` is omitted,
+and makes a timestamped stream at its nominal FPS behave like the fixed-rate
+one: ``frame_step`` is a product of a subtraction, so it lands near ``1.0``
+without ever hitting it. Same block structure as
 ``filterpy.common.discrete_white_noise`` — see the filterpy docs or source if
 you want the formulas side by side.
 """
@@ -64,6 +67,19 @@ def constant_velocity_transition_matrix(
     return mtx
 
 
+_NOMINAL_FRAME_STEP_TOLERANCE = 0.1
+"""Half-width of the band around ``frame_step = 1.0`` treated as one nominal frame.
+
+``frame_step`` is ``(t - t_prev) * frame_rate``, so a stream running at its
+nominal FPS never lands on exactly ``1.0``: a float clock is off by ~1e-12, an
+integer-millisecond clock (``cv2.CAP_PROP_POS_MSEC``) by up to 4.1e-2 at 60 FPS,
+and capture jitter of a couple of milliseconds by ~1e-1. The smallest gap a
+caller can express is ``frame_step = 1.5``, i.e. a deviation of 5e-1, so this
+band separates "one nominal frame" from "a real gap" with an order of magnitude
+of headroom on either side.
+"""
+
+
 @dataclass
 class ScalableProcessNoise:
     """Store the tracker's one-frame ``Q`` and scale it for any gap.
@@ -74,12 +90,12 @@ class ScalableProcessNoise:
     acceleration variance ``sigma_a2`` from that reference ``Q`` and stores the
     DWNA-at-1 layout as ``baseline_Q``.
 
-    At ``frame_step == 1.0``, ``build_Q`` returns the original configured Q
-    stored in ``baseline_Q`` — preserving hand-tuned per-tracker noise and
-    backward compatibility. For other frame steps, DWNA scaling is applied:
-    smaller steps (``frame_step < 1``) shrink uncertainty; larger steps
-    (``frame_step > 1``) grow it. Frozen entries (e.g. aspect ratio in XCYCSR)
-    stay at the values from ``_configure_noise()``.
+    Within ``_NOMINAL_FRAME_STEP_TOLERANCE`` of ``frame_step = 1.0``,
+    ``build_Q`` returns the original configured Q stored in ``baseline_Q`` —
+    preserving hand-tuned per-tracker noise and backward compatibility. Outside
+    that band the step is a real gap and DWNA scaling is applied: smaller steps
+    shrink uncertainty; larger steps grow it. Frozen entries (e.g. aspect ratio
+    in XCYCSR) stay at the values from ``_configure_noise()``.
     """
 
     dim_x: int
@@ -130,19 +146,34 @@ class ScalableProcessNoise:
     def build_Q(self, frame_step: float) -> NDArray[np.float64]:
         """Return process noise Q scaled for the given frame step.
 
-        At ``frame_step == 1.0`` the original configured Q (``baseline_Q``) is
-        returned unchanged to preserve hand-tuned noise and backward
-        compatibility. For any other step the DWNA formula is applied via
-        ``_dwna``.
+        Within ``_NOMINAL_FRAME_STEP_TOLERANCE`` of ``1.0`` the step counts as
+        one nominal frame and the configured Q (``baseline_Q``) is returned
+        unchanged, preserving hand-tuned noise. Outside that band the step is a
+        real gap and the DWNA formula is applied via ``_dwna``.
+
+        The tolerance is what makes dynamic-rate mode line up with fixed-rate
+        mode. ``frame_step`` comes from ``(t - t_prev) * frame_rate``, so a
+        stream at its nominal FPS lands *near* ``1.0``, never on it; an exact
+        comparison sent every such step down the gap path, where ``_dwna``
+        rebuilds Q from the velocity diagonal alone and drops the configured
+        position noise.
+
+        What this does **not** cover: capture jitter wider than the tolerance
+        still takes the gap path, and lost-track pruning remains asymmetric
+        between the two modes (``BaseTracker._prune_lost_tracks`` runs before
+        association in dynamic-rate mode, while the fixed-rate frame budget is
+        enforced after it), so the two modes can still differ by one
+        ``lost_track_buffer`` frame.
 
         Args:
-            frame_step: Elapsed time in frame units; ``1.0`` returns
-                ``baseline_Q`` exactly.
+            frame_step: Elapsed time in frame units; a value within
+                ``_NOMINAL_FRAME_STEP_TOLERANCE`` of ``1.0`` returns
+                ``baseline_Q`` unchanged.
 
         Returns:
             Process noise matrix of shape ``(dim_x, dim_x)``.
         """
-        if frame_step == 1.0:
+        if abs(frame_step - 1.0) <= _NOMINAL_FRAME_STEP_TOLERANCE:
             return self.baseline_Q.copy()
         self._ensure_calibrated()
         return self._dwna(frame_step)

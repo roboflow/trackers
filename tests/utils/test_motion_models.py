@@ -94,6 +94,86 @@ def test_build_Q_at_frame_step_1_returns_baseline() -> None:
     np.testing.assert_array_equal(q1, baseline)
 
 
+def _noise_8d(baseline: np.ndarray) -> ScalableProcessNoise:
+    return ScalableProcessNoise(
+        dim_x=8,
+        pos_idx=POS_4D,
+        vel_idx=VEL_4D,
+        baseline_Q=baseline.copy(),
+        sigma_a2=np.ones(4, dtype=np.float64) * 0.01,
+        extra_q_diagonal=np.diag(baseline).astype(np.float64).copy(),
+    )
+
+
+# Deviations a stream running at its nominal FPS actually produces. `frame_step`
+# is `(t - t_prev) * frame_rate`, so it lands near 1.0 and never on it.
+NEAR_NOMINAL_FRAME_STEPS = [
+    pytest.param(1.0 + 5e-13, id="float-clock"),
+    pytest.param(1.0 - 5e-13, id="float-clock-below"),
+    pytest.param(1.0 + 2.0e-2, id="millisecond-clock-30fps"),
+    pytest.param(1.0 + 4.1e-2, id="millisecond-clock-60fps"),
+    pytest.param(1.0 - 4.1e-2, id="millisecond-clock-60fps-below"),
+    pytest.param(1.0 + 1.0e-3, id="ntsc-29.97-declared-30"),
+]
+
+
+@pytest.mark.parametrize("frame_step", NEAR_NOMINAL_FRAME_STEPS)
+def test_build_Q_returns_baseline_for_near_nominal_frame_step(frame_step: float) -> None:
+    """A step off 1.0 by real clock error still counts as one nominal frame.
+
+    Compared bit for bit rather than with ``approx``: an approximate check would
+    pass on the rebuilt DWNA matrix this guards against, which differs from the
+    configured Q by two orders of magnitude on the position block.
+    """
+    baseline = np.diag([16.0, 81.0, 16.0, 81.0, 0.25, 1.2656, 0.25, 1.2656])
+    noise = _noise_8d(baseline)
+
+    built = noise.build_Q(frame_step)
+
+    assert built.tobytes() == baseline.tobytes()
+
+
+def test_build_Q_still_rescales_a_real_gap() -> None:
+    """Steps outside the band keep the DWNA gap scaling untouched."""
+    baseline = np.eye(8, dtype=np.float64) * 0.01
+    noise = _noise_8d(baseline)
+
+    for frame_step in (1.5, 2.0, 5.0, 15.0):
+        built = noise.build_Q(frame_step)
+        assert built.tobytes() != baseline.tobytes(), f"frame_step={frame_step} must take the gap path"
+
+    for p, v in zip(POS_4D, VEL_4D):
+        assert noise.build_Q(4.0)[v, v] == pytest.approx(noise.build_Q(2.0)[v, v] * 4.0)
+
+
+def test_build_Q_alternating_nominal_and_gap_steps_leaves_no_stale_state() -> None:
+    """Second occurrence and the return to the original state, not just the first transition."""
+    baseline = np.diag([16.0, 81.0, 16.0, 81.0, 0.25, 1.2656, 0.25, 1.2656])
+    noise = _noise_8d(baseline)
+
+    gap_first = noise.build_Q(3.0)
+    for _ in range(2):
+        assert noise.build_Q(1.0 + 2.0e-2).tobytes() == baseline.tobytes()
+        np.testing.assert_array_equal(noise.build_Q(3.0), gap_first)
+        assert noise.build_Q(1.0).tobytes() == baseline.tobytes()
+
+
+def test_build_Q_recalibrates_within_the_nominal_band() -> None:
+    """A near-nominal step returns the *current* reference, not a cached one.
+
+    BoT-SORT refreshes its scale-aware Q on every frame, so the band must track
+    ``calibrate`` rather than pin the matrix seen on the first call.
+    """
+    first = np.eye(8, dtype=np.float64) * 0.01
+    noise = _noise_8d(first)
+    assert noise.build_Q(1.0 + 2.0e-2).tobytes() == first.tobytes()
+
+    second = np.eye(8, dtype=np.float64) * 0.5
+    noise.calibrate(second)
+
+    assert noise.build_Q(1.0 + 2.0e-2).tobytes() == second.tobytes()
+
+
 def test_sync_preserves_configured_q_at_unit_frame_step() -> None:
     """At frame_step=1.0, kf.process_noise must equal the configured Q exactly (backward-compat gate)."""
     kf = KalmanFilter(dim_x=2, dim_z=1)

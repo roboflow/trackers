@@ -57,7 +57,9 @@ Stick with the default when you process **every** frame in order at a steady rat
 
 Set **`frame_rate`** on the tracker in both modes. In fixed mode it scales the frame budget above. When you pass `timestamp`, it also turns elapsed seconds into Kalman frame units (`elapsed_seconds × frame_rate`).
 
-If the video is actually steady 25 FPS and you pass timestamps every frame, `frame_step` stays `1.0` — dynamic mode lines up with fixed mode.
+If the video is actually steady 25 FPS and you pass timestamps every frame, `frame_step` stays at `1.0` for Kalman purposes — dynamic mode lines up with fixed mode. It lands *near* `1.0` rather than on it, because `frame_step` comes out of a subtraction: a float clock is off by ~1e-12, `cv2.CAP_PROP_POS_MSEC` rounds to whole milliseconds (up to 4% at 60 FPS), and capture jitter of a couple of milliseconds reaches ~10%. Anything within 10% of `1.0` counts as one nominal frame and runs the same process noise as fixed mode.
+
+Two differences remain. `frame_step` still scales the transition matrix, so a clock reporting 1.02 frames does extrapolate 2% further — sub-pixel in practice. And lost-track pruning is not symmetric: dynamic mode drops time-expired tracks *before* association, fixed mode enforces its frame budget *after*, so a track whose budget runs out on the step where a detection would have re-matched it survives in fixed mode and not in dynamic mode.
 
 ---
 
@@ -66,7 +68,7 @@ If the video is actually steady 25 FPS and you pass timestamps every frame, `fra
 On each predict, the filter adjusts how far it extrapolates and how uncertain it is:
 
 - **Position** moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (`frame_step`).
-- **Process noise** grows on longer gaps so the box does not stay artificially tight. At `frame_step = 1.0` you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.
+- **Process noise** grows on longer gaps so the box does not stay artificially tight. Within 10% of `frame_step = 1.0` you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.
 - **Scale velocity** is frozen if the projected area over the gap would go non-positive.
 
 ---
