@@ -227,3 +227,19 @@ def test_get_iou_matrix_reads_cache_without_decoding(monkeypatch: pytest.MonkeyP
 
     assert result.shape == (1, 1)
     assert result[0, 0] == pytest.approx(1.0)
+
+
+def test_get_iou_matrix_raises_contextual_error_on_cache_miss() -> None:
+    """_get_iou_matrix raises a contextual KeyError when a tracklet is absent from the cache.
+
+    The decode-once map must contain every tracklet passed to the helper (it is
+    built from ``self.tracks`` once per ``update()``). A miss is an internal-invariant
+    violation; the helper surfaces it with a message naming the cache contract rather
+    than a bare ``KeyError: <id int>``.
+    """
+    tracker = BoTSORTTracker(enable_cmc=False)
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 10.0, 10.0]))
+    detections = np.array([[0.0, 0.0, 10.0, 10.0]])
+
+    with pytest.raises(KeyError, match="decode-once box cache"):
+        tracker._get_iou_matrix([tracklet], detections, {})

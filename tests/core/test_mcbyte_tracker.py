@@ -662,3 +662,19 @@ def test_mcbyte_rejects_unused_mask_config() -> None:
             enable_mask_manager=False,
             mask_config=McByteMaskConfig(),
         )
+
+
+def test_get_iou_matrix_raises_contextual_error_on_cache_miss() -> None:
+    """_get_iou_matrix raises a contextual KeyError when a tracklet is absent from the cache.
+
+    The decode-once map must contain every tracklet passed to the helper (it is
+    built from ``self.tracks`` once per ``update()``). A miss is an internal-invariant
+    violation; the helper surfaces it with a message naming the cache contract rather
+    than a bare ``KeyError: <id int>``.
+    """
+    tracker = McByteTracker(enable_cmc=False, enable_mask_manager=False)
+    tracklet = McByteTracklet(initial_bbox=np.array([0.0, 0.0, 10.0, 10.0], dtype=np.float32))
+    detections = np.array([[0.0, 0.0, 10.0, 10.0]])
+
+    with pytest.raises(KeyError, match="decode-once box cache"):
+        tracker._get_iou_matrix([tracklet], detections, {})

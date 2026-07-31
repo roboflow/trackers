@@ -808,11 +808,23 @@ class McByteTracker(BaseTracker):
             tracklet_boxes_by_id: Mapping from ``id(track)`` to the track's
                 predicted state bbox, computed once per ``update()`` and reused
                 across association stages to avoid recomputing ``get_state_bbox``.
+
+        Raises:
+            KeyError: If a tracklet passed in is absent from ``tracklet_boxes_by_id``
+                — an internal-invariant violation, since the map is built from
+                ``self.tracks`` and every tracklet here is drawn from it.
         """
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
-            tracklet_boxes = np.array([tracklet_boxes_by_id[id(tracklet)] for tracklet in tracklets])
+            try:
+                tracklet_boxes = np.array([tracklet_boxes_by_id[id(tracklet)] for tracklet in tracklets])
+            except KeyError as exc:
+                raise KeyError(
+                    f"tracklet id {exc.args[0]} missing from the per-frame decode-once box cache; "
+                    "tracklet_boxes_by_id must contain every tracklet passed to this helper "
+                    "(it is built from self.tracks once per update())"
+                ) from exc
         return self.iou.compute(tracklet_boxes, detections)
 
     def _get_mask_conditioned_associated_indices(
