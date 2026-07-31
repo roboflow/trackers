@@ -32,3 +32,44 @@ jobs:
 
       - name: 🧪 Run Integration Tests
         run: uv run pytest -m integration -v --tb=short
+
+  mask-pipeline:
+    name: Mask Extra Smoke
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout the repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: 🐍 Install uv and set Python version
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with:
+          python-version: "3.12"
+          activate-environment: true
+
+      - name: 🚀 Install Packages with the mask extra
+        run: uv sync --frozen --group dev --extra mask
+
+      - name: 🎭 Smoke-test the SAM + Cutie mask pipeline
+        run: |
+          uv run python - <<'PY'
+          import numpy as np
+          import supervision as sv
+
+          from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
+
+          tracker = McByteTracker(
+              enable_cmc=True,
+              enable_mask_manager=True,
+              mask_config=McByteMaskConfig(device="cpu"),
+          )
+          frame = np.zeros((360, 640, 3), dtype=np.uint8)
+          detections = sv.Detections(
+              xyxy=np.array([[100, 80, 200, 300]], dtype=np.float32),
+              confidence=np.array([0.9], dtype=np.float32),
+          )
+          for _ in range(2):
+              tracker.update(detections=detections, frame=frame)
+          print("mask pipeline OK")
+          PY
