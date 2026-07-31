@@ -114,6 +114,14 @@ class McByteMaskConfig:
         cutie_use_long_term: Whether Cutie uses bounded long-term memory,
             recommended for videos longer than roughly one minute. ``None``
             keeps the value from the loaded Cutie configuration.
+        cutie_channels_last: Opt-in ``channels_last`` memory format for the
+            Cutie model. Off by default so default runs are unchanged; it may
+            alter kernel selection, so validate fp32 tracking-quality parity on
+            your backend before enabling. Primarily helps CUDA.
+        cutie_compile: Opt-in ``torch.compile`` of Cutie's shape-stable
+            per-frame encoder path. Off by default; incurs first-call warmup
+            and may alter numerics, so validate fp32 parity before enabling.
+            ``torch.compile`` support on MPS is experimental.
         mask_creation_bbox_overlap_threshold: Bounding-box overlap fraction at
             or above which mask creation is delayed by ``MaskManager``.
     """
@@ -131,6 +139,8 @@ class McByteMaskConfig:
     cutie_max_internal_size: int = 480
     cutie_mem_every: int | None = 10
     cutie_use_long_term: bool | None = True
+    cutie_channels_last: bool = False
+    cutie_compile: bool = False
 
     mask_creation_bbox_overlap_threshold: float = MASK_CREATION_BBOX_OVERLAP_THRESHOLD
 
@@ -159,6 +169,8 @@ def _build_default_mask_manager(
         max_internal_size=config.cutie_max_internal_size,
         mem_every=config.cutie_mem_every,
         use_long_term=config.cutie_use_long_term,
+        channels_last=config.cutie_channels_last,
+        compile_model=config.cutie_compile,
     )
 
     return MaskManager(

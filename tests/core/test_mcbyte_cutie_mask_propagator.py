@@ -6,7 +6,9 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from typing import Any
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -16,6 +18,8 @@ torch = pytest.importorskip("torch")
 from trackers.core.mcbyte.masks.base import MaskOutput  # noqa: E402
 from trackers.core.mcbyte.masks.cutie import (  # noqa: E402
     CutieMaskPropagator,
+    _apply_backend_perf_options,
+    _autocast_context,
     _binary_masks_to_indexed_mask,
     _binary_masks_to_non_overlapping_torch,
     _build_tracklet_object_dict,
@@ -1155,3 +1159,71 @@ def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
     assert propagator.processor.step_delete_buffer is False
     assert propagator._cached_feature_ti == 0
     assert propagator._cached_feature_frame is not None
+
+
+@patch("trackers.core.mcbyte.masks.cutie.torch.amp.autocast")
+def test_autocast_context_disabled_returns_nullcontext(autocast_mock: MagicMock) -> None:
+    """With AMP off the helper returns a no-op context and never constructs an autocast."""
+    context = _autocast_context(use_amp=False, device=torch.device("cuda"))
+
+    assert isinstance(context, nullcontext)
+    autocast_mock.assert_not_called()
+
+
+@pytest.mark.parametrize("device_type", ["cuda", "cpu"])
+@patch("trackers.core.mcbyte.masks.cutie.torch.amp.autocast")
+def test_autocast_context_enabled_follows_device_type(autocast_mock: MagicMock, device_type: str) -> None:
+    """With AMP on the autocast backend follows the device type, not a hardcoded 'cuda'."""
+    context = _autocast_context(use_amp=True, device=torch.device(device_type))
+
+    autocast_mock.assert_called_once_with(device_type, enabled=True)
+    assert context is autocast_mock.return_value
+
+
+@patch("trackers.core.mcbyte.masks.cutie.torch.compile")
+def test_apply_backend_perf_options_disabled_invokes_no_transform(compile_mock: MagicMock) -> None:
+    """Both transforms off: neither model.to nor torch.compile runs and the model is returned as-is."""
+    model = MagicMock()
+
+    result = _apply_backend_perf_options(model, channels_last=False, compile_model=False)
+
+    assert result is model
+    model.to.assert_not_called()
+    compile_mock.assert_not_called()
+
+
+@patch("trackers.core.mcbyte.masks.cutie.torch.compile")
+def test_apply_backend_perf_options_channels_last_converts_model_once(compile_mock: MagicMock) -> None:
+    """channels_last=True calls model.to exactly once with the channels_last format and compiles nothing."""
+    model = MagicMock()
+
+    result = _apply_backend_perf_options(model, channels_last=True, compile_model=False)
+
+    model.to.assert_called_once_with(memory_format=torch.channels_last)
+    assert result is model.to.return_value
+    compile_mock.assert_not_called()
+
+
+@patch("trackers.core.mcbyte.masks.cutie.torch.compile")
+def test_apply_backend_perf_options_compiles_only_shape_stable_encoder_methods(compile_mock: MagicMock) -> None:
+    """compile_model=True compiles exactly encode_image + transform_key, leaving the variable-shape methods eager."""
+    model = MagicMock()
+    original_encode_image = model.encode_image
+    original_transform_key = model.transform_key
+    original_segment = model.segment
+    original_encode_mask = model.encode_mask
+
+    result = _apply_backend_perf_options(model, channels_last=False, compile_model=True)
+
+    assert result is model
+    model.to.assert_not_called()
+    # Exactly the two shape-stable encoder methods are compiled.
+    assert compile_mock.call_count == 2
+    compile_mock.assert_any_call(original_encode_image)
+    compile_mock.assert_any_call(original_transform_key)
+    # Compiled results are assigned back to those two encoder entry points.
+    assert model.encode_image is compile_mock.return_value
+    assert model.transform_key is compile_mock.return_value
+    # Variable object-count methods stay eager to avoid recompilation churn.
+    assert model.segment is original_segment
+    assert model.encode_mask is original_encode_mask

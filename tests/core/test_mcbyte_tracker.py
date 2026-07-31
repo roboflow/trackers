@@ -535,6 +535,8 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
             max_internal_size: int = 480,
             mem_every: int | None = 10,
             use_long_term: bool | None = True,
+            channels_last: bool = False,
+            compile_model: bool = False,
         ) -> None:
             created["cutie"] = {
                 "weights_path": weights_path,
@@ -546,6 +548,8 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
                 "max_internal_size": max_internal_size,
                 "mem_every": mem_every,
                 "use_long_term": use_long_term,
+                "channels_last": channels_last,
+                "compile_model": compile_model,
             }
 
         def reset(self) -> None:
@@ -588,6 +592,8 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
             cutie_max_internal_size=576,
             cutie_mem_every=7,
             cutie_use_long_term=False,
+            cutie_channels_last=True,
+            cutie_compile=True,
             mask_creation_bbox_overlap_threshold=0.7,
         ),
     )
@@ -613,6 +619,8 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
         "max_internal_size": 576,
         "mem_every": 7,
         "use_long_term": False,
+        "channels_last": True,
+        "compile_model": True,
     }
 
     # Verify the MaskManager-specific threshold

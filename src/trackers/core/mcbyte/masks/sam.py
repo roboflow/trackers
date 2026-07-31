@@ -76,11 +76,21 @@ def _ensure_checkpoint_exists(
     )
 
 
-def _autocast_context(use_amp: bool) -> Any:
-    """Return the appropriate autocast context for the current AMP setting."""
+def _autocast_context(use_amp: bool, device: torch.device) -> Any:
+    """Return the appropriate autocast context for the current AMP setting.
+
+    The autocast device type follows ``device`` rather than a hardcoded
+    ``"cuda"`` so the helper is backend-generic. Callers gate ``use_amp`` to
+    CUDA, so the returned context is a CUDA autocast on the default path and a
+    no-op otherwise.
+
+    Args:
+        use_amp: Whether automatic mixed precision is requested.
+        device: Device whose ``type`` selects the autocast backend.
+    """
     if use_amp:
         if hasattr(torch, "amp"):
-            return torch.amp.autocast("cuda", enabled=True)
+            return torch.amp.autocast(device.type, enabled=True)
         return torch.cuda.amp.autocast(enabled=True)
     return nullcontext()
 
@@ -182,7 +192,7 @@ class SAMBoxMaskGenerator(MaskGenerator):
 
         box_tensor = torch.as_tensor(boxes, dtype=torch.float32, device=self.device)
 
-        with _autocast_context(self.use_amp):
+        with _autocast_context(self.use_amp, self.device):
             # set_image runs the SAM image encoder and predict_torch the mask
             # decoder; both are the dominant SAM cost and benefit from AMP on CUDA.
             self.predictor.set_image(frame)

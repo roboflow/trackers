@@ -95,13 +95,72 @@ def _get_cutie_package_dir(cutie_module: Any) -> Path:
     return Path(module_paths[0]).resolve()
 
 
-def _autocast_context(use_amp: bool) -> Any:
-    """Return the appropriate autocast context for the current AMP setting."""
+def _autocast_context(use_amp: bool, device: torch.device) -> Any:
+    """Return the appropriate autocast context for the current AMP setting.
+
+    The autocast device type follows ``device`` rather than a hardcoded
+    ``"cuda"`` so the helper is backend-generic. In practice callers gate
+    ``use_amp`` to CUDA (Cutie wraps precision-sensitive ops in
+    ``torch.cuda.amp.autocast(enabled=False)`` blocks that an MPS autocast would
+    not honor), so the returned context is a CUDA autocast on the default path
+    and a no-op otherwise.
+
+    Args:
+        use_amp: Whether automatic mixed precision is requested.
+        device: Device whose ``type`` selects the autocast backend.
+    """
     if use_amp:
         if hasattr(torch, "amp"):
-            return torch.amp.autocast("cuda", enabled=True)
+            return torch.amp.autocast(device.type, enabled=True)
         return torch.cuda.amp.autocast(enabled=True)
     return nullcontext()
+
+
+def _apply_backend_perf_options(
+    model: Any,
+    *,
+    channels_last: bool,
+    compile_model: bool,
+) -> Any:
+    """Apply optional, opt-in backend performance transforms to the Cutie model.
+
+    Both transforms are off by default; when disabled the model is returned
+    unchanged so the default pipeline stays bit-identical. Neither transform is
+    guaranteed to preserve outputs bit-for-bit once enabled (channels_last and
+    ``torch.compile`` may select different kernels), so each must pass a
+    per-backend fp32-parity check before being recommended.
+
+    Args:
+        model: The Cutie ``CUTIE`` network, already moved to its device and
+            loaded with weights.
+        channels_last: When True, convert 4D convolution weights to the
+            ``channels_last`` memory format. 1D/non-4D parameters are left
+            untouched. Most beneficial for convolutional encoders on CUDA
+            tensor cores.
+        compile_model: When True, wrap the shape-stable per-frame encoder
+            entry points (``encode_image`` and ``transform_key``) with
+            ``torch.compile``. Cutie's ``InferenceCore`` calls these network
+            submethods directly rather than ``model(...)``, so a module-level
+            ``torch.compile`` would never run; ``segment`` and ``encode_mask``
+            are deliberately left eager because their object-count dimension
+            varies frame to frame and would trigger repeated recompilation.
+            Their input shape, by contrast, is fixed after Cutie's internal
+            resize and ``pad_divide_by(16)``, so compiling them is churn-free.
+
+    Returns:
+        The transformed model (the same object; transforms are applied in
+        place and the reference is returned for call-site clarity).
+    """
+    if channels_last:
+        model = model.to(memory_format=torch.channels_last)
+    if compile_model:
+        if not hasattr(torch, "compile"):
+            raise RuntimeError("compile_model=True requires torch.compile (PyTorch >= 2.0).")
+        for method_name in ("encode_image", "transform_key"):
+            method = getattr(model, method_name, None)
+            if method is not None:
+                setattr(model, method_name, torch.compile(method))
+    return model
 
 
 def _image_to_torch(
@@ -406,6 +465,15 @@ class CutieMaskPropagator(MaskPropagator):
         use_long_term: Whether Cutie uses bounded long-term memory,
             recommended for videos longer than roughly one minute. ``None``
             keeps the value from the loaded Cutie configuration.
+        channels_last: Opt-in ``channels_last`` memory format for the Cutie
+            model's convolution weights. Off by default (unchanged model);
+            may change kernel selection, so validate fp32 output parity on
+            your backend before enabling. Primarily helps CUDA.
+        compile_model: Opt-in ``torch.compile`` of Cutie's shape-stable
+            per-frame encoder methods (``encode_image``, ``transform_key``).
+            Off by default. Incurs first-call warmup and may alter numerics,
+            so validate fp32 output parity before enabling; ``torch.compile``
+            support on MPS is experimental.
     """
 
     def __init__(
@@ -419,6 +487,8 @@ class CutieMaskPropagator(MaskPropagator):
         max_internal_size: int = 480,
         mem_every: int | None = 10,
         use_long_term: bool | None = True,
+        channels_last: bool = False,
+        compile_model: bool = False,
     ) -> None:
         try:
             import cutie
@@ -444,6 +514,8 @@ class CutieMaskPropagator(MaskPropagator):
         self.max_internal_size = max_internal_size
         self.mem_every = mem_every
         self.use_long_term = use_long_term
+        self.channels_last = channels_last
+        self.compile_model = compile_model
 
         asset = CUTIE_ASSETS.get(model_type)
         if asset is None:
@@ -481,6 +553,17 @@ class CutieMaskPropagator(MaskPropagator):
         # checkpoint is a plain state_dict consumed by load_weights, so it loads cleanly.
         model_weights = torch.load(self.weights_path, map_location=self.device, weights_only=True)
         self.cutie.load_weights(model_weights)
+
+        # Opt-in backend transforms (both off by default -> unchanged model).
+        # Applied after weights load so channels_last converts the loaded
+        # parameters and torch.compile wraps the final methods. InferenceCore
+        # and ImageFeatureStore both hold this same object, so patching its
+        # submethods here propagates to Cutie's actual call sites.
+        self.cutie = _apply_backend_perf_options(
+            self.cutie,
+            channels_last=self.channels_last,
+            compile_model=self.compile_model,
+        )
 
         self.processor = InferenceCore(self.cutie, cfg=cfg)
         # This propagator manages the image-feature-store buffer lifecycle
@@ -609,7 +692,7 @@ class CutieMaskPropagator(MaskPropagator):
         frame_torch = _image_to_torch(frame, self.device)
         masks_torch = _binary_masks_to_non_overlapping_torch(mask_output.masks, self.device)
 
-        with _autocast_context(self.use_amp):
+        with _autocast_context(self.use_amp, self.device):
             _ = self.processor.step(
                 frame_torch,
                 masks_torch,
@@ -636,7 +719,7 @@ class CutieMaskPropagator(MaskPropagator):
         # delete_buffer=False changes only buffer retention, not the returned
         # probabilities, so propagate output is unaffected.
         self._drop_cached_features()
-        with _autocast_context(self.use_amp):
+        with _autocast_context(self.use_amp, self.device):
             prob = self.processor.step(frame_torch, delete_buffer=False)
         self._cached_feature_ti = self.processor.curr_ti
         self._cached_feature_frame = frame
@@ -840,7 +923,7 @@ class CutieMaskPropagator(MaskPropagator):
             if isinstance(store_dict, dict) and self._cached_feature_ti in store_dict:
                 store_dict[self._cached_feature_ti + 1] = store_dict[self._cached_feature_ti]
 
-        with _autocast_context(self.use_amp):
+        with _autocast_context(self.use_amp, self.device):
             prob = self.processor.step(
                 frame_torch,
                 indexed_mask_torch,
