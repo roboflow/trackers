@@ -22,6 +22,7 @@ import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.utils.iou import BIoU
 
@@ -376,3 +377,43 @@ class TestCBIoUStickyMaturity:
         assert track_a_id in remaining_ids
         assert -1 not in remaining_ids
         assert len(tracker.tracks) == 1
+
+
+def test_biou_matrix_reads_cache_without_decoding(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_biou_matrix reads predicted boxes from the per-frame cache, never re-decoding.
+
+    P4-2 decode-once: each tracklet's box is decoded a single time per ``update()``
+    and passed to all three association stages via a map keyed by ``id()``. The
+    helper must read that map and never call ``get_state_bbox`` itself — doing so
+    would reintroduce the per-stage redundant decode the cache exists to remove.
+    """
+    tracker = CBIoUTracker()
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 10.0, 10.0]))
+
+    def _fail() -> np.ndarray:
+        raise AssertionError("get_state_bbox must not be called; boxes come from the cache")
+
+    monkeypatch.setattr(tracklet, "get_state_bbox", _fail)
+    cached_box = np.array([5.0, 5.0, 15.0, 15.0])
+    boxes = np.array([[5.0, 5.0, 15.0, 15.0]])  # identical to the cached box -> IoU 1.0
+
+    result = tracker._biou_matrix([tracklet], boxes, BIoU(buffer_ratio=0.0), {id(tracklet): cached_box})
+
+    assert result.shape == (1, 1)
+    assert result[0, 0] == pytest.approx(1.0)
+
+
+def test_biou_matrix_raises_contextual_error_on_cache_miss() -> None:
+    """_biou_matrix raises a contextual KeyError when a tracklet is absent from the cache.
+
+    The decode-once map must contain every tracklet passed to the helper (it is
+    built from ``self.tracks`` once per ``update()``). A miss is an internal-invariant
+    violation; the helper surfaces it with a message naming the cache contract rather
+    than a bare ``KeyError: <id int>``.
+    """
+    tracker = CBIoUTracker()
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 10.0, 10.0]))
+    boxes = np.array([[0.0, 0.0, 10.0, 10.0]])
+
+    with pytest.raises(KeyError, match="decode-once box cache"):
+        tracker._biou_matrix([tracklet], boxes, BIoU(buffer_ratio=0.0), {})
