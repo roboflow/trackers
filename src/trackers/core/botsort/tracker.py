@@ -247,11 +247,19 @@ class BoTSORTTracker(BaseTracker):
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(frame, mask_boxes)
             CMC.apply_batch(H, self.tracks)
+
+        # Cache each tracklet's predicted state bbox once per update. Track state
+        # is unchanged across the three association stages: a track matched in an
+        # earlier stage never re-enters a later one, and the CMC adjustment above
+        # is already applied. Recomputing get_state_bbox() per stage would be
+        # redundant, so all stages read boxes from this map keyed by ``id()``.
+        predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
+
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = self._get_iou_matrix(strack_pool, high_boxes)
+        iou_matrix = self._get_iou_matrix(strack_pool, high_boxes, predicted_state_boxes)
         iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), high_scores)
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
@@ -269,7 +277,7 @@ class BoTSORTTracker(BaseTracker):
         # only (excluding lost tracks, following the original ByteTrack).
         # No score fusing in second association.
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
-        iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
+        iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes, predicted_state_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
@@ -295,7 +303,7 @@ class BoTSORTTracker(BaseTracker):
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
 
-            iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes)
+            iou_matrix = self._get_iou_matrix(unconfirmed_tracks, uh_boxes, predicted_state_boxes)
             iou_matrix = _fuse_score(self.iou.normalize_for_fusion(iou_matrix), uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
@@ -349,11 +357,25 @@ class BoTSORTTracker(BaseTracker):
         result.tracker_id = np.array(out_tracker_ids, dtype=int)
         return result
 
-    def _get_iou_matrix(self, tracklets: list[BoTSORTTracklet], detections: np.ndarray) -> np.ndarray:
+    def _get_iou_matrix(
+        self,
+        tracklets: list[BoTSORTTracklet],
+        detections: np.ndarray,
+        tracklet_boxes_by_id: dict[int, np.ndarray],
+    ) -> np.ndarray:
+        """Compute IoU similarity between tracklet states and detection boxes.
+
+        Args:
+            tracklets: Tracklets forming the rows of the returned matrix.
+            detections: Detection boxes in ``xyxy`` format forming the columns.
+            tracklet_boxes_by_id: Mapping from ``id(track)`` to the track's
+                predicted state bbox, computed once per ``update()`` and reused
+                across association stages to avoid recomputing ``get_state_bbox``.
+        """
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
-            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+            tracklet_boxes = np.array([tracklet_boxes_by_id[id(tracklet)] for tracklet in tracklets])
         return self.iou.compute(tracklet_boxes, detections)
 
     def _get_associated_indices(

@@ -149,11 +149,22 @@ class CBIoUTracker(BoTSORTTracker):
         tracklets: list[BoTSORTTracklet],
         boxes: np.ndarray,
         iou: BIoU,
+        tracklet_boxes_by_id: dict[int, np.ndarray],
     ) -> np.ndarray:
+        """Compute buffered-IoU similarity between tracklet states and boxes.
+
+        Args:
+            tracklets: Tracklets forming the rows of the returned matrix.
+            boxes: Detection boxes in ``xyxy`` format forming the columns.
+            iou: The buffered-IoU metric (distinct buffer per association stage).
+            tracklet_boxes_by_id: Mapping from ``id(track)`` to the track's
+                predicted state bbox, computed once per ``update()`` and reused
+                across association stages to avoid recomputing ``get_state_bbox``.
+        """
         if len(tracklets) == 0:
             track_boxes = np.empty((0, 4))
         else:
-            track_boxes = np.array([t.get_state_bbox() for t in tracklets])
+            track_boxes = np.array([tracklet_boxes_by_id[id(t)] for t in tracklets])
         return iou.compute(track_boxes, boxes)
 
     def update(
@@ -244,10 +255,17 @@ class CBIoUTracker(BoTSORTTracker):
             else:
                 unconfirmed_tracks.append(track)
 
+        # Cache each tracklet's predicted state bbox once per update. Track state
+        # is unchanged across the three association stages: a track matched in an
+        # earlier stage never re-enters a later one, and C-BIoU performs no CMC.
+        # Recomputing get_state_bbox() per stage would be redundant, so all stages
+        # read boxes from this map keyed by ``id()``.
+        predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
+
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Paper b1 (small buffer); BIoU fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = self._biou_matrix(strack_pool, high_boxes, self.iou_first)
+        iou_matrix = self._biou_matrix(strack_pool, high_boxes, self.iou_first, predicted_state_boxes)
         iou_matrix = _fuse_score(self.iou_first.normalize_for_fusion(iou_matrix), high_scores)
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
@@ -264,7 +282,7 @@ class CBIoUTracker(BoTSORTTracker):
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks). Paper b2 (large buffer); no score fusion.
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
-        iou_matrix = self._biou_matrix(remaining_tracked, low_boxes, self.iou_second)
+        iou_matrix = self._biou_matrix(remaining_tracked, low_boxes, self.iou_second, predicted_state_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
@@ -289,7 +307,7 @@ class CBIoUTracker(BoTSORTTracker):
         if len(unconfirmed_tracks) > 0 and len(unmatched_high_list) > 0:
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
-            iou_matrix = self._biou_matrix(unconfirmed_tracks, uh_boxes, self.iou_first)
+            iou_matrix = self._biou_matrix(unconfirmed_tracks, uh_boxes, self.iou_first, predicted_state_boxes)
             iou_matrix = _fuse_score(self.iou_first.normalize_for_fusion(iou_matrix), uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
