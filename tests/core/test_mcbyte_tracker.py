@@ -754,3 +754,40 @@ def test_get_iou_matrix_raises_contextual_error_on_cache_miss() -> None:
 
     with pytest.raises(KeyError, match="decode-once box cache"):
         tracker._get_iou_matrix([tracklet], detections, {})
+
+
+def test_mcbyte_update_resets_the_seconds_clock() -> None:
+    """A re-match clears the seconds clock, so a second miss starts from zero."""
+    tracker = McByteTracker(enable_cmc=False)
+    box = (100.0, 100.0, 150.0, 200.0)
+    for i in range(6):
+        tracker.update(_detection(box), timestamp=i / 30.0)
+    for i in range(6, 12):
+        tracker.update(sv.Detections.empty(), timestamp=i / 30.0)
+    assert tracker.tracks[0].time_since_update_seconds > 0.0
+
+    tracker.update(_detection(box), timestamp=12 / 30.0)
+    assert tracker.tracks[0].time_since_update_seconds == 0.0
+
+    # Second occurrence: the clock has to advance again, not stay pinned.
+    tracker.update(sv.Detections.empty(), timestamp=13 / 30.0)
+    assert tracker.tracks[0].time_since_update_seconds > 0.0
+
+
+def test_mcbyte_tracklet_list_does_not_grow_without_bound_in_timestamp_mode() -> None:
+    """Objects that appear once and leave must not accumulate as live tracklets."""
+    tracker = McByteTracker(enable_cmc=False)
+    frame_index = 0
+    peak = 0
+    for k in range(12):
+        x = 40.0 + (k % 4) * 200.0
+        y = 40.0 + (k // 4) * 200.0
+        for _ in range(8):
+            tracker.update(_detection((x, y, x + 60.0, y + 80.0)), timestamp=frame_index / 30.0)
+            frame_index += 1
+        for _ in range(4):
+            tracker.update(sv.Detections.empty(), timestamp=frame_index / 30.0)
+            frame_index += 1
+        peak = max(peak, len(tracker.tracks))
+
+    assert peak <= 4, f"tracklet list grew to {peak} for 12 objects seen one at a time"

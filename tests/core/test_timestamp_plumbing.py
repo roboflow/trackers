@@ -24,6 +24,8 @@ from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.cbiou.tracker import CBIoUTracker
+from trackers.core.mcbyte.tracker import McByteTracker
+from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracker import SORTTracker
@@ -57,6 +59,12 @@ TIMESTAMP_AWARE_TRACKERS: list[Any] = [
         {"track_activation_threshold": 0.5},
         id="cbiou",
     ),
+    pytest.param(
+        McByteTracker,
+        McByteTracklet,
+        {"enable_cmc": False, "track_activation_threshold": 0.5},
+        id="mcbyte",
+    ),
 ]
 
 PREDICT_TIMING_TRACKER: list[Any] = [
@@ -76,6 +84,12 @@ FRAME_BUDGET_TRACKERS: list[Any] = [
         BoTSORTTracklet,
         {"track_activation_threshold": 0.5},
         id="cbiou",
+    ),
+    pytest.param(
+        McByteTracker,
+        McByteTracklet,
+        {"enable_cmc": False, "track_activation_threshold": 0.5},
+        id="mcbyte",
     ),
 ]
 
@@ -500,6 +514,11 @@ def test_same_confirmation_pattern_at_reference_fps(
             CBIoUTracker,
             {"state_estimator_class": XCYCSRStateEstimator},
             id="cbiou-xcycsr",
+        ),
+        pytest.param(
+            McByteTracker,
+            {"state_estimator_class": XCYCSRStateEstimator, "enable_cmc": False},
+            id="mcbyte-xcycsr",
         ),
     ],
 )
