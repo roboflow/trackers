@@ -139,6 +139,11 @@ class OCSORTTracker(BaseTracker):
                 detection.
             unmatched_detections: Sorted list of detection indices not matched
                 to any track.
+
+        Raises:
+            ValueError: If ``direction_consistency_matrix`` is ``None`` while
+                ``direction_consistency_weight`` is nonzero — ``None`` is only a
+                valid input when the weight is 0.
         """
         matched_indices = []
         n_tracks, n_detections = iou_matrix.shape
@@ -146,9 +151,18 @@ class OCSORTTracker(BaseTracker):
         unmatched_detections = set(range(n_detections))
         if n_tracks > 0 and n_detections > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
-            # ``direction_consistency_matrix is None`` means the weight is 0, so the
-            # cost is IoU alone (bounded finite matrix ⇒ ``iou + 0.0 * matrix == iou``).
+            # ``direction_consistency_matrix is None`` is the weight-0 sentinel passed
+            # by ``update()``: cost is IoU alone (bounded finite matrix ⇒
+            # ``iou + 0.0 * matrix == iou``). Guard the invariant so a caller that
+            # passes ``None`` while a nonzero weight is configured gets a loud error
+            # instead of a silently dropped direction term.
             if direction_consistency_matrix is None:
+                if self.direction_consistency_weight != 0:
+                    raise ValueError(
+                        "direction_consistency_matrix is None but direction_consistency_weight is "
+                        f"{self.direction_consistency_weight}; None is only valid when the weight is 0 "
+                        "(IoU-only association)."
+                    )
                 cost_matrix = iou_matrix
             else:
                 cost_matrix = iou_matrix + self.direction_consistency_weight * direction_consistency_matrix

@@ -112,9 +112,10 @@ def test_ocsort_none_direction_matrix_matches_explicit_zero_matrix() -> None:
     The direction-consistency matrix is finite and bounded, so the historical
     ``iou_matrix + weight * matrix`` reduced to ``iou_matrix`` whenever the matrix
     was all zeros. Passing ``None`` (the weight-0 early-out) must be bit-identical
-    to passing an explicit zero matrix.
+    to passing an explicit zero matrix. ``None`` is only valid at weight 0, so the
+    tracker is constructed with ``direction_consistency_weight=0``.
     """
-    tracker = OCSORTTracker()
+    tracker = OCSORTTracker(direction_consistency_weight=0.0)
     iou_matrix = np.zeros((4, 5))
     iou_matrix[1, 2] = 0.9
     iou_matrix[3, 0] = 0.5
@@ -123,6 +124,16 @@ def test_ocsort_none_direction_matrix_matches_explicit_zero_matrix() -> None:
     with_zeros = tracker._get_associated_indices(iou_matrix, np.zeros_like(iou_matrix))
 
     assert with_none == with_zeros
+
+
+def test_ocsort_none_direction_matrix_with_nonzero_weight_raises() -> None:
+    """Passing ``None`` while direction_consistency_weight != 0 raises — None is the weight-0 sentinel only."""
+    tracker = OCSORTTracker(direction_consistency_weight=0.2)
+    iou_matrix = np.zeros((2, 3))
+    iou_matrix[0, 1] = 0.9
+
+    with pytest.raises(ValueError, match="only valid when the weight is 0"):
+        tracker._get_associated_indices(iou_matrix, None)
 
 
 @pytest.mark.parametrize("call_fn", _TRACKER_CALL_FNS)
