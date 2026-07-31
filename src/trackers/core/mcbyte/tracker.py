@@ -221,18 +221,6 @@ class McByteTracker(BaseTracker):
             create a new tracklet.
         minimum_consecutive_frames: Number of successful tracklet updates
             required before assigning a confirmed non-negative tracker ID.
-        minimum_mask_creation_frames: Number of consecutive frames a confirmed
-            tracklet must remain visible in tracker output before its mask is
-            created (the SAM prompt plus Cutie ``add_masks``). This defers the
-            per-appearance mask encode for very-short-lived tracklets: those
-            that terminate before reaching the threshold never pay the encode,
-            at the cost of running IoU-only association for those tracklets
-            until their mask exists. Because mask conditioning is deferred, this
-            can alter tracking output and must be validated for CLEAR/HOTA/
-            Identity parity on the target workload. Use ``1`` to create masks on
-            a tracklet's first visible frame (the original immediate-creation
-            timing). Only affects the incremental add path after Cutie has been
-            initialized; the initial mask set is never deferred.
         minimum_iou_threshold_first_assoc: Minimum association similarity for
             matching high-confidence detections to confirmed and lost tracks.
             The default of ``0.1`` follows ByteTrack's deliberately low
@@ -280,6 +268,20 @@ class McByteTracker(BaseTracker):
         enable_isolated_mask_matching: Whether mask evidence may rescue an
             isolated candidate with positive IoU whose association similarity
             is below the normal stage threshold.
+        minimum_mask_creation_frames: Number of consecutive frames a confirmed
+            tracklet must remain visible in tracker output before its mask is
+            created (the SAM prompt plus Cutie ``add_masks``). This defers the
+            per-appearance mask encode for very-short-lived tracklets: those
+            that terminate before reaching the threshold never pay the encode,
+            at the cost of running IoU-only association for those tracklets
+            until their mask exists. Because mask conditioning is deferred, this
+            can alter tracking output and must be validated for CLEAR/HOTA/
+            Identity parity on the target workload. Use ``1`` to create masks on
+            a tracklet's first visible frame (the original immediate-creation
+            timing). A deferred tracklet is withheld from the mask pipeline
+            entirely, including Cutie's initial mask set: when every confirmed
+            tracklet is still inside its defer window the first masks are
+            produced only once at least one tracklet reaches the threshold.
     """
 
     tracker_id = "mcbyte"
@@ -290,7 +292,6 @@ class McByteTracker(BaseTracker):
         frame_rate: float = 30.0,
         track_activation_threshold: float = 0.7,
         minimum_consecutive_frames: int = 2,
-        minimum_mask_creation_frames: int = 3,
         minimum_iou_threshold_first_assoc: float = 0.1,
         minimum_iou_threshold_second_assoc: float = 0.5,
         minimum_iou_threshold_unconfirmed_assoc: float = 0.3,
@@ -308,6 +309,7 @@ class McByteTracker(BaseTracker):
         minimum_mask_coverage: float = MINIMUM_MASK_COVERAGE,
         minimum_mask_fill_ratio: float = MINIMUM_MASK_FILL_RATIO,
         enable_isolated_mask_matching: bool = False,
+        minimum_mask_creation_frames: int = 3,
     ) -> None:
         # Calculate maximum frames without update based on lost_track_buffer and
         # frame_rate. This scales the buffer based on the frame rate to ensure
