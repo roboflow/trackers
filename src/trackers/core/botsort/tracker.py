@@ -8,7 +8,7 @@ from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
-from deprecate import deprecated
+from deprecate import TargetMode, deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -474,7 +474,7 @@ class BoTSORTTracker(BaseTracker):
         if self.cmc is not None:
             self.cmc.reset()
 
-    @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
+    @deprecated(target=TargetMode.NOTIFY, deprecated_in="2.5", remove_in="3.0")
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:
         """Apply CMC to all active tracks.
 

@@ -41,7 +41,7 @@ dependencies = [
     "opencv-python>=4.8.0",
     "rich>=13.0.0",
     "requests>=2.28.0",
-    "pydeprecate>=0.7.0",
+    "pydeprecate>=0.8.0",
 ]
 
 [project.optional-dependencies]
