@@ -104,6 +104,25 @@ class TestGetAssociatedIndicesSortedOutput:
         assert unmatched_detections == sorted(unmatched_detections)
 
 
+def test_ocsort_none_direction_matrix_matches_explicit_zero_matrix() -> None:
+    """OCSORT weight-0 path (``None`` direction matrix) associates identically to a zero matrix.
+
+    The direction-consistency matrix is finite and bounded, so the historical
+    ``iou_matrix + weight * matrix`` reduced to ``iou_matrix`` whenever the matrix
+    was all zeros. Passing ``None`` (the weight-0 early-out) must be bit-identical
+    to passing an explicit zero matrix.
+    """
+    tracker = OCSORTTracker()
+    iou_matrix = np.zeros((4, 5))
+    iou_matrix[1, 2] = 0.9
+    iou_matrix[3, 0] = 0.5
+
+    with_none = tracker._get_associated_indices(iou_matrix, None)
+    with_zeros = tracker._get_associated_indices(iou_matrix, np.zeros_like(iou_matrix))
+
+    assert with_none == with_zeros
+
+
 @pytest.mark.parametrize("call_fn", _TRACKER_CALL_FNS)
 def test_all_trackers_associated_indices_are_deterministically_sorted(
     call_fn: CallFn,

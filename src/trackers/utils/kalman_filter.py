@@ -86,9 +86,12 @@ class KalmanFilter:
         self.state = self.transition_mtx @ self.state
         self.state_covariance = self.transition_mtx @ self.state_covariance @ self.transition_mtx.T + self.process_noise
 
-        # Save prior
-        self.state_prior = self.state.copy()
-        self.state_covariance_prior = self.state_covariance.copy()
+        # Reference the prior (debug/inspection only). predict/update always
+        # reassign self.state[_covariance] to freshly allocated arrays and never
+        # mutate them in place on the hot path, so a plain reference is a faithful
+        # snapshot without paying a per-step copy.
+        self.state_prior = self.state
+        self.state_covariance_prior = self.state_covariance
 
     def update(self, z: NDArray[np.float64] | None) -> None:
         """Update state estimate with measurement.
@@ -99,9 +102,9 @@ class KalmanFilter:
             z: Measurement vector (dim_z, 1) or None for no observation.
         """
         if z is None:
-            # No observation - posterior equals prior
-            self.state_post = self.state.copy()
-            self.state_covariance_post = self.state_covariance.copy()
+            # No observation - posterior equals prior (reference; see predict()).
+            self.state_post = self.state
+            self.state_covariance_post = self.state_covariance
             self.innovation = np.zeros((self.dim_z, 1), dtype=np.float64)
             return
 
@@ -128,9 +131,9 @@ class KalmanFilter:
             I_KH @ self.state_covariance @ I_KH.T + self.kalman_gain @ self.measurement_noise @ self.kalman_gain.T
         )
 
-        # Save posterior
-        self.state_post = self.state.copy()
-        self.state_covariance_post = self.state_covariance.copy()
+        # Reference the posterior (debug/inspection only; see predict()).
+        self.state_post = self.state
+        self.state_covariance_post = self.state_covariance
 
     def get_state(self) -> dict:
         """Get current filter state for saving.

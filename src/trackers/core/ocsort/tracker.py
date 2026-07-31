@@ -121,14 +121,16 @@ class OCSORTTracker(BaseTracker):
     def _get_associated_indices(
         self,
         iou_matrix: np.ndarray,
-        direction_consistency_matrix: np.ndarray,
+        direction_consistency_matrix: np.ndarray | None,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
         """
         Associate detections to tracks based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
-            direction_consistency_matrix: Direction of the tracklet consistency cost matrix.
+            direction_consistency_matrix: Direction of the tracklet consistency
+                cost matrix, or ``None`` when ``direction_consistency_weight`` is
+                0 (IoU-only association).
 
         Returns:
             matched: List of ``(track_index, detection_index)`` tuples for
@@ -144,7 +146,12 @@ class OCSORTTracker(BaseTracker):
         unmatched_detections = set(range(n_detections))
         if n_tracks > 0 and n_detections > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
-            cost_matrix = iou_matrix + self.direction_consistency_weight * direction_consistency_matrix
+            # ``direction_consistency_matrix is None`` means the weight is 0, so the
+            # cost is IoU alone (bounded finite matrix ⇒ ``iou + 0.0 * matrix == iou``).
+            if direction_consistency_matrix is None:
+                cost_matrix = iou_matrix
+            else:
+                cost_matrix = iou_matrix + self.direction_consistency_weight * direction_consistency_matrix
             row_indices, col_indices = linear_sum_assignment(cost_matrix, maximize=True)
             for row, col in zip(row_indices, col_indices):
                 if iou_matrix[row, col] >= self.minimum_iou_threshold:
@@ -230,7 +237,14 @@ class OCSORTTracker(BaseTracker):
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
 
-        direction_consistency_matrix = self._compute_direction_consistency_matrix(detection_boxes, confidences)
+        # Skip the direction-consistency computation entirely when it carries no
+        # weight. Bit-identical: the matrix is finite and bounded, so the old
+        # ``iou_matrix + 0.0 * matrix`` reduces exactly to ``iou_matrix``.
+        direction_consistency_matrix = (
+            self._compute_direction_consistency_matrix(detection_boxes, confidences)
+            if self.direction_consistency_weight != 0
+            else None
+        )
 
         # 1st association (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = self._get_associated_indices(
@@ -334,7 +348,10 @@ class OCSORTTracker(BaseTracker):
             [t.velocity if t.velocity is not None else np.array([0.0, 0.0]) for t in self.tracks]
         )
         reference_boxes = np.array(
-            [t.get_k_previous_obs() if t.get_k_previous_obs() is not None else t.last_observation for t in self.tracks]
+            [
+                previous_obs if (previous_obs := t.get_k_previous_obs()) is not None else t.last_observation
+                for t in self.tracks
+            ]
         )
         velocity_mask = np.array(
             [t.velocity is not None for t in self.tracks],
