@@ -9,6 +9,7 @@ on:
       - 'tests/**'
       - 'pyproject.toml'
       - 'uv.lock'
+      - '.github/workflows/ci-integrations.yml'
 
 jobs:
   integration-tests:
@@ -57,7 +58,7 @@ jobs:
           import numpy as np
           import supervision as sv
 
-          from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
+          from trackers import McByteMaskConfig, McByteTracker
 
           tracker = McByteTracker(
               enable_cmc=True,
