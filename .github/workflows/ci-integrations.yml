@@ -5,10 +5,10 @@ on:
     branches: ['release/*', 'develop']
   pull_request:
     paths:
-      - 'src/trackers/core/**'
-      - 'src/trackers/utils/**'
-      - 'src/trackers/eval/**'
+      - 'src/**'
       - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
 
 jobs:
   integration-tests:
