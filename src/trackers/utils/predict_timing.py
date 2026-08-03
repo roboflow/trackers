@@ -29,11 +29,17 @@ class PredictTiming:
             was passed); non-``None`` in dynamic-rate mode.
         skip_update (bool): When ``True`` the caller should skip the entire
             measurement update step (e.g. backwards or non-finite timestamp).
+        frame_rate (float | None): The tracker's configured reference FPS, used
+            to make the near-nominal Kalman-``Q`` tolerance fps-invariant (the
+            band half-width scales as ``seconds_tolerance * frame_rate``).
+            ``None`` in fixed-rate mode or when the frame rate is unavailable,
+            in which case the Kalman layer falls back to a fixed frame-unit band.
     """
 
     frame_step: float
     elapsed_seconds: float | None
     skip_update: bool = False
+    frame_rate: float | None = None
 
     @property
     def skip_predict(self) -> bool:
