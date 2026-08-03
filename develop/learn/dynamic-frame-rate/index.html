@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU.">
+        <meta name="description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte.">
       
       
         <meta name="author" content="Roboflow">
@@ -130,7 +130,7 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Dynamic Frame Rate",
-  "description": "Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU.",
+  "description": "Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte.",
   "url": "https://trackers.roboflow.com/latest/develop/learn/dynamic-frame-rate/",
   "mainEntityOfPage": {
     "@type": "WebPage",
@@ -181,7 +181,7 @@
 <meta property="og:site_name" content="Roboflow Trackers" />
 <meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/dynamic-frame-rate/" />
 <meta property="og:title" content="Dynamic Frame Rate — Variable-Gap Tracking | Trackers" />
-<meta property="og:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU." />
+<meta property="og:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -193,7 +193,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
 <meta name="twitter:title" content="Dynamic Frame Rate — Variable-Gap Tracking | Trackers" />
-<meta name="twitter:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU." />
+<meta name="twitter:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -1732,7 +1732,7 @@
 <li><strong>Out-of-order completion</strong>: workers may finish in any order, but you should call <code>update()</code> in <strong>non-decreasing capture time</strong> (sort by capture time or frame index before updating). A later frame must not be updated before an earlier one</li>
 </ul>
 <p>Stick with the default when you process <strong>every</strong> frame in order at a steady rate. A normal <code>VideoCapture</code> loop that reads all frames does not need timestamps.</p>
-<p><code>SORTTracker</code>, <code>ByteTrackTracker</code>, <code>OCSORTTracker</code>, <code>BoTSORTTracker</code>, and <code>CBIoUTracker</code> all accept <code>timestamp</code> on <code>update()</code>.</p>
+<p><code>SORTTracker</code>, <code>ByteTrackTracker</code>, <code>OCSORTTracker</code>, <code>BoTSORTTracker</code>, <code>CBIoUTracker</code>, and <code>McByteTracker</code> all accept <code>timestamp</code> on <code>update()</code>.</p>
 <hr />
 <h2 id="fixed-rate-vs-dynamic-rate">Fixed Rate vs Dynamic Rate</h2>
 <table>
@@ -1811,6 +1811,7 @@
 <p><strong>Timestamps must not go backwards.</strong> If <code>timestamp</code> is less than the previous call, <code>update()</code> <strong>warns and skips the whole step</strong> (tracks unchanged, output IDs are <code>-1</code>). Reorder by capture time and call again. <strong>Duplicate</strong> timestamps (same capture time twice) only skip predict; association still runs on the last state.</p>
 <p><strong><code>frame_rate</code> should match your reference timeline.</strong> If the file is 24 FPS but you set <code>frame_rate=30</code>, each step over-predicts motion. Same parameter already mattered for threshold scaling in fixed mode; it matters more when gaps are measured in seconds.</p>
 <p><strong>OC-SORT:</strong> ORU still steps in frame units, not wall-clock gaps.</p>
+<p><strong>McByte:</strong> the optional mask pipeline (<code>enable_mask_manager=True</code>) still propagates one step per <code>update()</code> call; timestamps scale Kalman prediction and lost-track pruning, not mask propagation.</p>
 <hr />
 <h2 id="takeaway">Takeaway</h2>
 <p>Timestamps are optional on <code>update()</code>. Skip them when you track every frame in order. Use them when frames are <strong>dropped or sparse</strong>, pass <strong>capture time</strong> (not inference finish time), call <code>update()</code> in <strong>time order</strong>, set <code>frame_rate</code> to the FPS you tuned against, and <code>reset()</code> between videos.</p>
@@ -1836,7 +1837,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 3, 2026 18:47:40 UTC">2026-08-03</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 3, 2026 20:48:33 UTC">2026-08-03</span>
   </span>
 
     
