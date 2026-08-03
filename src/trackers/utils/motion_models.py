@@ -69,39 +69,18 @@ def constant_velocity_transition_matrix(
     return mtx
 
 
+# Half-width, in wall-clock seconds, of the near-nominal frame_step band.
+# build_Q multiplies this by frame_rate to get the frame-unit half-width, so
+# the band absorbs a fixed physical-clock-error budget at any FPS. 4ms covers
+# the two error sources: ms-clock rounding (bounded ~1ms) + capture jitter
+# (~2ms), with ~33% headroom on the ~3ms worst-case sum.
 _NOMINAL_FRAME_STEP_TOLERANCE_SECONDS = 0.004
-"""Half-width, in **wall-clock seconds**, of the near-nominal ``frame_step`` band.
 
-This is the primary tolerance. ``build_Q`` multiplies it by the tracker's
-``frame_rate`` to get the band half-width in frame units, so the band absorbs a
-*fixed* amount of physical clock error regardless of FPS. That is what keeps the
-band fps-invariant: the physical error measured in frame units grows with FPS,
-and so does the band, so their ratio is constant. The 4 ms budget is derived
-from the two physical error sources a timestamped-but-nominal stream carries:
-
-- **Millisecond-clock rounding.** ``cv2.CAP_PROP_POS_MSEC`` quantises every
-  timestamp to whole milliseconds; ``frame_step`` is the difference of two such
-  timestamps, so its rounding error is bounded by ±1 ms in wall-clock seconds,
-  independent of FPS (≈4.1e-2 frame units at 60 FPS).
-- **Capture jitter.** Real cameras do not expose frames at perfectly even
-  intervals; a couple of milliseconds is typical, so ~2 ms is assumed.
-
-The worst-case sum is ~3 ms; ``0.004`` s (4 ms) covers it with ~33 % headroom.
-"""
-
+# Fallback half-width, in frame units, used when no frame_rate is given (e.g.
+# OC-SORT's ORU sub-step replay, which is frame-unit not wall-clock). Fixed in
+# frame units while the physical error it absorbs grows with FPS, so this path
+# has a practical ~50fps ceiling; the time-based tolerance above has none.
 _NOMINAL_FRAME_STEP_TOLERANCE = 0.1
-"""Fallback half-width, in **frame units**, used when no ``frame_rate`` is given.
-
-``build_Q`` uses this fixed band only when a caller does not supply a frame
-rate — e.g. OC-SORT's ORU sub-step replay, which walks the virtual trajectory
-in frame counts, not wall-clock seconds. Because it is fixed in frame units
-while the physical clock error *in frame units* grows with FPS, this band
-absorbs ``0.1 / frame_rate`` seconds of error: ~3.3 ms at 30 FPS but only ~2 ms
-by 50 FPS (bare capture jitter, no rounding margin), and less above that. So
-this fallback path has a practical fps ceiling around ~50 FPS — an honest limit
-of the fallback only; the primary time-based path
-(``_NOMINAL_FRAME_STEP_TOLERANCE_SECONDS``) has no such ceiling.
-"""
 
 
 @dataclass
