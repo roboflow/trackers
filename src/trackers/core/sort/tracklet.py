@@ -48,7 +48,7 @@ class SORTTracklet(BaseTracklet):
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
-        self.state_estimator.predict(timing.frame_step)
+        self.state_estimator.predict(timing.frame_step, timing.frame_rate)
         self._advance_miss_clocks(timing)
         return self.state_estimator.state_to_bbox()
 

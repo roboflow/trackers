@@ -18,15 +18,17 @@ that case; other values rescale ``F`` and ``Q`` for shorter or longer gaps.
 ``Q`` uses the standard constant-velocity + white-noise-acceleration (DWNA)
 layout for gaps (``frame_step > 1``) and shorter-than-nominal steps
 (``frame_step < 1``): velocity variance scales as ``Δt²``, position as ``Δt⁴``.
-At a *near-nominal* ``frame_step`` — within ``_NOMINAL_FRAME_STEP_TOLERANCE``
-of ``1.0`` — the original configured Q (set by ``_configure_noise`` via
-``set_kf_covariances``) is returned unchanged. This preserves the hand-tuned
-per-tracker noise, keeps backward compatibility when ``timestamp`` is omitted,
-and makes a timestamped stream at its nominal FPS behave like the fixed-rate
-one: ``frame_step`` is a product of a subtraction, so it lands near ``1.0``
-without ever hitting it. Same block structure as
-``filterpy.common.discrete_white_noise`` — see the filterpy docs or source if
-you want the formulas side by side.
+At a *near-nominal* ``frame_step`` — within a tolerance band of ``1.0`` — the
+original configured Q (set by ``_configure_noise`` via ``set_kf_covariances``)
+is returned unchanged. This preserves the hand-tuned per-tracker noise, keeps
+backward compatibility when ``timestamp`` is omitted, and makes a timestamped
+stream at its nominal FPS behave like the fixed-rate one: ``frame_step`` is a
+product of a subtraction, so it lands near ``1.0`` without ever hitting it. The
+band's half-width is time-based (``_NOMINAL_FRAME_STEP_TOLERANCE_SECONDS *
+frame_rate``) so it stays fps-invariant; callers that do not supply a frame
+rate fall back to the fixed frame-unit band ``_NOMINAL_FRAME_STEP_TOLERANCE``.
+Same block structure as ``filterpy.common.discrete_white_noise`` — see the
+filterpy docs or source if you want the formulas side by side.
 """
 
 from __future__ import annotations
@@ -67,16 +69,38 @@ def constant_velocity_transition_matrix(
     return mtx
 
 
-_NOMINAL_FRAME_STEP_TOLERANCE = 0.1
-"""Half-width of the band around ``frame_step = 1.0`` treated as one nominal frame.
+_NOMINAL_FRAME_STEP_TOLERANCE_SECONDS = 0.004
+"""Half-width, in **wall-clock seconds**, of the near-nominal ``frame_step`` band.
 
-``frame_step`` is ``(t - t_prev) * frame_rate``, so a stream running at its
-nominal FPS never lands on exactly ``1.0``: a float clock is off by ~1e-12, an
-integer-millisecond clock (``cv2.CAP_PROP_POS_MSEC``) by up to 4.1e-2 at 60 FPS,
-and capture jitter of a couple of milliseconds by ~1e-1. The smallest gap a
-caller can express is ``frame_step = 1.5``, i.e. a deviation of 5e-1, so this
-band separates "one nominal frame" from "a real gap" with an order of magnitude
-of headroom on either side.
+This is the primary tolerance. ``build_Q`` multiplies it by the tracker's
+``frame_rate`` to get the band half-width in frame units, so the band absorbs a
+*fixed* amount of physical clock error regardless of FPS. That is what keeps the
+band fps-invariant: the physical error measured in frame units grows with FPS,
+and so does the band, so their ratio is constant. The 4 ms budget is derived
+from the two physical error sources a timestamped-but-nominal stream carries:
+
+- **Millisecond-clock rounding.** ``cv2.CAP_PROP_POS_MSEC`` quantises every
+  timestamp to whole milliseconds; ``frame_step`` is the difference of two such
+  timestamps, so its rounding error is bounded by ±1 ms in wall-clock seconds,
+  independent of FPS (≈4.1e-2 frame units at 60 FPS).
+- **Capture jitter.** Real cameras do not expose frames at perfectly even
+  intervals; a couple of milliseconds is typical, so ~2 ms is assumed.
+
+The worst-case sum is ~3 ms; ``0.004`` s (4 ms) covers it with ~33 % headroom.
+"""
+
+_NOMINAL_FRAME_STEP_TOLERANCE = 0.1
+"""Fallback half-width, in **frame units**, used when no ``frame_rate`` is given.
+
+``build_Q`` uses this fixed band only when a caller does not supply a frame
+rate — e.g. OC-SORT's ORU sub-step replay, which walks the virtual trajectory
+in frame counts, not wall-clock seconds. Because it is fixed in frame units
+while the physical clock error *in frame units* grows with FPS, this band
+absorbs ``0.1 / frame_rate`` seconds of error: ~3.3 ms at 30 FPS but only ~2 ms
+by 50 FPS (bare capture jitter, no rounding margin), and less above that. So
+this fallback path has a practical fps ceiling around ~50 FPS — an honest limit
+of the fallback only; the primary time-based path
+(``_NOMINAL_FRAME_STEP_TOLERANCE_SECONDS``) has no such ceiling.
 """
 
 
@@ -90,12 +114,14 @@ class ScalableProcessNoise:
     acceleration variance ``sigma_a2`` from that reference ``Q`` and stores the
     DWNA-at-1 layout as ``baseline_Q``.
 
-    Within ``_NOMINAL_FRAME_STEP_TOLERANCE`` of ``frame_step = 1.0``,
-    ``build_Q`` returns the original configured Q stored in ``baseline_Q`` —
-    preserving hand-tuned per-tracker noise and backward compatibility. Outside
-    that band the step is a real gap and DWNA scaling is applied: smaller steps
-    shrink uncertainty; larger steps grow it. Frozen entries (e.g. aspect ratio
-    in XCYCSR) stay at the values from ``_configure_noise()``.
+    Within a near-nominal band of ``frame_step = 1.0``, ``build_Q`` returns the
+    original configured Q stored in ``baseline_Q`` — preserving hand-tuned
+    per-tracker noise and backward compatibility. The band half-width is
+    time-based when a ``frame_rate`` is supplied (fps-invariant) and falls back
+    to a fixed frame-unit width otherwise; see ``build_Q``. Outside that band
+    the step is a real gap and DWNA scaling is applied: smaller steps shrink
+    uncertainty; larger steps grow it. Frozen entries (e.g. aspect ratio in
+    XCYCSR) stay at the values from ``_configure_noise()``.
     """
 
     dim_x: int
@@ -143,37 +169,64 @@ class ScalableProcessNoise:
         self.extra_q_diagonal = np.diag(Q).astype(np.float64).copy()
         self._needs_calibration = False
 
-    def build_Q(self, frame_step: float) -> NDArray[np.float64]:
+    def build_Q(self, frame_step: float, frame_rate: float | None = None) -> NDArray[np.float64]:
         """Return process noise Q scaled for the given frame step.
 
-        Within ``_NOMINAL_FRAME_STEP_TOLERANCE`` of ``1.0`` the step counts as
-        one nominal frame and the configured Q (``baseline_Q``) is returned
-        unchanged, preserving hand-tuned noise. Outside that band the step is a
-        real gap and the DWNA formula is applied via ``_dwna``.
+        Within a near-nominal band of ``1.0`` the step counts as one nominal
+        frame and the configured Q (``baseline_Q``) is returned unchanged,
+        preserving hand-tuned noise. Outside that band the step is a real gap
+        and the DWNA formula is applied via ``_dwna``.
 
-        The tolerance is what makes dynamic-rate mode line up with fixed-rate
-        mode. ``frame_step`` comes from ``(t - t_prev) * frame_rate``, so a
-        stream at its nominal FPS lands *near* ``1.0``, never on it; an exact
-        comparison sent every such step down the gap path, where ``_dwna``
-        rebuilds Q from the velocity diagonal alone and drops the configured
-        position noise.
+        The band is what makes dynamic-rate mode line up with fixed-rate mode.
+        ``frame_step`` comes from ``(t - t_prev) * frame_rate``, so a stream at
+        its nominal FPS lands *near* ``1.0``, never on it; an exact comparison
+        would send every such step down the gap path, where ``_dwna`` rebuilds Q
+        from the velocity diagonal alone and drops the configured position noise.
+
+        The band half-width adapts to ``frame_rate`` so it stays fps-invariant.
+        The physical error a nominal stream carries (ms-clock rounding, capture
+        jitter) is bounded in *wall-clock seconds*, but expressed in *frame
+        units* it grows with FPS, so a fixed frame-unit band would break at high
+        FPS. Multiplying a seconds budget by ``frame_rate`` makes the error and
+        the band scale together:
+
+        - ``frame_rate`` given (the normal tracker path):
+          ``tolerance = _NOMINAL_FRAME_STEP_TOLERANCE_SECONDS * frame_rate`` —
+          4 ms of wall-clock slack at any FPS.
+        - ``frame_rate`` absent (e.g. OC-SORT ORU sub-steps, which are frame-unit
+          replay steps): the fixed fallback ``_NOMINAL_FRAME_STEP_TOLERANCE``
+          (0.1 frame units), whose own ~50 FPS ceiling is documented on that
+          constant.
+
+        The band is symmetric in ``frame_step``, but the DWNA growth it forgoes
+        is not: treating ``1.0 + tol`` as nominal skips ``(1 + tol)**4``
+        position-variance growth while ``1.0 - tol`` skips ``(1 - tol)**4``
+        shrink, so the upper edge is marginally worse-behaved than the lower —
+        immaterial this close to ``1.0``.
 
         What this does **not** cover: capture jitter wider than the tolerance
         still takes the gap path, and lost-track pruning remains asymmetric
-        between the two modes (``BaseTracker._prune_lost_tracks`` runs before
-        association in dynamic-rate mode, while the fixed-rate frame budget is
-        enforced after it), so the two modes can still differ by one
+        between the two modes (dynamic-rate mode drops time-expired tracks
+        before association, while fixed-rate mode enforces its frame budget
+        after association), so the two modes can still differ by one
         ``lost_track_buffer`` frame.
 
         Args:
-            frame_step: Elapsed time in frame units; a value within
-                ``_NOMINAL_FRAME_STEP_TOLERANCE`` of ``1.0`` returns
-                ``baseline_Q`` unchanged.
+            frame_step: Elapsed time in frame units; a value within the
+                near-nominal band of ``1.0`` returns ``baseline_Q`` unchanged.
+            frame_rate: Tracker reference FPS. When given (and positive) the band
+                half-width is ``_NOMINAL_FRAME_STEP_TOLERANCE_SECONDS *
+                frame_rate`` frame units, keeping it fps-invariant. When ``None``
+                the fixed fallback ``_NOMINAL_FRAME_STEP_TOLERANCE`` is used.
 
         Returns:
             Process noise matrix of shape ``(dim_x, dim_x)``.
         """
-        if abs(frame_step - 1.0) <= _NOMINAL_FRAME_STEP_TOLERANCE:
+        if frame_rate is not None and frame_rate > 0:
+            tolerance = _NOMINAL_FRAME_STEP_TOLERANCE_SECONDS * frame_rate
+        else:
+            tolerance = _NOMINAL_FRAME_STEP_TOLERANCE
+        if abs(frame_step - 1.0) <= tolerance:
             return self.baseline_Q.copy()
         self._ensure_calibrated()
         return self._dwna(frame_step)
@@ -269,7 +322,7 @@ class KalmanMotionModel:
         self.process_noise.calibrate(process_noise)
         self._cached_process_noise = None
 
-    def apply(self, kf: KalmanFilter, frame_step: float) -> None:
+    def apply(self, kf: KalmanFilter, frame_step: float, frame_rate: float | None = None) -> None:
         """Set transition_matrix and Q on a Kalman filter for the given frame step.
 
         Both matrices are cached to avoid redundant computation. The transition
@@ -277,10 +330,23 @@ class KalmanMotionModel:
         invalidated by ``calibrate_from_process_noise`` and rebuilt from the
         current reference on the next call.
 
+        The transition-matrix cache key stays keyed on ``frame_step`` alone and
+        is compared exactly (``frame_step != self.cached_step``). Unlike Q's
+        near-nominal band, this exactness is intentional: the cache key is a
+        memoization key, and ``F`` genuinely varies with the precise
+        ``frame_step`` (the coupling term is set to it directly), so an exact
+        key is correct — a near-nominal ``frame_step`` only costs a cache miss,
+        never a wrong matrix. ``frame_rate`` is constant per tracker instance,
+        not a per-call variable, so it does not enter the cache key.
+
         Args:
             kf: ``KalmanFilter`` to update in-place.
             frame_step: Elapsed time in frame units for this predict step.
                 Use ``1.0`` for a single nominal frame; larger values for gaps.
+            frame_rate: Tracker reference FPS, forwarded to
+                ``ScalableProcessNoise.build_Q`` to keep the near-nominal Q band
+                fps-invariant. ``None`` (fixed-rate mode or unavailable) selects
+                the fixed frame-unit fallback band.
         """
         if frame_step != self.cached_step or self._cached_transition_mtx is None:
             self._cached_transition_mtx = constant_velocity_transition_matrix(
@@ -289,7 +355,7 @@ class KalmanMotionModel:
             self.cached_step = frame_step
             self._cached_process_noise = None
         if self._cached_process_noise is None:
-            self._cached_process_noise = self.process_noise.build_Q(frame_step)
+            self._cached_process_noise = self.process_noise.build_Q(frame_step, frame_rate)
         kf.transition_mtx = self._cached_transition_mtx
         kf.process_noise = self._cached_process_noise
 

@@ -199,7 +199,7 @@ class BoTSORTTracklet(BaseTracklet):
         ``update(None)`` call used in ByteTrack/SORT.
         """
         self._refresh_noise_from_state()
-        self.state_estimator.predict(timing.frame_step)
+        self.state_estimator.predict(timing.frame_step, timing.frame_rate)
         self._clamp_state_bbox()
         self._advance_miss_clocks(timing)
         return self.state_estimator.state_to_bbox()

@@ -143,16 +143,20 @@ class BaseStateEstimator(ABC):
                 by `frame_step`, not by a single nominal frame.
         """
 
-    def predict(self, frame_step: float = 1.0) -> None:
+    def predict(self, frame_step: float = 1.0, frame_rate: float | None = None) -> None:
         """Predict one Kalman step, scaling F and Q by frame_step.
 
         Args:
             frame_step: Elapsed time in frame units; ``1.0`` = one nominal
                 frame. Pass a larger value after a gap between updates so the
                 filter extrapolates further and widens process noise accordingly.
+            frame_rate: Tracker reference FPS, forwarded to the motion model so
+                the near-nominal process-noise band stays fps-invariant. ``None``
+                (fixed-rate mode or unavailable) selects the fixed frame-unit
+                fallback band.
         """
         self.clamp_velocity(frame_step)
-        self.motion.apply(self.kf, frame_step)
+        self.motion.apply(self.kf, frame_step, frame_rate)
         self.kf.predict()
 
     def update(self, bbox: np.ndarray | None) -> None:
