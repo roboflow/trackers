@@ -491,6 +491,67 @@ def test_same_confirmation_pattern_at_reference_fps(
     assert fixed_pattern == dynamic_pattern
 
 
+def _process_noise_after_a_few_frames(
+    tracker_cls: type[BaseTracker],
+    tracklet_cls: type[BaseTracklet],
+    extra_kwargs: dict[str, Any],
+    *,
+    clock: str,
+    frame_rate: float = 30.0,
+) -> np.ndarray:
+    """Return the ``Q`` a tracklet ends up running with under the given clock."""
+    tracker = _make_timestamp_aware_tracker(
+        tracker_cls,
+        tracklet_cls,
+        extra_kwargs,
+        frame_rate=frame_rate,
+        lost_track_buffer=30,
+    )
+    for i in range(6):
+        if clock == "fixed":
+            timestamp = None
+        elif clock == "float":
+            timestamp = i / frame_rate
+        elif clock == "milliseconds":
+            # cv2.CAP_PROP_POS_MSEC reports whole milliseconds.
+            timestamp = round(i / frame_rate * 1000.0) / 1000.0
+        else:
+            raise ValueError(clock)
+        x = 100.0 + 6.0 * i
+        tracker.update(_make_detections([[x, 100.0, x + 50.0, 200.0]], [0.9]), timestamp=timestamp)
+    return np.asarray(tracker.tracks[0].state_estimator.kf.process_noise, dtype=np.float64).copy()
+
+
+@pytest.mark.parametrize("clock", ["float", "milliseconds"])
+@pytest.mark.parametrize(
+    "tracker_cls, tracklet_cls, extra_kwargs",
+    TIMESTAMP_AWARE_TRACKERS,
+)
+def test_same_process_noise_at_reference_fps(
+    tracker_cls: type[BaseTracker],
+    tracklet_cls: type[BaseTracklet],
+    extra_kwargs: dict[str, Any],
+    clock: str,
+) -> None:
+    """A steady stream at the reference FPS runs the tracker's configured ``Q``.
+
+    ``frame_step`` is ``(t - t_prev) * frame_rate``, which lands near ``1.0``
+    but never on it, so this is the case an exact ``== 1.0`` comparison misses:
+    every step took the gap path and ran a ``Q`` rebuilt from the velocity
+    diagonal instead of the configured one.
+
+    ``Q`` is asserted rather than the output boxes on purpose. ``Q`` does not
+    enter the predicted state (``x = F @ x``) — it enters the covariance, which
+    sets the Kalman gain, so its effect on the boxes only becomes measurable
+    once detections compete for association in a crowded scene. Asserting the
+    matrix keeps the regression observable in a unit test.
+    """
+    fixed = _process_noise_after_a_few_frames(tracker_cls, tracklet_cls, extra_kwargs, clock="fixed")
+    dynamic = _process_noise_after_a_few_frames(tracker_cls, tracklet_cls, extra_kwargs, clock=clock)
+
+    np.testing.assert_array_equal(dynamic, fixed)
+
+
 @pytest.mark.parametrize(
     ("tracker_cls", "extra_kwargs"),
     [

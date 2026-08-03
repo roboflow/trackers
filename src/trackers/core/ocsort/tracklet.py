@@ -261,7 +261,7 @@ class OCSORTTracklet(BaseTracklet):
             self._freeze()
             self._observed = False
 
-        self.state_estimator.predict(timing.frame_step)
+        self.state_estimator.predict(timing.frame_step, timing.frame_rate)
 
         if self.time_since_update > 0:
             self.number_of_successful_consecutive_updates = 0
