@@ -201,6 +201,9 @@ class McByteTracklet(BaseTracklet):
         ``_advance_miss_clocks``, because ``time_since_update_seconds`` is the
         counter ``within_lost_track_budget`` reads whenever a seconds budget is
         in effect.
+
+        Returns:
+            Predicted bounding box ``[x1, y1, x2, y2]``.
         """
         self._refresh_noise_from_state()
         self.state_estimator.predict(timing.frame_step, timing.frame_rate)
