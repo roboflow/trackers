@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import sys
+import warnings
 from types import ModuleType
 
 import numpy as np
@@ -183,6 +184,49 @@ def test_mcbyte_does_not_advance_masks_on_duplicate_timestamp() -> None:
 
     # No extra mask-backend step on the duplicate frame.
     assert len(mask_manager.calls) == 1
+
+
+def test_mcbyte_warns_once_for_mask_manager_with_dynamic_rate_timestamps() -> None:
+    """enable_mask_manager + dynamic-rate timestamps warns once, not on every call.
+
+    The mask backend advances one step per update() call regardless of
+    elapsed time, while Kalman prediction and pruning scale by timestamp —
+    a desync that grows with gap size. Disclosed in docs; this warning
+    surfaces it at runtime too.
+    """
+    mask_manager = SpyMaskManager()
+    tracker = McByteTracker(
+        enable_cmc=False,
+        enable_mask_manager=False,
+        mask_manager=mask_manager,  # type: ignore[arg-type]
+        minimum_consecutive_frames=1,
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=1.0 / 30.0)
+    assert not any("dynamic-rate" in str(w.message) for w in caught)
+
+
+def test_mcbyte_does_not_warn_for_mask_manager_without_timestamps() -> None:
+    """Fixed-rate calls (no timestamp) never trigger the dynamic-rate mask warning."""
+    mask_manager = SpyMaskManager()
+    tracker = McByteTracker(
+        enable_cmc=False,
+        enable_mask_manager=False,
+        mask_manager=mask_manager,  # type: ignore[arg-type]
+        minimum_consecutive_frames=1,
+    )
+    frame = _make_frame()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
+    assert not any("dynamic-rate" in str(w.message) for w in caught)
 
 
 def test_mcbyte_rejects_high_conf_threshold_at_or_below_discard_floor() -> None:
