@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------
 
 import logging
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -388,6 +389,7 @@ class McByteTracker(BaseTracker):
         # populated when the threshold exceeds 1.
         self._mask_pending_ages: dict[int, int] = {}
         self._consecutive_mask_failures: int = 0
+        self._warned_mask_manager_dynamic_rate = False
 
     def update(
         self,
@@ -455,6 +457,17 @@ class McByteTracker(BaseTracker):
             # output so masks stay in lockstep with the state used here.
             pass
         elif self.mask_manager is not None and current_frame is not None:
+            if timing.uses_elapsed_time and not self._warned_mask_manager_dynamic_rate:
+                warnings.warn(
+                    "enable_mask_manager=True with timestamp-based (dynamic-rate) "
+                    "updates: the mask pipeline advances one step per update() call "
+                    "regardless of elapsed time, while Kalman prediction and "
+                    "lost-track pruning scale by timestamp. Mask propagation can "
+                    "drift out of sync with track state across timestamp gaps.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                self._warned_mask_manager_dynamic_rate = True
             self._last_mask_output = self._run_mask_manager(self.mask_manager, current_frame)
         else:
             self._last_mask_output = None
