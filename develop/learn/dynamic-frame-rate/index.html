@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-07-21",
+  "dateModified": "2026-08-03",
   "datePublished": "2026-07-01"
 }
 </script>
@@ -1762,13 +1762,14 @@
 <li><strong>Dynamic rate:</strong> <code>maximum_time_without_update = lost_track_buffer / 30</code> seconds between <code>update()</code> calls. The same <code>lost_track_buffer=30</code> gives a <strong>1.0 s</strong> budget; that does <strong>not</strong> scale with <code>frame_rate</code>.</li>
 </ul>
 <p>Set <strong><code>frame_rate</code></strong> on the tracker in both modes. In fixed mode it scales the frame budget above. When you pass <code>timestamp</code>, it also turns elapsed seconds into Kalman frame units (<code>elapsed_seconds × frame_rate</code>).</p>
-<p>If the video is actually steady 25 FPS and you pass timestamps every frame, <code>frame_step</code> stays <code>1.0</code> — dynamic mode lines up with fixed mode.</p>
+<p>If the video is actually steady 25 FPS and you pass timestamps every frame, <code>frame_step</code> stays at <code>1.0</code> for Kalman purposes — dynamic mode lines up with fixed mode. It lands <em>near</em> <code>1.0</code> rather than on it, because <code>frame_step</code> comes out of a subtraction: a float clock is off by ~1e-12, <code>cv2.CAP_PROP_POS_MSEC</code> rounds to whole milliseconds, and capture jitter adds a couple more. The tolerance around <code>1.0</code> is a fixed <strong>~4 ms of wall-clock slack</strong>, scaled by your tracker's <code>frame_rate</code> into frame units — that keeps the tolerance the same physical size at any FPS, rather than a fixed percentage of a frame. A step within that budget counts as one nominal frame and runs the same process noise as fixed mode.</p>
+<p>Two differences remain. <code>frame_step</code> still scales the transition matrix, so a clock reporting 1.02 frames does extrapolate 2% further — sub-pixel in practice. And lost-track pruning is not symmetric: dynamic mode drops time-expired tracks <em>before</em> association, fixed mode enforces its frame budget <em>after</em>, so a track whose budget runs out on the step where a detection would have re-matched it survives in fixed mode and not in dynamic mode.</p>
 <hr />
 <h2 id="what-happens-on-a-long-gap">What Happens on a Long Gap</h2>
 <p>On each predict, the filter adjusts how far it extrapolates and how uncertain it is:</p>
 <ul>
 <li><strong>Position</strong> moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (<code>frame_step</code>).</li>
-<li><strong>Process noise</strong> grows on longer gaps so the box does not stay artificially tight. At <code>frame_step = 1.0</code> you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.</li>
+<li><strong>Process noise</strong> grows on longer gaps so the box does not stay artificially tight. Within the ~4 ms wall-clock tolerance of <code>frame_step = 1.0</code> (see above) you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.</li>
 <li><strong>Scale velocity</strong> is frozen if the projected area over the gap would go non-positive.</li>
 </ul>
 <hr />
@@ -1835,7 +1836,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 21, 2026 10:11:46 UTC">2026-07-21</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 3, 2026 18:47:40 UTC">2026-08-03</span>
   </span>
 
     
