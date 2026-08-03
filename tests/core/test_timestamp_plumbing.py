@@ -31,6 +31,7 @@ from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracker import SORTTracker
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.predict_timing import PredictTiming
 from trackers.utils.state_representations import XCYCSRStateEstimator
 
 TIMESTAMP_AWARE_TRACKERS: list[Any] = [
@@ -550,6 +551,32 @@ def test_same_process_noise_at_reference_fps(
     dynamic = _process_noise_after_a_few_frames(tracker_cls, tracklet_cls, extra_kwargs, clock=clock)
 
     np.testing.assert_array_equal(dynamic, fixed)
+
+
+def test_mcbyte_predict_forwards_frame_rate_for_mid_band_gap() -> None:
+    """McByte's ``predict()`` must forward ``frame_rate`` for a mid-band gap.
+
+    ``frame_step=1.15`` sits outside the fixed 0.1 frame-unit fallback
+    tolerance but inside the fps-scaled ``0.004 * frame_rate`` band at 60 FPS
+    (0.24) — the exact divergence zone a dropped ``frame_rate`` falls out of.
+
+    Asserted directly on the tracklet, not through ``McByteTracker.update()``:
+    McByte's ``update()`` unconditionally recalibrates ``Q`` from the current
+    bbox scale via ``_refresh_noise_from_state``, which overwrites whatever
+    ``predict()`` computed before the next frame — the only place this
+    regression is observable is the tracklet's state right after ``predict()``.
+    """
+    box = np.array([100.0, 100.0, 150.0, 200.0], dtype=np.float32)
+    nominal = McByteTracklet(initial_bbox=box)
+    nominal.predict(PredictTiming(frame_step=1.0, elapsed_seconds=1.0 / 60.0, frame_rate=60.0))
+
+    gapped = McByteTracklet(initial_bbox=box)
+    gapped.predict(PredictTiming(frame_step=1.15, elapsed_seconds=1.15 / 60.0, frame_rate=60.0))
+
+    np.testing.assert_array_equal(
+        np.asarray(gapped.state_estimator.kf.process_noise, dtype=np.float64),
+        np.asarray(nominal.state_estimator.kf.process_noise, dtype=np.float64),
+    )
 
 
 @pytest.mark.parametrize(
