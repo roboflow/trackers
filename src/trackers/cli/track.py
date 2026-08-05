@@ -31,13 +31,11 @@ from trackers.utils.iou import variant_from_name
 if TYPE_CHECKING:
     from inference_models import AnyModel
 
-# Defaults
 DEFAULT_MODEL = "rfdetr-nano"
 DEFAULT_TRACKER = "bytetrack"
 DEFAULT_CONFIDENCE = 0.5
 DEFAULT_DEVICE = "auto"
 
-# Visualization
 COLOR_PALETTE = sv.ColorPalette.from_hex(
     [
         "#ffff00",
