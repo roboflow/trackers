@@ -258,16 +258,16 @@ class CMC:
         self.extractor: Any | None = None
         self.matcher: Any | None = None
         if self.cfg.method == "orb":
-            self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)
-            self.extractor = cv2.ORB_create()
+            self.detector = cv2.FastFeatureDetector_create(self.cfg.fast_threshold)  # type: ignore[attr-defined]
+            self.extractor = cv2.ORB_create()  # type: ignore[attr-defined]
             self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
         elif self.cfg.method == "sift":
-            self.detector = cv2.SIFT_create(
+            self.detector = cv2.SIFT_create(  # type: ignore[attr-defined]
                 nOctaveLayers=self.cfg.sift_n_octave_layers,
                 contrastThreshold=self.cfg.sift_contrast_threshold,
                 edgeThreshold=int(self.cfg.sift_edge_threshold),
             )
-            self.extractor = cv2.SIFT_create(
+            self.extractor = cv2.SIFT_create(  # type: ignore[attr-defined]
                 nOctaveLayers=self.cfg.sift_n_octave_layers,
                 contrastThreshold=self.cfg.sift_contrast_threshold,
                 edgeThreshold=int(self.cfg.sift_edge_threshold),
@@ -329,7 +329,9 @@ class CMC:
 
         Returns:
             Affine transform matrix of shape (2, 3), dtype float32.
-            Identity if not enough correspondences or if not initialized yet.
+            Identity if not enough correspondences, if not initialized yet, or if
+            the current frame size differs from the previous frame's (mid-stream
+            resolution change).
 
         Examples:
             >>> import numpy as np
@@ -491,7 +493,7 @@ class CMC:
             1) grayscale (+ optional downscale)
             2) detect corners using goodFeaturesToTrack
             3) compute correspondences via calcOpticalFlowPyrLK(prev, curr, prev_points)
-            4) keep only points with status == 1
+            4) keep only points with a nonzero status
             5) estimate affine transform with RANSAC
             6) scale translation back up if downscaled
 
@@ -513,7 +515,7 @@ class CMC:
             frame = cv2.resize(frame, (new_w, new_h))
 
         # Find keypoints in current frame
-        keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)
+        keypoints = cv2.goodFeaturesToTrack(frame, mask=None, **self.feature_params)  # type: ignore[call-overload]
 
         # First frame: init and return identity
         if not self._initialized:
@@ -522,15 +524,47 @@ class CMC:
             self._initialized = True
             return affine_mtx
 
-        # If we don't have points, re-init
+        # No usable prior state (no previous frame / points) or no keypoints in
+        # the current frame: re-init and return identity.
         if self._prev_frame_gray is None or self._prev_points is None or keypoints is None:
             self._prev_frame_gray = frame.copy()
-            self._prev_points = copy.copy(keypoints)
+            self._prev_points = None if keypoints is None else keypoints.copy()
+            return affine_mtx
+
+        # A mid-stream frame-size change (e.g. a video source that renegotiates
+        # resolution) is an expected event, not a failure, so it is surfaced via
+        # a debug log below and does NOT bump frames_failed (which counts genuine
+        # estimation failures). calcOpticalFlowPyrLK asserts that both frames
+        # share the same size, so a mismatch would crash it. Known limitation: the
+        # guard only compares against the immediately-previous frame, so a source
+        # sustaining a resolution oscillation (thrashing between two sizes, e.g.
+        # from a flaky transcoder or flapping bitrate ladder) re-inits on every
+        # frame, effectively disabling CMC for the duration of the oscillation.
+        # This guard mirrors MotionEstimator.update in motion/estimator.py;
+        # the two are parallel sparse-optical-flow pipelines, deliberately not
+        # merged (divergent resets/return types) — tracked debt to consolidate.
+        # Known, untested, low-risk edge (downscale-collapse): when downscale > 1
+        # the shapes compared below are the already-downscaled ones, so two
+        # different input resolutions that floor-divide to the same downscaled
+        # shape slip past this guard. calcOpticalFlowPyrLK then runs on the
+        # equal-sized downscaled frames without asserting, so it does not crash;
+        # the only cost is one frame of slightly degraded motion estimate. No
+        # test covers this and none is added — the real-world risk is negligible.
+        if self._prev_frame_gray.shape != frame.shape:
+            logger.debug(
+                "CMC: frame size changed (%s -> %s); re-syncing sparse optical flow",
+                self._prev_frame_gray.shape,
+                frame.shape,
+            )
+            self._prev_frame_gray = frame.copy()
+            self._prev_points = keypoints.copy()
             return affine_mtx
 
         # Optical flow correspondences
         # calcOpticalFlowPyrLK will throw or return nonsense if we give it None
-        matched, status, _err = cv2.calcOpticalFlowPyrLK(self._prev_frame_gray, frame, self._prev_points, None)
+        matched, status, _err = cv2.calcOpticalFlowPyrLK(  # type: ignore[call-overload]
+            self._prev_frame_gray, frame, self._prev_points, None
+        )
 
         if status is None or matched is None:
             self._prev_frame_gray = frame.copy()
@@ -538,21 +572,13 @@ class CMC:
             return affine_mtx
 
         # Keep only good correspondences
-        prev_pts: list[np.ndarray] = []
-        curr_pts: list[np.ndarray] = []
         # status is (N,1) or (N,)
-        status_flat = status.reshape(-1)
-
-        for i in range(len(status_flat)):
-            if status_flat[i]:
-                prev_pts.append(self._prev_points[i])
-                curr_pts.append(matched[i])
-
-        prev_pts_np = np.array(prev_pts)
-        curr_pts_np = np.array(curr_pts)
+        good = status.reshape(-1) != 0
+        prev_pts_np = self._prev_points[good]
+        curr_pts_np = matched[good]
 
         # Find rigid matrix
-        if (np.size(prev_pts_np, 0) > 4) and (np.size(prev_pts_np, 0) == np.size(curr_pts_np, 0)):
+        if np.size(prev_pts_np, 0) > 4:
             affine_est, _ = cv2.estimateAffinePartial2D(
                 prev_pts_np,
                 curr_pts_np,
@@ -623,8 +649,13 @@ class CMC:
             self._prev_frame_gray = frame.copy()
             return affine_mtx
 
+        # A mid-stream resolution/size change is already handled here: a shape
+        # mismatch between self._prev_frame_gray and frame makes findTransformECC
+        # raise cv2.error internally, which the except below catches and turns
+        # into an identity transform (with self._prev_frame_gray refreshed after).
+        # So ECC needs no explicit size guard like _estimate_sparse_optflow has.
         try:
-            _cc, affine_est = cv2.findTransformECC(
+            _cc, affine_est = cv2.findTransformECC(  # type: ignore[call-overload]
                 self._prev_frame_gray,
                 frame,
                 affine_mtx,

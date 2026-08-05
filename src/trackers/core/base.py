@@ -480,6 +480,7 @@ class BaseTracker(ABC):
             return PredictTiming(
                 frame_step=elapsed * self._frame_rate,
                 elapsed_seconds=elapsed,
+                frame_rate=self._frame_rate,
             )
 
         if timestamp < last:
@@ -505,6 +506,7 @@ class BaseTracker(ABC):
         return PredictTiming(
             frame_step=elapsed * self._frame_rate,
             elapsed_seconds=elapsed,
+            frame_rate=self._frame_rate,
         )
 
     def _detections_for_skipped_update(self, detections: sv.Detections) -> sv.Detections:

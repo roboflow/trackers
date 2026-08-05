@@ -22,6 +22,7 @@ import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.utils.iou import BIoU
 
@@ -140,9 +141,11 @@ class TestCBIoUZeroBufferEquivalence:
     """With buffer_ratio=0, BIoU recovers IoU; C-BIoU should match BoT-SORT (no CMC)."""
 
     def test_zero_buffer_matches_botsort_without_cmc(self) -> None:
+        """CBIoU(buffer=0) and BoTSORT(no CMC) stay equivalent, including across a miss/gap frame."""
         detections = [
             _detection((0.0, 0.0, 50.0, 50.0)),
             _detection((5.0, 5.0, 55.0, 55.0)),
+            sv.Detections.empty(),  # miss/gap frame: both trackers should prune identically
             _detection((100.0, 100.0, 150.0, 150.0)),
             _detection((105.0, 105.0, 155.0, 155.0)),
             _detection((8.0, 8.0, 58.0, 58.0)),
@@ -187,8 +190,8 @@ class TestCBIoUZeroBufferEquivalence:
             )
             if len(r_cbiou) > 0:
                 np.testing.assert_allclose(
-                    r_cbiou.xyxy,
-                    r_botsort.xyxy,
+                    r_cbiou.xyxy.astype(np.float32),
+                    r_botsort.xyxy.astype(np.float32),
                     err_msg=f"frame {frame_idx}: different boxes",
                 )
 
@@ -231,4 +234,186 @@ class TestCBIoUUnmatchedLowConfidence:
             )
         )
         assert len(result) == 1
+        assert result.tracker_id is not None
         assert result.tracker_id[0] == -1
+
+
+class TestCBIoUStickyMaturity:
+    def test_instant_activation_off_track_pruned_on_miss(self) -> None:
+        """With instant activation off, an unmatured track is pruned on a miss."""
+        tracker = CBIoUTracker(instant_first_frame_activation=False)
+        tracker.update(_detection((10.0, 10.0, 50.0, 50.0)))
+
+        tracker.update(sv.Detections.empty())
+
+        # Track has tracker_id == -1 (not instant-activated); sticky-maturity guard
+        # is inactive, so the unmatured unconfirmed track must be pruned.
+        assert len(tracker.tracks) == 0
+
+    def test_instant_activated_track_survives_multiple_misses(self) -> None:
+        """Track keeps its ID through two consecutive misses (confirmed then lost).
+
+        After the first miss the track sits in confirmed_tracks (time_since_update=1).
+        After the second miss it moves to lost_tracks (time_since_update=2).
+        get_alive_tracklets must keep it alive via the tracker_id != -1 guard.
+        """
+        tracker = CBIoUTracker()
+        obj = (10.0, 10.0, 50.0, 50.0)
+
+        first = tracker.update(_detection(obj))
+        assert first.tracker_id is not None
+        track_id = int(first.tracker_id[0])
+
+        tracker.update(sv.Detections.empty())  # miss 1: time_since_update=1 → confirmed
+        tracker.update(sv.Detections.empty())  # miss 2: time_since_update=2 → lost_tracks
+
+        assert any(t.tracker_id == track_id for t in tracker.tracks)
+
+        returned = tracker.update(_detection(obj))
+        assert returned.tracker_id is not None
+        assert track_id in returned.tracker_id.tolist()
+
+    @pytest.mark.parametrize(
+        "mcf",
+        [
+            pytest.param(1, id="mcf-1"),
+            pytest.param(2, id="mcf-2-default"),
+            pytest.param(3, id="mcf-3"),
+        ],
+    )
+    def test_instant_activated_track_survives_miss_across_mcf(self, mcf: int) -> None:
+        """Sticky-maturity keeps the track alive on a miss for any mcf value."""
+        tracker = CBIoUTracker(minimum_consecutive_frames=mcf)
+        obj = (10.0, 10.0, 50.0, 50.0)
+
+        first = tracker.update(_detection(obj))
+        assert first.tracker_id is not None
+        track_id = int(first.tracker_id[0])
+
+        tracker.update(sv.Detections.empty())
+
+        assert any(t.tracker_id == track_id for t in tracker.tracks)
+
+        returned = tracker.update(_detection(obj))
+        assert returned.tracker_id is not None
+        assert track_id in returned.tracker_id.tolist()
+
+    def test_instant_activated_track_survives_a_miss_with_shifted_return_box(self) -> None:
+        """Sticky track keeps its ID after a miss even when it reappears shifted.
+
+        Box A (spawn): [0, 0, 100, 100]. Box B (return, after the miss):
+        [100, 0, 200, 100] — flush against A's right edge, so plain IoU is
+        exactly 0 (no overlap: Step 1's raw box overlap would miss it). With
+        the tracker's default ``buffer_ratio_first=0.3``, BIoU expands both
+        boxes by 30px on every side before Step 1 association, producing
+        enough overlap to re-associate the returning detection with the
+        sticky (instant-activated) track. Mirrors the box-A/box-B
+        construction in ``TestCBIoUAssociationTolerance``.
+        """
+        tracker = CBIoUTracker()
+        box_a = (0.0, 0.0, 100.0, 100.0)
+        box_b = (100.0, 0.0, 200.0, 100.0)
+
+        first = tracker.update(_detection(box_a, conf=1.0))
+        assert first.tracker_id is not None
+        track_id = int(first.tracker_id[0])
+
+        tracker.update(sv.Detections.empty())  # no detections: object missed this frame
+        assert any(t.tracker_id == track_id for t in tracker.tracks)
+
+        returned = tracker.update(_detection(box_b, conf=1.0))  # object reappears, shifted
+        assert returned.tracker_id is not None
+        assert track_id in returned.tracker_id.tolist()
+
+    def test_sticky_track_pruned_once_time_since_update_exceeds_lost_track_buffer(self) -> None:
+        """Sticky maturity delays deletion; it does not grant permanent immunity.
+
+        With ``lost_track_buffer=1`` (and the default 30 FPS ``frame_rate``),
+        ``maximum_frames_without_update`` scales to 1. An instant-activated
+        (sticky) track survives the first miss (``time_since_update == 1``,
+        within budget) but must be pruned once a second consecutive miss
+        pushes ``time_since_update`` to 2, past the budget.
+        """
+        tracker = CBIoUTracker(lost_track_buffer=1)
+        obj = (10.0, 10.0, 50.0, 50.0)
+
+        first = tracker.update(_detection(obj))
+        assert first.tracker_id is not None
+        track_id = int(first.tracker_id[0])
+
+        tracker.update(sv.Detections.empty())  # miss 1: time_since_update=1, within budget
+        assert any(t.tracker_id == track_id for t in tracker.tracks)
+
+        tracker.update(sv.Detections.empty())  # miss 2: time_since_update=2, exceeds budget
+        assert not any(t.tracker_id == track_id for t in tracker.tracks)
+
+    def test_sticky_and_immature_tracks_on_shared_miss_frame_no_cross_contamination(self) -> None:
+        """Sticky and immature tracks on the same miss frame are pruned independently.
+
+        Track A is instant-activated on frame 1 (sticky: holds a real
+        ``tracker_id`` immediately). Track B spawns on frame 2 — after frame 1,
+        so it is not instant-activated and, with the default
+        ``minimum_consecutive_frames=2``, remains unconfirmed (``tracker_id ==
+        -1``) after a single update. Frame 3 is a miss for both: the sticky
+        guard must keep A alive while the unconfirmed-track removal step
+        prunes B, with no ID cross-contamination between the two.
+        """
+        tracker = CBIoUTracker()
+        box_a = (10.0, 10.0, 50.0, 50.0)
+        box_b = (300.0, 300.0, 340.0, 340.0)
+
+        first = tracker.update(_detection(box_a))  # frame 1: A instant-activated
+        assert first.tracker_id is not None
+        track_a_id = int(first.tracker_id[0])
+        assert track_a_id >= 0
+
+        second = tracker.update(_detection(box_b))  # frame 2: B spawns, unconfirmed
+        assert second.tracker_id is not None
+        assert -1 in second.tracker_id.tolist()
+
+        tracker.update(sv.Detections.empty())  # frame 3: shared miss for A and B
+
+        remaining_ids = {t.tracker_id for t in tracker.tracks}
+        assert track_a_id in remaining_ids
+        assert -1 not in remaining_ids
+        assert len(tracker.tracks) == 1
+
+
+def test_biou_matrix_reads_cache_without_decoding(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_biou_matrix reads predicted boxes from the per-frame cache, never re-decoding.
+
+    P4-2 decode-once: each tracklet's box is decoded a single time per ``update()``
+    and passed to all three association stages via a map keyed by ``id()``. The
+    helper must read that map and never call ``get_state_bbox`` itself — doing so
+    would reintroduce the per-stage redundant decode the cache exists to remove.
+    """
+    tracker = CBIoUTracker()
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 10.0, 10.0]))
+
+    def _fail() -> np.ndarray:
+        raise AssertionError("get_state_bbox must not be called; boxes come from the cache")
+
+    monkeypatch.setattr(tracklet, "get_state_bbox", _fail)
+    cached_box = np.array([5.0, 5.0, 15.0, 15.0])
+    boxes = np.array([[5.0, 5.0, 15.0, 15.0]])  # identical to the cached box -> IoU 1.0
+
+    result = tracker._biou_matrix([tracklet], boxes, BIoU(buffer_ratio=0.0), {id(tracklet): cached_box})
+
+    assert result.shape == (1, 1)
+    assert result[0, 0] == pytest.approx(1.0)
+
+
+def test_biou_matrix_raises_contextual_error_on_cache_miss() -> None:
+    """_biou_matrix raises a contextual KeyError when a tracklet is absent from the cache.
+
+    The decode-once map must contain every tracklet passed to the helper (it is
+    built from ``self.tracks`` once per ``update()``). A miss is an internal-invariant
+    violation; the helper surfaces it with a message naming the cache contract rather
+    than a bare ``KeyError: <id int>``.
+    """
+    tracker = CBIoUTracker()
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 10.0, 10.0]))
+    boxes = np.array([[0.0, 0.0, 10.0, 10.0]])
+
+    with pytest.raises(KeyError, match="decode-once box cache"):
+        tracker._biou_matrix([tracklet], boxes, BIoU(buffer_ratio=0.0), {})

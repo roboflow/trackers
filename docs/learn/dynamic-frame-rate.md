@@ -1,6 +1,6 @@
 ---
 title: Dynamic Frame Rate — Variable-Gap Tracking | Trackers
-description: Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU.
+description: Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte.
 ---
 
 # Dynamic Frame Rate
@@ -39,7 +39,7 @@ Turn on timestamps when the **capture-time gap** between two `update()` calls is
 
 Stick with the default when you process **every** frame in order at a steady rate. A normal `VideoCapture` loop that reads all frames does not need timestamps.
 
-`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, `BoTSORTTracker`, and `CBIoUTracker` all accept `timestamp` on `update()`.
+`SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, `BoTSORTTracker`, `CBIoUTracker`, and `McByteTracker` all accept `timestamp` on `update()`.
 
 ---
 
@@ -57,7 +57,9 @@ Stick with the default when you process **every** frame in order at a steady rat
 
 Set **`frame_rate`** on the tracker in both modes. In fixed mode it scales the frame budget above. When you pass `timestamp`, it also turns elapsed seconds into Kalman frame units (`elapsed_seconds × frame_rate`).
 
-If the video is actually steady 25 FPS and you pass timestamps every frame, `frame_step` stays `1.0` — dynamic mode lines up with fixed mode.
+If the video is actually steady 25 FPS and you pass timestamps every frame, `frame_step` stays at `1.0` for Kalman purposes — dynamic mode lines up with fixed mode. It lands *near* `1.0` rather than on it, because `frame_step` comes out of a subtraction: a float clock is off by ~1e-12, `cv2.CAP_PROP_POS_MSEC` rounds to whole milliseconds, and capture jitter adds a couple more. The tolerance around `1.0` is a fixed **~4 ms of wall-clock slack**, scaled by your tracker's `frame_rate` into frame units — that keeps the tolerance the same physical size at any FPS, rather than a fixed percentage of a frame. A step within that budget counts as one nominal frame and runs the same process noise as fixed mode.
+
+Two differences remain. `frame_step` still scales the transition matrix, so a clock reporting 1.02 frames does extrapolate 2% further — sub-pixel in practice. And lost-track pruning is not symmetric: dynamic mode drops time-expired tracks *before* association, fixed mode enforces its frame budget *after*, so a track whose budget runs out on the step where a detection would have re-matched it survives in fixed mode and not in dynamic mode.
 
 ---
 
@@ -66,7 +68,8 @@ If the video is actually steady 25 FPS and you pass timestamps every frame, `fra
 On each predict, the filter adjusts how far it extrapolates and how uncertain it is:
 
 - **Position** moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (`frame_step`).
-- **Process noise** grows on longer gaps so the box does not stay artificially tight. At `frame_step = 1.0` you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.
+- **Process noise** grows on longer gaps so the box does not stay artificially tight. Within the ~4 ms wall-clock tolerance of `frame_step = 1.0` (see above) you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.
+- **Scale velocity** is frozen if the projected area over the gap would go non-positive.
 
 ---
 
@@ -116,6 +119,8 @@ Call **`tracker.reset()`** when you switch videos so the last timestamp does not
 **`frame_rate` should match your reference timeline.** If the file is 24 FPS but you set `frame_rate=30`, each step over-predicts motion. Same parameter already mattered for threshold scaling in fixed mode; it matters more when gaps are measured in seconds.
 
 **OC-SORT:** ORU still steps in frame units, not wall-clock gaps.
+
+**McByte:** the optional mask pipeline (`enable_mask_manager=True`) still propagates one step per `update()` call; timestamps scale Kalman prediction and lost-track pruning, not mask propagation.
 
 ---
 

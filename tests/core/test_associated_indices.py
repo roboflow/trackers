@@ -14,9 +14,11 @@ stable across CPython versions and implementations.
 from __future__ import annotations
 
 from collections.abc import Callable
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
+import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
@@ -104,6 +106,36 @@ class TestGetAssociatedIndicesSortedOutput:
         assert unmatched_detections == sorted(unmatched_detections)
 
 
+def test_ocsort_none_direction_matrix_matches_explicit_zero_matrix() -> None:
+    """OCSORT weight-0 path (``None`` direction matrix) associates identically to a zero matrix.
+
+    The direction-consistency matrix is finite and bounded, so the historical
+    ``iou_matrix + weight * matrix`` reduced to ``iou_matrix`` whenever the matrix
+    was all zeros. Passing ``None`` (the weight-0 early-out) must be bit-identical
+    to passing an explicit zero matrix. ``None`` is only valid at weight 0, so the
+    tracker is constructed with ``direction_consistency_weight=0``.
+    """
+    tracker = OCSORTTracker(direction_consistency_weight=0.0)
+    iou_matrix = np.zeros((4, 5))
+    iou_matrix[1, 2] = 0.9
+    iou_matrix[3, 0] = 0.5
+
+    with_none = tracker._get_associated_indices(iou_matrix, None)
+    with_zeros = tracker._get_associated_indices(iou_matrix, np.zeros_like(iou_matrix))
+
+    assert with_none == with_zeros
+
+
+def test_ocsort_none_direction_matrix_with_nonzero_weight_raises() -> None:
+    """Passing ``None`` while direction_consistency_weight != 0 raises — None is the weight-0 sentinel only."""
+    tracker = OCSORTTracker(direction_consistency_weight=0.2)
+    iou_matrix = np.zeros((2, 3))
+    iou_matrix[0, 1] = 0.9
+
+    with pytest.raises(ValueError, match="only valid when the weight is 0"):
+        tracker._get_associated_indices(iou_matrix, None)
+
+
 @pytest.mark.parametrize("call_fn", _TRACKER_CALL_FNS)
 def test_all_trackers_associated_indices_are_deterministically_sorted(
     call_fn: CallFn,
@@ -117,3 +149,34 @@ def test_all_trackers_associated_indices_are_deterministically_sorted(
 
     assert unmatched_tracks == [0, 2, 3]
     assert unmatched_detections == [0, 1, 3, 4]
+
+
+@pytest.mark.parametrize(
+    ("weight", "expect_matrix_built"),
+    [
+        pytest.param(0.0, False, id="weight-zero-skips-matrix"),
+        pytest.param(0.2, True, id="weight-nonzero-builds-matrix"),
+    ],
+)
+def test_ocsort_direction_matrix_built_only_when_weight_nonzero(
+    weight: float, expect_matrix_built: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """OCSORT builds the direction-consistency matrix iff direction_consistency_weight != 0.
+
+    Exercises the weight-0 early-out itself: with weight 0 the matrix build is
+    skipped entirely (not merely cancelled by an explicit zero matrix), while a
+    nonzero weight still triggers it. A track is established on the first frame so
+    the matrix would be built on the second frame whenever the weight allows it.
+    """
+    tracker = OCSORTTracker(direction_consistency_weight=weight)
+    detections = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0]], dtype=np.float64),
+        confidence=np.array([0.9]),
+    )
+    tracker.update(detections)  # frame 1: establish a track
+    spy = MagicMock(wraps=tracker._compute_direction_consistency_matrix)
+    monkeypatch.setattr(tracker, "_compute_direction_consistency_matrix", spy)
+
+    tracker.update(detections)  # frame 2: track present; matrix built iff weight != 0
+
+    assert spy.called is expect_matrix_built

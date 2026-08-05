@@ -144,6 +144,7 @@ nav:
     - OC-SORT: trackers/ocsort.md
     - BoT-SORT: trackers/botsort.md
     - C-BIoU: trackers/cbiou.md
+    - McByte: trackers/mcbyte.md
 
   - API Reference:
     - Trackers: api/trackers.md
