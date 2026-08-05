@@ -24,6 +24,8 @@ from trackers.cli.track import (
     OutputOptions,
     ShowOptions,
     TrackerOptions,
+    _abbreviate_parameter_name,
+    _abbreviated_tracker_parameters,
     track_command,
 )
 from trackers.cli.tune import tune_command
@@ -56,8 +58,14 @@ _PR_ERA_TRACK_ARGUMENTS = {
     "--out.overwrite": "--output.overwrite",
     "--vis.display": "--display",
 }
+# Unabbreviated tracker parameter paths, deprecated in favour of the ``min_`` /
+# ``max_`` CLI spellings. Generated from TrackerOptions so the two cannot drift.
+_UNABBREVIATED_TRACK_ARGUMENTS = {
+    f"--tracker_params.{long_name}": f"--tracker_params.{short_name}"
+    for long_name, short_name in _abbreviated_tracker_parameters().items()
+}
 _LEGACY_ARGUMENTS = {
-    "track": {**_DEVELOP_TRACK_ARGUMENTS, **_PR_ERA_TRACK_ARGUMENTS},
+    "track": {**_DEVELOP_TRACK_ARGUMENTS, **_PR_ERA_TRACK_ARGUMENTS, **_UNABBREVIATED_TRACK_ARGUMENTS},
     "eval": {
         "-o": "--output",
     },
@@ -73,6 +81,9 @@ _LEGACY_LIST_ARGUMENTS = {
     "eval": frozenset({"--metrics", "--columns"}),
     "tune": frozenset({"--metrics"}),
 }
+# Track filters that used to take one comma-separated string and now take a
+# list, matching the list-valued options of eval and tune.
+_COMMA_LIST_TRACK_ARGUMENTS = frozenset({"--filters.classes", "--filters.track_ids"})
 _DOWNLOAD_VALUE_OPTIONS = frozenset({"--dataset", "--split", "--asset", "-o", "--output", "--cache-dir", "--cache_dir"})
 
 
@@ -165,7 +176,54 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
         translated.append(f"{replacement}{separator}{value}" if separator else replacement)
 
     if subcommand == "track":
+        translated[subcommand_index + 1 :] = _translate_comma_separated_lists(translated[subcommand_index + 1 :])
         _raise_for_detection_source_conflict(translated[subcommand_index + 1 :])
+    return translated
+
+
+def _translate_comma_separated_lists(args: list[str]) -> list[str]:
+    """Translate comma-separated track filter strings to JSON-list values.
+
+    Runs after the legacy option names have been translated, so the develop-era
+    ``--classes person,car`` spelling is covered by the same pass that handles
+    ``--filters.classes person,car``.
+
+    Args:
+        args: Track arguments with canonical option names.
+
+    Returns:
+        Arguments where every comma-separated filter value is a JSON list.
+    """
+    translated: list[str] = []
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--":
+            translated.extend(args[index:])
+            break
+
+        option, separator, inline_value = arg.partition("=")
+        if option not in _COMMA_LIST_TRACK_ARGUMENTS:
+            translated.append(arg)
+            index += 1
+            continue
+
+        next_value = args[index + 1] if index + 1 < len(args) else ""
+        if not separator and (not next_value or next_value.startswith("-")):
+            translated.append(arg)
+            index += 1
+            continue
+
+        value = inline_value if separator else next_value
+        width = 1 if separator else 2
+        if value.startswith("["):
+            translated.extend(args[index : index + width])
+            index += width
+            continue
+
+        _warn_legacy_cli(f"comma-separated {option} values are deprecated; use a list instead.")
+        translated.extend([option, json.dumps([token.strip() for token in value.split(",") if token.strip()])])
+        index += width
     return translated
 
 
@@ -259,8 +317,13 @@ def _legacy_replacement(subcommand: str, option: str, legacy_arguments: dict[str
 
 
 def _tracker_parameter_replacement(parameter_name: str) -> str:
-    """Map one legacy tracker option, preserving its old boolean toggle behavior."""
-    replacement = f"--tracker_params.{parameter_name}"
+    """Map one legacy tracker option, preserving its old boolean toggle behavior.
+
+    The parameter is looked up under its tracker ``__init__`` name but emitted
+    under the abbreviated CLI name, because the unabbreviated path no longer
+    exists on the parser.
+    """
+    replacement = f"--tracker_params.{_abbreviate_parameter_name(parameter_name)}"
     for tracker_id in BaseTracker._registered_trackers():
         tracker_info = BaseTracker._lookup_tracker(tracker_id)
         if tracker_info is None or parameter_name not in tracker_info.parameters:

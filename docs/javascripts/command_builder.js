@@ -76,6 +76,16 @@ document.addEventListener("DOMContentLoaded", function () {
     return /^[\w,\s]*$/.test(value);
   }
 
+  // Filter options take a list. jsonargparse accepts unquoted bracket
+  // shorthand, so "person, car" becomes "[person,car]".
+  function toListLiteral(value) {
+    const items = value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return `[${items.join(",")}]`;
+  }
+
   // Generate command from state
   function generateCommand(state) {
     const parts = ["trackers track"];
@@ -96,7 +106,7 @@ document.addEventListener("DOMContentLoaded", function () {
         parts.push(`--detection.device ${state.device}`);
       }
       if (state.classes && isValidClasses(state.classes)) {
-        parts.push(`--filters.classes ${state.classes}`);
+        parts.push(`--filters.classes ${toListLiteral(state.classes)}`);
       }
     }
 
@@ -116,13 +126,13 @@ document.addEventListener("DOMContentLoaded", function () {
         state.minimumConsecutiveFrames !== defaults.minimumConsecutiveFrames &&
         isValidPositiveInt(state.minimumConsecutiveFrames)
       ) {
-        parts.push(`--tracker_params.minimum_consecutive_frames ${state.minimumConsecutiveFrames}`);
+        parts.push(`--tracker_params.min_consecutive_frames ${state.minimumConsecutiveFrames}`);
       }
       if (
         state.minimumIouThreshold !== defaults.minimumIouThreshold &&
         isValidDecimal01(state.minimumIouThreshold, 0.05)
       ) {
-        parts.push(`--tracker_params.minimum_iou_threshold ${state.minimumIouThreshold}`);
+        parts.push(`--tracker_params.min_iou_threshold ${state.minimumIouThreshold}`);
       }
     }
 
@@ -166,10 +176,10 @@ document.addEventListener("DOMContentLoaded", function () {
         errors.push("track_activation_threshold must be between 0.05 and 1");
       }
       if (state.minimumConsecutiveFrames && !isValidPositiveInt(state.minimumConsecutiveFrames)) {
-        errors.push("minimum_consecutive_frames must be a positive integer");
+        errors.push("min_consecutive_frames must be a positive integer");
       }
       if (state.minimumIouThreshold && !isValidDecimal01(state.minimumIouThreshold, 0.05)) {
-        errors.push("minimum_iou_threshold must be between 0.05 and 1");
+        errors.push("min_iou_threshold must be between 0.05 and 1");
       }
     }
 
@@ -340,7 +350,7 @@ document.addEventListener("DOMContentLoaded", function () {
       );
       trackerOptionsContent.appendChild(
         createNumericInputRow(
-          "minimum_consecutive_frames",
+          "min_consecutive_frames",
           "minimumConsecutiveFrames",
           state.minimumConsecutiveFrames,
           numberConfig.minimumConsecutiveFrames,
@@ -349,7 +359,7 @@ document.addEventListener("DOMContentLoaded", function () {
       );
       trackerOptionsContent.appendChild(
         createNumericInputRow(
-          "minimum_iou_threshold",
+          "min_iou_threshold",
           "minimumIouThreshold",
           state.minimumIouThreshold,
           numberConfig.minimumIouThreshold,

@@ -69,7 +69,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
         --detection.model yolo26n-640 \
         --tracker bytetrack \
-        --filters.classes person \
+        --filters.classes [person] \
         --output.mot_results results/yolo26n/MOT17-13-FRCNN.txt
     ```
 
@@ -81,7 +81,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
             --source ./data/mot17/val/$seq/img1 \
             --detection.model yolo26n-640 \
             --tracker bytetrack \
-            --filters.classes person \
+            --filters.classes [person] \
             --output.mot_results results/yolo26n/$seq.txt
     done
     ```
@@ -100,7 +100,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
         --detection.model rfdetr-nano \
         --tracker bytetrack \
-        --filters.classes person \
+        --filters.classes [person] \
         --output.mot_results results/rfdetr-nano/MOT17-13-FRCNN.txt
     ```
 
@@ -112,7 +112,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
             --source ./data/mot17/val/$seq/img1 \
             --detection.model rfdetr-nano \
             --tracker bytetrack \
-            --filters.classes person \
+            --filters.classes [person] \
             --output.mot_results results/rfdetr-nano/$seq.txt
     done
     ```
@@ -131,7 +131,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
         --detection.model rfdetr-medium \
         --tracker bytetrack \
-        --filters.classes person \
+        --filters.classes [person] \
         --output.mot_results results/rfdetr-medium/MOT17-13-FRCNN.txt
     ```
 
@@ -143,7 +143,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
             --source ./data/mot17/val/$seq/img1 \
             --detection.model rfdetr-medium \
             --tracker bytetrack \
-            --filters.classes person \
+            --filters.classes [person] \
             --output.mot_results results/rfdetr-medium/$seq.txt
     done
     ```

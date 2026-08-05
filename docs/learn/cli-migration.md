@@ -26,7 +26,7 @@ trackers track \
     --source source.mp4 \
     --detection.model rfdetr-base \
     --detection.confidence 0.3 \
-    --filters.classes person,car \
+    --filters.classes [person,car] \
     --tracker_params.lost_track_buffer 40 \
     --output.video tracked.mp4 \
     --show.boxes false
@@ -58,6 +58,43 @@ As in develop, specify either a model or a precomputed MOT file, not both.
 | `--no-ids`, `--no-show.ids`     | Removed; use `--show.ids false`   |
 | `--show-confidence`             | `--show.confidence`               |
 | `--show-trajectories`           | `--show.trajectories`             |
+
+### List-valued filters
+
+`--filters.classes` and `--filters.track_ids` take lists, matching the
+list-valued `--metrics` and `--columns` options of `eval` and `tune`. Bracket
+shorthand needs no quoting, so `--filters.classes [person,car]`,
+`--filters.classes [0,2]`, and the mixed `--filters.classes [person,2]` all
+work. Comma-separated strings remain available as a warning-emitting alias.
+
+| Legacy value form              | Current value form               |
+| ------------------------------ | -------------------------------- |
+| `--filters.classes person,car` | `--filters.classes [person,car]` |
+| `--filters.track_ids 1,3,5`    | `--filters.track_ids [1,3,5]`    |
+
+### Abbreviated tracker parameters
+
+Tracker parameter names abbreviate their standard leading token on the command
+line: `minimum_` becomes `min_` and `maximum_` becomes `max_`. Domain words such
+as `threshold` stay spelled out. The unabbreviated paths remain as
+warning-emitting aliases, and `--tracker.<name>` maps to the abbreviated
+`--tracker_params.<name>`.
+
+| Legacy argument                                            | Current argument                                       |
+| ---------------------------------------------------------- | ------------------------------------------------------ |
+| `--tracker_params.minimum_consecutive_frames`              | `--tracker_params.min_consecutive_frames`              |
+| `--tracker_params.minimum_iou_threshold`                   | `--tracker_params.min_iou_threshold`                   |
+| `--tracker_params.minimum_iou_threshold_first_assoc`       | `--tracker_params.min_iou_threshold_first_assoc`       |
+| `--tracker_params.minimum_iou_threshold_second_assoc`      | `--tracker_params.min_iou_threshold_second_assoc`      |
+| `--tracker_params.minimum_iou_threshold_unconfirmed_assoc` | `--tracker_params.min_iou_threshold_unconfirmed_assoc` |
+
+These short forms are **CLI aliases only**. The Python constructor keywords are
+unchanged, so `ByteTrackTracker(minimum_iou_threshold=0.3)` stays correct, and
+so do `tune --fixed_params`, each tracker's `search_space` keys, and the
+"Valid parameters" list printed on a `search_space` error. A consequence worth
+knowing: `tune` reports the long parameter names, so its output cannot be
+pasted verbatim into a `track` command — abbreviate the leading `minimum_` or
+`maximum_` token first.
 
 ## Other commands
 

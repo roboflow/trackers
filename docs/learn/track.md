@@ -100,8 +100,10 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
         --source source.mp4 \
         --tracker bytetrack \
         --tracker_params.lost_track_buffer 60 \
-        --tracker_params.minimum_consecutive_frames 5
+        --tracker_params.min_consecutive_frames 5
     ```
+
+    CLI parameter names abbreviate the standard leading token: `minimum_` becomes `min_` and `maximum_` becomes `max_`. Domain words such as `threshold` stay spelled out, and the Python constructor names are unchanged.
 
 === "Python"
 
@@ -147,7 +149,7 @@ Trackers don't detect objects—they link detections across frames. A detection 
         --detection.model rfdetr-medium \
         --detection.confidence 0.3 \
         --detection.device cuda \
-        --filters.classes person,car
+        --filters.classes [person,car]
     ```
 
 === "Python"
@@ -381,7 +383,12 @@ All arguments accepted by the `trackers track` command.
     </tr>
     <tr>
       <td><code>--filters.classes</code></td>
-      <td>Comma-separated class names or IDs to track. Example: <code>person,car</code> or <code>0,2</code>.</td>
+      <td>List of class names or IDs to track. Example: <code>[person,car]</code>, <code>[0,2]</code>, or the mixed <code>[person,2]</code>.</td>
+      <td>all</td>
+    </tr>
+    <tr>
+      <td><code>--filters.track_ids</code></td>
+      <td>List of track IDs to keep in the output. Example: <code>[1,3,5]</code>.</td>
       <td>all</td>
     </tr>
     <tr>
@@ -400,12 +407,12 @@ All arguments accepted by the `trackers track` command.
       <td><code>0.25</code></td>
     </tr>
     <tr>
-      <td><code>--tracker_params.minimum_consecutive_frames</code></td>
+      <td><code>--tracker_params.min_consecutive_frames</code></td>
       <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
       <td><code>3</code></td>
     </tr>
     <tr>
-      <td><code>--tracker_params.minimum_iou_threshold</code></td>
+      <td><code>--tracker_params.min_iou_threshold</code></td>
       <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
       <td><code>0.3</code></td>
     </tr>

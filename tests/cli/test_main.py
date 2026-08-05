@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from argparse import ArgumentError
 from importlib.metadata import version
 from pathlib import Path
@@ -215,7 +216,9 @@ class TestCliMigration:
                     "--detection.confidence",
                     "0.3",
                     "--filters.classes",
-                    "person,car",
+                    "[person,car]",
+                    "--filters.track_ids",
+                    "[1,3,5]",
                     "--output.video",
                     "tracked.mp4",
                     "--show.boxes",
@@ -226,7 +229,8 @@ class TestCliMigration:
 
         assert parsed.detection.model == "rfdetr-base"
         assert parsed.detection.confidence == pytest.approx(0.3)
-        assert parsed.filters.classes == "person,car"
+        assert parsed.filters.classes == ["person", "car"]
+        assert parsed.filters.track_ids == [1, 3, 5]
         assert parsed.output.video == Path("tracked.mp4")
         assert parsed.show.boxes is False
 
@@ -362,3 +366,167 @@ class TestCliMigration:
     ) -> None:
         """Hyphens and underscores are interchangeable in current option names."""
         assert _translate_legacy_args(hyphenated) == canonical
+
+
+class TestListValuedTrackFilters:
+    """Track filters take lists, matching the eval and tune list-valued options."""
+
+    @pytest.mark.parametrize(
+        ("legacy", "canonical"),
+        [
+            pytest.param(
+                ["track", "--filters.classes", "person,car"],
+                ["track", "--filters.classes", '["person", "car"]'],
+                id="separate_value",
+            ),
+            pytest.param(
+                ["track", "--filters.classes=person,car"],
+                ["track", "--filters.classes", '["person", "car"]'],
+                id="inline_value",
+            ),
+            pytest.param(
+                ["track", "--filters.track_ids", "1,3,5"],
+                ["track", "--filters.track_ids", '["1", "3", "5"]'],
+                id="track_ids",
+            ),
+            pytest.param(
+                ["track", "--filters.classes", "person"],
+                ["track", "--filters.classes", '["person"]'],
+                id="single_value",
+            ),
+            pytest.param(
+                ["track", "--filters.classes", " person , car "],
+                ["track", "--filters.classes", '["person", "car"]'],
+                id="whitespace_stripped",
+            ),
+        ],
+    )
+    def test_comma_separated_filter_values_remain_usable(
+        self,
+        legacy: list[str],
+        canonical: list[str],
+    ) -> None:
+        """The comma-separated filter spelling transitions to a JSON list."""
+        with pytest.warns(FutureWarning, match=r"comma-separated --filters\.\w+ values are deprecated"):
+            assert _translate_legacy_args(legacy) == canonical
+
+    def test_develop_classes_alias_still_accepts_a_comma_separated_value(self) -> None:
+        """The develop --classes spelling and its comma value both transition."""
+        with pytest.warns(FutureWarning):
+            args = _translate_legacy_args(["track", "--classes", "person,car"])
+
+        assert args == ["track", "--filters.classes", '["person", "car"]']
+
+    @pytest.mark.parametrize(
+        "args",
+        [
+            pytest.param(["track", "--filters.classes", "[person,car]"], id="bracket_shorthand"),
+            pytest.param(["track", "--filters.classes=[person,car]"], id="inline_bracket_shorthand"),
+            pytest.param(["track", "--filters.track_ids", "[1,3,5]"], id="numeric_bracket_shorthand"),
+            pytest.param(["track", "--", "--filters.classes", "person,car"], id="passthrough_untouched"),
+            pytest.param(["track", "--filters.classes", "--display"], id="missing_value_left_to_parser"),
+        ],
+    )
+    def test_current_list_values_are_not_rewritten(self, args: list[str]) -> None:
+        """Bracket shorthand and passthrough arguments stay untouched."""
+        assert _translate_legacy_args(args) == args
+
+    def test_comma_separated_value_reaches_the_parser_as_a_list(self) -> None:
+        """A translated legacy value parses into the FilterOptions list field."""
+        with pytest.warns(FutureWarning):
+            args = _translate_legacy_args(["track", "--filters.classes", "person,car"])
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        parsed = parser.instantiate_classes(parser.parse_args(args[1:]))
+
+        assert parsed.filters.classes == ["person", "car"]
+
+    def test_bracket_shorthand_keeps_class_names_and_ids_distinguishable(self) -> None:
+        """Mixed class names and IDs survive parsing, as the resolver expects."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        parsed = parser.instantiate_classes(parser.parse_args(["--filters.classes=[person,2,car]"]))
+
+        assert parsed.filters.classes == ["person", 2, "car"]
+
+
+class TestTrackerParameterAbbreviations:
+    """Tracker parameters abbreviate only their standard leading token."""
+
+    @pytest.mark.parametrize(
+        ("unabbreviated", "abbreviated"),
+        [
+            pytest.param(
+                "--tracker_params.minimum_consecutive_frames",
+                "--tracker_params.min_consecutive_frames",
+                id="consecutive_frames",
+            ),
+            pytest.param(
+                "--tracker_params.minimum_iou_threshold",
+                "--tracker_params.min_iou_threshold",
+                id="iou_threshold",
+            ),
+            pytest.param(
+                "--tracker_params.minimum_iou_threshold_first_assoc",
+                "--tracker_params.min_iou_threshold_first_assoc",
+                id="first_assoc",
+            ),
+            pytest.param(
+                "--tracker_params.minimum_iou_threshold_second_assoc",
+                "--tracker_params.min_iou_threshold_second_assoc",
+                id="second_assoc",
+            ),
+            pytest.param(
+                "--tracker_params.minimum_iou_threshold_unconfirmed_assoc",
+                "--tracker_params.min_iou_threshold_unconfirmed_assoc",
+                id="unconfirmed_assoc",
+            ),
+        ],
+    )
+    def test_unabbreviated_parameters_transition_to_short_names(
+        self,
+        unabbreviated: str,
+        abbreviated: str,
+    ) -> None:
+        """Every renamed tracker parameter keeps a warning-emitting alias."""
+        with pytest.warns(FutureWarning, match=r"is deprecated; use --tracker_params\.min_"):
+            assert _translate_legacy_args(["track", unabbreviated, "0.3"]) == ["track", abbreviated, "0.3"]
+
+    def test_current_short_names_do_not_warn(self) -> None:
+        """The canonical short spelling is not treated as a legacy argument."""
+        args = ["track", "--tracker_params.min_iou_threshold", "0.3"]
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", FutureWarning)
+            assert _translate_legacy_args(args) == args
+
+    def test_develop_tracker_prefix_maps_to_the_short_name(self) -> None:
+        """The develop --tracker.<name> path lands on the abbreviated CLI name."""
+        with pytest.warns(FutureWarning, match=r"--tracker\.minimum_consecutive_frames"):
+            args = _translate_legacy_args(["track", "--tracker.minimum_consecutive_frames", "5"])
+
+        assert args == ["track", "--tracker_params.min_consecutive_frames", "5"]
+
+    def test_unabbreviated_and_short_names_cannot_be_combined(self) -> None:
+        """Mixed spellings cannot silently choose a value for one parameter."""
+        with pytest.raises(ValueError, match=r"minimum_iou_threshold.*min_iou_threshold"):
+            _translate_legacy_args(
+                [
+                    "track",
+                    "--tracker_params.minimum_iou_threshold",
+                    "0.3",
+                    "--tracker_params.min_iou_threshold",
+                    "0.4",
+                ]
+            )
+
+    def test_short_name_parses_into_tracker_options(self) -> None:
+        """The abbreviated CLI path populates the TrackerOptions field."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        parsed = parser.instantiate_classes(parser.parse_args(["--tracker_params.min_iou_threshold", "0.42"]))
+
+        assert parsed.tracker_params.min_iou_threshold == pytest.approx(0.42)

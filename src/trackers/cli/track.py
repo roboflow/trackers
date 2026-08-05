@@ -12,7 +12,7 @@ from __future__ import annotations
 import sys
 import warnings
 from contextlib import nullcontext
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -83,15 +83,19 @@ class DetectionOptions:
 class FilterOptions:
     """Detection and track filters.
 
+    Both fields are lists, matching the list-valued options of ``eval`` and
+    ``tune``. On the command line they accept bracket shorthand, so
+    ``--filters.classes=[person,car]`` and ``--filters.track_ids=[1,3,5]``
+    need no quoting.
+
     Attributes:
-        classes: Comma-separated class names or IDs to keep
-            (e.g. ``person,car`` or ``0,2``).
-        track_ids: Comma-separated track IDs to keep in the output
-            (e.g. ``1,3,5``).
+        classes: Class names or IDs to keep (e.g. ``[person,car]``, ``[0,2]``,
+            or the mixed form ``[person,2]``).
+        track_ids: Track IDs to keep in the output (e.g. ``[1,3,5]``).
     """
 
-    classes: str | None = None
-    track_ids: str | None = None
+    classes: list[str | int] | None = None
+    track_ids: list[str | int] | None = None
 
 
 @dataclass
@@ -138,15 +142,20 @@ class TrackerOptions:
     receives the keys it knows about. Fields left as ``None`` are dropped
     before instantiation so the tracker's own defaults apply.
 
+    CLI names abbreviate the standard leading token only — ``minimum_`` becomes
+    ``min_`` and ``maximum_`` becomes ``max_``. Domain words such as
+    ``threshold`` stay spelled out. The Python keyword names are unchanged;
+    :func:`_init_tracker` maps the short CLI name back to the long keyword.
+
     Attributes:
         lost_track_buffer: Frames to keep a lost track before discarding.
         frame_rate: Source frame rate for time-based logic.
         track_activation_threshold: Detection score needed to spawn a track.
-        minimum_consecutive_frames: Consecutive matches to confirm a track.
-        minimum_iou_threshold: IoU threshold for SORT/OC-SORT association.
-        minimum_iou_threshold_first_assoc: BoT-SORT first-stage IoU.
-        minimum_iou_threshold_second_assoc: BoT-SORT second-stage IoU.
-        minimum_iou_threshold_unconfirmed_assoc: BoT-SORT unconfirmed IoU.
+        min_consecutive_frames: Consecutive matches to confirm a track.
+        min_iou_threshold: IoU threshold for SORT/OC-SORT association.
+        min_iou_threshold_first_assoc: BoT-SORT first-stage IoU.
+        min_iou_threshold_second_assoc: BoT-SORT second-stage IoU.
+        min_iou_threshold_unconfirmed_assoc: BoT-SORT unconfirmed IoU.
         high_conf_det_threshold: High-confidence detection threshold.
         direction_consistency_weight: OC-SORT direction consistency weight.
         delta_t: OC-SORT velocity delta horizon.
@@ -162,11 +171,11 @@ class TrackerOptions:
     lost_track_buffer: int | None = None
     frame_rate: float | None = None
     track_activation_threshold: float | None = None
-    minimum_consecutive_frames: int | None = None
-    minimum_iou_threshold: float | None = None
-    minimum_iou_threshold_first_assoc: float | None = None
-    minimum_iou_threshold_second_assoc: float | None = None
-    minimum_iou_threshold_unconfirmed_assoc: float | None = None
+    min_consecutive_frames: int | None = None
+    min_iou_threshold: float | None = None
+    min_iou_threshold_first_assoc: float | None = None
+    min_iou_threshold_second_assoc: float | None = None
+    min_iou_threshold_unconfirmed_assoc: float | None = None
     high_conf_det_threshold: float | None = None
     direction_consistency_weight: float | None = None
     delta_t: int | None = None
@@ -175,6 +184,76 @@ class TrackerOptions:
     cmc_downscale: int | None = None
     instant_first_frame_activation: bool | None = None
     iou_variant: str | None = None
+
+
+# Standard leading tokens abbreviated on the CLI, mapping long Python prefix to
+# short CLI prefix. Domain words (``threshold``, ``consecutive``) stay in full.
+_CLI_PARAMETER_ABBREVIATIONS = {"minimum_": "min_", "maximum_": "max_"}
+
+
+def _abbreviate_parameter_name(name: str) -> str:
+    """Return the CLI spelling of one tracker ``__init__`` parameter name.
+
+    Args:
+        name: Python keyword name (e.g. ``minimum_iou_threshold``).
+
+    Returns:
+        Abbreviated CLI name, or ``name`` unchanged when no prefix applies.
+
+    Examples:
+        >>> _abbreviate_parameter_name("minimum_iou_threshold")
+        'min_iou_threshold'
+        >>> _abbreviate_parameter_name("lost_track_buffer")
+        'lost_track_buffer'
+    """
+    for long_prefix, short_prefix in _CLI_PARAMETER_ABBREVIATIONS.items():
+        if name.startswith(long_prefix):
+            return f"{short_prefix}{name.removeprefix(long_prefix)}"
+    return name
+
+
+def _expand_parameter_name(name: str) -> str:
+    """Return the tracker ``__init__`` keyword name for one CLI parameter name.
+
+    Inverse of :func:`_abbreviate_parameter_name`.
+
+    Args:
+        name: Abbreviated CLI name (e.g. ``min_iou_threshold``).
+
+    Returns:
+        Python keyword name, or ``name`` unchanged when no prefix applies.
+
+    Examples:
+        >>> _expand_parameter_name("min_iou_threshold")
+        'minimum_iou_threshold'
+        >>> _expand_parameter_name("lost_track_buffer")
+        'lost_track_buffer'
+    """
+    for long_prefix, short_prefix in _CLI_PARAMETER_ABBREVIATIONS.items():
+        if name.startswith(short_prefix):
+            return f"{long_prefix}{name.removeprefix(short_prefix)}"
+    return name
+
+
+def _abbreviated_tracker_parameters() -> dict[str, str]:
+    """Map every abbreviated :class:`TrackerOptions` field to its former CLI name.
+
+    Derived from the dataclass fields so the deprecation aliases in the CLI
+    entry point cannot drift from the option definitions.
+
+    Returns:
+        Mapping of long (deprecated) name to short (current) name.
+
+    Examples:
+        >>> _abbreviated_tracker_parameters()["minimum_iou_threshold"]
+        'min_iou_threshold'
+    """
+    renamed = {}
+    for field in fields(TrackerOptions):
+        expanded = _expand_parameter_name(field.name)
+        if expanded != field.name:
+            renamed[expanded] = field.name
+    return renamed
 
 
 def track_command(
@@ -432,12 +511,16 @@ def _run_with_source(
     return 0
 
 
-def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
-    """Resolve a comma-separated ``track_ids`` string to a list of integer IDs.
+def _resolve_track_id_filter(track_ids_arg: list[str | int] | None) -> list[int] | None:
+    """Resolve parsed ``track_ids`` tokens to a list of integer IDs.
+
+    Tokens arrive already split by jsonargparse, so a numeric token is an
+    ``int`` while a malformed one stays a ``str``. Malformed tokens are printed
+    as warnings and skipped rather than aborting the run.
 
     Args:
-        track_ids_arg: Raw ``--track_ids`` string (e.g. ``"1,3,5"``). ``None``
-            means no filter.
+        track_ids_arg: Parsed ``--filters.track_ids`` tokens (e.g. ``[1, 3, 5]``).
+            ``None`` or empty means no filter.
 
     Returns:
         List of integer track IDs, or ``None`` when no valid filter remains.
@@ -446,8 +529,8 @@ def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
         return None
 
     track_ids: list[int] = []
-    for raw in track_ids_arg.split(","):
-        token = raw.strip()
+    for raw in track_ids_arg:
+        token = str(raw).strip()
         try:
             track_ids.append(int(token))
         except ValueError:
@@ -455,16 +538,18 @@ def _resolve_track_id_filter(track_ids_arg: str | None) -> list[int] | None:
     return track_ids or None
 
 
-def _resolve_class_filter(classes_arg: str | None, class_names: list[str]) -> list[int] | None:
-    """Resolve a comma-separated ``classes`` string to a list of integer IDs.
+def _resolve_class_filter(classes_arg: list[str | int] | None, class_names: list[str]) -> list[int] | None:
+    """Resolve parsed ``classes`` tokens to a list of integer IDs.
 
     Each token is checked independently: if it parses as an ``int`` it is used
     directly as a class ID; otherwise it is looked up by name in ``class_names``.
-    Unknown names are printed as warnings and skipped.
+    Unknown names are printed as warnings and skipped. Names and IDs may be
+    mixed in one filter, which is why tokens stay loosely typed.
 
     Args:
-        classes_arg: Raw ``--classes`` string (e.g. ``"person,car"`` or
-            ``"0,2"`` or ``"person,2"``). ``None`` means no filter.
+        classes_arg: Parsed ``--filters.classes`` tokens (e.g. ``["person", "car"]``,
+            ``[0, 2]``, or the mixed ``["person", 2]``). ``None`` or empty means
+            no filter.
         class_names: Ordered list of class names where the index equals the
             class ID (as provided by the model).
 
@@ -476,8 +561,8 @@ def _resolve_class_filter(classes_arg: str | None, class_names: list[str]) -> li
 
     name_to_id = {name: i for i, name in enumerate(class_names)}
     class_filter: list[int] = []
-    for raw in classes_arg.split(","):
-        token = raw.strip()
+    for raw in classes_arg:
+        token = str(raw).strip()
         try:
             class_filter.append(int(token))
         except ValueError:
@@ -532,6 +617,12 @@ def _init_tracker(tracker_id: str, params: TrackerOptions | None) -> BaseTracker
     Only fields the chosen tracker accepts are forwarded; ``None`` values are
     always dropped so the tracker's own defaults apply.
 
+    Abbreviated CLI names are resolved back to their tracker ``__init__``
+    keyword before the forwarding check, so ``min_iou_threshold`` reaches the
+    tracker as ``minimum_iou_threshold``. Without that step a renamed CLI
+    option would silently fail the membership test and leave the tracker on its
+    own default. ``iou_variant`` is the same kind of alias for ``iou``.
+
     Args:
         tracker_id: Registered tracker name (e.g. ``bytetrack``, ``sort``).
         params: Optional tracker parameter overrides.
@@ -550,7 +641,13 @@ def _init_tracker(tracker_id: str, params: TrackerOptions | None) -> BaseTracker
     raw = asdict(params) if params is not None else {}
     iou_variant = raw.pop("iou_variant", None)
     accepted = set(info.parameters)
-    kwargs = {k: v for k, v in raw.items() if v is not None and k in accepted}
+    kwargs = {}
+    for name, value in raw.items():
+        if value is None:
+            continue
+        keyword = name if name in accepted else _expand_parameter_name(name)
+        if keyword in accepted:
+            kwargs[keyword] = value
     if iou_variant is not None:
         if "iou" in accepted:
             kwargs["iou"] = variant_from_name(iou_variant)
