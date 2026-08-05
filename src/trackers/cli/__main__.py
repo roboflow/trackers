@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import sys
 import warnings
+from collections.abc import Iterable
+from dataclasses import fields
 from importlib.metadata import version
 
 from jsonargparse import CLI, ActionYesNo, ArgumentParser
@@ -19,6 +21,7 @@ from jsonargparse import CLI, ActionYesNo, ArgumentParser
 from trackers.cli.download import download_command
 from trackers.cli.eval import eval_command
 from trackers.cli.track import (
+    DEFAULT_TRACKER,
     DetectionOptions,
     FilterOptions,
     OutputOptions,
@@ -32,6 +35,16 @@ from trackers.cli.tune import tune_command
 from trackers.core.base import BaseTracker
 
 _SUBCOMMANDS = frozenset({"track", "eval", "tune", "download"})
+# Track option dataclasses paired with the nested CLI key each is registered
+# under. Argument registration and boolean-syntax derivation read this single
+# table, so a dotted CLI path cannot drift from the dataclass that defines it.
+_TRACK_OPTION_GROUPS: tuple[tuple[type, str], ...] = (
+    (DetectionOptions, "detection"),
+    (FilterOptions, "filters"),
+    (TrackerOptions, "tracker_params"),
+    (OutputOptions, "output"),
+    (ShowOptions, "show"),
+)
 _DEVELOP_TRACK_ARGUMENTS = {
     "--model": "--detection.model",
     "--detections": "--detection.mot_file",
@@ -102,11 +115,45 @@ def _warn_legacy_cli(message: str) -> None:
     )
 
 
+def _explicit_value_boolean_options(option_groups: Iterable[tuple[type, str]]) -> frozenset[str]:
+    """Return dotted paths of boolean options that must be given an explicit value.
+
+    A boolean field defaulting to ``True`` cannot be rendered as a bare flag:
+    passing the flag would be a no-op, and only an explicit ``false`` can turn
+    the field off. Every other boolean stays a flag with a ``no-`` negation.
+
+    Deriving the paths from the dataclasses, rather than listing them here,
+    means adding a boolean field, renaming one, or flipping a default to
+    ``True`` cannot leave that field on the wrong boolean syntax.
+
+    Note:
+        Fields are selected by ``default``, never by ``type``: the option
+        modules use postponed annotations, so ``field.type`` is the *string*
+        ``"bool"`` and a type-based check would silently match nothing.
+
+    Args:
+        option_groups: Option dataclasses paired with the nested CLI key each
+            one is registered under.
+
+    Returns:
+        Option strings, such as ``--show.boxes``, that keep value syntax.
+    """
+    return frozenset(
+        f"--{nested_key}.{field.name}"
+        for option_class, nested_key in option_groups
+        for field in fields(option_class)
+        if field.default is True
+    )
+
+
+_EXPLICIT_VALUE_BOOLEAN_OPTIONS = _explicit_value_boolean_options(_TRACK_OPTION_GROUPS)
+
+
 class _CLIParser(ArgumentParser):
     """Expose track dataclasses while preserving intentional boolean syntax."""
 
     def add_argument(self, *args, **kwargs):  # type: ignore[override]
-        if kwargs.get("type") is bool and not {"--show.boxes", "--show.ids"}.intersection(args):
+        if kwargs.get("type") is bool and not _EXPLICIT_VALUE_BOOLEAN_OPTIONS.intersection(args):
             kwargs.pop("type")
             kwargs["action"] = ActionYesNo(yes_prefix="", no_prefix="no-")
         return super().add_argument(*args, **kwargs)
@@ -126,15 +173,18 @@ def _add_track_arguments(parser: ArgumentParser) -> list[str]:
         help="Video file, webcam index, RTSP URL, or image directory.",
     )
     added_args = ["source"]
-    for option_class, nested_key in (
-        (DetectionOptions, "detection"),
-        (FilterOptions, "filters"),
-        (TrackerOptions, "tracker_params"),
-        (OutputOptions, "output"),
-        (ShowOptions, "show"),
-    ):
+    for option_class, nested_key in _TRACK_OPTION_GROUPS:
         added_args.extend(parser.add_class_arguments(option_class, nested_key))
-    parser.add_argument("--tracker", type=str, default="bytetrack", help="Tracking algorithm ID.")
+    # The registry is the accept list, so an unknown tracker is rejected while
+    # parsing rather than after a detection model has already been loaded.
+    # ``type`` is deliberately omitted: combined with ``choices`` it makes
+    # jsonargparse print a lambda repr in --help, and registry ids are strings.
+    parser.add_argument(
+        "--tracker",
+        default=DEFAULT_TRACKER,
+        choices=BaseTracker._registered_trackers(),
+        help="Tracking algorithm ID.",
+    )
     parser.add_argument("--display", action="store_true", help="Show a live preview window.")
     added_args.extend(["tracker", "display"])
     return added_args

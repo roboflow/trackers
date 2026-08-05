@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 import warnings
 from argparse import ArgumentError
+from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 
@@ -18,9 +19,15 @@ import pytest
 import yaml
 from jsonargparse import ArgumentParser
 
-from trackers.cli.__main__ import _CLIParser, _translate_legacy_args
+from trackers.cli.__main__ import (
+    _EXPLICIT_VALUE_BOOLEAN_OPTIONS,
+    _CLIParser,
+    _explicit_value_boolean_options,
+    _translate_legacy_args,
+)
 from trackers.cli.eval import eval_command
-from trackers.cli.track import track_command
+from trackers.cli.track import DEFAULT_TRACKER, ShowOptions, track_command
+from trackers.core.base import BaseTracker
 
 
 @pytest.fixture()
@@ -530,3 +537,77 @@ class TestTrackerParameterAbbreviations:
         parsed = parser.instantiate_classes(parser.parse_args(["--tracker_params.min_iou_threshold", "0.42"]))
 
         assert parsed.tracker_params.min_iou_threshold == pytest.approx(0.42)
+
+
+class TestBooleanOptionSyntax:
+    """Boolean CLI syntax is derived from the option dataclasses, never hardcoded."""
+
+    def test_only_default_true_booleans_take_an_explicit_value(self) -> None:
+        """The derived set holds exactly the booleans a bare flag could not turn off."""
+        assert _EXPLICIT_VALUE_BOOLEAN_OPTIONS == frozenset({"--show.boxes", "--show.ids"})
+
+    def test_new_default_true_field_joins_the_set_without_an_edit(self) -> None:
+        """A boolean field added with a ``True`` default gains value syntax on its own."""
+
+        @dataclass
+        class ExtendedShowOptions(ShowOptions):
+            highlights: bool = True
+            footnotes: bool = False
+
+        derived = _explicit_value_boolean_options([(ExtendedShowOptions, "show")])
+
+        assert "--show.highlights" in derived
+        assert "--show.footnotes" not in derived
+
+    def test_dotted_prefix_comes_from_the_group_table(self) -> None:
+        """The nested CLI key drives the prefix, so regrouped options stay covered."""
+        derived = _explicit_value_boolean_options([(ShowOptions, "annotations")])
+
+        assert derived == frozenset({"--annotations.boxes", "--annotations.ids"})
+
+    def test_postponed_annotations_do_not_defeat_the_derivation(self) -> None:
+        """``field.type`` is the string ``bool`` here, so selection must key on the default."""
+        boxes = ShowOptions.__dataclass_fields__["boxes"]
+
+        assert boxes.type == "bool"
+        assert "--show.boxes" in _EXPLICIT_VALUE_BOOLEAN_OPTIONS
+
+    def test_default_false_boolean_parses_as_a_bare_flag(self) -> None:
+        """Booleans defaulting to ``False`` stay flags, which the derivation must preserve."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        parsed = parser.instantiate_classes(parser.parse_args(["--show.masks"]))
+
+        assert parsed.show.masks is True
+
+
+class TestTrackerChoices:
+    """The tracker registry is the accept list for --tracker."""
+
+    @pytest.mark.parametrize("tracker_id", BaseTracker._registered_trackers())
+    def test_every_registered_tracker_is_accepted(self, tracker_id: str) -> None:
+        """Choices come from the registry, so no registered tracker is rejected."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        parsed = parser.parse_args(["--tracker", tracker_id])
+
+        assert parsed.tracker == tracker_id
+
+    def test_unknown_tracker_is_rejected_while_parsing(self) -> None:
+        """A mistyped tracker fails before track_command can load a detection model."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        with pytest.raises(ArgumentError, match=r"invalid choice: 'nosuchtracker'"):
+            parser.parse_args(["--tracker", "nosuchtracker"])
+
+    def test_default_tracker_is_sourced_from_the_track_module(self) -> None:
+        """The CLI default mirrors track.DEFAULT_TRACKER rather than a duplicated literal."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        parsed = parser.parse_args([])
+
+        assert parsed.tracker == DEFAULT_TRACKER
