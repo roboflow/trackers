@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from trackers.cli.download import _print_available, download
+from trackers.cli.download import _print_available, download_command
 from trackers.datasets.download import _DEFAULT_CACHE_DIR, _DEFAULT_OUTPUT_DIR
 
 
@@ -22,20 +22,20 @@ class TestDownload:
     def test_list_triggers_print(self) -> None:
         """list_available=True calls _print_available and returns 0."""
         with patch("trackers.cli.download._print_available") as mock_print:
-            rc = download(list_available=True)
+            rc = download_command(list_available=True)
             assert rc == 0
             mock_print.assert_called_once()
 
     def test_list_takes_precedence_over_dataset(self) -> None:
         """list_available=True wins over dataset argument."""
         with patch("trackers.cli.download._print_available") as mock_print:
-            rc = download(dataset="mot17", list_available=True)
+            rc = download_command(dataset="mot17", list_available=True)
             assert rc == 0
             mock_print.assert_called_once()
 
     def test_missing_dataset_exits_with_error(self, capsys: pytest.CaptureFixture[str]) -> None:
         """No dataset and no list_available prints error to stderr and returns 1."""
-        rc = download()
+        rc = download_command()
         captured = capsys.readouterr()
         assert rc == 1
         assert "Please specify a dataset" in captured.err
@@ -51,7 +51,7 @@ class TestDownload:
     def test_split_comma_parsing(self, split_arg: str, expected_splits: list[str]) -> None:
         """split values are split on commas and whitespace-stripped."""
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
-            rc = download(dataset="mot17", split=split_arg, asset="annotations")
+            rc = download_command(dataset="mot17", split=split_arg, asset="annotations")
             assert rc == 0
             mock_dl.assert_called_once_with(
                 dataset="mot17",
@@ -72,7 +72,7 @@ class TestDownload:
     def test_split_comma_parsing_boundary(self, split_arg: str, expected_splits: list[str]) -> None:
         """split handles malformed comma inputs gracefully."""
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
-            rc = download(dataset="mot17", split=split_arg, asset="annotations")
+            rc = download_command(dataset="mot17", split=split_arg, asset="annotations")
             assert rc == 0
             mock_dl.assert_called_once_with(
                 dataset="mot17",
@@ -93,7 +93,7 @@ class TestDownload:
     def test_asset_comma_parsing(self, asset_arg: str, expected_assets: list[str]) -> None:
         """asset values are split on commas and whitespace-stripped."""
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
-            rc = download(dataset="sportsmot", split="train", asset=asset_arg)
+            rc = download_command(dataset="sportsmot", split="train", asset=asset_arg)
             assert rc == 0
             mock_dl.assert_called_once_with(
                 dataset="sportsmot",
@@ -106,7 +106,7 @@ class TestDownload:
     def test_none_splits_and_assets_when_omitted(self) -> None:
         """When split and asset are omitted, None is forwarded."""
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
-            rc = download(dataset="mot17")
+            rc = download_command(dataset="mot17")
             assert rc == 0
             mock_dl.assert_called_once_with(
                 dataset="mot17",
@@ -119,7 +119,7 @@ class TestDownload:
     def test_output_directory_forwarded(self) -> None:
         """output value is forwarded to download_dataset."""
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
-            rc = download(dataset="mot17", output="/custom/path")
+            rc = download_command(dataset="mot17", output="/custom/path")
             assert rc == 0
             mock_dl.assert_called_once_with(
                 dataset="mot17",
@@ -135,13 +135,13 @@ class TestDownload:
             "trackers.datasets.download.download_dataset",
             side_effect=ValueError("bad dataset"),
         ):
-            rc = download(dataset="mot17")
+            rc = download_command(dataset="mot17")
             assert rc == 1
 
     def test_split_with_spaces_stripped(self) -> None:
         """split with spaces around commas strips whitespace."""
         with patch("trackers.datasets.download.download_dataset") as mock_dl:
-            rc = download(dataset="mot17", split="train , val", asset="annotations")
+            rc = download_command(dataset="mot17", split="train , val", asset="annotations")
             assert rc == 0
             mock_dl.assert_called_once_with(
                 dataset="mot17",

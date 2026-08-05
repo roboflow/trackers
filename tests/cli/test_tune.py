@@ -14,17 +14,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from trackers.cli.tune import tune
+from trackers.cli.tune import tune_command
 
 
 class TestTune:
     def test_returns_1_on_invalid_tracker(self, tmp_path: Path) -> None:
-        """Invalid tracker ID causes tune() to return exit code 1."""
+        """Invalid tracker ID causes tune_command() to return exit code 1."""
         gt_dir = tmp_path / "gt"
         gt_dir.mkdir()
         det_dir = tmp_path / "det"
         det_dir.mkdir()
-        result = tune("nonexistent_tracker_xyz", gt_dir, det_dir)
+        result = tune_command("nonexistent_tracker_xyz", gt_dir, det_dir)
         assert result == 1
 
     def test_returns_1_on_missing_files(self, tmp_path: Path) -> None:
@@ -34,29 +34,29 @@ class TestTune:
         det_dir = tmp_path / "det"
         det_dir.mkdir()
         # bytetrack is registered; empty det_dir → FileNotFoundError via Tuner
-        result = tune("bytetrack", gt_dir, det_dir)
+        result = tune_command("bytetrack", gt_dir, det_dir)
         assert result == 1
 
     def test_returns_1_on_import_error(self, tmp_path: Path) -> None:
-        """ImportError (e.g. optuna not installed) causes tune() to return 1."""
+        """ImportError (e.g. optuna not installed) causes tune_command() to return 1."""
         gt_dir = tmp_path / "gt"
         det_dir = tmp_path / "det"
         with patch(
             "trackers.tune.Tuner",
             side_effect=ImportError("optuna is required"),
         ):
-            result = tune("bytetrack", gt_dir, det_dir)
+            result = tune_command("bytetrack", gt_dir, det_dir)
         assert result == 1
 
     def test_returns_0_on_success(self, tmp_path: Path) -> None:
-        """tune() returns 0 when Tuner.run() completes without error."""
+        """tune_command() returns 0 when Tuner.run() completes without error."""
         gt_dir = tmp_path / "gt"
         det_dir = tmp_path / "det"
         mock_tuner = MagicMock()
         mock_tuner.run.return_value = {"high_thresh": 0.6}
         mock_tuner.study = None
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
-            result = tune("bytetrack", gt_dir, det_dir)
+            result = tune_command("bytetrack", gt_dir, det_dir)
         assert result == 0
 
     def test_writes_json_output_on_success(self, tmp_path: Path) -> None:
@@ -69,7 +69,7 @@ class TestTune:
         mock_tuner.run.return_value = best
         mock_tuner.study = None
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
-            result = tune("bytetrack", gt_dir, det_dir, output=output_path)
+            result = tune_command("bytetrack", gt_dir, det_dir, output=output_path)
         assert result == 0
         assert output_path.exists()
         assert json.loads(output_path.read_text()) == best
@@ -86,32 +86,32 @@ class TestTune:
             patch("trackers.tune.Tuner", return_value=mock_tuner),
             patch.object(Path, "write_text", side_effect=OSError("permission denied")),
         ):
-            result = tune("bytetrack", gt_dir, det_dir, output=output_path)
+            result = tune_command("bytetrack", gt_dir, det_dir, output=output_path)
         assert result == 1
 
     def test_returns_1_on_tuner_run_exception(self, tmp_path: Path) -> None:
-        """Exception from tuner.run() causes tune() to return exit code 1."""
+        """Exception from tuner.run() causes tune_command() to return exit code 1."""
         gt_dir = tmp_path / "gt"
         det_dir = tmp_path / "det"
         mock_tuner = MagicMock()
         mock_tuner.run.side_effect = RuntimeError("optimization failed")
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
-            result = tune("bytetrack", gt_dir, det_dir)
+            result = tune_command("bytetrack", gt_dir, det_dir)
         assert result == 1
 
 
 class TestCliInvocation:
-    """tune() is wired into the jsonargparse CLI with the expected args."""
+    """tune_command() is wired into the jsonargparse CLI with the expected args."""
 
     @staticmethod
     def _invoke(args: list[str], spy: list[dict]) -> object:
-        """Run jsonargparse.CLI() with a recording spy for `tune`.
+        """Run jsonargparse.CLI() with a recording spy for `tune_command`.
 
         The spy mirrors the real signature so jsonargparse can introspect it.
         """
         from jsonargparse import CLI
 
-        from trackers.cli.tune import tune as real_tune
+        from trackers.cli.tune import tune_command as real_tune
 
         def spy_tune(
             tracker: str,

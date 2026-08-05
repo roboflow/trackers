@@ -16,17 +16,17 @@ from importlib.metadata import version
 
 from jsonargparse import CLI, ActionYesNo, ArgumentParser
 
-from trackers.cli.download import download
-from trackers.cli.eval import eval_cmd
+from trackers.cli.download import download_command
+from trackers.cli.eval import eval_command
 from trackers.cli.track import (
     DetectionOptions,
-    FilteringOptions,
+    FilterOptions,
     OutputOptions,
     ShowOptions,
-    TrackerParams,
-    track,
+    TrackerOptions,
+    track_command,
 )
-from trackers.cli.tune import tune
+from trackers.cli.tune import tune_command
 from trackers.core.base import BaseTracker
 
 _SUBCOMMANDS = frozenset({"track", "eval", "tune", "download"})
@@ -101,7 +101,7 @@ class _CLIParser(ArgumentParser):
         return super().add_argument(*args, **kwargs)
 
     def add_function_arguments(self, function, *args, **kwargs):  # type: ignore[override]
-        if function is track:
+        if function is track_command:
             return _add_track_arguments(self)
         return super().add_function_arguments(function, *args, **kwargs)
 
@@ -117,8 +117,8 @@ def _add_track_arguments(parser: ArgumentParser) -> list[str]:
     added_args = ["source"]
     for option_class, nested_key in (
         (DetectionOptions, "detection"),
-        (FilteringOptions, "filters"),
-        (TrackerParams, "tracker_params"),
+        (FilterOptions, "filters"),
+        (TrackerOptions, "tracker_params"),
         (OutputOptions, "output"),
         (ShowOptions, "show"),
     ):
@@ -334,7 +334,7 @@ def main() -> int:
         print(f"trackers {version('trackers')}")
         return 0
     rc = CLI(
-        {"track": track, "eval": eval_cmd, "tune": tune, "download": download},
+        {"track": track_command, "eval": eval_command, "tune": tune_command, "download": download_command},
         args=args,
         as_positional=False,
         prog="trackers",

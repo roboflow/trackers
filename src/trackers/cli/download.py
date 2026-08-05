@@ -18,7 +18,7 @@ from trackers.datasets.download import _DEFAULT_CACHE_DIR, _DEFAULT_OUTPUT_DIR
 from trackers.datasets.manifest import _DATASETS
 
 
-def download(
+def download_command(
     dataset: str | None = None,
     split: str | None = None,
     asset: str | None = None,

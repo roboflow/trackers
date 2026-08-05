@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 
-def eval_cmd(
+def eval_command(
     gt: Path | None = None,
     tracker: Path | None = None,
     gt_dir: Path | None = None,

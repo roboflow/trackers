@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 
-def tune(
+def tune_command(
     tracker: str,
     gt_dir: Path,
     detections_dir: Path,

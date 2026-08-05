@@ -18,15 +18,15 @@ import yaml
 from jsonargparse import ArgumentParser
 
 from trackers.cli.__main__ import _CLIParser, _translate_legacy_args
-from trackers.cli.eval import eval_cmd
-from trackers.cli.track import track
+from trackers.cli.eval import eval_command
+from trackers.cli.track import track_command
 
 
 @pytest.fixture()
 def track_parser() -> ArgumentParser:
-    """ArgumentParser built from the track() signature with --config support."""
+    """ArgumentParser built from the track_command() signature with --config support."""
     parser = ArgumentParser(exit_on_error=False)
-    parser.add_function_arguments(track)
+    parser.add_function_arguments(track_command)
     parser.add_argument("--config", action="config")
     return parser
 
@@ -35,7 +35,7 @@ class TestConfigFileSupport:
     """Verify jsonargparse --config flag behaviour for the track subcommand."""
 
     def test_config_value_applied_to_tracker(self, track_parser: ArgumentParser, tmp_path: Path) -> None:
-        """YAML --config value is parsed into the track() namespace."""
+        """YAML --config value is parsed into the track_command() namespace."""
         cfg = tmp_path / "run.yaml"
         cfg.write_text(yaml.dump({"tracker": "sort"}))
 
@@ -68,7 +68,7 @@ class TestCliMigration:
     def test_semantic_output_and_mot_file_paths_are_available(self) -> None:
         """CLI names identify the output artifact and precomputed MOT input file."""
         parser = _CLIParser(exit_on_error=False)
-        parser.add_function_arguments(track)
+        parser.add_function_arguments(track_command)
 
         parsed = parser.instantiate_classes(
             parser.parse_args(
@@ -87,7 +87,7 @@ class TestCliMigration:
     def test_overwrite_is_nested_and_display_remains_flat(self) -> None:
         """Output write policy is nested while live preview remains a flat action."""
         parser = _CLIParser(exit_on_error=False)
-        parser.add_function_arguments(track)
+        parser.add_function_arguments(track_command)
 
         parsed = parser.instantiate_classes(
             parser.parse_args(
@@ -134,7 +134,7 @@ class TestCliMigration:
     def test_negative_show_aliases_are_not_available(self, option: str) -> None:
         """Boxes and IDs use explicit boolean values instead of negative flags."""
         parser = _CLIParser(exit_on_error=False)
-        parser.add_function_arguments(track)
+        parser.add_function_arguments(track_command)
 
         with pytest.raises(ArgumentError, match=option):
             parser.parse_args([option])
@@ -203,9 +203,9 @@ class TestCliMigration:
             _translate_legacy_args(args)
 
     def test_track_parser_accepts_dotted_dataclass_arguments(self) -> None:
-        """Dotted CLI options instantiate nested options before calling track()."""
+        """Dotted CLI options instantiate nested options before calling track_command()."""
         parser = _CLIParser(exit_on_error=False)
-        parser.add_function_arguments(track)
+        parser.add_function_arguments(track_command)
 
         parsed = parser.instantiate_classes(
             parser.parse_args(
@@ -263,7 +263,7 @@ class TestCliMigration:
             "false",
         ]
         parser = _CLIParser(exit_on_error=False)
-        parser.add_function_arguments(track)
+        parser.add_function_arguments(track_command)
         parsed = parser.instantiate_classes(parser.parse_args(args[1:]))
 
         assert parsed.detection.model == "rfdetr-base"
@@ -312,7 +312,7 @@ class TestCliMigration:
             "results.json",
         ]
         parser = ArgumentParser(exit_on_error=False)
-        parser.add_function_arguments(eval_cmd)
+        parser.add_function_arguments(eval_command)
         parsed = parser.parse_args(args[1:])
 
         assert parsed.metrics == ["CLEAR", "HOTA"]

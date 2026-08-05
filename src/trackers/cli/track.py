@@ -80,7 +80,7 @@ class DetectionOptions:
 
 
 @dataclass
-class FilteringOptions:
+class FilterOptions:
     """Detection and track filters.
 
     Attributes:
@@ -131,7 +131,7 @@ class ShowOptions:
 
 
 @dataclass
-class TrackerParams:
+class TrackerOptions:
     """Optional tracker-specific parameters.
 
     Union of parameters across all registered trackers; each tracker only
@@ -177,12 +177,12 @@ class TrackerParams:
     iou_variant: str | None = None
 
 
-def track(
+def track_command(
     source: str | None = None,
     detection: DetectionOptions | None = None,
-    filters: FilteringOptions | None = None,
+    filters: FilterOptions | None = None,
     tracker: str = DEFAULT_TRACKER,
-    tracker_params: TrackerParams | None = None,
+    tracker_params: TrackerOptions | None = None,
     output: OutputOptions | None = None,
     display: bool = False,
     show: ShowOptions | None = None,
@@ -208,7 +208,7 @@ def track(
     if detection is None:
         detection = DetectionOptions()
     if filters is None:
-        filters = FilteringOptions()
+        filters = FilterOptions()
     if output is None:
         output = OutputOptions()
     if show is None:
@@ -526,7 +526,7 @@ def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Dete
     return dets
 
 
-def _init_tracker(tracker_id: str, params: TrackerParams | None) -> BaseTracker:
+def _init_tracker(tracker_id: str, params: TrackerOptions | None) -> BaseTracker:
     """Create a tracker instance from the registry.
 
     Only fields the chosen tracker accepts are forwarded; ``None`` values are
