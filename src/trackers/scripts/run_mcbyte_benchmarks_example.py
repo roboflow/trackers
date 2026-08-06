@@ -208,7 +208,7 @@ def parse_args() -> argparse.Namespace:
         choices=SUPPORTED_CMC_METHODS,
         help="Camera-motion compensation method.",
     )
-    parser.add_argument("--cmc-downscale", type=int, default=2)
+    parser.add_argument("--cmc-downscale", type=int, default=6)
     parser.add_argument("--keep-partial-results", action="store_true")
     return parser.parse_args()
 
