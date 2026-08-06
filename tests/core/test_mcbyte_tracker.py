@@ -15,6 +15,7 @@ import pytest
 import supervision as sv
 from pytest import MonkeyPatch
 
+from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.mcbyte.mask_manager import MaskManager
 from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
 from trackers.core.mcbyte.masks.dummy import (
@@ -23,6 +24,7 @@ from trackers.core.mcbyte.masks.dummy import (
 )
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.core.mcbyte.tracklet import McByteTracklet
+from trackers.utils.cmc import CMCConfig
 
 
 class SpyMaskManager:
@@ -100,6 +102,21 @@ def test_mcbyte_instantiates_and_updates_with_frame_and_sparse_opt_flow_cmc_retu
     assert result.tracker_id is not None
     assert result.tracker_id[0] >= 0
     assert len(tracker.tracks) == 1
+
+
+def test_mcbyte_cmc_downscale_default_is_scoped_and_preserves_override() -> None:
+    """Factor 6 is McByte-only; generic CMC, BoT-SORT, and explicit factor 2 remain stable."""
+    default_tracker = McByteTracker(enable_mask_manager=False)
+    conservative_tracker = McByteTracker(enable_mask_manager=False, cmc_downscale=2)
+    botsort_tracker = BoTSORTTracker()
+
+    assert default_tracker.cmc is not None
+    assert default_tracker.cmc.downscale == 6
+    assert conservative_tracker.cmc is not None
+    assert conservative_tracker.cmc.downscale == 2
+    assert CMCConfig().downscale == 2
+    assert botsort_tracker.cmc is not None
+    assert botsort_tracker.cmc.downscale == 2
 
 
 def test_mcbyte_emits_unmatched_high_conf_detection_with_placeholder_id() -> None:

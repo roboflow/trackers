@@ -194,3 +194,6 @@ pretrained/
 
 # Internal design notes (kept locally, not published)
 docs/design/dynamic-frame-rate.md
+
+# Datasets
+sportsmot/

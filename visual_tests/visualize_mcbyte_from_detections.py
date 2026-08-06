@@ -139,7 +139,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cmc-downscale",
         type=int,
-        default=2,
+        default=6,
         help="Image downscale factor used by CMC.",
     )
     parser.add_argument(
