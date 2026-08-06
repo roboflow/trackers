@@ -1,0 +1,2412 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="McByte extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an additional matching cue, without per-video tuning.">
+      
+      
+        <meta name="author" content="Roboflow">
+      
+      
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/2.6.0/trackers/mcbyte/">
+      
+      
+        <link rel="prev" href="../cbiou/">
+      
+      
+        <link rel="next" href="../../api/trackers/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo-trackers-black.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>McByte Tracker — Mask-Conditioned Multi-Object Tracking | Trackers - Trackers</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/style.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/rf.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/command_builder.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://roboflow.com/#organization",
+      "name": "Roboflow",
+      "url": "https://roboflow.com",
+      "description": "Roboflow builds computer vision infrastructure and tools for training and deploying vision AI models.",
+      "foundingDate": "2019",
+      "logo": "../../assets/logo-trackers-violet.svg",
+      "sameAs": [
+        "https://github.com/roboflow",
+        "https://twitter.com/roboflow",
+        "https://www.linkedin.com/company/roboflow-ai/",
+        "https://www.youtube.com/roboflow",
+        "https://en.wikipedia.org/wiki/Roboflow",
+        "https://www.wikidata.org/wiki/Q117062679",
+        "https://www.crunchbase.com/organization/roboflow"
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://trackers.roboflow.com/#software",
+      "name": "Roboflow Trackers",
+      "description": "A unified library for multi-object tracking with clean-room implementations of SORT, ByteTrack, OC-SORT, and BoT-SORT, designed to plug into any detection model via the supervision library.",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Object Tracking",
+      "featureList": ["SORT tracking", "ByteTrack tracking", "OC-SORT tracking", "HOTA evaluation", "IDF1 evaluation", "MOTA evaluation", "MOT17 dataset support", "SportsMOT dataset support"],
+      "operatingSystem": "Linux, macOS, Windows",
+      "url": "https://trackers.roboflow.com",
+      "downloadUrl": "https://pypi.org/project/trackers/",
+      "codeRepository": "https://github.com/roboflow/trackers",
+      "programmingLanguage": "Python",
+      "author": {
+        "@id": "https://roboflow.com/#organization"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  ]
+}
+</script>
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "McByte",
+  "description": "McByte extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an additional matching cue, without per-video tuning.",
+  "url": "https://trackers.roboflow.com/latest/2.6.0/trackers/mcbyte/",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://trackers.roboflow.com/latest/2.6.0/trackers/mcbyte/"
+  },
+  "image": {
+    "@type": "ImageObject",
+    "url": "https://trackers.roboflow.com/latest/2.6.0/assets/logo-trackers-violet.svg"
+  },
+  "author": {
+    "@type": "Organization",
+    "@id": "https://roboflow.com/#organization",
+    "name": "Roboflow"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "@id": "https://roboflow.com/#organization",
+    "name": "Roboflow",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://trackers.roboflow.com/latest/2.6.0/assets/logo-trackers-violet.svg"
+    }
+  },
+  "speakable": {
+    "@type": "SpeakableSpecification",
+    "cssSelector": [
+      "h1",
+      ".md-content p:first-of-type"
+    ]
+  },
+  "dateModified": "2026-07-28",
+  "datePublished": "2026-07-27"
+}
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Roboflow Trackers" />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/2.6.0/trackers/mcbyte/" />
+<meta property="og:title" content="McByte Tracker — Mask-Conditioned Multi-Object Tracking | Trackers" />
+<meta property="og:description" content="McByte extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an additional matching cue, without per-video tuning." />
+<meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+<meta property="og:image:alt" content="Roboflow Trackers logo" />
+
+
+
+<meta name="indexnow-key" content="bc061e8ae9e449d7acb9f86d29637e58" />
+
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@roboflow" />
+<meta name="twitter:title" content="McByte Tracker — Mask-Conditioned Multi-Object Tracking | Trackers" />
+<meta name="twitter:description" content="McByte extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an additional matching cue, without per-video tuning." />
+<meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
+
+
+
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mcbyte" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+
+<!-- Header -->
+<header class="md-header" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../.."
+      title="Trackers"
+      class="md-header__button md-logo"
+      aria-label="Trackers"
+      data-md-component="logo"
+    >
+      
+  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Trackers Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis" style="display: flex; align-items: center; gap: 0.5rem;">
+            <a
+            href="../.."
+            title="Trackers"
+            class="md-header__button md-logo"
+            aria-label="Trackers"
+            data-md-component="logo"
+            id="item-logo"
+            >
+            
+  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
+
+            </a>
+            
+              McByte Tracker — Mask-Conditioned Multi-Object Tracking | Trackers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- Button to open search modal -->
+    
+      
+
+      <!-- Check if search is actually enabled - see https://t.ly/DT_0V -->
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+
+        <!-- Search interface -->
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+
+
+    <ul class="header-list">
+        <li style="align-items: center;" id="resources-list">
+            <label for="dropdown-resources"><span>Resources <svg class="dropdown-chevron" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></label>
+            <input type="radio" name="dropdown" id="dropdown-resources" style="display: none;" />
+            <ul class="resources-sublist sublist">
+                <li><a href="https://blog.roboflow.com">Blog</a></li>
+                <li><a href="https://discuss.roboflow.com">Community Forum</a></li>
+                <li><a href="https://roboflow.com/sales">Contact Sales</a></li>
+                <li><a href="https://universe.roboflow.com">Universe</a></li>
+            </ul>
+        </li>
+        <li style="align-items: center;" id="products-list">
+            <label for="dropdown-products"><span>Docs <svg class="dropdown-chevron" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></label>
+            <input type="radio" name="dropdown" id="dropdown-products" style="display: none;" />
+            <ul class="products-sublist sublist">
+                <li><a href="https://inference.roboflow.com">Inference</a></li>
+                <li><a href="https://supervision.roboflow.com">Supervision</a></li>
+                <li><a href="https://trackers.roboflow.com">Trackers</a></li>
+                <li><a href="https://maestro.roboflow.com">Maestro</a></li>
+                <li><a href="https://docs.roboflow.com">Roboflow</a></li>
+            </ul>
+        </li>
+        <script>
+          const searchDialog = document.querySelector('.md-search[role="dialog"]');
+          if (searchDialog && !searchDialog.hasAttribute('aria-label')) {
+            searchDialog.setAttribute('aria-label', 'Search');
+          }
+          const versionButton = document.querySelector('.md-version__current');
+          if (versionButton) {
+            const version = versionButton.textContent.trim();
+            if (version) {
+              versionButton.setAttribute('aria-label', 'Select version ' + version);
+            }
+          }
+          document.addEventListener('click', function(event) {
+            const resourcesList = document.getElementById('resources-list');
+            const productsList = document.getElementById('products-list');
+            const dropdownResources = document.getElementById('dropdown-resources');
+            const dropdownProducts = document.getElementById('dropdown-products');
+
+            if (!resourcesList.contains(event.target)) {
+              dropdownResources.checked = false;
+            }
+            if (!productsList.contains(event.target)) {
+              dropdownProducts.checked = false;
+            }
+          });
+          // on mouse over
+          document.getElementById('resources-list').addEventListener('mouseover', function() {
+            document.getElementById('dropdown-resources').checked = true;
+          });
+          document.getElementById('products-list').addEventListener('mouseover', function() {
+            document.getElementById('dropdown-products').checked = true;
+          });
+          // on mouse out
+          document.getElementById('resources-list').addEventListener('mouseout', function() {
+            // if not hovering over the sublist or the label, uncheck the dropdown
+            // wait 1 sec
+            setTimeout(function() {
+              if (!document.querySelector('.resources-sublist:hover') && !document.querySelector('#resources-list:hover')) {
+                document.getElementById('dropdown-resources').checked = false;
+              }
+            }, 350);
+          });
+          // if mouseout of sublist, uncheck immediately
+          document.querySelector('.resources-sublist').addEventListener('mouseout', function() {
+            setTimeout(function() {
+              if (!document.querySelector('.resources-sublist:hover') && !document.querySelector('#resources-list:hover')) {
+                document.getElementById('dropdown-resources').checked = false;
+              }
+            }, 450);
+          });
+          document.getElementById('products-list').addEventListener('mouseout', function() {
+            // if not hovering over the sublist, uncheck the dropdown
+            // wait 1 sec
+            setTimeout(function() {
+              if (!document.querySelector('.products-sublist:hover') && !document.querySelector('#products-list:hover')) {
+                document.getElementById('dropdown-products').checked = false;
+              }
+            }, 500);
+          });
+          // if mouseout of sublist, uncheck immediately
+          document.querySelector('.products-sublist').addEventListener('mouseout', function() {
+            setTimeout(function() {
+              if (!document.querySelector('.products-sublist:hover') && !document.querySelector('#products-list:hover')) {
+                document.getElementById('dropdown-products').checked = false;
+              }
+            }, 500);
+          });
+
+        </script>
+        <style>
+          #dropdown-resources:checked ~ .resources-sublist {
+            display: block;
+          }
+          #dropdown-products:checked ~ .products-sublist {
+            display: block;
+          }
+          /* Hide dropdown if clicking outside */
+          body:not(:has(#dropdown-resources:checked)) .resources-sublist,
+          body:not(:has(#dropdown-products:checked)) .products-sublist {
+            display: none;
+          }
+        </style>
+        <li><a href="https://github.com/roboflow/trackers" class="header-btn" style="display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; color: white; background: var(--md-typeset-a-color); padding: 0.25rem 0.5rem; border: 1px solid #8315F9;">Go to GitHub</a></li>
+    </ul>
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../learn/install/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../comparison/" class="md-tabs__link">
+          
+  
+  
+  Trackers
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/trackers/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Trackers" class="md-nav__button md-logo" aria-label="Trackers" data-md-component="logo">
+      
+  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
+
+    </a>
+    Trackers
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/roboflow/trackers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    roboflow/trackers
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Trackers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/track/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track Objects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/dynamic-frame-rate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Frame Rate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Download Datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/evaluate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluate Trackers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/tune/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tune Trackers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/detection-quality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection Quality Matters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/state-estimators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Estimators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/iou/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IoU Variants
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../learn/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trackers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Trackers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SORT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bytetrack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ByteTrack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ocsort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OC-SORT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../botsort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BoT-SORT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cbiou/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    C-BIoU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    McByte
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    McByte
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-does-mcbyte-compare-to-other-trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How does McByte compare to other trackers?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Algorithm
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mask-pipeline-parameters-mcbytemaskconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mask Pipeline Parameters (McByteMaskConfig)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-on-video" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run on video
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-and-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance and optimization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/trackers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trackers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/motion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Motion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datasets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    I/O
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-does-mcbyte-compare-to-other-trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How does McByte compare to other trackers?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Algorithm
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Parameters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Parameters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mask-pipeline-parameters-mcbytemaskconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mask Pipeline Parameters (McByteMaskConfig)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-on-video" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run on video
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-and-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance and optimization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="mcbyte">McByte</h1>
+<h2 id="overview">Overview</h2>
+<p>McByte extends a <a href="../botsort/">BoT-SORT</a>-style tracking-by-detection pipeline with an optional mask-conditioned association stage. Instead of relying only on IoU and detection confidence, McByte can use a temporally propagated segmentation mask per track as extra evidence when an IoU-based match is ambiguous. Clear, unambiguous matches are locked before mask evidence is considered, so masks only influence genuinely uncertain pairs (and, optionally, isolated low-IoU candidates). Because the mask evidence comes from general-purpose, pre-trained segmentation models, McByte requires no per-video or per-dataset tuning. Mask management is optional and disabled by default: without it, McByte behaves as a clear-match-locking, reduced-assignment variant of the ByteTrack/BoT-SORT association pipeline using IoU alone.</p>
+<p>McByte was originally developed by <a href="https://www.linkedin.com/in/tomasz-stanczyk/">Tomasz Stańczyk</a> at <a href="https://team.inria.fr/stars/">Inria</a>, in the STARS (Spatio-Temporal Activity Recognition of Social interactions) team. The Trackers implementation is a clean-room adaptation of the <a href="https://github.com/tstanczyk95/McByte">original McByte code</a> and <a href="https://arxiv.org/abs/2506.01373">paper</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Optional heavyweight dependencies</p>
+<p>The default mask pipeline uses <a href="https://github.com/facebookresearch/segment-anything">Segment Anything (SAM)</a> for mask initialization and <a href="https://github.com/hkchengrex/Cutie">Cutie</a> for temporal mask propagation. Both require <code>torch</code>/<code>torchvision</code> plus their own installation steps and are <strong>not</strong> installed by <code>pip install trackers</code>. <code>McByteTracker</code> can be constructed and used without either — set <code>enable_mask_manager=True</code> only after installing SAM and Cutie, or supply a custom <code>mask_manager</code> (for example a lightweight test double) instead.</p>
+</div>
+<h2 id="how-does-mcbyte-compare-to-other-trackers">How does McByte compare to other trackers?</h2>
+<p>For comparisons with other trackers, plus dataset context and evaluation details, see the <a href="../comparison/">tracker comparison</a> page.</p>
+<p>The per-dataset results below compare McByte (mask-conditioned association enabled) against BoT-SORT without re-identification — the baseline association pipeline McByte builds on — using default parameters for both trackers, with no dataset-specific tuning.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">MOT17</label><label for="__tabbed_1_2">SportsMOT</label><label for="__tabbed_1_3">SoccerNet</label><label for="__tabbed_1_4">DanceTrack</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">BoT-SORT</td>
+<td style="text-align: center;">63.7</td>
+<td style="text-align: center;">78.7</td>
+<td style="text-align: center;"><strong>79.2</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>McByte</strong></td>
+<td style="text-align: center;"><strong>64.1</strong></td>
+<td style="text-align: center;"><strong>79.7</strong></td>
+<td style="text-align: center;">79.1</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">BoT-SORT</td>
+<td style="text-align: center;">73.8</td>
+<td style="text-align: center;">73.4</td>
+<td style="text-align: center;">96.9</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>McByte</strong></td>
+<td style="text-align: center;"><strong>76.5</strong></td>
+<td style="text-align: center;"><strong>76.9</strong></td>
+<td style="text-align: center;"><strong>97.0</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">BoT-SORT</td>
+<td style="text-align: center;">84.5</td>
+<td style="text-align: center;">79.3</td>
+<td style="text-align: center;">96.6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>McByte</strong></td>
+<td style="text-align: center;"><strong>85.0</strong></td>
+<td style="text-align: center;"><strong>79.9</strong></td>
+<td style="text-align: center;"><strong>97.0</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Tracker</th>
+<th style="text-align: center;">HOTA</th>
+<th style="text-align: center;">IDF1</th>
+<th style="text-align: center;">MOTA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">BoT-SORT</td>
+<td style="text-align: center;">57.8</td>
+<td style="text-align: center;">57.9</td>
+<td style="text-align: center;">92.2</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>McByte</strong></td>
+<td style="text-align: center;"><strong>67.2</strong></td>
+<td style="text-align: center;"><strong>68.6</strong></td>
+<td style="text-align: center;"><strong>92.5</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<p>Source: <a href="https://github.com/roboflow/trackers/pull/513">PR #513</a>, reported by the McByte author against Trackers' BoT-SORT baseline.</p>
+<h2 id="algorithm">Algorithm</h2>
+<p>McByte keeps the same tracking-by-detection backbone as <a href="../botsort/">BoT-SORT</a> — Kalman prediction, optional camera motion compensation (CMC), and multi-stage confidence-aware IoU association — and adds clear-match locking plus optional mask conditioning around the assignment step.</p>
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-pipeline.webp" alt="McByte pipeline: from frame t-1 to t, tracklet boxes are advanced by a Kalman filter and masks by a temporal propagator; detection boxes and propagated masks feed a Hungarian matching assignment enhanced by mask evidence" loading="lazy" decoding="async"/>
+  <figcaption>McByte propagates <strong>two</strong> states from frame <code>t-1</code> to <code>t</code>: the Kalman filter state (tracklet boxes) and the mask state (per-tracklet segmentation masks). Predicted boxes and propagated masks both feed the assignment step — IoU drives matching, and mask evidence resolves the ambiguous or isolated pairs.</figcaption>
+</figure>
+
+<p><strong>Processing flow.</strong> Detections → Kalman prediction → optional CMC → multi-stage IoU association → clear-match locking → mask-conditioned ambiguous association (if a mask manager is configured) → reduced linear assignment → tracklet lifecycle update.</p>
+<p><strong>Clear-match locking.</strong> Within each association stage, a track-detection pair whose similarity clears the stage threshold is locked immediately when it is the only eligible candidate in both its row and column. Locked pairs skip the Hungarian solver entirely, so mask evidence never has a chance to disturb matches that are already unambiguous.</p>
+<p><strong>Mask conditioning.</strong> The remaining, non-locked pairs form a reduced similarity matrix. When a <code>MaskManager</code> is configured and a propagated mask meets its confidence and overlap requirements (<code>minimum_mask_average_confidence</code>, <code>minimum_mask_coverage</code>, <code>minimum_mask_fill_ratio</code>), the mask evidence is added into that pair's similarity score before assignment. Optionally (<code>enable_isolated_mask_matching</code>), an isolated candidate with positive but below-threshold IoU can also be rescued by strong mask evidence. The Hungarian algorithm then solves the reduced assignment problem, and matches are mapped back to the original track and detection indices.</p>
+<p><strong>Mask scoring: coverage and fill.</strong> For a tracklet <code>i</code> (the mask owner) and a candidate detection box <code>j</code>, McByte computes two overlap scores between the tracklet's propagated mask and the detection box:</p>
+<div class="arithmatex">\[
+mc^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|\mathrm{mask}(tracklet_i)|}, \qquad
+mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
+\]</div>
+<p><em>Mask coverage</em> (<code>mc</code>, controlled by <code>minimum_mask_coverage</code>) is the fraction of the tracklet's mask pixels that fall inside the detection box. <em>Mask fill</em> (<code>mf</code>, controlled by <code>minimum_mask_fill_ratio</code>) is the fraction of the detection box's pixels covered by the mask. <code>mc</code> is used <strong>only</strong> as a gating condition; <code>mf</code> serves as both a gating condition <strong>and</strong> the value added to the similarity score. The four cases below build the intuition — a strong match needs both scores high:</p>
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-mask-scores.svg" alt="Four tracklet-mask versus detection-box cases showing how mask coverage (mc) and mask fill (mf) vary from low to high overlap" loading="lazy" decoding="async"/>
+  <figcaption>Mask coverage (<code>mc</code>) and mask fill (<code>mf</code>) for a mask (blue) against a detection box. A reliable match needs both high: partial overlap lowers <code>mf</code>, a tiny box inside a large mask lowers <code>mf</code>, and a box larger than the mask lowers <code>mc</code>.</figcaption>
+</figure>
+
+<p>Mask evidence is applied only to genuinely uncertain pairs — those that are <em>ambiguous</em> (several detections competing for one tracklet) or, with <code>enable_isolated_mask_matching</code>, <em>isolated</em> (the right detection sits just below the IoU threshold). In both cases the mask nudges the reduced similarity matrix toward the correct assignment:</p>
+<figure>
+  <img src="../../assets/mcbyte/mcbyte-ambiguity-isolation.webp" alt="Ambiguity and isolation handling: similarity matrices before and after adding mask fill evidence, steering the assignment to the mask-consistent detection" loading="lazy" decoding="async"/>
+  <figcaption>Ambiguity handling (top) and isolation handling (bottom): adding <code>mf</code> to the similarity matrix steers the Hungarian assignment toward the mask-consistent detection.</figcaption>
+</figure>
+
+<div class="admonition note">
+<p class="admonition-title">Similarity matrix, not cost matrix</p>
+<p>The original ByteTrack/BoT-SORT/McByte formulate association over a <strong>cost</strong> matrix and subtract the mask evidence (<code>costs[i,j] -= mf</code>). Trackers uses a <strong>similarity</strong> matrix instead, so the equivalent update is an <strong>increase</strong>: <code>similarities[i,j] += mf</code>.</p>
+</div>
+<p><strong>Mask lifecycle.</strong> With mask management enabled, masks for frame <code>t</code> are prepared <em>before</em> association on frame <code>t</code>, using the tracker state from frame <code>t-1</code>: <code>MaskManager</code> initializes masks for newly created tracklets with SAM and propagates existing masks forward with Cutie. Temporarily lost (but still alive) tracklets keep their masks; masks are only dropped once a tracklet is pruned. This means a frame is required both for CMC and for mask updates — when no frame is passed to <code>update()</code>, both are skipped and McByte behaves as pure clear-match-locking IoU association.</p>
+<p><strong>Track lifecycle.</strong> New tracks are created from unmatched high-confidence detections and confirmed after <code>minimum_consecutive_frames</code> consecutive matches. Unmatched unconfirmed tracks are removed; confirmed tracks unmatched for more than <code>lost_track_buffer</code> frames are deleted.</p>
+<h2 id="key-parameters">Key Parameters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+<th>Tuning guidance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lost_track_buffer</code></td>
+<td><code>30</code></td>
+<td>Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by <code>frame_rate</code>).</td>
+<td>Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps.</td>
+</tr>
+<tr>
+<td><code>frame_rate</code></td>
+<td><code>30.0</code></td>
+<td>Frame rate of the source, used to scale <code>lost_track_buffer</code> into real time.</td>
+<td>Set to the video's actual FPS so buffer and occlusion tolerances stay consistent across different frame rates.</td>
+</tr>
+<tr>
+<td><code>track_activation_threshold</code></td>
+<td><code>0.7</code></td>
+<td>Minimum detection confidence required to start a new track.</td>
+<td>Higher reduces noisy track creation; lower retains harder objects. 0.5-0.9 typical depending on detector quality.</td>
+</tr>
+<tr>
+<td><code>minimum_consecutive_frames</code></td>
+<td><code>2</code></td>
+<td>Consecutive matches required before confirming a new track.</td>
+<td>1 for immediate activation; 2-3 improves robustness against flicker and false positives.</td>
+</tr>
+<tr>
+<td><code>instant_first_frame_activation</code></td>
+<td><code>True</code></td>
+<td>Whether tracklets created on the very first frame receive confirmed IDs immediately, bypassing <code>minimum_consecutive_frames</code>.</td>
+<td>Keep <code>True</code> to emit IDs from frame 1; set <code>False</code> to require the normal confirmation streak even at sequence start.</td>
+</tr>
+<tr>
+<td><code>minimum_iou_threshold_first_assoc</code></td>
+<td><code>0.1</code></td>
+<td>Minimum association similarity for the first pass (high-confidence detections vs. confirmed and lost tracks).</td>
+<td>Intentionally lower than in BoT-SORT: it only rejects clearly implausible pairs, leaving a broader candidate set for mask-conditioned association to resolve.</td>
+</tr>
+<tr>
+<td><code>minimum_iou_threshold_second_assoc</code></td>
+<td><code>0.5</code></td>
+<td>Minimum association similarity for the second pass (low-confidence detections vs. remaining tracked tracks).</td>
+<td>Usually set lower than the first-pass threshold to recover weak detections without over-matching.</td>
+</tr>
+<tr>
+<td><code>minimum_iou_threshold_unconfirmed_assoc</code></td>
+<td><code>0.3</code></td>
+<td>Minimum association similarity when associating unconfirmed tracks.</td>
+<td>Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.</td>
+</tr>
+<tr>
+<td><code>high_conf_det_threshold</code></td>
+<td><code>0.6</code></td>
+<td>Confidence split between stage-1 and stage-2 detections.</td>
+<td>0.5-0.7 common. Higher shifts more detections to the recovery stage; lower gives stage-1 broader coverage.</td>
+</tr>
+<tr>
+<td><code>enable_cmc</code></td>
+<td><code>True</code></td>
+<td>Enables camera motion compensation before association.</td>
+<td>Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.</td>
+</tr>
+<tr>
+<td><code>cmc_method</code></td>
+<td><code>"sparseOptFlow"</code></td>
+<td>Camera motion compensation method (see <a href="../botsort/">BoT-SORT</a>).</td>
+<td><code>sparseOptFlow</code> is a good general-purpose choice.</td>
+</tr>
+<tr>
+<td><code>cmc_downscale</code></td>
+<td><code>2</code></td>
+<td>Downscale factor applied to frames before camera motion compensation.</td>
+<td>Higher (<code>4</code>, <code>6</code>) is faster but produces coarser motion estimates; see <a href="#performance-and-optimization">Performance and optimization</a>.</td>
+</tr>
+<tr>
+<td><code>enable_mask_manager</code></td>
+<td><code>False</code></td>
+<td>Whether to construct McByte's default SAM + Cutie mask pipeline.</td>
+<td>Off by default so importing/using <code>McByteTracker</code> never requires the optional SAM/Cutie dependencies. Enable only after installing them, or pass a custom <code>mask_manager</code>.</td>
+</tr>
+<tr>
+<td><code>mask_config</code></td>
+<td><code>None</code></td>
+<td><code>McByteMaskConfig</code> used to build the default mask pipeline. Requires <code>enable_mask_manager=True</code>; mutually exclusive with <code>mask_manager</code>.</td>
+<td>Adjust when you need a non-default SAM/Cutie checkpoint, model variant, or device.</td>
+</tr>
+<tr>
+<td><code>minimum_mask_average_confidence</code></td>
+<td><code>0.6</code></td>
+<td>Minimum average confidence a propagated mask must have before it can influence association.</td>
+<td>Raise to trust masks only when Cutie is confident; lower to let weaker masks still contribute.</td>
+</tr>
+<tr>
+<td><code>minimum_mask_coverage</code></td>
+<td><code>0.9</code></td>
+<td>Minimum fraction of a tracklet's mask that must fall inside a candidate detection box.</td>
+<td>Raise for stricter geometric consistency between mask and box; lower to tolerate partial occlusion.</td>
+</tr>
+<tr>
+<td><code>minimum_mask_fill_ratio</code></td>
+<td><code>0.05</code></td>
+<td>Minimum fraction of a candidate detection box's area that must be covered by the tracklet mask.</td>
+<td>Raise to avoid matching a small mask fragment to an oversized box; lower to allow slimmer objects to match larger boxes.</td>
+</tr>
+<tr>
+<td><code>enable_isolated_mask_matching</code></td>
+<td><code>False</code></td>
+<td>Whether mask evidence may rescue an isolated candidate with positive IoU below the normal stage threshold.</td>
+<td>Conservative default. Enable to recover more matches under heavy occlusion at the risk of more false positives.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mask-pipeline-parameters-mcbytemaskconfig">Mask Pipeline Parameters (<code>McByteMaskConfig</code>)</h3>
+<p><code>McByteMaskConfig</code> is only used when <code>McByteTracker</code> builds its default SAM + Cutie pipeline (<code>enable_mask_manager=True</code> and no custom <code>mask_manager</code> supplied).</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>device</code></td>
+<td>Device shared by SAM and Cutie, e.g. <code>"cuda"</code>, <code>"cuda:0"</code>, or <code>"cpu"</code>.</td>
+<td><code>"cpu"</code></td>
+</tr>
+<tr>
+<td><code>sam_checkpoint_path</code></td>
+<td>Optional SAM checkpoint path. When omitted, the default checkpoint for <code>sam_model_type</code> is downloaded automatically.</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>sam_model_type</code></td>
+<td>SAM model variant used for box-prompted mask generation.</td>
+<td><code>"vit_b"</code></td>
+</tr>
+<tr>
+<td><code>cutie_weights_path</code></td>
+<td>Optional Cutie checkpoint path. When omitted, the default checkpoint for <code>cutie_model_type</code> is downloaded automatically.</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td><code>cutie_model_type</code></td>
+<td>Cutie model variant used for temporal mask propagation.</td>
+<td><code>"base-mega"</code></td>
+</tr>
+<tr>
+<td><code>cutie_config_path</code> / <code>cutie_config_name</code></td>
+<td>Optional Cutie Hydra configuration directory / name.</td>
+<td><code>None</code> / <code>"eval_config"</code></td>
+</tr>
+<tr>
+<td><code>cutie_use_amp</code></td>
+<td>Whether Cutie may use automatic mixed precision (only activated on a CUDA device).</td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td><code>mask_creation_bbox_overlap_threshold</code></td>
+<td>Bounding-box overlap fraction at or above which mask creation for a new tracklet is delayed.</td>
+<td><code>0.6</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="run-on-video">Run on video</h2>
+<p>The example below runs McByte in its lightweight, mask-free configuration (clear-match locking with IoU only), which needs no extra dependencies beyond <code>trackers</code> itself.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rfdetr</span><span class="w"> </span><span class="kn">import</span> <span class="n">RFDETRMedium</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">McByteTracker</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">McByteTracker</span><span class="p">()</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RFDETRMedium</span><span class="p">()</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">box_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">BoxAnnotator</span><span class="p">()</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">label_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">LabelAnnotator</span><span class="p">()</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">video_capture</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="s2">&quot;&lt;SOURCE_VIDEO_PATH&gt;&quot;</span><span class="p">)</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">if</span> <span class="ow">not</span> <span class="n">video_capture</span><span class="o">.</span><span class="n">isOpened</span><span class="p">():</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Failed to open video source&quot;</span><span class="p">)</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">success</span><span class="p">,</span> <span class="n">frame_bgr</span> <span class="o">=</span> <span class="n">video_capture</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">success</span><span class="p">:</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        <span class="k">break</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">frame_rgb</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2RGB</span><span class="p">)</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">frame_rgb</span><span class="p">)</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="n">frame_bgr</span><span class="p">)</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">box_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">detections</span><span class="p">)</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">label_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        <span class="n">annotated_frame</span><span class="p">,</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>        <span class="n">detections</span><span class="p">,</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>        <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span><span class="p">,</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="p">)</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + McByte&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        <span class="k">break</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
+</span></code></pre></div>
+<p>To enable the full SAM + Cutie mask pipeline, install SAM and Cutie (see the <a href="https://github.com/roboflow/trackers/pull/513">PR #513 installation notes</a>), then construct the tracker with <code>enable_mask_manager=True</code> and, optionally, a <code>McByteMaskConfig</code>. Everything else in the loop above stays the same — only the tracker construction changes:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">McByteMaskConfig</span><span class="p">,</span> <span class="n">McByteTracker</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">McByteTracker</span><span class="p">(</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">enable_mask_manager</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">mask_config</span><span class="o">=</span><span class="n">McByteMaskConfig</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">),</span>  <span class="c1"># SAM + Cutie run on GPU</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span>
+</span></code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">A frame is required for masks to propagate</p>
+<p>Masks (and CMC) update only when a frame is supplied, so keep passing <code>frame=frame_bgr</code> to <code>update()</code>. When <code>update()</code> is called without a frame, McByte silently falls back to pure clear-match-locking IoU association.</p>
+</div>
+<h2 id="performance-and-optimization">Performance and optimization</h2>
+<p>The mask pipeline is the expensive part of McByte. <strong>Cutie</strong>, the temporal mask propagator, is the heaviest component: it stores all masks as one <code>(N, H, W)</code> tensor (<code>N</code> ≈ number of tracklets, <code>H</code>×<code>W</code> = frame resolution) and recomputes the whole tensor on every frame, so cost grows with both the number of tracked objects and the frame size. <strong>SAM</strong>, the initial mask creator, is lighter because it only runs when new tracklets appear. The mask-free configuration (<code>enable_mask_manager=False</code>) has none of this overhead.</p>
+<p>Ideas for speeding up the full pipeline, from least to most invasive:</p>
+<ul>
+<li><strong>Shrink Cutie's internal mask resolution.</strong> Cutie's <code>max_internal_size</code> (in its <code>eval_config</code>) defaults to <code>-1</code> (no resizing). Setting it to the desired shorter edge — e.g. <code>540</code> for <code>1920x1080</code> input — makes Cutie propagate at <code>960x540</code> internally, then resize the mask back before it reaches the tracker. This is the most conservative option (no code changes to Cutie). Smaller masks are less precise, especially under occlusion or for small objects, which can affect association quality.</li>
+<li><strong>Propagate less often.</strong> Running Cutie every few frames instead of every frame cuts the dominant cost, but requires changes in <code>mask_manager.py</code> / the tracker's <code>update()</code> call, and careful handling of the add-mask/remove-mask events when tracklets are created or terminated.</li>
+<li><strong>Use a smaller SAM model.</strong> <code>McByteMaskConfig(sam_model_type=...)</code> can select a lighter SAM variant, trading initial-mask quality for speed.</li>
+<li><strong>Downscale CMC input.</strong> <code>cmc_downscale</code> (default <code>2</code>) controls the downscale applied before camera motion compensation. Larger values (<code>4</code>, <code>6</code>) extract motion features from smaller frames — faster, but with less precise motion estimates.</li>
+</ul>
+<p>Each of these trades accuracy for speed: any change to the mask (or CMC) output changes the association result and therefore the tracking metrics. Benchmark on your own data before committing to a setting.</p>
+<h2 id="reference">Reference</h2>
+<p>Stanczyk, T., Yoon, S., and Bremond, F. (2025). No Train Yet Gain: Towards Generic Multi-Object Tracking in Sports and Beyond. <a href="https://arxiv.org/abs/2506.01373">arXiv:2506.01373</a>. Original implementation: <a href="https://github.com/tstanczyk95/McByte">tstanczyk95/McByte</a>.</p>
+
+
+
+
+
+
+
+  
+    
+  
+  
+    
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 28, 2026 15:17:38 UTC">2026-07-28</span>
+  </span>
+
+    
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Created">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
+    </span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 27, 2026 21:10:22 UTC">2026-07-27</span>
+  </span>
+
+    
+    
+    
+  </aside>
+
+
+
+
+
+<h2 id="__comments">Comments</h2>
+
+<script src="https://giscus.app/client.js"
+        data-repo="roboflow/trackers"
+        data-repo-id="R_kgDOOZe2kQ"
+        data-category="Docs"
+        data-category-id="DIC_kwDOOZe2kc4CpZFf"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="preferred_color_scheme"
+        data-lang="en"
+        data-loading="lazy"
+        crossorigin="anonymous"
+        async>
+</script>
+
+<!-- Synchronize Giscus theme with palette -->
+<script>
+    var giscus = document.querySelector("script[src*=giscus]")
+
+    /* Set palette on initial load */
+    var palette = __md_get("__palette")
+    if (palette && typeof palette.color === "object") {
+      var theme = palette.color.scheme === "slate" ? "dark" : "light"
+      giscus.setAttribute("data-theme", theme)
+    }
+
+    /* Register event handlers after documented loaded */
+    document.addEventListener("DOMContentLoaded", function() {
+      var ref = document.querySelector("[data-md-component=palette]")
+      if (!ref || !giscus) return
+      ref.addEventListener("change", function() {
+        var palette = __md_get("__palette")
+        if (palette && typeof palette.color === "object") {
+          var theme = palette.color.scheme === "slate" ? "dark" : "light"
+
+          /* Instruct Giscus to change theme */
+          var frame = document.querySelector(".giscus-frame")
+          if (!frame) return
+          frame.contentWindow.postMessage(
+            { giscus: { setConfig: { theme } } },
+            "https://giscus.app"
+          )
+        }
+      })
+    })
+</script>
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../cbiou/" class="md-footer__link md-footer__link--prev" aria-label="Previous: C-BIoU">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                C-BIoU
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../api/trackers/" class="md-footer__link md-footer__link--next" aria-label="Next: Trackers">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Trackers
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Roboflow 2026. All rights reserved. | <a href="https://roboflow.com/privacy">Privacy Policy</a> | <a href="https://roboflow.com/terms">Terms of Service</a>
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/roboflow" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/trackers" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://hub.docker.com/u/roboflow" target="_blank" rel="noopener" title="hub.docker.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M349.9 236.3h-66.1v-59.4h66.1zm0-204.3h-66.1v60.7h66.1zm78.2 144.8H362v59.4h66.1zm-156.3-72.1h-66.1v60.1h66.1zm78.1 0h-66.1v60.1h66.1zm276.8 100c-14.4-9.7-47.6-13.2-73.1-8.4-3.3-24-16.7-44.9-41.1-63.7l-14-9.3-9.3 14c-18.4 27.8-23.4 73.6-3.7 103.8-8.7 4.7-25.8 11.1-48.4 10.7H2.4c-8.7 50.8 5.8 116.8 44 162.1 37.1 43.9 92.7 66.2 165.4 66.2 157.4 0 273.9-72.5 328.4-204.2 21.4.4 67.6.1 91.3-45.2 1.5-2.5 6.6-13.2 8.5-17.1zm-511.1-27.9h-66v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1zm78.1 0h-66.1v59.4h66.1zm-78.1-72.1h-66.1v60.1h66.1z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.youtube.com/roboflow" target="_blank" rel="noopener" title="www.youtube.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M549.7 124.1c-6.2-23.7-24.8-42.3-48.3-48.6C458.9 64 288.1 64 288.1 64S117.3 64 74.7 75.5c-23.5 6.3-42 24.9-48.3 48.6C15 167 15 256.4 15 256.4s0 89.4 11.4 132.3c6.3 23.6 24.8 41.5 48.3 47.8C117.3 448 288.1 448 288.1 448s170.8 0 213.4-11.5c23.5-6.3 42-24.2 48.3-47.8 11.4-42.9 11.4-132.3 11.4-132.3s0-89.4-11.4-132.3zM232.2 337.6V175.2l142.7 81.2z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/company/roboflow-ai/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://twitter.com/roboflow" target="_blank" rel="noopener" title="twitter.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M357.2 48h70.6L273.6 224.2 455 464H313L201.7 318.6 74.5 464H3.8l164.9-188.5L-5.2 48h145.6l100.5 132.9zm-24.8 373.8h39.1L119.1 88h-42z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/GbfgXGJ8Bk" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.annotate", "content.code.copy", "content.code.select", "content.tabs.link", "content.tooltips", "navigation.footer", "navigation.tracking", "navigation.expand", "navigation.tabs"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/pycon_copy.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="../../javascripts/cli_builder_framework.js"></script>
+      
+        <script src="../../javascripts/command_builder.js"></script>
+      
+    
+  </body>
+</html>
