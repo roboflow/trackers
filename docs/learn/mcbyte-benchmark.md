@@ -29,12 +29,12 @@ pip install trackers
 
 ## Supported Datasets
 
-| Dataset | Detection format | Layout note |
+| Dataset      | Detection format | Layout note                                                 |
 | ------------ | ---------------- | ----------------------------------------------------------- |
-| `mot17` | `xyxy` | Frame directories use the `<sequence>-FRCNN` suffix. |
-| `dancetrack` | `xyxy` | — |
-| `sportsmot` | `xyxy` | — |
-| `soccernet` | `mot` | Detection filenames follow the SoccerNet naming convention. |
+| `mot17`      | `xyxy`           | Frame directories use the `<sequence>-FRCNN` suffix.        |
+| `dancetrack` | `xyxy`           | —                                                           |
+| `sportsmot`  | `xyxy`           | —                                                           |
+| `soccernet`  | `mot`            | Detection filenames follow the SoccerNet naming convention. |
 
 Each sequence is processed independently with a fresh McByte tracker. If a sequence fails, the error is logged and the run continues with the remaining sequences.
 
