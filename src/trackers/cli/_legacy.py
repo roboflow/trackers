@@ -155,6 +155,11 @@ _LEGACY_ARGUMENTS = {
         "track": {**_DEVELOP_TRACK_ARGUMENTS, **_develop_tracker_parameter_arguments()},
         "eval": {
             "-o": "--output",
+            # ``--tracker`` names the algorithm in track and tune; in eval it has
+            # always meant a file of results that algorithm produced. Renamed so
+            # one option name does not carry two meanings across subcommands.
+            "--tracker": "--predictions",
+            "--tracker_dir": "--predictions_dir",
         },
         "tune": {
             "-o": "--output",

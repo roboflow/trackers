@@ -16,9 +16,9 @@ from pathlib import Path
 
 def eval_command(
     gt: Path | None = None,
-    tracker: Path | None = None,
+    predictions: Path | None = None,
     gt_dir: Path | None = None,
-    tracker_dir: Path | None = None,
+    predictions_dir: Path | None = None,
     seqmap: Path | None = None,
     metrics: list[str] | None = None,
     threshold: float = 0.5,
@@ -29,14 +29,22 @@ def eval_command(
 
     Two modes:
 
-    - Single sequence: pass ``gt`` and ``tracker``.
-    - Benchmark: pass ``gt_dir`` and ``tracker_dir`` (with optional ``seqmap``).
+    - Single sequence: pass ``gt`` and ``predictions``.
+    - Benchmark: pass ``gt_dir`` and ``predictions_dir`` (with optional
+      ``seqmap``).
+
+    The prediction inputs were named ``tracker`` and ``tracker_dir``; both
+    spellings still parse and warn. They were renamed because ``--tracker``
+    names the tracking algorithm in ``track`` and ``tune``, while here it has
+    always meant a file of results that algorithm produced.
 
     Args:
         gt: Ground-truth file (MOT format) for single-sequence mode.
-        tracker: Tracker predictions file (MOT format) for single-sequence mode.
+        predictions: Tracker predictions file (MOT format) for single-sequence
+            mode.
         gt_dir: Directory of ground-truth files for benchmark mode.
-        tracker_dir: Directory of tracker prediction files for benchmark mode.
+        predictions_dir: Directory of tracker prediction files for benchmark
+            mode.
         seqmap: Sequence map listing sequences to evaluate.
         metrics: Metrics to compute. Options: ``CLEAR``, ``HOTA``, ``Identity``.
             Defaults to ``["CLEAR"]``.
@@ -56,11 +64,11 @@ def eval_command(
         handlers=[logging.StreamHandler(sys.stderr)],
     )
 
-    single_mode = gt is not None and tracker is not None
-    benchmark_mode = gt_dir is not None and tracker_dir is not None
+    single_mode = gt is not None and predictions is not None
+    benchmark_mode = gt_dir is not None and predictions_dir is not None
 
     if not single_mode and not benchmark_mode:
-        print("Error: Must specify either --gt/--tracker or --gt_dir/--tracker_dir", file=sys.stderr)
+        print("Error: Must specify either --gt/--predictions or --gt_dir/--predictions_dir", file=sys.stderr)
         return 1
 
     if single_mode and benchmark_mode:
@@ -71,10 +79,10 @@ def eval_command(
 
     try:
         if single_mode:
-            assert gt is not None and tracker is not None  # noqa: S101 — narrows for type checker
+            assert gt is not None and predictions is not None  # noqa: S101 — narrows for type checker
             seq_result = evaluate_mot_sequence(
                 gt_path=gt,
-                tracker_path=tracker,
+                tracker_path=predictions,
                 metrics=metrics,
                 threshold=threshold,
             )
@@ -84,10 +92,10 @@ def eval_command(
                 output.write_text(seq_result.json())
                 print(f"\nResults saved to: {output}")
         else:
-            assert gt_dir is not None and tracker_dir is not None  # noqa: S101 — narrows for type checker
+            assert gt_dir is not None and predictions_dir is not None  # noqa: S101 — narrows for type checker
             bench_result = evaluate_mot_sequences(
                 gt_dir=gt_dir,
-                tracker_dir=tracker_dir,
+                tracker_dir=predictions_dir,
                 seqmap=seqmap,
                 metrics=metrics,
                 threshold=threshold,

@@ -13,8 +13,7 @@ Semantic legacy spellings remain available during the transition. Each use
 emits a `FutureWarning` with the replacement. Do not combine a legacy argument
 and its replacement in one command; the CLI rejects that ambiguity. Develop's
 `--no-boxes` and `--no-ids` still work and map to `--show.no_boxes` and
-`--show.no_ids`. Each warning states its scheduled removal release: the current
-version plus 0.3.
+`--show.no_ids`. Each warning names the release that removes it: 2.10.0.
 
 ## Track command
 
@@ -140,12 +139,26 @@ command ports without also having to guess which separator each option wanted:
 `--mot_output`, `--track-ids` and `--track_ids`. `--help` lists the underscore
 spelling.
 
+## `eval` prediction inputs
+
+`--tracker` names the tracking algorithm in `track` and `tune`. In `eval` it
+meant something else entirely — a file of results that algorithm had already
+produced. Both prediction inputs are renamed so one option name no longer
+carries two meanings:
+
+| Legacy argument | Current argument    |
+| --------------- | ------------------- |
+| `--tracker`     | `--predictions`     |
+| `--tracker_dir` | `--predictions_dir` |
+
+The old spellings still parse and warn.
+
 ## Other commands
 
 | Command    | Hyphenated spelling     | Canonical underscore spelling |
 | ---------- | ----------------------- | ----------------------------- |
 | `eval`     | `--gt-dir`              | `--gt_dir`                    |
-| `eval`     | `--tracker-dir`         | `--tracker_dir`               |
+| `eval`     | `--predictions-dir`     | `--predictions_dir`           |
 | `tune`     | `--gt-dir`              | `--gt_dir`                    |
 | `tune`     | `--detections-dir`      | `--detections_dir`            |
 | `tune`     | `--n-trials`            | `--n_trials`                  |

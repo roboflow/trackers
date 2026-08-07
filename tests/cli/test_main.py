@@ -19,12 +19,12 @@ import pytest
 import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser
 
-from trackers.cli._legacy import _LEGACY_ARGUMENTS
-from trackers.cli._parser import _SUBCOMMANDS
 from trackers.cli.__main__ import (
     _CLIParser,
     _translate_legacy_args,
 )
+from trackers.cli._legacy import _LEGACY_ARGUMENTS
+from trackers.cli._parser import _SUBCOMMANDS
 from trackers.cli.download import download_command
 from trackers.cli.eval import eval_command
 from trackers.cli.track import DEFAULT_TRACKER, track_command
@@ -136,17 +136,6 @@ class TestCliMigration:
             "--output.mot_results",
             "tracks.txt",
         ]
-
-    def test_a_subcommand_without_legacy_spellings_still_normalises(self) -> None:
-        """A new subcommand reaches the hyphen sweep and its empty legacy table.
-
-        Both halves fail silently or loudly if a registration site is missed:
-        an absent ``_SUBCOMMANDS`` entry returns argv unnormalised, so half the
-        spellings of every option stop parsing, and an absent
-        ``_LEGACY_ARGUMENTS`` entry raises ``KeyError`` from an unguarded
-        subscript before any option is examined.
-        """
-        assert _translate_legacy_args(["mcbyte", "--cmc-downscale", "2"]) == ["mcbyte", "--cmc_downscale", "2"]
 
     @pytest.mark.parametrize(
         ("hyphenated", "canonical"),
@@ -411,8 +400,8 @@ class TestCliMigration:
         ("hyphenated", "canonical"),
         [
             (
-                ["eval", "--gt-dir", "gt", "--tracker-dir=predictions"],
-                ["eval", "--gt_dir", "gt", "--tracker_dir=predictions"],
+                ["eval", "--gt-dir", "gt", "--predictions-dir=results"],
+                ["eval", "--gt_dir", "gt", "--predictions_dir=results"],
             ),
             (
                 ["tune", "--detections-dir", "detections", "--n-trials=5"],
@@ -428,6 +417,45 @@ class TestCliMigration:
     ) -> None:
         """Hyphens and underscores are interchangeable in current option names."""
         assert _translate_legacy_args(hyphenated) == canonical
+
+    @pytest.mark.parametrize(
+        ("deprecated", "replacement"),
+        [
+            pytest.param("--tracker", "--predictions", id="single_sequence"),
+            pytest.param("--tracker-dir", "--predictions_dir", id="benchmark"),
+            pytest.param("--tracker_dir", "--predictions_dir", id="benchmark_underscored"),
+        ],
+    )
+    def test_eval_prediction_inputs_are_renamed_off_tracker(
+        self,
+        deprecated: str,
+        replacement: str,
+    ) -> None:
+        """Eval's prediction inputs no longer share a name with the algorithm option."""
+        with pytest.warns(FutureWarning, match=re.escape(replacement)):
+            args = _translate_legacy_args(["eval", deprecated, "results"])
+
+        assert args == ["eval", replacement, "results"]
+        parser = ArgumentParser(exit_on_error=False)
+        parser.add_function_arguments(eval_command)
+
+        assert parser.parse_args(args[1:])[replacement.removeprefix("--")] == Path("results")
+
+    def test_a_subcommand_without_legacy_spellings_still_normalises(self) -> None:
+        """A new subcommand reaches the hyphen sweep and its empty legacy table.
+
+        Both halves fail silently or loudly if a registration site is missed:
+        an absent ``_SUBCOMMANDS`` entry returns argv unnormalised, so half the
+        spellings of every option stop parsing, and an absent
+        ``_LEGACY_ARGUMENTS`` entry raises ``KeyError`` from an unguarded
+        subscript before any option is examined.
+        """
+        assert _translate_legacy_args(["mcbyte", "--cmc-downscale", "2"]) == ["mcbyte", "--cmc_downscale", "2"]
+
+    def test_eval_rejects_mixing_the_deprecated_and_current_spelling(self) -> None:
+        """Supplying both spellings of one input is an error, not a silent winner."""
+        with pytest.raises(ValueError, match="--predictions_dir"):
+            _translate_legacy_args(["eval", "--tracker_dir", "old", "--predictions_dir", "new"])
 
 
 class TestListValuedTrackFilters:
