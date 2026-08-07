@@ -20,12 +20,12 @@ a ``--no_`` half, and ``--config run.yaml`` supplies the same keys from a file.
 Datasets are selected as one list; the repeated spelling is ``--dataset+ mot17
 --dataset+ soccernet``, since a bare repeated ``--dataset`` overwrites.
 
-Dataset roots are supplied through ``--datasets``, keyed by the same names
+Dataset roots are supplied through ``--dataset_roots``, keyed by the same names
 ``--dataset`` selects. A config file is the readable spelling::
 
     # run.yaml
     dataset: [mot17]
-    datasets:
+    dataset_roots:
       mot17:
         detection_root: /data/detections/MOT17/test
         image_root: /data/datasets/MOT17/test
@@ -45,7 +45,7 @@ Expected directory layout
 
 NOTE: every dataset needs a ``detection_root`` and an ``image_root`` matching
 your files on a disk or server. Neither has a built-in value, so both are
-supplied per run through ``--datasets`` or a ``--config`` file. See the
+supplied per run through ``--dataset_roots`` or a ``--config`` file. See the
 instructions below for more details.
 
 The layout below is what those two roots are expected to point at.
@@ -155,7 +155,7 @@ class DetectionRecord:
 class DatasetPaths:
     """Where one dataset's files live, supplied per run rather than per checkout.
 
-    This is the whole of what ``--datasets`` accepts. Everything else about a
+    This is the whole of what ``--dataset_roots`` accepts. Everything else about a
     dataset — how its detection files are parsed, how its sequences are named —
     stays in :data:`DATASETS`, because it is a property of the benchmark rather
     than of the machine the benchmark runs on.
@@ -215,8 +215,8 @@ DATASETS: dict[DatasetName, DatasetConfig] = {
 }
 
 
-def _unknown_datasets_error(datasets: dict[str, DatasetPaths] | None) -> str:
-    """Return the problem with a ``--datasets`` mapping's keys, if any.
+def _unknown_datasets_error(dataset_roots: dict[str, DatasetPaths] | None) -> str:
+    """Return the problem with a ``--dataset_roots`` mapping's keys, if any.
 
     A key naming no known dataset would otherwise be accepted and then quietly
     ignored, which is the worst way for a mistyped root to fail: the run starts,
@@ -225,7 +225,7 @@ def _unknown_datasets_error(datasets: dict[str, DatasetPaths] | None) -> str:
     so the check is made here.
 
     Args:
-        datasets: Roots per dataset name, as supplied by the run.
+        dataset_roots: Roots per dataset name, as supplied by the run.
 
     Returns:
         One error message, or an empty string when every key names a dataset.
@@ -234,20 +234,20 @@ def _unknown_datasets_error(datasets: dict[str, DatasetPaths] | None) -> str:
         >>> _unknown_datasets_error(None)
         ''
         >>> _unknown_datasets_error({"mot18": None})
-        "Unknown --datasets entry 'mot18'. Known datasets: mot17, dancetrack, sportsmot, soccernet."
+        "Unknown --dataset_roots entry 'mot18'. Known datasets: mot17, dancetrack, sportsmot, soccernet."
     """
-    unknown = [name for name in datasets or {} if name not in DATASETS]
+    unknown = [name for name in dataset_roots or {} if name not in DATASETS]
     if not unknown:
         return ""
     entries = ", ".join(repr(name) for name in unknown)
     noun = "entry" if len(unknown) == 1 else "entries"
-    return f"Unknown --datasets {noun} {entries}. Known datasets: {', '.join(DATASETS)}."
+    return f"Unknown --dataset_roots {noun} {entries}. Known datasets: {', '.join(DATASETS)}."
 
 
-def resolve_datasets(datasets: dict[str, DatasetPaths] | None = None) -> dict[DatasetName, DatasetConfig]:
+def resolve_datasets(dataset_roots: dict[str, DatasetPaths] | None = None) -> dict[DatasetName, DatasetConfig]:
     """Return the dataset table with the run's roots merged over it.
 
-    Only ``detection_root`` and ``image_root`` are taken from ``datasets``;
+    Only ``detection_root`` and ``image_root`` are taken from ``dataset_roots``;
     every other field keeps the built-in value, so detection parsing stays
     driven by :data:`DATASETS` and cannot be reconfigured from a config file.
 
@@ -256,7 +256,7 @@ def resolve_datasets(datasets: dict[str, DatasetPaths] | None = None) -> dict[Da
     namespace from a parser that has not instantiated its classes yet.
 
     Args:
-        datasets: Roots per dataset name. Names absent from the mapping, and
+        dataset_roots: Roots per dataset name. Names absent from the mapping, and
             ``None`` for the mapping itself, leave the built-in entry as it is.
 
     Returns:
@@ -276,7 +276,7 @@ def resolve_datasets(datasets: dict[str, DatasetPaths] | None = None) -> dict[Da
         True
     """
     resolved = dict(DATASETS)
-    for name, paths in (datasets or {}).items():
+    for name, paths in (dataset_roots or {}).items():
         if name not in resolved:
             raise KeyError(_unknown_datasets_error({name: paths}))
         resolved[name] = replace(  # type: ignore[index]
@@ -344,7 +344,7 @@ def sequence_name(detection_file: Path, config: DatasetConfig) -> str:
 def image_directory(sequence: str, config: DatasetConfig) -> Path:
     """Resolve the sequence frame directory."""
     if config.image_root is None:
-        raise ValueError(f"DATASETS['{config.name}'] has no image_root; supply one with --datasets.")
+        raise ValueError(f"DATASETS['{config.name}'] has no image_root; supply one with --dataset_roots.")
     directory_name = f"{sequence}-FRCNN" if config.mot17_layout else sequence
     return config.image_root / directory_name / "img1"
 
@@ -597,7 +597,7 @@ def run_dataset(
         raise ValueError(
             f"Please configure DATASETS['{config.name}'] detection_root and image_root before running this script, "
             f"or supply them per run with "
-            f'--datasets=\'{{"{config.name}": {{"detection_root": ..., "image_root": ...}}}}\'.'
+            f'--dataset_roots=\'{{"{config.name}": {{"detection_root": ..., "image_root": ...}}}}\'.'
         )
     if not config.detection_root.is_dir():
         raise NotADirectoryError(config.detection_root)
@@ -682,7 +682,7 @@ def prepare_mot17_submission(
 
 def benchmark_command(
     dataset: list[DatasetName] | None = None,
-    datasets: dict[str, DatasetPaths] | None = None,
+    dataset_roots: dict[str, DatasetPaths] | None = None,
     device: str = "auto",
     enable_isolated_mask_matching: bool = False,
     output_root: Path = DEFAULT_OUTPUT_ROOT,
@@ -697,11 +697,11 @@ def benchmark_command(
     Args:
         dataset: Datasets to run, as a list: ``--dataset=[mot17,soccernet]``.
             ``None`` runs every dataset in ``DATASETS``.
-        datasets: Where each dataset's files live, keyed by the same names
+        dataset_roots: Where each dataset's files live, keyed by the same names
             ``dataset`` selects, each entry holding a ``detection_root`` and an
             ``image_root``. Neither root has a built-in value, so a dataset is
             runnable only once its entry is supplied, as JSON on the command
-            line — ``--datasets='{"mot17": {"detection_root": "/data/dets",
+            line — ``--dataset_roots='{"mot17": {"detection_root": "/data/dets",
             "image_root": "/data/frames"}}'`` — or as the same mapping in a
             ``--config`` file, which is the readable spelling and the one the
             module docstring shows.
@@ -726,12 +726,12 @@ def benchmark_command(
         failed, and ``0`` only when every selected sequence either completed or
         was skipped.
     """
-    error = _runtime_error(device, cmc_downscale) or _unknown_datasets_error(datasets)
+    error = _runtime_error(device, cmc_downscale) or _unknown_datasets_error(dataset_roots)
     if error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    dataset_table = resolve_datasets(datasets)
+    dataset_table = resolve_datasets(dataset_roots)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     isolation = "isolation" if enable_isolated_mask_matching else "no_isolation"
     run_root = output_root / f"{timestamp}__{isolation}"

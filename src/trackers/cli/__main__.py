@@ -34,6 +34,14 @@ from trackers.cli.tune import tune_command
 
 __all__ = ["main"]
 
+_COMMANDS = {
+    "track": track_command,
+    "eval": eval_command,
+    "tune": tune_command,
+    "download": download_command,
+    "mcbyte": benchmark_command,
+}
+
 
 def main() -> int:
     """Dispatch to track / eval / tune / download / mcbyte via jsonargparse CLI."""
@@ -51,13 +59,7 @@ def main() -> int:
         print(f"trackers {version('trackers')}")
         return 0
     rc = CLI(
-        {
-            "track": track_command,
-            "eval": eval_command,
-            "tune": tune_command,
-            "download": download_command,
-            "mcbyte": benchmark_command,
-        },
+        _COMMANDS,
         args=args,
         as_positional=False,
         prog="trackers",

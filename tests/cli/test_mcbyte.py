@@ -123,29 +123,29 @@ class TestDatasetRoots:
     def test_inline_json_supplies_both_roots(self, benchmark_parser: _CLIParser) -> None:
         """A dataset's roots are configurable on the command line as one JSON mapping."""
         namespace = benchmark_parser.parse_args(
-            ['--datasets={"mot17": {"detection_root": "/data/dets", "image_root": "/data/imgs"}}']
+            ['--dataset_roots={"mot17": {"detection_root": "/data/dets", "image_root": "/data/imgs"}}']
         )
         instantiated = benchmark_parser.instantiate_classes(namespace)
 
-        assert instantiated.datasets == {"mot17": DatasetPaths(Path("/data/dets"), Path("/data/imgs"))}
+        assert instantiated.dataset_roots == {"mot17": DatasetPaths(Path("/data/dets"), Path("/data/imgs"))}
 
     def test_config_file_supplies_both_roots(self, config_parser: _CLIParser, tmp_path: Path) -> None:
         """The same mapping reaches the command from a ``--config`` file."""
         config = tmp_path / "run.yaml"
         config.write_text(
-            "dataset: [mot17]\ndatasets:\n  mot17:\n    detection_root: /data/dets\n    image_root: /data/imgs\n"
+            "dataset: [mot17]\ndataset_roots:\n  mot17:\n    detection_root: /data/dets\n    image_root: /data/imgs\n"
         )
 
         namespace = config_parser.parse_args([f"--config={config}"])
         instantiated = config_parser.instantiate_classes(namespace)
 
         assert instantiated.dataset == ["mot17"]
-        assert instantiated.datasets == {"mot17": DatasetPaths(Path("/data/dets"), Path("/data/imgs"))}
+        assert instantiated.dataset_roots == {"mot17": DatasetPaths(Path("/data/dets"), Path("/data/imgs"))}
 
     def test_both_roots_are_required_together(self, benchmark_parser: _CLIParser) -> None:
         """Half an entry is rejected while parsing rather than failing mid-run."""
         with pytest.raises(Exception, match=r"detection_root|image_root"):
-            benchmark_parser.parse_args(['--datasets={"mot17": {"detection_root": "/data/dets"}}'])
+            benchmark_parser.parse_args(['--dataset_roots={"mot17": {"detection_root": "/data/dets"}}'])
 
     def test_defaults_leave_both_roots_unset(self) -> None:
         """No root has a built-in value, so an unconfigured run cannot half-work."""
@@ -168,24 +168,24 @@ class TestDatasetRoots:
         assert merged["dancetrack"].detection_root is None
 
     @pytest.mark.parametrize(
-        ("datasets", "expected"),
+        ("dataset_roots", "expected"),
         [
             pytest.param(None, "", id="unsupplied"),
             pytest.param({}, "", id="empty"),
             pytest.param({"mot17": None}, "", id="known"),
-            pytest.param({"mot18": None}, "Unknown --datasets entry 'mot18'.", id="typo"),
+            pytest.param({"mot18": None}, "Unknown --dataset_roots entry 'mot18'.", id="typo"),
         ],
     )
-    def test_unknown_entries_are_reported(self, datasets: dict | None, expected: str) -> None:
+    def test_unknown_entries_are_reported(self, dataset_roots: dict | None, expected: str) -> None:
         """A key naming no dataset is caught rather than silently ignored."""
-        assert _unknown_datasets_error(datasets).startswith(expected)
+        assert _unknown_datasets_error(dataset_roots).startswith(expected)
 
     def test_unknown_entry_exits_non_zero(self, capsys: pytest.CaptureFixture) -> None:
         """A mistyped dataset name stops the run before a run directory is created."""
-        code = benchmark_command(device="cpu", datasets={"mot18": DatasetPaths(Path("a"), Path("b"))})
+        code = benchmark_command(device="cpu", dataset_roots={"mot18": DatasetPaths(Path("a"), Path("b"))})
 
         assert code == 1
-        assert "Unknown --datasets entry 'mot18'." in capsys.readouterr().err
+        assert "Unknown --dataset_roots entry 'mot18'." in capsys.readouterr().err
 
 
 class TestUnconfiguredDataset:
@@ -229,7 +229,7 @@ class TestUnconfiguredDataset:
 
     def test_the_error_names_the_command_line_route(self) -> None:
         """The message stays actionable now that editing the source is not the only fix."""
-        with pytest.raises(ValueError, match="--datasets"):
+        with pytest.raises(ValueError, match="--dataset_roots"):
             run_dataset(
                 config=DATASETS["mot17"],
                 output_dir=Path("unused"),

@@ -29,12 +29,12 @@ pip install trackers
 
 ## Supported Datasets
 
-| Dataset      | Detection format | Layout note                                                 |
+| Dataset | Detection format | Layout note |
 | ------------ | ---------------- | ----------------------------------------------------------- |
-| `mot17`      | `xyxy`           | Frame directories use the `<sequence>-FRCNN` suffix.        |
-| `dancetrack` | `xyxy`           | —                                                           |
-| `sportsmot`  | `xyxy`           | —                                                           |
-| `soccernet`  | `mot`            | Detection filenames follow the SoccerNet naming convention. |
+| `mot17` | `xyxy` | Frame directories use the `<sequence>-FRCNN` suffix. |
+| `dancetrack` | `xyxy` | — |
+| `sportsmot` | `xyxy` | — |
+| `soccernet` | `mot` | Detection filenames follow the SoccerNet naming convention. |
 
 Each sequence is processed independently with a fresh McByte tracker. If a sequence fails, the error is logged and the run continues with the remaining sequences.
 
@@ -42,14 +42,14 @@ Each sequence is processed independently with a fresh McByte tracker. If a seque
 
 ## Configure Dataset Roots
 
-Every dataset needs a `detection_root` (one detection file per sequence) and an `image_root` (one frame directory per sequence). Neither has a built-in value — supply both per run, either through a `--config` file or inline as JSON with `--datasets`.
+Every dataset needs a `detection_root` (one detection file per sequence) and an `image_root` (one frame directory per sequence). Neither has a built-in value — supply both per run, either through a `--config` file or inline as JSON with `--dataset_roots`.
 
 === "CLI"
 
     Supply roots as JSON on the command line.
 
     ```text
-    trackers mcbyte --datasets='{"mot17": {"detection_root": "/data/dets", "image_root": "/data/frames"}}'
+    trackers mcbyte --dataset_roots='{"mot17": {"detection_root": "/data/dets", "image_root": "/data/frames"}}'
     ```
 
 === "Config file"
@@ -59,7 +59,7 @@ Every dataset needs a `detection_root` (one detection file per sequence) and an 
     ```yaml
     # run.yaml
     dataset: [mot17]
-    datasets:
+    dataset_roots:
       mot17:
         detection_root: /data/detections/MOT17/test
         image_root: /data/datasets/MOT17/test
@@ -174,7 +174,7 @@ All arguments accepted by `trackers mcbyte`.
       <td>all datasets</td>
     </tr>
     <tr>
-      <td><code>--datasets</code></td>
+      <td><code>--dataset_roots</code></td>
       <td>Where each dataset's files live, keyed by the same names <code>--dataset</code> selects. Each entry holds a <code>detection_root</code> and an <code>image_root</code>; neither has a built-in value.</td>
       <td>—</td>
     </tr>

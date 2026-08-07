@@ -20,6 +20,7 @@ import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser
 
 from trackers.cli.__main__ import (
+    _COMMANDS,
     _CLIParser,
     _translate_legacy_args,
 )
@@ -895,12 +896,14 @@ class TestEntryPointCentralisation:
 
         ``_SUBCOMMANDS`` gates argv normalisation and ``_LEGACY_ARGUMENTS`` is
         subscripted unguarded, so a command present in one table and missing
-        from another half-works rather than failing cleanly.
+        from another half-works rather than failing cleanly. Both are checked
+        against the real dispatch table rather than a copy of it, so adding a
+        subcommand to ``_COMMANDS`` alone fails here.
         """
-        dispatched = {"track", "eval", "tune", "download", "mcbyte"}
+        dispatched = set(_COMMANDS)
 
-        assert set(_SUBCOMMANDS) == dispatched
-        assert set(_LEGACY_ARGUMENTS) == dispatched
+        assert set(_SUBCOMMANDS) == dispatched, f"_SUBCOMMANDS drifted: {set(_SUBCOMMANDS) ^ dispatched}"
+        assert set(_LEGACY_ARGUMENTS) == dispatched, f"_LEGACY_ARGUMENTS drifted: {set(_LEGACY_ARGUMENTS) ^ dispatched}"
 
     def test_the_entry_point_imports_without_torch(self) -> None:
         """Importing the CLI must not drag in the optional ``mask`` extra.
