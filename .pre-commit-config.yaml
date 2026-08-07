@@ -68,3 +68,7 @@ repos:
       - id: mypy
         pass_filenames: false
         additional_dependencies: [numpy,types-aiofiles]
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
