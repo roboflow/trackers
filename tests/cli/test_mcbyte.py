@@ -112,6 +112,12 @@ class TestRuntimeError:
         assert code == 1
         assert "cmc_downscale must be positive." in capsys.readouterr().err
 
+    def test_a_failed_dataset_exits_non_zero(self, tmp_path: Path) -> None:
+        """A run that reaches the datasets but fails one of them still reports failure."""
+        code = benchmark_command(dataset=["mot17"], device="cpu", output_root=tmp_path / "runs")
+
+        assert code == 1
+
 
 class TestDatasetRoots:
     def test_inline_json_supplies_both_roots(self, benchmark_parser: _CLIParser) -> None:

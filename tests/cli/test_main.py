@@ -354,6 +354,10 @@ class TestCliMigration:
         [
             pytest.param(["track", "-o", "a.mp4"], id="single-deprecated-spelling"),
             pytest.param(["track", "-o", "a.mp4", "-o", "b.mp4"], id="one-spelling-repeated"),
+            pytest.param(
+                ["track", "--show-boxes", "true", "--show_boxes", "false"],
+                id="one-spelling-under-either-separator",
+            ),
             pytest.param(["eval", "--config", "a.yaml", "--config", "b.yaml"], id="repeated-config"),
             pytest.param(["eval", "--metrics", "hota", "--metrics", "clear"], id="repeated-list-option"),
         ],

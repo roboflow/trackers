@@ -469,7 +469,7 @@ def _raise_for_duplicate_legacy_target(
     if not target:
         return
     claimed_by = legacy_targets.setdefault(target, legacy_option)
-    if claimed_by != legacy_option:
+    if _normalise_option(claimed_by) != _normalise_option(legacy_option):
         raise ValueError(
             f"{claimed_by} cannot be combined with {legacy_option}; both set --{target}. Use only the current spelling."
         )
