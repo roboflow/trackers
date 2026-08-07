@@ -22,8 +22,10 @@ from trackers.cli.__main__ import (
     _CLIParser,
     _translate_legacy_args,
 )
+from trackers.cli.download import download_command
 from trackers.cli.eval import eval_command
 from trackers.cli.track import DEFAULT_TRACKER, track_command
+from trackers.cli.tune import tune_command
 from trackers.core.base import BaseTracker
 
 
@@ -345,7 +347,7 @@ class TestCliMigration:
                 ["tune", "--detections-dir", "detections", "--n-trials=5"],
                 ["tune", "--detections_dir", "detections", "--n_trials=5"],
             ),
-            (["tune", "--no-enqueue-defaults"], ["tune", "--no-enqueue_defaults"]),
+            (["tune", "--no-enqueue-defaults"], ["tune", "--no_enqueue_defaults"]),
         ],
     )
     def test_hyphenated_non_track_arguments_map_to_canonical_spellings(
@@ -583,6 +585,35 @@ class TestBooleanOptionSyntax:
 
         assert "--show.no_ids" in options
         assert "--no_show.ids" not in options
+
+    @pytest.mark.parametrize(
+        ("command", "arguments", "attribute"),
+        [
+            pytest.param(
+                tune_command,
+                ["--no_enqueue_defaults", "--tracker", "sort", "--gt_dir", "gt", "--detections_dir", "det"],
+                "enqueue_defaults",
+                id="tune",
+            ),
+            pytest.param(download_command, ["--no_list_available"], "list_available", id="download"),
+        ],
+    )
+    def test_ungrouped_negation_reaches_false(
+        self,
+        command: object,
+        arguments: list[str],
+        attribute: str,
+    ) -> None:
+        """An option with no group has no dot to split on, which must not skip the prefix test."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(command)
+
+        assert getattr(parser.parse_args(arguments), attribute) is False
+
+    def test_display_gained_a_negative_half(self, parser: _CLIParser) -> None:
+        """The flat preview flag is a boolean like any other, pair included."""
+        assert parser.parse_args(["--display"]).display is True
+        assert parser.parse_args(["--no_display"]).display is False
 
     @pytest.mark.parametrize(
         ("arguments", "expected"),

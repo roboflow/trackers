@@ -19,7 +19,7 @@ version plus 0.3.
 ## Track command
 
 Use dotted paths for grouped detection, filtering, output, visualization, and
-tracker options. `--display` remains a flat action.
+tracker options. `--display` remains ungrouped.
 
 ```text
 trackers track \
@@ -40,6 +40,9 @@ stays readable for any group name — `--detection.no_fast`, never
 `--no_detection.fast`. Repeating both halves is allowed; the last one wins. A
 `--config` file keeps one plain boolean key per field, and a command-line flag
 always overrides it.
+
+This covers ungrouped options too — `--display` / `--no_display`,
+`--no_enqueue_defaults` on `tune`, `--no_list_available` on `download`.
 
 The algorithm and its parameters share one group, mirroring `--detection.model`
 and the rest of the detection options. `--tracker sort` is shorthand for
@@ -133,7 +136,7 @@ warning. The canonical documentation spelling uses underscores.
 | `tune`     | `--n-trials`            | `--n_trials`                  |
 | `tune`     | `--fixed-params`        | `--fixed_params`              |
 | `tune`     | `--images-dir`          | `--images_dir`                |
-| `tune`     | `--no-enqueue-defaults` | `--no-enqueue_defaults`       |
+| `tune`     | `--no-enqueue-defaults` | `--no_enqueue_defaults`       |
 | `download` | `--cache-dir`           | `--cache_dir`                 |
 
 The remaining deprecated transitions are:

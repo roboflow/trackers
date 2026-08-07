@@ -200,7 +200,10 @@ class _GroupedYesNo(ActionYesNo):
             kwargs["_no_prefix"] = self._no_prefix
             return _GroupedYesNo(**kwargs)
         value = args[2] if isinstance(args[2], bool) else True
-        leaf = args[3].rpartition(".")[2]
+        # Strip the dashes before splitting: an ungrouped option has no dot, so
+        # ``rpartition`` would hand back ``--no_list_available`` and the prefix
+        # test would silently miss, leaving the negative half setting ``True``.
+        leaf = args[3].removeprefix("--").rpartition(".")[2]
         setattr(args[1], self.dest, not value if leaf.startswith(self._no_prefix) else value)
         return None
 
@@ -239,7 +242,9 @@ def _add_track_arguments(parser: ArgumentParser) -> list[str]:
     added_args = ["source"]
     for option_class, nested_key in _TRACK_OPTION_GROUPS:
         added_args.extend(parser.add_class_arguments(option_class, nested_key))
-    parser.add_argument("--display", action="store_true", help="Show a live preview window.")
+    # Registered as a plain boolean rather than a bare ``store_true`` so it gains
+    # the same ``--no_display`` half every other boolean option has.
+    parser.add_argument("--display", type=bool, default=False, help="Show a live preview window.")
     added_args.append("display")
     return added_args
 
@@ -501,24 +506,30 @@ def _provided_targets(args: list[str], legacy_arguments: dict[str, str]) -> set[
 
 
 def _target_for_option(option: str) -> str:
-    """Return a normalized logical target for conflict detection."""
+    """Return a normalized logical target for conflict detection.
+
+    Both halves of a boolean pair collapse onto the same target, so mixing a
+    deprecated spelling with the current one is still caught whichever polarity
+    each carries.
+    """
     option_name = option.partition("=")[0]
     if not option_name.startswith("--"):
         return ""
-    target = option_name.removeprefix("--")
-    if target.startswith("no-"):
-        target = target.removeprefix("no-")
-    return target.replace("-", "_")
+    target = option_name.removeprefix("--").removeprefix("no-").replace("-", "_")
+    group, dot, leaf = target.rpartition(".")
+    return f"{group}{dot}{leaf.removeprefix(_NEGATION_PREFIX)}"
 
 
 def _normalise_option(arg: str) -> str:
-    """Allow hyphenated spellings for option names that use underscores."""
+    """Allow hyphenated spellings for option names that use underscores.
+
+    A leading ``no-`` is folded in with the rest, so the hyphenated
+    ``--no-enqueue-defaults`` reaches the parser as ``--no_enqueue_defaults``.
+    """
     option, separator, value = arg.partition("=")
     if not option.startswith("--"):
         return arg
-    name = option.removeprefix("--")
-    prefix = "no-" if name.startswith("no-") else ""
-    normalized = f"--{prefix}{name.removeprefix(prefix).replace('-', '_')}"
+    normalized = f"--{option.removeprefix('--').replace('-', '_')}"
     return f"{normalized}{separator}{value}" if separator else normalized
 
 
