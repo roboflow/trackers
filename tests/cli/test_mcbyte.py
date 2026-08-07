@@ -13,18 +13,29 @@ import re
 from pathlib import Path
 from typing import get_args
 
+import numpy as np
 import pytest
 
 from trackers.cli.__main__ import _CLIParser, _normalise_option
 from trackers.cli.mcbyte import (
     DATASETS,
+    MOT17_EXISTING,
+    MOT17_MISSING,
+    MOT17_SUFFIXES,
+    DatasetConfig,
     DatasetName,
     DatasetPaths,
+    DetectionRecord,
     _runtime_error,
     _unknown_datasets_error,
     benchmark_command,
+    build_detections,
+    image_directory,
+    prepare_mot17_submission,
+    read_detection_file,
     resolve_datasets,
     run_dataset,
+    sequence_name,
 )
 
 
@@ -187,6 +198,11 @@ class TestDatasetRoots:
         assert code == 1
         assert "Unknown --dataset_roots entry 'mot18'." in capsys.readouterr().err
 
+    def test_direct_call_with_unknown_key_raises_keyerror(self) -> None:
+        """Bypassing the CLI-level check and calling ``resolve_datasets`` directly still fails loudly."""
+        with pytest.raises(KeyError, match="mot18"):
+            resolve_datasets({"mot18": DatasetPaths(Path("a"), Path("b"))})
+
 
 class TestUnconfiguredDataset:
     def test_run_dataset_asks_for_the_missing_roots(self) -> None:
@@ -242,3 +258,165 @@ class TestUnconfiguredDataset:
                 keep_partial_results=False,
                 logger=logging.getLogger("test_mcbyte"),
             )
+
+
+class TestReadDetectionFile:
+    def test_parses_xyxy_format(self, tmp_path: Path) -> None:
+        """The XYXY branch reads frame, box corners and confidence directly."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("1,10,20,30,40,0.9\n")
+        config = DatasetConfig(name="test", detection_format="xyxy")
+
+        grouped = read_detection_file(detection_file, config)
+
+        record = grouped[1][0]
+        np.testing.assert_allclose(record.xyxy, [10.0, 20.0, 30.0, 40.0])
+        assert record.confidence == pytest.approx(0.9)
+
+    def test_parses_mot_format(self, tmp_path: Path) -> None:
+        """The MOT branch converts left/top/width/height into XYXY corners."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("1,-1,10,20,15,25,0.5,-1,-1,-1\n")
+        config = DatasetConfig(name="test", detection_format="mot")
+
+        grouped = read_detection_file(detection_file, config)
+
+        record = grouped[1][0]
+        np.testing.assert_allclose(record.xyxy, [10.0, 20.0, 25.0, 45.0])
+        assert record.confidence == pytest.approx(0.5)
+
+    def test_confidence_override_replaces_the_parsed_column(self, tmp_path: Path) -> None:
+        """SoccerNet-style datasets can pin confidence instead of trusting column 7."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("1,-1,10,20,15,25,0.5,-1,-1,-1\n")
+        config = DatasetConfig(name="test", detection_format="mot", confidence_override=1.0)
+
+        grouped = read_detection_file(detection_file, config)
+
+        assert grouped[1][0].confidence == 1.0
+
+    def test_degenerate_boxes_are_dropped_silently(self, tmp_path: Path) -> None:
+        """A box with zero or negative width/height is filtered, not raised."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("1,10,20,10,40,0.9\n1,10,20,30,40,0.8\n")
+        config = DatasetConfig(name="test", detection_format="xyxy")
+
+        grouped = read_detection_file(detection_file, config)
+
+        assert len(grouped[1]) == 1
+        assert grouped[1][0].confidence == pytest.approx(0.8)
+
+    def test_non_positive_frame_number_raises(self, tmp_path: Path) -> None:
+        """A zero or negative frame number is rejected rather than silently grouped."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("0,10,20,30,40,0.9\n")
+        config = DatasetConfig(name="test", detection_format="xyxy")
+
+        with pytest.raises(ValueError, match="Non-positive frame number"):
+            read_detection_file(detection_file, config)
+
+    def test_malformed_line_error_names_the_line_number(self, tmp_path: Path) -> None:
+        """A parse failure points back at the offending line, not just the file."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("1,10,20,30,40,0.9\n1,not,a,number,20,0.5\n")
+        config = DatasetConfig(name="test", detection_format="xyxy")
+
+        with pytest.raises(ValueError, match="Invalid line 2"):
+            read_detection_file(detection_file, config)
+
+
+class TestBuildDetections:
+    def test_empty_records_produce_empty_detections(self) -> None:
+        """No parsed records still produce a valid, empty Detections object."""
+        detections = build_detections([])
+
+        assert len(detections) == 0
+
+    def test_populated_records_produce_matching_arrays(self) -> None:
+        """Parsed boxes and confidences reach the Detections object unchanged."""
+        records = [
+            DetectionRecord(xyxy=np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32), confidence=0.9),
+            DetectionRecord(xyxy=np.array([5.0, 6.0, 7.0, 8.0], dtype=np.float32), confidence=0.5),
+        ]
+
+        detections = build_detections(records)
+
+        assert detections.xyxy.shape == (2, 4)
+        np.testing.assert_allclose(detections.xyxy, [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]])
+        np.testing.assert_allclose(detections.confidence, [0.9, 0.5])
+
+
+class TestSequenceName:
+    def test_soccernet_filename_splits_on_the_double_underscore(self) -> None:
+        """SoccerNet sequence names are recovered before the ``__det`` suffix."""
+        config = DatasetConfig(name="soccernet", detection_format="mot", soccernet_filename=True)
+
+        assert sequence_name(Path("SNMOT-116__det.txt"), config) == "SNMOT-116"
+
+    def test_default_uses_the_file_stem(self) -> None:
+        """Non-SoccerNet datasets use the detection filename stem as-is."""
+        config = DatasetConfig(name="mot17", detection_format="xyxy")
+
+        assert sequence_name(Path("MOT17-01.txt"), config) == "MOT17-01"
+
+
+class TestImageDirectory:
+    def test_mot17_layout_appends_the_frcnn_suffix(self, tmp_path: Path) -> None:
+        """MOT17 frame directories carry the historical ``-FRCNN`` suffix."""
+        config = DatasetConfig(name="mot17", detection_format="xyxy", mot17_layout=True, image_root=tmp_path)
+
+        assert image_directory("MOT17-01", config) == tmp_path / "MOT17-01-FRCNN" / "img1"
+
+    def test_default_uses_the_sequence_name_unchanged(self, tmp_path: Path) -> None:
+        """Other datasets' frame directories match the sequence name exactly."""
+        config = DatasetConfig(name="dancetrack", detection_format="xyxy", image_root=tmp_path)
+
+        assert image_directory("dancetrack0003", config) == tmp_path / "dancetrack0003" / "img1"
+
+    def test_raises_without_a_configured_image_root(self) -> None:
+        """A missing ``image_root`` fails with the ``--dataset_roots`` hint, not a bad path."""
+        config = DatasetConfig(name="mot17", detection_format="xyxy")
+
+        with pytest.raises(ValueError, match="--dataset_roots"):
+            image_directory("MOT17-01", config)
+
+
+class TestPrepareMot17Submission:
+    def test_duplicates_source_content_across_required_suffixes(self, tmp_path: Path) -> None:
+        """One tracked result is copied under each detector name McByte does not distinguish."""
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        (raw_dir / "MOT17-01.txt").write_bytes(b"1,2,3,4,5,6,-1,-1,-1,-1\n")
+        submission_dir = tmp_path / "submission"
+
+        prepare_mot17_submission(raw_dir, submission_dir, logging.getLogger("test_mcbyte"))
+
+        for suffix in MOT17_SUFFIXES:
+            assert (submission_dir / f"MOT17-01-{suffix}.txt").read_bytes() == b"1,2,3,4,5,6,-1,-1,-1,-1\n"
+
+    def test_creates_empty_placeholders_for_missing_sequences(self, tmp_path: Path) -> None:
+        """Sequences absent from the raw results still get a submittable empty file."""
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        submission_dir = tmp_path / "submission"
+
+        prepare_mot17_submission(raw_dir, submission_dir, logging.getLogger("test_mcbyte"))
+
+        for number in MOT17_MISSING:
+            for suffix in MOT17_SUFFIXES:
+                path = submission_dir / f"MOT17-{number}-{suffix}.txt"
+                assert path.is_file()
+                assert path.stat().st_size == 0
+
+    def test_produces_the_full_sequence_by_suffix_file_count(self, tmp_path: Path) -> None:
+        """Every existing and missing sequence ends up covered, three files each."""
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        for number in MOT17_EXISTING:
+            (raw_dir / f"MOT17-{number}.txt").write_bytes(b"data\n")
+        submission_dir = tmp_path / "submission"
+
+        prepare_mot17_submission(raw_dir, submission_dir, logging.getLogger("test_mcbyte"))
+
+        expected_count = (len(MOT17_EXISTING) + len(MOT17_MISSING)) * len(MOT17_SUFFIXES)
+        assert len(list(submission_dir.glob("*.txt"))) == expected_count
