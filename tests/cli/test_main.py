@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 import warnings
 from argparse import ArgumentError
 from pathlib import Path
@@ -18,9 +20,12 @@ import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser
 
 from trackers.cli.__main__ import (
+    _COMMANDS,
     _CLIParser,
     _translate_legacy_args,
 )
+from trackers.cli._legacy import _LEGACY_ARGUMENTS
+from trackers.cli._parser import _SUBCOMMANDS
 from trackers.cli.download import download_command
 from trackers.cli.eval import eval_command
 from trackers.cli.track import DEFAULT_TRACKER, track_command
@@ -320,6 +325,52 @@ class TestCliMigration:
         with pytest.raises(ValueError, match=r"--model.*--detection\.model"):
             _translate_legacy_args(["track", "--model", "rfdetr-base", "--detection.model", "rfdetr-nano"])
 
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        [
+            pytest.param(
+                ["track", "-o", "a.mp4", "--output", "b.mp4"],
+                r"-o cannot be combined with --output; both set --output\.video",
+                id="two-spellings-of-one-output",
+            ),
+            pytest.param(
+                ["download", "--dataset", "x", "mot17"],
+                r"positional dataset cannot be combined with --dataset; both set --name",
+                id="dataset-option-and-positional",
+            ),
+            pytest.param(
+                ["track", "--show-boxes", "--no-boxes"],
+                r"--show-boxes cannot be combined with --no-boxes; both set --show\.boxes",
+                id="opposite-polarities-of-one-flag",
+            ),
+        ],
+    )
+    def test_two_deprecated_spellings_of_one_target_fail(self, args: list[str], expected: str) -> None:
+        """Two deprecated spellings of one destination cannot silently drop a value."""
+        with pytest.raises(ValueError, match=expected):
+            _translate_legacy_args(args)
+
+    @pytest.mark.parametrize(
+        "args",
+        [
+            pytest.param(["track", "-o", "a.mp4"], id="single-deprecated-spelling"),
+            pytest.param(["track", "-o", "a.mp4", "-o", "b.mp4"], id="one-spelling-repeated"),
+            pytest.param(
+                ["track", "--show-boxes", "true", "--show_boxes", "false"],
+                id="one-spelling-under-either-separator",
+            ),
+            pytest.param(["eval", "--config", "a.yaml", "--config", "b.yaml"], id="repeated-config"),
+            pytest.param(["eval", "--metrics", "hota", "--metrics", "clear"], id="repeated-list-option"),
+        ],
+    )
+    def test_repeating_one_spelling_stays_last_wins(self, args: list[str]) -> None:
+        """Only differently spelled duplicates are rejected; a repeat still means last wins."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            translated = _translate_legacy_args(args)
+
+        assert translated[0] == args[0]
+
     def test_download_positional_dataset_maps_to_named_argument(self) -> None:
         """Legacy download DATASET syntax remains available during transition."""
         with pytest.warns(FutureWarning, match=r"positional dataset.*--name"):
@@ -396,8 +447,8 @@ class TestCliMigration:
         ("hyphenated", "canonical"),
         [
             (
-                ["eval", "--gt-dir", "gt", "--tracker-dir=predictions"],
-                ["eval", "--gt_dir", "gt", "--tracker_dir=predictions"],
+                ["eval", "--gt-dir", "gt", "--predictions-dir=results"],
+                ["eval", "--gt_dir", "gt", "--predictions_dir=results"],
             ),
             (
                 ["tune", "--detections-dir", "detections", "--n-trials=5"],
@@ -413,6 +464,45 @@ class TestCliMigration:
     ) -> None:
         """Hyphens and underscores are interchangeable in current option names."""
         assert _translate_legacy_args(hyphenated) == canonical
+
+    @pytest.mark.parametrize(
+        ("deprecated", "replacement"),
+        [
+            pytest.param("--tracker", "--predictions", id="single_sequence"),
+            pytest.param("--tracker-dir", "--predictions_dir", id="benchmark"),
+            pytest.param("--tracker_dir", "--predictions_dir", id="benchmark_underscored"),
+        ],
+    )
+    def test_eval_prediction_inputs_are_renamed_off_tracker(
+        self,
+        deprecated: str,
+        replacement: str,
+    ) -> None:
+        """Eval's prediction inputs no longer share a name with the algorithm option."""
+        with pytest.warns(FutureWarning, match=re.escape(replacement)):
+            args = _translate_legacy_args(["eval", deprecated, "results"])
+
+        assert args == ["eval", replacement, "results"]
+        parser = ArgumentParser(exit_on_error=False)
+        parser.add_function_arguments(eval_command)
+
+        assert parser.parse_args(args[1:])[replacement.removeprefix("--")] == Path("results")
+
+    def test_a_subcommand_without_legacy_spellings_still_normalises(self) -> None:
+        """A new subcommand reaches the hyphen sweep and its empty legacy table.
+
+        Both halves fail silently or loudly if a registration site is missed:
+        an absent ``_SUBCOMMANDS`` entry returns argv unnormalised, so half the
+        spellings of every option stop parsing, and an absent
+        ``_LEGACY_ARGUMENTS`` entry raises ``KeyError`` from an unguarded
+        subscript before any option is examined.
+        """
+        assert _translate_legacy_args(["mcbyte", "--cmc-downscale", "2"]) == ["mcbyte", "--cmc_downscale", "2"]
+
+    def test_eval_rejects_mixing_the_deprecated_and_current_spelling(self) -> None:
+        """Supplying both spellings of one input is an error, not a silent winner."""
+        with pytest.raises(ValueError, match="--predictions_dir"):
+            _translate_legacy_args(["eval", "--tracker_dir", "old", "--predictions_dir", "new"])
 
 
 class TestListValuedTrackFilters:
@@ -796,3 +886,67 @@ class TestTrackerShorthand:
         parsed = parser.instantiate_classes(parser.parse_args(args[1:]))
 
         assert parsed.tracker.name == "ocsort"
+
+
+class TestEntryPointCentralisation:
+    """Every CLI under ``src/`` is reachable through the one ``trackers`` command."""
+
+    def test_every_subcommand_is_dispatchable_and_translatable(self) -> None:
+        """The dispatch table and the two per-subcommand tables cannot drift apart.
+
+        ``_SUBCOMMANDS`` gates argv normalisation and ``_LEGACY_ARGUMENTS`` is
+        subscripted unguarded, so a command present in one table and missing
+        from another half-works rather than failing cleanly. Both are checked
+        against the real dispatch table rather than a copy of it, so adding a
+        subcommand to ``_COMMANDS`` alone fails here.
+        """
+        dispatched = set(_COMMANDS)
+
+        assert set(_SUBCOMMANDS) == dispatched, f"_SUBCOMMANDS drifted: {set(_SUBCOMMANDS) ^ dispatched}"
+        assert set(_LEGACY_ARGUMENTS) == dispatched, f"_LEGACY_ARGUMENTS drifted: {set(_LEGACY_ARGUMENTS) ^ dispatched}"
+
+    def test_the_entry_point_imports_without_torch(self) -> None:
+        """Importing the CLI must not drag in the optional ``mask`` extra.
+
+        ``torch`` ships only in the ``mask`` extra, so a default install would
+        stop having a CLI at all if a subcommand imported it at module level.
+        """
+        # A subprocess, because this test session has already imported torch.
+        script = "import sys; import trackers.cli.__main__; print('torch' in sys.modules)"
+
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)  # noqa: S603
+
+        assert result.stdout.strip() == "False"
+
+    def test_parser_and_legacy_modules_never_import_main(self) -> None:
+        """_parser.py and _legacy.py must not import from __main__ to avoid circular imports.
+
+        The entry point (__main__) imports every subcommand and imports from these
+        modules, so a reverse import would create a cycle and leave __main__ partially
+        initialized. This test uses static AST inspection to verify no such imports exist.
+        """
+        import ast
+        from pathlib import Path
+
+        parser_file = Path(__file__).parent.parent.parent / "src/trackers/cli/_parser.py"
+        legacy_file = Path(__file__).parent.parent.parent / "src/trackers/cli/_legacy.py"
+
+        for filepath in [parser_file, legacy_file]:
+            with open(filepath) as f:
+                tree = ast.parse(f.read())
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        assert not alias.name.startswith("trackers.cli.__main__"), (
+                            f"{filepath.name} must not import {alias.name}"
+                        )
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        assert not node.module.startswith("trackers.cli.__main__"), (
+                            f"{filepath.name} must not import from {node.module}"
+                        )
+                    if node.module == "trackers.cli" or (node.module and node.module.endswith(".__main__")):
+                        raise AssertionError(
+                            f"{filepath.name} must not import from __main__; found: from {node.module} import ..."
+                        )

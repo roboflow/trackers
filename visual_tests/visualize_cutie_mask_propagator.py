@@ -11,11 +11,29 @@ image assets and does not run as part of the test suite. The user provides an
 image directory, a frame range, and one or more bounding boxes. The script uses
 SAM to initialize masks on the first selected frame, then uses Cutie to propagate
 those masks over the remaining selected frames.
+
+Usage
+-----
+
+::
+
+    python visual_tests/visualize_cutie_mask_propagator.py \\
+        --image_dir frames --start_file 000001.jpg --end_file 000010.jpg \\
+        --box='[[10,20,110,220]]'
+
+Options come from the :func:`visualize_command` signature, parsed with
+jsonargparse through the shared ``trackers`` parser, so the shared conventions
+hold here too: ``--image-dir`` and ``--image_dir`` are the same option, and
+``--config run.yaml`` supplies the same keys from a file. The repeatable
+options became lists: boxes are ``--box='[[x1,y1,x2,y2]]'``, while lifecycle
+events are ``--add_at='["frame.jpg:x1,y1,x2,y2"]'`` and
+``--remove_at='["frame.jpg:3"]'``. Every one of them also appends with ``+``,
+as in ``--add_at+ frame.jpg:10,20,110,220``.
 """
 
 from __future__ import annotations
 
-import argparse
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -24,7 +42,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
+from jsonargparse import CLI
 
+from trackers.cli.__main__ import _CLIParser, _normalise_option
 from trackers.core.mcbyte.masks.base import TrackletSnapshot
 from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
 from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
@@ -35,10 +55,14 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 @dataclass(frozen=True)
 class AddMaskEvent:
-    """Manual add-mask event parsed from ``--add-at``.
+    """Manual add-mask event supplied through ``--add_at``.
 
     ``frame_file`` is the frame where the provided box is valid. The script
     applies the mask on that frame and propagates it to the next frame.
+
+    Attributes:
+        frame_file: Frame filename on which the box is valid.
+        xyxy: Bounding box on that frame as ``[x1,y1,x2,y2]``.
     """
 
     frame_file: str
@@ -47,9 +71,13 @@ class AddMaskEvent:
 
 @dataclass(frozen=True)
 class RemoveMaskEvent:
-    """Manual remove-mask event parsed from ``--remove-at``.
+    """Manual remove-mask event supplied through ``--remove_at``.
 
     Removal happens before propagating to ``frame_file``.
+
+    Attributes:
+        frame_file: Frame filename before which the mask is removed.
+        tracker_id: Manual mask ID to remove. Must be positive.
     """
 
     frame_file: str
@@ -60,7 +88,7 @@ def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
     """Parse one command-line bounding box in ``x1,y1,x2,y2`` format."""
     values = [float(value) for value in box.split(",")]
     if len(values) != 4:
-        raise argparse.ArgumentTypeError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
+        raise ValueError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
     return values[0], values[1], values[2], values[3]
 
 
@@ -68,14 +96,14 @@ def parse_add_mask_event(event: str) -> AddMaskEvent:
     """Parse ``filename:x1,y1,x2,y2`` add-mask event."""
     parts = event.split(":")
     if len(parts) != 2:
-        raise argparse.ArgumentTypeError("Add event must have format filename:x1,y1,x2,y2.")
+        raise ValueError("Add event must have format filename:x1,y1,x2,y2.")
 
     frame_file, box_str = parts
 
     try:
         xyxy = parse_xyxy_box(box_str)
-    except (ValueError, argparse.ArgumentTypeError) as exc:
-        raise argparse.ArgumentTypeError("Add event must have format filename:x1,y1,x2,y2.") from exc
+    except ValueError as exc:
+        raise ValueError("Add event must have format filename:x1,y1,x2,y2.") from exc
 
     return AddMaskEvent(
         frame_file=frame_file,
@@ -87,17 +115,17 @@ def parse_remove_mask_event(event: str) -> RemoveMaskEvent:
     """Parse ``filename:manual_mask_id`` remove-mask event."""
     parts = event.split(":")
     if len(parts) != 2:
-        raise argparse.ArgumentTypeError("Remove event must have format filename:manual_mask_id.")
+        raise ValueError("Remove event must have format filename:manual_mask_id.")
 
     frame_file, tracker_id_str = parts
 
     try:
         tracker_id = int(tracker_id_str)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError("Remove event must have format filename:manual_mask_id.") from exc
+        raise ValueError("Remove event must have format filename:manual_mask_id.") from exc
 
     if tracker_id <= 0:
-        raise argparse.ArgumentTypeError("manual_mask_id must be a positive integer.")
+        raise ValueError("manual_mask_id must be a positive integer.")
 
     return RemoveMaskEvent(
         frame_file=frame_file,
@@ -163,103 +191,6 @@ def validate_lifecycle_events(
             raise ValueError(f"Remove event frame is outside selected range: {remove_event.frame_file}")
         if remove_event.frame_file == first_file:
             raise ValueError("Remove events cannot be scheduled on the first selected frame.")
-
-
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments for the visualization script."""
-    parser = argparse.ArgumentParser(description="Visualize SAM initialization and Cutie mask propagation.")
-    parser.add_argument(
-        "--image-dir",
-        type=Path,
-        required=True,
-        help="Directory containing input frames.",
-    )
-    parser.add_argument(
-        "--start-file",
-        type=str,
-        required=True,
-        help="First frame filename, included in the selected frame range.",
-    )
-    parser.add_argument(
-        "--end-file",
-        type=str,
-        required=True,
-        help="Last frame filename, included in the selected frame range.",
-    )
-    parser.add_argument(
-        "--box",
-        type=parse_xyxy_box,
-        action="append",
-        required=True,
-        help=(
-            "Bounding box on the first selected frame in xyxy format: x1,y1,x2,y2. "
-            "Pass this argument multiple times for multiple boxes."
-        ),
-    )
-    parser.add_argument(
-        "--add-at",
-        type=parse_add_mask_event,
-        action="append",
-        default=[],
-        help=(
-            "Add a new mask using a box on the given frame. Format: "
-            "filename:x1,y1,x2,y2. Can be passed multiple times. "
-            "The box is applied on this frame, then Cutie propagates to the next "
-            "frame, following McByte timing. "
-            "In this standalone script, every --add-at event is treated as a new "
-            "object. Do not add a mask for an object that already has one. In the full "
-            "McByte pipeline this is handled by the tracker, but this visual script "
-            "does not know object identity beyond the manual IDs."
-        ),
-    )
-    parser.add_argument(
-        "--remove-at",
-        type=parse_remove_mask_event,
-        action="append",
-        default=[],
-        help=(
-            "Remove a mask before propagating to the given frame. Format: "
-            "filename:manual_mask_id. Can be passed multiple times. "
-            "Manual mask IDs are assigned automatically."
-        ),
-    )
-    parser.add_argument(
-        "--output-root",
-        type=Path,
-        default=DEFAULT_OUTPUT_ROOT,
-        help=f"Root directory for timestamped outputs. Defaults to {DEFAULT_OUTPUT_ROOT}.",
-    )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cuda",
-        help='Device used by SAM and Cutie, for example "cpu" or "cuda".',
-    )
-    parser.add_argument(
-        "--sam-model-type",
-        type=str,
-        default="vit_b",
-        help='SAM model type. Defaults to "vit_b".',
-    )
-    parser.add_argument(
-        "--cutie-model-type",
-        type=str,
-        default="base-mega",
-        help='Cutie model type. Defaults to "base-mega".',
-    )
-    parser.add_argument(
-        "--cutie-config-path",
-        type=Path,
-        default=None,
-        help="Optional path to Cutie's Hydra config directory.",
-    )
-    parser.add_argument(
-        "--cutie-config-name",
-        type=str,
-        default="eval_config",
-        help='Cutie Hydra config name. Defaults to "eval_config".',
-    )
-    return parser.parse_args()
 
 
 def list_selected_frame_paths(
@@ -458,71 +389,83 @@ def print_device_info(
         print(f"{label} GPU: N/A (running on CPU)")
 
 
-def main() -> None:
-    """Run SAM initialization, Cutie propagation, and save visualizations."""
-    args = parse_args()
+def apply_add_events(
+    *,
+    sam_generator: SAMBoxMaskGenerator,
+    cutie_propagator: CutieMaskPropagator,
+    add_events: list[AddMaskEvent],
+    previous_frame: np.ndarray,
+    previous_frame_path: Path,
+    frame_path: Path,
+    next_manual_tracklet_id: int,
+) -> int:
+    """Apply scheduled add-mask events on the previous frame.
 
-    frame_paths = list_selected_frame_paths(
-        image_dir=args.image_dir,
-        start_file=args.start_file,
-        end_file=args.end_file,
-    )
-    if len(frame_paths) < 2:
-        raise ValueError("At least two frames are required for Cutie propagation.")
+    Each event is assigned the next free manual tracklet ID, turned into a SAM
+    mask on ``previous_frame``, and handed to Cutie so the mask is available
+    when propagation reaches ``frame_path``.
 
-    validate_lifecycle_events(
-        frame_paths=frame_paths,
-        add_events=args.add_at,
-        remove_events=args.remove_at,
-    )
-    add_events_by_file = group_add_events_by_next_frame(
-        frame_paths=frame_paths,
-        events=args.add_at,
-    )
-    remove_events_by_file = group_remove_events(args.remove_at)
+    Args:
+        sam_generator: SAM mask generator used to create the new masks.
+        cutie_propagator: Cutie propagator receiving the new masks.
+        add_events: Events scheduled before ``frame_path``.
+        previous_frame: RGB frame the event boxes are valid on.
+        previous_frame_path: Path of ``previous_frame``, used for logging.
+        frame_path: Frame the new masks are propagated to.
+        next_manual_tracklet_id: First unused manual tracklet ID.
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = args.output_root / timestamp
-    output_dir.mkdir(parents=True, exist_ok=True)
+    Returns:
+        The next unused manual tracklet ID after assigning one per event.
+    """
+    add_tracklets = []
+    for event in add_events:
+        manual_tracklet_id = next_manual_tracklet_id
+        next_manual_tracklet_id += 1
 
-    initial_frame = load_rgb_image(frame_paths[0])
-
-    tracklets = [
-        TrackletSnapshot(
-            tracker_id=index + 1,
+        tracklet = TrackletSnapshot(
+            tracker_id=manual_tracklet_id,
             xyxy=validate_and_clip_xyxy_box(
-                box=box,
-                image_shape=initial_frame.shape[:2],
+                box=event.xyxy,
+                image_shape=previous_frame.shape[:2],
             ),
         )
-        for index, box in enumerate(args.box)
-    ]
-    next_manual_tracklet_id = len(tracklets) + 1
-    print("Initial manual mask IDs:")
-    for tracklet in tracklets:
-        print(f"  {tracklet.tracker_id}: initial box {tracklet.xyxy.tolist()}")
+        add_tracklets.append(tracklet)
+
+        print(
+            f"Scheduled add from {previous_frame_path.name} before propagating "
+            f"to {frame_path.name}: manual ID {manual_tracklet_id}, "
+            f"box {tracklet.xyxy.tolist()}"
+        )
+
+    add_mask_output = sam_generator.generate(frame=previous_frame, tracklets=add_tracklets)
+    cutie_propagator.add_masks(frame=previous_frame, mask_output=add_mask_output)
+
     print(
-        "Note: each --add-at event is treated as a new object. "
-        "Do not add another mask for an already initialized object."
+        f"Added {len(add_tracklets)} mask(s) before {frame_path.name} using previous frame {previous_frame_path.name}."
     )
+    return next_manual_tracklet_id
 
-    device = validate_device(args.device, label="SAM/Cutie")
 
-    sam_generator = SAMBoxMaskGenerator(
-        model_type=args.sam_model_type,
-        device=device,
-    )
-    cutie_propagator = CutieMaskPropagator(
-        model_type=args.cutie_model_type,
-        config_path=args.cutie_config_path,
-        config_name=args.cutie_config_name,
-        device=device,
-    )
+def initialize_first_frame(
+    *,
+    sam_generator: SAMBoxMaskGenerator,
+    cutie_propagator: CutieMaskPropagator,
+    initial_frame: np.ndarray,
+    tracklets: list[TrackletSnapshot],
+    output_path: Path,
+) -> None:
+    """Seed Cutie with SAM masks on the first frame and save its visualization.
 
-    print_device_info("SAM/Cutie", sam_generator.device)
-    print(f"Selected {len(frame_paths)} frames.")
-    print(f"Saving outputs to {output_dir}")
+    Args:
+        sam_generator: SAM mask generator producing the initial masks.
+        cutie_propagator: Cutie propagator seeded with those masks.
+        initial_frame: First selected RGB frame.
+        tracklets: Manually supplied tracklets on the first frame.
+        output_path: File the annotated first frame is written to.
 
+    Raises:
+        RuntimeError: If SAM returns no initialization masks.
+    """
     initial_mask_output = sam_generator.generate(
         frame=initial_frame,
         tracklets=tracklets,
@@ -546,11 +489,196 @@ def main() -> None:
     initial_visual = draw_boxes(initial_visual, tracklets)
     initial_visual = draw_frame_label(
         initial_visual,
-        frame_paths[0].name,
+        output_path.name,
     )
 
-    save_rgb_image(initial_visual, output_dir / frame_paths[0].name)
-    print(f"Saved {frame_paths[0].name} (SAM)")
+    save_rgb_image(initial_visual, output_path)
+    print(f"Saved {output_path.name} (SAM)")
+
+
+def propagate_and_save_frame(
+    *,
+    cutie_propagator: CutieMaskPropagator,
+    frame: np.ndarray,
+    frame_path: Path,
+    remove_events_by_file: dict[str, list[int]],
+    output_path: Path,
+) -> None:
+    """Apply scheduled removals, propagate masks to one frame, and save it.
+
+    Args:
+        cutie_propagator: Cutie propagator holding the current mask state.
+        frame: RGB frame to propagate the masks onto.
+        frame_path: Path of ``frame``, used for logging and event lookup.
+        remove_events_by_file: Manual mask IDs to remove, keyed by the frame
+            they are removed before.
+        output_path: File the annotated frame is written to.
+
+    Raises:
+        RuntimeError: If Cutie returns no masks for the frame.
+    """
+    remove_tracklet_ids = remove_events_by_file.get(frame_path.name, [])
+    if len(remove_tracklet_ids) > 0:
+        cutie_propagator.remove_masks(remove_tracklet_ids)
+        print(f"Removed mask(s) for manual IDs {remove_tracklet_ids} before {frame_path.name}")
+
+    propagated_mask_output = cutie_propagator.propagate(frame)
+
+    if propagated_mask_output is None or propagated_mask_output.masks is None:
+        raise RuntimeError(f"Cutie did not return masks for frame: {frame_path}")
+
+    visual = overlay_masks(
+        image=frame,
+        masks=propagated_mask_output.masks,
+        object_ids=get_mask_tracklet_ids_in_order(propagated_mask_output.tracklet_mask_dict),
+    )
+    visual = draw_frame_label(visual, frame_path.name)
+    save_rgb_image(visual, output_path)
+
+    print(
+        f"Saved {frame_path.name} (Cutie); "
+        f"tracklet_mask_dict={propagated_mask_output.tracklet_mask_dict}; "
+        f"mask_avg_prob_dict={propagated_mask_output.mask_avg_prob_dict}"
+    )
+
+
+def visualize_command(
+    image_dir: Path,
+    start_file: str,
+    end_file: str,
+    box: list[tuple[float, float, float, float]],
+    add_at: list[str] | None = None,
+    remove_at: list[str] | None = None,
+    output_root: Path = DEFAULT_OUTPUT_ROOT,
+    device: str = "cuda",
+    sam_model_type: str = "vit_b",
+    cutie_model_type: str = "base-mega",
+    cutie_config_path: Path | None = None,
+    cutie_config_name: str = "eval_config",
+) -> int:
+    """Run SAM initialization, Cutie propagation, and save visualizations.
+
+    Every option is spelled with underscores here, but hyphens work just as
+    well on the command line: ``--image-dir`` and ``--image_dir`` are the same
+    option.
+
+    Args:
+        image_dir: Directory containing input frames.
+        start_file: First frame filename, included in the selected frame range.
+        end_file: Last frame filename, included in the selected frame range.
+        box: Bounding boxes on the first selected frame in xyxy format, given
+            as one list rather than a repeated option:
+            ``--box='[[x1,y1,x2,y2]]'`` for one box,
+            ``--box='[[10,20,110,220],[30,40,130,240]]'`` for two, and
+            ``--box+='[[30,40,130,240]]'`` to append to boxes already given.
+        add_at: Masks to add using a box on the given frame, each in
+            ``filename:x1,y1,x2,y2`` format. The box is applied on that frame,
+            then Cutie propagates to the next frame, following McByte timing.
+            In this standalone script, every add event is treated as a new
+            object. Do not add a mask for an object that already has one. In
+            the full McByte pipeline this is handled by the tracker, but this
+            visual script does not know object identity beyond the manual IDs.
+            Given as one list, ``--add_at='["frame.jpg:10,20,110,220"]'``, or
+            appended one at a time with ``--add_at+ frame.jpg:10,20,110,220``.
+        remove_at: Masks to remove before propagating to the given frame, each
+            in ``filename:manual_mask_id`` format. Manual mask IDs are assigned
+            automatically. Given as one list, ``--remove_at='["frame.jpg:3"]'``,
+            or appended one at a time with ``--remove_at+ frame.jpg:3``.
+        output_root: Root directory for timestamped outputs.
+        device: Device used by SAM and Cutie, for example ``cpu`` or ``cuda``.
+        sam_model_type: SAM model type.
+        cutie_model_type: Cutie model type.
+        cutie_config_path: Optional path to Cutie's Hydra config directory.
+        cutie_config_name: Cutie Hydra config name.
+
+    Returns:
+        Exit code: ``0`` on success, ``1`` on a validation error.
+    """
+    try:
+        add_events = [parse_add_mask_event(event) for event in add_at or []]
+        remove_events = [parse_remove_mask_event(event) for event in remove_at or []]
+
+        frame_paths = list_selected_frame_paths(
+            image_dir=image_dir,
+            start_file=start_file,
+            end_file=end_file,
+        )
+        if len(frame_paths) < 2:
+            raise ValueError("At least two frames are required for Cutie propagation.")
+
+        validate_lifecycle_events(
+            frame_paths=frame_paths,
+            add_events=add_events,
+            remove_events=remove_events,
+        )
+    except (FileNotFoundError, ValueError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    add_events_by_file = group_add_events_by_next_frame(
+        frame_paths=frame_paths,
+        events=add_events,
+    )
+    remove_events_by_file = group_remove_events(remove_events)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = output_root / timestamp
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    initial_frame = load_rgb_image(frame_paths[0])
+
+    try:
+        tracklets = [
+            TrackletSnapshot(
+                tracker_id=index + 1,
+                xyxy=validate_and_clip_xyxy_box(
+                    box=initial_box,
+                    image_shape=initial_frame.shape[:2],
+                ),
+            )
+            for index, initial_box in enumerate(box)
+        ]
+    except ValueError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    next_manual_tracklet_id = len(tracklets) + 1
+    print("Initial manual mask IDs:")
+    for tracklet in tracklets:
+        print(f"  {tracklet.tracker_id}: initial box {tracklet.xyxy.tolist()}")
+    print(
+        "Note: each --add_at event is treated as a new object. "
+        "Do not add another mask for an already initialized object."
+    )
+
+    try:
+        device = validate_device(device, label="SAM/Cutie")
+    except RuntimeError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    sam_generator = SAMBoxMaskGenerator(
+        model_type=sam_model_type,
+        device=device,
+    )
+    cutie_propagator = CutieMaskPropagator(
+        model_type=cutie_model_type,
+        config_path=cutie_config_path,
+        config_name=cutie_config_name,
+        device=device,
+    )
+
+    print_device_info("SAM/Cutie", sam_generator.device)
+    print(f"Selected {len(frame_paths)} frames.")
+    print(f"Saving outputs to {output_dir}")
+
+    initialize_first_frame(
+        sam_generator=sam_generator,
+        cutie_propagator=cutie_propagator,
+        initial_frame=initial_frame,
+        tracklets=tracklets,
+        output_path=output_dir / frame_paths[0].name,
+    )
 
     previous_frame = initial_frame
     previous_frame_path = frame_paths[0]
@@ -560,63 +688,44 @@ def main() -> None:
 
         add_events = add_events_by_file.get(frame_path.name, [])
         if len(add_events) > 0:
-            add_tracklets = []
-            for event in add_events:
-                manual_tracklet_id = next_manual_tracklet_id
-                next_manual_tracklet_id += 1
-
-                tracklet = TrackletSnapshot(
-                    tracker_id=manual_tracklet_id,
-                    xyxy=validate_and_clip_xyxy_box(
-                        box=event.xyxy,
-                        image_shape=previous_frame.shape[:2],
-                    ),
-                )
-                add_tracklets.append(tracklet)
-
-                print(
-                    f"Scheduled add from {previous_frame_path.name} before propagating "
-                    f"to {frame_path.name}: manual ID {manual_tracklet_id}, "
-                    f"box {tracklet.xyxy.tolist()}"
-                )
-
-            add_mask_output = sam_generator.generate(frame=previous_frame, tracklets=add_tracklets)
-            cutie_propagator.add_masks(frame=previous_frame, mask_output=add_mask_output)
-
-            print(
-                f"Added {len(add_tracklets)} mask(s) before {frame_path.name} "
-                f"using previous frame {previous_frame_path.name}."
+            next_manual_tracklet_id = apply_add_events(
+                sam_generator=sam_generator,
+                cutie_propagator=cutie_propagator,
+                add_events=add_events,
+                previous_frame=previous_frame,
+                previous_frame_path=previous_frame_path,
+                frame_path=frame_path,
+                next_manual_tracklet_id=next_manual_tracklet_id,
             )
 
-        remove_tracklet_ids = remove_events_by_file.get(frame_path.name, [])
-        if len(remove_tracklet_ids) > 0:
-            cutie_propagator.remove_masks(remove_tracklet_ids)
-            print(f"Removed mask(s) for manual IDs {remove_tracklet_ids} before {frame_path.name}")
-
-        propagated_mask_output = cutie_propagator.propagate(frame)
-
-        if propagated_mask_output is None or propagated_mask_output.masks is None:
-            raise RuntimeError(f"Cutie did not return masks for frame: {frame_path}")
-
-        visual = overlay_masks(
-            image=frame,
-            masks=propagated_mask_output.masks,
-            object_ids=get_mask_tracklet_ids_in_order(propagated_mask_output.tracklet_mask_dict),
-        )
-        visual = draw_frame_label(visual, frame_path.name)
-        save_rgb_image(visual, output_dir / frame_path.name)
-
-        print(
-            f"Saved {frame_path.name} (Cutie); "
-            f"tracklet_mask_dict={propagated_mask_output.tracklet_mask_dict}; "
-            f"mask_avg_prob_dict={propagated_mask_output.mask_avg_prob_dict}"
+        propagate_and_save_frame(
+            cutie_propagator=cutie_propagator,
+            frame=frame,
+            frame_path=frame_path,
+            remove_events_by_file=remove_events_by_file,
+            output_path=output_dir / frame_path.name,
         )
 
         previous_frame = frame
         previous_frame_path = frame_path
 
     print(f"Saved visualizations to {output_dir}")
+    return 0
+
+
+def main() -> int:
+    """Parse command-line arguments and run the Cutie propagation visualizer."""
+    args = [_normalise_option(arg) for arg in sys.argv[1:]]
+    rc = CLI(
+        visualize_command,
+        args=args,
+        as_positional=False,
+        prog="python visual_tests/visualize_cutie_mask_propagator.py",
+        description="Visualize SAM initialization and Cutie mask propagation.",
+        parser_class=_CLIParser,
+    )
+    return int(rc) if rc is not None else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

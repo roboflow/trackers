@@ -88,7 +88,7 @@ Benchmark your tracker against ground truth with standard MOT metrics.
 ```text
 trackers eval \
     --gt_dir ./data/mot17/val \
-    --tracker_dir results \
+    --predictions_dir results \
     --metrics '[CLEAR,HOTA,Identity]' \
     --columns '[MOTA,HOTA,IDF1]'
 ```

@@ -164,7 +164,7 @@ Evaluate each run against ground truth using CLEAR, HOTA, and Identity metrics.
 ```text
 trackers eval \
     --gt_dir ./data/mot17/val \
-    --tracker_dir results/yolo26n \
+    --predictions_dir results/yolo26n \
     --metrics '[CLEAR,HOTA,Identity]' \
     --columns '[MOTA,HOTA,IDF1]'
 ```
@@ -182,7 +182,7 @@ COMBINED                      23.444  32.874  34.411
 ```text
 trackers eval \
     --gt_dir ./data/mot17/val \
-    --tracker_dir results/rfdetr-nano \
+    --predictions_dir results/rfdetr-nano \
     --metrics '[CLEAR,HOTA,Identity]' \
     --columns '[MOTA,HOTA,IDF1]'
 ```
@@ -200,7 +200,7 @@ COMBINED                      25.667  35.735  38.182
 ```text
 trackers eval \
     --gt_dir ./data/mot17/val \
-    --tracker_dir results/rfdetr-medium \
+    --predictions_dir results/rfdetr-medium \
     --metrics '[CLEAR,HOTA,Identity]' \
     --columns '[MOTA,HOTA,IDF1]'
 ```

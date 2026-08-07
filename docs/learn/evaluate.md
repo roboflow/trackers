@@ -108,7 +108,7 @@ Compare the tracker output against ground truth to compute standard MOT metrics.
 ```text
 trackers eval \
     --gt ./data/mot17/val/MOT17-02-FRCNN/gt/gt.txt \
-    --tracker results/MOT17-02-FRCNN.txt \
+    --predictions results/MOT17-02-FRCNN.txt \
     --metrics '[CLEAR,HOTA,Identity]' \
     --columns '[MOTA,HOTA,IDF1]'
 ```
@@ -150,7 +150,7 @@ Evaluate all sequences at once and get per-sequence results plus a combined aggr
 ```text
 trackers eval \
     --gt_dir ./data/mot17/val \
-    --tracker_dir results \
+    --predictions_dir results \
     --metrics '[CLEAR,HOTA,Identity]' \
     --columns '[MOTA,HOTA,IDF1]' \
     --output results.json
@@ -200,8 +200,8 @@ All arguments accepted by `trackers eval`.
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--tracker</code></td>
-      <td>Path to a single tracker predictions file in MOT format.</td>
+      <td><code>--predictions</code></td>
+      <td>Path to a single tracker predictions file in MOT format. Formerly <code>--tracker</code>.</td>
       <td>—</td>
     </tr>
     <tr>
@@ -210,8 +210,8 @@ All arguments accepted by `trackers eval`.
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--tracker_dir</code></td>
-      <td>Directory containing tracker prediction files for multi-sequence evaluation.</td>
+      <td><code>--predictions_dir</code></td>
+      <td>Directory containing tracker prediction files for multi-sequence evaluation. Formerly <code>--tracker_dir</code>.</td>
       <td>—</td>
     </tr>
     <tr>
