@@ -893,6 +893,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#eval-prediction-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        eval prediction inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#other-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1022,6 +1033,34 @@
     
   
     Tune Trackers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcbyte-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    McByte Benchmarks
   
 
     
@@ -1685,6 +1724,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#eval-prediction-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        eval prediction inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#other-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1734,8 +1784,7 @@ in YAML configuration files.</p>
 emits a <code>FutureWarning</code> with the replacement. Do not combine a legacy argument
 and its replacement in one command; the CLI rejects that ambiguity. Develop's
 <code>--no-boxes</code> and <code>--no-ids</code> still work and map to <code>--show.no_boxes</code> and
-<code>--show.no_ids</code>. Each warning states its scheduled removal release: the current
-version plus 0.3.</p>
+<code>--show.no_ids</code>. Each warning names the release that removes it: 2.10.0.</p>
 <h2 id="track-command">Track command</h2>
 <p>Use dotted paths for grouped detection, filtering, output, visualization, and
 tracker options. <code>--display</code> remains ungrouped.</p>
@@ -1956,6 +2005,30 @@ command ports without also having to guess which separator each option wanted:
 <code>--no-boxes</code> and <code>--no_boxes</code> resolve alike, as do <code>--mot-output</code> and
 <code>--mot_output</code>, <code>--track-ids</code> and <code>--track_ids</code>. <code>--help</code> lists the underscore
 spelling.</p>
+<h2 id="eval-prediction-inputs"><code>eval</code> prediction inputs</h2>
+<p><code>--tracker</code> names the tracking algorithm in <code>track</code> and <code>tune</code>. In <code>eval</code> it
+meant something else entirely — a file of results that algorithm had already
+produced. Both prediction inputs are renamed so one option name no longer
+carries two meanings:</p>
+<table>
+<thead>
+<tr>
+<th>Legacy argument</th>
+<th>Current argument</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--tracker</code></td>
+<td><code>--predictions</code></td>
+</tr>
+<tr>
+<td><code>--tracker_dir</code></td>
+<td><code>--predictions_dir</code></td>
+</tr>
+</tbody>
+</table>
+<p>The old spellings still parse and warn.</p>
 <h2 id="other-commands">Other commands</h2>
 <table>
 <thead>
@@ -1973,8 +2046,8 @@ spelling.</p>
 </tr>
 <tr>
 <td><code>eval</code></td>
-<td><code>--tracker-dir</code></td>
-<td><code>--tracker_dir</code></td>
+<td><code>--predictions-dir</code></td>
+<td><code>--predictions_dir</code></td>
 </tr>
 <tr>
 <td><code>tune</code></td>
@@ -2108,7 +2181,7 @@ configuration values.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 15:56:00 UTC">2026-08-07</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 21:00:46 UTC">2026-08-07</span>
   </span>
 
     
