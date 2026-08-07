@@ -114,25 +114,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (state.showTrackerOptions) {
       if (state.lostTrackBuffer !== defaults.lostTrackBuffer && isValidNonNegativeInt(state.lostTrackBuffer)) {
-        parts.push(`--tracker_params.lost_track_buffer ${state.lostTrackBuffer}`);
+        parts.push(`--tracker.lost_track_buffer ${state.lostTrackBuffer}`);
       }
       if (
         state.trackActivationThreshold !== defaults.trackActivationThreshold &&
         isValidDecimal01(state.trackActivationThreshold, 0.05)
       ) {
-        parts.push(`--tracker_params.track_activation_threshold ${state.trackActivationThreshold}`);
+        parts.push(`--tracker.track_activation_threshold ${state.trackActivationThreshold}`);
       }
       if (
         state.minimumConsecutiveFrames !== defaults.minimumConsecutiveFrames &&
         isValidPositiveInt(state.minimumConsecutiveFrames)
       ) {
-        parts.push(`--tracker_params.min_consecutive_frames ${state.minimumConsecutiveFrames}`);
+        parts.push(`--tracker.min_consecutive_frames ${state.minimumConsecutiveFrames}`);
       }
       if (
         state.minimumIouThreshold !== defaults.minimumIouThreshold &&
         isValidDecimal01(state.minimumIouThreshold, 0.05)
       ) {
-        parts.push(`--tracker_params.min_iou_threshold ${state.minimumIouThreshold}`);
+        parts.push(`--tracker.min_iou_threshold ${state.minimumIouThreshold}`);
       }
     }
 

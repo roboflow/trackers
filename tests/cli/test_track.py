@@ -250,16 +250,18 @@ class TestTrackerParameterAbbreviations:
         value: float,
     ) -> None:
         """A short CLI parameter is forwarded under its long constructor keyword."""
-        options = TrackerOptions()
+        options = TrackerOptions(name=tracker_id)
         setattr(options, option_field, value)
 
-        tracker = _init_tracker(tracker_id, options)
+        tracker = _init_tracker(options)
 
         assert getattr(tracker, keyword) == pytest.approx(value)
 
     def test_every_option_field_maps_to_a_known_tracker_parameter(self) -> None:
         """No TrackerOptions field can be dropped silently by _init_tracker."""
-        accepted = {"iou_variant"}
+        # ``name`` selects the tracker and ``iou_variant`` aliases ``iou``;
+        # neither is forwarded to the constructor under its own field name.
+        accepted = {"name", "iou_variant"}
         for tracker_id in BaseTracker._registered_trackers():
             info = BaseTracker._lookup_tracker(tracker_id)
             assert info is not None

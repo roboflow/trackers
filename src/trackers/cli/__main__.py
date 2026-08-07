@@ -21,13 +21,11 @@ from jsonargparse import CLI, ActionYesNo, ArgumentParser
 from trackers.cli.download import download_command
 from trackers.cli.eval import eval_command
 from trackers.cli.track import (
-    DEFAULT_TRACKER,
     DetectionOptions,
     FilterOptions,
     OutputOptions,
     ShowOptions,
     TrackerOptions,
-    _abbreviate_parameter_name,
     _abbreviated_tracker_parameters,
     track_command,
 )
@@ -41,7 +39,7 @@ _SUBCOMMANDS = frozenset({"track", "eval", "tune", "download"})
 _TRACK_OPTION_GROUPS: tuple[tuple[type, str], ...] = (
     (DetectionOptions, "detection"),
     (FilterOptions, "filters"),
-    (TrackerOptions, "tracker_params"),
+    (TrackerOptions, "tracker"),
     (OutputOptions, "output"),
     (ShowOptions, "show"),
 )
@@ -64,21 +62,65 @@ _DEVELOP_TRACK_ARGUMENTS = {
     "--show-confidence": "--show.confidence",
     "--show-trajectories": "--show.trajectories",
 }
-_PR_ERA_TRACK_ARGUMENTS = {
-    "--detection.detections": "--detection.mot_file",
-    "--out.output": "--output.video",
-    "--out.mot_results": "--output.mot_results",
-    "--out.overwrite": "--output.overwrite",
-    "--vis.display": "--display",
-}
-# Unabbreviated tracker parameter paths, deprecated in favour of the ``min_`` /
-# ``max_`` CLI spellings. Generated from TrackerOptions so the two cannot drift.
-_UNABBREVIATED_TRACK_ARGUMENTS = {
-    f"--tracker_params.{long_name}": f"--tracker_params.{short_name}"
-    for long_name, short_name in _abbreviated_tracker_parameters().items()
-}
+
+
+def _develop_tracker_parameter_arguments() -> dict[str, str]:
+    """Return develop's renamed ``--tracker.<param>`` spellings.
+
+    Every entry is derived from ``TrackerOptions``, so a renamed tracker
+    parameter cannot leave a stale mapping behind. Two renames are covered:
+    unabbreviated names, superseded by the ``min_`` / ``max_`` spellings, and
+    ``iou``, which the parser exposes as ``iou_variant``.
+
+    Parameters whose spelling never changed are absent, so they parse as-is
+    without a warning.
+
+    Returns:
+        Mapping of develop option string to its current replacement.
+
+    Examples:
+        >>> _develop_tracker_parameter_arguments()["--tracker.minimum_iou_threshold"]
+        '--tracker.min_iou_threshold'
+    """
+    replacements = {
+        f"--tracker.{long_name}": f"--tracker.{short_name}"
+        for long_name, short_name in _abbreviated_tracker_parameters().items()
+    }
+    replacements["--tracker.iou"] = "--tracker.iou_variant"
+    return replacements
+
+
+def _develop_store_false_tracker_flags() -> frozenset[str]:
+    """Return tracker options develop exposed as bare "turn this off" flags.
+
+    A registry parameter that is a boolean defaulting to ``True`` was a
+    ``store_false`` flag on develop, so the bare spelling has to keep meaning
+    ``false``. The current parser takes an explicit value for every tracker
+    boolean, because the option fields are ``bool | None`` rather than ``bool``.
+
+    Booleans defaulting to ``False`` are excluded: develop's ``store_true`` flag
+    and an explicit ``true`` already agree, so no rewrite is owed.
+
+    Returns:
+        Option strings whose bare form must be rewritten to an explicit ``false``.
+    """
+    option_fields = {field.name for field in fields(TrackerOptions)}
+    flags = set()
+    for tracker_id in BaseTracker._registered_trackers():
+        tracker_info = BaseTracker._lookup_tracker(tracker_id)
+        if tracker_info is None:
+            continue
+        for parameter_name, parameter in tracker_info.parameters.items():
+            if parameter.param_type is bool and parameter.default_value and parameter_name in option_fields:
+                flags.add(f"--tracker.{parameter_name}")
+    return frozenset(flags)
+
+
+_DEVELOP_STORE_FALSE_TRACKER_FLAGS = _develop_store_false_tracker_flags()
+
+
 _LEGACY_ARGUMENTS = {
-    "track": {**_DEVELOP_TRACK_ARGUMENTS, **_PR_ERA_TRACK_ARGUMENTS, **_UNABBREVIATED_TRACK_ARGUMENTS},
+    "track": {**_DEVELOP_TRACK_ARGUMENTS, **_develop_tracker_parameter_arguments()},
     "eval": {
         "-o": "--output",
     },
@@ -147,6 +189,10 @@ def _explicit_value_boolean_options(option_groups: Iterable[tuple[type, str]]) -
 
 
 _EXPLICIT_VALUE_BOOLEAN_OPTIONS = _explicit_value_boolean_options(_TRACK_OPTION_GROUPS)
+# Algorithm selector inside the tracker option group. ``--tracker <id>`` is the
+# shorthand spelling, expanded to this path before jsonargparse sees argv.
+_TRACKER_NAME_OPTION = "--tracker.name"
+_TRACKER_SHORTHAND_OPTION = "--tracker"
 
 
 class _CLIParser(ArgumentParser):
@@ -156,6 +202,13 @@ class _CLIParser(ArgumentParser):
         if kwargs.get("type") is bool and not _EXPLICIT_VALUE_BOOLEAN_OPTIONS.intersection(args):
             kwargs.pop("type")
             kwargs["action"] = ActionYesNo(yes_prefix="", no_prefix="no-")
+        if _TRACKER_NAME_OPTION in args:
+            # The registry is the accept list, so an unknown tracker is rejected
+            # while parsing rather than after a detection model has been loaded.
+            # ``type`` is deliberately dropped: combined with ``choices`` it makes
+            # jsonargparse print a lambda repr in --help, and registry ids are strings.
+            kwargs.pop("type", None)
+            kwargs["choices"] = BaseTracker._registered_trackers()
         return super().add_argument(*args, **kwargs)
 
     def add_function_arguments(self, function, *args, **kwargs):  # type: ignore[override]
@@ -175,18 +228,8 @@ def _add_track_arguments(parser: ArgumentParser) -> list[str]:
     added_args = ["source"]
     for option_class, nested_key in _TRACK_OPTION_GROUPS:
         added_args.extend(parser.add_class_arguments(option_class, nested_key))
-    # The registry is the accept list, so an unknown tracker is rejected while
-    # parsing rather than after a detection model has already been loaded.
-    # ``type`` is deliberately omitted: combined with ``choices`` it makes
-    # jsonargparse print a lambda repr in --help, and registry ids are strings.
-    parser.add_argument(
-        "--tracker",
-        default=DEFAULT_TRACKER,
-        choices=BaseTracker._registered_trackers(),
-        help="Tracking algorithm ID.",
-    )
     parser.add_argument("--display", action="store_true", help="Show a live preview window.")
-    added_args.extend(["tracker", "display"])
+    added_args.append("display")
     return added_args
 
 
@@ -202,9 +245,12 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
 
     subcommand = args[subcommand_index]
     command_args = args[subcommand_index + 1 :]
+    if subcommand == "track":
+        command_args = _expand_tracker_shorthand(command_args)
+        command_args = _translate_develop_boolean_flags(command_args)
     command_args = _translate_legacy_list_args(subcommand, command_args)
     legacy_arguments = _LEGACY_ARGUMENTS[subcommand]
-    provided_targets = _provided_targets(subcommand, command_args, legacy_arguments)
+    provided_targets = _provided_targets(command_args, legacy_arguments)
     translated = args[: subcommand_index + 1]
 
     if subcommand == "download":
@@ -215,7 +261,7 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
             translated.extend(command_args[index:])
             break
         option, separator, value = arg.partition("=")
-        replacement = _legacy_replacement(subcommand, option, legacy_arguments)
+        replacement = legacy_arguments.get(option)
         if replacement is None:
             translated.append(_normalise_option(arg))
             continue
@@ -228,6 +274,96 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
     if subcommand == "track":
         translated[subcommand_index + 1 :] = _translate_comma_separated_lists(translated[subcommand_index + 1 :])
         _raise_for_detection_source_conflict(translated[subcommand_index + 1 :])
+    return translated
+
+
+def _expand_tracker_shorthand(args: list[str]) -> list[str]:
+    """Expand ``--tracker <id>`` to the ``--tracker.name`` path it selects.
+
+    ``--tracker`` is a supported shorthand rather than a deprecated spelling, so
+    no warning is emitted. The expansion is needed because ``--tracker`` is also
+    the prefix of the tracker option group: jsonargparse reads a bare
+    ``--tracker`` value as JSON for the whole group, which a plain registry ID
+    is not. A value that does start with ``{`` is left alone so the group can
+    still be supplied as a JSON object.
+
+    Args:
+        args: Track arguments, without the subcommand token.
+
+    Returns:
+        Arguments where every ``--tracker`` shorthand targets ``--tracker.name``.
+
+    Examples:
+        >>> _expand_tracker_shorthand(["--tracker", "sort", "--display"])
+        ['--tracker.name', 'sort', '--display']
+    """
+    expanded: list[str] = []
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--":
+            expanded.extend(args[index:])
+            break
+
+        option, separator, value = arg.partition("=")
+        if _normalise_option(option) != _TRACKER_SHORTHAND_OPTION:
+            expanded.append(arg)
+            index += 1
+            continue
+
+        if separator:
+            expanded.append(arg if value.startswith("{") else f"{_TRACKER_NAME_OPTION}={value}")
+            index += 1
+            continue
+
+        next_value = args[index + 1] if index + 1 < len(args) else ""
+        if not next_value or next_value.startswith("-") or next_value.startswith("{"):
+            expanded.append(arg)
+            index += 1
+            continue
+
+        expanded.extend([_TRACKER_NAME_OPTION, next_value])
+        index += 2
+    return expanded
+
+
+def _translate_develop_boolean_flags(args: list[str]) -> list[str]:
+    """Rewrite develop's bare tracker boolean flags to an explicit ``false``.
+
+    Only the bare spelling is rewritten. ``--tracker.enable_cmc=false`` and
+    ``--tracker.enable_cmc false`` are the current syntax for the same option,
+    so they pass through untouched and without a warning; rewriting them would
+    append a second value and produce an unparsable argument.
+
+    Args:
+        args: Track arguments, without the subcommand token.
+
+    Returns:
+        Arguments where every bare develop boolean flag carries an explicit value.
+
+    Examples:
+        >>> _translate_develop_boolean_flags(["--tracker.min_iou_threshold", "0.3"])
+        ['--tracker.min_iou_threshold', '0.3']
+    """
+    translated: list[str] = []
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--":
+            translated.extend(args[index:])
+            break
+
+        option, separator, _ = arg.partition("=")
+        next_value = args[index + 1] if index + 1 < len(args) else ""
+        carries_value = bool(separator) or (next_value != "" and not next_value.startswith("-"))
+        if _normalise_option(option) not in _DEVELOP_STORE_FALSE_TRACKER_FLAGS or carries_value:
+            translated.append(arg)
+            index += 1
+            continue
+
+        _warn_legacy_cli(f"{option} is deprecated; use {option}=false instead.")
+        translated.append(f"{option}=false")
+        index += 1
     return translated
 
 
@@ -339,50 +475,18 @@ def _translate_download_positional(args: list[str], provided_targets: set[str]) 
     return translated
 
 
-def _provided_targets(
-    subcommand: str,
-    args: list[str],
-    legacy_arguments: dict[str, str],
-) -> set[str]:
+def _provided_targets(args: list[str], legacy_arguments: dict[str, str]) -> set[str]:
     """Return current logical targets explicitly present in one command invocation."""
     targets: set[str] = set()
     for arg in args:
         if arg == "--":
             break
-        option = arg.partition("=")[0]
-        if _legacy_replacement(subcommand, option, legacy_arguments) is not None:
+        if arg.partition("=")[0] in legacy_arguments:
             continue
         target = _target_for_option(_normalise_option(arg))
         if target:
             targets.add(target)
     return targets
-
-
-def _legacy_replacement(subcommand: str, option: str, legacy_arguments: dict[str, str]) -> str | None:
-    """Return a canonical option for one deprecated spelling, if any."""
-    if subcommand == "track" and option.startswith("--tracker."):
-        parameter_name = option.removeprefix("--tracker.")
-        return _tracker_parameter_replacement(parameter_name)
-    return legacy_arguments.get(option)
-
-
-def _tracker_parameter_replacement(parameter_name: str) -> str:
-    """Map one legacy tracker option, preserving its old boolean toggle behavior.
-
-    The parameter is looked up under its tracker ``__init__`` name but emitted
-    under the abbreviated CLI name, because the unabbreviated path no longer
-    exists on the parser.
-    """
-    replacement = f"--tracker_params.{_abbreviate_parameter_name(parameter_name)}"
-    for tracker_id in BaseTracker._registered_trackers():
-        tracker_info = BaseTracker._lookup_tracker(tracker_id)
-        if tracker_info is None or parameter_name not in tracker_info.parameters:
-            continue
-        parameter = tracker_info.parameters[parameter_name]
-        if parameter.param_type is bool:
-            return f"{replacement}={'false' if parameter.default_value else 'true'}"
-        break
-    return replacement
 
 
 def _target_for_option(option: str) -> str:

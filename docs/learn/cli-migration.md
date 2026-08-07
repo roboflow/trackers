@@ -19,7 +19,7 @@ warning states its scheduled removal release: the current version plus 0.3.
 ## Track command
 
 Use dotted paths for grouped detection, filtering, output, visualization, and
-tracker parameters. `--display` remains a flat action.
+tracker options. `--display` remains a flat action.
 
 ```text
 trackers track \
@@ -27,13 +27,22 @@ trackers track \
     --detection.model rfdetr-base \
     --detection.confidence 0.3 \
     --filters.classes [person,car] \
-    --tracker_params.lost_track_buffer 40 \
+    --tracker sort \
+    --tracker.lost_track_buffer 40 \
     --output.video tracked.mp4 \
     --show.boxes false
 ```
 
-Boolean tracker parameters now take an explicit value. For example, the legacy
-`--tracker.enable_cmc` toggle becomes `--tracker_params.enable_cmc false`.
+The algorithm and its parameters share one group, mirroring `--detection.model`
+and the rest of the detection options. `--tracker sort` is shorthand for
+`--tracker.name sort`; both spellings are supported and neither warns.
+
+Boolean tracker parameters now take an explicit value: `--tracker.enable_cmc true` or `--tracker.enable_cmc false`. Develop's bare `--tracker.enable_cmc`
+flag turned camera motion compensation **off**, since the parameter defaults to
+`True`, so the bare spelling still maps to `false` and warns. Prefer the
+explicit value; it says what it does. The same applies to
+`--tracker.instant_first_frame_activation`.
+
 As in develop, specify either a model or a precomputed MOT file, not both.
 
 | Legacy argument                 | Current argument                  |
@@ -45,7 +54,8 @@ As in develop, specify either a model or a precomputed MOT file, not both.
 | `--model.api_key`               | `--detection.api_key`             |
 | `--classes`                     | `--filters.classes`               |
 | `--track_ids`                   | `--filters.track_ids`             |
-| `--tracker.<name>`              | `--tracker_params.<name>`         |
+| `--tracker`                     | `--tracker` (unchanged)           |
+| `--tracker.<name>`              | `--tracker.<name>`                |
 | `-o`, `--output`                | `--output.video`                  |
 | `--mot-output`                  | `--output.mot_results`            |
 | `--overwrite`                   | `--output.overwrite`              |
@@ -76,17 +86,18 @@ work. Comma-separated strings remain available as a warning-emitting alias.
 
 Tracker parameter names abbreviate their standard leading token on the command
 line: `minimum_` becomes `min_` and `maximum_` becomes `max_`. Domain words such
-as `threshold` stay spelled out. The unabbreviated paths remain as
-warning-emitting aliases, and `--tracker.<name>` maps to the abbreviated
-`--tracker_params.<name>`.
+as `threshold` stay spelled out. Every develop parameter path whose spelling did
+not change keeps working as-is, without a warning; the unabbreviated paths remain
+as warning-emitting aliases.
 
-| Legacy argument                                            | Current argument                                       |
-| ---------------------------------------------------------- | ------------------------------------------------------ |
-| `--tracker_params.minimum_consecutive_frames`              | `--tracker_params.min_consecutive_frames`              |
-| `--tracker_params.minimum_iou_threshold`                   | `--tracker_params.min_iou_threshold`                   |
-| `--tracker_params.minimum_iou_threshold_first_assoc`       | `--tracker_params.min_iou_threshold_first_assoc`       |
-| `--tracker_params.minimum_iou_threshold_second_assoc`      | `--tracker_params.min_iou_threshold_second_assoc`      |
-| `--tracker_params.minimum_iou_threshold_unconfirmed_assoc` | `--tracker_params.min_iou_threshold_unconfirmed_assoc` |
+| Legacy argument                                     | Current argument                                |
+| --------------------------------------------------- | ----------------------------------------------- |
+| `--tracker.minimum_consecutive_frames`              | `--tracker.min_consecutive_frames`              |
+| `--tracker.minimum_iou_threshold`                   | `--tracker.min_iou_threshold`                   |
+| `--tracker.minimum_iou_threshold_first_assoc`       | `--tracker.min_iou_threshold_first_assoc`       |
+| `--tracker.minimum_iou_threshold_second_assoc`      | `--tracker.min_iou_threshold_second_assoc`      |
+| `--tracker.minimum_iou_threshold_unconfirmed_assoc` | `--tracker.min_iou_threshold_unconfirmed_assoc` |
+| `--tracker.iou`                                     | `--tracker.iou_variant`                         |
 
 These short forms are **CLI aliases only**. The Python constructor keywords are
 unchanged, so `ByteTrackTracker(minimum_iou_threshold=0.3)` stays correct, and
@@ -128,20 +139,6 @@ Use underscores in canonical names. Hyphenated spellings are accepted as
 equivalents, so `--detection.mot-file` and `--detection.mot_file` mean the
 same thing.
 
-## Pre-merge PR aliases
-
-These paths came from the earlier jsonargparse implementation on this branch,
-not from the develop argparse CLI. They remain warning-emitting aliases while
-the semantic names transition.
-
-| Earlier PR path          | Intended CLI path      |
-| ------------------------ | ---------------------- |
-| `--detection.detections` | `--detection.mot_file` |
-| `--out.output`           | `--output.video`       |
-| `--out.mot_results`      | `--output.mot_results` |
-| `--out.overwrite`        | `--output.overwrite`   |
-| `--vis.display`          | `--display`            |
-
 For example, replace:
 
 ```text
@@ -164,7 +161,8 @@ source: source.mp4
 detection:
   model: rfdetr-base
   confidence: 0.3
-tracker_params:
+tracker:
+  name: bytetrack
   lost_track_buffer: 40
 output:
   video: tracked.mp4

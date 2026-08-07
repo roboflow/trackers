@@ -146,6 +146,9 @@ class TrackerOptions:
     :func:`_init_tracker` maps the short CLI name back to the long keyword.
 
     Attributes:
+        name: Tracking algorithm ID. Discoverable via
+            ``BaseTracker._registered_trackers()``. ``--tracker <id>`` is the
+            shorthand spelling of ``--tracker.name <id>``.
         lost_track_buffer: Frames to keep a lost track before discarding.
         frame_rate: Source frame rate for time-based logic.
         track_activation_threshold: Detection score needed to spawn a track.
@@ -166,6 +169,7 @@ class TrackerOptions:
             Applies to all trackers. Defaults to ``iou``.
     """
 
+    name: str = DEFAULT_TRACKER
     lost_track_buffer: int | None = None
     frame_rate: float | None = None
     track_activation_threshold: float | None = None
@@ -258,8 +262,7 @@ def track_command(
     source: str | None = None,
     detection: DetectionOptions | None = None,
     filters: FilterOptions | None = None,
-    tracker: str = DEFAULT_TRACKER,
-    tracker_params: TrackerOptions | None = None,
+    tracker: TrackerOptions | None = None,
     output: OutputOptions | None = None,
     display: bool = False,
     show: ShowOptions | None = None,
@@ -271,9 +274,7 @@ def track_command(
             directory. Required unless ``detection.mot_file`` is supplied.
         detection: Detection model and inference options.
         filters: Class and track-ID filters applied to detections and tracks.
-        tracker: Tracking algorithm ID. Discoverable via
-            ``BaseTracker._registered_trackers()``.
-        tracker_params: Optional tracker parameter overrides; only fields
+        tracker: Algorithm ID plus optional parameter overrides; only fields
             matching the chosen tracker's ``__init__`` are forwarded.
         output: Output paths.
         display: Show a live preview window during tracking.
@@ -286,6 +287,8 @@ def track_command(
         detection = DetectionOptions()
     if filters is None:
         filters = FilterOptions()
+    if tracker is None:
+        tracker = TrackerOptions()
     if output is None:
         output = OutputOptions()
     if show is None:
@@ -321,6 +324,14 @@ def track_command(
     if mot_results:
         _validate_output_path(mot_results, overwrite=overwrite)
 
+    # Built before the detection model so an unknown tracker ID is rejected
+    # without first paying for a model download and load.
+    try:
+        tracker_obj = _init_tracker(tracker)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
     if mot_file is not None:
         model_obj: AnyModel | None = None
         detections_data: dict | None = load_mot_file(mot_file)
@@ -332,11 +343,6 @@ def track_command(
 
     class_filter = _resolve_class_filter(classes, class_names)
     track_id_filter = _resolve_track_id_filter(track_ids)
-    try:
-        tracker_obj = _init_tracker(tracker, tracker_params)
-    except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
 
     if source is not None:
         return _run_with_source(
@@ -609,11 +615,12 @@ def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Dete
     return dets
 
 
-def _init_tracker(tracker_id: str, params: TrackerOptions | None) -> BaseTracker:
+def _init_tracker(params: TrackerOptions | None) -> BaseTracker:
     """Create a tracker instance from the registry.
 
-    Only fields the chosen tracker accepts are forwarded; ``None`` values are
-    always dropped so the tracker's own defaults apply.
+    ``params.name`` selects the algorithm; every other field is a parameter
+    override. Only fields the chosen tracker accepts are forwarded; ``None``
+    values are always dropped so the tracker's own defaults apply.
 
     Abbreviated CLI names are resolved back to their tracker ``__init__``
     keyword before the forwarding check, so ``min_iou_threshold`` reaches the
@@ -622,21 +629,21 @@ def _init_tracker(tracker_id: str, params: TrackerOptions | None) -> BaseTracker
     own default. ``iou_variant`` is the same kind of alias for ``iou``.
 
     Args:
-        tracker_id: Registered tracker name (e.g. ``bytetrack``, ``sort``).
-        params: Optional tracker parameter overrides.
+        params: Tracker selection and parameter overrides.
 
     Returns:
         Initialised tracker instance.
 
     Raises:
-        ValueError: If ``tracker_id`` is not registered.
+        ValueError: If ``params.name`` is not registered.
     """
+    raw = asdict(params) if params is not None else {}
+    tracker_id = raw.pop("name", DEFAULT_TRACKER)
     info = BaseTracker._lookup_tracker(tracker_id)
     if info is None:
         available = ", ".join(BaseTracker._registered_trackers())
         raise ValueError(f"Unknown tracker: '{tracker_id}'. Available: {available}")
 
-    raw = asdict(params) if params is not None else {}
     iou_variant = raw.pop("iou_variant", None)
     accepted = set(info.parameters)
     kwargs = {}

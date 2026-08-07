@@ -93,14 +93,14 @@ Trackers assign stable IDs to detections across frames, maintaining object ident
 
 === "CLI"
 
-    Select a tracker with `--tracker` and tune its behavior with `--tracker_params.*` arguments.
+    Select a tracker with `--tracker` and tune its behavior with `--tracker.*` arguments.
 
     ```text
     trackers track \
         --source source.mp4 \
         --tracker bytetrack \
-        --tracker_params.lost_track_buffer 60 \
-        --tracker_params.min_consecutive_frames 5
+        --tracker.lost_track_buffer 60 \
+        --tracker.min_consecutive_frames 5
     ```
 
     CLI parameter names abbreviate the standard leading token: `minimum_` becomes `min_` and `maximum_` becomes `max_`. Domain words such as `threshold` stay spelled out, and the Python constructor names are unchanged.
@@ -397,27 +397,27 @@ All arguments accepted by the `trackers track` command.
       <td><code>bytetrack</code></td>
     </tr>
     <tr>
-      <td><code>--tracker_params.lost_track_buffer</code></td>
+      <td><code>--tracker.lost_track_buffer</code></td>
       <td>Frames to retain a track without detections. Higher values improve occlusion handling but risk ID drift.</td>
       <td><code>30</code></td>
     </tr>
     <tr>
-      <td><code>--tracker_params.track_activation_threshold</code></td>
+      <td><code>--tracker.track_activation_threshold</code></td>
       <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives.</td>
       <td><code>0.25</code></td>
     </tr>
     <tr>
-      <td><code>--tracker_params.min_consecutive_frames</code></td>
+      <td><code>--tracker.min_consecutive_frames</code></td>
       <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
       <td><code>3</code></td>
     </tr>
     <tr>
-      <td><code>--tracker_params.min_iou_threshold</code></td>
+      <td><code>--tracker.min_iou_threshold</code></td>
       <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
       <td><code>0.3</code></td>
     </tr>
     <tr>
-      <td><code>--tracker_params.iou_variant</code></td>
+      <td><code>--tracker.iou_variant</code></td>
       <td>IoU similarity metric for data association. Options: <code>iou</code>, <code>giou</code>, <code>diou</code>, <code>ciou</code>, <code>biou</code>. Applies to all trackers.</td>
       <td><code>iou</code></td>
     </tr>

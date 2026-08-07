@@ -45,20 +45,20 @@ class TestConfigFileSupport:
     def test_config_value_applied_to_tracker(self, track_parser: ArgumentParser, tmp_path: Path) -> None:
         """YAML --config value is parsed into the track_command() namespace."""
         cfg = tmp_path / "run.yaml"
-        cfg.write_text(yaml.dump({"tracker": "sort"}))
+        cfg.write_text(yaml.dump({"tracker": {"name": "sort"}}))
 
         ns = track_parser.parse_args(["--config", str(cfg)])
 
-        assert ns.tracker == "sort"
+        assert ns.tracker.name == "sort"
 
     def test_cli_arg_overrides_config_value(self, track_parser: ArgumentParser, tmp_path: Path) -> None:
         """Explicit CLI arg takes precedence over the --config file value."""
         cfg = tmp_path / "run.yaml"
-        cfg.write_text(yaml.dump({"tracker": "sort"}))
+        cfg.write_text(yaml.dump({"tracker": {"name": "sort"}}))
 
-        ns = track_parser.parse_args(["--config", str(cfg), "--tracker", "bytetrack"])
+        ns = track_parser.parse_args(["--config", str(cfg), "--tracker.name", "bytetrack"])
 
-        assert ns.tracker == "bytetrack"
+        assert ns.tracker.name == "bytetrack"
 
     def test_nested_dataclass_field_in_config(self, track_parser: ArgumentParser, tmp_path: Path) -> None:
         """Nested DetectionOptions fields can be set via --config."""
@@ -147,45 +147,11 @@ class TestCliMigration:
         with pytest.raises(ArgumentError, match=option):
             parser.parse_args([option])
 
-    def test_pr_era_paths_map_to_semantic_names(self) -> None:
-        """Temporary jsonargparse paths remain deprecated aliases."""
-        with pytest.warns(FutureWarning, match=r"--detection\.detections.*--detection\.mot_file"):
-            args = _translate_legacy_args(
-                [
-                    "track",
-                    "--detection.detections",
-                    "detections.txt",
-                    "--out.output",
-                    "tracked.mp4",
-                ]
-            )
-
-        assert args == [
-            "track",
-            "--detection.mot_file",
-            "detections.txt",
-            "--output.video",
-            "tracked.mp4",
-        ]
-
-    def test_pr_era_overwrite_path_maps_to_output_group(self) -> None:
-        """The temporary output overwrite path targets the canonical output field."""
-        with pytest.warns(FutureWarning, match=r"--out\.overwrite.*--output\.overwrite"):
-            args = _translate_legacy_args(["track", "--out.overwrite"])
-
-        assert args == ["track", "--output.overwrite"]
-
     @pytest.mark.parametrize(
         ("source", "target"),
         [
             (["track", "--detections", "detections.txt"], ["track", "--detection.mot_file", "detections.txt"]),
-            (
-                ["track", "--detection.detections", "detections.txt"],
-                ["track", "--detection.mot_file", "detections.txt"],
-            ),
-            (["track", "--vis.display"], ["track", "--display"]),
             (["track", "--overwrite"], ["track", "--output.overwrite"]),
-            (["track", "--out.overwrite"], ["track", "--output.overwrite"]),
         ],
     )
     def test_evidenced_track_aliases_map_to_intended_cli(
@@ -193,7 +159,7 @@ class TestCliMigration:
         source: list[str],
         target: list[str],
     ) -> None:
-        """Develop and PR-era aliases map to the intended semantic CLI."""
+        """Develop aliases map to the intended semantic CLI."""
         with pytest.warns(FutureWarning):
             assert _translate_legacy_args(source) == target
 
@@ -202,7 +168,6 @@ class TestCliMigration:
         [
             ["track", "--detection.model", "rfdetr-base", "--detection.mot_file", "detections.txt"],
             ["track", "--model", "rfdetr-base", "--detections", "detections.txt"],
-            ["track", "--model", "rfdetr-base", "--detection.detections", "detections.txt"],
         ],
     )
     def test_explicit_model_and_mot_file_are_mutually_exclusive(self, args: list[str]) -> None:
@@ -265,9 +230,9 @@ class TestCliMigration:
             "--detection.model=rfdetr-base",
             "--detection.confidence",
             "0.3",
-            "--tracker_params.lost_track_buffer",
+            "--tracker.lost_track_buffer",
             "40",
-            "--tracker_params.enable_cmc=false",
+            "--tracker.enable_cmc=false",
             "--output.mot_results",
             "tracks.txt",
             "--show.boxes",
@@ -279,8 +244,8 @@ class TestCliMigration:
 
         assert parsed.detection.model == "rfdetr-base"
         assert parsed.detection.confidence == pytest.approx(0.3)
-        assert parsed.tracker_params.lost_track_buffer == 40
-        assert parsed.tracker_params.enable_cmc is False
+        assert parsed.tracker.lost_track_buffer == 40
+        assert parsed.tracker.enable_cmc is False
         assert parsed.output.mot_results == Path("tracks.txt")
         assert parsed.show.boxes is False
 
@@ -466,28 +431,28 @@ class TestTrackerParameterAbbreviations:
         ("unabbreviated", "abbreviated"),
         [
             pytest.param(
-                "--tracker_params.minimum_consecutive_frames",
-                "--tracker_params.min_consecutive_frames",
+                "--tracker.minimum_consecutive_frames",
+                "--tracker.min_consecutive_frames",
                 id="consecutive_frames",
             ),
             pytest.param(
-                "--tracker_params.minimum_iou_threshold",
-                "--tracker_params.min_iou_threshold",
+                "--tracker.minimum_iou_threshold",
+                "--tracker.min_iou_threshold",
                 id="iou_threshold",
             ),
             pytest.param(
-                "--tracker_params.minimum_iou_threshold_first_assoc",
-                "--tracker_params.min_iou_threshold_first_assoc",
+                "--tracker.minimum_iou_threshold_first_assoc",
+                "--tracker.min_iou_threshold_first_assoc",
                 id="first_assoc",
             ),
             pytest.param(
-                "--tracker_params.minimum_iou_threshold_second_assoc",
-                "--tracker_params.min_iou_threshold_second_assoc",
+                "--tracker.minimum_iou_threshold_second_assoc",
+                "--tracker.min_iou_threshold_second_assoc",
                 id="second_assoc",
             ),
             pytest.param(
-                "--tracker_params.minimum_iou_threshold_unconfirmed_assoc",
-                "--tracker_params.min_iou_threshold_unconfirmed_assoc",
+                "--tracker.minimum_iou_threshold_unconfirmed_assoc",
+                "--tracker.min_iou_threshold_unconfirmed_assoc",
                 id="unconfirmed_assoc",
             ),
         ],
@@ -498,12 +463,12 @@ class TestTrackerParameterAbbreviations:
         abbreviated: str,
     ) -> None:
         """Every renamed tracker parameter keeps a warning-emitting alias."""
-        with pytest.warns(FutureWarning, match=r"is deprecated; use --tracker_params\.min_"):
+        with pytest.warns(FutureWarning, match=r"is deprecated; use --tracker\.min_"):
             assert _translate_legacy_args(["track", unabbreviated, "0.3"]) == ["track", abbreviated, "0.3"]
 
     def test_current_short_names_do_not_warn(self) -> None:
         """The canonical short spelling is not treated as a legacy argument."""
-        args = ["track", "--tracker_params.min_iou_threshold", "0.3"]
+        args = ["track", "--tracker.min_iou_threshold", "0.3"]
 
         with warnings.catch_warnings():
             warnings.simplefilter("error", FutureWarning)
@@ -514,7 +479,53 @@ class TestTrackerParameterAbbreviations:
         with pytest.warns(FutureWarning, match=r"--tracker\.minimum_consecutive_frames"):
             args = _translate_legacy_args(["track", "--tracker.minimum_consecutive_frames", "5"])
 
-        assert args == ["track", "--tracker_params.min_consecutive_frames", "5"]
+        assert args == ["track", "--tracker.min_consecutive_frames", "5"]
+
+    def test_develop_iou_parameter_maps_to_the_variant_field(self) -> None:
+        """``--tracker.iou`` is renamed rather than left to argparse prefix matching."""
+        with pytest.warns(FutureWarning, match=r"--tracker\.iou.*--tracker\.iou_variant"):
+            args = _translate_legacy_args(["track", "--tracker.iou", "giou"])
+
+        assert args == ["track", "--tracker.iou_variant", "giou"]
+
+    def test_develop_bare_boolean_flag_becomes_an_explicit_false(self) -> None:
+        """A develop ``store_false`` flag keeps meaning "turn this off"."""
+        with pytest.warns(FutureWarning, match=r"--tracker\.enable_cmc"):
+            args = _translate_legacy_args(["track", "--tracker.enable_cmc"])
+
+        assert args == ["track", "--tracker.enable_cmc=false"]
+
+    @pytest.mark.parametrize(
+        ("arguments", "expected"),
+        [
+            pytest.param(["--tracker.enable_cmc=true"], True, id="inline_true"),
+            pytest.param(["--tracker.enable_cmc=false"], False, id="inline_false"),
+            pytest.param(["--tracker.enable_cmc", "false"], False, id="separate_false"),
+        ],
+    )
+    def test_explicit_boolean_values_pass_through_and_parse(
+        self,
+        arguments: list[str],
+        expected: bool,
+    ) -> None:
+        """The current explicit-value syntax must not collect a second value."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", FutureWarning)
+            args = _translate_legacy_args(["track", *arguments])
+
+        assert args == ["track", *arguments]
+        assert parser.parse_args(args[1:]).tracker.enable_cmc is expected
+
+    def test_unchanged_parameter_names_are_not_deprecated(self) -> None:
+        """A develop parameter whose spelling never changed stays warning-free."""
+        args = ["track", "--tracker.lost_track_buffer", "40"]
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", FutureWarning)
+            assert _translate_legacy_args(args) == args
 
     def test_unabbreviated_and_short_names_cannot_be_combined(self) -> None:
         """Mixed spellings cannot silently choose a value for one parameter."""
@@ -522,9 +533,9 @@ class TestTrackerParameterAbbreviations:
             _translate_legacy_args(
                 [
                     "track",
-                    "--tracker_params.minimum_iou_threshold",
+                    "--tracker.minimum_iou_threshold",
                     "0.3",
-                    "--tracker_params.min_iou_threshold",
+                    "--tracker.min_iou_threshold",
                     "0.4",
                 ]
             )
@@ -534,9 +545,9 @@ class TestTrackerParameterAbbreviations:
         parser = _CLIParser(exit_on_error=False)
         parser.add_function_arguments(track_command)
 
-        parsed = parser.instantiate_classes(parser.parse_args(["--tracker_params.min_iou_threshold", "0.42"]))
+        parsed = parser.instantiate_classes(parser.parse_args(["--tracker.min_iou_threshold", "0.42"]))
 
-        assert parsed.tracker_params.min_iou_threshold == pytest.approx(0.42)
+        assert parsed.tracker.min_iou_threshold == pytest.approx(0.42)
 
 
 class TestBooleanOptionSyntax:
@@ -583,7 +594,7 @@ class TestBooleanOptionSyntax:
 
 
 class TestTrackerChoices:
-    """The tracker registry is the accept list for --tracker."""
+    """The tracker registry is the accept list for --tracker.name."""
 
     @pytest.mark.parametrize("tracker_id", BaseTracker._registered_trackers())
     def test_every_registered_tracker_is_accepted(self, tracker_id: str) -> None:
@@ -591,9 +602,9 @@ class TestTrackerChoices:
         parser = _CLIParser(exit_on_error=False)
         parser.add_function_arguments(track_command)
 
-        parsed = parser.parse_args(["--tracker", tracker_id])
+        parsed = parser.parse_args(["--tracker.name", tracker_id])
 
-        assert parsed.tracker == tracker_id
+        assert parsed.tracker.name == tracker_id
 
     def test_unknown_tracker_is_rejected_while_parsing(self) -> None:
         """A mistyped tracker fails before track_command can load a detection model."""
@@ -601,7 +612,7 @@ class TestTrackerChoices:
         parser.add_function_arguments(track_command)
 
         with pytest.raises(ArgumentError, match=r"invalid choice: 'nosuchtracker'"):
-            parser.parse_args(["--tracker", "nosuchtracker"])
+            parser.parse_args(["--tracker.name", "nosuchtracker"])
 
     def test_default_tracker_is_sourced_from_the_track_module(self) -> None:
         """The CLI default mirrors track.DEFAULT_TRACKER rather than a duplicated literal."""
@@ -610,4 +621,45 @@ class TestTrackerChoices:
 
         parsed = parser.parse_args([])
 
-        assert parsed.tracker == DEFAULT_TRACKER
+        assert parsed.tracker.name == DEFAULT_TRACKER
+
+
+class TestTrackerShorthand:
+    """``--tracker <id>`` stays the short spelling of ``--tracker.name <id>``."""
+
+    @pytest.mark.parametrize(
+        ("arguments", "expected"),
+        [
+            pytest.param(["--tracker", "sort"], ["--tracker.name", "sort"], id="separate_value"),
+            pytest.param(["--tracker=ocsort"], ["--tracker.name=ocsort"], id="inline_value"),
+            pytest.param(
+                ["--tracker.min_iou_threshold", "0.4"],
+                ["--tracker.min_iou_threshold", "0.4"],
+                id="parameter_path_untouched",
+            ),
+            pytest.param(
+                ['--tracker={"name": "sort"}'],
+                ['--tracker={"name": "sort"}'],
+                id="json_group_untouched",
+            ),
+        ],
+    )
+    def test_shorthand_expands_to_the_name_field(self, arguments: list[str], expected: list[str]) -> None:
+        """The shorthand targets the name field without disturbing other spellings."""
+        assert _translate_legacy_args(["track", *arguments]) == ["track", *expected]
+
+    def test_shorthand_does_not_warn(self) -> None:
+        """``--tracker`` is a supported spelling, not a deprecated one."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", FutureWarning)
+            assert _translate_legacy_args(["track", "--tracker", "sort"]) == ["track", "--tracker.name", "sort"]
+
+    def test_shorthand_parses_into_tracker_options(self) -> None:
+        """The expanded shorthand populates the TrackerOptions selector."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+        args = _translate_legacy_args(["track", "--tracker", "ocsort"])
+
+        parsed = parser.instantiate_classes(parser.parse_args(args[1:]))
+
+        assert parsed.tracker.name == "ocsort"
