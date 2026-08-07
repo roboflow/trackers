@@ -133,6 +133,7 @@ nav:
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
     - Tune Trackers: learn/tune.md
+    - McByte Benchmarks: learn/mcbyte-benchmark.md
     - Detection Quality Matters: learn/detection-quality.md
     - State Estimators: learn/state-estimators.md
     - IoU Variants: learn/iou.md

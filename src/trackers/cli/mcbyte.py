@@ -6,6 +6,32 @@
 
 """Run McByte on complete benchmark test sets and save MOTChallenge-format results.
 
+Usage
+-----
+
+::
+
+    trackers mcbyte --dataset=[mot17,soccernet] --device=cuda
+
+Options come from the :func:`benchmark_command` signature, the way every
+``trackers`` subcommand is built, so the shared conventions hold here too:
+``--cmc-downscale`` and ``--cmc_downscale`` are the same option, each boolean has
+a ``--no_`` half, and ``--config run.yaml`` supplies the same keys from a file.
+Datasets are selected as one list; the repeated spelling is ``--dataset+ mot17
+--dataset+ soccernet``, since a bare repeated ``--dataset`` overwrites.
+
+Dataset roots are supplied through ``--datasets``, keyed by the same names
+``--dataset`` selects. A config file is the readable spelling::
+
+    # run.yaml
+    dataset: [mot17]
+    datasets:
+      mot17:
+        detection_root: /data/detections/MOT17/test
+        image_root: /data/datasets/MOT17/test
+
+    trackers mcbyte --config run.yaml
+
 Supported datasets
 ------------------
 
@@ -17,11 +43,12 @@ Supported datasets
 Expected directory layout
 -------------------------
 
-NOTE: detection_root and image_root in the DATASETS dictionary below must be set
-in accordance with your files on a disk or server. See the instructions below for
-more details.
+NOTE: every dataset needs a ``detection_root`` and an ``image_root`` matching
+your files on a disk or server. Neither has a built-in value, so both are
+supplied per run through ``--datasets`` or a ``--config`` file. See the
+instructions below for more details.
 
-This example script assumes the following dataset organization.
+The layout below is what those two roots are expected to point at.
 
 Detection files
 ^^^^^^^^^^^^^^^
@@ -83,31 +110,37 @@ the remaining sequences.
 
 from __future__ import annotations
 
-import argparse
 import gc
 import logging
+import sys
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, TextIO
+from typing import TYPE_CHECKING, Literal, TextIO
 
-import cv2
-import numpy as np
-import supervision as sv
-import torch
-
-from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
+# ``CMCMethod`` is the only non-stdlib name needed while the module is imported:
+# jsonargparse resolves ``benchmark_command``'s annotations when it builds the
+# parser, so a type reaching the signature cannot be deferred. It costs nothing
+# beyond the ``trackers`` package itself, which importing this module implies.
 from trackers.utils.cmc import CMCMethod
 
+if TYPE_CHECKING:
+    import numpy as np
+    import supervision as sv
+
+    from trackers.core.mcbyte.tracker import McByteTracker
+
 DetectionFileFormat = Literal["xyxy", "mot"]
+# Selectable dataset names. Kept in step with the ``DATASETS`` keys below, which
+# the type annotation cannot be derived from: jsonargparse turns this alias into
+# the ``--dataset`` accept list, so it has to be a literal type.
+DatasetName = Literal["mot17", "dancetrack", "sportsmot", "soccernet"]
 DEFAULT_OUTPUT_ROOT = Path("outputs/mcbyte_benchmarks")
 
 MOT17_EXISTING = ("01", "03", "06", "07", "08", "12", "14")
 MOT17_MISSING = ("02", "04", "05", "09", "10", "11", "13")
 MOT17_SUFFIXES = ("FRCNN", "SDP", "DPM")
-
-SUPPORTED_CMC_METHODS = ("orb", "sift", "sparseOptFlow", "ecc")
 
 
 @dataclass(frozen=True)
@@ -119,48 +152,61 @@ class DetectionRecord:
 
 
 @dataclass(frozen=True)
+class DatasetPaths:
+    """Where one dataset's files live, supplied per run rather than per checkout.
+
+    This is the whole of what ``--datasets`` accepts. Everything else about a
+    dataset — how its detection files are parsed, how its sequences are named —
+    stays in :data:`DATASETS`, because it is a property of the benchmark rather
+    than of the machine the benchmark runs on.
+
+    Attributes:
+        detection_root: Directory holding one detection ``.txt`` per sequence.
+        image_root: Directory holding one frame directory per sequence.
+    """
+
+    detection_root: Path
+    image_root: Path
+
+
+@dataclass(frozen=True)
 class DatasetConfig:
     """Dataset-specific paths and parsing behavior.
 
     Each dataset defines where detections and frames are located,
     how detections should be parsed,
     and any dataset-specific conventions.
+
+    The two roots default to ``None`` because no value can be right for every
+    machine; :func:`resolve_datasets` fills them from what the run supplied.
     """
 
     name: str
-    detection_root: Path
-    image_root: Path
     detection_format: DetectionFileFormat
+    detection_root: Path | None = None
+    image_root: Path | None = None
     frame_rate: float = 30.0
     mot17_layout: bool = False
     soccernet_filename: bool = False
     confidence_override: float | None = None
 
 
-DATASETS: dict[str, DatasetConfig] = {
+DATASETS: dict[DatasetName, DatasetConfig] = {
     "mot17": DatasetConfig(
         name="mot17",
-        detection_root=Path(""),
-        image_root=Path(""),
         detection_format="xyxy",
         mot17_layout=True,
     ),
     "dancetrack": DatasetConfig(
         name="dancetrack",
-        detection_root=Path(""),
-        image_root=Path(""),
         detection_format="xyxy",
     ),
     "sportsmot": DatasetConfig(
         name="sportsmot",
-        detection_root=Path(""),
-        image_root=Path(""),
         detection_format="xyxy",
     ),
     "soccernet": DatasetConfig(
         name="soccernet",
-        detection_root=Path(""),
-        image_root=Path(""),
         detection_format="mot",
         soccernet_filename=True,
         # Preserves the old SoccerNet runner. Set to None to read column 7.
@@ -169,58 +215,106 @@ DATASETS: dict[str, DatasetConfig] = {
 }
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--dataset",
-        choices=sorted(DATASETS),
-        action="append",
-        default=None,
-        help="Dataset to run; repeat as needed. Omit to run all datasets.",
-    )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="auto",
-        help=(
-            "Device for SAM + Cutie, e.g. 'cuda', 'cpu', or 'mps'. The default "
-            "'auto' resolves to CUDA when available, otherwise CPU; MPS is "
-            "never auto-selected (measured ~an order of magnitude slower than "
-            "CPU for this pipeline) and must be requested explicitly."
-        ),
-    )
-    parser.add_argument(
-        "--enable-isolated-mask-matching",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--output-root",
-        type=Path,
-        default=DEFAULT_OUTPUT_ROOT,
-    )
-    parser.add_argument("--skip-existing", action="store_true")
-    parser.add_argument("--disable-cmc", action="store_true")
-    parser.add_argument(
-        "--cmc-method",
-        type=str,
-        default="sparseOptFlow",
-        choices=SUPPORTED_CMC_METHODS,
-        help="Camera-motion compensation method.",
-    )
-    parser.add_argument("--cmc-downscale", type=int, default=6)
-    parser.add_argument("--keep-partial-results", action="store_true")
-    return parser.parse_args()
+def _unknown_datasets_error(datasets: dict[str, DatasetPaths] | None) -> str:
+    """Return the problem with a ``--datasets`` mapping's keys, if any.
+
+    A key naming no known dataset would otherwise be accepted and then quietly
+    ignored, which is the worst way for a mistyped root to fail: the run starts,
+    and only the "please configure" error much later hints that the paths never
+    landed. jsonargparse does not validate mapping keys against a ``Literal``,
+    so the check is made here.
+
+    Args:
+        datasets: Roots per dataset name, as supplied by the run.
+
+    Returns:
+        One error message, or an empty string when every key names a dataset.
+
+    Examples:
+        >>> _unknown_datasets_error(None)
+        ''
+        >>> _unknown_datasets_error({"mot18": None})
+        "Unknown --datasets entry 'mot18'. Known datasets: mot17, dancetrack, sportsmot, soccernet."
+    """
+    unknown = [name for name in datasets or {} if name not in DATASETS]
+    if not unknown:
+        return ""
+    entries = ", ".join(repr(name) for name in unknown)
+    noun = "entry" if len(unknown) == 1 else "entries"
+    return f"Unknown --datasets {noun} {entries}. Known datasets: {', '.join(DATASETS)}."
 
 
-def validate_args(args: argparse.Namespace) -> None:
-    """Validate global runtime arguments."""
-    if args.cmc_downscale <= 0:
-        raise ValueError("cmc-downscale must be positive.")
-    if args.device.startswith("cuda") and not torch.cuda.is_available():
-        raise RuntimeError("CUDA was requested, but CUDA PyTorch is unavailable.")
-    if args.device.startswith("mps") and not torch.backends.mps.is_available():
-        raise RuntimeError("MPS was requested, but MPS PyTorch is unavailable.")
+def resolve_datasets(datasets: dict[str, DatasetPaths] | None = None) -> dict[DatasetName, DatasetConfig]:
+    """Return the dataset table with the run's roots merged over it.
+
+    Only ``detection_root`` and ``image_root`` are taken from ``datasets``;
+    every other field keeps the built-in value, so detection parsing stays
+    driven by :data:`DATASETS` and cannot be reconfigured from a config file.
+
+    Values are read by attribute rather than unpacked, because the same mapping
+    arrives as :class:`DatasetPaths` from a Python caller and as an equivalent
+    namespace from a parser that has not instantiated its classes yet.
+
+    Args:
+        datasets: Roots per dataset name. Names absent from the mapping, and
+            ``None`` for the mapping itself, leave the built-in entry as it is.
+
+    Returns:
+        A copy of :data:`DATASETS`, with the supplied roots applied.
+
+    Raises:
+        KeyError: If a key names no known dataset. Reach for
+            :func:`_unknown_datasets_error` first to report that as CLI usage.
+
+    Examples:
+        >>> merged = resolve_datasets({"mot17": DatasetPaths(Path("dets"), Path("frames"))})
+        >>> merged["mot17"].detection_root == Path("dets")
+        True
+        >>> merged["mot17"].mot17_layout
+        True
+        >>> resolve_datasets()["mot17"].detection_root is None
+        True
+    """
+    resolved = dict(DATASETS)
+    for name, paths in (datasets or {}).items():
+        if name not in resolved:
+            raise KeyError(_unknown_datasets_error({name: paths}))
+        resolved[name] = replace(  # type: ignore[index]
+            resolved[name],  # type: ignore[index]
+            detection_root=Path(paths.detection_root),
+            image_root=Path(paths.image_root),
+        )
+    return resolved
+
+
+def _runtime_error(device: str, cmc_downscale: int) -> str:
+    """Return the first problem with the global runtime arguments, if any.
+
+    Args:
+        device: Requested torch device.
+        cmc_downscale: Requested camera-motion-compensation downscale factor.
+
+    Returns:
+        One error message, or an empty string when the arguments are usable.
+
+    Examples:
+        >>> _runtime_error("cpu", 0)
+        'cmc_downscale must be positive.'
+        >>> _runtime_error("cpu", 6)
+        ''
+    """
+    if cmc_downscale <= 0:
+        return "cmc_downscale must be positive."
+    if not device.startswith(("cuda", "mps")):
+        return ""
+
+    import torch
+
+    if device.startswith("cuda") and not torch.cuda.is_available():
+        return "CUDA was requested, but CUDA PyTorch is unavailable."
+    if device.startswith("mps") and not torch.backends.mps.is_available():
+        return "MPS was requested, but MPS PyTorch is unavailable."
+    return ""
 
 
 def configure_logging(run_root: Path) -> logging.Logger:
@@ -249,6 +343,8 @@ def sequence_name(detection_file: Path, config: DatasetConfig) -> str:
 
 def image_directory(sequence: str, config: DatasetConfig) -> Path:
     """Resolve the sequence frame directory."""
+    if config.image_root is None:
+        raise ValueError(f"DATASETS['{config.name}'] has no image_root; supply one with --datasets.")
     directory_name = f"{sequence}-FRCNN" if config.mot17_layout else sequence
     return config.image_root / directory_name / "img1"
 
@@ -262,6 +358,8 @@ def read_detection_file(
     XYXY format: frame,x1,y1,x2,y2,confidence
     MOT format:  frame,id,left,top,width,height,confidence,...
     """
+    import numpy as np
+
     grouped: dict[int, list[DetectionRecord]] = defaultdict(list)
 
     with detection_file.open("r", encoding="utf-8") as file:
@@ -308,6 +406,9 @@ def read_detection_file(
 
 def build_detections(records: list[DetectionRecord]) -> sv.Detections:
     """Create Supervision detections from parsed records."""
+    import numpy as np
+    import supervision as sv
+
     if not records:
         return sv.Detections.empty()
     return sv.Detections(
@@ -335,6 +436,8 @@ def find_frame_path(image_dir: Path, frame_number: int) -> Path:
 
 def load_rgb_frame(frame_path: Path) -> np.ndarray:
     """Load one frame and convert OpenCV BGR channels to RGB."""
+    import cv2
+
     frame_bgr = cv2.imread(str(frame_path))
     if frame_bgr is None:
         raise RuntimeError(f"cv2.imread failed for {frame_path}.")
@@ -351,6 +454,8 @@ def create_tracker(
     cmc_downscale: int,
 ) -> McByteTracker:
     """Create a fresh full McByte tracker for one sequence."""
+    from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
+
     return McByteTracker(
         frame_rate=frame_rate,
         enable_cmc=enable_cmc,
@@ -387,6 +492,8 @@ def cleanup_tracker(
     sequence: str,
 ) -> None:
     """Reset state, collect Python objects, and release cached accelerator memory."""
+    import torch
+
     if tracker is not None:
         try:
             tracker.reset()
@@ -486,9 +593,11 @@ def run_dataset(
     result file. Missing or failed sequences are recorded while processing
     continues with the remaining sequences.
     """
-    if config.detection_root == Path("") or config.image_root == Path(""):
+    if config.detection_root is None or config.image_root is None:
         raise ValueError(
-            f"Please configure DATASETS['{config.name}'] detection_root and image_root before running this script."
+            f"Please configure DATASETS['{config.name}'] detection_root and image_root before running this script, "
+            f"or supply them per run with "
+            f'--datasets=\'{{"{config.name}": {{"detection_root": ..., "image_root": ...}}}}\'.'
         )
     if not config.detection_root.is_dir():
         raise NotADirectoryError(config.detection_root)
@@ -498,6 +607,11 @@ def run_dataset(
     detection_files = sorted(config.detection_root.glob("*.txt"))
     if not detection_files:
         raise FileNotFoundError(f"No detections in {config.detection_root}.")
+
+    # Imported after the layout checks so a misconfigured dataset fails without
+    # paying for torch, and before the loop so the ``except`` clause below can
+    # resolve the name when a sequence actually raises.
+    import torch
 
     completed = skipped = failed = 0
     for index, detection_file in enumerate(detection_files, start=1):
@@ -566,39 +680,83 @@ def prepare_mot17_submission(
             (submission_dir / f"MOT17-{number}-{suffix}.txt").touch(exist_ok=True)
 
 
-def main() -> None:
-    """Run all selected datasets and summarize sequence failures."""
-    args = parse_args()
-    validate_args(args)
+def benchmark_command(
+    dataset: list[DatasetName] | None = None,
+    datasets: dict[str, DatasetPaths] | None = None,
+    device: str = "auto",
+    enable_isolated_mask_matching: bool = False,
+    output_root: Path = DEFAULT_OUTPUT_ROOT,
+    skip_existing: bool = False,
+    enable_cmc: bool = True,
+    cmc_method: CMCMethod = "sparseOptFlow",
+    cmc_downscale: int = 6,
+    keep_partial_results: bool = False,
+) -> int:
+    """Run all selected datasets and summarize sequence failures.
 
+    Args:
+        dataset: Datasets to run, as a list: ``--dataset=[mot17,soccernet]``.
+            ``None`` runs every dataset in ``DATASETS``.
+        datasets: Where each dataset's files live, keyed by the same names
+            ``dataset`` selects, each entry holding a ``detection_root`` and an
+            ``image_root``. Neither root has a built-in value, so a dataset is
+            runnable only once its entry is supplied, as JSON on the command
+            line — ``--datasets='{"mot17": {"detection_root": "/data/dets",
+            "image_root": "/data/frames"}}'`` — or as the same mapping in a
+            ``--config`` file, which is the readable spelling and the one the
+            module docstring shows.
+        device: Device for SAM + Cutie, e.g. ``cuda``, ``cpu``, or ``mps``. The
+            default ``auto`` resolves to CUDA when available, otherwise CPU; MPS
+            is never auto-selected (measured ~an order of magnitude slower than
+            CPU for this pipeline) and must be requested explicitly.
+        enable_isolated_mask_matching: Match masks in isolation. Negate with
+            ``--no_enable_isolated_mask_matching``.
+        output_root: Directory holding one timestamped run directory per run.
+        skip_existing: Skip a sequence whose result file is already present.
+        enable_cmc: Compensate for camera motion. Negate with
+            ``--no_enable_cmc``.
+        cmc_method: Camera-motion compensation method.
+        cmc_downscale: Frame downscale factor applied before compensation.
+        keep_partial_results: Keep the ``.partial`` file a failed sequence
+            leaves behind instead of deleting it.
+
+    Returns:
+        Exit code: ``0`` on success, ``1`` on validation error.
+    """
+    error = _runtime_error(device, cmc_downscale) or _unknown_datasets_error(datasets)
+    if error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    dataset_table = resolve_datasets(datasets)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    isolation = "isolation" if args.enable_isolated_mask_matching else "no_isolation"
-    run_root = args.output_root / f"{timestamp}__{isolation}"
+    isolation = "isolation" if enable_isolated_mask_matching else "no_isolation"
+    run_root = output_root / f"{timestamp}__{isolation}"
     run_root.mkdir(parents=True, exist_ok=False)
     logger = configure_logging(run_root)
 
-    selected = args.dataset if args.dataset is not None else list(DATASETS)
+    selected = dataset if dataset is not None else list(dataset_table)
     logger.info("Run root: %s", run_root)
     logger.info("Datasets: %s", selected)
-    logger.info("Device: %s", args.device)
-    logger.info("Isolation: %s", args.enable_isolated_mask_matching)
+    logger.info("Device: %s", device)
+    logger.info("Isolation: %s", enable_isolated_mask_matching)
 
     total_completed = total_skipped = total_failed = 0
 
     for name in selected:
-        config = DATASETS[name]
+        config = dataset_table[name]
         raw_dir = run_root / name / "raw"
         try:
             completed, skipped, failed = run_dataset(
                 config=config,
                 output_dir=raw_dir,
-                device=args.device,
-                enable_isolated_mask_matching=args.enable_isolated_mask_matching,
-                enable_cmc=not args.disable_cmc,
-                cmc_method=args.cmc_method,
-                cmc_downscale=args.cmc_downscale,
-                skip_existing=args.skip_existing,
-                keep_partial_results=args.keep_partial_results,
+                device=device,
+                enable_isolated_mask_matching=enable_isolated_mask_matching,
+                enable_cmc=enable_cmc,
+                cmc_method=cmc_method,
+                cmc_downscale=cmc_downscale,
+                skip_existing=skip_existing,
+                keep_partial_results=keep_partial_results,
                 logger=logger,
             )
         except Exception:
@@ -623,7 +781,4 @@ def main() -> None:
         total_skipped,
         total_failed,
     )
-
-
-if __name__ == "__main__":
-    main()
+    return 0

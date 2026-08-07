@@ -206,6 +206,16 @@ Ideas for speeding up the full pipeline, from least to most invasive:
 
 Each option can change association output and tracking metrics. Benchmark on your own data before committing to a setting, especially when input resolution or scene type differs from SportsMOT 720p.
 
+## Benchmarking
+
+To run McByte over a complete benchmark test set (MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking) and write one MOTChallenge-format result file per sequence, use the `trackers mcbyte` CLI command:
+
+```text
+trackers mcbyte --dataset=[mot17,soccernet] --device=cuda
+```
+
+See the [McByte Benchmarks guide](../learn/mcbyte-benchmark.md) for how to supply dataset paths and read the CLI reference.
+
 ## Reference
 
 Stanczyk, T., Yoon, S., and Bremond, F. (2025). No Train Yet Gain: Towards Generic Multi-Object Tracking in Sports and Beyond. [arXiv:2506.01373](https://arxiv.org/abs/2506.01373). Original implementation: [tstanczyk95/McByte](https://github.com/tstanczyk95/McByte).

@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 import warnings
 from argparse import ArgumentError
 from pathlib import Path
@@ -17,6 +19,8 @@ import pytest
 import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser
 
+from trackers.cli._legacy import _LEGACY_ARGUMENTS
+from trackers.cli._parser import _SUBCOMMANDS
 from trackers.cli.__main__ import (
     _CLIParser,
     _translate_legacy_args,
@@ -132,6 +136,17 @@ class TestCliMigration:
             "--output.mot_results",
             "tracks.txt",
         ]
+
+    def test_a_subcommand_without_legacy_spellings_still_normalises(self) -> None:
+        """A new subcommand reaches the hyphen sweep and its empty legacy table.
+
+        Both halves fail silently or loudly if a registration site is missed:
+        an absent ``_SUBCOMMANDS`` entry returns argv unnormalised, so half the
+        spellings of every option stop parsing, and an absent
+        ``_LEGACY_ARGUMENTS`` entry raises ``KeyError`` from an unguarded
+        subscript before any option is examined.
+        """
+        assert _translate_legacy_args(["mcbyte", "--cmc-downscale", "2"]) == ["mcbyte", "--cmc_downscale", "2"]
 
     @pytest.mark.parametrize(
         ("hyphenated", "canonical"),
@@ -796,3 +811,32 @@ class TestTrackerShorthand:
         parsed = parser.instantiate_classes(parser.parse_args(args[1:]))
 
         assert parsed.tracker.name == "ocsort"
+
+
+class TestEntryPointCentralisation:
+    """Every CLI under ``src/`` is reachable through the one ``trackers`` command."""
+
+    def test_every_subcommand_is_dispatchable_and_translatable(self) -> None:
+        """The dispatch table and the two per-subcommand tables cannot drift apart.
+
+        ``_SUBCOMMANDS`` gates argv normalisation and ``_LEGACY_ARGUMENTS`` is
+        subscripted unguarded, so a command present in one table and missing
+        from another half-works rather than failing cleanly.
+        """
+        dispatched = {"track", "eval", "tune", "download", "mcbyte"}
+
+        assert set(_SUBCOMMANDS) == dispatched
+        assert set(_LEGACY_ARGUMENTS) == dispatched
+
+    def test_the_entry_point_imports_without_torch(self) -> None:
+        """Importing the CLI must not drag in the optional ``mask`` extra.
+
+        ``torch`` ships only in the ``mask`` extra, so a default install would
+        stop having a CLI at all if a subcommand imported it at module level.
+        """
+        # A subprocess, because this test session has already imported torch.
+        script = "import sys; import trackers.cli.__main__; print('torch' in sys.modules)"
+
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)  # noqa: S603
+
+        assert result.stdout.strip() == "False"
