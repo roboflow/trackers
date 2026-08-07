@@ -243,7 +243,10 @@ class McByteTracker(BaseTracker):
             association.
         cmc_method: Camera motion compensation method.
         cmc_downscale: Image downscale factor used during camera motion
-            estimation.
+            estimation. Defaults to 6 based on the 1280x720 SportsMOT
+            validation aggregate-performance criterion; it is not a strict
+            per-clip guarantee. Tune it for other workloads or pass 2 to
+            preserve the previous conservative behavior.
         instant_first_frame_activation: Whether tracklets created on the first
             frame receive confirmed tracker IDs immediately.
         state_estimator_class: State estimator class used by newly created
@@ -299,7 +302,7 @@ class McByteTracker(BaseTracker):
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
         cmc_method: CMCMethod = "sparseOptFlow",
-        cmc_downscale: int = 2,
+        cmc_downscale: int = 6,
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,

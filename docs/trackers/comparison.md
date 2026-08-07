@@ -1,11 +1,11 @@
 ---
-title: SORT vs ByteTrack vs OC-SORT vs BoT-SORT vs C-BIoU — MOT Benchmark Comparison | Trackers
-description: Side-by-side benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
+title: Tracker Comparison — MOT Benchmark Results | Trackers
+description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
 ---
 
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search.
+This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row.
 
 !!! info "Benchmark version"
 
@@ -38,8 +38,9 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |   SORT    |   58.4   |   69.9   |   67.2   |
     | ByteTrack |   60.1   |   73.2   |   74.1   |
     |  OC-SORT  |   61.9   |   76.4   |   76.0   |
-    | BoT-SORT  | **63.7** |   78.7   | **79.2** |
-    |  C-BIoU   |   63.0   | **79.1** |   77.4   |
+    | BoT-SORT  |   63.7   |   78.7   | **79.2** |
+    |  C-BIoU   |   63.0   |   79.1   |   77.4   |
+    |  McByte   | **64.1** | **79.7** |   79.1   |
 
 === "Tuned"
 
@@ -123,8 +124,9 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |   SORT    |   70.8   |   68.9   |   95.5   |
     | ByteTrack |   73.0   |   72.5   |   96.4   |
     |  OC-SORT  |   71.7   |   71.4   |   95.0   |
-    | BoT-SORT  | **73.8** | **73.4** | **96.9** |
+    | BoT-SORT  |   73.8   |   73.4   |   96.9   |
     |  C-BIoU   |   73.1   |   72.6   |   96.7   |
+    |  McByte   | **76.5** | **76.9** | **97.0** |
 
 === "Tuned"
 
@@ -209,8 +211,9 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |   SORT    |   81.6   |   76.2   |   95.1   |
     | ByteTrack |   84.0   |   78.1   | **97.8** |
     |  OC-SORT  |   78.4   |   72.6   |   94.1   |
-    | BoT-SORT  | **84.5** | **79.3** |   96.6   |
+    | BoT-SORT  |   84.5   |   79.3   |   96.6   |
     |  C-BIoU   |   82.6   |   76.6   |   97.0   |
+    |  McByte   | **85.0** | **79.9** |   97.0   |
 
 === "Tuned"
 
@@ -302,8 +305,9 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |   SORT    |   47.2   |   41.0   |   86.5   |
     | ByteTrack |   53.3   |   53.6   |   90.3   |
     |  OC-SORT  |   54.1   |   53.3   |   89.3   |
-    | BoT-SORT  | **57.8** | **57.9** | **92.2** |
-    |  C-BIoU   |   56.7   |   56.7   | **92.2** |
+    | BoT-SORT  |   57.8   |   57.9   |   92.2   |
+    |  C-BIoU   |   56.7   |   56.7   |   92.2   |
+    |  McByte   | **67.2** | **68.6** | **92.5** |
 
 === "Tuned"
 
@@ -385,8 +389,10 @@ detector following the ByteTrack procedure). The source is noted per dataset abo
 
 Best parameters per tracker and dataset were found via grid search (SORT, ByteTrack,
 OC-SORT, BoT-SORT) or Optuna (`n_trials=100`, objective HOTA, trial 0 = defaults for
-C-BIoU), selecting the configuration with the highest HOTA on the tune split. Tuning and
-evaluation always use separate data splits to reflect real-world usage:
+C-BIoU), selecting the configuration with the highest HOTA on the tune split. McByte is
+not tuned here: defaults with mask-conditioned association enabled are reported, matching
+the [McByte](mcbyte.md) page (source: [PR #513](https://github.com/roboflow/trackers/pull/513)).
+Tuning and evaluation always use separate data splits to reflect real-world usage:
 
 - Train + validation + test: tune on validation, report on test.
 - Train + validation: tune on train, report on validation.
@@ -417,7 +423,7 @@ association, which reduces ID switches on panning or handheld footage. Use BoT-S
 broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is
 small relative to the detector, so the trade-off favors identity stability over raw speed.
 
-**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet, reaches the highest tuned IDF1 and MOTA on DanceTrack, and achieves the highest IDF1 on MOT17 among the trackers listed here. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](cbiou.md) for buffer scales **b1** and **b2**.
+**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](cbiou.md) for buffer scales **b1** and **b2**.
 
 **McByte** is the choice when you want the highest identity stability and can afford optional SAM/Cutie mask dependencies. It extends BoT-SORT-style association with temporally propagated segmentation masks as an extra matching cue, requiring no per-video tuning. Reported against Trackers' BoT-SORT baseline (without re-identification) at default parameters, McByte improves HOTA and IDF1 on all four datasets in this comparison, with the largest gain on DanceTrack. Use McByte when identity consistency matters more than raw throughput or dependency footprint. See [McByte](mcbyte.md) for setup and the mask-conditioning parameters.
 
