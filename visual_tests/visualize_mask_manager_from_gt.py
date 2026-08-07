@@ -16,20 +16,40 @@ and feeds them into MaskManager with McByte timing:
 
 This is intended for manual validation of delayed mask creation, pending
 tracklets, SAM initialization/addition, Cutie propagation, and removal behavior.
+
+Usage
+-----
+
+::
+
+    python visual_tests/visualize_mask_manager_from_gt.py \\
+        --image_dir frames --gt_file gt.txt --start_frame 1 --end_frame 100
+
+Options come from the :func:`visualize_command` signature, parsed with
+jsonargparse through the shared ``trackers`` parser, so the shared conventions
+hold here too: ``--image-dir`` and ``--image_dir`` are the same option, and
+``--config run.yaml`` supplies the same keys from a file. The repeatable
+``--tracklet-id`` became a list: ``--tracklet_id='[3,7]'`` selects two
+tracklets, ``--tracklet_id+ 9`` appends a third, and ``--tracklet_id='[all]'``
+replays every tracklet, as does omitting the option.
 """
 
 from __future__ import annotations
 
-import argparse
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 import cv2
 import numpy as np
 import torch
+from jsonargparse import CLI
+from jsonargparse.typing import PositiveInt
 
+from trackers.cli.__main__ import _CLIParser, _normalise_option
 from trackers.core.mcbyte.mask_manager import MaskManager
 from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
 from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
@@ -46,54 +66,6 @@ class FrameTrackletState:
     tracklets: list[TrackletSnapshot]
     new_tracklets: list[TrackletSnapshot]
     removed_tracklet_ids: list[int]
-
-
-def parse_tracklet_id(value: str) -> int | str:
-    """Parse one ``--tracklet-id`` value."""
-    if value.lower() == "all":
-        return "all"
-
-    try:
-        tracklet_id = int(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError("--tracklet-id must be an integer or 'all'.") from exc
-
-    if tracklet_id <= 0:
-        raise argparse.ArgumentTypeError("--tracklet-id must be positive.")
-
-    return tracklet_id
-
-
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments for the GT-based MaskManager visualizer."""
-    parser = argparse.ArgumentParser(description="Visualize McByte MaskManager by replaying GT tracklets.")
-    parser.add_argument("--image-dir", type=Path, required=True, help="Directory containing input frames.")
-    parser.add_argument("--gt-file", type=Path, required=True, help="MOT-style GT file.")
-    parser.add_argument("--start-frame", type=int, required=True, help="First frame number, inclusive.")
-    parser.add_argument("--end-frame", type=int, required=True, help="Last frame number, inclusive.")
-    parser.add_argument(
-        "--tracklet-id",
-        type=parse_tracklet_id,
-        action="append",
-        default=None,
-        help=(
-            "Tracklet ID to replay. Can be repeated. "
-            "Omit this option, or pass '--tracklet-id all', to replay all tracklets."
-        ),
-    )
-    parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
-    parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--sam-model-type", type=str, default="vit_b")
-    parser.add_argument("--cutie-model-type", type=str, default="base-mega")
-    parser.add_argument("--cutie-config-path", type=Path, default=None)
-    parser.add_argument("--cutie-config-name", type=str, default="eval_config")
-    parser.add_argument(
-        "--mask-creation-bbox-overlap-threshold",
-        type=float,
-        default=0.6,
-        help="Overlap threshold above which mask creation is delayed.",
-    )
-    return parser.parse_args()
 
 
 def frame_number_to_filename(frame_number: int) -> str:
@@ -377,7 +349,20 @@ def visualize_output(
     save_rgb_image(visual, output_path)
 
 
-def main() -> None:
+def visualize_command(
+    image_dir: Path,
+    gt_file: Path,
+    start_frame: int,
+    end_frame: int,
+    tracklet_id: list[PositiveInt | Literal["all"]] | None = None,
+    output_root: Path = DEFAULT_OUTPUT_ROOT,
+    device: str = "cuda",
+    sam_model_type: str = "vit_b",
+    cutie_model_type: str = "base-mega",
+    cutie_config_path: Path | None = None,
+    cutie_config_name: str = "eval_config",
+    mask_creation_bbox_overlap_threshold: float = 0.6,
+) -> int:
     """Replay GT tracklets through MaskManager and save per-frame outputs.
 
     The script follows the original McByte execution order.
@@ -394,38 +379,71 @@ def main() -> None:
     This mirrors the timing used by the original McByte implementation while
     using ground-truth boxes and IDs to make delayed mask creation easier to
     inspect visually.
-    """
-    args = parse_args()
-    validate_frame_range(args.start_frame, args.end_frame)
 
-    selected_tracklet_ids = parse_selected_tracklet_ids(args.tracklet_id)
-    tracklets_by_frame = read_gt_tracklets(
-        gt_file=args.gt_file,
-        selected_tracklet_ids=selected_tracklet_ids,
-    )
+    Every option is spelled with underscores here, but hyphens work just as
+    well on the command line: ``--image-dir`` and ``--image_dir`` are the same
+    option.
+
+    ``tracklet_id`` is a list, so it takes the bracket syntax rather than a
+    repeated option: ``--tracklet_id=[3,7]`` selects two tracklets and
+    ``--tracklet_id+=9`` appends a third.
+
+    Args:
+        image_dir: Directory containing input frames.
+        gt_file: MOT-style GT file.
+        start_frame: First frame number, inclusive.
+        end_frame: Last frame number, inclusive.
+        tracklet_id: Tracklet IDs to replay, e.g. ``[3,7]``. Omit this option,
+            or pass ``--tracklet_id=[all]``, to replay all tracklets.
+        output_root: Root directory for timestamped outputs.
+        device: Device used by SAM and Cutie, for example ``cpu`` or ``cuda``.
+        sam_model_type: SAM model type.
+        cutie_model_type: Cutie model type.
+        cutie_config_path: Optional path to Cutie's Hydra config directory.
+        cutie_config_name: Cutie Hydra config name.
+        mask_creation_bbox_overlap_threshold: Overlap threshold above which
+            mask creation is delayed.
+
+    Returns:
+        Exit code: ``0`` on success, ``1`` on a validation error.
+    """
+    try:
+        validate_frame_range(start_frame, end_frame)
+        selected_tracklet_ids = parse_selected_tracklet_ids(tracklet_id)
+        tracklets_by_frame = read_gt_tracklets(
+            gt_file=gt_file,
+            selected_tracklet_ids=selected_tracklet_ids,
+        )
+    except (FileNotFoundError, ValueError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = args.output_root / timestamp
+    output_dir = output_root / timestamp
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    device = validate_device(args.device)
+    try:
+        device = validate_device(device)
+    except RuntimeError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
 
     mask_manager = MaskManager(
         mask_generator=SAMBoxMaskGenerator(
-            model_type=args.sam_model_type,
+            model_type=sam_model_type,
             device=device,
         ),
         mask_propagator=CutieMaskPropagator(
-            model_type=args.cutie_model_type,
-            config_path=args.cutie_config_path,
-            config_name=args.cutie_config_name,
+            model_type=cutie_model_type,
+            config_path=cutie_config_path,
+            config_name=cutie_config_name,
             device=device,
         ),
-        mask_creation_bbox_overlap_threshold=args.mask_creation_bbox_overlap_threshold,
+        mask_creation_bbox_overlap_threshold=mask_creation_bbox_overlap_threshold,
     )
 
     print(f"Selected tracklets: {'all' if selected_tracklet_ids is None else sorted(selected_tracklet_ids)}")
-    print(f"Selected frame range: {args.start_frame} to {args.end_frame}")
+    print(f"Selected frame range: {start_frame} to {end_frame}")
     print(f"Saving outputs to {output_dir}")
 
     previous_frame: np.ndarray | None = None
@@ -434,8 +452,8 @@ def main() -> None:
     previous_removed_tracklet_ids: list[int] = []
     previous_visible_tracklet_ids: set[int] = set()
 
-    for frame_number in range(args.start_frame, args.end_frame + 1):
-        frame_path = args.image_dir / frame_number_to_filename(frame_number)
+    for frame_number in range(start_frame, end_frame + 1):
+        frame_path = image_dir / frame_number_to_filename(frame_number)
         frame = load_rgb_image(frame_path)
 
         mask_output = mask_manager.get_updated_masks(
@@ -479,7 +497,22 @@ def main() -> None:
         previous_visible_tracklet_ids = {tracklet.tracker_id for tracklet in current_state.tracklets}
 
     print(f"Done. Outputs saved to {output_dir}")
+    return 0
+
+
+def main() -> int:
+    """Parse command-line arguments and run the GT-based MaskManager visualizer."""
+    args = [_normalise_option(arg) for arg in sys.argv[1:]]
+    rc = CLI(
+        visualize_command,
+        args=args,
+        as_positional=False,
+        prog="python visual_tests/visualize_mask_manager_from_gt.py",
+        description="Visualize McByte MaskManager by replaying GT tracklets.",
+        parser_class=_CLIParser,
+    )
+    return int(rc) if rc is not None else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

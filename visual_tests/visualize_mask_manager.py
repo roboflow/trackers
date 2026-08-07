@@ -13,11 +13,29 @@ This script validates the real MaskManager orchestration:
 - remove masks for terminated tracklets.
 
 It intentionally calls MaskManager.get_updated_masks(), not Cutie directly.
+
+Usage
+-----
+
+::
+
+    python visual_tests/visualize_mask_manager.py \\
+        --image_dir frames --start_file 000001.jpg --end_file 000010.jpg \\
+        --box='[[10,20,110,220]]'
+
+Options come from the :func:`visualize_command` signature, parsed with
+jsonargparse through the shared ``trackers`` parser, so the shared conventions
+hold here too: ``--image-dir`` and ``--image_dir`` are the same option, and
+``--config run.yaml`` supplies the same keys from a file. The repeatable
+options became lists: boxes are ``--box='[[x1,y1,x2,y2]]'``, while lifecycle
+events are ``--add_at='["frame.jpg:x1,y1,x2,y2"]'`` and
+``--remove_at='["frame.jpg:3"]'``. Every one of them also appends with ``+``,
+as in ``--add_at+ frame.jpg:10,20,110,220``.
 """
 
 from __future__ import annotations
 
-import argparse
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -26,7 +44,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
+from jsonargparse import CLI
 
+from trackers.cli.__main__ import _CLIParser, _normalise_option
 from trackers.core.mcbyte.mask_manager import MaskManager
 from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
 from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
@@ -38,7 +58,7 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 @dataclass(frozen=True)
 class AddTrackletEvent:
-    """Manual new-tracklet event parsed from ``--add-at``."""
+    """Manual new-tracklet event parsed from ``--add_at``."""
 
     frame_file: str
     xyxy: tuple[float, float, float, float]
@@ -46,7 +66,7 @@ class AddTrackletEvent:
 
 @dataclass(frozen=True)
 class RemoveTrackletEvent:
-    """Manual removed-tracklet event parsed from ``--remove-at``."""
+    """Manual removed-tracklet event parsed from ``--remove_at``."""
 
     frame_file: str
     tracker_id: int
@@ -56,7 +76,7 @@ def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
     """Parse one command-line bounding box in ``x1,y1,x2,y2`` format."""
     values = [float(value) for value in box.split(",")]
     if len(values) != 4:
-        raise argparse.ArgumentTypeError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
+        raise ValueError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
     return values[0], values[1], values[2], values[3]
 
 
@@ -64,13 +84,13 @@ def parse_add_tracklet_event(event: str) -> AddTrackletEvent:
     """Parse ``filename:x1,y1,x2,y2`` add-tracklet event."""
     parts = event.split(":")
     if len(parts) != 2:
-        raise argparse.ArgumentTypeError("Add event must have format filename:x1,y1,x2,y2.")
+        raise ValueError("Add event must have format filename:x1,y1,x2,y2.")
 
     frame_file, box_str = parts
     try:
         xyxy = parse_xyxy_box(box_str)
-    except (ValueError, argparse.ArgumentTypeError) as exc:
-        raise argparse.ArgumentTypeError("Add event must have format filename:x1,y1,x2,y2.") from exc
+    except ValueError as exc:
+        raise ValueError("Add event must have format filename:x1,y1,x2,y2.") from exc
 
     return AddTrackletEvent(frame_file=frame_file, xyxy=xyxy)
 
@@ -79,58 +99,18 @@ def parse_remove_tracklet_event(event: str) -> RemoveTrackletEvent:
     """Parse ``filename:tracklet_id`` remove-tracklet event."""
     parts = event.split(":")
     if len(parts) != 2:
-        raise argparse.ArgumentTypeError("Remove event must have format filename:tracklet_id.")
+        raise ValueError("Remove event must have format filename:tracklet_id.")
 
     frame_file, tracker_id_str = parts
     try:
         tracker_id = int(tracker_id_str)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError("Remove event must have format filename:tracklet_id.") from exc
+        raise ValueError("Remove event must have format filename:tracklet_id.") from exc
 
     if tracker_id <= 0:
-        raise argparse.ArgumentTypeError("tracklet_id must be a positive integer.")
+        raise ValueError("tracklet_id must be a positive integer.")
 
     return RemoveTrackletEvent(frame_file=frame_file, tracker_id=tracker_id)
-
-
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments for the MaskManager visualizer."""
-    parser = argparse.ArgumentParser(description="Visualize McByte MaskManager with SAM + Cutie.")
-    parser.add_argument("--image-dir", type=Path, required=True)
-    parser.add_argument("--start-file", type=str, required=True)
-    parser.add_argument("--end-file", type=str, required=True)
-    parser.add_argument(
-        "--box",
-        type=parse_xyxy_box,
-        action="append",
-        required=True,
-        help="Initial tracklet box on the first selected frame: x1,y1,x2,y2. Can be repeated.",
-    )
-    parser.add_argument(
-        "--add-at",
-        type=parse_add_tracklet_event,
-        action="append",
-        default=[],
-        help=(
-            "Add a new tracklet from the given frame box. Format: filename:x1,y1,x2,y2. "
-            "The box is treated as a tracker output on that frame and added by MaskManager "
-            "before propagating to the next frame."
-        ),
-    )
-    parser.add_argument(
-        "--remove-at",
-        type=parse_remove_tracklet_event,
-        action="append",
-        default=[],
-        help=("Remove a tracklet before propagating to the given frame. Format: filename:tracklet_id."),
-    )
-    parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
-    parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--sam-model-type", type=str, default="vit_b")
-    parser.add_argument("--cutie-model-type", type=str, default="base-mega")
-    parser.add_argument("--cutie-config-path", type=Path, default=None)
-    parser.add_argument("--cutie-config-name", type=str, default="eval_config")
-    return parser.parse_args()
 
 
 def list_selected_frame_paths(image_dir: Path, start_file: str, end_file: str) -> list[Path]:
@@ -362,7 +342,20 @@ def visualize_output(
     save_rgb_image(visual, output_path)
 
 
-def main() -> None:
+def visualize_command(
+    image_dir: Path,
+    start_file: str,
+    end_file: str,
+    box: list[tuple[float, float, float, float]],
+    add_at: list[str] | None = None,
+    remove_at: list[str] | None = None,
+    output_root: Path = DEFAULT_OUTPUT_ROOT,
+    device: str = "cuda",
+    sam_model_type: str = "vit_b",
+    cutie_model_type: str = "base-mega",
+    cutie_config_path: Path | None = None,
+    cutie_config_name: str = "eval_config",
+) -> int:
     """Run MaskManager visual validation and save per-frame outputs.
 
     The script follows the original McByte execution order.
@@ -377,57 +370,99 @@ def main() -> None:
            events consumed by MaskManager on frame ``t+1``.
 
     This mirrors the timing used by the original McByte implementation.
+
+    Every option is also accepted with hyphens in place of underscores, so
+    ``--start-file`` and ``--start_file`` name the same thing.
+
+    Args:
+        image_dir: Directory holding the frame images.
+        start_file: Filename of the first frame to process.
+        end_file: Filename of the last frame to process.
+        box: Initial tracklet boxes on the first selected frame, given as one
+            list rather than a repeated option: ``--box='[[x1,y1,x2,y2]]'`` for
+            one box, ``--box='[[10,20,110,220],[30,40,130,240]]'`` for two, and
+            ``--box+='[[30,40,130,240]]'`` to append to boxes already given.
+        add_at: New tracklets to add from the given frame boxes, each in
+            ``filename:x1,y1,x2,y2`` format. A box is treated as a tracker
+            output on that frame and added by MaskManager before propagating to
+            the next frame. Given as one list,
+            ``--add_at='["frame.jpg:10,20,110,220"]'``, or appended one at a
+            time with ``--add_at+ frame.jpg:10,20,110,220``.
+        remove_at: Tracklets to remove before propagating to the given frame,
+            each in ``filename:tracklet_id`` format. Given as one list,
+            ``--remove_at='["frame.jpg:3"]'``, or appended one at a time with
+            ``--remove_at+ frame.jpg:3``.
+        output_root: Directory holding one timestamped run directory per run.
+        device: Device used by SAM and Cutie, for example ``cuda`` or ``cpu``.
+        sam_model_type: SAM model type.
+        cutie_model_type: Cutie model type.
+        cutie_config_path: Directory holding the Cutie config; ``None`` uses the
+            config shipped with the installed Cutie package.
+        cutie_config_name: Name of the Cutie config to load.
+
+    Returns:
+        Exit code: ``0`` on success, ``1`` on validation error.
     """
-    args = parse_args()
+    try:
+        add_events = [parse_add_tracklet_event(event) for event in add_at or []]
+        remove_events = [parse_remove_tracklet_event(event) for event in remove_at or []]
 
-    frame_paths = list_selected_frame_paths(
-        image_dir=args.image_dir,
-        start_file=args.start_file,
-        end_file=args.end_file,
-    )
-    if len(frame_paths) < 2:
-        raise ValueError("At least two frames are required for MaskManager validation.")
+        frame_paths = list_selected_frame_paths(
+            image_dir=image_dir,
+            start_file=start_file,
+            end_file=end_file,
+        )
+        if len(frame_paths) < 2:
+            raise ValueError("At least two frames are required for MaskManager validation.")
 
-    validate_lifecycle_events(
-        frame_paths=frame_paths,
-        add_events=args.add_at,
-        remove_events=args.remove_at,
-    )
+        validate_lifecycle_events(
+            frame_paths=frame_paths,
+            add_events=add_events,
+            remove_events=remove_events,
+        )
 
-    add_events_by_file = group_add_events_by_source_frame(frame_paths, args.add_at)
-    remove_events_by_file = group_remove_events(args.remove_at)
+        add_events_by_file = group_add_events_by_source_frame(frame_paths, add_events)
+        remove_events_by_file = group_remove_events(remove_events)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = args.output_root / timestamp
-    output_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = output_root / timestamp
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    device = validate_device(args.device)
+        resolved_device = validate_device(device)
+    except (FileNotFoundError, ValueError, RuntimeError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
 
     mask_manager = MaskManager(
         mask_generator=SAMBoxMaskGenerator(
-            model_type=args.sam_model_type,
-            device=device,
+            model_type=sam_model_type,
+            device=resolved_device,
         ),
         mask_propagator=CutieMaskPropagator(
-            model_type=args.cutie_model_type,
-            config_path=args.cutie_config_path,
-            config_name=args.cutie_config_name,
-            device=device,
+            model_type=cutie_model_type,
+            config_path=cutie_config_path,
+            config_name=cutie_config_name,
+            device=resolved_device,
         ),
     )
 
-    first_frame = load_rgb_image(frame_paths[0])
+    try:
+        first_frame = load_rgb_image(frame_paths[0])
 
-    active_tracklets: dict[int, TrackletSnapshot] = {
-        index + 1: TrackletSnapshot(
-            tracker_id=index + 1,
-            xyxy=validate_and_clip_xyxy_box(
-                box=box,
-                image_shape=first_frame.shape[:2],
-            ),
-        )
-        for index, box in enumerate(args.box)
-    }
+        active_tracklets: dict[int, TrackletSnapshot] = {
+            index + 1: TrackletSnapshot(
+                tracker_id=index + 1,
+                xyxy=validate_and_clip_xyxy_box(
+                    box=single_box,
+                    image_shape=first_frame.shape[:2],
+                ),
+            )
+            for index, single_box in enumerate(box)
+        }
+    except (FileNotFoundError, ValueError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
     next_tracklet_id = len(active_tracklets) + 1
 
     print(f"Selected {len(frame_paths)} frames.")
@@ -472,8 +507,8 @@ def main() -> None:
         new_tracklets_for_next_frame: list[TrackletSnapshot] = []
         removed_tracklet_ids_for_next_frame: list[int] = []
 
-        add_events = add_events_by_file.get(frame_path.name, [])
-        for event in add_events:
+        frame_add_events = add_events_by_file.get(frame_path.name, [])
+        for event in frame_add_events:
             tracklet_id = next_tracklet_id
             next_tracklet_id += 1
 
@@ -511,7 +546,26 @@ def main() -> None:
         )
 
     print(f"Done. Outputs saved to {output_dir}")
+    return 0
+
+
+def main() -> int:
+    """Parse visualization arguments with jsonargparse and run MaskManager validation.
+
+    Returns:
+        Exit code from :func:`visualize_command`.
+    """
+    args = [_normalise_option(arg) for arg in sys.argv[1:]]
+    rc = CLI(
+        visualize_command,
+        args=args,
+        as_positional=False,
+        prog="python visual_tests/visualize_mask_manager.py",
+        description="Visualize McByte MaskManager with SAM + Cutie.",
+        parser_class=_CLIParser,
+    )
+    return int(rc) if rc is not None else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -37,33 +37,40 @@ Both runs save:
 
 The full mask-conditioned run additionally overlays the propagated masks and
 displays mask lifecycle information.
+
+Related options are grouped, so each one is spelled with a dotted prefix, for
+example ``--sequence.image_dir`` and ``--mask.device``. Both separators are
+accepted in the option name: ``--sequence.image-dir`` and
+``--sequence.image_dir`` select the same option.
 """
 
 from __future__ import annotations
 
-import argparse
 import shutil
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, TextIO, cast
+from typing import Literal, TextIO
 
 import cv2
 import numpy as np
 import supervision as sv
 import torch
+from jsonargparse import CLI, ArgumentParser
 
+from trackers.cli.__main__ import _CLIParser, _normalise_option
 from trackers.core.mcbyte.masks.base import MaskOutput
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.utils.cmc import CMCMethod
 
 DEFAULT_OUTPUT_DIR = Path("visual_tests/outputs/visualize_mcbyte_from_detections")
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
-RUN_MODES = ("locked_iou", "mask_conditioned")
-SUPPORTED_CMC_METHODS = ("orb", "sift", "sparseOptFlow", "ecc")
+
+RunMode = Literal["locked_iou", "mask_conditioned"]
+RUN_MODES: tuple[RunMode, ...] = ("locked_iou", "mask_conditioned")
 
 DetectionFileFormat = Literal["mot_tlwh", "xyxy"]
-SUPPORTED_DETECTION_FORMATS = ("mot_tlwh", "xyxy")
 
 
 @dataclass(frozen=True)
@@ -74,123 +81,99 @@ class DetectionRecord:
     confidence: float
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(description=("Compare locked-IoU and mask-conditioned McByte on one sequence."))
-    parser.add_argument(
-        "--image-dir",
-        type=Path,
-        required=True,
-        help="Directory containing sequence frames.",
-    )
-    parser.add_argument(
-        "--det-file",
-        type=Path,
-        required=True,
-        help="Path to the detection file.",
-    )
-    parser.add_argument(
-        "--det-format",
-        choices=SUPPORTED_DETECTION_FORMATS,
-        default="mot_tlwh",
-        help=(
-            "Detection-file column format. "
-            "'mot_tlwh' expects "
-            "frame,id,left,top,width,height,confidence,...; "
-            "'xyxy' expects frame,x1,y1,x2,y2,confidence."
+@dataclass
+class SequenceOptions:
+    """Frames, detections, and the frame range to process.
+
+    Attributes:
+        image_dir: Directory containing sequence frames.
+        det_file: Path to the detection file.
+        start_frame: First frame number to process, inclusive.
+        end_frame: Last frame number to process, inclusive.
+        det_format: Detection-file column format. ``mot_tlwh`` expects
+            ``frame,id,left,top,width,height,confidence,...``; ``xyxy`` expects
+            ``frame,x1,y1,x2,y2,confidence``.
+        frame_rate: Sequence frame rate used to scale the lost-track buffer.
+    """
+
+    image_dir: Path
+    det_file: Path
+    start_frame: int
+    end_frame: int
+    det_format: DetectionFileFormat = "mot_tlwh"
+    frame_rate: float = 30.0
+
+
+@dataclass
+class CMCOptions:
+    """Camera-motion compensation settings shared by both runs.
+
+    Attributes:
+        enable: Enable camera motion compensation in both runs.
+        method: Camera-motion compensation method.
+        downscale: Image downscale factor used by CMC.
+    """
+
+    enable: bool = False
+    method: CMCMethod = "sparseOptFlow"
+    downscale: int = 6
+
+
+@dataclass
+class MaskOptions:
+    """Settings that only the mask-conditioned run reads.
+
+    Attributes:
+        device: Device used by SAM and Cutie in the mask-conditioned run.
+        enable_isolated_matching: Allow mask evidence to rescue isolated
+            positive-IoU pairs below the normal association threshold.
+    """
+
+    device: str = "cuda"
+    enable_isolated_matching: bool = False
+
+
+def validate_options(
+    sequence: SequenceOptions,
+    cmc: CMCOptions,
+    mask: MaskOptions,
+) -> str | None:
+    """Validate paths, frame range, device, and numeric options.
+
+    The checks are held in one table and reported in order, so the caller can
+    print the first problem and exit instead of raising at the user.
+
+    Args:
+        sequence: Frames, detections, and the frame range to process.
+        cmc: Camera-motion compensation settings.
+        mask: Settings that only the mask-conditioned run reads.
+
+    Returns:
+        Message describing the first failed check, or ``None`` when every
+        option is usable.
+    """
+    checks: tuple[tuple[bool, str], ...] = (
+        (not sequence.image_dir.is_dir(), f"Image directory does not exist: {sequence.image_dir}"),
+        (not sequence.det_file.is_file(), f"Detection file does not exist: {sequence.det_file}"),
+        (sequence.start_frame <= 0, "sequence.start_frame must be positive."),
+        (
+            sequence.end_frame < sequence.start_frame,
+            "sequence.end_frame must be greater than or equal to sequence.start_frame.",
         ),
-    )
-    parser.add_argument(
-        "--start-frame",
-        type=int,
-        required=True,
-        help="First frame number to process, inclusive.",
-    )
-    parser.add_argument(
-        "--end-frame",
-        type=int,
-        required=True,
-        help="Last frame number to process, inclusive.",
-    )
-    parser.add_argument(
-        "--frame-rate",
-        type=float,
-        default=30.0,
-        help="Sequence frame rate used to scale the lost-track buffer.",
-    )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cuda",
-        help="Device used by SAM and Cutie in the mask-conditioned run.",
-    )
-    parser.add_argument(
-        "--enable-cmc",
-        action="store_true",
-        help="Enable camera motion compensation in both runs.",
-    )
-    parser.add_argument(
-        "--cmc-method",
-        type=str,
-        default="sparseOptFlow",
-        choices=SUPPORTED_CMC_METHODS,
-        help="Camera-motion compensation method.",
-    )
-    parser.add_argument(
-        "--cmc-downscale",
-        type=int,
-        default=6,
-        help="Image downscale factor used by CMC.",
-    )
-    parser.add_argument(
-        "--modes",
-        nargs="+",
-        choices=RUN_MODES,
-        default=list(RUN_MODES),
-        help=(
-            "Tracker configurations to run. By default, both the mask-free "
-            "locked-IoU baseline and full mask-conditioned McByte are run."
-        ),
-    )
-    parser.add_argument(
-        "--enable-isolated-mask-matching",
-        action="store_true",
-        help=("Allow mask evidence to rescue isolated positive-IoU pairs below the normal association threshold."),
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=DEFAULT_OUTPUT_DIR,
-        help="Root directory for both comparison runs.",
-    )
-    return parser.parse_args()
-
-
-def validate_args(args: argparse.Namespace) -> None:
-    """Validate paths, frame range, device, and numeric arguments."""
-    if not args.image_dir.is_dir():
-        raise NotADirectoryError(f"Image directory does not exist: {args.image_dir}")
-
-    if not args.det_file.is_file():
-        raise FileNotFoundError(f"Detection file does not exist: {args.det_file}")
-
-    if args.start_frame <= 0:
-        raise ValueError("start-frame must be positive.")
-
-    if args.end_frame < args.start_frame:
-        raise ValueError("end-frame must be greater than or equal to start-frame.")
-
-    if args.frame_rate <= 0:
-        raise ValueError("frame-rate must be positive.")
-
-    if args.cmc_downscale <= 0:
-        raise ValueError("cmc-downscale must be positive.")
-
-    if args.device.startswith("cuda") and not torch.cuda.is_available():
-        raise RuntimeError(
+        (sequence.frame_rate <= 0, "sequence.frame_rate must be positive."),
+        (cmc.downscale <= 0, "cmc.downscale must be positive."),
+        (
+            mask.device.startswith("cuda") and not torch.cuda.is_available(),
             "CUDA was requested, but torch.cuda.is_available() is False. "
-            "Use --device cpu or install CUDA-enabled PyTorch."
-        )
+            "Use --mask.device cpu or install CUDA-enabled PyTorch.",
+        ),
+    )
+
+    for failed, message in checks:
+        if failed:
+            return message
+
+    return None
 
 
 def read_detection_file(
@@ -740,42 +723,131 @@ def run_mode(
     print(f"[{mode_name}] Results: {results_path}")
 
 
-def main() -> None:
-    """Run locked-IoU and full mask-conditioned McByte sequentially."""
-    args = parse_args()
-    validate_args(args)
+def compare_mcbyte_command(
+    sequence: SequenceOptions,
+    cmc: CMCOptions | None = None,
+    mask: MaskOptions | None = None,
+    modes: list[RunMode] | None = None,
+    output_dir: Path = DEFAULT_OUTPUT_DIR,
+) -> int:
+    """Run locked-IoU and full mask-conditioned McByte sequentially.
 
-    detections_by_frame = read_detection_file(
-        det_file=args.det_file,
-        detection_format=cast(DetectionFileFormat, args.det_format),
-    )
+    Args:
+        sequence: Frames, detections, and the frame range to process.
+        cmc: Camera-motion compensation settings shared by both runs.
+        mask: Settings that only the mask-conditioned run reads.
+        modes: Tracker configurations to run, given in bracket syntax such as
+            ``--modes=[locked_iou]``. By default, both the mask-free locked-IoU
+            baseline and full mask-conditioned McByte are run.
+        output_dir: Root directory for both comparison runs.
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    Returns:
+        Exit code: ``0`` on success, ``1`` on a validation error.
+    """
+    if cmc is None:
+        cmc = CMCOptions()
+    if mask is None:
+        mask = MaskOptions()
+    modes = modes or list(RUN_MODES)
 
-    print(f"Image directory: {args.image_dir}")
-    print(f"Detection file: {args.det_file}")
-    print(f"Detection format: {args.det_format}")
-    print(f"Frame range: {args.start_frame} to {args.end_frame} (inclusive)")
-    print(f"Output root: {args.output_dir}")
+    error = validate_options(sequence, cmc, mask)
+    if error is not None:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
 
-    for mode_name in args.modes:
+    try:
+        detections_by_frame = read_detection_file(
+            det_file=sequence.det_file,
+            detection_format=sequence.det_format,
+        )
+    except ValueError as parse_error:
+        print(f"Error: {parse_error}", file=sys.stderr)
+        return 1
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"Image directory: {sequence.image_dir}")
+    print(f"Detection file: {sequence.det_file}")
+    print(f"Detection format: {sequence.det_format}")
+    print(f"Frame range: {sequence.start_frame} to {sequence.end_frame} (inclusive)")
+    print(f"Output root: {output_dir}")
+
+    for mode_name in modes:
         run_mode(
             mode_name=mode_name,
             detections_by_frame=detections_by_frame,
-            image_dir=args.image_dir,
-            start_frame=args.start_frame,
-            end_frame=args.end_frame,
-            output_root=args.output_dir,
-            frame_rate=args.frame_rate,
-            device=args.device,
-            enable_cmc=args.enable_cmc,
-            cmc_method=args.cmc_method,
-            cmc_downscale=args.cmc_downscale,
-            enable_isolated_mask_matching=(args.enable_isolated_mask_matching),
+            image_dir=sequence.image_dir,
+            start_frame=sequence.start_frame,
+            end_frame=sequence.end_frame,
+            output_root=output_dir,
+            frame_rate=sequence.frame_rate,
+            device=mask.device,
+            enable_cmc=cmc.enable,
+            cmc_method=cmc.method,
+            cmc_downscale=cmc.downscale,
+            enable_isolated_mask_matching=mask.enable_isolated_matching,
         )
 
     print("\nFinished selected McByte comparison run(s).")
+    return 0
+
+
+# Option dataclasses paired with the nested CLI key each is registered under, so
+# a dotted option path cannot drift from the dataclass that defines it.
+_OPTION_GROUPS: tuple[tuple[type, str], ...] = (
+    (SequenceOptions, "sequence"),
+    (CMCOptions, "cmc"),
+    (MaskOptions, "mask"),
+)
+
+
+def _add_compare_arguments(parser: ArgumentParser) -> list[str]:
+    """Register the comparison arguments under their nested dataclass paths."""
+    added_args: list[str] = []
+    for option_class, nested_key in _OPTION_GROUPS:
+        added_args.extend(parser.add_class_arguments(option_class, nested_key))
+    parser.add_argument(
+        "--modes",
+        type=list[RunMode] | None,
+        default=None,
+        help=(
+            "Tracker configurations to run, in bracket syntax, for example "
+            "--modes=[locked_iou]. By default, both the mask-free locked-IoU "
+            "baseline and full mask-conditioned McByte are run."
+        ),
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help="Root directory for both comparison runs.",
+    )
+    added_args.extend(["modes", "output_dir"])
+    return added_args
+
+
+class _ComparisonParser(_CLIParser):
+    """Expose the option dataclasses while keeping the shared boolean syntax."""
+
+    def add_function_arguments(self, function, *args, **kwargs):  # type: ignore[override]
+        if function is compare_mcbyte_command:
+            return _add_compare_arguments(self)
+        return super().add_function_arguments(function, *args, **kwargs)
+
+
+def main() -> int:
+    """Parse the command line and run the requested McByte comparisons."""
+    args = [_normalise_option(arg) for arg in sys.argv[1:]]
+    rc = CLI(
+        compare_mcbyte_command,
+        args=args,
+        as_positional=False,
+        prog="python visual_tests/visualize_mcbyte_from_detections.py",
+        description="Compare locked-IoU and mask-conditioned McByte on one sequence.",
+        parser_class=_ComparisonParser,
+    )
+    return int(rc) if rc is not None else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
