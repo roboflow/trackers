@@ -137,7 +137,7 @@ class TestCliMigration:
 
     @pytest.mark.parametrize(
         "option",
-        ["--no-boxes", "--no-show.boxes", "--no-ids", "--no-show.ids"],
+        ["--no-show.boxes", "--no-show.ids"],
     )
     def test_negative_show_aliases_are_not_available(self, option: str) -> None:
         """Boxes and IDs use explicit boolean values instead of negative flags."""
@@ -146,6 +146,26 @@ class TestCliMigration:
 
         with pytest.raises(ArgumentError, match=option):
             parser.parse_args([option])
+
+    @pytest.mark.parametrize(
+        ("option", "replacement"),
+        [
+            pytest.param("--no-boxes", "--show.boxes=false", id="boxes"),
+            pytest.param("--no-ids", "--show.ids=false", id="ids"),
+        ],
+    )
+    def test_develop_negative_flags_map_to_explicit_false(self, option: str, replacement: str) -> None:
+        """Develop's negative flags keep working through an explicit boolean value."""
+        with pytest.warns(FutureWarning, match=re.escape(option)):
+            args = _translate_legacy_args(["track", option])
+
+        assert args == ["track", replacement]
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+        parsed = parser.parse_args(args[1:])
+
+        assert parsed.show.boxes is (option != "--no-boxes")
+        assert parsed.show.ids is (option != "--no-ids")
 
     @pytest.mark.parametrize(
         ("source", "target"),

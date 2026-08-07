@@ -61,6 +61,8 @@ _DEVELOP_TRACK_ARGUMENTS = {
     "--show-ids": "--show.ids=true",
     "--show-confidence": "--show.confidence",
     "--show-trajectories": "--show.trajectories",
+    "--no-boxes": "--show.boxes=false",
+    "--no-ids": "--show.ids=false",
 }
 
 
@@ -160,9 +162,15 @@ def _warn_legacy_cli(message: str) -> None:
 def _explicit_value_boolean_options(option_groups: Iterable[tuple[type, str]]) -> frozenset[str]:
     """Return dotted paths of boolean options that must be given an explicit value.
 
-    A boolean field defaulting to ``True`` cannot be rendered as a bare flag:
-    passing the flag would be a no-op, and only an explicit ``false`` can turn
-    the field off. Every other boolean stays a flag with a ``no-`` negation.
+    A boolean field defaulting to ``True`` is useless as a bare flag, since
+    passing it only re-asserts the default. ``ActionYesNo`` would supply a
+    ``--no-<path>`` negation for it, but the two syntaxes are mutually
+    exclusive: an option carrying that action rejects ``--show.boxes false``
+    and ``--show.boxes=false`` outright. Explicit values win because they read
+    the same on the command line as in a ``--config`` file, so these fields keep
+    value syntax and forgo the negation. Every other boolean stays a flag with a
+    ``no-`` negation, which prefixes the whole dotted path (``--no-show.masks``,
+    never ``--show.no-masks``).
 
     Deriving the paths from the dataclasses, rather than listing them here,
     means adding a boolean field, renaming one, or flipping a default to

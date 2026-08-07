@@ -12,8 +12,8 @@ in YAML configuration files.
 Semantic legacy spellings remain available during the transition. Each use
 emits a `FutureWarning` with the replacement. Do not combine a legacy argument
 and its replacement in one command; the CLI rejects that ambiguity. The
-negative `--no-boxes`, `--no-show.boxes`, `--no-ids`, and `--no-show.ids`
-aliases are removed and do not participate in this transition. Each remaining
+`--no-show.boxes` and `--no-show.ids` aliases are removed; develop's
+`--no-boxes` and `--no-ids` still work and map to an explicit `false`. Each
 warning states its scheduled removal release: the current version plus 0.3.
 
 ## Track command
@@ -45,29 +45,31 @@ explicit value; it says what it does. The same applies to
 
 As in develop, specify either a model or a precomputed MOT file, not both.
 
-| Legacy argument                 | Current argument                  |
-| ------------------------------- | --------------------------------- |
-| `--model`                       | `--detection.model`               |
-| `--detections`                  | `--detection.mot_file`            |
-| `--model.confidence`            | `--detection.confidence`          |
-| `--model.device`                | `--detection.device`              |
-| `--model.api_key`               | `--detection.api_key`             |
-| `--classes`                     | `--filters.classes`               |
-| `--track_ids`                   | `--filters.track_ids`             |
-| `--tracker`                     | `--tracker` (unchanged)           |
-| `--tracker.<name>`              | `--tracker.<name>`                |
-| `-o`, `--output`                | `--output.video`                  |
-| `--mot-output`                  | `--output.mot_results`            |
-| `--overwrite`                   | `--output.overwrite`              |
-| `--display`                     | `--display` (unchanged)           |
-| `--show-boxes`                  | `--show.boxes true`               |
-| `--no-boxes`, `--no-show.boxes` | Removed; use `--show.boxes false` |
-| `--show-masks`                  | `--show.masks`                    |
-| `--show-labels`                 | `--show.labels`                   |
-| `--show-ids`                    | `--show.ids true`                 |
-| `--no-ids`, `--no-show.ids`     | Removed; use `--show.ids false`   |
-| `--show-confidence`             | `--show.confidence`               |
-| `--show-trajectories`           | `--show.trajectories`             |
+| Legacy argument       | Current argument                  |
+| --------------------- | --------------------------------- |
+| `--model`             | `--detection.model`               |
+| `--detections`        | `--detection.mot_file`            |
+| `--model.confidence`  | `--detection.confidence`          |
+| `--model.device`      | `--detection.device`              |
+| `--model.api_key`     | `--detection.api_key`             |
+| `--classes`           | `--filters.classes`               |
+| `--track_ids`         | `--filters.track_ids`             |
+| `--tracker`           | `--tracker` (unchanged)           |
+| `--tracker.<name>`    | `--tracker.<name>`                |
+| `-o`, `--output`      | `--output.video`                  |
+| `--mot-output`        | `--output.mot_results`            |
+| `--overwrite`         | `--output.overwrite`              |
+| `--display`           | `--display` (unchanged)           |
+| `--show-boxes`        | `--show.boxes true`               |
+| `--no-boxes`          | `--show.boxes false`              |
+| `--no-show.boxes`     | Removed; use `--show.boxes false` |
+| `--show-masks`        | `--show.masks`                    |
+| `--show-labels`       | `--show.labels`                   |
+| `--show-ids`          | `--show.ids true`                 |
+| `--no-ids`            | `--show.ids false`                |
+| `--no-show.ids`       | Removed; use `--show.ids false`   |
+| `--show-confidence`   | `--show.confidence`               |
+| `--show-trajectories` | `--show.trajectories`             |
 
 ### List-valued filters
 
