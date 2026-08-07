@@ -120,18 +120,70 @@ def _develop_store_false_tracker_flags() -> frozenset[str]:
 _DEVELOP_STORE_FALSE_TRACKER_FLAGS = _develop_store_false_tracker_flags()
 
 
+def _normalise_option(arg: str) -> str:
+    """Return one argument with its option name in canonical underscore spelling.
+
+    Every ``-`` after the leading ``--`` becomes ``_``, including a leading
+    ``no-``, so ``--no-enqueue-defaults`` reaches the parser as
+    ``--no_enqueue_defaults``. Only the name is touched: an ``=`` value, a
+    following token, and anything that is not a long option are returned
+    unchanged, so ``--detection.model=rfdetr-base`` keeps its hyphen.
+
+    Args:
+        arg: One command-line argument.
+
+    Returns:
+        The argument with a normalised option name.
+
+    Examples:
+        >>> _normalise_option("--detection.mot-file")
+        '--detection.mot_file'
+        >>> _normalise_option("rfdetr-base")
+        'rfdetr-base'
+    """
+    option, separator, value = arg.partition("=")
+    if not option.startswith("--"):
+        return arg
+    normalized = f"--{option.removeprefix('--').replace('-', '_')}"
+    return f"{normalized}{separator}{value}" if separator else normalized
+
+
+def _normalised_options(arguments: dict[str, str]) -> dict[str, str]:
+    """Return one deprecation table keyed by canonical option spelling.
+
+    Lookups normalise before they hit these tables, so a table written with the
+    hyphenated spelling a user is migrating from would never match. Normalising
+    the keys makes both spellings of every deprecated option resolve, which is
+    the point: someone porting a develop command should not have to also guess
+    which separator that particular option wanted.
+
+    Args:
+        arguments: Deprecated option spellings mapped to their replacements.
+
+    Returns:
+        The same mapping with each key normalised.
+
+    Examples:
+        >>> _normalised_options({"--mot-output": "--output.mot_results"})
+        {'--mot_output': '--output.mot_results'}
+    """
+    return {_normalise_option(option): replacement for option, replacement in arguments.items()}
+
+
 _LEGACY_ARGUMENTS = {
-    "track": {**_DEVELOP_TRACK_ARGUMENTS, **_develop_tracker_parameter_arguments()},
+    "track": _normalised_options({**_DEVELOP_TRACK_ARGUMENTS, **_develop_tracker_parameter_arguments()}),
     "eval": {
         "-o": "--output",
     },
     "tune": {
         "-o": "--output",
     },
-    "download": {
-        "--list": "--list_available",
-        "-o": "--output",
-    },
+    "download": _normalised_options(
+        {
+            "--list": "--list_available",
+            "-o": "--output",
+        }
+    ),
 }
 _LEGACY_LIST_ARGUMENTS = {
     "eval": frozenset({"--metrics", "--columns"}),
@@ -140,7 +192,9 @@ _LEGACY_LIST_ARGUMENTS = {
 # Track filters that used to take one comma-separated string and now take a
 # list, matching the list-valued options of eval and tune.
 _COMMA_LIST_TRACK_ARGUMENTS = frozenset({"--filters.classes", "--filters.track_ids"})
-_DOWNLOAD_VALUE_OPTIONS = frozenset({"--dataset", "--split", "--asset", "-o", "--output", "--cache-dir", "--cache_dir"})
+_DOWNLOAD_VALUE_OPTIONS = frozenset(
+    _normalise_option(option) for option in ("--dataset", "--split", "--asset", "-o", "--output", "--cache-dir")
+)
 
 
 def _legacy_removal_version() -> str:
@@ -277,7 +331,10 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
             translated.extend(command_args[index:])
             break
         option, separator, value = arg.partition("=")
-        replacement = legacy_arguments.get(option)
+        # Look the deprecated spelling up in canonical form, so that whichever
+        # separator the user reached for resolves to the same entry. The warning
+        # still quotes what they typed.
+        replacement = legacy_arguments.get(_normalise_option(option))
         if replacement is None:
             translated.append(_normalise_option(arg))
             continue
@@ -477,7 +534,7 @@ def _translate_download_positional(args: list[str], provided_targets: set[str]) 
             expects_value = False
             continue
 
-        option = arg.partition("=")[0]
+        option = _normalise_option(arg.partition("=")[0])
         if option in _DOWNLOAD_VALUE_OPTIONS:
             expects_value = "=" not in arg
             continue
@@ -497,7 +554,7 @@ def _provided_targets(args: list[str], legacy_arguments: dict[str, str]) -> set[
     for arg in args:
         if arg == "--":
             break
-        if arg.partition("=")[0] in legacy_arguments:
+        if _normalise_option(arg.partition("=")[0]) in legacy_arguments:
             continue
         target = _target_for_option(_normalise_option(arg))
         if target:
@@ -518,19 +575,6 @@ def _target_for_option(option: str) -> str:
     target = option_name.removeprefix("--").removeprefix("no-").replace("-", "_")
     group, dot, leaf = target.rpartition(".")
     return f"{group}{dot}{leaf.removeprefix(_NEGATION_PREFIX)}"
-
-
-def _normalise_option(arg: str) -> str:
-    """Allow hyphenated spellings for option names that use underscores.
-
-    A leading ``no-`` is folded in with the rest, so the hyphenated
-    ``--no-enqueue-defaults`` reaches the parser as ``--no_enqueue_defaults``.
-    """
-    option, separator, value = arg.partition("=")
-    if not option.startswith("--"):
-        return arg
-    normalized = f"--{option.removeprefix('--').replace('-', '_')}"
-    return f"{normalized}{separator}{value}" if separator else normalized
 
 
 def _raise_for_detection_source_conflict(args: list[str]) -> None:

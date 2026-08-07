@@ -134,6 +134,12 @@ documentation spelling uses underscores.
 
 Anything after a bare `--` is passed through untouched.
 
+This holds for the deprecated spellings in the tables below too, so a develop
+command ports without also having to guess which separator each option wanted:
+`--no-boxes` and `--no_boxes` resolve alike, as do `--mot-output` and
+`--mot_output`, `--track-ids` and `--track_ids`. `--help` lists the underscore
+spelling.
+
 ## Other commands
 
 | Command    | Hyphenated spelling     | Canonical underscore spelling |

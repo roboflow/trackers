@@ -163,6 +163,26 @@ class TestCliMigration:
         assert _translate_legacy_args(["track", *arguments]) == ["track", *arguments]
 
     @pytest.mark.parametrize(
+        ("hyphenated", "underscored", "replacement"),
+        [
+            pytest.param("--no-boxes", "--no_boxes", "--show.no_boxes", id="develop_negation"),
+            pytest.param("--show-boxes", "--show_boxes", "--show.boxes", id="develop_flag"),
+            pytest.param("--mot-output", "--mot_output", "--output.mot_results", id="develop_output"),
+            pytest.param("--track-ids", "--track_ids", "--filters.track_ids", id="develop_filter"),
+        ],
+    )
+    def test_deprecated_spellings_resolve_under_either_separator(
+        self,
+        hyphenated: str,
+        underscored: str,
+        replacement: str,
+    ) -> None:
+        """A deprecated option resolves whichever separator the user reached for."""
+        for spelling in (hyphenated, underscored):
+            with pytest.warns(FutureWarning, match=re.escape(replacement)):
+                assert _translate_legacy_args(["track", spelling])[1].partition("=")[0] == replacement
+
+    @pytest.mark.parametrize(
         "option",
         ["--no-show.boxes", "--no-show.ids"],
     )
