@@ -780,6 +780,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../learn/cli-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Migration Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../learn/dynamic-frame-rate/" class="md-nav__link">
         
   
@@ -1919,7 +1947,7 @@ speed and appearance ambiguity.</p>
 
 
 <h2 id="trackers.datasets.download.download_dataset" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">trackers</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">download</span><span class="o">.</span><span class="n">download_dataset</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">asset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="n">_DEFAULT_OUTPUT_DIR</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="n">_DEFAULT_CACHE_DIR</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">trackers</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">download</span><span class="o">.</span><span class="n">download_dataset</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">asset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="n">_DEFAULT_OUTPUT_DIR</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="n">_DEFAULT_CACHE_DIR</span><span class="p">)</span></code>
 
 </h2>
 
@@ -1931,6 +1959,8 @@ speed and appearance ambiguity.</p>
 them into the output directory. Cached ZIPs are reused across runs
 so that re-extraction after deleting the output directory does not
 require re-downloading.</p>
+<p>The parameter was called <code>dataset</code> until 2.7.0. That spelling still
+works and is remapped with a <code>FutureWarning</code> until 2.10.0.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -1946,7 +1976,7 @@ require re-downloading.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>dataset</code>
+                <code>name</code>
             </td>
             <td>
                   <code><span title="str">str</span> | <a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.datasets.manifest.Dataset&lt;/code&gt;" href="#trackers.datasets.manifest.Dataset">Dataset</a></code>
@@ -2048,7 +2078,7 @@ Cached ZIPs are verified by MD5 and reused when valid.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If <code>dataset</code>, <code>split</code>, or <code>asset</code> contains an
+                <p>If <code>name</code>, <code>split</code>, or <code>asset</code> contains an
 unrecognized value.</p>
               </div>
             </td>
@@ -2061,7 +2091,7 @@ unrecognized value.</p>
     <p>Using enums for type-safe dataset, split, and asset selection:</p>
     <div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="p">,</span> <span class="n">download_dataset</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">download_dataset</span><span class="p">(</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gp">... </span>    <span class="n">dataset</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">MOT17</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gp">... </span>    <span class="n">name</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">MOT17</span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="gp">... </span>    <span class="n">split</span><span class="o">=</span><span class="p">[</span><span class="n">DatasetSplit</span><span class="o">.</span><span class="n">TRAIN</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="o">.</span><span class="n">VAL</span><span class="p">],</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="p">[</span><span class="n">DatasetAsset</span><span class="o">.</span><span class="n">ANNOTATIONS</span><span class="p">],</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="gp">... </span><span class="p">)</span>
@@ -2069,7 +2099,7 @@ unrecognized value.</p>
     <p>Using plain strings for quick, interactive use:</p>
     <div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">download_dataset</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">download_dataset</span><span class="p">(</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gp">... </span>    <span class="n">dataset</span><span class="o">=</span><span class="s2">&quot;mot17&quot;</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gp">... </span>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mot17&quot;</span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="gp">... </span>    <span class="n">split</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">],</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="gp">... </span>    <span class="n">asset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;frames&quot;</span><span class="p">,</span> <span class="s2">&quot;annotations&quot;</span><span class="p">],</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="gp">... </span>    <span class="n">output</span><span class="o">=</span><span class="s2">&quot;./datasets&quot;</span><span class="p">,</span>

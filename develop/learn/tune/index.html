@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-05-20",
+  "dateModified": "2026-08-07",
   "datePublished": "2026-05-07"
 }
 </script>
@@ -763,6 +763,34 @@
     
   
     Track Objects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Migration Guide
   
 
     
@@ -1741,9 +1769,9 @@ override the same key in <code>search_space</code> if present, and are returned 
 <div class="tabbed-block">
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers tune \
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    --tracker botsort \
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    --gt-dir ./data/gt \
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    --detections-dir ./data/detections \
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    --fixed-params &#39;{&quot;enable_cmc&quot;: false}&#39;
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    --gt_dir ./data/gt \
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    --detections_dir ./data/detections \
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    --fixed_params &#39;{&quot;enable_cmc&quot;: false}&#39;
 </span></code></pre></div>
 </div>
 </div>
@@ -1774,11 +1802,11 @@ plus common extensions (<code>.jpg</code>, <code>.png</code>, …).</p>
 <p>Tune ByteTrack and optimize <code>HOTA</code>.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>trackers tune \
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    --tracker bytetrack \
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    --gt-dir ./data/gt \
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    --detections-dir ./data/detections \
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    --gt_dir ./data/gt \
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    --detections_dir ./data/detections \
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    --objective HOTA \
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    --metrics CLEAR HOTA Identity \
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    --n-trials 50 \
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    --n_trials 50 \
 </span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    --output ./results/bytetrack-best.json
 </span></code></pre></div>
 </div>
@@ -1815,8 +1843,8 @@ plus common extensions (<code>.jpg</code>, <code>.png</code>, …).</p>
 <div class="tabbed-block">
 <div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>trackers tune \
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    --tracker bytetrack \
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    --gt-dir ./data/gt \
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    --detections-dir ./data/detections \
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    --gt_dir ./data/gt \
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    --detections_dir ./data/detections \
 </span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    --seqmap ./seqmap.txt
 </span></code></pre></div>
 </div>
@@ -1871,12 +1899,12 @@ plus common extensions (<code>.jpg</code>, <code>.png</code>, …).</p>
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--gt-dir</code></td>
+      <td><code>--gt_dir</code></td>
       <td>Directory with ground-truth MOT files (<code>{sequence}.txt</code>).</td>
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--detections-dir</code></td>
+      <td><code>--detections_dir</code></td>
       <td>Directory with detection MOT files (<code>{sequence}.txt</code>), one file per sequence.</td>
       <td>—</td>
     </tr>
@@ -1886,7 +1914,7 @@ plus common extensions (<code>.jpg</code>, <code>.png</code>, …).</p>
       <td><code>HOTA</code></td>
     </tr>
     <tr>
-      <td><code>--n-trials</code></td>
+      <td><code>--n_trials</code></td>
       <td>Number of Optuna trials to run.</td>
       <td><code>100</code></td>
     </tr>
@@ -1903,7 +1931,7 @@ plus common extensions (<code>.jpg</code>, <code>.png</code>, …).</p>
     <tr>
       <td><code>--seqmap</code></td>
       <td>Optional path to a sequence map file. When set, only listed sequences are tuned.</td>
-      <td>all files in <code>--detections-dir</code></td>
+      <td>all files in <code>--detections_dir</code></td>
     </tr>
     <tr>
       <td><code>--seed</code></td>
@@ -1911,7 +1939,7 @@ plus common extensions (<code>.jpg</code>, <code>.png</code>, …).</p>
       <td>None</td>
     </tr>
     <tr>
-      <td><code>--output</code>, <code>-o</code></td>
+      <td><code>--output</code></td>
       <td>Path to save best parameters as JSON.</td>
       <td>None</td>
     </tr>
@@ -1939,7 +1967,7 @@ plus common extensions (<code>.jpg</code>, <code>.png</code>, …).</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="May 20, 2026 16:42:47 UTC">2026-05-20</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 15:56:00 UTC">2026-08-07</span>
   </span>
 
     

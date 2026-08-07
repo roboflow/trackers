@@ -6,19 +6,19 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Install Roboflow Trackers with pip or uv. Add multi-object tracking to any detection pipeline with a single package — supports SORT, ByteTrack, OC-SORT, and BoT-SORT out of the box.">
+        <meta name="description" content="Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/install/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/cli-migration/">
       
       
-        <link rel="prev" href="../..">
+        <link rel="prev" href="../track/">
       
       
-        <link rel="next" href="../track/">
+        <link rel="next" href="../dynamic-frame-rate/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Install Roboflow Trackers — Python MOT Library | Trackers - Trackers</title>
+        <title>CLI Migration Guide | Trackers - Trackers</title>
       
     
     
@@ -129,12 +129,12 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "Install Trackers",
-  "description": "Install Roboflow Trackers with pip or uv. Add multi-object tracking to any detection pipeline with a single package — supports SORT, ByteTrack, OC-SORT, and BoT-SORT out of the box.",
-  "url": "https://trackers.roboflow.com/latest/develop/learn/install/",
+  "headline": "CLI Migration Guide",
+  "description": "Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI.",
+  "url": "https://trackers.roboflow.com/latest/develop/learn/cli-migration/",
   "mainEntityOfPage": {
     "@type": "WebPage",
-    "@id": "https://trackers.roboflow.com/latest/develop/learn/install/"
+    "@id": "https://trackers.roboflow.com/latest/develop/learn/cli-migration/"
   },
   "image": {
     "@type": "ImageObject",
@@ -161,8 +161,8 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-05-17",
-  "datePublished": "2026-01-27"
+  "dateModified": "2026-08-07",
+  "datePublished": "2026-08-07"
 }
 </script>
 
@@ -179,9 +179,9 @@
 
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
-<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/install/" />
-<meta property="og:title" content="Install Roboflow Trackers — Python MOT Library | Trackers" />
-<meta property="og:description" content="Install Roboflow Trackers with pip or uv. Add multi-object tracking to any detection pipeline with a single package — supports SORT, ByteTrack, OC-SORT, and BoT-SORT out of the box." />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/cli-migration/" />
+<meta property="og:title" content="CLI Migration Guide | Trackers" />
+<meta property="og:description" content="Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -192,8 +192,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="Install Roboflow Trackers — Python MOT Library | Trackers" />
-<meta name="twitter:description" content="Install Roboflow Trackers with pip or uv. Add multi-object tracking to any detection pipeline with a single package — supports SORT, ByteTrack, OC-SORT, and BoT-SORT out of the box." />
+<meta name="twitter:title" content="CLI Migration Guide | Trackers" />
+<meta name="twitter:description" content="Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -210,7 +210,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#install-trackers" class="md-skip">
+        <a href="#cli-migration-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -276,7 +276,7 @@
 
             </a>
             
-              Install Roboflow Trackers — Python MOT Library | Trackers
+              CLI Migration Guide | Trackers
             
           </span>
         </div>
@@ -482,7 +482,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+        <a href="../install/" class="md-tabs__link">
           
   
   
@@ -724,37 +724,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Install Trackers
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
         
   
   
@@ -770,76 +743,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quickstart" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quickstart
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#extras" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extras
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Extras">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#detection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Detection
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#development-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Development Setup
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -877,10 +780,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../cli-migration/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Migration Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -896,6 +826,98 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#track-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Track command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Track command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list-valued-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List-valued filters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#abbreviated-tracker-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Abbreviated tracker parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hyphens-and-underscores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hyphens and underscores
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#yaml-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1613,33 +1635,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quickstart" class="md-nav__link">
+  <a href="#track-command" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quickstart
+        Track command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Track command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list-valued-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List-valued filters
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#extras" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extras
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Extras">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#detection" class="md-nav__link">
+  <a href="#abbreviated-tracker-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Detection
+        Abbreviated tracker parameters
       
     </span>
   </a>
@@ -1652,10 +1674,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#development-setup" class="md-nav__link">
+  <a href="#hyphens-and-underscores" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Development Setup
+        Hyphens and underscores
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#yaml-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML configuration
       
     </span>
   </a>
@@ -1682,88 +1726,366 @@
   
 
 
-<h1 id="install-trackers">Install Trackers</h1>
-<p>Add multi-object tracking to your detection pipeline with a single install. Works with any detector, any framework.</p>
-<p><strong>What you'll learn:</strong></p>
-<ul>
-<li>Install <code>trackers</code> with <code>pip</code> or <code>uv</code></li>
-<li>Set up a local development environment</li>
-</ul>
-<div class="admonition tip">
-<p class="admonition-title">Requirements</p>
-<p>Python <code>3.10+</code>. Works on Linux, macOS, and Windows.</p>
-</div>
-<hr />
-<h2 id="quickstart">Quickstart</h2>
-<p>Get started by installing the package.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">pip</label><label for="__tabbed_1_2">uv</label><label for="__tabbed_1_3">From Source</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>trackers
+<h1 id="cli-migration-guide">CLI Migration Guide</h1>
+<p>The CLI now groups <code>track</code> options by responsibility. The new dotted arguments
+map directly to the option dataclasses used by <code>track</code>, and are also available
+in YAML configuration files.</p>
+<p>Semantic legacy spellings remain available during the transition. Each use
+emits a <code>FutureWarning</code> with the replacement. Do not combine a legacy argument
+and its replacement in one command; the CLI rejects that ambiguity. Develop's
+<code>--no-boxes</code> and <code>--no-ids</code> still work and map to <code>--show.no_boxes</code> and
+<code>--show.no_ids</code>. Each warning states its scheduled removal release: the current
+version plus 0.3.</p>
+<h2 id="track-command">Track command</h2>
+<p>Use dotted paths for grouped detection, filtering, output, visualization, and
+tracker options. <code>--display</code> remains ungrouped.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>trackers track \
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    --source source.mp4 \
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    --detection.model rfdetr-base \
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    --detection.confidence 0.3 \
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    --filters.classes [person,car] \
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    --tracker sort \
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    --tracker.lost_track_buffer 40 \
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    --output.video tracked.mp4 \
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    --show.no_boxes
 </span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>trackers
+<p>Every boolean option is a pair: <code>--show.boxes</code> turns it on, <code>--show.no_boxes</code>
+turns it off, and <code>--show.boxes false</code> or <code>--show.boxes=false</code> spell the same
+thing explicitly. The negation sits on the field rather than the group, so it
+stays readable for any group name — <code>--detection.no_fast</code>, never
+<code>--no_detection.fast</code>. Repeating both halves is allowed; the last one wins. A
+<code>--config</code> file keeps one plain boolean key per field, and a command-line flag
+always overrides it.</p>
+<p>This covers ungrouped options too — <code>--display</code> / <code>--no_display</code>,
+<code>--no_enqueue_defaults</code> on <code>tune</code>, <code>--no_list_available</code> on <code>download</code>.</p>
+<p>The algorithm and its parameters share one group, mirroring <code>--detection.model</code>
+and the rest of the detection options. <code>--tracker sort</code> is shorthand for
+<code>--tracker.name sort</code>; both spellings are supported and neither warns.</p>
+<p>Tracker parameters are the exception: they default to <code>None</code>, meaning "leave the
+tracker's own default alone", so they take an explicit value and have no
+negative half. Develop's bare <code>--tracker.enable_cmc</code> flag turned camera motion
+compensation <strong>off</strong>, since the parameter itself defaults to <code>True</code>, so the bare
+spelling still maps to <code>--tracker.enable_cmc=false</code> and warns. Prefer
+<code>--tracker.enable_cmc true</code> or <code>--tracker.enable_cmc false</code>; they say what they
+do. The same applies to <code>--tracker.instant_first_frame_activation</code>.</p>
+<p>As in develop, specify either a model or a precomputed MOT file, not both.</p>
+<table>
+<thead>
+<tr>
+<th>Legacy argument</th>
+<th>Current argument</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--model</code></td>
+<td><code>--detection.model</code></td>
+</tr>
+<tr>
+<td><code>--detections</code></td>
+<td><code>--detection.mot_file</code></td>
+</tr>
+<tr>
+<td><code>--model.confidence</code></td>
+<td><code>--detection.confidence</code></td>
+</tr>
+<tr>
+<td><code>--model.device</code></td>
+<td><code>--detection.device</code></td>
+</tr>
+<tr>
+<td><code>--model.api_key</code></td>
+<td><code>--detection.api_key</code></td>
+</tr>
+<tr>
+<td><code>--classes</code></td>
+<td><code>--filters.classes</code></td>
+</tr>
+<tr>
+<td><code>--track_ids</code></td>
+<td><code>--filters.track_ids</code></td>
+</tr>
+<tr>
+<td><code>--tracker</code></td>
+<td><code>--tracker</code> (unchanged)</td>
+</tr>
+<tr>
+<td><code>--tracker.&lt;name&gt;</code></td>
+<td><code>--tracker.&lt;name&gt;</code></td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--output</code></td>
+<td><code>--output.video</code></td>
+</tr>
+<tr>
+<td><code>--mot-output</code></td>
+<td><code>--output.mot_results</code></td>
+</tr>
+<tr>
+<td><code>--overwrite</code></td>
+<td><code>--output.overwrite</code></td>
+</tr>
+<tr>
+<td><code>--display</code></td>
+<td><code>--display</code> (unchanged)</td>
+</tr>
+<tr>
+<td><code>--show-boxes</code></td>
+<td><code>--show.boxes</code></td>
+</tr>
+<tr>
+<td><code>--no-boxes</code></td>
+<td><code>--show.no_boxes</code></td>
+</tr>
+<tr>
+<td><code>--no-show.boxes</code></td>
+<td>Removed; use <code>--show.no_boxes</code></td>
+</tr>
+<tr>
+<td><code>--show-masks</code></td>
+<td><code>--show.masks</code></td>
+</tr>
+<tr>
+<td><code>--show-labels</code></td>
+<td><code>--show.labels</code></td>
+</tr>
+<tr>
+<td><code>--show-ids</code></td>
+<td><code>--show.ids</code></td>
+</tr>
+<tr>
+<td><code>--no-ids</code></td>
+<td><code>--show.no_ids</code></td>
+</tr>
+<tr>
+<td><code>--no-show.ids</code></td>
+<td>Removed; use <code>--show.no_ids</code></td>
+</tr>
+<tr>
+<td><code>--show-confidence</code></td>
+<td><code>--show.confidence</code></td>
+</tr>
+<tr>
+<td><code>--show-trajectories</code></td>
+<td><code>--show.trajectories</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="list-valued-filters">List-valued filters</h3>
+<p><code>--filters.classes</code> and <code>--filters.track_ids</code> take lists, matching the
+list-valued <code>--metrics</code> and <code>--columns</code> options of <code>eval</code> and <code>tune</code>. Bracket
+shorthand needs no quoting, so <code>--filters.classes [person,car]</code>,
+<code>--filters.classes [0,2]</code>, and the mixed <code>--filters.classes [person,2]</code> all
+work. Comma-separated strings remain available as a warning-emitting alias.</p>
+<table>
+<thead>
+<tr>
+<th>Legacy value form</th>
+<th>Current value form</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--filters.classes person,car</code></td>
+<td><code>--filters.classes [person,car]</code></td>
+</tr>
+<tr>
+<td><code>--filters.track_ids 1,3,5</code></td>
+<td><code>--filters.track_ids [1,3,5]</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="abbreviated-tracker-parameters">Abbreviated tracker parameters</h3>
+<p>Tracker parameter names abbreviate their standard leading token on the command
+line: <code>minimum_</code> becomes <code>min_</code> and <code>maximum_</code> becomes <code>max_</code>. Domain words such
+as <code>threshold</code> stay spelled out. Every develop parameter path whose spelling did
+not change keeps working as-is, without a warning; the unabbreviated paths remain
+as warning-emitting aliases.</p>
+<table>
+<thead>
+<tr>
+<th>Legacy argument</th>
+<th>Current argument</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--tracker.minimum_consecutive_frames</code></td>
+<td><code>--tracker.min_consecutive_frames</code></td>
+</tr>
+<tr>
+<td><code>--tracker.minimum_iou_threshold</code></td>
+<td><code>--tracker.min_iou_threshold</code></td>
+</tr>
+<tr>
+<td><code>--tracker.minimum_iou_threshold_first_assoc</code></td>
+<td><code>--tracker.min_iou_threshold_first_assoc</code></td>
+</tr>
+<tr>
+<td><code>--tracker.minimum_iou_threshold_second_assoc</code></td>
+<td><code>--tracker.min_iou_threshold_second_assoc</code></td>
+</tr>
+<tr>
+<td><code>--tracker.minimum_iou_threshold_unconfirmed_assoc</code></td>
+<td><code>--tracker.min_iou_threshold_unconfirmed_assoc</code></td>
+</tr>
+<tr>
+<td><code>--tracker.iou</code></td>
+<td><code>--tracker.iou_variant</code></td>
+</tr>
+</tbody>
+</table>
+<p>These short forms are <strong>CLI aliases only</strong>. The Python constructor keywords are
+unchanged, so <code>ByteTrackTracker(minimum_iou_threshold=0.3)</code> stays correct, and
+so do <code>tune --fixed_params</code>, each tracker's <code>search_space</code> keys, and the
+"Valid parameters" list printed on a <code>search_space</code> error. A consequence worth
+knowing: <code>tune</code> reports the long parameter names, so its output cannot be
+pasted verbatim into a <code>track</code> command — abbreviate the leading <code>minimum_</code> or
+<code>maximum_</code> token first.</p>
+<h2 id="hyphens-and-underscores">Hyphens and underscores</h2>
+<p>Interchangeable in every option name, on every command, without a warning. Only
+the name is rewritten: each <code>-</code> after the leading <code>--</code> becomes <code>_</code>, and values
+are left alone, so <code>--detection.model rfdetr-base</code> and
+<code>--source my-dir/clip.mp4</code> keep their hyphens. This covers dotted paths and
+negations alike — <code>--show.no-ids</code>, <code>--tracker.min-iou-threshold</code> and
+<code>--no-display</code> all reach the parser as their underscore spellings. The canonical
+documentation spelling uses underscores.</p>
+<p>Anything after a bare <code>--</code> is passed through untouched.</p>
+<p>This holds for the deprecated spellings in the tables below too, so a develop
+command ports without also having to guess which separator each option wanted:
+<code>--no-boxes</code> and <code>--no_boxes</code> resolve alike, as do <code>--mot-output</code> and
+<code>--mot_output</code>, <code>--track-ids</code> and <code>--track_ids</code>. <code>--help</code> lists the underscore
+spelling.</p>
+<h2 id="other-commands">Other commands</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Hyphenated spelling</th>
+<th>Canonical underscore spelling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eval</code></td>
+<td><code>--gt-dir</code></td>
+<td><code>--gt_dir</code></td>
+</tr>
+<tr>
+<td><code>eval</code></td>
+<td><code>--tracker-dir</code></td>
+<td><code>--tracker_dir</code></td>
+</tr>
+<tr>
+<td><code>tune</code></td>
+<td><code>--gt-dir</code></td>
+<td><code>--gt_dir</code></td>
+</tr>
+<tr>
+<td><code>tune</code></td>
+<td><code>--detections-dir</code></td>
+<td><code>--detections_dir</code></td>
+</tr>
+<tr>
+<td><code>tune</code></td>
+<td><code>--n-trials</code></td>
+<td><code>--n_trials</code></td>
+</tr>
+<tr>
+<td><code>tune</code></td>
+<td><code>--fixed-params</code></td>
+<td><code>--fixed_params</code></td>
+</tr>
+<tr>
+<td><code>tune</code></td>
+<td><code>--images-dir</code></td>
+<td><code>--images_dir</code></td>
+</tr>
+<tr>
+<td><code>tune</code></td>
+<td><code>--no-enqueue-defaults</code></td>
+<td><code>--no_enqueue_defaults</code></td>
+</tr>
+<tr>
+<td><code>download</code></td>
+<td><code>--cache-dir</code></td>
+<td><code>--cache_dir</code></td>
+</tr>
+</tbody>
+</table>
+<p>The remaining deprecated transitions are:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Legacy argument</th>
+<th>Current argument</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eval</code>, <code>tune</code>, <code>download</code></td>
+<td><code>-o</code></td>
+<td><code>--output</code></td>
+</tr>
+<tr>
+<td><code>eval</code></td>
+<td><code>--metrics CLEAR HOTA</code></td>
+<td><code>--metrics '["CLEAR", "HOTA"]'</code></td>
+</tr>
+<tr>
+<td><code>eval</code></td>
+<td><code>--columns MOTA HOTA</code></td>
+<td><code>--columns '["MOTA", "HOTA"]'</code></td>
+</tr>
+<tr>
+<td><code>tune</code></td>
+<td><code>--metrics CLEAR HOTA</code></td>
+<td><code>--metrics '["CLEAR", "HOTA"]'</code></td>
+</tr>
+<tr>
+<td><code>download</code></td>
+<td>positional <code>DATASET</code></td>
+<td><code>--name DATASET</code></td>
+</tr>
+<tr>
+<td><code>download</code></td>
+<td><code>--dataset</code></td>
+<td><code>--name</code></td>
+</tr>
+<tr>
+<td><code>download</code></td>
+<td><code>--list</code></td>
+<td><code>--list_available</code></td>
+</tr>
+</tbody>
+</table>
+<p>For example, replace:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers download mot17 --cache-dir .cache
 </span></code></pre></div>
-<p>If your project uses <code>uv</code> for dependency management, add <code>trackers</code> directly to your project.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>uv<span class="w"> </span>add<span class="w"> </span>trackers
+<p>with:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers download --name mot17 --cache_dir .cache
 </span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Install the latest development version directly from GitHub.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/roboflow/trackers.git
+<h2 id="yaml-configuration">YAML configuration</h2>
+<p>The same nesting is used in <code>--config</code> files. Command-line values override
+configuration values.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source.mp4</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">detection</span><span class="p">:</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rfdetr-base</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nt">tracker</span><span class="p">:</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytetrack</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">40</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="nt">output</span><span class="p">:</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="nt">video</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tracked.mp4</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span><span class="nt">overwrite</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="nt">display</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="nt">show</span><span class="p">:</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">  </span><span class="nt">boxes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </span></code></pre></div>
-</div>
-</div>
-</div>
-<hr />
-<h2 id="extras">Extras</h2>
-<p>The base install covers tracking only. Optional extras add functionality like built-in detection.</p>
-<h3 id="detection">Detection</h3>
-<p>The <code>detection</code> extra installs <code>inference-models</code>, enabling the CLI to run detection automatically so you don't need to bring your own model.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">pip</label><label for="__tabbed_2_2">uv</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;trackers[detection]&quot;</span>
+<p>Run it with:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>trackers track --config tracking.yaml
 </span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;trackers[detection]&quot;</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<div class="admonition tip">
-<p class="admonition-title">GPU Acceleration</p>
-<p>For GPU support, ensure PyTorch is installed with CUDA or MPS.</p>
-</div>
-<hr />
-<h2 id="development-setup">Development Setup</h2>
-<p>Set up a local environment for contributing or modifying <code>trackers</code>.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">virtualenv</label><label for="__tabbed_3_2">uv</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-b<span class="w"> </span>develop<span class="w"> </span>https://github.com/roboflow/trackers.git
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nb">cd</span><span class="w"> </span>trackers
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>python3.10<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="nb">source</span><span class="w"> </span>venv/bin/activate
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>pip
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.&quot;</span>
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-b<span class="w"> </span>develop<span class="w"> </span>https://github.com/roboflow/trackers.git
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">cd</span><span class="w"> </span>trackers
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>uv<span class="w"> </span>python<span class="w"> </span>pin<span class="w"> </span><span class="m">3</span>.10
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>uv<span class="w"> </span>sync
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="w"> </span>--all-extras
-</span></code></pre></div>
-</div>
-</div>
-</div>
 
 
 
@@ -1786,7 +2108,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="May 17, 2026 20:01:36 UTC">2026-05-17</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 15:56:00 UTC">2026-08-07</span>
   </span>
 
     
@@ -1796,7 +2118,7 @@
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="January 27, 2026 13:09:14 UTC">2026-01-27</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 15:56:00 UTC">2026-08-07</span>
   </span>
 
     
@@ -1827,7 +2149,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../.." class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart">
+          <a href="../track/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Track Objects">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1837,20 +2159,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Quickstart
+                Track Objects
               </div>
             </div>
           </a>
         
         
           
-          <a href="../track/" class="md-footer__link md-footer__link--next" aria-label="Next: Track Objects">
+          <a href="../dynamic-frame-rate/" class="md-footer__link md-footer__link--next" aria-label="Next: Dynamic Frame Rate">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Track Objects
+                Dynamic Frame Rate
               </div>
             </div>
             <div class="md-footer__button md-icon">
