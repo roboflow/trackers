@@ -14,6 +14,7 @@ import pytest
 import supervision as sv
 
 from trackers.cli.track import (
+    ShowOptions,
     TrackerOptions,
     _abbreviate_parameter_name,
     _expand_parameter_name,
@@ -31,22 +32,22 @@ class TestInitAnnotators:
         "flags,expected_types,has_label_annotator",
         [
             (
-                {"show_boxes": True, "show_masks": False, "show_ids": False},
+                {"boxes": True, "masks": False, "ids": False},
                 [sv.BoxAnnotator],
                 False,
             ),
             (
-                {"show_boxes": False, "show_masks": True, "show_ids": False},
+                {"boxes": False, "masks": True, "ids": False},
                 [sv.MaskAnnotator],
                 False,
             ),
             (
-                {"show_boxes": False, "show_masks": False, "show_ids": True},
+                {"boxes": False, "masks": False, "ids": True},
                 [],
                 True,
             ),
             (
-                {"show_boxes": True, "show_masks": True, "show_ids": True},
+                {"boxes": True, "masks": True, "ids": True},
                 [sv.BoxAnnotator, sv.MaskAnnotator],
                 True,
             ),
@@ -58,7 +59,7 @@ class TestInitAnnotators:
         expected_types: list,
         has_label_annotator: bool,
     ) -> None:
-        annotators, label_annotator = _init_annotators(**flags)
+        annotators, label_annotator = _init_annotators(ShowOptions(**flags))
 
         assert len(annotators) == len(expected_types)
         for annotator, expected_type in zip(annotators, expected_types):
@@ -80,7 +81,7 @@ class TestFormatLabels:
                     "class_id": np.array([0, 1]),
                 },
                 ["person", "car"],
-                {"show_labels": True},
+                {"labels": True},
                 ["person", "car"],
                 id="class_names_from_list",
             ),
@@ -90,7 +91,7 @@ class TestFormatLabels:
                     "class_id": np.array([5]),
                 },
                 ["person", "car"],
-                {"show_labels": True},
+                {"labels": True},
                 ["5"],
                 id="fallback_to_class_id_when_out_of_range",
             ),
@@ -100,7 +101,7 @@ class TestFormatLabels:
                     "tracker_id": np.array([42]),
                 },
                 [],
-                {"show_ids": True},
+                {"ids": True},
                 ["#42"],
                 id="tracker_ids_only",
             ),
@@ -112,7 +113,7 @@ class TestFormatLabels:
                     "tracker_id": np.array([1]),
                 },
                 ["person"],
-                {"show_ids": True, "show_labels": True, "show_confidence": True},
+                {"ids": True, "labels": True, "confidence": True},
                 ["#1 person 0.95"],
                 id="combined_id_class_confidence",
             ),
@@ -126,7 +127,7 @@ class TestFormatLabels:
         expected: list[str],
     ) -> None:
         detections = sv.Detections(**detections_kwargs)
-        labels = _format_labels(detections, class_names, **label_flags)
+        labels = _format_labels(detections, class_names, ShowOptions(**label_flags))
         assert labels == expected
 
 

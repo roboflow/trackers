@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import sys
 import warnings
-from contextlib import nullcontext
+from contextlib import nullcontext, suppress
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -293,36 +293,19 @@ def track_command(
         output = OutputOptions()
     if show is None:
         show = ShowOptions()
-    model = detection.model
-    mot_file = detection.mot_file
-    confidence = detection.confidence
-    device = detection.device
-    api_key = detection.api_key
-    classes = filters.classes
-    track_ids = filters.track_ids
-    video = output.video
-    mot_results = output.mot_results
-    overwrite = output.overwrite
-    show_boxes = show.boxes
-    show_masks = show.masks
-    show_labels = show.labels
-    show_ids = show.ids
-    show_confidence = show.confidence
-    show_trajectories = show.trajectories
+    needs_frames = output.video is not None or display
 
-    needs_frames = video is not None or display
-
-    if source is None and mot_file is None:
+    if source is None and detection.mot_file is None:
         print("Error: --source is required when not using --detection.mot_file.", file=sys.stderr)
         return 1
     if needs_frames and source is None:
         print("Error: --source is required when using --output.video or --display.", file=sys.stderr)
         return 1
 
-    if video:
-        _validate_output_path(_resolve_video_output_path(video), overwrite=overwrite)
-    if mot_results:
-        _validate_output_path(mot_results, overwrite=overwrite)
+    if output.video:
+        _validate_output_path(_resolve_video_output_path(output.video), overwrite=output.overwrite)
+    if output.mot_results:
+        _validate_output_path(output.mot_results, overwrite=output.overwrite)
 
     # Built before the detection model so an unknown tracker ID is rejected
     # without first paying for a model download and load.
@@ -332,37 +315,32 @@ def track_command(
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
-    if mot_file is not None:
+    if detection.mot_file is not None:
         model_obj: AnyModel | None = None
-        detections_data: dict | None = load_mot_file(mot_file)
+        detections_data: dict | None = load_mot_file(detection.mot_file)
         class_names: list[str] = []
     else:
-        model_obj = _init_model(model, device=device, api_key=api_key)
+        model_obj = _init_model(detection.model, device=detection.device, api_key=detection.api_key)
         detections_data = None
         class_names = getattr(model_obj, "class_names", [])
 
-    class_filter = _resolve_class_filter(classes, class_names)
-    track_id_filter = _resolve_track_id_filter(track_ids)
+    class_filter = _resolve_class_filter(filters.classes, class_names)
+    track_id_filter = _resolve_track_id_filter(filters.track_ids)
 
     if source is not None:
         return _run_with_source(
             source=source,
             model=model_obj,
-            confidence=confidence,
+            confidence=detection.confidence,
             detections_data=detections_data,
             class_names=class_names,
             class_filter=class_filter,
             track_id_filter=track_id_filter,
             tracker=tracker_obj,
-            output=video,
-            mot_results=mot_results,
+            output=output.video,
+            mot_results=output.mot_results,
             display=display,
-            show_boxes=show_boxes,
-            show_masks=show_masks,
-            show_labels=show_labels,
-            show_ids=show_ids,
-            show_confidence=show_confidence,
-            show_trajectories=show_trajectories,
+            show=show,
         )
 
     return _run_frameless(
@@ -370,7 +348,7 @@ def track_command(
         class_filter=class_filter,
         track_id_filter=track_id_filter,
         tracker=tracker_obj,
-        mot_results=mot_results,
+        mot_results=output.mot_results,
     )
 
 
@@ -390,7 +368,7 @@ def _run_frameless(
     total_frames = max(detections_data.keys())
     source_info = _SourceInfo(source_type="video", total_frames=total_frames)
 
-    try:
+    with suppress(KeyboardInterrupt):
         with _MOTOutput(mot_results) as mot, _TrackingProgress(source_info) as progress:
             for frame_idx in range(1, total_frames + 1):
                 if frame_idx in detections_data:
@@ -412,8 +390,6 @@ def _run_frameless(
                 progress.update()
 
             progress.complete(interrupted=False)
-    except KeyboardInterrupt:
-        pass
 
     return 0
 
@@ -431,30 +407,19 @@ def _run_with_source(
     output: Path | None,
     mot_results: Path | None,
     display: bool,
-    show_boxes: bool,
-    show_masks: bool,
-    show_labels: bool,
-    show_ids: bool,
-    show_confidence: bool,
-    show_trajectories: bool,
+    show: ShowOptions,
 ) -> int:
     """Run tracking with a frame source (video, webcam, images)."""
     frame_gen = frames_from_source(source)
     source_info = _classify_source(source)
 
-    annotators, label_annotator = _init_annotators(
-        show_boxes=show_boxes,
-        show_masks=show_masks,
-        show_labels=show_labels,
-        show_ids=show_ids,
-        show_confidence=show_confidence,
-    )
+    annotators, label_annotator = _init_annotators(show)
     trace_annotator = (
-        sv.TraceAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK) if show_trajectories else None
+        sv.TraceAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK) if show.trajectories else None
     )
     display_ctx = _DisplayWindow() if display else nullcontext()
 
-    try:
+    with suppress(KeyboardInterrupt):
         with (
             _VideoOutput(output, fps=source_info.fps or _DEFAULT_OUTPUT_FPS) as video,
             _MOTOutput(mot_results) as mot,
@@ -491,13 +456,7 @@ def _run_with_source(
                         annotated = ann.annotate(annotated, tracked)
                     if label_annotator is not None:
                         labeled = tracked[tracked.tracker_id != -1]
-                        labels = _format_labels(
-                            labeled,
-                            class_names,
-                            show_ids=show_ids,
-                            show_labels=show_labels,
-                            show_confidence=show_confidence,
-                        )
+                        labels = _format_labels(labeled, class_names, show)
                         annotated = label_annotator.annotate(annotated, labeled, labels)
 
                     video.write(annotated)
@@ -509,8 +468,6 @@ def _run_with_source(
                             break
 
             progress.complete(interrupted=interrupted)
-    except KeyboardInterrupt:
-        pass
 
     return 0
 
@@ -665,34 +622,29 @@ def _init_tracker(params: TrackerOptions | None) -> BaseTracker:
     return info.tracker_class(**kwargs)
 
 
-def _init_annotators(
-    show_boxes: bool = False,
-    show_masks: bool = False,
-    show_labels: bool = False,
-    show_ids: bool = False,
-    show_confidence: bool = False,
-) -> tuple[list, sv.LabelAnnotator | None]:
+def _init_annotators(show: ShowOptions) -> tuple[list, sv.LabelAnnotator | None]:
     """Initialise supervision annotators based on display options.
 
     Args:
-        show_boxes: Create ``BoxAnnotator``.
-        show_masks: Create ``MaskAnnotator``.
-        show_labels: Include class labels (triggers ``LabelAnnotator``).
-        show_ids: Include track IDs (triggers ``LabelAnnotator``).
-        show_confidence: Include confidence scores (triggers ``LabelAnnotator``).
+        show: Annotation elements to draw on each frame.
 
     Returns:
         Tuple of (annotators list, label_annotator or None). Label annotator is
         separate because it needs custom labels per frame.
+
+    Examples:
+        >>> annotators, label_annotator = _init_annotators(ShowOptions(boxes=False, ids=False))
+        >>> annotators, label_annotator
+        ([], None)
     """
     annotators: list = []
     label_annotator: sv.LabelAnnotator | None = None
 
-    if show_boxes:
+    if show.boxes:
         annotators.append(sv.BoxAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK))
-    if show_masks:
+    if show.masks:
         annotators.append(sv.MaskAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK))
-    if show_labels or show_ids or show_confidence:
+    if show.labels or show.ids or show.confidence:
         label_annotator = sv.LabelAnnotator(
             color=COLOR_PALETTE,
             text_color=sv.Color.BLACK,
@@ -702,38 +654,34 @@ def _init_annotators(
     return annotators, label_annotator
 
 
-def _format_labels(
-    detections: sv.Detections,
-    class_names: list[str],
-    *,
-    show_ids: bool = False,
-    show_labels: bool = False,
-    show_confidence: bool = False,
-) -> list[str]:
+def _format_labels(detections: sv.Detections, class_names: list[str], show: ShowOptions) -> list[str]:
     """Generate label strings for each detection.
 
     Args:
         detections: Detections to generate labels for.
         class_names: List of class names for lookup.
-        show_ids: Include tracker IDs in labels.
-        show_labels: Include class names in labels.
-        show_confidence: Include confidence scores in labels.
+        show: Annotation elements to draw on each frame.
 
     Returns:
         List of label strings, one per detection.
+
+    Examples:
+        >>> import supervision as sv
+        >>> _format_labels(sv.Detections.empty(), [], ShowOptions())
+        []
     """
     labels = []
     for i in range(len(detections)):
         parts: list[str] = []
-        if show_ids and detections.tracker_id is not None:
+        if show.ids and detections.tracker_id is not None:
             parts.append(f"#{int(detections.tracker_id[i])}")
-        if show_labels and detections.class_id is not None:
+        if show.labels and detections.class_id is not None:
             class_id = int(detections.class_id[i])
             if class_names and 0 <= class_id < len(class_names):
                 parts.append(class_names[class_id])
             else:
                 parts.append(str(class_id))
-        if show_confidence and detections.confidence is not None:
+        if show.confidence and detections.confidence is not None:
             parts.append(f"{detections.confidence[i]:.2f}")
         labels.append(" ".join(parts))
     return labels
