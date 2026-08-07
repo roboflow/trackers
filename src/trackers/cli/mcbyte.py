@@ -721,7 +721,10 @@ def benchmark_command(
             leaves behind instead of deleting it.
 
     Returns:
-        Exit code: ``0`` on success, ``1`` on validation error.
+        Exit code: ``1`` when an argument fails validation and nothing runs,
+        ``1`` when the run completes but one or more datasets or sequences
+        failed, and ``0`` only when every selected sequence either completed or
+        was skipped.
     """
     error = _runtime_error(device, cmc_downscale) or _unknown_datasets_error(datasets)
     if error:
@@ -781,4 +784,4 @@ def benchmark_command(
         total_skipped,
         total_failed,
     )
-    return 0
+    return 1 if total_failed else 0

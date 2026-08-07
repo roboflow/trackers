@@ -219,10 +219,11 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
     command_args = _translate_legacy_list_args(subcommand, command_args)
     legacy_arguments = _LEGACY_ARGUMENTS[subcommand]
     provided_targets = _provided_targets(command_args, legacy_arguments)
+    legacy_targets: dict[str, str] = {}
     translated = args[: subcommand_index + 1]
 
     if subcommand == "download":
-        command_args = _translate_download_positional(command_args, provided_targets)
+        command_args = _translate_download_positional(command_args, provided_targets, legacy_targets)
 
     for index, arg in enumerate(command_args):
         if arg == "--":
@@ -239,6 +240,7 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
 
         target = _target_for_option(replacement)
         _raise_for_canonical_conflict(target, option, replacement, provided_targets)
+        _raise_for_duplicate_legacy_target(target, option, legacy_targets)
         _warn_legacy_cli(f"{option} is deprecated; use {replacement} instead.")
         translated.append(f"{replacement}{separator}{value}" if separator else replacement)
 
@@ -371,7 +373,11 @@ def _translate_legacy_list_args(subcommand: str, args: list[str]) -> list[str]:
     return translated
 
 
-def _translate_download_positional(args: list[str], provided_targets: set[str]) -> list[str]:
+def _translate_download_positional(
+    args: list[str],
+    provided_targets: set[str],
+    legacy_targets: dict[str, str],
+) -> list[str]:
     """Translate a legacy download dataset positional without touching option values.
 
     ``--dataset`` drops out of ``_DOWNLOAD_VALUE_OPTIONS`` at the same time.
@@ -393,6 +399,7 @@ def _translate_download_positional(args: list[str], provided_targets: set[str]) 
             continue
 
         _raise_for_canonical_conflict("name", "positional dataset", "--name", provided_targets)
+        _raise_for_duplicate_legacy_target("name", "positional dataset", legacy_targets)
         _warn_legacy_cli("The positional dataset argument is deprecated; use --name instead.")
         translated[index : index + 1] = ["--name", arg]
         break
@@ -425,3 +432,44 @@ def _raise_for_canonical_conflict(
     """
     if target and target in canonical_targets:
         raise ValueError(f"{legacy_option} cannot be combined with {replacement}. Use only the current spelling.")
+
+
+def _raise_for_duplicate_legacy_target(
+    target: str,
+    legacy_option: str,
+    legacy_targets: dict[str, str],
+) -> None:
+    """Reject two differently spelled deprecated options writing one target.
+
+    ``_raise_for_canonical_conflict`` only sees the current spellings, because
+    ``_provided_targets`` skips every deprecated one; two deprecated spellings
+    of the same destination therefore reached the parser as a repeated option
+    and one value was silently dropped. Recording each target as it is
+    translated closes that gap, covering both ``-o out.mp4 --output other.mp4``
+    and ``download --dataset mot17 dancetrack``.
+
+    Polarity collapses into the target, so a positive and a negative deprecated
+    spelling of one boolean also conflict, matching how the current-spelling
+    check already treats them.
+
+    One deprecated option repeated under the *same* spelling is left alone: a
+    repeated option meaning "last one wins" is what every other option here
+    does, and it is only distinct spellings that make the dropped value
+    surprising.
+
+    Args:
+        target: Logical destination the replacement writes.
+        legacy_option: Deprecated spelling as the user typed it.
+        legacy_targets: Targets already translated, keyed to the spelling that
+            claimed each. Updated in place.
+
+    Raises:
+        ValueError: If another deprecated spelling already wrote ``target``.
+    """
+    if not target:
+        return
+    claimed_by = legacy_targets.setdefault(target, legacy_option)
+    if claimed_by != legacy_option:
+        raise ValueError(
+            f"{claimed_by} cannot be combined with {legacy_option}; both set --{target}. Use only the current spelling."
+        )

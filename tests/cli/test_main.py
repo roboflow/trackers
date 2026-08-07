@@ -324,6 +324,48 @@ class TestCliMigration:
         with pytest.raises(ValueError, match=r"--model.*--detection\.model"):
             _translate_legacy_args(["track", "--model", "rfdetr-base", "--detection.model", "rfdetr-nano"])
 
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        [
+            pytest.param(
+                ["track", "-o", "a.mp4", "--output", "b.mp4"],
+                r"-o cannot be combined with --output; both set --output\.video",
+                id="two-spellings-of-one-output",
+            ),
+            pytest.param(
+                ["download", "--dataset", "x", "mot17"],
+                r"positional dataset cannot be combined with --dataset; both set --name",
+                id="dataset-option-and-positional",
+            ),
+            pytest.param(
+                ["track", "--show-boxes", "--no-boxes"],
+                r"--show-boxes cannot be combined with --no-boxes; both set --show\.boxes",
+                id="opposite-polarities-of-one-flag",
+            ),
+        ],
+    )
+    def test_two_deprecated_spellings_of_one_target_fail(self, args: list[str], expected: str) -> None:
+        """Two deprecated spellings of one destination cannot silently drop a value."""
+        with pytest.raises(ValueError, match=expected):
+            _translate_legacy_args(args)
+
+    @pytest.mark.parametrize(
+        "args",
+        [
+            pytest.param(["track", "-o", "a.mp4"], id="single-deprecated-spelling"),
+            pytest.param(["track", "-o", "a.mp4", "-o", "b.mp4"], id="one-spelling-repeated"),
+            pytest.param(["eval", "--config", "a.yaml", "--config", "b.yaml"], id="repeated-config"),
+            pytest.param(["eval", "--metrics", "hota", "--metrics", "clear"], id="repeated-list-option"),
+        ],
+    )
+    def test_repeating_one_spelling_stays_last_wins(self, args: list[str]) -> None:
+        """Only differently spelled duplicates are rejected; a repeat still means last wins."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            translated = _translate_legacy_args(args)
+
+        assert translated[0] == args[0]
+
     def test_download_positional_dataset_maps_to_named_argument(self) -> None:
         """Legacy download DATASET syntax remains available during transition."""
         with pytest.warns(FutureWarning, match=r"positional dataset.*--name"):
