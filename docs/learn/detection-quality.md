@@ -47,7 +47,8 @@ We pick three models that span a wide accuracy range on COCO, from a lightweight
 Pull the MOT17 validation split. You need frames for detection and annotations for evaluation.
 
 ```text
-trackers download mot17 \
+trackers download \
+    --name mot17 \
     --split val \
     --asset frames,annotations \
     --output ./data
@@ -66,10 +67,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     ```bash
     trackers track \
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
-        --model yolo26n-640 \
+        --detection.model yolo26n-640 \
         --tracker bytetrack \
-        --classes person \
-        --mot-output results/yolo26n/MOT17-13-FRCNN.txt
+        --filters.classes [person] \
+        --output.mot_results results/yolo26n/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -78,10 +79,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     for seq in MOT17-02-FRCNN MOT17-04-FRCNN MOT17-05-FRCNN MOT17-09-FRCNN MOT17-10-FRCNN MOT17-11-FRCNN MOT17-13-FRCNN; do
         trackers track \
             --source ./data/mot17/val/$seq/img1 \
-            --model yolo26n-640 \
+            --detection.model yolo26n-640 \
             --tracker bytetrack \
-            --classes person \
-            --mot-output results/yolo26n/$seq.txt
+            --filters.classes [person] \
+            --output.mot_results results/yolo26n/$seq.txt
     done
     ```
 
@@ -97,10 +98,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     ```bash
     trackers track \
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
-        --model rfdetr-nano \
+        --detection.model rfdetr-nano \
         --tracker bytetrack \
-        --classes person \
-        --mot-output results/rfdetr-nano/MOT17-13-FRCNN.txt
+        --filters.classes [person] \
+        --output.mot_results results/rfdetr-nano/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -109,10 +110,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     for seq in MOT17-02-FRCNN MOT17-04-FRCNN MOT17-05-FRCNN MOT17-09-FRCNN MOT17-10-FRCNN MOT17-11-FRCNN MOT17-13-FRCNN; do
         trackers track \
             --source ./data/mot17/val/$seq/img1 \
-            --model rfdetr-nano \
+            --detection.model rfdetr-nano \
             --tracker bytetrack \
-            --classes person \
-            --mot-output results/rfdetr-nano/$seq.txt
+            --filters.classes [person] \
+            --output.mot_results results/rfdetr-nano/$seq.txt
     done
     ```
 
@@ -128,10 +129,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     ```bash
     trackers track \
         --source ./data/mot17/val/MOT17-13-FRCNN/img1 \
-        --model rfdetr-medium \
+        --detection.model rfdetr-medium \
         --tracker bytetrack \
-        --classes person \
-        --mot-output results/rfdetr-medium/MOT17-13-FRCNN.txt
+        --filters.classes [person] \
+        --output.mot_results results/rfdetr-medium/MOT17-13-FRCNN.txt
     ```
 
 === "All sequences"
@@ -140,10 +141,10 @@ Run ByteTrack with default parameters three times, changing only the detection m
     for seq in MOT17-02-FRCNN MOT17-04-FRCNN MOT17-05-FRCNN MOT17-09-FRCNN MOT17-10-FRCNN MOT17-11-FRCNN MOT17-13-FRCNN; do
         trackers track \
             --source ./data/mot17/val/$seq/img1 \
-            --model rfdetr-medium \
+            --detection.model rfdetr-medium \
             --tracker bytetrack \
-            --classes person \
-            --mot-output results/rfdetr-medium/$seq.txt
+            --filters.classes [person] \
+            --output.mot_results results/rfdetr-medium/$seq.txt
     done
     ```
 
@@ -162,10 +163,10 @@ Evaluate each run against ground truth using CLEAR, HOTA, and Identity metrics.
 
 ```text
 trackers eval \
-    --gt-dir ./data/mot17/val \
-    --tracker-dir results/yolo26n \
-    --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1
+    --gt_dir ./data/mot17/val \
+    --tracker_dir results/yolo26n \
+    --metrics '[CLEAR,HOTA,Identity]' \
+    --columns '[MOTA,HOTA,IDF1]'
 ```
 
 **Output:**
@@ -180,10 +181,10 @@ COMBINED                      23.444  32.874  34.411
 
 ```text
 trackers eval \
-    --gt-dir ./data/mot17/val \
-    --tracker-dir results/rfdetr-nano \
-    --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1
+    --gt_dir ./data/mot17/val \
+    --tracker_dir results/rfdetr-nano \
+    --metrics '[CLEAR,HOTA,Identity]' \
+    --columns '[MOTA,HOTA,IDF1]'
 ```
 
 **Output:**
@@ -198,10 +199,10 @@ COMBINED                      25.667  35.735  38.182
 
 ```text
 trackers eval \
-    --gt-dir ./data/mot17/val \
-    --tracker-dir results/rfdetr-medium \
-    --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1
+    --gt_dir ./data/mot17/val \
+    --tracker_dir results/rfdetr-medium \
+    --metrics '[CLEAR,HOTA,Identity]' \
+    --columns '[MOTA,HOTA,IDF1]'
 ```
 
 **Output:**

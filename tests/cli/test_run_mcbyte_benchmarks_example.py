@@ -11,7 +11,7 @@ import sys
 import pytest
 from pytest import MonkeyPatch
 
-from trackers.scripts.run_mcbyte_benchmarks_example import parse_args
+from trackers.cli.run_mcbyte_benchmarks_example import parse_args
 
 
 @pytest.mark.parametrize(

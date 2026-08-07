@@ -41,7 +41,8 @@ Use `trackers download` to pull ground-truth annotations and detections from sup
     Fetch MOT17 validation annotations and detections from the command line.
 
     ```text
-    trackers download mot17 \
+    trackers download \
+        --name mot17 \
         --split val \
         --asset annotations,detections \
         --output ./data
@@ -55,7 +56,7 @@ Use `trackers download` to pull ground-truth annotations and detections from sup
     from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
 
     download_dataset(
-        dataset=Dataset.MOT17,
+        name=Dataset.MOT17,
         split=DatasetSplit.VAL,
         asset=[DatasetAsset.ANNOTATIONS, DatasetAsset.DETECTIONS],
         output="./data",
@@ -89,13 +90,13 @@ For more download options, see the [download guide](download.md).
 
 Feed the pre-computed detections into a tracker and write the results to a file for evaluation.
 
-Pass `--detections` to provide input detections and `--mot-output` to save the tracker output in MOT format.
+Pass `--detection.mot_file` to provide precomputed MOT detector output and `--output.mot_results` to save the tracker output in MOT format.
 
 ```text
 trackers track \
-    --detections ./data/mot17/val/MOT17-02-FRCNN/det/det.txt \
+    --detection.mot_file ./data/mot17/val/MOT17-02-FRCNN/det/det.txt \
     --tracker bytetrack \
-    --mot-output results/MOT17-02-FRCNN.txt
+    --output.mot_results results/MOT17-02-FRCNN.txt
 ```
 
 ---
@@ -108,8 +109,8 @@ Compare the tracker output against ground truth to compute standard MOT metrics.
 trackers eval \
     --gt ./data/mot17/val/MOT17-02-FRCNN/gt/gt.txt \
     --tracker results/MOT17-02-FRCNN.txt \
-    --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1
+    --metrics '[CLEAR,HOTA,Identity]' \
+    --columns '[MOTA,HOTA,IDF1]'
 ```
 
 **Output:**
@@ -148,10 +149,10 @@ Evaluate all sequences at once and get per-sequence results plus a combined aggr
 
 ```text
 trackers eval \
-    --gt-dir ./data/mot17/val \
-    --tracker-dir results \
-    --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1 \
+    --gt_dir ./data/mot17/val \
+    --tracker_dir results \
+    --metrics '[CLEAR,HOTA,Identity]' \
+    --columns '[MOTA,HOTA,IDF1]' \
     --output results.json
 ```
 
@@ -204,12 +205,12 @@ All arguments accepted by `trackers eval`.
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--gt-dir</code></td>
+      <td><code>--gt_dir</code></td>
       <td>Directory containing ground-truth files for multi-sequence evaluation.</td>
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--tracker-dir</code></td>
+      <td><code>--tracker_dir</code></td>
       <td>Directory containing tracker prediction files for multi-sequence evaluation.</td>
       <td>—</td>
     </tr>

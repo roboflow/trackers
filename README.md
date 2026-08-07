@@ -75,11 +75,11 @@ Prefer the terminal? Point `trackers track` at a video, webcam feed, RTSP stream
 ```bash
 trackers track \
     --source video.mp4 \
-    --output output.mp4 \
-    --model rfdetr-medium \
+    --output.video output.mp4 \
+    --detection.model rfdetr-medium \
     --tracker bytetrack \
-    --show-labels \
-    --show-trajectories
+    --show.labels \
+    --show.trajectories
 ```
 
 For all CLI options, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
@@ -106,10 +106,10 @@ Once you have tracking results, you want to know how good they are. `trackers ev
 
 ```bash
 trackers eval \
-    --gt-dir ./data/mot17/val \
-    --tracker-dir results \
-    --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1
+    --gt_dir ./data/mot17/val \
+    --tracker_dir results \
+    --metrics '[CLEAR,HOTA,Identity]' \
+    --columns '[MOTA,HOTA,IDF1]'
 ```
 
 ```
@@ -133,7 +133,7 @@ For the full evaluation workflow, see the [evaluation guide](https://trackers.ro
 Need benchmark data to evaluate against? `trackers download` pulls MOT17, SportsMOT, and other supported datasets with a single command, handling splits and assets selectively so you only download what you need.
 
 ```bash
-trackers download mot17 \
+trackers download --dataset mot17 \
     --split val \
     --asset annotations,detections
 ```

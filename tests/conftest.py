@@ -12,6 +12,7 @@ import json
 import shutil
 import urllib.request
 import zipfile
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -51,15 +52,12 @@ def reset_random_seeds() -> None:
 
     random.seed(42)
     np.random.seed(42)
-    try:
+    with suppress(ImportError):
         import torch
 
         torch.manual_seed(42)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(42)
-    except ImportError:
-        pass
-        pass
 
 
 def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:

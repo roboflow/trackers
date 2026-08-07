@@ -12,7 +12,7 @@ import pytest
 torch = pytest.importorskip("torch")
 torchvision = pytest.importorskip("torchvision")
 
-from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU  # noqa: E402
+from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU, variant_from_name  # noqa: E402
 
 
 def _torchvision_giou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
@@ -528,3 +528,34 @@ class TestDegenerateInputs:
         result = metric.compute(boxes_a, boxes_b)
         assert result.shape == (1, 1)
         assert np.isfinite(result).all(), "Inverted-coord box should not produce NaN/inf"
+
+
+class TestVariantFromName:
+    """Tests for variant_from_name() registry lookup."""
+
+    @pytest.mark.parametrize(
+        ("name", "expected_type"),
+        [
+            ("iou", IoU),
+            ("giou", GIoU),
+            ("diou", DIoU),
+            ("ciou", CIoU),
+            ("biou", BIoU),
+        ],
+    )
+    def test_valid_names_return_correct_instance(self, name: str, expected_type: type) -> None:
+        """Each lowercase variant name resolves to the right BaseIoU subclass."""
+        result = variant_from_name(name)
+        assert isinstance(result, expected_type)
+
+    @pytest.mark.parametrize("name", ["IOU", "GIoU", "BIOU", "DiOU", "CIou"])
+    def test_case_insensitive_lookup(self, name: str) -> None:
+        """Lookup is case-insensitive — any casing resolves without error."""
+        result = variant_from_name(name)
+        assert isinstance(result, BaseIoU)
+
+    @pytest.mark.parametrize("name", ["", "foo", "wiou", "iou2"])
+    def test_invalid_name_raises_value_error(self, name: str) -> None:
+        """Unknown names raise ValueError; repr(name) appears in the error message."""
+        with pytest.raises(ValueError, match=repr(name)):
+            variant_from_name(name)

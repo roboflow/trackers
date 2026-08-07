@@ -44,10 +44,10 @@ The table below lists every dataset you can download, along with its splits, ass
 
 === "CLI"
 
-    Use `--list` to print available datasets, splits, and asset types.
+    Use `--list_available` to print available datasets, splits, and asset types.
 
     ```text
-    trackers download --list
+    trackers download --list_available
     ```
 
 === "Python"
@@ -72,7 +72,7 @@ Pass a dataset name to download all of its splits and assets.
     Download the full MOT17 dataset.
 
     ```text
-    trackers download mot17
+    trackers download --name mot17
     ```
 
 === "Python"
@@ -82,7 +82,7 @@ Pass a dataset name to download all of its splits and assets.
     ```python
     from trackers import Dataset, download_dataset
 
-    download_dataset(dataset=Dataset.MOT17)
+    download_dataset(name=Dataset.MOT17)
     ```
 
 ---
@@ -96,15 +96,15 @@ Full datasets can be large. Narrow your download to specific splits and asset ty
     Use `--split` and `--asset` to filter by split, asset type, or both.
 
     ```text
-    trackers download mot17 --split train --asset annotations
+    trackers download --name mot17 --split train --asset annotations
     ```
 
     ```text
-    trackers download mot17 --split train,val --asset annotations,frames
+    trackers download --name mot17 --split train,val --asset annotations,frames
     ```
 
     ```text
-    trackers download sportsmot --split val --asset annotations
+    trackers download --name sportsmot --split val --asset annotations
     ```
 
 === "Python"
@@ -115,7 +115,7 @@ Full datasets can be large. Narrow your download to specific splits and asset ty
     from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
 
     download_dataset(
-        dataset=Dataset.MOT17,
+        name=Dataset.MOT17,
         split=DatasetSplit.TRAIN,
         asset=DatasetAsset.ANNOTATIONS,
     )
@@ -125,7 +125,7 @@ Full datasets can be large. Narrow your download to specific splits and asset ty
     from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
 
     download_dataset(
-        dataset=Dataset.MOT17,
+        name=Dataset.MOT17,
         split=[DatasetSplit.TRAIN, DatasetSplit.VAL],
         asset=[DatasetAsset.ANNOTATIONS, DatasetAsset.FRAMES],
     )
@@ -135,7 +135,7 @@ Full datasets can be large. Narrow your download to specific splits and asset ty
     from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
 
     download_dataset(
-        dataset=Dataset.SPORTSMOT,
+        name=Dataset.SPORTSMOT,
         split=DatasetSplit.VAL,
         asset=DatasetAsset.ANNOTATIONS,
     )
@@ -152,7 +152,7 @@ Dataset files are extracted to the current directory by default. Set a custom ou
     Use `--output` to extract into a custom directory.
 
     ```text
-    trackers download mot17 \
+    trackers download --name mot17 \
         --split train,val \
         --asset annotations,frames \
         --output ./datasets
@@ -166,7 +166,7 @@ Dataset files are extracted to the current directory by default. Set a custom ou
     from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
 
     download_dataset(
-        dataset=Dataset.MOT17,
+        name=Dataset.MOT17,
         split=[DatasetSplit.TRAIN, DatasetSplit.VAL],
         asset=[DatasetAsset.ANNOTATIONS, DatasetAsset.FRAMES],
         output="./datasets",
@@ -209,13 +209,13 @@ Every downloaded ZIP is saved to `~/.cache/trackers` and verified with an MD5 ch
 
 === "CLI"
 
-    Use `--cache-dir` to store ZIPs in a custom location.
+    Use `--cache_dir` to store ZIPs in a custom location.
 
     ```text
-    trackers download mot17 \
+    trackers download --name mot17 \
         --split train \
         --asset annotations \
-        --cache-dir ./my-cache
+        --cache_dir ./my-cache
     ```
 
 === "Python"
@@ -226,7 +226,7 @@ Every downloaded ZIP is saved to `~/.cache/trackers` and verified with an MD5 ch
     from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
 
     download_dataset(
-        dataset=Dataset.MOT17,
+        name=Dataset.MOT17,
         split=DatasetSplit.TRAIN,
         asset=DatasetAsset.ANNOTATIONS,
         cache_dir="./my-cache",
@@ -254,12 +254,12 @@ All arguments accepted by the `trackers download` command.
   </thead>
   <tbody>
     <tr>
-      <td><code>dataset</code></td>
+      <td><code>--name</code></td>
       <td>Dataset name to download. Options: <code>mot17</code>, <code>sportsmot</code>.</td>
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--list</code></td>
+      <td><code>--list_available</code></td>
       <td>List available datasets, splits, and asset types without downloading.</td>
       <td><code>false</code></td>
     </tr>
@@ -279,7 +279,7 @@ All arguments accepted by the `trackers download` command.
       <td><code>.</code></td>
     </tr>
     <tr>
-      <td><code>--cache-dir</code></td>
+      <td><code>--cache_dir</code></td>
       <td>Directory for caching downloaded ZIP files. Cached files are verified by MD5 and reused across runs.</td>
       <td><code>~/.cache/trackers</code></td>
     </tr>
