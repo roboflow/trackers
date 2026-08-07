@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import sys
 import warnings
-from collections.abc import Iterable
 from dataclasses import fields
 from importlib.metadata import version
 
@@ -55,14 +54,14 @@ _DEVELOP_TRACK_ARGUMENTS = {
     "--output": "--output.video",
     "--mot-output": "--output.mot_results",
     "--overwrite": "--output.overwrite",
-    "--show-boxes": "--show.boxes=true",
+    "--show-boxes": "--show.boxes",
     "--show-masks": "--show.masks",
     "--show-labels": "--show.labels",
-    "--show-ids": "--show.ids=true",
+    "--show-ids": "--show.ids",
     "--show-confidence": "--show.confidence",
     "--show-trajectories": "--show.trajectories",
-    "--no-boxes": "--show.boxes=false",
-    "--no-ids": "--show.ids=false",
+    "--no-boxes": "--show.no_boxes",
+    "--no-ids": "--show.no_ids",
 }
 
 
@@ -159,57 +158,61 @@ def _warn_legacy_cli(message: str) -> None:
     )
 
 
-def _explicit_value_boolean_options(option_groups: Iterable[tuple[type, str]]) -> frozenset[str]:
-    """Return dotted paths of boolean options that must be given an explicit value.
-
-    A boolean field defaulting to ``True`` is useless as a bare flag, since
-    passing it only re-asserts the default. ``ActionYesNo`` would supply a
-    ``--no-<path>`` negation for it, but the two syntaxes are mutually
-    exclusive: an option carrying that action rejects ``--show.boxes false``
-    and ``--show.boxes=false`` outright. Explicit values win because they read
-    the same on the command line as in a ``--config`` file, so these fields keep
-    value syntax and forgo the negation. Every other boolean stays a flag with a
-    ``no-`` negation, which prefixes the whole dotted path (``--no-show.masks``,
-    never ``--show.no-masks``).
-
-    Deriving the paths from the dataclasses, rather than listing them here,
-    means adding a boolean field, renaming one, or flipping a default to
-    ``True`` cannot leave that field on the wrong boolean syntax.
-
-    Note:
-        Fields are selected by ``default``, never by ``type``: the option
-        modules use postponed annotations, so ``field.type`` is the *string*
-        ``"bool"`` and a type-based check would silently match nothing.
-
-    Args:
-        option_groups: Option dataclasses paired with the nested CLI key each
-            one is registered under.
-
-    Returns:
-        Option strings, such as ``--show.boxes``, that keep value syntax.
-    """
-    return frozenset(
-        f"--{nested_key}.{field.name}"
-        for option_class, nested_key in option_groups
-        for field in fields(option_class)
-        if field.default is True
-    )
-
-
-_EXPLICIT_VALUE_BOOLEAN_OPTIONS = _explicit_value_boolean_options(_TRACK_OPTION_GROUPS)
 # Algorithm selector inside the tracker option group. ``--tracker <id>`` is the
 # shorthand spelling, expanded to this path before jsonargparse sees argv.
 _TRACKER_NAME_OPTION = "--tracker.name"
 _TRACKER_SHORTHAND_OPTION = "--tracker"
+# Prefix marking the negative half of a boolean option pair.
+_NEGATION_PREFIX = "no_"
+
+
+class _GroupedYesNo(ActionYesNo):
+    """Boolean option pair whose negative half stays inside the option group.
+
+    ``ActionYesNo`` builds its negative option by substituting the prefix at the
+    *start* of the option string, so ``--show.ids`` becomes ``--no_show.ids``.
+    That negates the group rather than the field, which reads as nonsense once a
+    group is named after anything but a verb: ``--no_detection.fast`` claims
+    there is no detection, when the intent is a detector that is not fast. This
+    subclass moves the prefix onto the leaf instead, giving ``--show.no_ids``
+    and ``--detection.no_fast``.
+
+    ``nargs="?"`` keeps the explicit-value spelling working, so ``--show.ids``,
+    ``--show.no_ids``, ``--show.ids false`` and ``--show.ids=false`` are all
+    accepted and a ``--config`` file still holds one plain boolean key per
+    field. Two options writing one destination means the last one on the command
+    line wins, matching how every other repeated option behaves.
+    """
+
+    def __init__(self, yes_prefix: str = "", no_prefix: str = _NEGATION_PREFIX, **kwargs):
+        super().__init__(yes_prefix=yes_prefix, no_prefix=no_prefix, **kwargs)
+        if kwargs and self._no_prefix is not None:
+            path = self.option_strings[-1][2 + len(self._no_prefix) :]
+            group, dot, leaf = path.rpartition(".")
+            self.option_strings[-1] = f"--{group}{dot}{self._no_prefix}{leaf}"
+
+    def __call__(self, *args, **kwargs):
+        """Set the destination from whichever half of the pair was used."""
+        if len(args) == 0:
+            # argparse re-instantiates the action through this branch, and the
+            # base class hardcodes its own type there.
+            kwargs["_yes_prefix"] = self._yes_prefix
+            kwargs["_no_prefix"] = self._no_prefix
+            return _GroupedYesNo(**kwargs)
+        value = args[2] if isinstance(args[2], bool) else True
+        leaf = args[3].rpartition(".")[2]
+        setattr(args[1], self.dest, not value if leaf.startswith(self._no_prefix) else value)
+        return None
 
 
 class _CLIParser(ArgumentParser):
     """Expose track dataclasses while preserving intentional boolean syntax."""
 
     def add_argument(self, *args, **kwargs):  # type: ignore[override]
-        if kwargs.get("type") is bool and not _EXPLICIT_VALUE_BOOLEAN_OPTIONS.intersection(args):
+        if kwargs.get("type") is bool:
             kwargs.pop("type")
-            kwargs["action"] = ActionYesNo(yes_prefix="", no_prefix="no-")
+            kwargs["nargs"] = "?"
+            kwargs["action"] = _GroupedYesNo(yes_prefix="", no_prefix=_NEGATION_PREFIX)
         if _TRACKER_NAME_OPTION in args:
             # The registry is the accept list, so an unknown tracker is rejected
             # while parsing rather than after a detection model has been loaded.

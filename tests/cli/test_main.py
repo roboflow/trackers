@@ -11,22 +11,19 @@ from __future__ import annotations
 import re
 import warnings
 from argparse import ArgumentError
-from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 
 import pytest
 import yaml
-from jsonargparse import ArgumentParser
+from jsonargparse import ActionConfigFile, ArgumentParser
 
 from trackers.cli.__main__ import (
-    _EXPLICIT_VALUE_BOOLEAN_OPTIONS,
     _CLIParser,
-    _explicit_value_boolean_options,
     _translate_legacy_args,
 )
 from trackers.cli.eval import eval_command
-from trackers.cli.track import DEFAULT_TRACKER, ShowOptions, track_command
+from trackers.cli.track import DEFAULT_TRACKER, track_command
 from trackers.core.base import BaseTracker
 
 
@@ -139,8 +136,8 @@ class TestCliMigration:
         "option",
         ["--no-show.boxes", "--no-show.ids"],
     )
-    def test_negative_show_aliases_are_not_available(self, option: str) -> None:
-        """Boxes and IDs use explicit boolean values instead of negative flags."""
+    def test_group_prefixed_negations_are_not_available(self, option: str) -> None:
+        """Negating the group was this branch's spelling; the field carries it now."""
         parser = _CLIParser(exit_on_error=False)
         parser.add_function_arguments(track_command)
 
@@ -150,12 +147,12 @@ class TestCliMigration:
     @pytest.mark.parametrize(
         ("option", "replacement"),
         [
-            pytest.param("--no-boxes", "--show.boxes=false", id="boxes"),
-            pytest.param("--no-ids", "--show.ids=false", id="ids"),
+            pytest.param("--no-boxes", "--show.no_boxes", id="boxes"),
+            pytest.param("--no-ids", "--show.no_ids", id="ids"),
         ],
     )
-    def test_develop_negative_flags_map_to_explicit_false(self, option: str, replacement: str) -> None:
-        """Develop's negative flags keep working through an explicit boolean value."""
+    def test_develop_negative_flags_map_to_the_field_negation(self, option: str, replacement: str) -> None:
+        """Develop's negative flags land on the negative half of the option pair."""
         with pytest.warns(FutureWarning, match=re.escape(option)):
             args = _translate_legacy_args(["track", option])
 
@@ -571,46 +568,75 @@ class TestTrackerParameterAbbreviations:
 
 
 class TestBooleanOptionSyntax:
-    """Boolean CLI syntax is derived from the option dataclasses, never hardcoded."""
+    """Every boolean option offers a bare pair and an explicit value."""
 
-    def test_only_default_true_booleans_take_an_explicit_value(self) -> None:
-        """The derived set holds exactly the booleans a bare flag could not turn off."""
-        assert _EXPLICIT_VALUE_BOOLEAN_OPTIONS == frozenset({"--show.boxes", "--show.ids"})
-
-    def test_new_default_true_field_joins_the_set_without_an_edit(self) -> None:
-        """A boolean field added with a ``True`` default gains value syntax on its own."""
-
-        @dataclass
-        class ExtendedShowOptions(ShowOptions):
-            highlights: bool = True
-            footnotes: bool = False
-
-        derived = _explicit_value_boolean_options([(ExtendedShowOptions, "show")])
-
-        assert "--show.highlights" in derived
-        assert "--show.footnotes" not in derived
-
-    def test_dotted_prefix_comes_from_the_group_table(self) -> None:
-        """The nested CLI key drives the prefix, so regrouped options stay covered."""
-        derived = _explicit_value_boolean_options([(ShowOptions, "annotations")])
-
-        assert derived == frozenset({"--annotations.boxes", "--annotations.ids"})
-
-    def test_postponed_annotations_do_not_defeat_the_derivation(self) -> None:
-        """``field.type`` is the string ``bool`` here, so selection must key on the default."""
-        boxes = ShowOptions.__dataclass_fields__["boxes"]
-
-        assert boxes.type == "bool"
-        assert "--show.boxes" in _EXPLICIT_VALUE_BOOLEAN_OPTIONS
-
-    def test_default_false_boolean_parses_as_a_bare_flag(self) -> None:
-        """Booleans defaulting to ``False`` stay flags, which the derivation must preserve."""
+    @pytest.fixture
+    def parser(self) -> _CLIParser:
+        """Track parser with all option groups registered."""
         parser = _CLIParser(exit_on_error=False)
         parser.add_function_arguments(track_command)
+        return parser
 
-        parsed = parser.instantiate_classes(parser.parse_args(["--show.masks"]))
+    def test_negation_nests_inside_the_group(self, parser: _CLIParser) -> None:
+        """The prefix lands on the field, so the group name is never negated."""
+        options = {option for action in parser._actions for option in action.option_strings}
 
-        assert parsed.show.masks is True
+        assert "--show.no_ids" in options
+        assert "--no_show.ids" not in options
+
+    @pytest.mark.parametrize(
+        ("arguments", "expected"),
+        [
+            pytest.param([], True, id="default"),
+            pytest.param(["--show.ids"], True, id="bare_positive"),
+            pytest.param(["--show.no_ids"], False, id="bare_negative"),
+            pytest.param(["--show.ids=false"], False, id="inline_false"),
+            pytest.param(["--show.ids", "false"], False, id="separate_false"),
+            pytest.param(["--show.no_ids=false"], True, id="double_negative"),
+            pytest.param(["--show.ids", "--show.no_ids"], False, id="last_wins_negative"),
+            pytest.param(["--show.no_ids", "--show.ids"], True, id="last_wins_positive"),
+        ],
+    )
+    def test_every_boolean_spelling_resolves(
+        self,
+        parser: _CLIParser,
+        arguments: list[str],
+        expected: bool,
+    ) -> None:
+        """Bare pair, explicit value and repeats all land on one field."""
+        assert parser.parse_args(arguments).show.ids is expected
+
+    @pytest.mark.parametrize(
+        ("option", "expected"),
+        [
+            pytest.param("--show.masks", True, id="default_false_positive"),
+            pytest.param("--show.no_masks", False, id="default_false_negative"),
+            pytest.param("--output.no_overwrite", False, id="other_group"),
+        ],
+    )
+    def test_pair_is_offered_regardless_of_default(
+        self,
+        parser: _CLIParser,
+        option: str,
+        expected: bool,
+    ) -> None:
+        """The default no longer decides which syntax a boolean field gets."""
+        parsed = parser.instantiate_classes(parser.parse_args([option]))
+        group, _, field_name = option.removeprefix("--").partition(".")
+
+        assert getattr(getattr(parsed, group), field_name.removeprefix("no_")) is expected
+
+    def test_config_value_is_overridden_from_the_command_line(self, tmp_path: Path) -> None:
+        """A negation on the command line must beat a ``true`` in the config file."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_argument("--config", action=ActionConfigFile)
+        parser.add_function_arguments(track_command)
+        cfg = tmp_path / "run.yaml"
+        cfg.write_text(yaml.dump({"show": {"ids": True}}))
+
+        parsed = parser.parse_args(["--config", str(cfg), "--show.no_ids"])
+
+        assert parsed.show.ids is False
 
 
 class TestTrackerChoices:

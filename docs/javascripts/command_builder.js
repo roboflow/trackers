@@ -137,11 +137,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (state.display) parts.push("--display");
-    if (!state.showBoxes) parts.push("--show.boxes false");
+    if (!state.showBoxes) parts.push("--show.no_boxes");
     if (state.showMasks) parts.push("--show.masks");
     if (state.showConfidence) parts.push("--show.confidence");
     if (state.showLabels) parts.push("--show.labels");
-    if (!state.showIds) parts.push("--show.ids false");
+    if (!state.showIds) parts.push("--show.no_ids");
     if (state.showTrajectories) parts.push("--show.trajectories");
 
     const outputValue = state.output.trim();

@@ -11,10 +11,10 @@ in YAML configuration files.
 
 Semantic legacy spellings remain available during the transition. Each use
 emits a `FutureWarning` with the replacement. Do not combine a legacy argument
-and its replacement in one command; the CLI rejects that ambiguity. The
-`--no-show.boxes` and `--no-show.ids` aliases are removed; develop's
-`--no-boxes` and `--no-ids` still work and map to an explicit `false`. Each
-warning states its scheduled removal release: the current version plus 0.3.
+and its replacement in one command; the CLI rejects that ambiguity. Develop's
+`--no-boxes` and `--no-ids` still work and map to `--show.no_boxes` and
+`--show.no_ids`. Each warning states its scheduled removal release: the current
+version plus 0.3.
 
 ## Track command
 
@@ -30,46 +30,56 @@ trackers track \
     --tracker sort \
     --tracker.lost_track_buffer 40 \
     --output.video tracked.mp4 \
-    --show.boxes false
+    --show.no_boxes
 ```
+
+Every boolean option is a pair: `--show.boxes` turns it on, `--show.no_boxes`
+turns it off, and `--show.boxes false` or `--show.boxes=false` spell the same
+thing explicitly. The negation sits on the field rather than the group, so it
+stays readable for any group name — `--detection.no_fast`, never
+`--no_detection.fast`. Repeating both halves is allowed; the last one wins. A
+`--config` file keeps one plain boolean key per field, and a command-line flag
+always overrides it.
 
 The algorithm and its parameters share one group, mirroring `--detection.model`
 and the rest of the detection options. `--tracker sort` is shorthand for
 `--tracker.name sort`; both spellings are supported and neither warns.
 
-Boolean tracker parameters now take an explicit value: `--tracker.enable_cmc true` or `--tracker.enable_cmc false`. Develop's bare `--tracker.enable_cmc`
-flag turned camera motion compensation **off**, since the parameter defaults to
-`True`, so the bare spelling still maps to `false` and warns. Prefer the
-explicit value; it says what it does. The same applies to
-`--tracker.instant_first_frame_activation`.
+Tracker parameters are the exception: they default to `None`, meaning "leave the
+tracker's own default alone", so they take an explicit value and have no
+negative half. Develop's bare `--tracker.enable_cmc` flag turned camera motion
+compensation **off**, since the parameter itself defaults to `True`, so the bare
+spelling still maps to `--tracker.enable_cmc=false` and warns. Prefer
+`--tracker.enable_cmc true` or `--tracker.enable_cmc false`; they say what they
+do. The same applies to `--tracker.instant_first_frame_activation`.
 
 As in develop, specify either a model or a precomputed MOT file, not both.
 
-| Legacy argument       | Current argument                  |
-| --------------------- | --------------------------------- |
-| `--model`             | `--detection.model`               |
-| `--detections`        | `--detection.mot_file`            |
-| `--model.confidence`  | `--detection.confidence`          |
-| `--model.device`      | `--detection.device`              |
-| `--model.api_key`     | `--detection.api_key`             |
-| `--classes`           | `--filters.classes`               |
-| `--track_ids`         | `--filters.track_ids`             |
-| `--tracker`           | `--tracker` (unchanged)           |
-| `--tracker.<name>`    | `--tracker.<name>`                |
-| `-o`, `--output`      | `--output.video`                  |
-| `--mot-output`        | `--output.mot_results`            |
-| `--overwrite`         | `--output.overwrite`              |
-| `--display`           | `--display` (unchanged)           |
-| `--show-boxes`        | `--show.boxes true`               |
-| `--no-boxes`          | `--show.boxes false`              |
-| `--no-show.boxes`     | Removed; use `--show.boxes false` |
-| `--show-masks`        | `--show.masks`                    |
-| `--show-labels`       | `--show.labels`                   |
-| `--show-ids`          | `--show.ids true`                 |
-| `--no-ids`            | `--show.ids false`                |
-| `--no-show.ids`       | Removed; use `--show.ids false`   |
-| `--show-confidence`   | `--show.confidence`               |
-| `--show-trajectories` | `--show.trajectories`             |
+| Legacy argument       | Current argument               |
+| --------------------- | ------------------------------ |
+| `--model`             | `--detection.model`            |
+| `--detections`        | `--detection.mot_file`         |
+| `--model.confidence`  | `--detection.confidence`       |
+| `--model.device`      | `--detection.device`           |
+| `--model.api_key`     | `--detection.api_key`          |
+| `--classes`           | `--filters.classes`            |
+| `--track_ids`         | `--filters.track_ids`          |
+| `--tracker`           | `--tracker` (unchanged)        |
+| `--tracker.<name>`    | `--tracker.<name>`             |
+| `-o`, `--output`      | `--output.video`               |
+| `--mot-output`        | `--output.mot_results`         |
+| `--overwrite`         | `--output.overwrite`           |
+| `--display`           | `--display` (unchanged)        |
+| `--show-boxes`        | `--show.boxes`                 |
+| `--no-boxes`          | `--show.no_boxes`              |
+| `--no-show.boxes`     | Removed; use `--show.no_boxes` |
+| `--show-masks`        | `--show.masks`                 |
+| `--show-labels`       | `--show.labels`                |
+| `--show-ids`          | `--show.ids`                   |
+| `--no-ids`            | `--show.no_ids`                |
+| `--no-show.ids`       | Removed; use `--show.no_ids`   |
+| `--show-confidence`   | `--show.confidence`            |
+| `--show-trajectories` | `--show.trajectories`          |
 
 ### List-valued filters
 
