@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🚀 Added
+
+- **`trackers mcbyte` subcommand** — runs McByte over complete MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking benchmark test sets and writes MOTChallenge-format results, with flags for dataset selection (`--dataset`), per-dataset detection/image roots (`--dataset_roots`), device, output location, CMC method/downscale, isolated mask matching, skip-existing, and partial-result retention ([#541](https://github.com/roboflow/trackers/pull/541)).
+
+### 🔄 Deprecated
+
+- **`trackers eval --tracker`/`--tracker_dir` renamed to `--predictions`/`--predictions_dir`** — old spellings still parse and emit `FutureWarning`, will be removed in v2.10.0. Use `--predictions`/`--predictions_dir` instead ([#541](https://github.com/roboflow/trackers/pull/541)).
+
 ### 🌱 Changed
 
 - **McByte CMC now defaults to `cmc_downscale=6`** — this aggregate-performance default halves median CMC latency versus factor `2` on the complete 45-clip, 1280x720 SportsMOT validation split and passes the dataset-level mean/median quality criterion. The benchmark used ground-truth detections with masks disabled; 9/45 clips regressed under the previous strict per-clip gate. Pass `cmc_downscale=2` to preserve the previous conservative behavior. Generic `CMCConfig` and `BoTSORTTracker` remain at `2`.

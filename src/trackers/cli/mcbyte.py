@@ -318,7 +318,20 @@ def _runtime_error(device: str, cmc_downscale: int) -> str:
 
 
 def configure_logging(run_root: Path) -> logging.Logger:
-    """Log to both the terminal and the run directory."""
+    """Log to both the terminal and the run directory.
+
+    Configures the module-level ``"mcbyte_benchmarks"`` logger with a stream
+    handler and a file handler writing to ``run_root / "run.log"``, clearing
+    any handlers a previous call attached so repeated calls do not duplicate
+    log lines.
+
+    Args:
+        run_root: Directory the run's log file is written into. Must already
+            exist, since the file handler does not create it.
+
+    Returns:
+        The configured ``"mcbyte_benchmarks"`` logger, set to ``INFO`` level.
+    """
     logger = logging.getLogger("mcbyte_benchmarks")
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
@@ -335,14 +348,41 @@ def configure_logging(run_root: Path) -> logging.Logger:
 
 
 def sequence_name(detection_file: Path, config: DatasetConfig) -> str:
-    """Resolve a sequence name from a detection filename."""
+    """Resolve a sequence name from a detection filename.
+
+    Args:
+        detection_file: Path to one dataset's detection ``.txt`` file.
+        config: Dataset configuration; only ``soccernet_filename`` is used,
+            to select between the SoccerNet ``name__det.txt`` convention and
+            the plain ``name.txt`` stem used by the other datasets.
+
+    Returns:
+        The sequence name: everything before the first ``"__"`` for
+        SoccerNet-tracking, otherwise ``detection_file``'s stem.
+    """
     if config.soccernet_filename:
         return detection_file.name.split("__", maxsplit=1)[0]
     return detection_file.stem
 
 
 def image_directory(sequence: str, config: DatasetConfig) -> Path:
-    """Resolve the sequence frame directory."""
+    """Resolve the sequence frame directory.
+
+    Args:
+        sequence: Sequence name, as returned by :func:`sequence_name`.
+        config: Dataset configuration; ``image_root`` supplies the base
+            directory and ``mot17_layout`` selects the ``-FRCNN`` suffixed
+            subdirectory naming MOT17 uses.
+
+    Returns:
+        The ``img1`` frame directory for the sequence, under
+        ``config.image_root / "{sequence}-FRCNN"`` for MOT17-layout datasets
+        or ``config.image_root / sequence`` otherwise.
+
+    Raises:
+        ValueError: If ``config.image_root`` is ``None``, meaning the
+            dataset has no configured image root to resolve against.
+    """
     if config.image_root is None:
         raise ValueError(f"DATASETS['{config.name}'] has no image_root; supply one with --dataset_roots.")
     directory_name = f"{sequence}-FRCNN" if config.mot17_layout else sequence
@@ -357,6 +397,28 @@ def read_detection_file(
 
     XYXY format: frame,x1,y1,x2,y2,confidence
     MOT format:  frame,id,left,top,width,height,confidence,...
+
+    Blank lines are skipped. Boxes with non-positive width or height are
+    dropped rather than raising, since a malformed box is common enough in
+    these files that failing the whole sequence over one box would be worse
+    than continuing without it.
+
+    Args:
+        detection_file: Path to the detection ``.txt`` file to parse.
+        config: Dataset configuration; ``detection_format`` selects the
+            column layout and ``confidence_override`` replaces the parsed
+            confidence column when set (used for SoccerNet, whose detection
+            confidence column is not meaningful).
+
+    Returns:
+        Detections grouped by 1-based frame number. Frames with no valid
+        detections after filtering are absent from the mapping rather than
+        present with an empty list.
+
+    Raises:
+        ValueError: If a line has too few columns for the configured
+            format, a numeric column fails to parse, or the parsed frame
+            number is non-positive.
     """
     import numpy as np
 
@@ -405,7 +467,16 @@ def read_detection_file(
 
 
 def build_detections(records: list[DetectionRecord]) -> sv.Detections:
-    """Create Supervision detections from parsed records."""
+    """Create Supervision detections from parsed records.
+
+    Args:
+        records: Detections for one frame, as produced by
+            :func:`read_detection_file`.
+
+    Returns:
+        An ``sv.Detections`` with ``xyxy`` and ``confidence`` populated from
+        ``records``, or ``sv.Detections.empty()`` when ``records`` is empty.
+    """
     import numpy as np
     import supervision as sv
 
@@ -421,7 +492,23 @@ def build_detections(records: list[DetectionRecord]) -> sv.Detections:
 
 
 def find_frame_path(image_dir: Path, frame_number: int) -> Path:
-    """Find a frame using common MOT naming schemes."""
+    """Find a frame using common MOT naming schemes.
+
+    Tries, in order, 6- and 8-digit zero-padded ``.jpg`` and ``.png``
+    filenames and returns the first one that exists on disk.
+
+    Args:
+        image_dir: Sequence frame directory to search, typically the
+            ``img1`` directory returned by :func:`image_directory`.
+        frame_number: 1-based frame number to locate.
+
+    Returns:
+        Path to the matching frame file.
+
+    Raises:
+        FileNotFoundError: If none of the naming schemes match a file in
+            ``image_dir``.
+    """
     for pattern in (
         "{:06d}.jpg",
         "{:08d}.jpg",
@@ -435,7 +522,20 @@ def find_frame_path(image_dir: Path, frame_number: int) -> Path:
 
 
 def load_rgb_frame(frame_path: Path) -> np.ndarray:
-    """Load one frame and convert OpenCV BGR channels to RGB."""
+    """Load one frame and convert OpenCV BGR channels to RGB.
+
+    McByte's SAM and Cutie components expect RGB input, while OpenCV
+    decodes images as BGR; this performs that conversion once at load time.
+
+    Args:
+        frame_path: Path to the frame image file.
+
+    Returns:
+        The frame as an RGB ``np.ndarray``.
+
+    Raises:
+        RuntimeError: If ``cv2.imread`` fails to decode ``frame_path``.
+    """
     import cv2
 
     frame_bgr = cv2.imread(str(frame_path))
@@ -453,7 +553,26 @@ def create_tracker(
     cmc_method: CMCMethod,
     cmc_downscale: int,
 ) -> McByteTracker:
-    """Create a fresh full McByte tracker for one sequence."""
+    """Create a fresh full McByte tracker for one sequence.
+
+    Always enables the mask manager, since mask-conditioned association is
+    the reason to use McByte over plain ByteTrack for a benchmark run.
+
+    Args:
+        device: Device SAM and Cutie run on, e.g. ``"cuda"``, ``"cpu"``, or
+            ``"mps"``, forwarded to ``McByteMaskConfig(device=...)``.
+        frame_rate: Sequence frame rate, forwarded to
+            ``McByteTracker(frame_rate=...)`` for its Kalman motion model.
+        enable_isolated_mask_matching: Forwarded to
+            ``McByteTracker(enable_isolated_mask_matching=...)``.
+        enable_cmc: Forwarded to ``McByteTracker(enable_cmc=...)``.
+        cmc_method: Forwarded to ``McByteTracker(cmc_method=...)``.
+        cmc_downscale: Forwarded to ``McByteTracker(cmc_downscale=...)``.
+
+    Returns:
+        A new ``McByteTracker`` with mask management enabled and
+        ``mask_config=McByteMaskConfig(device=device)``.
+    """
     from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 
     return McByteTracker(
@@ -472,7 +591,18 @@ def write_mot_results(
     frame_number: int,
     tracked: sv.Detections,
 ) -> None:
-    """Write valid tracked detections in MOTChallenge format."""
+    """Write valid tracked detections in MOTChallenge format.
+
+    Untracked detections (``tracker_id < 0``) are skipped, and the function
+    is a no-op when ``tracked.tracker_id`` is ``None`` (no detections were
+    tracked this frame).
+
+    Args:
+        output: Open text file to append MOTChallenge-format rows to.
+        frame_number: 1-based frame number written into each row.
+        tracked: Tracker output for ``frame_number``, as returned by
+            ``McByteTracker.update()``.
+    """
     if tracked.tracker_id is None:
         return
 
@@ -491,7 +621,20 @@ def cleanup_tracker(
     logger: logging.Logger,
     sequence: str,
 ) -> None:
-    """Reset state, collect Python objects, and release cached accelerator memory."""
+    """Reset state, collect Python objects, and release cached accelerator memory.
+
+    Called from :func:`run_sequence`'s ``finally`` block so each sequence
+    starts the next one without carrying over CUDA/MPS memory or SAM/Cutie
+    state. A failure in ``tracker.reset()`` is logged rather than raised, so
+    cleanup always proceeds to ``gc.collect()`` and the accelerator cache
+    release.
+
+    Args:
+        tracker: Tracker to reset and release, or ``None`` when sequence
+            setup failed before a tracker was created.
+        logger: Logger to record a ``tracker.reset()`` failure on.
+        sequence: Sequence name, used only in the failure log message.
+    """
     import torch
 
     if tracker is not None:
@@ -527,6 +670,37 @@ def run_sequence(
     A fresh tracker is created for the sequence.
     Results are first written to a temporary `.partial` file,
     which is replaced by the final MOT result only after successful completion.
+
+    Args:
+        sequence: Sequence name, used for progress logging and passed to
+            :func:`cleanup_tracker`.
+        detection_file: Path to the sequence's detection ``.txt`` file.
+        image_dir: Sequence frame directory, as returned by
+            :func:`image_directory`.
+        output_file: Final MOTChallenge-format result path. The frame loop
+            writes to ``output_file.with_suffix(".txt.partial")`` first and
+            only renames it to ``output_file`` on success.
+        config: Dataset configuration used to parse ``detection_file``.
+        device: Forwarded to :func:`create_tracker`.
+        enable_isolated_mask_matching: Forwarded to :func:`create_tracker`.
+        enable_cmc: Forwarded to :func:`create_tracker`.
+        cmc_method: Forwarded to :func:`create_tracker`.
+        cmc_downscale: Forwarded to :func:`create_tracker`.
+        keep_partial_results: Keep the ``.partial`` file instead of
+            deleting it when the sequence raises partway through.
+        logger: Logger for periodic frame-progress messages (first frame,
+            then every 250th) and for :func:`cleanup_tracker`'s failure log.
+
+    Returns:
+        The last frame number processed, i.e. the highest frame number
+        present in ``detection_file``.
+
+    Raises:
+        ValueError: If ``detection_file`` contains no detections at all.
+        Exception: Whatever :func:`create_tracker`, frame loading, or
+            ``tracker.update()`` raise, re-raised after the ``.partial``
+            file is removed (unless ``keep_partial_results`` is set) and
+            the tracker is cleaned up via :func:`cleanup_tracker`.
     """
     detections_by_frame = read_detection_file(detection_file, config)
     if not detections_by_frame:
@@ -592,6 +766,39 @@ def run_dataset(
     processed using a fresh McByte tracker, and written as one MOTChallenge
     result file. Missing or failed sequences are recorded while processing
     continues with the remaining sequences.
+
+    A CUDA out-of-memory error and any other exception raised while
+    processing one sequence are both caught and logged so the remaining
+    sequences still run; only the layout and detection-file checks below
+    raise past this function.
+
+    Args:
+        config: Dataset configuration, with ``detection_root`` and
+            ``image_root`` already resolved (see :func:`resolve_datasets`).
+        output_dir: Directory each sequence's MOTChallenge result file is
+            written into, one ``{sequence}.txt`` per sequence.
+        device: Forwarded to :func:`run_sequence`.
+        enable_isolated_mask_matching: Forwarded to :func:`run_sequence`.
+        enable_cmc: Forwarded to :func:`run_sequence`.
+        cmc_method: Forwarded to :func:`run_sequence`.
+        cmc_downscale: Forwarded to :func:`run_sequence`.
+        skip_existing: Skip a sequence whose
+            ``output_dir / "{sequence}.txt"`` already exists instead of
+            reprocessing it.
+        keep_partial_results: Forwarded to :func:`run_sequence`.
+        logger: Logger for per-sequence progress and failure messages.
+
+    Returns:
+        A ``(completed, skipped, failed)`` tuple of sequence counts.
+
+    Raises:
+        ValueError: If ``config.detection_root`` or ``config.image_root``
+            is ``None``, meaning the dataset was never configured with
+            ``--dataset_roots`` or a ``--config`` file.
+        NotADirectoryError: If ``config.detection_root`` or
+            ``config.image_root`` does not point at a directory.
+        FileNotFoundError: If ``config.detection_root`` contains no
+            ``.txt`` detection files.
     """
     if config.detection_root is None or config.image_root is None:
         raise ValueError(
@@ -663,6 +870,19 @@ def prepare_mot17_submission(
     The MOT17 evaluation server expects one result file per detector
     (FRCNN, SDP and DPM). Since McByte is detector-agnostic here,
     the same tracking result is duplicated for all three detector names.
+
+    Sequences named in ``MOT17_MISSING`` are never benchmarked by this CLI
+    (see the module docstring for the dataset layout), so they get empty
+    placeholder files rather than being omitted, since the evaluation
+    server expects a full 14-sequence submission.
+
+    Args:
+        raw_dir: Directory holding one raw ``MOT17-{number}.txt`` result
+            per processed sequence, as written by :func:`run_dataset`.
+        submission_dir: Directory the duplicated, detector-suffixed
+            submission files are written into. Created if missing.
+        logger: Logger a missing raw result for an expected sequence is
+            warned on.
     """
     submission_dir.mkdir(parents=True, exist_ok=True)
 
