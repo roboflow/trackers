@@ -135,6 +135,34 @@ class TestCliMigration:
         ]
 
     @pytest.mark.parametrize(
+        ("hyphenated", "canonical"),
+        [
+            pytest.param("--show.no-ids", "--show.no_ids", id="grouped_negation"),
+            pytest.param("--output.no-overwrite", "--output.no_overwrite", id="other_group_negation"),
+            pytest.param("--no-display", "--no_display", id="ungrouped_negation"),
+            pytest.param("--tracker.min-iou-threshold=0.3", "--tracker.min_iou_threshold=0.3", id="inline_value"),
+            pytest.param("--tracker.lost-track-buffer", "--tracker.lost_track_buffer", id="multiple_hyphens"),
+        ],
+    )
+    def test_every_hyphenated_option_shape_normalizes(self, hyphenated: str, canonical: str) -> None:
+        """Only the name is rewritten, however many hyphens it carries."""
+        assert _translate_legacy_args(["track", hyphenated]) == ["track", canonical]
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            pytest.param(["--detection.model", "rfdetr-base"], id="separate_value"),
+            pytest.param(["--detection.model=rfdetr-base"], id="inline_value"),
+            pytest.param(["--source", "my-dir/some-file.mp4"], id="path_value"),
+            pytest.param(["--filters.classes", "[traffic-light,car]"], id="list_value"),
+            pytest.param(["--tracker.name", "sort", "--", "extra-arg"], id="after_separator"),
+        ],
+    )
+    def test_hyphenated_values_survive_normalization(self, arguments: list[str]) -> None:
+        """A hyphen inside a value is data, not a name separator."""
+        assert _translate_legacy_args(["track", *arguments]) == ["track", *arguments]
+
+    @pytest.mark.parametrize(
         "option",
         ["--no-show.boxes", "--no-show.ids"],
     )

@@ -122,10 +122,19 @@ knowing: `tune` reports the long parameter names, so its output cannot be
 pasted verbatim into a `track` command — abbreviate the leading `minimum_` or
 `maximum_` token first.
 
-## Other commands
+## Hyphens and underscores
 
-Hyphens and underscores are interchangeable in current option names, without a
-warning. The canonical documentation spelling uses underscores.
+Interchangeable in every option name, on every command, without a warning. Only
+the name is rewritten: each `-` after the leading `--` becomes `_`, and values
+are left alone, so `--detection.model rfdetr-base` and
+`--source my-dir/clip.mp4` keep their hyphens. This covers dotted paths and
+negations alike — `--show.no-ids`, `--tracker.min-iou-threshold` and
+`--no-display` all reach the parser as their underscore spellings. The canonical
+documentation spelling uses underscores.
+
+Anything after a bare `--` is passed through untouched.
+
+## Other commands
 
 | Command    | Hyphenated spelling     | Canonical underscore spelling |
 | ---------- | ----------------------- | ----------------------------- |
@@ -149,10 +158,6 @@ The remaining deprecated transitions are:
 | `tune`                     | `--metrics CLEAR HOTA` | `--metrics '["CLEAR", "HOTA"]'` |
 | `download`                 | positional `DATASET`   | `--dataset DATASET`             |
 | `download`                 | `--list`               | `--list_available`              |
-
-Use underscores in canonical names. Hyphenated spellings are accepted as
-equivalents, so `--detection.mot-file` and `--detection.mot_file` mean the
-same thing.
 
 For example, replace:
 
