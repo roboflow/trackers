@@ -48,7 +48,7 @@ Pull the MOT17 validation split. You need frames for detection and annotations f
 
 ```text
 trackers download \
-    --dataset mot17 \
+    --name mot17 \
     --split val \
     --asset frames,annotations \
     --output ./data

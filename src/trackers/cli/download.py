@@ -19,7 +19,7 @@ from trackers.datasets.manifest import _DATASETS
 
 
 def download_command(
-    dataset: str | None = None,
+    name: str | None = None,
     split: str | None = None,
     asset: str | None = None,
     output: str = _DEFAULT_OUTPUT_DIR,
@@ -29,7 +29,7 @@ def download_command(
     """Download benchmark tracking datasets from the official trackers bucket.
 
     Args:
-        dataset: Dataset name (e.g. ``mot17``, ``sportsmot``). Required unless
+        name: Dataset name (e.g. ``mot17``, ``sportsmot``). Required unless
             ``list_available`` is set.
         split: Comma-separated splits to download (e.g. ``train,val,test``).
             ``None`` selects every available split.
@@ -47,7 +47,7 @@ def download_command(
         _print_available()
         return 0
 
-    if not dataset:
+    if not name:
         print("Please specify a dataset name or use --list_available.", file=sys.stderr)
         return 1
 
@@ -58,7 +58,7 @@ def download_command(
 
     try:
         download_dataset(
-            dataset=dataset,
+            name=name,
             split=split_list,
             asset=asset_list,
             output=output,

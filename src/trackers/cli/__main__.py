@@ -42,6 +42,7 @@ _TRACK_OPTION_GROUPS: tuple[tuple[type, str], ...] = (
     (OutputOptions, "output"),
     (ShowOptions, "show"),
 )
+# TODO(v2.10): remove — deprecated in 2.7.0, see _LEGACY_REMOVED_IN.
 _DEVELOP_TRACK_ARGUMENTS = {
     "--model": "--detection.model",
     "--detections": "--detection.mot_file",
@@ -67,6 +68,8 @@ _DEVELOP_TRACK_ARGUMENTS = {
 
 def _develop_tracker_parameter_arguments() -> dict[str, str]:
     """Return develop's renamed ``--tracker.<param>`` spellings.
+
+    TODO(v2.10): remove — deprecated in 2.7.0, see ``_LEGACY_REMOVED_IN``.
 
     Every entry is derived from ``TrackerOptions``, so a renamed tracker
     parameter cannot leave a stale mapping behind. Two renames are covered:
@@ -94,6 +97,9 @@ def _develop_tracker_parameter_arguments() -> dict[str, str]:
 def _develop_store_false_tracker_flags() -> frozenset[str]:
     """Return tracker options develop exposed as bare "turn this off" flags.
 
+    TODO(v2.10): remove — deprecated in 2.7.0, see ``_LEGACY_REMOVED_IN``. The
+    bare positive spelling becomes available again once this goes.
+
     A registry parameter that is a boolean defaulting to ``True`` was a
     ``store_false`` flag on develop, so the bare spelling has to keep meaning
     ``false``. The current parser takes an explicit value for every tracker
@@ -117,6 +123,7 @@ def _develop_store_false_tracker_flags() -> frozenset[str]:
     return frozenset(flags)
 
 
+# TODO(v2.10): remove — deprecated in 2.7.0, see _LEGACY_REMOVED_IN.
 _DEVELOP_STORE_FALSE_TRACKER_FLAGS = _develop_store_false_tracker_flags()
 
 
@@ -149,13 +156,18 @@ def _normalise_option(arg: str) -> str:
 
 
 def _normalised_options(arguments: dict[str, str]) -> dict[str, str]:
-    """Return one deprecation table keyed by canonical option spelling.
+    """Return one deprecation table re-keyed by canonical option spelling.
 
-    Lookups normalise before they hit these tables, so a table written with the
-    hyphenated spelling a user is migrating from would never match. Normalising
-    the keys makes both spellings of every deprecated option resolve, which is
-    the point: someone porting a develop command should not have to also guess
-    which separator that particular option wanted.
+    TODO(v2.10): remove — only the deprecation tables need it, see
+    ``_LEGACY_REMOVED_IN``. ``_normalise_option`` itself stays: accepting
+    hyphens is a permanent rule, not a transition.
+
+    Only the keys are touched, and only their separators; what each deprecated
+    option maps to is untouched. Lookups normalise before they reach these
+    tables, so a key left in the hyphenated spelling a user is migrating from
+    would never match. Normalising them makes both spellings of every deprecated
+    option resolve, which is the point: someone porting a develop command should
+    not also have to guess which separator that particular option wanted.
 
     Args:
         arguments: Deprecated option spellings mapped to their replacements.
@@ -170,43 +182,62 @@ def _normalised_options(arguments: dict[str, str]) -> dict[str, str]:
     return {_normalise_option(option): replacement for option, replacement in arguments.items()}
 
 
+# Deprecated spelling to current spelling, per subcommand. Keys are normalised
+# on the way in so a lookup matches whichever separator the user reached for.
+# TODO(v2.10): remove — deprecated in 2.7.0, see _LEGACY_REMOVED_IN.
 _LEGACY_ARGUMENTS = {
-    "track": _normalised_options({**_DEVELOP_TRACK_ARGUMENTS, **_develop_tracker_parameter_arguments()}),
-    "eval": {
-        "-o": "--output",
-    },
-    "tune": {
-        "-o": "--output",
-    },
-    "download": _normalised_options(
-        {
-            "--list": "--list_available",
+    subcommand: _normalised_options(arguments)
+    for subcommand, arguments in {
+        "track": {**_DEVELOP_TRACK_ARGUMENTS, **_develop_tracker_parameter_arguments()},
+        "eval": {
             "-o": "--output",
-        }
-    ),
+        },
+        "tune": {
+            "-o": "--output",
+        },
+        "download": {
+            "--list": "--list_available",
+            "--dataset": "--name",
+            "-o": "--output",
+        },
+    }.items()
 }
+# TODO(v2.10): remove — deprecated in 2.7.0, see _LEGACY_REMOVED_IN.
 _LEGACY_LIST_ARGUMENTS = {
     "eval": frozenset({"--metrics", "--columns"}),
     "tune": frozenset({"--metrics"}),
 }
 # Track filters that used to take one comma-separated string and now take a
 # list, matching the list-valued options of eval and tune.
+# TODO(v2.10): remove — deprecated in 2.7.0, see _LEGACY_REMOVED_IN.
 _COMMA_LIST_TRACK_ARGUMENTS = frozenset({"--filters.classes", "--filters.track_ids"})
+# Download options that consume a following token. The scan for a legacy
+# positional runs before deprecated names are rewritten, so the superseded
+# ``--dataset`` has to be listed alongside its replacement.
 _DOWNLOAD_VALUE_OPTIONS = frozenset(
-    _normalise_option(option) for option in ("--dataset", "--split", "--asset", "-o", "--output", "--cache-dir")
+    _normalise_option(option)
+    for option in ("--name", "--dataset", "--split", "--asset", "-o", "--output", "--cache-dir")
 )
 
 
-def _legacy_removal_version() -> str:
-    """Return the release three minor versions after the installed package."""
-    major, minor, *_ = version("trackers").split(".")
-    return f"{major}.{int(minor) + 3}.0"
+# Release that introduced this batch of CLI deprecations, and the one that drops
+# them. Both are pinned literals rather than being derived from the installed
+# version: a computed deadline moves with every release, so a user upgrading
+# 2.7 -> 2.8 -> 2.9 is told 2.10, then 2.11, then 2.12, and the removal the
+# warning promises never actually arrives. A later batch of deprecations gets
+# its own pair rather than editing these.
+# TODO(v2.10): remove both, along with everything else marked TODO(v2.10).
+_LEGACY_DEPRECATED_IN = "2.7.0"
+_LEGACY_REMOVED_IN = "2.10.0"
 
 
 def _warn_legacy_cli(message: str) -> None:
-    """Warn about one legacy CLI form with its scheduled removal release."""
+    """Warn about one legacy CLI form with its scheduled removal release.
+
+    TODO(v2.10): remove — deprecated in 2.7.0, see ``_LEGACY_REMOVED_IN``.
+    """
     warnings.warn(
-        f"{message} It will be removed in {_legacy_removal_version()}.",
+        f"{message} It will be removed in {_LEGACY_REMOVED_IN}.",
         FutureWarning,
         stacklevel=3,
     )
@@ -403,6 +434,8 @@ def _expand_tracker_shorthand(args: list[str]) -> list[str]:
 def _translate_develop_boolean_flags(args: list[str]) -> list[str]:
     """Rewrite develop's bare tracker boolean flags to an explicit ``false``.
 
+    TODO(v2.10): remove — deprecated in 2.7.0, see ``_LEGACY_REMOVED_IN``.
+
     Only the bare spelling is rewritten. ``--tracker.enable_cmc=false`` and
     ``--tracker.enable_cmc false`` are the current syntax for the same option,
     so they pass through untouched and without a warning; rewriting them would
@@ -442,6 +475,8 @@ def _translate_develop_boolean_flags(args: list[str]) -> list[str]:
 
 def _translate_comma_separated_lists(args: list[str]) -> list[str]:
     """Translate comma-separated track filter strings to JSON-list values.
+
+    TODO(v2.10): remove — deprecated in 2.7.0, see ``_LEGACY_REMOVED_IN``.
 
     Runs after the legacy option names have been translated, so the develop-era
     ``--classes person,car`` spelling is covered by the same pass that handles
@@ -487,7 +522,10 @@ def _translate_comma_separated_lists(args: list[str]) -> list[str]:
 
 
 def _translate_legacy_list_args(subcommand: str, args: list[str]) -> list[str]:
-    """Translate argparse's space-separated list syntax to JSON-list values."""
+    """Translate argparse's space-separated list syntax to JSON-list values.
+
+    TODO(v2.10): remove — deprecated in 2.7.0, see ``_LEGACY_REMOVED_IN``.
+    """
     list_arguments = _LEGACY_LIST_ARGUMENTS.get(subcommand, frozenset())
     if not list_arguments:
         return args
@@ -524,7 +562,11 @@ def _translate_legacy_list_args(subcommand: str, args: list[str]) -> list[str]:
 
 
 def _translate_download_positional(args: list[str], provided_targets: set[str]) -> list[str]:
-    """Translate a legacy download dataset positional without touching option values."""
+    """Translate a legacy download dataset positional without touching option values.
+
+    TODO(v2.10): remove — deprecated in 2.7.0, see ``_LEGACY_REMOVED_IN``.
+    ``--dataset`` drops out of ``_DOWNLOAD_VALUE_OPTIONS`` at the same time.
+    """
     translated = list(args)
     expects_value = False
     for index, arg in enumerate(translated):
@@ -541,9 +583,9 @@ def _translate_download_positional(args: list[str], provided_targets: set[str]) 
         if arg.startswith("-"):
             continue
 
-        _raise_for_canonical_conflict("dataset", "positional dataset", "--dataset", provided_targets)
-        _warn_legacy_cli("The positional dataset argument is deprecated; use --dataset instead.")
-        translated[index : index + 1] = ["--dataset", arg]
+        _raise_for_canonical_conflict("name", "positional dataset", "--name", provided_targets)
+        _warn_legacy_cli("The positional dataset argument is deprecated; use --name instead.")
+        translated[index : index + 1] = ["--name", arg]
         break
     return translated
 
@@ -596,7 +638,11 @@ def _raise_for_canonical_conflict(
     replacement: str,
     canonical_targets: set[str],
 ) -> None:
-    """Reject a deprecated option when its current spelling is also present."""
+    """Reject a deprecated option when its current spelling is also present.
+
+    TODO(v2.10): remove — deprecated in 2.7.0, see ``_LEGACY_REMOVED_IN``.
+    ``_provided_targets`` exists only to feed this, and goes with it.
+    """
     if target and target in canonical_targets:
         raise ValueError(f"{legacy_option} cannot be combined with {replacement}. Use only the current spelling.")
 

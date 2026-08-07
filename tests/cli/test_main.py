@@ -11,7 +11,6 @@ from __future__ import annotations
 import re
 import warnings
 from argparse import ArgumentError
-from importlib.metadata import version
 from pathlib import Path
 
 import pytest
@@ -323,10 +322,17 @@ class TestCliMigration:
 
     def test_download_positional_dataset_maps_to_named_argument(self) -> None:
         """Legacy download DATASET syntax remains available during transition."""
-        with pytest.warns(FutureWarning, match=r"positional dataset.*--dataset"):
+        with pytest.warns(FutureWarning, match=r"positional dataset.*--name"):
             args = _translate_legacy_args(["download", "mot17", "--cache-dir", "cache"])
 
-        assert args == ["download", "--dataset", "mot17", "--cache_dir", "cache"]
+        assert args == ["download", "--name", "mot17", "--cache_dir", "cache"]
+
+    def test_download_dataset_option_maps_to_name(self) -> None:
+        """The superseded --dataset spelling still selects the dataset."""
+        with pytest.warns(FutureWarning, match=r"--dataset is deprecated; use --name"):
+            args = _translate_legacy_args(["download", "--dataset", "mot17"])
+
+        assert args == ["download", "--name", "mot17"]
 
     def test_legacy_space_separated_lists_map_to_jsonargparse_lists(self) -> None:
         """Legacy metrics and columns lists remain usable during the transition."""
@@ -377,11 +383,13 @@ class TestCliMigration:
         ],
     )
     def test_legacy_warnings_state_the_scheduled_removal_release(self, args: list[str]) -> None:
-        """Every legacy CLI transition names the release in which it is removed."""
-        major, minor, *_ = version("trackers").split(".")
-        removal_version = f"{major}.{int(minor) + 3}.0"
+        """Every legacy CLI transition names the release in which it is removed.
 
-        with pytest.warns(FutureWarning, match=re.escape(f"removed in {removal_version}")):
+        The release is asserted as a literal rather than recomputed from the
+        installed version. Deriving it here would mirror the implementation and
+        keep passing even if the deadline started moving with each release.
+        """
+        with pytest.warns(FutureWarning, match=re.escape("removed in 2.10.0")):
             _translate_legacy_args(args)
 
     @pytest.mark.parametrize(

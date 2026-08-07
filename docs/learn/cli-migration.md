@@ -162,7 +162,8 @@ The remaining deprecated transitions are:
 | `eval`                     | `--metrics CLEAR HOTA` | `--metrics '["CLEAR", "HOTA"]'` |
 | `eval`                     | `--columns MOTA HOTA`  | `--columns '["MOTA", "HOTA"]'`  |
 | `tune`                     | `--metrics CLEAR HOTA` | `--metrics '["CLEAR", "HOTA"]'` |
-| `download`                 | positional `DATASET`   | `--dataset DATASET`             |
+| `download`                 | positional `DATASET`   | `--name DATASET`                |
+| `download`                 | `--dataset`            | `--name`                        |
 | `download`                 | `--list`               | `--list_available`              |
 
 For example, replace:
@@ -174,7 +175,7 @@ trackers download mot17 --cache-dir .cache
 with:
 
 ```text
-trackers download --dataset mot17 --cache_dir .cache
+trackers download --name mot17 --cache_dir .cache
 ```
 
 ## YAML configuration

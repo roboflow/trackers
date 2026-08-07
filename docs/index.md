@@ -133,7 +133,7 @@ Trackers also ships [McByte](trackers/mcbyte.md), a mask-conditioned tracker tha
 Pull benchmark datasets for evaluation with a single command.
 
 ```bash
-trackers download --dataset mot17 \
+trackers download --name mot17 \
     --split val \
     --asset annotations,detections
 ```

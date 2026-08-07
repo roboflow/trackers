@@ -42,7 +42,7 @@ Use `trackers download` to pull ground-truth annotations and detections from sup
 
     ```text
     trackers download \
-        --dataset mot17 \
+        --name mot17 \
         --split val \
         --asset annotations,detections \
         --output ./data
@@ -56,7 +56,7 @@ Use `trackers download` to pull ground-truth annotations and detections from sup
     from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
 
     download_dataset(
-        dataset=Dataset.MOT17,
+        name=Dataset.MOT17,
         split=DatasetSplit.VAL,
         asset=[DatasetAsset.ANNOTATIONS, DatasetAsset.DETECTIONS],
         output="./data",
