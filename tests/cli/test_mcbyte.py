@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import get_args
 
@@ -206,7 +207,7 @@ class TestUnconfiguredDataset:
         image_root.mkdir()
         resolved = resolve_datasets({"mot17": DatasetPaths(detection_root, image_root)})
 
-        with pytest.raises(FileNotFoundError, match=str(detection_root)):
+        with pytest.raises(FileNotFoundError, match=re.escape(str(detection_root))):
             run_dataset(
                 config=resolved["mot17"],
                 output_dir=tmp_path / "out",
