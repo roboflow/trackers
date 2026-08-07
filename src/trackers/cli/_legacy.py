@@ -12,11 +12,12 @@ deliberately one file so the removal is a deletion rather than an archaeology
 exercise: at 2.10.0 this module goes, along with the ``_translate_legacy_args``
 call in :func:`trackers.cli.__main__.main`.
 
-TODO(v2.10): two passes in :func:`_translate_legacy_args` are NOT deprecations
+TODO(v2.10): three passes in :func:`_translate_legacy_args` are NOT deprecations
 and must survive the deletion — the ``_normalise_option`` sweep that makes
-hyphens and underscores interchangeable, and ``_expand_tracker_shorthand``.
-Both live in :mod:`trackers.cli._parser`; move the calls there rather than
-dropping them with this file.
+hyphens and underscores interchangeable, ``_expand_tracker_shorthand``, and
+``_translate_legacy_list_args`` which converts space-separated and ``=`` values
+to JSON lists. All three live in :mod:`trackers.cli._parser`; move the calls
+there rather than dropping them with this file.
 """
 
 from __future__ import annotations
@@ -317,11 +318,12 @@ def _translate_comma_separated_lists(args: list[str]) -> list[str]:
             index += 1
             continue
 
-        next_value = args[index + 1] if index + 1 < len(args) else ""
-        if not separator and (not next_value or next_value.startswith("-")):
+        if not separator and (index + 1 >= len(args) or args[index + 1].startswith("-")):
             translated.append(arg)
             index += 1
             continue
+
+        next_value = args[index + 1] if index + 1 < len(args) else ""
 
         value = inline_value if separator else next_value
         width = 1 if separator else 2
@@ -368,7 +370,10 @@ def _translate_legacy_list_args(subcommand: str, args: list[str]) -> list[str]:
             translated.append(option)
             continue
 
-        _warn_legacy_cli(f"space-separated {option} values are deprecated; use a JSON list instead.")
+        if len(values) > 1:
+            _warn_legacy_cli(f"space-separated {option} values are deprecated; use a JSON list instead.")
+        else:
+            _warn_legacy_cli(f"{option} values are deprecated; use a JSON list instead.")
         translated.extend([option, json.dumps(values)])
     return translated
 

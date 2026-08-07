@@ -917,3 +917,36 @@ class TestEntryPointCentralisation:
         result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)  # noqa: S603
 
         assert result.stdout.strip() == "False"
+
+    def test_parser_and_legacy_modules_never_import_main(self) -> None:
+        """_parser.py and _legacy.py must not import from __main__ to avoid circular imports.
+
+        The entry point (__main__) imports every subcommand and imports from these
+        modules, so a reverse import would create a cycle and leave __main__ partially
+        initialized. This test uses static AST inspection to verify no such imports exist.
+        """
+        import ast
+        from pathlib import Path
+
+        parser_file = Path(__file__).parent.parent.parent / "src/trackers/cli/_parser.py"
+        legacy_file = Path(__file__).parent.parent.parent / "src/trackers/cli/_legacy.py"
+
+        for filepath in [parser_file, legacy_file]:
+            with open(filepath) as f:
+                tree = ast.parse(f.read())
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        assert not alias.name.startswith("trackers.cli.__main__"), (
+                            f"{filepath.name} must not import {alias.name}"
+                        )
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        assert not node.module.startswith("trackers.cli.__main__"), (
+                            f"{filepath.name} must not import from {node.module}"
+                        )
+                    if node.module == "trackers.cli" or (node.module and node.module.endswith(".__main__")):
+                        raise AssertionError(
+                            f"{filepath.name} must not import from __main__; found: from {node.module} import ..."
+                        )

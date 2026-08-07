@@ -227,13 +227,12 @@ def _expand_tracker_shorthand(args: list[str]) -> list[str]:
             index += 1
             continue
 
-        next_value = args[index + 1] if index + 1 < len(args) else ""
-        if not next_value or next_value.startswith("-") or next_value.startswith("{"):
+        if index + 1 >= len(args) or args[index + 1].startswith("-") or args[index + 1].startswith("{"):
             expanded.append(arg)
             index += 1
             continue
 
-        expanded.extend([_TRACKER_NAME_OPTION, next_value])
+        expanded.extend([_TRACKER_NAME_OPTION, args[index + 1]])
         index += 2
     return expanded
 
