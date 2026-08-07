@@ -63,7 +63,7 @@ jobs:
         run: |
           REF_NAME="${{ github.event.inputs.ref }}"
           # If it's a full ref like refs/heads/branch or refs/tags/tag, extract the name
-          CLEAN_REF=$(echo "$REF_NAME" | sed 's|^refs/[^/]*/||')
+          CLEAN_REF="${REF_NAME#refs/*/}"
           if echo "$CLEAN_REF" | grep -qE '(^|[._-]|[0-9])(rc[0-9]*|dev[0-9]*|alpha[0-9]*|beta[0-9]*|a[0-9]+|b[0-9]+)([._-]|$)'; then
             echo "Skipping pre-release ref: $CLEAN_REF"
             echo "skipped=true" >> "$GITHUB_OUTPUT"
@@ -76,7 +76,7 @@ jobs:
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          latest_tag=$(git describe --tags "$(git rev-list --tags --max-count=1)")
           uv run mike deploy --push --update-aliases $latest_tag latest
           uv run mike set-default --push latest
 
