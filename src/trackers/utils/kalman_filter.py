@@ -11,8 +11,9 @@ from numpy.typing import NDArray
 
 
 class KalmanFilter:
-    """Generic Kalman filter for state estimation. A standard linear Kalman filter for state estimation. This is a
-    clean, general-purpose implementation that can be used by any tracker. Performs predict/update algebra only. Process
+    """Generic Kalman filter for state estimation.
+
+    A standard linear Kalman filter for state estimation. This is a clean, general-purpose implementation that can be used by any tracker. Performs predict/update algebra only. Process
     models (transition_mtx, process_noise) are supplied externally — see ``trackers.utils.motion_models`` and
     ``BaseStateEstimator`` in ``state_representations.py``.
 
