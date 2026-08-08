@@ -99,18 +99,16 @@ class _VideoOutput:
 
     def write(self, frame: np.ndarray) -> bool:
         """Write a frame to the video file; initializes writer on first call.
-                The writer is bound to the first frame's resolution, and a video file
-                cannot hold frames of mixed sizes. A later frame of a different size
-                (e.g. a mid-stream resolution change from an RTSP renegotiation) is
-                resized to the writer's resolution so it is kept in the output stream
-                rather than being silently dropped by the codec. This guarantee only
-                covers height/width mismatches: the writer is opened with
-                `isColor=True` and channel count is not reconciled, so a mid-stream
-                frame with a different number of channels (e.g. single-channel
-                grayscale) can still be silently dropped by the codec.
 
-                Returns:
-                    True if write succeeded or path is None, False on failure.
+        The writer is bound to the first frame's resolution, and a video file cannot hold frames of mixed sizes.
+        A later frame of a different size (e.g. a mid-
+        stream resolution change from an RTSP renegotiation) is resized to the writer's resolution so it is kept in the
+        output stream rather than being silently dropped by the codec. This guarantee only covers height/width
+        mismatches: the writer is opened with `isColor=True` and channel count is not reconciled, so a mid-stream frame
+        with a different number of channels (e.g. single-channel grayscale) can still be silently dropped by the codec.
+
+        Returns:
+            True if write succeeded or path is None, False on failure.
         """
         if self.path is None:
             return True
