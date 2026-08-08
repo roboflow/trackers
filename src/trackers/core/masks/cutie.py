@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import logging
-from contextlib import nullcontext
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -16,7 +15,7 @@ from urllib.parse import urlparse
 import numpy as np
 import torch
 
-from trackers.core.mcbyte.masks.base import MaskOutput, MaskPropagator, _resolve_auto_device
+from trackers.core.masks.base import MaskOutput, MaskPropagator, _autocast_context, _resolve_auto_device
 from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)
@@ -93,27 +92,6 @@ def _get_cutie_package_dir(cutie_module: Any) -> Path:
         raise RuntimeError("Could not resolve Cutie package directory.")
 
     return Path(module_paths[0]).resolve()
-
-
-def _autocast_context(use_amp: bool, device: torch.device) -> Any:
-    """Return the appropriate autocast context for the current AMP setting.
-
-    The autocast device type follows ``device`` rather than a hardcoded
-    ``"cuda"`` so the helper is backend-generic. In practice callers gate
-    ``use_amp`` to CUDA (Cutie wraps precision-sensitive ops in
-    ``torch.cuda.amp.autocast(enabled=False)`` blocks that an MPS autocast would
-    not honor), so the returned context is a CUDA autocast on the default path
-    and a no-op otherwise.
-
-    Args:
-        use_amp: Whether automatic mixed precision is requested.
-        device: Device whose ``type`` selects the autocast backend.
-    """
-    if use_amp:
-        if hasattr(torch, "amp"):
-            return torch.amp.autocast(device.type, enabled=True)
-        return torch.cuda.amp.autocast(enabled=True)
-    return nullcontext()
 
 
 def _apply_backend_perf_options(

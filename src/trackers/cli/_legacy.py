@@ -170,11 +170,14 @@ _LEGACY_ARGUMENTS = {
             "--dataset": "--name",
             "-o": "--output",
         },
-        # ``mcbyte`` shipped no earlier spelling, so it has nothing to translate.
-        # The entry is still required: ``_translate_legacy_args`` subscripts this
-        # table for whichever subcommand it finds, and a missing key raises
+        # ``benchmark`` and ``inspect`` shipped no earlier spelling, so they have
+        # nothing to translate. ``benchmark mcbyte`` was briefly ``mcbyte`` on the
+        # development branch, but never in a release, so that is a rename rather
+        # than a deprecation. The entries are still required: this table is
+        # subscripted for whichever subcommand is found, and a missing key raises
         # KeyError before any option is looked at.
-        "mcbyte": {},
+        "benchmark": {},
+        "inspect": {},
     }.items()
 }
 _LEGACY_LIST_ARGUMENTS = {

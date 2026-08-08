@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from trackers.core.mcbyte.masks.base import (
+from trackers.core.masks.base import (
     MaskGenerator,
     MaskOutput,
     MaskPropagator,

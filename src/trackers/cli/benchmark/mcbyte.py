@@ -113,7 +113,6 @@ from __future__ import annotations
 import gc
 import logging
 import sys
-from collections import defaultdict
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
@@ -123,10 +122,15 @@ from typing import TYPE_CHECKING, Literal, TextIO
 # jsonargparse resolves ``benchmark_command``'s annotations when it builds the
 # parser, so a type reaching the signature cannot be deferred. It costs nothing
 # beyond the ``trackers`` package itself, which importing this module implies.
+from trackers.cli._detections import (
+    build_detections,
+    find_frame_path,
+    load_rgb_frame,
+    read_detection_file,
+)
 from trackers.utils.cmc import CMCMethod
 
 if TYPE_CHECKING:
-    import numpy as np
     import supervision as sv
 
     from trackers.core.mcbyte.tracker import McByteTracker
@@ -141,14 +145,6 @@ DEFAULT_OUTPUT_ROOT = Path("outputs/mcbyte_benchmarks")
 MOT17_EXISTING = ("01", "03", "06", "07", "08", "12", "14")
 MOT17_MISSING = ("02", "04", "05", "09", "10", "11", "13")
 MOT17_SUFFIXES = ("FRCNN", "SDP", "DPM")
-
-
-@dataclass(frozen=True)
-class DetectionRecord:
-    """One detection parsed from an input file."""
-
-    xyxy: np.ndarray
-    confidence: float
 
 
 @dataclass(frozen=True)
@@ -389,161 +385,6 @@ def image_directory(sequence: str, config: DatasetConfig) -> Path:
     return config.image_root / directory_name / "img1"
 
 
-def read_detection_file(
-    detection_file: Path,
-    config: DatasetConfig,
-) -> dict[int, list[DetectionRecord]]:
-    """Read detections grouped by frame.
-
-    XYXY format: frame,x1,y1,x2,y2,confidence
-    MOT format:  frame,id,left,top,width,height,confidence,...
-
-    Blank lines are skipped. Boxes with non-positive width or height are
-    dropped rather than raising, since a malformed box is common enough in
-    these files that failing the whole sequence over one box would be worse
-    than continuing without it.
-
-    Args:
-        detection_file: Path to the detection ``.txt`` file to parse.
-        config: Dataset configuration; ``detection_format`` selects the
-            column layout and ``confidence_override`` replaces the parsed
-            confidence column when set (used for SoccerNet, whose detection
-            confidence column is not meaningful).
-
-    Returns:
-        Detections grouped by 1-based frame number. Frames with no valid
-        detections after filtering are absent from the mapping rather than
-        present with an empty list.
-
-    Raises:
-        ValueError: If a line has too few columns for the configured
-            format, a numeric column fails to parse, or the parsed frame
-            number is non-positive.
-    """
-    import numpy as np
-
-    grouped: dict[int, list[DetectionRecord]] = defaultdict(list)
-
-    with detection_file.open("r", encoding="utf-8") as file:
-        for line_number, raw_line in enumerate(file, start=1):
-            line = raw_line.strip()
-            if not line:
-                continue
-            values = line.split(",")
-
-            try:
-                if config.detection_format == "xyxy":
-                    if len(values) < 6:
-                        raise ValueError("expected at least 6 columns")
-                    frame_number = int(float(values[0]))
-                    x1, y1, x2, y2 = map(float, values[1:5])
-                    confidence = float(values[5])
-                else:
-                    if len(values) < 7:
-                        raise ValueError("expected at least 7 columns")
-                    frame_number = int(float(values[0]))
-                    left, top, width, height = map(float, values[2:6])
-                    x1, y1 = left, top
-                    x2, y2 = left + width, top + height
-                    confidence = (
-                        config.confidence_override if config.confidence_override is not None else float(values[6])
-                    )
-            except ValueError as exc:
-                raise ValueError(f"Invalid line {line_number} in {detection_file}: {line}") from exc
-
-            if frame_number <= 0:
-                raise ValueError(f"Non-positive frame number on line {line_number}.")
-            if x2 <= x1 or y2 <= y1:
-                continue
-
-            grouped[frame_number].append(
-                DetectionRecord(
-                    xyxy=np.array([x1, y1, x2, y2], dtype=np.float32),
-                    confidence=float(confidence),
-                )
-            )
-
-    return dict(grouped)
-
-
-def build_detections(records: list[DetectionRecord]) -> sv.Detections:
-    """Create Supervision detections from parsed records.
-
-    Args:
-        records: Detections for one frame, as produced by
-            :func:`read_detection_file`.
-
-    Returns:
-        An ``sv.Detections`` with ``xyxy`` and ``confidence`` populated from
-        ``records``, or ``sv.Detections.empty()`` when ``records`` is empty.
-    """
-    import numpy as np
-    import supervision as sv
-
-    if not records:
-        return sv.Detections.empty()
-    return sv.Detections(
-        xyxy=np.stack([record.xyxy for record in records]).astype(np.float32),
-        confidence=np.asarray(
-            [record.confidence for record in records],
-            dtype=np.float32,
-        ),
-    )
-
-
-def find_frame_path(image_dir: Path, frame_number: int) -> Path:
-    """Find a frame using common MOT naming schemes.
-
-    Tries, in order, 6- and 8-digit zero-padded ``.jpg`` and ``.png``
-    filenames and returns the first one that exists on disk.
-
-    Args:
-        image_dir: Sequence frame directory to search, typically the
-            ``img1`` directory returned by :func:`image_directory`.
-        frame_number: 1-based frame number to locate.
-
-    Returns:
-        Path to the matching frame file.
-
-    Raises:
-        FileNotFoundError: If none of the naming schemes match a file in
-            ``image_dir``.
-    """
-    for pattern in (
-        "{:06d}.jpg",
-        "{:08d}.jpg",
-        "{:06d}.png",
-        "{:08d}.png",
-    ):
-        path = image_dir / pattern.format(frame_number)
-        if path.is_file():
-            return path
-    raise FileNotFoundError(f"Could not find frame {frame_number} in {image_dir}.")
-
-
-def load_rgb_frame(frame_path: Path) -> np.ndarray:
-    """Load one frame and convert OpenCV BGR channels to RGB.
-
-    McByte's SAM and Cutie components expect RGB input, while OpenCV
-    decodes images as BGR; this performs that conversion once at load time.
-
-    Args:
-        frame_path: Path to the frame image file.
-
-    Returns:
-        The frame as an RGB ``np.ndarray``.
-
-    Raises:
-        RuntimeError: If ``cv2.imread`` fails to decode ``frame_path``.
-    """
-    import cv2
-
-    frame_bgr = cv2.imread(str(frame_path))
-    if frame_bgr is None:
-        raise RuntimeError(f"cv2.imread failed for {frame_path}.")
-    return cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-
-
 def create_tracker(
     *,
     device: str,
@@ -702,7 +543,11 @@ def run_sequence(
             file is removed (unless ``keep_partial_results`` is set) and
             the tracker is cleaned up via :func:`cleanup_tracker`.
     """
-    detections_by_frame = read_detection_file(detection_file, config)
+    detections_by_frame = read_detection_file(
+        detection_file,
+        config.detection_format,
+        confidence_override=config.confidence_override,
+    )
     if not detections_by_frame:
         raise ValueError(f"No detections found in {detection_file}.")
 

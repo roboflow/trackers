@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import logging
-from contextlib import nullcontext
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -16,10 +15,11 @@ from urllib.parse import urlparse
 import numpy as np
 import torch
 
-from trackers.core.mcbyte.masks.base import (
+from trackers.core.masks.base import (
     MaskGenerator,
     MaskOutput,
     TrackletSnapshot,
+    _autocast_context,
     _resolve_auto_device,
 )
 from trackers.utils.downloader import _download_file
@@ -74,25 +74,6 @@ def _ensure_checkpoint_exists(
         checkpoint_path,
         md5=asset.md5_hash,
     )
-
-
-def _autocast_context(use_amp: bool, device: torch.device) -> Any:
-    """Return the appropriate autocast context for the current AMP setting.
-
-    The autocast device type follows ``device`` rather than a hardcoded
-    ``"cuda"`` so the helper is backend-generic. Callers gate ``use_amp`` to
-    CUDA, so the returned context is a CUDA autocast on the default path and a
-    no-op otherwise.
-
-    Args:
-        use_amp: Whether automatic mixed precision is requested.
-        device: Device whose ``type`` selects the autocast backend.
-    """
-    if use_amp:
-        if hasattr(torch, "amp"):
-            return torch.amp.autocast(device.type, enabled=True)
-        return torch.cuda.amp.autocast(enabled=True)
-    return nullcontext()
 
 
 class SAMBoxMaskGenerator(MaskGenerator):

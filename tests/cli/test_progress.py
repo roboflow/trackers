@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 from rich.console import Console
 
-from trackers.cli.progress import (
+from trackers.cli._progress import (
     _classify_source,
     _format_time,
     _SourceInfo,
@@ -129,7 +129,7 @@ class TestClassifySource:
             cv2.CAP_PROP_FPS: 30.0,
         }.get(prop, 0.0)
 
-        with patch("trackers.cli.progress.cv2.VideoCapture", return_value=mock_cap):
+        with patch("trackers.cli._progress.cv2.VideoCapture", return_value=mock_cap):
             info = _classify_source("some_video.mp4")
 
         assert info.source_type == "video"

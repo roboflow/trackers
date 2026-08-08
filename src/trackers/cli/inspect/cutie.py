@@ -4,31 +4,30 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Visual sanity check for CutieMaskPropagator.
+"""Visual sanity check for :class:`CutieMaskPropagator`.
 
-This script is intended for local/manual validation only. It does not bundle any
-image assets and does not run as part of the test suite. The user provides an
-image directory, a frame range, and one or more bounding boxes. The script uses
-SAM to initialize masks on the first selected frame, then uses Cutie to propagate
-those masks over the remaining selected frames.
+A supported inspection command, in beta while the ``inspect`` group settles. The
+caller supplies an image directory, a frame range, and one or more bounding
+boxes. SAM initializes masks on the first selected frame, then Cutie propagates
+them over the remaining selected frames.
 
 Usage
 -----
 
 ::
 
-    python visual_tests/visualize_cutie_mask_propagator.py \\
+    trackers inspect cutie \\
         --image_dir frames --start_file 000001.jpg --end_file 000010.jpg \\
         --box='[[10,20,110,220]]'
 
-Options come from the :func:`visualize_command` signature, parsed with
-jsonargparse through the shared ``trackers`` parser, so the shared conventions
-hold here too: ``--image-dir`` and ``--image_dir`` are the same option, and
-``--config run.yaml`` supplies the same keys from a file. The repeatable
-options became lists: boxes are ``--box='[[x1,y1,x2,y2]]'``, while lifecycle
-events are ``--add_at='["frame.jpg:x1,y1,x2,y2"]'`` and
-``--remove_at='["frame.jpg:3"]'``. Every one of them also appends with ``+``,
-as in ``--add_at+ frame.jpg:10,20,110,220``.
+Options come from the :func:`cutie_command` signature, parsed with jsonargparse
+through the shared ``trackers`` parser, so the shared conventions hold:
+``--image-dir`` and ``--image_dir`` are the same option, and ``--config
+run.yaml`` supplies the same keys from a file. The repeatable options are
+lists: boxes are ``--box='[[x1,y1,x2,y2]]'``, while lifecycle events are
+``--add_at='["frame.jpg:x1,y1,x2,y2"]'`` and ``--remove_at='["frame.jpg:3"]'``.
+Every one of them also appends with ``+``, as in
+``--add_at+ frame.jpg:10,20,110,220``.
 """
 
 from __future__ import annotations
@@ -36,21 +35,32 @@ from __future__ import annotations
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import cv2
 import numpy as np
-import torch
-from jsonargparse import CLI
 
-from trackers.cli.__main__ import _CLIParser, _normalise_option
-from trackers.core.mcbyte.masks.base import TrackletSnapshot
-from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
-from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
+from trackers.cli._annotate import annotate_masks, annotate_tracklet_boxes, draw_status_lines
+from trackers.cli.inspect._common import (
+    INSPECT_OUTPUT_ROOT,
+    get_mask_tracklet_ids_in_order,
+    list_selected_frame_paths,
+    load_rgb_image,
+    parse_xyxy_box,
+    print_device_info,
+    save_rgb_image,
+    timestamped_run_dir,
+    tracklet_boxes,
+    validate_and_clip_xyxy_box,
+)
+from trackers.core.masks.base import TrackletSnapshot
+from trackers.utils.device import _validate_device
 
-DEFAULT_OUTPUT_ROOT = Path("visual_tests/outputs/cutie")
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+if TYPE_CHECKING:
+    from trackers.core.masks.cutie import CutieMaskPropagator
+    from trackers.core.masks.sam import SAMBoxMaskGenerator
+
+DEFAULT_OUTPUT_ROOT = INSPECT_OUTPUT_ROOT / "cutie"
 
 
 @dataclass(frozen=True)
@@ -82,14 +92,6 @@ class RemoveMaskEvent:
 
     frame_file: str
     tracker_id: int
-
-
-def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
-    """Parse one command-line bounding box in ``x1,y1,x2,y2`` format."""
-    values = [float(value) for value in box.split(",")]
-    if len(values) != 4:
-        raise ValueError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
-    return values[0], values[1], values[2], values[3]
 
 
 def parse_add_mask_event(event: str) -> AddMaskEvent:
@@ -193,202 +195,6 @@ def validate_lifecycle_events(
             raise ValueError("Remove events cannot be scheduled on the first selected frame.")
 
 
-def list_selected_frame_paths(
-    image_dir: Path,
-    start_file: str,
-    end_file: str,
-) -> list[Path]:
-    """List sorted frame paths from ``start_file`` to ``end_file`` inclusive."""
-    frame_paths = sorted(
-        path for path in image_dir.iterdir() if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
-    )
-    filenames = [path.name for path in frame_paths]
-
-    if start_file not in filenames:
-        raise FileNotFoundError(f"Start file not found in {image_dir}: {start_file}")
-    if end_file not in filenames:
-        raise FileNotFoundError(f"End file not found in {image_dir}: {end_file}")
-
-    start_index = filenames.index(start_file)
-    end_index = filenames.index(end_file)
-    if end_index < start_index:
-        raise ValueError(f"end-file must not come before start-file. Got {start_file=} and {end_file=}.")
-
-    return frame_paths[start_index : end_index + 1]
-
-
-def load_rgb_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk and return it in RGB format."""
-    image_bgr = cv2.imread(str(image_path))
-    if image_bgr is None:
-        raise FileNotFoundError(f"Could not read image: {image_path}")
-    return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-
-
-def validate_and_clip_xyxy_box(
-    box: tuple[float, float, float, float],
-    image_shape: tuple[int, int],
-) -> np.ndarray:
-    """Validate and clip an ``xyxy`` box to image boundaries."""
-    height, width = image_shape
-    x1, y1, x2, y2 = box
-
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError(f"Invalid xyxy box with non-positive size: {box}")
-
-    x1 = np.clip(x1, 0, width)
-    x2 = np.clip(x2, 0, width)
-    y1 = np.clip(y1, 0, height)
-    y2 = np.clip(y2, 0, height)
-
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError(f"Box is outside image after clipping: {box}")
-
-    return np.array([x1, y1, x2, y2], dtype=np.float32)
-
-
-def color_from_id(object_id: int) -> np.ndarray:
-    """Return a deterministic RGB color for a stable object/manual ID."""
-    rng = np.random.default_rng(object_id)
-    return rng.integers(0, 255, size=3, dtype=np.uint8)
-
-
-def overlay_masks(
-    image: np.ndarray,
-    masks: np.ndarray,
-    object_ids: list[int],
-    alpha: float = 0.45,
-) -> np.ndarray:
-    """Overlay binary masks on an RGB image using stable object-ID colors."""
-    if masks.shape[0] != len(object_ids):
-        raise ValueError(
-            "Number of masks must match number of object IDs. "
-            f"Got {masks.shape[0]} masks and {len(object_ids)} object IDs."
-        )
-
-    output = image.copy()
-
-    for mask, object_id in zip(masks, object_ids):
-        color = color_from_id(object_id)
-        colored_mask = np.zeros_like(output)
-        colored_mask[mask] = color
-
-        output = np.where(
-            mask[..., None],
-            (alpha * colored_mask + (1.0 - alpha) * output).astype(np.uint8),
-            output,
-        )
-
-    return output
-
-
-def get_mask_tracklet_ids_in_order(tracklet_mask_dict: dict[int, int]) -> list[int]:
-    """Return tracklet/manual IDs in the same order as MaskOutput.masks."""
-    return [
-        tracklet_id
-        for tracklet_id, _ in sorted(
-            tracklet_mask_dict.items(),
-            key=lambda item: item[1],
-        )
-    ]
-
-
-def draw_boxes(
-    image: np.ndarray,
-    tracklets: list[TrackletSnapshot],
-) -> np.ndarray:
-    """Draw tracklet bounding boxes and tracker IDs on an RGB image."""
-    output = image.copy()
-
-    for tracklet in tracklets:
-        x1, y1, x2, y2 = tracklet.xyxy.astype(int)
-        cv2.rectangle(
-            output,
-            (x1, y1),
-            (x2, y2),
-            color=(91, 10, 145),
-            thickness=2,
-        )
-        cv2.putText(
-            output,
-            str(tracklet.tracker_id),
-            (x1, max(y1 - 5, 0)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 0, 0),
-            2,
-            cv2.LINE_AA,
-        )
-
-    return output
-
-
-def draw_frame_label(
-    image: np.ndarray,
-    frame_name: str,
-) -> np.ndarray:
-    """Draw the frame filename in the top-left corner."""
-    output = image.copy()
-
-    cv2.putText(
-        output,
-        frame_name,
-        (20, 35),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.0,
-        (255, 255, 255),
-        3,  # white outline
-        cv2.LINE_AA,
-    )
-    cv2.putText(
-        output,
-        frame_name,
-        (20, 35),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.0,
-        (0, 0, 0),
-        1,  # black fill
-        cv2.LINE_AA,
-    )
-
-    return output
-
-
-def save_rgb_image(
-    image_rgb: np.ndarray,
-    output_path: Path,
-) -> None:
-    """Save an RGB image to disk."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(str(output_path), image_bgr)
-
-
-def validate_device(
-    device: str,
-    label: str,
-) -> str:
-    """Validate requested execution device."""
-    if device.startswith("cuda") and not torch.cuda.is_available():
-        raise RuntimeError(
-            f"CUDA was requested for {label}, but torch.cuda.is_available() is False. "
-            "Use a CPU device or install a CUDA-enabled PyTorch build."
-        )
-    return device
-
-
-def print_device_info(
-    label: str,
-    device: torch.device,
-) -> None:
-    """Print execution device information."""
-    print(f"{label} device: {device}")
-    if device.type == "cuda":
-        print(f"{label} GPU: {torch.cuda.get_device_name(device)} (CUDA {torch.version.cuda})")
-    else:
-        print(f"{label} GPU: N/A (running on CPU)")
-
-
 def apply_add_events(
     *,
     sam_generator: SAMBoxMaskGenerator,
@@ -478,19 +284,12 @@ def initialize_first_frame(
         mask_output=initial_mask_output,
     )
 
-    initial_visual = overlay_masks(
-        image=initial_frame,
-        masks=initial_mask_output.masks,
-        # Use manual IDs for the first-frame SAM masks so their colors match the later
-        # Cutie outputs. SAM local mask indices start at 0, while Cutie object IDs start
-        # at 1.
-        object_ids=[tracklet.tracker_id for tracklet in tracklets],
-    )
-    initial_visual = draw_boxes(initial_visual, tracklets)
-    initial_visual = draw_frame_label(
-        initial_visual,
-        output_path.name,
-    )
+    # Use manual IDs for the first-frame SAM masks so their colours match the later
+    # Cutie outputs. SAM local mask indices start at 0, while Cutie object IDs start at 1.
+    tracker_ids = [tracklet.tracker_id for tracklet in tracklets]
+    initial_visual = annotate_masks(initial_frame, initial_mask_output.masks, tracker_ids)
+    initial_visual = annotate_tracklet_boxes(initial_visual, tracklet_boxes(tracklets), tracker_ids)
+    initial_visual = draw_status_lines(initial_visual, [output_path.name])
 
     save_rgb_image(initial_visual, output_path)
     print(f"Saved {output_path.name} (SAM)")
@@ -527,12 +326,12 @@ def propagate_and_save_frame(
     if propagated_mask_output is None or propagated_mask_output.masks is None:
         raise RuntimeError(f"Cutie did not return masks for frame: {frame_path}")
 
-    visual = overlay_masks(
-        image=frame,
-        masks=propagated_mask_output.masks,
-        object_ids=get_mask_tracklet_ids_in_order(propagated_mask_output.tracklet_mask_dict),
+    visual = annotate_masks(
+        frame,
+        propagated_mask_output.masks,
+        get_mask_tracklet_ids_in_order(propagated_mask_output.tracklet_mask_dict),
     )
-    visual = draw_frame_label(visual, frame_path.name)
+    visual = draw_status_lines(visual, [frame_path.name])
     save_rgb_image(visual, output_path)
 
     print(
@@ -542,7 +341,7 @@ def propagate_and_save_frame(
     )
 
 
-def visualize_command(
+def cutie_inspection(
     image_dir: Path,
     start_file: str,
     end_file: str,
@@ -550,7 +349,7 @@ def visualize_command(
     add_at: list[str] | None = None,
     remove_at: list[str] | None = None,
     output_root: Path = DEFAULT_OUTPUT_ROOT,
-    device: str = "cuda",
+    device: str = "auto",
     sam_model_type: str = "vit_b",
     cutie_model_type: str = "base-mega",
     cutie_config_path: Path | None = None,
@@ -586,13 +385,15 @@ def visualize_command(
             or appended one at a time with ``--remove_at+ frame.jpg:3``.
         output_root: Root directory for timestamped outputs.
         device: Device used by SAM and Cutie, for example ``cpu`` or ``cuda``.
+            The default ``auto`` resolves to CUDA when available, otherwise CPU.
         sam_model_type: SAM model type.
         cutie_model_type: Cutie model type.
         cutie_config_path: Optional path to Cutie's Hydra config directory.
         cutie_config_name: Cutie Hydra config name.
 
     Returns:
-        Exit code: ``0`` on success, ``1`` on a validation error.
+        Exit code: ``0`` on success, ``1`` on a validation error or a failure to
+        build the models, such as a missing SAM or Cutie install.
     """
     try:
         add_events = [parse_add_mask_event(event) for event in add_at or []]
@@ -621,9 +422,7 @@ def visualize_command(
     )
     remove_events_by_file = group_remove_events(remove_events)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = output_root / timestamp
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = timestamped_run_dir(output_root)
 
     initial_frame = load_rgb_image(frame_paths[0])
 
@@ -652,23 +451,31 @@ def visualize_command(
     )
 
     try:
-        device = validate_device(device, label="SAM/Cutie")
-    except RuntimeError as error:
+        device = _validate_device(device, label="SAM/Cutie")
+
+        # The deferred imports and the constructors are inside the guard because
+        # both report a missing or unusable install by raising: without the SAM
+        # or Cutie extra the constructors raise ImportError carrying the install
+        # command. Left outside, that reaches the caller as a traceback rather
+        # than the exit code this command documents.
+        from trackers.core.masks.cutie import CutieMaskPropagator
+        from trackers.core.masks.sam import SAMBoxMaskGenerator
+
+        sam_generator = SAMBoxMaskGenerator(
+            model_type=sam_model_type,
+            device=device,
+        )
+        cutie_propagator = CutieMaskPropagator(
+            model_type=cutie_model_type,
+            config_path=cutie_config_path,
+            config_name=cutie_config_name,
+            device=device,
+        )
+    except (FileNotFoundError, ImportError, ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    sam_generator = SAMBoxMaskGenerator(
-        model_type=sam_model_type,
-        device=device,
-    )
-    cutie_propagator = CutieMaskPropagator(
-        model_type=cutie_model_type,
-        config_path=cutie_config_path,
-        config_name=cutie_config_name,
-        device=device,
-    )
-
-    print_device_info("SAM/Cutie", sam_generator.device)
+    print_device_info(sam_generator.device, label="SAM/Cutie")
     print(f"Selected {len(frame_paths)} frames.")
     print(f"Saving outputs to {output_dir}")
 
@@ -709,23 +516,5 @@ def visualize_command(
         previous_frame = frame
         previous_frame_path = frame_path
 
-    print(f"Saved visualizations to {output_dir}")
+    print(f"Saved visualizations to {output_dir.resolve()}")
     return 0
-
-
-def main() -> int:
-    """Parse command-line arguments and run the Cutie propagation visualizer."""
-    args = [_normalise_option(arg) for arg in sys.argv[1:]]
-    rc = CLI(
-        visualize_command,
-        args=args,
-        as_positional=False,
-        prog="python visual_tests/visualize_cutie_mask_propagator.py",
-        description="Visualize SAM initialization and Cutie mask propagation.",
-        parser_class=_CLIParser,
-    )
-    return int(rc) if rc is not None else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

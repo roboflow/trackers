@@ -16,12 +16,12 @@ import supervision as sv
 from pytest import MonkeyPatch
 
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.mcbyte.mask_manager import MaskManager
-from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
-from trackers.core.mcbyte.masks.dummy import (
+from trackers.core.masks.base import MaskOutput, TrackletSnapshot
+from trackers.core.masks.dummy import (
     DummyBoxMaskGenerator,
     DummyIdentityMaskPropagator,
 )
+from trackers.core.masks.manager import MaskManager
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.utils.cmc import CMCConfig
@@ -695,20 +695,20 @@ def test_mcbyte_builds_real_mask_pipeline_when_enabled(
     # mcbyte_tracker_module.SAMBoxMaskGenerator and
     # mcbyte_tracker_module.CutieMaskPropagator are imported locally in
     # _build_default_mask_manager() in tracker.py
-    fake_sam_module = ModuleType("trackers.core.mcbyte.masks.sam")
+    fake_sam_module = ModuleType("trackers.core.masks.sam")
     fake_sam_module.SAMBoxMaskGenerator = FakeSAMBoxMaskGenerator  # type: ignore[attr-defined]
 
-    fake_cutie_module = ModuleType("trackers.core.mcbyte.masks.cutie")
+    fake_cutie_module = ModuleType("trackers.core.masks.cutie")
     fake_cutie_module.CutieMaskPropagator = FakeCutieMaskPropagator  # type: ignore[attr-defined]
 
     monkeypatch.setitem(
         sys.modules,
-        "trackers.core.mcbyte.masks.sam",
+        "trackers.core.masks.sam",
         fake_sam_module,
     )
     monkeypatch.setitem(
         sys.modules,
-        "trackers.core.mcbyte.masks.cutie",
+        "trackers.core.masks.cutie",
         fake_cutie_module,
     )
 

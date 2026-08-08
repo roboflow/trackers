@@ -20,7 +20,8 @@ import numpy as np
 import supervision as sv
 
 from trackers import frames_from_source
-from trackers.cli.progress import _classify_source, _SourceInfo, _TrackingProgress
+from trackers.cli._annotate import COLOR_PALETTE as _COLOR_PALETTE
+from trackers.cli._progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.core.base import BaseTracker
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
@@ -36,22 +37,9 @@ DEFAULT_TRACKER = "bytetrack"
 DEFAULT_CONFIDENCE = 0.5
 DEFAULT_DEVICE = "auto"
 
-COLOR_PALETTE = sv.ColorPalette.from_hex(
-    [
-        "#ffff00",
-        "#ff9b00",
-        "#ff8080",
-        "#ff66b2",
-        "#ff66ff",
-        "#b266ff",
-        "#9999ff",
-        "#3399ff",
-        "#66ffff",
-        "#33ff99",
-        "#66ff66",
-        "#99ff00",
-    ]
-)
+# Re-exported: the palette moved to _annotate so that inspect draws tracklets in
+# the same colours, and track's own callers keep importing it from here.
+COLOR_PALETTE = _COLOR_PALETTE
 
 
 @dataclass

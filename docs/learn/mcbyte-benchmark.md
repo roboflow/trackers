@@ -1,6 +1,6 @@
 ---
 title: McByte Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Trackers
-description: Run McByte over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers mcbyte command.
+description: Run McByte over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark mcbyte command.
 ---
 
 # McByte Benchmarks
@@ -23,7 +23,7 @@ Get started by installing the package.
 pip install trackers
 ```
 
-`trackers mcbyte` always builds McByte's full SAM + Cutie mask pipeline (`enable_mask_manager=True`), so — unlike the default `McByteTracker()` construction described on the [McByte page](../trackers/mcbyte.md) — both SAM and Cutie must be installed before running this command. See the [optional heavyweight dependencies note](../trackers/mcbyte.md#overview) for install steps. For more general install options, see the [install guide](install.md).
+`trackers benchmark mcbyte` always builds McByte's full SAM + Cutie mask pipeline (`enable_mask_manager=True`), so — unlike the default `McByteTracker()` construction described on the [McByte page](../trackers/mcbyte.md) — both SAM and Cutie must be installed before running this command. See the [optional heavyweight dependencies note](../trackers/mcbyte.md#overview) for install steps. For more general install options, see the [install guide](install.md).
 
 ---
 
@@ -49,7 +49,7 @@ Every dataset needs a `detection_root` (one detection file per sequence) and an 
     Supply roots as JSON on the command line.
 
     ```text
-    trackers mcbyte --dataset_roots='{"mot17": {"detection_root": "/data/dets", "image_root": "/data/frames"}}'
+    trackers benchmark mcbyte --dataset_roots='{"mot17": {"detection_root": "/data/dets", "image_root": "/data/frames"}}'
     ```
 
 === "Config file"
@@ -66,7 +66,7 @@ Every dataset needs a `detection_root` (one detection file per sequence) and an 
     ```
 
     ```text
-    trackers mcbyte --config run.yaml
+    trackers benchmark mcbyte --config run.yaml
     ```
 
 ---
@@ -76,13 +76,13 @@ Every dataset needs a `detection_root` (one detection file per sequence) and an 
 Pass `--dataset` as a list to choose which datasets to run. Omit it to run every dataset in the table above.
 
 ```text
-trackers mcbyte --dataset=[mot17,soccernet] --device=cuda
+trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
 ```
 
 A bare repeated `--dataset` overwrites the previous value — use `--dataset+` to append instead:
 
 ```text
-trackers mcbyte --dataset+ mot17 --dataset+ soccernet
+trackers benchmark mcbyte --dataset+ mot17 --dataset+ soccernet
 ```
 
 As with every `trackers` subcommand, hyphens and underscores are interchangeable (`--cmc-downscale` and `--cmc_downscale` are the same option), and every boolean flag has a `--no_` negation, e.g. `--no_enable_cmc`.
@@ -136,13 +136,13 @@ Each sequence result is first written to a `.partial` file and only replaces the
 
 ### MOT17 submission files
 
-The MOT17 evaluation server expects one result file per detector name (`FRCNN`, `SDP`, `DPM`). Since McByte is detector-agnostic, `trackers mcbyte` duplicates each completed sequence's result across all three suffixes under `mot17/submission/`. The remaining MOT17 sequence numbers this run produces no result for are written as empty placeholder files for all three suffixes, so the submission directory always contains the complete set of names.
+The MOT17 evaluation server expects one result file per detector name (`FRCNN`, `SDP`, `DPM`). Since McByte is detector-agnostic, `trackers benchmark mcbyte` duplicates each completed sequence's result across all three suffixes under `mot17/submission/`. The remaining MOT17 sequence numbers this run produces no result for are written as empty placeholder files for all three suffixes, so the submission directory always contains the complete set of names.
 
 ---
 
 ## CLI Reference
 
-All arguments accepted by `trackers mcbyte`.
+All arguments accepted by `trackers benchmark mcbyte`.
 
 <table>
   <colgroup>

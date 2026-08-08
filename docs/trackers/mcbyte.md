@@ -208,10 +208,10 @@ Each option can change association output and tracking metrics. Benchmark on you
 
 ## Benchmarking
 
-To run McByte over a complete benchmark test set (MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking) and write one MOTChallenge-format result file per sequence, use the `trackers mcbyte` CLI command:
+To run McByte over a complete benchmark test set (MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking) and write one MOTChallenge-format result file per sequence, use the `trackers benchmark mcbyte` CLI command:
 
 ```text
-trackers mcbyte --dataset=[mot17,soccernet] --device=cuda
+trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
 ```
 
 See the [McByte Benchmarks guide](../learn/mcbyte-benchmark.md) for how to supply dataset paths and read the CLI reference.

@@ -7,9 +7,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    import torch
 
 
 def _resolve_auto_device() -> str:
@@ -42,7 +47,7 @@ class TrackletSnapshot:
 
 @dataclass(frozen=True)
 class MaskOutput:
-    """Mask information produced before McByte association."""
+    """Masks for one frame, keyed back to the tracklets they belong to."""
 
     masks: np.ndarray | None
     tracklet_mask_dict: dict[int, int]
@@ -97,3 +102,27 @@ class MaskPropagator(ABC):
         tracklet_ids: list[int],
     ) -> None:
         """Remove masks from existing propagation state."""
+
+
+def _autocast_context(use_amp: bool, device: torch.device) -> Any:
+    """Return the appropriate autocast context for the current AMP setting.
+
+    The autocast device type follows ``device`` rather than a hardcoded
+    ``"cuda"`` so the helper is backend-generic. Callers gate ``use_amp`` to
+    CUDA, so the returned context is a CUDA autocast on the default path and a
+    no-op otherwise.
+
+    Args:
+        use_amp: Whether automatic mixed precision is requested.
+        device: Device whose ``type`` selects the autocast backend.
+
+    Returns:
+        A torch autocast context when ``use_amp`` is set, otherwise a no-op.
+    """
+    import torch
+
+    if use_amp:
+        if hasattr(torch, "amp"):
+            return torch.amp.autocast(device.type, enabled=True)
+        return torch.cuda.amp.autocast(enabled=True)
+    return nullcontext()

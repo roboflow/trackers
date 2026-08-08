@@ -9,10 +9,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from trackers.core.mcbyte.mask_manager import MaskManager
-from trackers.core.mcbyte.masks import TrackletSnapshot
-from trackers.core.mcbyte.masks.base import MaskOutput
-from trackers.core.mcbyte.masks.dummy import DummyBoxMaskGenerator, DummyIdentityMaskPropagator
+from trackers.core.masks import TrackletSnapshot
+from trackers.core.masks.base import MaskOutput
+from trackers.core.masks.dummy import DummyBoxMaskGenerator, DummyIdentityMaskPropagator
+from trackers.core.masks.manager import MaskManager
 
 
 class _FlakyMaskPropagator(DummyIdentityMaskPropagator):
@@ -559,3 +559,19 @@ def test_mask_manager_init_raises_value_error_for_out_of_range_threshold() -> No
             mask_propagator=DummyIdentityMaskPropagator(),
             mask_creation_bbox_overlap_threshold=1.5,
         )
+
+
+def test_mask_manager_pending_tracklet_ids_property_snapshots_the_pool() -> None:
+    """Scenario: the public property mirrors the deferral pool and hands back a
+    read-only copy, so a caller cannot mutate the manager through it."""
+    manager = MaskManager(
+        mask_generator=DummyBoxMaskGenerator(),
+        mask_propagator=DummyIdentityMaskPropagator(),
+    )
+    manager._pending_tracklet_ids = {1, 2}
+
+    pending = manager.pending_tracklet_ids
+
+    assert pending == frozenset({1, 2})
+    assert isinstance(pending, frozenset)
+    assert manager._pending_tracklet_ids == {1, 2}
