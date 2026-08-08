@@ -30,7 +30,7 @@ from trackers.cli.track import (
 )
 from trackers.core.base import BaseTracker
 
-_SUBCOMMANDS = frozenset({"track", "eval", "tune", "download", "mcbyte"})
+_SUBCOMMANDS = frozenset({"track", "eval", "tune", "download", "benchmark", "inspect"})
 # Track option dataclasses paired with the nested CLI key each is registered
 # under. Argument registration and boolean-syntax derivation read this single
 # table, so a dotted CLI path cannot drift from the dataclass that defines it.
@@ -167,6 +167,13 @@ class _CLIParser(ArgumentParser):
     def add_function_arguments(self, function, *args, **kwargs):  # type: ignore[override]
         if function is track_command:
             return _add_track_arguments(self)
+        # Imported here rather than at module scope: the inspect components pull
+        # in cv2 and supervision, and this module is imported to build the
+        # parser for every command, including the ones that need neither.
+        from trackers.cli.inspect.mcbyte import _add_compare_arguments, compare_mcbyte_command
+
+        if function is compare_mcbyte_command:
+            return _add_compare_arguments(self)
         return super().add_function_arguments(function, *args, **kwargs)
 
 

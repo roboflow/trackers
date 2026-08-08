@@ -4,34 +4,28 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Visual sanity check for McByte MaskManager using ground-truth tracklets.
+"""Ground-truth replay mode for ``trackers inspect mask-manager``.
 
-This script replays per-frame tracklet boxes from a MOT-style ground-truth file
-and feeds them into MaskManager with McByte timing:
+Private implementation module. The user-facing command lives in
+:mod:`trackers.cli.inspect.mask_manager`, which dispatches here when
+``--mode gt`` is given.
+
+Per-frame tracklet boxes are replayed from a MOT-style ground-truth file and fed
+into :class:`MaskManager` with McByte timing:
 
 1. MaskManager produces masks for frame t from tracker state at frame t-1.
-2. The script reads GT tracklets for frame t and treats them as tracker output.
+2. GT tracklets for frame t are read and treated as tracker output.
 3. Newly visible and disappeared GT tracklets are stored as lifecycle events for
    the next frame.
 
-This is intended for manual validation of delayed mask creation, pending
-tracklets, SAM initialization/addition, Cutie propagation, and removal behavior.
+Intended for manual validation of delayed mask creation, pending tracklets, SAM
+initialization/addition, Cutie propagation, and removal behavior.
 
-Usage
------
-
-::
-
-    python visual_tests/visualize_mask_manager_from_gt.py \\
-        --image_dir frames --gt_file gt.txt --start_frame 1 --end_frame 100
-
-Options come from the :func:`visualize_command` signature, parsed with
-jsonargparse through the shared ``trackers`` parser, so the shared conventions
-hold here too: ``--image-dir`` and ``--image_dir`` are the same option, and
-``--config run.yaml`` supplies the same keys from a file. The repeatable
-``--tracklet-id`` became a list: ``--tracklet_id='[3,7]'`` selects two
-tracklets, ``--tracklet_id+ 9`` appends a third, and ``--tracklet_id='[all]'``
-replays every tracklet, as does omitting the option.
+The rendering helpers here deliberately duplicate names used in
+:mod:`trackers.cli.inspect.mask_manager`. They are not the same functions: this
+mode draws lifecycle-aware box colors (new / pending / masked / plain) because
+GT replay knows that state, while manual mode draws one flat color. Unifying
+them would change what each mode's output looks like.
 """
 
 from __future__ import annotations
@@ -39,24 +33,22 @@ from __future__ import annotations
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import cv2
 import numpy as np
-import torch
-from jsonargparse import CLI
-from jsonargparse.typing import PositiveInt
 
-from trackers.cli.__main__ import _CLIParser, _normalise_option
-from trackers.core.mcbyte.mask_manager import MaskManager
-from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
-from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
-from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
+from trackers.cli.inspect._common import (
+    load_rgb_image,
+    save_rgb_image,
+    timestamped_run_dir,
+    validate_device,
+)
+from trackers.core.masks.base import MaskOutput, TrackletSnapshot
 
-DEFAULT_OUTPUT_ROOT = Path("visual_tests/outputs/mask_manager_from_gt")
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+if TYPE_CHECKING:
+    from jsonargparse.typing import PositiveInt
 
 
 @dataclass(frozen=True)
@@ -79,24 +71,6 @@ def validate_frame_range(start_frame: int, end_frame: int) -> None:
         raise ValueError("start-frame must be positive.")
     if end_frame < start_frame:
         raise ValueError("end-frame must not be smaller than start-frame.")
-
-
-def load_rgb_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk and return it in RGB format."""
-    image_bgr = cv2.imread(str(image_path))
-    if image_bgr is None:
-        raise FileNotFoundError(f"Could not read image: {image_path}")
-    return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-
-
-def validate_device(device: str) -> str:
-    """Validate that the requested execution device is available."""
-    if device.startswith("cuda") and not torch.cuda.is_available():
-        raise RuntimeError(
-            "CUDA was requested, but torch.cuda.is_available() is False. "
-            "Use --device cpu or install CUDA-enabled PyTorch."
-        )
-    return device
 
 
 def parse_selected_tracklet_ids(tracklet_ids: list[int | str] | None) -> set[int] | None:
@@ -290,13 +264,6 @@ def draw_text_panel(
     return output
 
 
-def save_rgb_image(image_rgb: np.ndarray, output_path: Path) -> None:
-    """Save an RGB image to disk."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(str(output_path), image_bgr)
-
-
 def get_masked_tracklet_ids(mask_output: MaskOutput | None) -> set[int]:
     """Return tracklet IDs currently represented in a mask output."""
     if mask_output is None or mask_output.masks is None:
@@ -349,13 +316,13 @@ def visualize_output(
     save_rgb_image(visual, output_path)
 
 
-def visualize_command(
+def run_gt_mode(
     image_dir: Path,
     gt_file: Path,
     start_frame: int,
     end_frame: int,
+    output_root: Path,
     tracklet_id: list[PositiveInt | Literal["all"]] | None = None,
-    output_root: Path = DEFAULT_OUTPUT_ROOT,
     device: str = "cuda",
     sam_model_type: str = "vit_b",
     cutie_model_type: str = "base-mega",
@@ -418,15 +385,17 @@ def visualize_command(
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = output_root / timestamp
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = timestamped_run_dir(output_root)
 
     try:
-        device = validate_device(device)
-    except RuntimeError as error:
+        device = validate_device(device, label="SAM/Cutie")
+    except (ImportError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
+
+    from trackers.core.masks.cutie import CutieMaskPropagator
+    from trackers.core.masks.manager import MaskManager
+    from trackers.core.masks.sam import SAMBoxMaskGenerator
 
     mask_manager = MaskManager(
         mask_generator=SAMBoxMaskGenerator(
@@ -496,23 +465,5 @@ def visualize_command(
         previous_removed_tracklet_ids = current_state.removed_tracklet_ids
         previous_visible_tracklet_ids = {tracklet.tracker_id for tracklet in current_state.tracklets}
 
-    print(f"Done. Outputs saved to {output_dir}")
+    print(f"Done. Outputs saved to {output_dir.resolve()}")
     return 0
-
-
-def main() -> int:
-    """Parse command-line arguments and run the GT-based MaskManager visualizer."""
-    args = [_normalise_option(arg) for arg in sys.argv[1:]]
-    rc = CLI(
-        visualize_command,
-        args=args,
-        as_positional=False,
-        prog="python visual_tests/visualize_mask_manager_from_gt.py",
-        description="Visualize McByte MaskManager by replaying GT tracklets.",
-        parser_class=_CLIParser,
-    )
-    return int(rc) if rc is not None else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

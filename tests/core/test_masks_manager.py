@@ -9,10 +9,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from trackers.core.mcbyte.mask_manager import MaskManager
-from trackers.core.mcbyte.masks import TrackletSnapshot
-from trackers.core.mcbyte.masks.base import MaskOutput
-from trackers.core.mcbyte.masks.dummy import DummyBoxMaskGenerator, DummyIdentityMaskPropagator
+from trackers.core.masks import TrackletSnapshot
+from trackers.core.masks.base import MaskOutput
+from trackers.core.masks.dummy import DummyBoxMaskGenerator, DummyIdentityMaskPropagator
+from trackers.core.masks.manager import MaskManager
 
 
 class _FlakyMaskPropagator(DummyIdentityMaskPropagator):

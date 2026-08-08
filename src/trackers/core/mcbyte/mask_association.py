@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from trackers.core.mcbyte.masks.base import MaskOutput
+from trackers.core.masks.base import MaskOutput
 
 MINIMUM_MASK_AVERAGE_CONFIDENCE = 0.6
 MINIMUM_MASK_COVERAGE = 0.9
@@ -417,7 +417,7 @@ def condition_similarity_with_masks(
 
     Examples:
         >>> import numpy as np
-        >>> from trackers.core.mcbyte.masks.base import MaskOutput
+        >>> from trackers.core.masks.base import MaskOutput
         >>> similarity = np.array([[0.7, 0.6]], dtype=np.float32)
         >>> masks = np.zeros((1, 10, 10), dtype=bool)
         >>> masks[0, 0:5, 0:5] = True

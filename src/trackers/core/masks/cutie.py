@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import numpy as np
 import torch
 
-from trackers.core.mcbyte.masks.base import MaskOutput, MaskPropagator, _resolve_auto_device
+from trackers.core.masks.base import MaskOutput, MaskPropagator, _resolve_auto_device
 from trackers.utils.downloader import _download_file
 
 logger = logging.getLogger(__name__)

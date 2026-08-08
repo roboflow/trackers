@@ -28,23 +28,28 @@ from trackers.cli._parser import _CLIParser
 from trackers.cli._parser import _normalise_option as _normalise_option  # re-export
 from trackers.cli.download import download_command
 from trackers.cli.eval import eval_command
+from trackers.cli.inspect import INSPECT_COMPONENTS
 from trackers.cli.mcbyte import benchmark_command
 from trackers.cli.track import track_command
 from trackers.cli.tune import tune_command
 
 __all__ = ["main"]
 
+# Every top-level key is a verb. A tracker name is an argument to a verb, never a
+# command in its own right: ``benchmark`` and ``inspect`` are groups whose
+# members name what is being benchmarked or inspected.
 _COMMANDS = {
     "track": track_command,
     "eval": eval_command,
     "tune": tune_command,
     "download": download_command,
-    "mcbyte": benchmark_command,
+    "benchmark": {"mcbyte": benchmark_command},
+    "inspect": INSPECT_COMPONENTS,
 }
 
 
 def main() -> int:
-    """Dispatch to track / eval / tune / download / mcbyte via jsonargparse CLI."""
+    """Dispatch to track / eval / tune / download / benchmark / inspect via jsonargparse."""
     warnings.warn(
         "The trackers CLI is in beta. APIs may change in future releases.",
         UserWarning,

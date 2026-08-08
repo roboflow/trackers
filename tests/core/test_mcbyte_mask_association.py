@@ -9,11 +9,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from trackers.core.masks.base import MaskOutput
 from trackers.core.mcbyte.mask_association import (
     _get_mask_metrics,
     condition_similarity_with_masks,
 )
-from trackers.core.mcbyte.masks.base import MaskOutput
 
 
 def _full_mask(

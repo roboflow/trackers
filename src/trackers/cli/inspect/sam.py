@@ -4,27 +4,26 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Visual sanity check for SAMBoxMaskGenerator.
+"""Visual sanity check for :class:`SAMBoxMaskGenerator`.
 
-This script is intended for local/manual validation and development debugging
-only. It does not bundle any image assets and does not run as part of the test
-suite. The user provides an input image and one or more bounding boxes, and the
-script saves an image with SAM masks and boxes overlaid.
+Intended for local validation and development debugging. No image assets are
+bundled and nothing here runs as part of the test suite. The caller supplies an
+image and one or more bounding boxes; the command saves an image with SAM masks
+and boxes overlaid.
 
 Usage
 -----
 
 ::
 
-    python visual_tests/visualize_sam_mask_generator.py \\
-        --image_path frame.jpg --box='[[10,20,110,220]]'
+    trackers inspect sam --image_path frame.jpg --box='[[10,20,110,220]]'
 
-Options come from the :func:`visualize_command` signature, parsed with
-jsonargparse through the shared ``trackers`` parser, so the shared conventions
-hold here too: ``--image-path`` and ``--image_path`` are the same option, and
-``--config run.yaml`` supplies the same keys from a file. Boxes are supplied as
-one list rather than a repeated option: ``--box='[[10,20,110,220]]'`` for one
-box, ``--box='[[10,20,110,220],[30,40,130,240]]'`` for two, and
+Options come from the :func:`sam_command` signature, parsed with jsonargparse
+through the shared ``trackers`` parser, so the shared conventions hold:
+``--image-path`` and ``--image_path`` are the same option, and ``--config
+run.yaml`` supplies the same keys from a file. Boxes are supplied as one list
+rather than a repeated option: ``--box='[[10,20,110,220]]'`` for one box,
+``--box='[[10,20,110,220],[30,40,130,240]]'`` for two, and
 ``--box+='[[30,40,130,240]]'`` to append to boxes already given.
 """
 
@@ -35,14 +34,17 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import torch
-from jsonargparse import CLI
 
-from trackers.cli.__main__ import _CLIParser, _normalise_option
-from trackers.core.mcbyte.masks.base import TrackletSnapshot
-from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
+from trackers.cli.inspect._common import (
+    INSPECT_OUTPUT_ROOT,
+    load_rgb_image,
+    print_device_info,
+    save_rgb_image,
+    validate_device,
+)
+from trackers.core.masks.base import TrackletSnapshot
 
-DEFAULT_OUTPUT_PATH = Path("visual_tests/outputs/sam_mask_generator_output.jpg")
+DEFAULT_OUTPUT_PATH = INSPECT_OUTPUT_ROOT / "sam" / "sam_masks.jpg"
 
 
 def overlay_masks(
@@ -59,6 +61,12 @@ def overlay_masks(
 
     Returns:
         RGB image with semi-transparent mask overlays.
+
+    Examples:
+        >>> image = np.zeros((2, 2, 3), dtype=np.uint8)
+        >>> masks = np.ones((1, 2, 2), dtype=bool)
+        >>> overlay_masks(image, masks).shape
+        (2, 2, 3)
     """
     output = image.copy()
     rng = np.random.default_rng(0)
@@ -81,7 +89,21 @@ def draw_boxes(
     image: np.ndarray,
     tracklets: list[TrackletSnapshot],
 ) -> np.ndarray:
-    """Draw tracklet bounding boxes and tracker IDs on an RGB image."""
+    """Draw tracklet bounding boxes and tracker IDs on an RGB image.
+
+    Args:
+        image: RGB image with shape ``(H, W, 3)``.
+        tracklets: Tracklets whose boxes are drawn.
+
+    Returns:
+        RGB image with boxes and IDs drawn.
+
+    Examples:
+        >>> image = np.zeros((8, 8, 3), dtype=np.uint8)
+        >>> box = np.array([1, 1, 5, 5], dtype=np.float32)
+        >>> draw_boxes(image, [TrackletSnapshot(tracker_id=1, xyxy=box)]).shape
+        (8, 8, 3)
+    """
     output = image.copy()
 
     for tracklet in tracklets:
@@ -122,6 +144,10 @@ def validate_and_clip_xyxy_box(
 
     Raises:
         ValueError: If the box has non-positive area before or after clipping.
+
+    Examples:
+        >>> validate_and_clip_xyxy_box((1.0, 2.0, 5.0, 6.0), (10, 10))
+        array([1., 2., 5., 6.], dtype=float32)
     """
     height, width = image_shape
     x1, y1, x2, y2 = box
@@ -140,24 +166,14 @@ def validate_and_clip_xyxy_box(
     return np.array([x1, y1, x2, y2], dtype=np.float32)
 
 
-def validate_device(device: str) -> str:
-    """Validate the requested SAM execution device."""
-    if device.startswith("cuda") and not torch.cuda.is_available():
-        raise RuntimeError(
-            "CUDA was requested, but torch.cuda.is_available() is False. "
-            "Use --device cpu or install a CUDA-enabled PyTorch build."
-        )
-    return device
-
-
-def visualize_command(
+def sam_command(
     image_path: Path,
     box: list[tuple[float, float, float, float]],
     output_path: Path = DEFAULT_OUTPUT_PATH,
     device: str = "cpu",
     model_type: str = "vit_b",
 ) -> int:
-    """Run SAM mask generation, report the execution device, and save a visualization image.
+    """Run SAM mask generation, report the execution device, and save a visualization.
 
     Every option is also accepted with hyphens in place of underscores, so
     ``--image-path`` and ``--image_path`` name the same thing.
@@ -177,14 +193,16 @@ def visualize_command(
 
     Raises:
         RuntimeError: If SAM returns no masks for the given boxes.
+
+    Examples:
+        An unreadable image is reported on stderr and exits non-zero, so only
+        the return value shows up here.
+
+        >>> sam_command(Path("missing.jpg"), box=[(1.0, 2.0, 3.0, 4.0)])
+        1
     """
     try:
-        image_bgr = cv2.imread(str(image_path))
-        if image_bgr is None:
-            raise FileNotFoundError(f"Could not read image: {image_path}")
-
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-
+        image_rgb = load_rgb_image(image_path)
         tracklets = [
             TrackletSnapshot(
                 tracker_id=index,
@@ -195,59 +213,29 @@ def visualize_command(
             )
             for index, single_box in enumerate(box)
         ]
-
-        resolved_device = validate_device(device)
-    except (FileNotFoundError, ValueError, RuntimeError) as error:
+        resolved_device = validate_device(device, label="SAM")
+    except (FileNotFoundError, ImportError, ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
+
+    from trackers.core.masks.sam import SAMBoxMaskGenerator
 
     generator = SAMBoxMaskGenerator(
         model_type=model_type,
         device=resolved_device,
     )
-
-    print(f"Generator device: {generator.device}")
-    if generator.device.type == "cuda":
-        print(f"GPU: {torch.cuda.get_device_name(generator.device)} (CUDA {torch.version.cuda})")
-    else:
-        print("GPU: N/A (running on CPU)")
+    print_device_info(generator.device, label="SAM")
 
     mask_output = generator.generate(
         frame=image_rgb,
         tracklets=tracklets,
     )
-
     if mask_output.masks is None:
         raise RuntimeError("SAM did not return masks.")
 
     visual_rgb = overlay_masks(image_rgb, mask_output.masks)
     visual_rgb = draw_boxes(visual_rgb, tracklets)
+    save_rgb_image(visual_rgb, output_path)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    visual_bgr = cv2.cvtColor(visual_rgb, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(str(output_path), visual_bgr)
-
-    print(f"Saved visualization to {output_path}")
+    print(f"Saved visualization to {output_path.resolve()}")
     return 0
-
-
-def main() -> int:
-    """Parse visualization arguments with jsonargparse and run SAM mask generation.
-
-    Returns:
-        Exit code from :func:`visualize_command`.
-    """
-    args = [_normalise_option(arg) for arg in sys.argv[1:]]
-    rc = CLI(
-        visualize_command,
-        args=args,
-        as_positional=False,
-        prog="python visual_tests/visualize_sam_mask_generator.py",
-        description="Visualize masks generated by SAMBoxMaskGenerator.",
-        parser_class=_CLIParser,
-    )
-    return int(rc) if rc is not None else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

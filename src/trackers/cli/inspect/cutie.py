@@ -4,31 +4,30 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Visual sanity check for CutieMaskPropagator.
+"""Visual sanity check for :class:`CutieMaskPropagator`.
 
-This script is intended for local/manual validation only. It does not bundle any
-image assets and does not run as part of the test suite. The user provides an
-image directory, a frame range, and one or more bounding boxes. The script uses
-SAM to initialize masks on the first selected frame, then uses Cutie to propagate
-those masks over the remaining selected frames.
+Intended for local validation only. No image assets are bundled and nothing here
+runs as part of the test suite. The caller supplies an image directory, a frame
+range, and one or more bounding boxes. SAM initializes masks on the first
+selected frame, then Cutie propagates them over the remaining selected frames.
 
 Usage
 -----
 
 ::
 
-    python visual_tests/visualize_cutie_mask_propagator.py \\
+    trackers inspect cutie \\
         --image_dir frames --start_file 000001.jpg --end_file 000010.jpg \\
         --box='[[10,20,110,220]]'
 
-Options come from the :func:`visualize_command` signature, parsed with
-jsonargparse through the shared ``trackers`` parser, so the shared conventions
-hold here too: ``--image-dir`` and ``--image_dir`` are the same option, and
-``--config run.yaml`` supplies the same keys from a file. The repeatable
-options became lists: boxes are ``--box='[[x1,y1,x2,y2]]'``, while lifecycle
-events are ``--add_at='["frame.jpg:x1,y1,x2,y2"]'`` and
-``--remove_at='["frame.jpg:3"]'``. Every one of them also appends with ``+``,
-as in ``--add_at+ frame.jpg:10,20,110,220``.
+Options come from the :func:`cutie_command` signature, parsed with jsonargparse
+through the shared ``trackers`` parser, so the shared conventions hold:
+``--image-dir`` and ``--image_dir`` are the same option, and ``--config
+run.yaml`` supplies the same keys from a file. The repeatable options are
+lists: boxes are ``--box='[[x1,y1,x2,y2]]'``, while lifecycle events are
+``--add_at='["frame.jpg:x1,y1,x2,y2"]'`` and ``--remove_at='["frame.jpg:3"]'``.
+Every one of them also appends with ``+``, as in
+``--add_at+ frame.jpg:10,20,110,220``.
 """
 
 from __future__ import annotations
@@ -36,21 +35,29 @@ from __future__ import annotations
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
-import torch
-from jsonargparse import CLI
 
-from trackers.cli.__main__ import _CLIParser, _normalise_option
-from trackers.core.mcbyte.masks.base import TrackletSnapshot
-from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
-from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
+from trackers.cli.inspect._common import (
+    INSPECT_OUTPUT_ROOT,
+    list_selected_frame_paths,
+    load_rgb_image,
+    parse_xyxy_box,
+    print_device_info,
+    save_rgb_image,
+    timestamped_run_dir,
+    validate_device,
+)
+from trackers.core.masks.base import TrackletSnapshot
 
-DEFAULT_OUTPUT_ROOT = Path("visual_tests/outputs/cutie")
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+if TYPE_CHECKING:
+    from trackers.core.masks.cutie import CutieMaskPropagator
+    from trackers.core.masks.sam import SAMBoxMaskGenerator
+
+DEFAULT_OUTPUT_ROOT = INSPECT_OUTPUT_ROOT / "cutie"
 
 
 @dataclass(frozen=True)
@@ -82,14 +89,6 @@ class RemoveMaskEvent:
 
     frame_file: str
     tracker_id: int
-
-
-def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
-    """Parse one command-line bounding box in ``x1,y1,x2,y2`` format."""
-    values = [float(value) for value in box.split(",")]
-    if len(values) != 4:
-        raise ValueError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
-    return values[0], values[1], values[2], values[3]
 
 
 def parse_add_mask_event(event: str) -> AddMaskEvent:
@@ -191,38 +190,6 @@ def validate_lifecycle_events(
             raise ValueError(f"Remove event frame is outside selected range: {remove_event.frame_file}")
         if remove_event.frame_file == first_file:
             raise ValueError("Remove events cannot be scheduled on the first selected frame.")
-
-
-def list_selected_frame_paths(
-    image_dir: Path,
-    start_file: str,
-    end_file: str,
-) -> list[Path]:
-    """List sorted frame paths from ``start_file`` to ``end_file`` inclusive."""
-    frame_paths = sorted(
-        path for path in image_dir.iterdir() if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
-    )
-    filenames = [path.name for path in frame_paths]
-
-    if start_file not in filenames:
-        raise FileNotFoundError(f"Start file not found in {image_dir}: {start_file}")
-    if end_file not in filenames:
-        raise FileNotFoundError(f"End file not found in {image_dir}: {end_file}")
-
-    start_index = filenames.index(start_file)
-    end_index = filenames.index(end_file)
-    if end_index < start_index:
-        raise ValueError(f"end-file must not come before start-file. Got {start_file=} and {end_file=}.")
-
-    return frame_paths[start_index : end_index + 1]
-
-
-def load_rgb_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk and return it in RGB format."""
-    image_bgr = cv2.imread(str(image_path))
-    if image_bgr is None:
-        raise FileNotFoundError(f"Could not read image: {image_path}")
-    return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
 
 
 def validate_and_clip_xyxy_box(
@@ -352,41 +319,6 @@ def draw_frame_label(
     )
 
     return output
-
-
-def save_rgb_image(
-    image_rgb: np.ndarray,
-    output_path: Path,
-) -> None:
-    """Save an RGB image to disk."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(str(output_path), image_bgr)
-
-
-def validate_device(
-    device: str,
-    label: str,
-) -> str:
-    """Validate requested execution device."""
-    if device.startswith("cuda") and not torch.cuda.is_available():
-        raise RuntimeError(
-            f"CUDA was requested for {label}, but torch.cuda.is_available() is False. "
-            "Use a CPU device or install a CUDA-enabled PyTorch build."
-        )
-    return device
-
-
-def print_device_info(
-    label: str,
-    device: torch.device,
-) -> None:
-    """Print execution device information."""
-    print(f"{label} device: {device}")
-    if device.type == "cuda":
-        print(f"{label} GPU: {torch.cuda.get_device_name(device)} (CUDA {torch.version.cuda})")
-    else:
-        print(f"{label} GPU: N/A (running on CPU)")
 
 
 def apply_add_events(
@@ -542,7 +474,7 @@ def propagate_and_save_frame(
     )
 
 
-def visualize_command(
+def cutie_command(
     image_dir: Path,
     start_file: str,
     end_file: str,
@@ -621,9 +553,7 @@ def visualize_command(
     )
     remove_events_by_file = group_remove_events(remove_events)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = output_root / timestamp
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = timestamped_run_dir(output_root)
 
     initial_frame = load_rgb_image(frame_paths[0])
 
@@ -653,9 +583,12 @@ def visualize_command(
 
     try:
         device = validate_device(device, label="SAM/Cutie")
-    except RuntimeError as error:
+    except (ImportError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
+
+    from trackers.core.masks.cutie import CutieMaskPropagator
+    from trackers.core.masks.sam import SAMBoxMaskGenerator
 
     sam_generator = SAMBoxMaskGenerator(
         model_type=sam_model_type,
@@ -668,7 +601,7 @@ def visualize_command(
         device=device,
     )
 
-    print_device_info("SAM/Cutie", sam_generator.device)
+    print_device_info(sam_generator.device, label="SAM/Cutie")
     print(f"Selected {len(frame_paths)} frames.")
     print(f"Saving outputs to {output_dir}")
 
@@ -709,23 +642,5 @@ def visualize_command(
         previous_frame = frame
         previous_frame_path = frame_path
 
-    print(f"Saved visualizations to {output_dir}")
+    print(f"Saved visualizations to {output_dir.resolve()}")
     return 0
-
-
-def main() -> int:
-    """Parse command-line arguments and run the Cutie propagation visualizer."""
-    args = [_normalise_option(arg) for arg in sys.argv[1:]]
-    rc = CLI(
-        visualize_command,
-        args=args,
-        as_positional=False,
-        prog="python visual_tests/visualize_cutie_mask_propagator.py",
-        description="Visualize SAM initialization and Cutie mask propagation.",
-        parser_class=_CLIParser,
-    )
-    return int(rc) if rc is not None else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

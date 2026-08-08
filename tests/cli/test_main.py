@@ -497,7 +497,12 @@ class TestCliMigration:
         ``_LEGACY_ARGUMENTS`` entry raises ``KeyError`` from an unguarded
         subscript before any option is examined.
         """
-        assert _translate_legacy_args(["mcbyte", "--cmc-downscale", "2"]) == ["mcbyte", "--cmc_downscale", "2"]
+        assert _translate_legacy_args(["benchmark", "mcbyte", "--cmc-downscale", "2"]) == [
+            "benchmark",
+            "mcbyte",
+            "--cmc_downscale",
+            "2",
+        ]
 
     def test_eval_rejects_mixing_the_deprecated_and_current_spelling(self) -> None:
         """Supplying both spellings of one input is an error, not a silent winner."""

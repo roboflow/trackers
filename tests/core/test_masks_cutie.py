@@ -15,8 +15,8 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from trackers.core.mcbyte.masks.base import MaskOutput  # noqa: E402
-from trackers.core.mcbyte.masks.cutie import (  # noqa: E402
+from trackers.core.masks.base import MaskOutput  # noqa: E402
+from trackers.core.masks.cutie import (  # noqa: E402
     CutieMaskPropagator,
     _apply_backend_perf_options,
     _autocast_context,
@@ -1161,7 +1161,7 @@ def test_propagate_returns_mask_output_contract_after_temporary_id_shift(
     assert propagator._cached_feature_frame is not None
 
 
-@patch("trackers.core.mcbyte.masks.cutie.torch.amp.autocast")
+@patch("trackers.core.masks.cutie.torch.amp.autocast")
 def test_autocast_context_disabled_returns_nullcontext(autocast_mock: MagicMock) -> None:
     """With AMP off the helper returns a no-op context and never constructs an autocast."""
     context = _autocast_context(use_amp=False, device=torch.device("cuda"))
@@ -1171,7 +1171,7 @@ def test_autocast_context_disabled_returns_nullcontext(autocast_mock: MagicMock)
 
 
 @pytest.mark.parametrize("device_type", ["cuda", "cpu"])
-@patch("trackers.core.mcbyte.masks.cutie.torch.amp.autocast")
+@patch("trackers.core.masks.cutie.torch.amp.autocast")
 def test_autocast_context_enabled_follows_device_type(autocast_mock: MagicMock, device_type: str) -> None:
     """With AMP on the autocast backend follows the device type, not a hardcoded 'cuda'."""
     context = _autocast_context(use_amp=True, device=torch.device(device_type))
@@ -1180,7 +1180,7 @@ def test_autocast_context_enabled_follows_device_type(autocast_mock: MagicMock, 
     assert context is autocast_mock.return_value
 
 
-@patch("trackers.core.mcbyte.masks.cutie.torch.compile")
+@patch("trackers.core.masks.cutie.torch.compile")
 def test_apply_backend_perf_options_disabled_invokes_no_transform(compile_mock: MagicMock) -> None:
     """Both transforms off: neither model.to nor torch.compile runs and the model is returned as-is."""
     model = MagicMock()
@@ -1192,7 +1192,7 @@ def test_apply_backend_perf_options_disabled_invokes_no_transform(compile_mock: 
     compile_mock.assert_not_called()
 
 
-@patch("trackers.core.mcbyte.masks.cutie.torch.compile")
+@patch("trackers.core.masks.cutie.torch.compile")
 def test_apply_backend_perf_options_channels_last_converts_model_once(compile_mock: MagicMock) -> None:
     """channels_last=True calls model.to exactly once with the channels_last format and compiles nothing."""
     model = MagicMock()
@@ -1204,7 +1204,7 @@ def test_apply_backend_perf_options_channels_last_converts_model_once(compile_mo
     compile_mock.assert_not_called()
 
 
-@patch("trackers.core.mcbyte.masks.cutie.torch.compile")
+@patch("trackers.core.masks.cutie.torch.compile")
 def test_apply_backend_perf_options_compiles_only_shape_stable_encoder_methods(compile_mock: MagicMock) -> None:
     """compile_model=True compiles exactly encode_image + transform_key, leaving the variable-shape methods eager."""
     model = MagicMock()

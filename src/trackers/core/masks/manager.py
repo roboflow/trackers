@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from trackers.core.mcbyte.masks.base import (
+from trackers.core.masks.base import (
     MaskGenerator,
     MaskOutput,
     MaskPropagator,
@@ -182,8 +182,8 @@ class MaskManager:
 
         Examples:
             >>> import numpy as np
-            >>> from trackers.core.mcbyte.masks import TrackletSnapshot
-            >>> from trackers.core.mcbyte.masks.dummy import (
+            >>> from trackers.core.masks import TrackletSnapshot
+            >>> from trackers.core.masks.dummy import (
             ...     DummyBoxMaskGenerator,
             ...     DummyIdentityMaskPropagator,
             ... )

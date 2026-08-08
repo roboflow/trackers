@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from trackers.core.mcbyte.masks.base import (
+from trackers.core.masks.base import (
     MaskGenerator,
     MaskOutput,
     MaskPropagator,

@@ -15,8 +15,8 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from trackers.core.mcbyte.masks.base import TrackletSnapshot  # noqa: E402
-from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator  # noqa: E402
+from trackers.core.masks.base import TrackletSnapshot  # noqa: E402
+from trackers.core.masks.sam import SAMBoxMaskGenerator  # noqa: E402
 
 
 class _FakeTransform:

@@ -56,15 +56,14 @@ from typing import Literal, TextIO
 import cv2
 import numpy as np
 import supervision as sv
-import torch
-from jsonargparse import CLI, ArgumentParser
+from jsonargparse import ArgumentParser
 
-from trackers.cli.__main__ import _CLIParser, _normalise_option
-from trackers.core.mcbyte.masks.base import MaskOutput
+from trackers.cli.inspect._common import INSPECT_OUTPUT_ROOT, require_torch
+from trackers.core.masks.base import MaskOutput
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.utils.cmc import CMCMethod
 
-DEFAULT_OUTPUT_DIR = Path("visual_tests/outputs/visualize_mcbyte_from_detections")
+DEFAULT_OUTPUT_DIR = INSPECT_OUTPUT_ROOT / "mcbyte"
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
 RunMode = Literal["locked_iou", "mask_conditioned"]
@@ -152,6 +151,7 @@ def validate_options(
         Message describing the first failed check, or ``None`` when every
         option is usable.
     """
+    torch = require_torch()
     checks: tuple[tuple[bool, str], ...] = (
         (not sequence.image_dir.is_dir(), f"Image directory does not exist: {sequence.image_dir}"),
         (not sequence.det_file.is_file(), f"Detection file does not exist: {sequence.det_file}"),
@@ -826,28 +826,7 @@ def _add_compare_arguments(parser: ArgumentParser) -> list[str]:
     return added_args
 
 
-class _ComparisonParser(_CLIParser):
-    """Expose the option dataclasses while keeping the shared boolean syntax."""
-
-    def add_function_arguments(self, function, *args, **kwargs):  # type: ignore[override]
-        if function is compare_mcbyte_command:
-            return _add_compare_arguments(self)
-        return super().add_function_arguments(function, *args, **kwargs)
-
-
-def main() -> int:
-    """Parse the command line and run the requested McByte comparisons."""
-    args = [_normalise_option(arg) for arg in sys.argv[1:]]
-    rc = CLI(
-        compare_mcbyte_command,
-        args=args,
-        as_positional=False,
-        prog="python visual_tests/visualize_mcbyte_from_detections.py",
-        description="Compare locked-IoU and mask-conditioned McByte on one sequence.",
-        parser_class=_ComparisonParser,
-    )
-    return int(rc) if rc is not None else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+# ``_add_compare_arguments`` is dispatched from ``trackers.cli._parser._CLIParser``
+# rather than from a parser subclass of its own. Every subcommand shares one
+# ``parser_class`` once the commands are nested under ``trackers inspect``, so a
+# local subclass would never be constructed.

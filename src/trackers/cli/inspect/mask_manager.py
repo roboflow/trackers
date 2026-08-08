@@ -4,56 +4,90 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Visual sanity check for McByte MaskManager with SAM + Cutie.
+"""Visual sanity check for :class:`MaskManager` with SAM + Cutie.
 
-This script validates the real MaskManager orchestration:
+Validates the real MaskManager orchestration:
+
 - initialize masks from previous-frame tracklets,
 - propagate masks to the current frame,
 - add masks for new tracklets,
 - remove masks for terminated tracklets.
 
-It intentionally calls MaskManager.get_updated_masks(), not Cutie directly.
+``MaskManager.get_updated_masks()`` is called directly, not Cutie.
+
+Two modes, selected with the required ``--mode``:
+
+``manual``
+    Tracklets come from boxes given on the command line, with lifecycle events
+    scheduled by ``--add_at`` / ``--remove_at``. Good for constructing a precise
+    scenario by hand.
+
+``gt``
+    Tracklets are replayed from a MOT-format ground-truth file. Good for
+    watching delayed mask creation and pending tracklets on real data. This mode
+    additionally draws lifecycle-aware box colors, because GT replay knows which
+    tracklets are new, pending, or already masked.
+
+Each mode reads its own options; the other mode's options are rejected rather
+than silently ignored. Options shared by both (``--device``, the SAM and Cutie
+model settings, ``--output_root``) apply either way.
 
 Usage
 -----
 
 ::
 
-    python visual_tests/visualize_mask_manager.py \\
+    trackers inspect mask-manager --mode manual \\
         --image_dir frames --start_file 000001.jpg --end_file 000010.jpg \\
         --box='[[10,20,110,220]]'
 
-Options come from the :func:`visualize_command` signature, parsed with
+    trackers inspect mask-manager --mode gt \\
+        --image_dir frames --gt_file gt.txt --start_frame 1 --end_frame 100
+
+Options come from the :func:`mask_manager_command` signature, parsed with
 jsonargparse through the shared ``trackers`` parser, so the shared conventions
-hold here too: ``--image-dir`` and ``--image_dir`` are the same option, and
-``--config run.yaml`` supplies the same keys from a file. The repeatable
-options became lists: boxes are ``--box='[[x1,y1,x2,y2]]'``, while lifecycle
-events are ``--add_at='["frame.jpg:x1,y1,x2,y2"]'`` and
-``--remove_at='["frame.jpg:3"]'``. Every one of them also appends with ``+``,
-as in ``--add_at+ frame.jpg:10,20,110,220``.
+hold: ``--image-dir`` and ``--image_dir`` are the same option, and ``--config
+run.yaml`` supplies the same keys from a file. The repeatable options are
+lists: boxes are ``--box='[[x1,y1,x2,y2]]'``, lifecycle events are
+``--add_at='["frame.jpg:x1,y1,x2,y2"]'`` and ``--remove_at='["frame.jpg:3"]'``,
+and tracklet selection is ``--tracklet_id='[3,7]'``. Every one of them also
+appends with ``+``, as in ``--add_at+ frame.jpg:10,20,110,220``.
 """
 
 from __future__ import annotations
 
 import sys
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
+from typing import Any, Literal
 
 import cv2
 import numpy as np
-import torch
-from jsonargparse import CLI
 
-from trackers.cli.__main__ import _CLIParser, _normalise_option
-from trackers.core.mcbyte.mask_manager import MaskManager
-from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
-from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
-from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
+# Imported at runtime, not under TYPE_CHECKING: jsonargparse resolves this
+# command's annotations when it builds the parser.
+from jsonargparse.typing import PositiveInt
 
-DEFAULT_OUTPUT_ROOT = Path("visual_tests/outputs/mask_manager")
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+from trackers.cli.inspect._common import (
+    INSPECT_OUTPUT_ROOT,
+    list_selected_frame_paths,
+    load_rgb_image,
+    parse_xyxy_box,
+    save_rgb_image,
+    timestamped_run_dir,
+    validate_device,
+)
+from trackers.cli.inspect._mask_manager_gt import run_gt_mode
+from trackers.core.masks.base import MaskOutput, TrackletSnapshot
+
+DEFAULT_OUTPUT_ROOT = INSPECT_OUTPUT_ROOT / "mask_manager"
+
+MaskManagerMode = Literal["manual", "gt"]
+
+_MANUAL_ONLY_OPTIONS = ("start_file", "end_file", "box", "add_at", "remove_at")
+_GT_ONLY_OPTIONS = ("gt_file", "start_frame", "end_frame", "tracklet_id")
 
 
 @dataclass(frozen=True)
@@ -70,14 +104,6 @@ class RemoveTrackletEvent:
 
     frame_file: str
     tracker_id: int
-
-
-def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
-    """Parse one command-line bounding box in ``x1,y1,x2,y2`` format."""
-    values = [float(value) for value in box.split(",")]
-    if len(values) != 4:
-        raise ValueError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
-    return values[0], values[1], values[2], values[3]
 
 
 def parse_add_tracklet_event(event: str) -> AddTrackletEvent:
@@ -113,34 +139,6 @@ def parse_remove_tracklet_event(event: str) -> RemoveTrackletEvent:
     return RemoveTrackletEvent(frame_file=frame_file, tracker_id=tracker_id)
 
 
-def list_selected_frame_paths(image_dir: Path, start_file: str, end_file: str) -> list[Path]:
-    """List sorted frame paths from ``start_file`` to ``end_file`` inclusive."""
-    frame_paths = sorted(
-        path for path in image_dir.iterdir() if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
-    )
-    filenames = [path.name for path in frame_paths]
-
-    if start_file not in filenames:
-        raise FileNotFoundError(f"Start file not found in {image_dir}: {start_file}")
-    if end_file not in filenames:
-        raise FileNotFoundError(f"End file not found in {image_dir}: {end_file}")
-
-    start_index = filenames.index(start_file)
-    end_index = filenames.index(end_file)
-    if end_index < start_index:
-        raise ValueError(f"end-file must not come before start-file. Got {start_file=} and {end_file=}.")
-
-    return frame_paths[start_index : end_index + 1]
-
-
-def load_rgb_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk and return it in RGB format."""
-    image_bgr = cv2.imread(str(image_path))
-    if image_bgr is None:
-        raise FileNotFoundError(f"Could not read image: {image_path}")
-    return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-
-
 def validate_and_clip_xyxy_box(
     box: tuple[float, float, float, float],
     image_shape: tuple[int, int],
@@ -161,16 +159,6 @@ def validate_and_clip_xyxy_box(
         raise ValueError(f"Box is outside image after clipping: {box}")
 
     return np.array([x1, y1, x2, y2], dtype=np.float32)
-
-
-def validate_device(device: str) -> str:
-    """Validate that the requested execution device is available."""
-    if device.startswith("cuda") and not torch.cuda.is_available():
-        raise RuntimeError(
-            "CUDA was requested, but torch.cuda.is_available() is False. "
-            "Use --device cpu or install CUDA-enabled PyTorch."
-        )
-    return device
 
 
 def group_add_events_by_source_frame(
@@ -311,13 +299,6 @@ def draw_frame_label(image: np.ndarray, frame_name: str, status: str) -> np.ndar
     return output
 
 
-def save_rgb_image(image_rgb: np.ndarray, output_path: Path) -> None:
-    """Save an RGB image to disk."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(str(output_path), image_bgr)
-
-
 def visualize_output(
     frame: np.ndarray,
     frame_name: str,
@@ -342,14 +323,14 @@ def visualize_output(
     save_rgb_image(visual, output_path)
 
 
-def visualize_command(
+def run_manual_mode(
     image_dir: Path,
     start_file: str,
     end_file: str,
     box: list[tuple[float, float, float, float]],
+    output_root: Path,
     add_at: list[str] | None = None,
     remove_at: list[str] | None = None,
-    output_root: Path = DEFAULT_OUTPUT_ROOT,
     device: str = "cuda",
     sam_model_type: str = "vit_b",
     cutie_model_type: str = "base-mega",
@@ -424,14 +405,16 @@ def visualize_command(
         add_events_by_file = group_add_events_by_source_frame(frame_paths, add_events)
         remove_events_by_file = group_remove_events(remove_events)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = output_root / timestamp
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = timestamped_run_dir(output_root)
 
-        resolved_device = validate_device(device)
-    except (FileNotFoundError, ValueError, RuntimeError) as error:
+        resolved_device = validate_device(device, label="SAM/Cutie")
+    except (FileNotFoundError, ImportError, ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
+
+    from trackers.core.masks.cutie import CutieMaskPropagator
+    from trackers.core.masks.manager import MaskManager
+    from trackers.core.masks.sam import SAMBoxMaskGenerator
 
     mask_manager = MaskManager(
         mask_generator=SAMBoxMaskGenerator(
@@ -545,27 +528,175 @@ def visualize_command(
             status=status,
         )
 
-    print(f"Done. Outputs saved to {output_dir}")
+    print(f"Done. Outputs saved to {output_dir.resolve()}")
     return 0
 
 
-def main() -> int:
-    """Parse visualization arguments with jsonargparse and run MaskManager validation.
+def _raise_for_mode_option_conflict(mode: MaskManagerMode, supplied: Mapping[str, Any]) -> None:
+    """Reject options belonging to the mode that was not selected.
+
+    Both modes are one command, so every option is registered on one parser and
+    argparse cannot tell that ``--gt_file`` is meaningless under ``--mode
+    manual``. This check restores that error, and runs before any model is
+    loaded so a wrong invocation fails in milliseconds rather than after SAM and
+    Cutie weights are on the device.
+
+    Args:
+        mode: The selected mode.
+        supplied: Mapping of option name to the value the caller gave.
+
+    Raises:
+        ValueError: If an option belongs to the other mode, or a required option
+            for the selected mode is missing.
+
+    Examples:
+        >>> _raise_for_mode_option_conflict("manual", {"gt_file": "gt.txt"})
+        Traceback (most recent call last):
+        ...
+        ValueError: --gt_file is a --mode gt option and cannot be used with --mode manual.
+    """
+    foreign = _GT_ONLY_OPTIONS if mode == "manual" else _MANUAL_ONLY_OPTIONS
+    other_mode = "gt" if mode == "manual" else "manual"
+    for option in foreign:
+        if supplied.get(option) is not None:
+            raise ValueError(f"--{option} is a --mode {other_mode} option and cannot be used with --mode {mode}.")
+
+    required = ("start_file", "end_file", "box") if mode == "manual" else ("gt_file", "start_frame", "end_frame")
+    missing = [option for option in required if supplied.get(option) is None]
+    if missing:
+        joined = ", ".join(f"--{option}" for option in missing)
+        raise ValueError(f"--mode {mode} requires {joined}.")
+
+
+def mask_manager_command(
+    image_dir: Path,
+    mode: MaskManagerMode,
+    start_file: str | None = None,
+    end_file: str | None = None,
+    box: list[tuple[float, float, float, float]] | None = None,
+    add_at: list[str] | None = None,
+    remove_at: list[str] | None = None,
+    gt_file: Path | None = None,
+    start_frame: int | None = None,
+    end_frame: int | None = None,
+    tracklet_id: list[PositiveInt | Literal["all"]] | None = None,
+    output_root: Path = DEFAULT_OUTPUT_ROOT,
+    device: str = "cuda",
+    sam_model_type: str = "vit_b",
+    cutie_model_type: str = "base-mega",
+    cutie_config_path: Path | None = None,
+    cutie_config_name: str = "eval_config",
+    mask_creation_bbox_overlap_threshold: float = 0.6,
+) -> int:
+    """Run MaskManager over a frame range and save per-frame visualizations.
+
+    Both modes follow the original McByte execution order. For frame ``t``:
+
+        1. MaskManager produces masks for frame ``t`` using tracker outputs
+           from frame ``t-1``.
+        2. Tracklets for frame ``t`` are produced, from command-line boxes in
+           ``manual`` mode or from the ground-truth file in ``gt`` mode.
+        3. Newly created and removed tracklets become lifecycle events consumed
+           by MaskManager on frame ``t+1``.
+
+    Options belonging to the mode that was not selected are rejected rather than
+    ignored, and the check runs before any model loads.
+
+    Every option is also accepted with hyphens in place of underscores, so
+    ``--start-file`` and ``--start_file`` name the same thing.
+
+    Args:
+        image_dir: Directory holding the frame images.
+        mode: ``manual`` to drive MaskManager from command-line boxes and
+            lifecycle events, ``gt`` to replay tracklets from a ground-truth
+            file.
+        start_file: ``manual`` mode. Filename of the first frame to process.
+        end_file: ``manual`` mode. Filename of the last frame to process.
+        box: ``manual`` mode. Initial tracklet boxes on the first selected
+            frame, given as one list rather than a repeated option:
+            ``--box='[[x1,y1,x2,y2]]'`` for one box,
+            ``--box='[[10,20,110,220],[30,40,130,240]]'`` for two, and
+            ``--box+='[[30,40,130,240]]'`` to append to boxes already given.
+        add_at: ``manual`` mode. New tracklets to add from the given frame
+            boxes, each in ``filename:x1,y1,x2,y2`` format. A box is treated as
+            a tracker output on that frame and added by MaskManager before
+            propagating to the next frame. Given as one list,
+            ``--add_at='["frame.jpg:10,20,110,220"]'``, or appended one at a
+            time with ``--add_at+ frame.jpg:10,20,110,220``.
+        remove_at: ``manual`` mode. Tracklets to remove before propagating to
+            the given frame, each in ``filename:tracklet_id`` format. Given as
+            one list, ``--remove_at='["frame.jpg:3"]'``, or appended one at a
+            time with ``--remove_at+ frame.jpg:3``.
+        gt_file: ``gt`` mode. MOT-format ground-truth file to replay.
+        start_frame: ``gt`` mode. First frame number to replay.
+        end_frame: ``gt`` mode. Last frame number to replay.
+        tracklet_id: ``gt`` mode. Tracklet IDs to replay, for example
+            ``--tracklet_id='[3,7]'``. Omit the option, or pass
+            ``--tracklet_id='[all]'``, to replay every tracklet.
+        output_root: Directory holding one timestamped run directory per run.
+        device: Device used by SAM and Cutie, for example ``cuda`` or ``cpu``.
+        sam_model_type: SAM model type.
+        cutie_model_type: Cutie model type.
+        cutie_config_path: Directory holding the Cutie config; ``None`` uses the
+            config shipped with the installed Cutie package.
+        cutie_config_name: Name of the Cutie config to load.
+        mask_creation_bbox_overlap_threshold: ``gt`` mode. Overlap threshold
+            above which mask creation is delayed.
 
     Returns:
-        Exit code from :func:`visualize_command`.
+        Exit code: ``0`` on success, ``1`` on validation error.
+
+    Examples:
+        A foreign option is reported on stderr and exits non-zero, so only the
+        return value shows up here.
+
+        >>> mask_manager_command(Path("frames"), mode="manual", gt_file=Path("gt.txt"))
+        1
     """
-    args = [_normalise_option(arg) for arg in sys.argv[1:]]
-    rc = CLI(
-        visualize_command,
-        args=args,
-        as_positional=False,
-        prog="python visual_tests/visualize_mask_manager.py",
-        description="Visualize McByte MaskManager with SAM + Cutie.",
-        parser_class=_CLIParser,
+    supplied = {
+        "start_file": start_file,
+        "end_file": end_file,
+        "box": box,
+        "add_at": add_at,
+        "remove_at": remove_at,
+        "gt_file": gt_file,
+        "start_frame": start_frame,
+        "end_frame": end_frame,
+        "tracklet_id": tracklet_id,
+    }
+    try:
+        _raise_for_mode_option_conflict(mode, supplied)
+    except ValueError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    if mode == "gt":
+        return run_gt_mode(
+            image_dir=image_dir,
+            gt_file=gt_file,  # type: ignore[arg-type]
+            start_frame=start_frame,  # type: ignore[arg-type]
+            end_frame=end_frame,  # type: ignore[arg-type]
+            output_root=output_root,
+            tracklet_id=tracklet_id,
+            device=device,
+            sam_model_type=sam_model_type,
+            cutie_model_type=cutie_model_type,
+            cutie_config_path=cutie_config_path,
+            cutie_config_name=cutie_config_name,
+            mask_creation_bbox_overlap_threshold=mask_creation_bbox_overlap_threshold,
+        )
+
+    return run_manual_mode(
+        image_dir=image_dir,
+        start_file=start_file,  # type: ignore[arg-type]
+        end_file=end_file,  # type: ignore[arg-type]
+        box=box,  # type: ignore[arg-type]
+        output_root=output_root,
+        add_at=add_at,
+        remove_at=remove_at,
+        device=device,
+        sam_model_type=sam_model_type,
+        cutie_model_type=cutie_model_type,
+        cutie_config_path=cutie_config_path,
+        cutie_config_name=cutie_config_name,
     )
-    return int(rc) if rc is not None else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

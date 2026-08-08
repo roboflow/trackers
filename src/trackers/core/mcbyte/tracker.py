@@ -16,17 +16,17 @@ from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.utils import _fuse_score
+from trackers.core.masks.base import MaskOutput, TrackletSnapshot
+from trackers.core.masks.manager import (
+    MASK_CREATION_BBOX_OVERLAP_THRESHOLD,
+    MaskManager,
+)
 from trackers.core.mcbyte.mask_association import (
     MINIMUM_MASK_AVERAGE_CONFIDENCE,
     MINIMUM_MASK_COVERAGE,
     MINIMUM_MASK_FILL_RATIO,
     condition_similarity_with_masks,
 )
-from trackers.core.mcbyte.mask_manager import (
-    MASK_CREATION_BBOX_OVERLAP_THRESHOLD,
-    MaskManager,
-)
-from trackers.core.mcbyte.masks.base import MaskOutput, TrackletSnapshot
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.core.mcbyte.utils import _get_alive_tracklets
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
@@ -151,8 +151,8 @@ def _build_default_mask_manager(
 ) -> MaskManager:
     """Create McByte's standard SAM + Cutie mask-management pipeline."""
 
-    from trackers.core.mcbyte.masks.cutie import CutieMaskPropagator
-    from trackers.core.mcbyte.masks.sam import SAMBoxMaskGenerator
+    from trackers.core.masks.cutie import CutieMaskPropagator
+    from trackers.core.masks.sam import SAMBoxMaskGenerator
 
     mask_generator = SAMBoxMaskGenerator(
         checkpoint_path=config.sam_checkpoint_path,

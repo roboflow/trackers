@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import numpy as np
 import torch
 
-from trackers.core.mcbyte.masks.base import (
+from trackers.core.masks.base import (
     MaskGenerator,
     MaskOutput,
     TrackletSnapshot,

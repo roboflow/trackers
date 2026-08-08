@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Tests for the ``trackers mcbyte`` benchmark subcommand."""
+"""Tests for the ``trackers benchmark mcbyte`` benchmark subcommand."""
 
 from __future__ import annotations
 
