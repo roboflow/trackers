@@ -37,7 +37,6 @@ from trackers.core.masks.base import MaskOutput, TrackletSnapshot
 
 # Device validation is not CLI-specific, so it lives with the other device
 # helpers. Re-exported here because every inspect component reaches for it.
-from trackers.utils.device import _validate_device as validate_device
 
 if TYPE_CHECKING:
     import torch
