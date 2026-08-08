@@ -57,7 +57,8 @@ trackers/
 
 ## Detection Format
 
-Input: `supervision.Detections` with `.xyxy` bounding boxes. Output: same `supervision.Detections` with `.tracker_id` populated.
+- Input: `supervision.Detections` with `.xyxy` bounding boxes.
+- Output: same `supervision.Detections` with `.tracker_id` populated.
 
 Internal state uses `xcycsr` (center-x, center-y, area, aspect ratio) for Kalman filter.
 
