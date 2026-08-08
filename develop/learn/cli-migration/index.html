@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-07",
+  "dateModified": "2026-08-08",
   "datePublished": "2026-08-07"
 }
 </script>
@@ -1805,17 +1805,10 @@
 
 
 <h1 id="cli-migration-guide">CLI Migration Guide</h1>
-<p>The CLI now groups <code>track</code> options by responsibility. The new dotted arguments
-map directly to the option dataclasses used by <code>track</code>, and are also available
-in YAML configuration files.</p>
-<p>Semantic legacy spellings remain available during the transition. Each use
-emits a <code>FutureWarning</code> with the replacement. Do not combine a legacy argument
-and its replacement in one command; the CLI rejects that ambiguity. Develop's
-<code>--no-boxes</code> and <code>--no-ids</code> still work and map to <code>--show.no_boxes</code> and
-<code>--show.no_ids</code>. Each warning names the release that removes it: 2.10.0.</p>
+<p>The CLI now groups <code>track</code> options by responsibility. The new dotted arguments map directly to the option dataclasses used by <code>track</code>, and are also available in YAML configuration files.</p>
+<p>Semantic legacy spellings remain available during the transition. Each use emits a <code>FutureWarning</code> with the replacement. Do not combine a legacy argument and its replacement in one command; the CLI rejects that ambiguity. Develop's <code>--no-boxes</code> and <code>--no-ids</code> still work and map to <code>--show.no_boxes</code> and <code>--show.no_ids</code>. Each warning names the release that removes it: 2.10.0.</p>
 <h2 id="track-command">Track command</h2>
-<p>Use dotted paths for grouped detection, filtering, output, visualization, and
-tracker options. <code>--display</code> remains ungrouped.</p>
+<p>Use dotted paths for grouped detection, filtering, output, visualization, and tracker options. <code>--display</code> remains ungrouped.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>trackers track \
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    --source source.mp4 \
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    --detection.model rfdetr-base \
@@ -1826,25 +1819,10 @@ tracker options. <code>--display</code> remains ungrouped.</p>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    --output.video tracked.mp4 \
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    --show.no_boxes
 </span></code></pre></div>
-<p>Every boolean option is a pair: <code>--show.boxes</code> turns it on, <code>--show.no_boxes</code>
-turns it off, and <code>--show.boxes false</code> or <code>--show.boxes=false</code> spell the same
-thing explicitly. The negation sits on the field rather than the group, so it
-stays readable for any group name — <code>--detection.no_fast</code>, never
-<code>--no_detection.fast</code>. Repeating both halves is allowed; the last one wins. A
-<code>--config</code> file keeps one plain boolean key per field, and a command-line flag
-always overrides it.</p>
-<p>This covers ungrouped options too — <code>--display</code> / <code>--no_display</code>,
-<code>--no_enqueue_defaults</code> on <code>tune</code>, <code>--no_list_available</code> on <code>download</code>.</p>
-<p>The algorithm and its parameters share one group, mirroring <code>--detection.model</code>
-and the rest of the detection options. <code>--tracker sort</code> is shorthand for
-<code>--tracker.name sort</code>; both spellings are supported and neither warns.</p>
-<p>Tracker parameters are the exception: they default to <code>None</code>, meaning "leave the
-tracker's own default alone", so they take an explicit value and have no
-negative half. Develop's bare <code>--tracker.enable_cmc</code> flag turned camera motion
-compensation <strong>off</strong>, since the parameter itself defaults to <code>True</code>, so the bare
-spelling still maps to <code>--tracker.enable_cmc=false</code> and warns. Prefer
-<code>--tracker.enable_cmc true</code> or <code>--tracker.enable_cmc false</code>; they say what they
-do. The same applies to <code>--tracker.instant_first_frame_activation</code>.</p>
+<p>Every boolean option is a pair: <code>--show.boxes</code> turns it on, <code>--show.no_boxes</code> turns it off, and <code>--show.boxes false</code> or <code>--show.boxes=false</code> spell the same thing explicitly. The negation sits on the field rather than the group, so it stays readable for any group name — <code>--detection.no_fast</code>, never <code>--no_detection.fast</code>. Repeating both halves is allowed; the last one wins. A <code>--config</code> file keeps one plain boolean key per field, and a command-line flag always overrides it.</p>
+<p>This covers ungrouped options too — <code>--display</code> / <code>--no_display</code>, <code>--no_enqueue_defaults</code> on <code>tune</code>, <code>--no_list_available</code> on <code>download</code>.</p>
+<p>The algorithm and its parameters share one group, mirroring <code>--detection.model</code> and the rest of the detection options. <code>--tracker sort</code> is shorthand for <code>--tracker.name sort</code>; both spellings are supported and neither warns.</p>
+<p>Tracker parameters are the exception: they default to <code>None</code>, meaning "leave the tracker's own default alone", so they take an explicit value and have no negative half. Develop's bare <code>--tracker.enable_cmc</code> flag turned camera motion compensation <strong>off</strong>, since the parameter itself defaults to <code>True</code>, so the bare spelling still maps to <code>--tracker.enable_cmc=false</code> and warns. Prefer <code>--tracker.enable_cmc true</code> or <code>--tracker.enable_cmc false</code>; they say what they do. The same applies to <code>--tracker.instant_first_frame_activation</code>.</p>
 <p>As in develop, specify either a model or a precomputed MOT file, not both.</p>
 <table>
 <thead>
@@ -1949,11 +1927,7 @@ do. The same applies to <code>--tracker.instant_first_frame_activation</code>.</
 </tbody>
 </table>
 <h3 id="list-valued-filters">List-valued filters</h3>
-<p><code>--filters.classes</code> and <code>--filters.track_ids</code> take lists, matching the
-list-valued <code>--metrics</code> and <code>--columns</code> options of <code>eval</code> and <code>tune</code>. Bracket
-shorthand needs no quoting, so <code>--filters.classes [person,car]</code>,
-<code>--filters.classes [0,2]</code>, and the mixed <code>--filters.classes [person,2]</code> all
-work. Comma-separated strings remain available as a warning-emitting alias.</p>
+<p><code>--filters.classes</code> and <code>--filters.track_ids</code> take lists, matching the list-valued <code>--metrics</code> and <code>--columns</code> options of <code>eval</code> and <code>tune</code>. Bracket shorthand needs no quoting, so <code>--filters.classes [person,car]</code>, <code>--filters.classes [0,2]</code>, and the mixed <code>--filters.classes [person,2]</code> all work. Comma-separated strings remain available as a warning-emitting alias.</p>
 <table>
 <thead>
 <tr>
@@ -1973,11 +1947,7 @@ work. Comma-separated strings remain available as a warning-emitting alias.</p>
 </tbody>
 </table>
 <h3 id="abbreviated-tracker-parameters">Abbreviated tracker parameters</h3>
-<p>Tracker parameter names abbreviate their standard leading token on the command
-line: <code>minimum_</code> becomes <code>min_</code> and <code>maximum_</code> becomes <code>max_</code>. Domain words such
-as <code>threshold</code> stay spelled out. Every develop parameter path whose spelling did
-not change keeps working as-is, without a warning; the unabbreviated paths remain
-as warning-emitting aliases.</p>
+<p>Tracker parameter names abbreviate their standard leading token on the command line: <code>minimum_</code> becomes <code>min_</code> and <code>maximum_</code> becomes <code>max_</code>. Domain words such as <code>threshold</code> stay spelled out. Every develop parameter path whose spelling did not change keeps working as-is, without a warning; the unabbreviated paths remain as warning-emitting aliases.</p>
 <table>
 <thead>
 <tr>
@@ -2012,32 +1982,13 @@ as warning-emitting aliases.</p>
 </tr>
 </tbody>
 </table>
-<p>These short forms are <strong>CLI aliases only</strong>. The Python constructor keywords are
-unchanged, so <code>ByteTrackTracker(minimum_iou_threshold=0.3)</code> stays correct, and
-so do <code>tune --fixed_params</code>, each tracker's <code>search_space</code> keys, and the
-"Valid parameters" list printed on a <code>search_space</code> error. A consequence worth
-knowing: <code>tune</code> reports the long parameter names, so its output cannot be
-pasted verbatim into a <code>track</code> command — abbreviate the leading <code>minimum_</code> or
-<code>maximum_</code> token first.</p>
+<p>These short forms are <strong>CLI aliases only</strong>. The Python constructor keywords are unchanged, so <code>ByteTrackTracker(minimum_iou_threshold=0.3)</code> stays correct, and so do <code>tune --fixed_params</code>, each tracker's <code>search_space</code> keys, and the "Valid parameters" list printed on a <code>search_space</code> error. A consequence worth knowing: <code>tune</code> reports the long parameter names, so its output cannot be pasted verbatim into a <code>track</code> command — abbreviate the leading <code>minimum_</code> or <code>maximum_</code> token first.</p>
 <h2 id="hyphens-and-underscores">Hyphens and underscores</h2>
-<p>Interchangeable in every option name, on every command, without a warning. Only
-the name is rewritten: each <code>-</code> after the leading <code>--</code> becomes <code>_</code>, and values
-are left alone, so <code>--detection.model rfdetr-base</code> and
-<code>--source my-dir/clip.mp4</code> keep their hyphens. This covers dotted paths and
-negations alike — <code>--show.no-ids</code>, <code>--tracker.min-iou-threshold</code> and
-<code>--no-display</code> all reach the parser as their underscore spellings. The canonical
-documentation spelling uses underscores.</p>
+<p>Interchangeable in every option name, on every command, without a warning. Only the name is rewritten: each <code>-</code> after the leading <code>--</code> becomes <code>_</code>, and values are left alone, so <code>--detection.model rfdetr-base</code> and <code>--source my-dir/clip.mp4</code> keep their hyphens. This covers dotted paths and negations alike — <code>--show.no-ids</code>, <code>--tracker.min-iou-threshold</code> and <code>--no-display</code> all reach the parser as their underscore spellings. The canonical documentation spelling uses underscores.</p>
 <p>Anything after a bare <code>--</code> is passed through untouched.</p>
-<p>This holds for the deprecated spellings in the tables below too, so a develop
-command ports without also having to guess which separator each option wanted:
-<code>--no-boxes</code> and <code>--no_boxes</code> resolve alike, as do <code>--mot-output</code> and
-<code>--mot_output</code>, <code>--track-ids</code> and <code>--track_ids</code>. <code>--help</code> lists the underscore
-spelling.</p>
+<p>This holds for the deprecated spellings in the tables below too, so a develop command ports without also having to guess which separator each option wanted: <code>--no-boxes</code> and <code>--no_boxes</code> resolve alike, as do <code>--mot-output</code> and <code>--mot_output</code>, <code>--track-ids</code> and <code>--track_ids</code>. <code>--help</code> lists the underscore spelling.</p>
 <h2 id="eval-prediction-inputs"><code>eval</code> prediction inputs</h2>
-<p><code>--tracker</code> names the tracking algorithm in <code>track</code> and <code>tune</code>. In <code>eval</code> it
-meant something else entirely — a file of results that algorithm had already
-produced. Both prediction inputs are renamed so one option name no longer
-carries two meanings:</p>
+<p><code>--tracker</code> names the tracking algorithm in <code>track</code> and <code>tune</code>. In <code>eval</code> it meant something else entirely — a file of results that algorithm had already produced. Both prediction inputs are renamed so one option name no longer carries two meanings:</p>
 <table>
 <thead>
 <tr>
@@ -2168,8 +2119,7 @@ carries two meanings:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers download --name mot17 --cache_dir .cache
 </span></code></pre></div>
 <h2 id="yaml-configuration">YAML configuration</h2>
-<p>The same nesting is used in <code>--config</code> files. Command-line values override
-configuration values.</p>
+<p>The same nesting is used in <code>--config</code> files. Command-line values override configuration values.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source.mp4</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">detection</span><span class="p">:</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rfdetr-base</span>
@@ -2209,7 +2159,7 @@ configuration values.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 21:00:46 UTC">2026-08-07</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 8, 2026 20:02:52 UTC">2026-08-08</span>
   </span>
 
     

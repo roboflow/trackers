@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-07-01",
+  "dateModified": "2026-08-08",
   "datePublished": "2025-04-22",
   "citation": {
     "@type": "ScholarlyArticle",
@@ -1803,10 +1803,7 @@
 
 <h1 id="oc-sort">OC-SORT</h1>
 <h2 id="what-is-oc-sort">What is OC-SORT?</h2>
-<p>OC-SORT remains Simple, Online, and Real-Time like (<a href="../sort/">SORT</a>) but improves robustness during occlusion and non-linear motion.
-It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These
-mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
-due to object stopping or short-term occlusion.</p>
+<p>OC-SORT remains Simple, Online, and Real-Time like (<a href="../sort/">SORT</a>) but improves robustness during occlusion and non-linear motion. It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost due to object stopping or short-term occlusion.</p>
 <h2 id="how-does-oc-sort-compare-to-other-trackers">How does OC-SORT compare to other trackers?</h2>
 <p>For comparisons with other trackers, plus dataset context and evaluation details, see the <a href="../comparison/">tracker comparison</a> page.</p>
 <table>
@@ -1894,8 +1891,7 @@ due to object stopping or short-term occlusion.</p>
 </table>
 <div class="admonition warning">
 <p class="admonition-title">Frame input is ignored by OC-SORT</p>
-<p><code>OCSORTTracker.update()</code> accepts <code>frame</code> for API consistency with other trackers, but OC-SORT does not use image/frame pixels.
-If you pass <code>frame</code> with a non-<code>None</code> value, the tracker emits a <code>UserWarning</code> and ignores it.</p>
+<p><code>OCSORTTracker.update()</code> accepts <code>frame</code> for API consistency with other trackers, but OC-SORT does not use image/frame pixels. If you pass <code>frame</code> with a non-<code>None</code> value, the tracker emits a <code>UserWarning</code> and ignores it.</p>
 </div>
 <h2 id="run-on-video-webcam-or-rtsp-stream">Run on video, webcam, or RTSP stream</h2>
 <p>These examples use OpenCV for decoding and display. Replace <code>&lt;SOURCE_VIDEO_PATH&gt;</code>, <code>&lt;WEBCAM_INDEX&gt;</code>, and <code>&lt;RTSP_STREAM_URL&gt;</code> with your inputs. <code>&lt;WEBCAM_INDEX&gt;</code> is usually 0 for the default camera.</p>
@@ -2035,7 +2031,7 @@ If you pass <code>frame</code> with a non-<code>None</code> value, the tracker e
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 1, 2026 21:39:26 UTC">2026-07-01</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 8, 2026 20:02:52 UTC">2026-08-08</span>
   </span>
 
     
