@@ -116,7 +116,7 @@ Options belong to one mode. Passing `--gt_file` with `--mode manual` is an error
 
 ```console
 $ trackers inspect mask-manager --mode manual --image_dir frames --gt_file gt.txt
-Error: --gt_file is a --mode gt option and cannot be used with --mode manual.
+Error: --gt_file (or --gt-file) is a --mode gt option and cannot be used with --mode manual.
 ```
 
 ## Compare McByte association modes
