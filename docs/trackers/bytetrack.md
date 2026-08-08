@@ -50,8 +50,7 @@ ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as 
 
 !!! warning "Frame input is ignored by ByteTrack"
 
-    `ByteTrackTracker.update()` accepts `frame` for API consistency with other trackers, but ByteTrack does not use image/frame pixels.
-    If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+    `ByteTrackTracker.update()` accepts `frame` for API consistency with other trackers, but ByteTrack does not use image/frame pixels. If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
 
 ## Run on video, webcam, or RTSP stream
 
