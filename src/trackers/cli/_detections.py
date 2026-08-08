@@ -57,15 +57,14 @@ DetectionFileFormat = Literal["mot_tlwh", "mot", "xyxy"]
 
 _FRAME_NUMBER_WIDTHS = (6, 8)
 
+# Per-directory memo of the (width, extension) pair that last matched.
+#
+# A sequence directory names every frame the same way, so the pair that matched
+# the previous frame matches the next one. Trying it first costs one is_file
+# call in the steady state instead of the ten the full search can reach; a miss
+# just falls through to that search, so the memo can never change which path is
+# returned. Bounded by the number of sequence directories one command touches.
 _FRAME_LAYOUT_HINTS: dict[Path, tuple[int, str]] = {}
-"""Per-directory memo of the ``(width, extension)`` pair that last matched.
-
-A sequence directory names every frame the same way, so the pair that matched
-the previous frame matches the next one. Trying it first costs one ``is_file``
-call in the steady state instead of the ten the full search can reach; a miss
-just falls through to that search, so the memo can never change which path is
-returned. Bounded by the number of sequence directories one command touches.
-"""
 
 
 @dataclass(frozen=True)
