@@ -43,10 +43,11 @@ IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 DetectionFileFormat = Literal["mot_tlwh", "mot", "xyxy"]
 """Detection-file column layout.
 
-``mot_tlwh`` (spelled ``mot`` by the benchmark datasets)     ``frame,id,left,top,width,height,confidence,...`` — the
-identity column is     ignored, since tracker identities are what these commands produce.
-
-``xyxy``     ``frame,x1,y1,x2,y2,confidence``
+- ``mot_tlwh`` (spelled ``mot`` by the benchmark datasets):
+  ``frame,id,left,top,width,height,confidence,...`` — the identity column is
+  ignored, since tracker identities are what these commands produce.
+- ``xyxy``:
+  ``frame,x1,y1,x2,y2,confidence``
 """
 
 _FRAME_NUMBER_WIDTHS = (6, 8)
