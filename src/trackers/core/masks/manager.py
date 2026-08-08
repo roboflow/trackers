@@ -124,6 +124,25 @@ class MaskManager:
         self._initialized = False
         self._pending_tracklet_ids: set[int] = set()
 
+    @property
+    def pending_tracklet_ids(self) -> frozenset[int]:
+        """Tracklet IDs whose mask creation is currently deferred.
+
+        A tracklet lands here when its box is strongly overlapped by a tracklet
+        with a lower bottom edge, and leaves once it is clean enough to mask or
+        the tracker removes it. Exposed read-only so callers can report the
+        deferral without reaching into the pool the manager mutates.
+
+        Returns:
+            A snapshot of the pending IDs; mutating it does not affect the manager.
+
+        Examples:
+            >>> from trackers.core.masks.dummy import DummyBoxMaskGenerator
+            >>> MaskManager(DummyBoxMaskGenerator()).pending_tracklet_ids
+            frozenset()
+        """
+        return frozenset(self._pending_tracklet_ids)
+
     def reset(self) -> None:
         """Reset mask-manager state and the underlying propagator."""
         self._initialized = False

@@ -60,6 +60,7 @@ from __future__ import annotations
 import sys
 from collections import defaultdict
 from collections.abc import Mapping
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -570,7 +571,7 @@ def build_frame_tracklet_state(
 def _lifecycle_state(
     tracker_id: int,
     new_tracklet_ids: set[int],
-    pending_tracklet_ids: set[int],
+    pending_tracklet_ids: AbstractSet[int],
     masked_tracklet_ids: set[int],
 ) -> int:
     """Classify one tracklet's mask-lifecycle state for colouring.
@@ -608,7 +609,7 @@ def _save_gt_frame(
     mask_output: MaskOutput | None,
     current_tracklets: list[TrackletSnapshot],
     current_new_tracklets: list[TrackletSnapshot],
-    pending_tracklet_ids: set[int],
+    pending_tracklet_ids: AbstractSet[int],
     removed_tracklet_ids_from_previous_frame: list[int],
     output_path: Path,
 ) -> None:
@@ -786,7 +787,7 @@ def run_gt_mode(
             mask_output=mask_output,
             current_tracklets=current_state.tracklets,
             current_new_tracklets=current_state.new_tracklets,
-            pending_tracklet_ids=mask_manager._pending_tracklet_ids,
+            pending_tracklet_ids=mask_manager.pending_tracklet_ids,
             removed_tracklet_ids_from_previous_frame=previous_removed_tracklet_ids,
             output_path=output_dir / frame_path.name,
         )
@@ -796,7 +797,7 @@ def run_gt_mode(
             f"visible={sorted(tracklet.tracker_id for tracklet in current_state.tracklets)}, "
             f"new={sorted(tracklet.tracker_id for tracklet in current_state.new_tracklets)}, "
             f"removed={current_state.removed_tracklet_ids}, "
-            f"pending={sorted(mask_manager._pending_tracklet_ids)}, "
+            f"pending={sorted(mask_manager.pending_tracklet_ids)}, "
             f"masks={sorted(get_masked_tracklet_ids(mask_output))}"
         )
 

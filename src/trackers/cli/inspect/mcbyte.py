@@ -53,7 +53,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, TextIO
 
-import cv2
 import numpy as np
 import supervision as sv
 from jsonargparse import ArgumentParser
@@ -72,13 +71,14 @@ from trackers.cli.inspect._common import (
     get_mask_tracklet_ids_in_order,
     get_masked_tracklet_ids,
     require_torch,
+    save_rgb_image,
     timestamped_run_dir,
+    validate_device,
 )
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.utils.cmc import CMCMethod
 
 DEFAULT_OUTPUT_DIR = INSPECT_OUTPUT_ROOT / "mcbyte"
-IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
 RunMode = Literal["locked_iou", "mask_conditioned"]
 RUN_MODES: tuple[RunMode, ...] = ("locked_iou", "mask_conditioned")
@@ -158,7 +158,6 @@ def validate_options(
         Message describing the first failed check, or ``None`` when every
         option is usable.
     """
-    torch = require_torch()
     checks: tuple[tuple[bool, str], ...] = (
         (not sequence.image_dir.is_dir(), f"Image directory does not exist: {sequence.image_dir}"),
         (not sequence.det_file.is_file(), f"Detection file does not exist: {sequence.det_file}"),
@@ -169,16 +168,20 @@ def validate_options(
         ),
         (sequence.frame_rate <= 0, "sequence.frame_rate must be positive."),
         (cmc.downscale <= 0, "cmc.downscale must be positive."),
-        (
-            mask.device.startswith("cuda") and not torch.cuda.is_available(),
-            "CUDA was requested, but torch.cuda.is_available() is False. "
-            "Use --mask.device cpu or install CUDA-enabled PyTorch.",
-        ),
     )
 
     for failed, message in checks:
         if failed:
             return message
+
+    # Kept out of the table above, which evaluates every condition eagerly:
+    # the shared device check raises rather than returning a flag. require_torch
+    # runs first so a missing mask extra still reports the pip hint.
+    require_torch()
+    try:
+        validate_device(mask.device, label="SAM/Cutie")
+    except RuntimeError as error:
+        return str(error)
 
     return None
 
@@ -337,17 +340,6 @@ def append_mot_results(
         )
 
 
-def save_rgb_frame(
-    frame: np.ndarray,
-    output_path: Path,
-) -> None:
-    """Save an RGB frame through OpenCV."""
-    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-    if not cv2.imwrite(str(output_path), frame_bgr):
-        raise RuntimeError(f"Could not save visualization: {output_path}")
-
-
 def run_mode(
     *,
     mode_name: str,
@@ -423,8 +415,8 @@ def run_mode(
                 use_masks=use_masks,
             )
 
-            save_rgb_frame(
-                frame=visual,
+            save_rgb_image(
+                image_rgb=visual,
                 output_path=frames_dir / f"{frame_number:06d}.jpg",
             )
 

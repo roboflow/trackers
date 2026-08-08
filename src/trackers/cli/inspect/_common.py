@@ -6,11 +6,18 @@
 
 """Helpers shared by every ``trackers inspect`` component.
 
-Only helpers that were byte-identical across the component modules live here.
-Rendering helpers such as ``overlay_masks``, ``draw_boxes``, and the text-panel
-drawers stay local to each component: they share names but not implementations,
-and each draws the state its own component actually has. Unifying them would
-silently change what the visualizations look like.
+What lives where, so that no component keeps a private copy of a shared helper:
+
+- here: input parsing, frame listing, image I/O, run directories, and the
+  mask-output accessors that every component reaches for;
+- :mod:`trackers.cli._annotate`: the drawing helpers, because the ``benchmark``
+  commands render the same overlays and must not drift from ``inspect``;
+- :mod:`trackers.utils.device`: device selection and validation, which are not
+  CLI-specific. ``validate_device`` is re-exported here because every component
+  calls it.
+
+A helper stays local to one component only when its behaviour genuinely differs
+there, not merely because the name is repeated.
 
 ``torch`` is imported inside the functions that need it rather than at module
 scope, matching :mod:`trackers.cli.benchmark.mcbyte`, so that importing the CLI does not
@@ -290,6 +297,10 @@ def save_rgb_image(
         image_rgb: RGB image with shape ``(H, W, 3)``.
         output_path: Destination path.
 
+    Raises:
+        RuntimeError: If OpenCV declines to encode or write the file, which it
+            reports by returning ``False`` rather than raising.
+
     Examples:
         >>> import tempfile
         >>> with tempfile.TemporaryDirectory() as directory:
@@ -300,7 +311,8 @@ def save_rgb_image(
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(str(output_path), image_bgr)
+    if not cv2.imwrite(str(output_path), image_bgr):
+        raise RuntimeError(f"Could not save visualization: {output_path}")
 
 
 def timestamped_run_dir(output_root: Path) -> Path:
