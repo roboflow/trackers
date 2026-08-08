@@ -6,14 +6,12 @@
 
 """Components behind ``trackers inspect``.
 
-Each entry in :data:`INSPECT_COMPONENTS` names the thing it inspects, not the
-tracker that happens to use it. The mask stack (``sam``, ``cutie``,
-``mask-manager``) is tracker-agnostic and lives in :mod:`trackers.core.masks`;
-only ``mcbyte`` inspects a tracker.
+Each entry in :data:`INSPECT_COMPONENTS` names the thing it inspects, not the tracker that happens to use it. The mask
+stack (``sam``, ``cutie``, ``mask-manager``) is tracker-agnostic and lives in :mod:`trackers.core.masks`; only
+``mcbyte`` inspects a tracker.
 
-These commands need the ``mask`` extra (``pip install 'trackers[mask]'``). The
-heavy imports are deferred into the command bodies so that importing the CLI
-stays cheap for everyone else.
+These commands need the ``mask`` extra (``pip install 'trackers[mask]'``). The heavy imports are deferred into the
+command bodies so that importing the CLI stays cheap for everyone else.
 """
 
 from trackers.cli.inspect.cutie import cutie_inspection

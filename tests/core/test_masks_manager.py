@@ -18,10 +18,9 @@ from trackers.core.masks.manager import MaskManager
 class _FlakyMaskPropagator(DummyIdentityMaskPropagator):
     """Propagator that succeeds a bounded number of times, then fails.
 
-    Unlike ``DummyIdentityMaskPropagator``, which never returns ``None`` once
-    initialized, this test double reproduces a propagation-runtime failure
-    (e.g. an external backend such as Cutie losing its internal memory)
-    occurring mid-sequence, after the manager has already been initialized.
+    Unlike ``DummyIdentityMaskPropagator``, which never returns ``None`` once initialized, this test double reproduces a
+    propagation-runtime failure (e.g. an external backend such as Cutie losing its internal memory) occurring mid-
+    sequence, after the manager has already been initialized.
     """
 
     def __init__(self, succeed_calls: int = 1) -> None:
@@ -39,9 +38,8 @@ class _FlakyMaskPropagator(DummyIdentityMaskPropagator):
 class _WrongResolutionMaskPropagator(DummyIdentityMaskPropagator):
     """Propagator that returns masks at a resolution different from the frame.
 
-    Reproduces a backend that internally resizes or pads without upsampling
-    back to the input frame grid, which would make mask-conditioning gate
-    associations in the wrong coordinate space.
+    Reproduces a backend that internally resizes or pads without upsampling back to the input frame grid, which would
+    make mask-conditioning gate associations in the wrong coordinate space.
     """
 
     def propagate(self, frame: np.ndarray) -> MaskOutput | None:
@@ -518,9 +516,8 @@ def test_mask_manager_removes_terminated_tracklet_from_pending_pool_before_initi
 def test_mask_manager_resets_initialized_flag_when_propagation_fails_after_init() -> None:
     """Scenario: propagate() returns None after a prior successful init.
 
-    The manager must reset ``_initialized`` to False so that a later call
-    re-attempts mask creation from scratch instead of assuming a still-valid
-    propagator state.
+    The manager must reset ``_initialized`` to False so that a later call re-attempts mask creation from scratch instead
+    of assuming a still-valid propagator state.
     """
     manager = MaskManager(
         mask_generator=DummyBoxMaskGenerator(),
@@ -551,8 +548,8 @@ def test_mask_manager_resets_initialized_flag_when_propagation_fails_after_init(
 
 
 def test_mask_manager_init_raises_value_error_for_out_of_range_threshold() -> None:
-    """Scenario: constructing MaskManager with an overlap threshold outside
-    [0, 1] must raise ValueError instead of silently accepting it."""
+    """Scenario: constructing MaskManager with an overlap threshold outside [0, 1] must raise ValueError instead of
+    silently accepting it."""
     with pytest.raises(ValueError, match="mask_creation_bbox_overlap_threshold"):
         MaskManager(
             mask_generator=DummyBoxMaskGenerator(),
@@ -562,8 +559,8 @@ def test_mask_manager_init_raises_value_error_for_out_of_range_threshold() -> No
 
 
 def test_mask_manager_pending_tracklet_ids_property_snapshots_the_pool() -> None:
-    """Scenario: the public property mirrors the deferral pool and hands back a
-    read-only copy, so a caller cannot mutate the manager through it."""
+    """Scenario: the public property mirrors the deferral pool and hands back a read-only copy, so a caller cannot
+    mutate the manager through it."""
     manager = MaskManager(
         mask_generator=DummyBoxMaskGenerator(),
         mask_propagator=DummyIdentityMaskPropagator(),

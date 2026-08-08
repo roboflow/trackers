@@ -169,12 +169,11 @@ class DatasetPaths:
 class DatasetConfig:
     """Dataset-specific paths and parsing behavior.
 
-    Each dataset defines where detections and frames are located,
-    how detections should be parsed,
-    and any dataset-specific conventions.
+    Each dataset defines where detections and frames are located, how detections should be parsed, and any dataset-
+    specific conventions.
 
-    The two roots default to ``None`` because no value can be right for every
-    machine; :func:`resolve_datasets` fills them from what the run supplied.
+    The two roots default to ``None`` because no value can be right for every machine; :func:`resolve_datasets` fills
+    them from what the run supplied.
     """
 
     name: str

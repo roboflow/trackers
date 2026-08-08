@@ -6,9 +6,8 @@
 
 """Tests for the ``trackers inspect`` component group.
 
-Every test here stops at the parsing and validation surface. None of the
-components can run without SAM and Cutie weights, so the contract under test is
-that a wrong invocation is rejected before any model is touched.
+Every test here stops at the parsing and validation surface. None of the components can run without SAM and Cutie
+weights, so the contract under test is that a wrong invocation is rejected before any model is touched.
 """
 
 from __future__ import annotations
@@ -122,10 +121,9 @@ class TestMaskManagerModeValidation:
     def test_every_mode_specific_parameter_is_registered(self) -> None:
         """A new mode-specific option must join a mode tuple, or its mode is never enforced.
 
-        The tuples are hand-maintained, so they drift from the signature silently:
-        an unregistered option is accepted under both modes instead of one.
-        Equality rather than containment, so a tuple entry left behind by a
-        rename is caught in the same assertion.
+        The tuples are hand-maintained, so they drift from the signature silently: an unregistered option is accepted
+        under both modes instead of one. Equality rather than containment, so a tuple entry left behind by a rename is
+        caught in the same assertion.
         """
         parameters = set(inspect.signature(mask_manager_inspection).parameters)
 
@@ -200,8 +198,8 @@ class TestMaskManagerModeValidation:
     def test_conflict_is_reported_before_any_model_loads(self, capsys: pytest.CaptureFixture) -> None:
         """The command returns non-zero without importing SAM or Cutie.
 
-        The image directory does not exist either. Reaching the filesystem check
-        first would mean the mode check ran too late to be the guard it claims.
+        The image directory does not exist either. Reaching the filesystem check first would mean the mode check ran too
+        late to be the guard it claims.
         """
         exit_code = mask_manager_inspection(Path("does-not-exist"), mode="manual", gt_file=Path("gt.txt"))
 
@@ -229,9 +227,8 @@ class TestInspectCommonHelpers:
     def test_parse_xyxy_box_rejects_malformed_input(self, box: str) -> None:
         """Wrong count and non-numeric tokens are the same mistake, reported the same way.
 
-        A non-numeric token used to escape as a bare ``could not convert string
-        to float`` from the standard library, naming neither the option nor the
-        expected format.
+        A non-numeric token used to escape as a bare ``could not convert string to float`` from the standard library,
+        naming neither the option nor the expected format.
         """
         with pytest.raises(ValueError, match="exactly 4 comma-separated numbers"):
             parse_xyxy_box(box)
@@ -239,8 +236,8 @@ class TestInspectCommonHelpers:
     def test_require_torch_names_the_mask_extra(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A torch-free install is told which extra to install, not that an import failed.
 
-        ``None`` in ``sys.modules`` makes the interpreter itself refuse the
-        import, which is the closest stand-in for the extra being absent.
+        ``None`` in ``sys.modules`` makes the interpreter itself refuse the import, which is the closest stand-in for
+        the extra being absent.
         """
         monkeypatch.setitem(sys.modules, "torch", None)
 

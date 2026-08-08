@@ -227,11 +227,9 @@ class BaseStateEstimator(ABC):
 class XCYCSRStateEstimator(BaseStateEstimator):
     """Center-based Kalman filter with 7 state dimensions and 4 measurements.
 
-    State vector contains `x_center`, `y_center` (box center), `scale` (area),
-    `aspect_ratio` (width/height), and velocities `vx`, `vy`, `vs`. Aspect ratio
-    is treated as constant (no velocity term), which works well for rigid objects
-    that maintain their shape. Matches the representation used in the original
-    SORT and OC-SORT papers.
+    State vector contains `x_center`, `y_center` (box center), `scale` (area), `aspect_ratio` (width/height), and
+    velocities `vx`, `vy`, `vs`. Aspect ratio is treated as constant (no velocity term), which works well for rigid
+    objects that maintain their shape. Matches the representation used in the original SORT and OC-SORT papers.
     """
 
     # State layout: [xc, yc, s, r, vx, vy, vs]
@@ -270,15 +268,13 @@ class XCYCSRStateEstimator(BaseStateEstimator):
 class XCYCWHStateEstimator(BaseStateEstimator):
     """Center-width-height Kalman filter with 8 state dims and 4 measurements.
 
-    State vector contains `x_center`, `y_center` (box center), `w` (width),
-    `h` (height), and velocities `vx`, `vy`, `vw`, `vh`.  Unlike
-    `XCYCSRStateEstimator`, both width and height have independent velocity
-    terms and can change freely.
+    State vector contains `x_center`, `y_center` (box center), `w` (width), `h` (height), and velocities `vx`, `vy`,
+    `vw`, `vh`.  Unlike `XCYCSRStateEstimator`, both width and height have independent velocity terms and can change
+    freely.
 
-    This estimator only provides the coordinate-transform and filter-layout
-    logic (F, H, conversions).  Noise tuning (Q, R, P) and any dynamic
-    noise refresh are the responsibility of the tracklet that owns the
-    estimator — exactly like `XYXYStateEstimator` and `XCYCSRStateEstimator`.
+    This estimator only provides the coordinate-transform and filter-layout logic (F, H, conversions).  Noise tuning (Q,
+    R, P) and any dynamic noise refresh are the responsibility of the tracklet that owns the estimator — exactly like
+    `XYXYStateEstimator` and `XCYCSRStateEstimator`.
     """
 
     # State layout: [xc, yc, w, h, vx, vy, vw, vh]
@@ -307,10 +303,9 @@ class XCYCWHStateEstimator(BaseStateEstimator):
 class XYXYStateEstimator(BaseStateEstimator):
     """Corner-based Kalman filter with 8 state dimensions and 4 measurements.
 
-    State vector contains `x1`, `y1` (top-left corner), `x2`, `y2` (bottom-right
-    corner), and independent velocities `vx1`, `vy1`, `vx2`, `vy2` for each
-    coordinate. This allows the box shape to change over time, which may be
-    better suited for non-rigid or deformable objects.
+    State vector contains `x1`, `y1` (top-left corner), `x2`, `y2` (bottom-right corner), and independent velocities
+    `vx1`, `vy1`, `vx2`, `vy2` for each coordinate. This allows the box shape to change over time, which may be better
+    suited for non-rigid or deformable objects.
     """
 
     # State layout: [x1, y1, x2, y2, vx1, vy1, vx2, vy2]
@@ -328,6 +323,7 @@ class XYXYStateEstimator(BaseStateEstimator):
 
     def clamp_velocity(self, frame_step: float = 1.0) -> None:
         """Ignore `frame_step`; kept for interface compatibility because XYXY-style velocity is unconstrained."""
+        return None
 
 
 # ---------------------------------------------------------------------------

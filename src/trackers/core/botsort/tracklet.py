@@ -179,10 +179,8 @@ class BoTSORTTracklet(BaseTracklet):
     def update(self, bbox: np.ndarray) -> None:
         """Update tracklet with a new observation.
 
-        In the BoT-SORT flow **only matched tracks** call ``update(bbox)``
-        with an actual bounding box.  Unmatched tracks simply skip
-        ``update`` (their ``time_since_update`` is incremented in
-        ``predict`` instead).
+        In the BoT-SORT flow **only matched tracks** call ``update(bbox)`` with an actual bounding box.  Unmatched
+        tracks simply skip ``update`` (their ``time_since_update`` is incremented in ``predict`` instead).
         """
         self._refresh_noise_from_state()
         self.state_estimator.update(bbox)
@@ -194,9 +192,8 @@ class BoTSORTTracklet(BaseTracklet):
     def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:
         """Predict the next bounding-box position.
 
-        Increments ``time_since_update`` to track how many frames have
-        elapsed since the last matched measurement — this replaces the
-        ``update(None)`` call used in ByteTrack/SORT.
+        Increments ``time_since_update`` to track how many frames have elapsed since the last matched measurement — this
+        replaces the ``update(None)`` call used in ByteTrack/SORT.
         """
         self._refresh_noise_from_state()
         self.state_estimator.predict(timing.frame_step, timing.frame_rate)

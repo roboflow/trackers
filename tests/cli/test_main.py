@@ -438,9 +438,8 @@ class TestCliMigration:
     def test_legacy_warnings_state_the_scheduled_removal_release(self, args: list[str]) -> None:
         """Every legacy CLI transition names the release in which it is removed.
 
-        The release is asserted as a literal rather than recomputed from the
-        installed version. Deriving it here would mirror the implementation and
-        keep passing even if the deadline started moving with each release.
+        The release is asserted as a literal rather than recomputed from the installed version. Deriving it here would
+        mirror the implementation and keep passing even if the deadline started moving with each release.
         """
         with pytest.warns(FutureWarning, match=re.escape("removed in 2.10.0")):
             _translate_legacy_args(args)
@@ -901,11 +900,9 @@ class TestEntryPointCentralisation:
     def test_every_subcommand_is_dispatchable_and_translatable(self) -> None:
         """The dispatch table and the two per-subcommand tables cannot drift apart.
 
-        ``_SUBCOMMANDS`` gates argv normalisation and ``_LEGACY_ARGUMENTS`` is
-        subscripted unguarded, so a command present in one table and missing
-        from another half-works rather than failing cleanly. Both are checked
-        against the real dispatch table rather than a copy of it, so adding a
-        subcommand to ``_COMMANDS`` alone fails here.
+        ``_SUBCOMMANDS`` gates argv normalisation and ``_LEGACY_ARGUMENTS`` is subscripted unguarded, so a command
+        present in one table and missing from another half-works rather than failing cleanly. Both are checked against
+        the real dispatch table rather than a copy of it, so adding a subcommand to ``_COMMANDS`` alone fails here.
         """
         dispatched = set(_COMMANDS)
 
@@ -915,8 +912,8 @@ class TestEntryPointCentralisation:
     def test_the_entry_point_imports_without_torch(self) -> None:
         """Importing the CLI must not drag in the optional ``mask`` extra.
 
-        ``torch`` ships only in the ``mask`` extra, so a default install would
-        stop having a CLI at all if a subcommand imported it at module level.
+        ``torch`` ships only in the ``mask`` extra, so a default install would stop having a CLI at all if a subcommand
+        imported it at module level.
         """
         # A subprocess, because this test session has already imported torch.
         script = "import sys; import trackers.cli.__main__; print('torch' in sys.modules)"
@@ -928,9 +925,9 @@ class TestEntryPointCentralisation:
     def test_parser_and_legacy_modules_never_import_main(self) -> None:
         """_parser.py and _legacy.py must not import from __main__ to avoid circular imports.
 
-        The entry point (__main__) imports every subcommand and imports from these
-        modules, so a reverse import would create a cycle and leave __main__ partially
-        initialized. This test uses static AST inspection to verify no such imports exist.
+        The entry point (__main__) imports every subcommand and imports from these modules, so a reverse import would
+        create a cycle and leave __main__ partially initialized. This test uses static AST inspection to verify no such
+        imports exist.
         """
         import ast
         from pathlib import Path
@@ -966,9 +963,8 @@ class TestTopLevelHelp:
     def _rendered_help() -> str:
         """Return the top-level help as one whitespace-normalised line.
 
-        ``format_help`` wraps to the terminal width, so a summary that fits on
-        one line here can be split across two on a narrower terminal. Collapsing
-        the whitespace lets a test assert on whole sentences.
+        ``format_help`` wraps to the terminal width, so a summary that fits on one line here can be split across two on
+        a narrower terminal. Collapsing the whitespace lets a test assert on whole sentences.
         """
         parser = auto_parser(_COMMANDS, args=[], as_positional=False, prog="trackers", parser_class=_CLIParser)
         return " ".join(parser.format_help().split())
@@ -976,10 +972,9 @@ class TestTopLevelHelp:
     def test_the_command_groups_are_described(self) -> None:
         """A group is a dict, which has no docstring for jsonargparse to lift.
 
-        ``track`` and friends get their summary from the command's docstring;
-        ``benchmark`` and ``inspect`` only have one because ``_COMMANDS`` gives
-        them a ``_help`` key. Dropping that key leaves them blank in ``--help``,
-        which is silent — nothing errors, the description is simply missing.
+        ``track`` and friends get their summary from the command's docstring; ``benchmark`` and ``inspect`` only have
+        one because ``_COMMANDS`` gives them a ``_help`` key. Dropping that key leaves them blank in ``--help``, which
+        is silent — nothing errors, the description is simply missing.
         """
         rendered = self._rendered_help()
 

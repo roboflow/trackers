@@ -141,8 +141,8 @@ def group_add_events_by_next_frame(
 ) -> dict[str, list[AddMaskEvent]]:
     """Group add events by the frame they should be applied before.
 
-    The CLI frame is the frame where the box is valid. Internally, McByte-style
-    timing applies the mask on that frame, then propagates to the next frame.
+    The CLI frame is the frame where the box is valid. Internally, McByte-style timing applies the mask on that frame,
+    then propagates to the next frame.
     """
     filenames = [path.name for path in frame_paths]
     grouped: dict[str, list[AddMaskEvent]] = defaultdict(list)
@@ -170,9 +170,8 @@ def validate_lifecycle_events(
 ) -> None:
     """Validate that add/remove lifecycle events are compatible with the frame range.
 
-    Add events refer to the source frame where the box is valid and are internally
-    shifted to the next frame. Therefore, they cannot be scheduled on the last
-    selected frame. Remove events are applied before propagation to their target
+    Add events refer to the source frame where the box is valid and are internally shifted to the next frame. Therefore,
+    they cannot be scheduled on the last selected frame. Remove events are applied before propagation to their target
     frame, so they cannot be scheduled on the first selected frame.
     """
     filenames = [path.name for path in frame_paths]

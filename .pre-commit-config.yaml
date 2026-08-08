@@ -43,6 +43,18 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
+
+  - repo: https://github.com/PyCQA/docformatter
+    rev: v1.7.8
+    hooks:
+      - id: docformatter
+        language_version: python3.10
+        additional_dependencies: [tomli]
+        args: ["--in-place"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.1
+    hooks:
       - id: ruff-format
 
   - repo: https://github.com/executablebooks/mdformat

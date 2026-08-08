@@ -20,9 +20,8 @@ def _noise_frame(height: int, width: int, seed: int) -> np.ndarray:
 def test_motion_estimator_survives_resolution_change() -> None:
     """A frame size change mid-stream returns a transformation instead of crashing.
 
-    calcOpticalFlowPyrLK asserts both frames share the same size, so when a
-    source renegotiates resolution between two consecutive frames the estimator
-    must re-sync the reference frame rather than crash.
+    calcOpticalFlowPyrLK asserts both frames share the same size, so when a source renegotiates resolution between two
+    consecutive frames the estimator must re-sync the reference frame rather than crash.
     """
     estimator = MotionEstimator()
     estimator.update(_noise_frame(480, 640, seed=1))
@@ -48,9 +47,8 @@ def test_motion_estimator_recovers_after_resolution_change() -> None:
 def test_motion_estimator_resets_frame_on_resolution_change() -> None:
     """A resolution change re-baselines instead of carrying stale-scale coordinates.
 
-    The accumulated homography lives in the previous resolution's pixel space,
-    so returning it after a size change would hand back coordinates in the wrong
-    scale. The estimator must reset the reference frame to identity.
+    The accumulated homography lives in the previous resolution's pixel space, so returning it after a size change would
+    hand back coordinates in the wrong scale. The estimator must reset the reference frame to identity.
     """
     estimator = MotionEstimator()
     estimator.update(_noise_frame(480, 640, seed=1))

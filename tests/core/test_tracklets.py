@@ -72,7 +72,7 @@ def test_tracklet_starts_with_zero_time_since_update(
 def test_tracklet_predict_increments_time_since_update(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """predict() must increment time_since_update by 1 each call."""
+    """Predict() must increment time_since_update by 1 each call."""
     t = _new_tracklet(tracklet_class, _BBOX)
     t.predict()
     assert t.time_since_update == 1
@@ -84,7 +84,7 @@ def test_tracklet_predict_increments_time_since_update(
 def test_tracklet_predict_increments_age(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """predict() must increment age by 1 each call."""
+    """Predict() must increment age by 1 each call."""
     t = _new_tracklet(tracklet_class, _BBOX)
     initial_age = t.age
     t.predict()
@@ -95,7 +95,7 @@ def test_tracklet_predict_increments_age(
 def test_tracklet_predict_returns_finite_bbox(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """predict() must always return finite bbox coordinates."""
+    """Predict() must always return finite bbox coordinates."""
     t = _new_tracklet(tracklet_class, _BBOX)
     for _ in range(10):
         bbox_out = t.predict()
@@ -106,7 +106,7 @@ def test_tracklet_predict_returns_finite_bbox(
 def test_tracklet_update_resets_time_since_update(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """update(bbox) must reset time_since_update to 0."""
+    """Update(bbox) must reset time_since_update to 0."""
     t = _new_tracklet(tracklet_class, _BBOX)
     t.predict()
     assert t.time_since_update == 1
@@ -127,7 +127,7 @@ def test_tracklet_starts_with_one_successful_update(
 def test_tracklet_update_increments_successful_updates(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """update(bbox) increments number_of_successful_updates for SORT-like counters."""
+    """Update(bbox) increments number_of_successful_updates for SORT-like counters."""
     tracklet = _new_tracklet(tracklet_class, _BBOX)
     before = getattr(tracklet, "number_of_successful_updates")
     tracklet.update(_BBOX2)
@@ -161,13 +161,11 @@ def test_bytetrack_tracklet_starts_with_one_successful_consecutive_update(
 def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
     """ORU unfreeze fires correctly after exactly one missed frame.
 
-    Copilot raised a concern that ``_observed`` stays ``True`` throughout
-    the first missed frame, so ORU would not fire on a 1-frame gap.  The
-    freeze is intentionally deferred to the *start* of the next
-    ``predict()`` call (the re-match frame), where ``time_since_update > 0
-    AND _observed`` is the reliable first-miss signal.  At that point the
-    frozen KF state is identical to what an immediate freeze would have
-    saved, and ``_unfreeze()`` is called by ``update()`` in the same frame.
+    Copilot raised a concern that ``_observed`` stays ``True`` throughout the first missed frame, so ORU would not fire
+    on a 1-frame gap.  The freeze is intentionally deferred to the *start* of the next ``predict()`` call (the re-match
+    frame), where ``time_since_update > 0 AND _observed`` is the reliable first-miss signal.  At that point the frozen
+    KF state is identical to what an immediate freeze would have saved, and ``_unfreeze()`` is called by ``update()`` in
+    the same frame.
     """
     tracklet = OCSORTTracklet(bbox)
 
@@ -199,8 +197,8 @@ def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
 def test_ocsort_oru_unfreeze_uses_timing_frame_step_predicts(bbox: np.ndarray) -> None:
     """ORU virtual trajectory passes timing.frame_step to each sub-step predict.
 
-    Each sub-step calls ``state_estimator.predict(timing.frame_step)`` so that
-    variable-FPS gaps are scaled correctly, not fixed at 1.0.
+    Each sub-step calls ``state_estimator.predict(timing.frame_step)`` so that variable-FPS gaps are scaled correctly,
+    not fixed at 1.0.
     """
     from trackers.utils.predict_timing import PredictTiming
 

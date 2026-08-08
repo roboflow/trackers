@@ -6,8 +6,7 @@
 
 """Unit tests for deterministic unmatched-index ordering in _get_associated_indices.
 
-All trackers must return sorted lists for
-unmatched tracks and unmatched detections so that tracker-ID assignment is
+All trackers must return sorted lists for unmatched tracks and unmatched detections so that tracker-ID assignment is
 stable across CPython versions and implementations.
 """
 
@@ -109,11 +108,10 @@ class TestGetAssociatedIndicesSortedOutput:
 def test_ocsort_none_direction_matrix_matches_explicit_zero_matrix() -> None:
     """OCSORT weight-0 path (``None`` direction matrix) associates identically to a zero matrix.
 
-    The direction-consistency matrix is finite and bounded, so the historical
-    ``iou_matrix + weight * matrix`` reduced to ``iou_matrix`` whenever the matrix
-    was all zeros. Passing ``None`` (the weight-0 early-out) must be bit-identical
-    to passing an explicit zero matrix. ``None`` is only valid at weight 0, so the
-    tracker is constructed with ``direction_consistency_weight=0``.
+    The direction-consistency matrix is finite and bounded, so the historical ``iou_matrix + weight * matrix`` reduced
+    to ``iou_matrix`` whenever the matrix was all zeros. Passing ``None`` (the weight-0 early-out) must be bit-identical
+    to passing an explicit zero matrix. ``None`` is only valid at weight 0, so the tracker is constructed with
+    ``direction_consistency_weight=0``.
     """
     tracker = OCSORTTracker(direction_consistency_weight=0.0)
     iou_matrix = np.zeros((4, 5))

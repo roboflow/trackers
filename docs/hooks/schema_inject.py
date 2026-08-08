@@ -121,8 +121,8 @@ _BENCHMARK_DATASETS = [
 def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
     """Build BreadcrumbList JSON-LD from navigation hierarchy.
 
-    Returns None if the page is at the root level (no meaningful breadcrumb)
-    or if the page is the homepage (to avoid "Home > Home > ..." duplication).
+    Returns None if the page is at the root level (no meaningful breadcrumb) or if the page is the homepage (to avoid
+    "Home > Home > ..." duplication).
     """
     # Skip breadcrumbs for the homepage to avoid "Home > Home > ..." duplication.
     if page.file.src_path == "index.md":

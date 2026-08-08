@@ -6,10 +6,9 @@
 
 """Back-compat shims for the mask stack moved out of ``trackers.core.mcbyte``.
 
-The shims use two mechanisms, so the tests are split the same way: the
-``deprecated_class`` proxies warn on use and forward to the real class, while
-the abstract base classes are served by a module ``__getattr__`` that warns on
-import and hands back the real class so it stays subclassable.
+The shims use two mechanisms, so the tests are split the same way: the ``deprecated_class`` proxies warn on use and
+forward to the real class, while the abstract base classes are served by a module ``__getattr__`` that warns on import
+and hands back the real class so it stays subclassable.
 """
 
 from __future__ import annotations
@@ -75,9 +74,8 @@ PROXIED_SYMBOLS = [
 class TestProxiedSymbolsWarnOnUseNotOnImport:
     """``MaskOutput``, ``TrackletSnapshot`` and ``MaskManager`` are pyDeprecate proxies.
 
-    Their warning fires when the name is *used*, which is the half of the split
-    that differs from the abstract base classes below. Both directions are
-    asserted so the asymmetry cannot drift unnoticed.
+    Their warning fires when the name is *used*, which is the half of the split that differs from the abstract base
+    classes below. Both directions are asserted so the asymmetry cannot drift unnoticed.
     """
 
     @pytest.mark.parametrize(("name", "real"), PROXIED_SYMBOLS)
@@ -135,8 +133,8 @@ class TestProxiedSymbolsWarnOnUseNotOnImport:
 class TestForwardedAbstractBasesWarnOnImport:
     """``MaskGenerator`` and ``MaskPropagator`` are served by a module ``__getattr__``.
 
-    Unlike the proxies above, these warn at *import* and hand back the real
-    class, which is what keeps them subclassable.
+    Unlike the proxies above, these warn at *import* and hand back the real class, which is what keeps them
+    subclassable.
     """
 
     @pytest.mark.parametrize(("name", "expected"), FORWARDED_ABCS)

@@ -260,8 +260,7 @@ class MotionEstimator:
     def reset(self) -> None:
         """Reset the estimator state.
 
-        Call this when starting a new video or when you want to reset the
-        world coordinate system to the current frame.
+        Call this when starting a new video or when you want to reset the world coordinate system to the current frame.
         """
         self._previous_grayscale = None
         self._previous_features = None
@@ -270,8 +269,7 @@ class MotionEstimator:
     def _reset_accumulator(self) -> None:
         """Reset the accumulated homography to the identity transform.
 
-        Re-baselines the world coordinate system to the current frame. Unlike
-        `reset()`, this does NOT clear the cached previous frame or feature
-        points; use `reset()` when a full state reset is required.
+        Re-baselines the world coordinate system to the current frame. Unlike `reset()`, this does NOT clear the cached
+        previous frame or feature points; use `reset()` when a full state reset is required.
         """
         self._accumulated_homography = np.eye(3, dtype=np.float64)

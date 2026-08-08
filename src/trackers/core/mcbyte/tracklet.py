@@ -179,10 +179,8 @@ class McByteTracklet(BaseTracklet):
     def update(self, bbox: np.ndarray) -> None:
         """Update tracklet with a new observation.
 
-        In the McByte flow **only matched tracks** call ``update(bbox)``
-        with an actual bounding box.  Unmatched tracks simply skip
-        ``update`` (their ``time_since_update`` is incremented in
-        ``predict`` instead).
+        In the McByte flow **only matched tracks** call ``update(bbox)`` with an actual bounding box.  Unmatched tracks
+        simply skip ``update`` (their ``time_since_update`` is incremented in ``predict`` instead).
         """
         self._refresh_noise_from_state()
         self.state_estimator.update(bbox)

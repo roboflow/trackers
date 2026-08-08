@@ -101,7 +101,7 @@ class _TrackingIoU(BaseIoU):
     ids=["single_detection", "two_detections"],
 )
 def test_tracker_update_does_not_mutate_input(tracker_id: str, xyxy: np.ndarray, confidence: np.ndarray) -> None:
-    """update() must not assign tracker_id on the caller's sv.Detections."""
+    """Update() must not assign tracker_id on the caller's sv.Detections."""
     tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     dets = sv.Detections(xyxy=xyxy)
     dets.confidence = confidence
@@ -115,7 +115,7 @@ def test_tracker_update_does_not_mutate_input(tracker_id: str, xyxy: np.ndarray,
 
 @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
 def test_tracker_update_empty_does_not_mutate_input(tracker_id: str) -> None:
-    """update() with empty detections must not mutate input."""
+    """Update() with empty detections must not mutate input."""
     tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     dets = sv.Detections(xyxy=np.zeros((0, 4), dtype=float))
     dets.confidence = np.array([], dtype=float)
@@ -177,9 +177,8 @@ def test_no_confidence_detections_can_spawn_confirmed_tracks(tracker_id: str) ->
 def test_no_confidence_matches_explicit_ones_confidence(tracker_id: str, xyxy_boxes: np.ndarray) -> None:
     """Every tracker treats confidence=None the same as all-ones across multi-box batches.
 
-    Multi-detection batches exercise confidence bucketing in trackers that split
-    high/low detections; a regression that mis-buckets ``confidence=None`` would
-    still pass single-box equality but diverge here.
+    Multi-detection batches exercise confidence bucketing in trackers that split high/low detections; a regression that
+    mis-buckets ``confidence=None`` would still pass single-box equality but diverge here.
     """
     no_confidence_tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     explicit_confidence_tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
@@ -205,11 +204,10 @@ def test_no_confidence_matches_explicit_ones_confidence(tracker_id: str, xyxy_bo
 
 
 def test_bytetrack_no_confidence_spawns_tracks_below_activation_threshold() -> None:
-    """confidence=None must route every detection to Stage 1 even when explicit-low-conf would not spawn.
+    """Confidence=None must route every detection to Stage 1 even when explicit-low-conf would not spawn.
 
-    Asserts the actual semantic of treating `None` as 1.0: explicit
-    confidences that fall under `track_activation_threshold` get suppressed
-    in the low-confidence branch, but the same boxes with `confidence=None`
+    Asserts the actual semantic of treating `None` as 1.0: explicit confidences that fall under
+    `track_activation_threshold` get suppressed in the low-confidence branch, but the same boxes with `confidence=None`
     still produce confirmed tracker IDs.
     """
     activation_threshold = 0.6
@@ -254,9 +252,8 @@ def test_bytetrack_no_confidence_spawns_tracks_below_activation_threshold() -> N
 
 
 def test_bytetrack_returns_unmatched_detection_between_thresholds() -> None:
-    """A detection whose confidence sits between high_conf_det_threshold and
-    track_activation_threshold must still be returned (with tracker_id -1) when
-    it matches no track, not silently dropped."""
+    """A detection whose confidence sits between high_conf_det_threshold and track_activation_threshold must still be
+    returned (with tracker_id -1) when it matches no track, not silently dropped."""
     tracker = ByteTrackTracker(
         high_conf_det_threshold=0.6,
         track_activation_threshold=0.7,
@@ -278,8 +275,8 @@ def test_bytetrack_returns_unmatched_detection_between_thresholds() -> None:
 def test_bytetrack_all_detections_in_gap() -> None:
     """All detections in [high_conf_det_threshold, track_activation_threshold) return tracker_id=-1.
 
-    When every detection falls in the confidence gap, Stage 2 loop is empty and
-    _spawn_new_tracks processes them all but spawns no tracks.
+    When every detection falls in the confidence gap, Stage 2 loop is empty and _spawn_new_tracks processes them all but
+    spawns no tracks.
     """
     tracker = ByteTrackTracker(
         high_conf_det_threshold=0.5,
@@ -301,8 +298,8 @@ def test_bytetrack_all_detections_in_gap() -> None:
 def test_bytetrack_mid_gap_detection_returned_across_frames() -> None:
     """Mid-gap detection (tracker_id=-1) continues to appear in output on frame 2+.
 
-    A regression where a mid-gap detection stops being returned on subsequent
-    frames would not be caught by the single-frame test.
+    A regression where a mid-gap detection stops being returned on subsequent frames would not be caught by the single-
+    frame test.
     """
     tracker = ByteTrackTracker(
         high_conf_det_threshold=0.6,
@@ -473,7 +470,7 @@ def _run_until_n_confirmed(
 
 @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
 def test_reset_clears_tracks_and_restarts_ids(tracker_id: str) -> None:
-    """reset() must clear state and restart tracker IDs from zero."""
+    """Reset() must clear state and restart tracker IDs from zero."""
     tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     det = _detection((100.0, 100.0, 200.0, 200.0))
 

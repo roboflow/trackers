@@ -253,9 +253,8 @@ class TestCBIoUStickyMaturity:
     def test_instant_activated_track_survives_multiple_misses(self) -> None:
         """Track keeps its ID through two consecutive misses (confirmed then lost).
 
-        After the first miss the track sits in confirmed_tracks (time_since_update=1).
-        After the second miss it moves to lost_tracks (time_since_update=2).
-        get_alive_tracklets must keep it alive via the tracker_id != -1 guard.
+        After the first miss the track sits in confirmed_tracks (time_since_update=1). After the second miss it moves to
+        lost_tracks (time_since_update=2). get_alive_tracklets must keep it alive via the tracker_id != -1 guard.
         """
         tracker = CBIoUTracker()
         obj = (10.0, 10.0, 50.0, 50.0)
@@ -301,14 +300,11 @@ class TestCBIoUStickyMaturity:
     def test_instant_activated_track_survives_a_miss_with_shifted_return_box(self) -> None:
         """Sticky track keeps its ID after a miss even when it reappears shifted.
 
-        Box A (spawn): [0, 0, 100, 100]. Box B (return, after the miss):
-        [100, 0, 200, 100] — flush against A's right edge, so plain IoU is
-        exactly 0 (no overlap: Step 1's raw box overlap would miss it). With
-        the tracker's default ``buffer_ratio_first=0.3``, BIoU expands both
-        boxes by 30px on every side before Step 1 association, producing
-        enough overlap to re-associate the returning detection with the
-        sticky (instant-activated) track. Mirrors the box-A/box-B
-        construction in ``TestCBIoUAssociationTolerance``.
+        Box A (spawn): [0, 0, 100, 100]. Box B (return, after the miss): [100, 0, 200, 100] — flush against A's right
+        edge, so plain IoU is exactly 0 (no overlap: Step 1's raw box overlap would miss it). With the tracker's default
+        ``buffer_ratio_first=0.3``, BIoU expands both boxes by 30px on every side before Step 1 association, producing
+        enough overlap to re-associate the returning detection with the sticky (instant-activated) track. Mirrors the
+        box-A/box-B construction in ``TestCBIoUAssociationTolerance``.
         """
         tracker = CBIoUTracker()
         box_a = (0.0, 0.0, 100.0, 100.0)
@@ -328,11 +324,9 @@ class TestCBIoUStickyMaturity:
     def test_sticky_track_pruned_once_time_since_update_exceeds_lost_track_buffer(self) -> None:
         """Sticky maturity delays deletion; it does not grant permanent immunity.
 
-        With ``lost_track_buffer=1`` (and the default 30 FPS ``frame_rate``),
-        ``maximum_frames_without_update`` scales to 1. An instant-activated
-        (sticky) track survives the first miss (``time_since_update == 1``,
-        within budget) but must be pruned once a second consecutive miss
-        pushes ``time_since_update`` to 2, past the budget.
+        With ``lost_track_buffer=1`` (and the default 30 FPS ``frame_rate``), ``maximum_frames_without_update`` scales
+        to 1. An instant-activated (sticky) track survives the first miss (``time_since_update == 1``, within budget)
+        but must be pruned once a second consecutive miss pushes ``time_since_update`` to 2, past the budget.
         """
         tracker = CBIoUTracker(lost_track_buffer=1)
         obj = (10.0, 10.0, 50.0, 50.0)
@@ -406,10 +400,9 @@ def test_biou_matrix_reads_cache_without_decoding(monkeypatch: pytest.MonkeyPatc
 def test_biou_matrix_raises_contextual_error_on_cache_miss() -> None:
     """_biou_matrix raises a contextual KeyError when a tracklet is absent from the cache.
 
-    The decode-once map must contain every tracklet passed to the helper (it is
-    built from ``self.tracks`` once per ``update()``). A miss is an internal-invariant
-    violation; the helper surfaces it with a message naming the cache contract rather
-    than a bare ``KeyError: <id int>``.
+    The decode-once map must contain every tracklet passed to the helper (it is built from ``self.tracks`` once per
+    ``update()``). A miss is an internal-invariant violation; the helper surfaces it with a message naming the cache
+    contract rather than a bare ``KeyError: <id int>``.
     """
     tracker = CBIoUTracker()
     tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 10.0, 10.0]))

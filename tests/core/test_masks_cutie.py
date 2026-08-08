@@ -48,9 +48,8 @@ class _FakeObjectManager:
 class _FakeFeatureStore:
     """ImageFeatureStore stub modeling encode-on-miss plus explicit delete.
 
-    ``encode_count`` records how many distinct time indices were encoded so a
-    test can assert an add_masks reused a prior propagate's features (count
-    unchanged) instead of re-encoding the identical frame.
+    ``encode_count`` records how many distinct time indices were encoded so a test can assert an add_masks reused a
+    prior propagate's features (count unchanged) instead of re-encoding the identical frame.
     """
 
     def __init__(self) -> None:
@@ -71,10 +70,9 @@ class _FakeFeatureStore:
 class _FakeInferenceCore:
     """InferenceCore stub mirroring curr_ti bookkeeping and delete_buffer.
 
-    ``step`` increments ``curr_ti`` before its feature lookup (as the real core
-    does), encodes on a store miss, and drops the entry when ``delete_buffer`` is
-    True. It returns a fixed probability tensor so the wrapper's downstream mask
-    conversion runs unchanged.
+    ``step`` increments ``curr_ti`` before its feature lookup (as the real core does), encodes on a store miss, and
+    drops the entry when ``delete_buffer`` is True. It returns a fixed probability tensor so the wrapper's downstream
+    mask conversion runs unchanged.
     """
 
     def __init__(self, prob: Any, tmp_id_to_obj: dict[int, _FakeObject]) -> None:
@@ -192,7 +190,7 @@ def test_add_masks_reencodes_when_frame_differs_from_cache() -> None:
 
 
 def test_propagate_retains_single_feature_entry_and_reset_clears_it() -> None:
-    """propagate keeps exactly one feature entry alive for reuse; reset drops it to avoid ti collisions."""
+    """Propagate keeps exactly one feature entry alive for reuse; reset drops it to avoid ti collisions."""
     prob = torch.zeros((2, 2, 2), dtype=torch.float32)
     prob[0] = 1.0
     propagator = _make_reuse_propagator(prob, {1: _FakeObject(1)})

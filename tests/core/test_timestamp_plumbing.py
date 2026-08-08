@@ -5,8 +5,8 @@
 # ------------------------------------------------------------------------
 """Timestamp plumbing and time-based pruning tests.
 
-``_predict_timing`` unit tests run on SORT only (shared ``BaseTracker`` impl).
-Integration behaviour is parametrized over timestamp-aware trackers.
+``_predict_timing`` unit tests run on SORT only (shared ``BaseTracker`` impl). Integration behaviour is parametrized
+over timestamp-aware trackers.
 """
 
 from __future__ import annotations
@@ -556,15 +556,13 @@ def test_same_process_noise_at_reference_fps(
 def test_mcbyte_predict_forwards_frame_rate_for_mid_band_gap() -> None:
     """McByte's ``predict()`` must forward ``frame_rate`` for a mid-band gap.
 
-    ``frame_step=1.15`` sits outside the fixed 0.1 frame-unit fallback
-    tolerance but inside the fps-scaled ``0.004 * frame_rate`` band at 60 FPS
-    (0.24) — the exact divergence zone a dropped ``frame_rate`` falls out of.
+    ``frame_step=1.15`` sits outside the fixed 0.1 frame-unit fallback tolerance but inside the fps-scaled ``0.004 *
+    frame_rate`` band at 60 FPS (0.24) — the exact divergence zone a dropped ``frame_rate`` falls out of.
 
-    Asserted directly on the tracklet, not through ``McByteTracker.update()``:
-    McByte's ``update()`` unconditionally recalibrates ``Q`` from the current
-    bbox scale via ``_refresh_noise_from_state``, which overwrites whatever
-    ``predict()`` computed before the next frame — the only place this
-    regression is observable is the tracklet's state right after ``predict()``.
+    Asserted directly on the tracklet, not through ``McByteTracker.update()``: McByte's ``update()`` unconditionally
+    recalibrates ``Q`` from the current bbox scale via ``_refresh_noise_from_state``, which overwrites whatever
+    ``predict()`` computed before the next frame — the only place this regression is observable is the tracklet's state
+    right after ``predict()``.
     """
     box = np.array([100.0, 100.0, 150.0, 200.0], dtype=np.float32)
     nominal = McByteTracklet(initial_bbox=box)

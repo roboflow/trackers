@@ -125,9 +125,8 @@ NEAR_NOMINAL_FRAME_STEPS = [
 def test_build_Q_returns_baseline_for_near_nominal_frame_step(frame_step: float) -> None:
     """A step off 1.0 by real clock error still counts as one nominal frame.
 
-    Compared bit for bit rather than with ``approx``: an approximate check would
-    pass on the rebuilt DWNA matrix this guards against, which differs from the
-    configured Q by two orders of magnitude on the position block.
+    Compared bit for bit rather than with ``approx``: an approximate check would pass on the rebuilt DWNA matrix this
+    guards against, which differs from the configured Q by two orders of magnitude on the position block.
     """
     baseline = np.diag([16.0, 81.0, 16.0, 81.0, 0.25, 1.2656, 0.25, 1.2656])
     noise = _noise_8d(baseline)
@@ -270,8 +269,8 @@ def test_build_Q_alternating_nominal_and_gap_steps_leaves_no_stale_state() -> No
 def test_build_Q_recalibrates_within_the_nominal_band() -> None:
     """A near-nominal step returns the *current* reference, not a cached one.
 
-    BoT-SORT refreshes its scale-aware Q on every frame, so the band must track
-    ``calibrate`` rather than pin the matrix seen on the first call.
+    BoT-SORT refreshes its scale-aware Q on every frame, so the band must track ``calibrate`` rather than pin the matrix
+    seen on the first call.
     """
     first = np.eye(8, dtype=np.float64) * 0.01
     noise = _noise_8d(first)
@@ -284,10 +283,9 @@ def test_build_Q_recalibrates_within_the_nominal_band() -> None:
 
 
 def test_build_Q_at_zero_frame_step_zeroes_kinematic_block_only() -> None:
-    """frame_step=0.0 sits outside both tolerance bands: the DWNA kinematic block collapses
-    to all-zero (dt2=dt3=dt4=0), but non-kinematic diagonal entries still come from the
-    one-frame reference Q — this is not a blanket all-zero matrix.
-    """
+    """frame_step=0.0 sits outside both tolerance bands: the DWNA kinematic block collapses to all-zero (dt2=dt3=dt4=0),
+    but non-kinematic diagonal entries still come from the one-frame reference Q — this is not a blanket all-zero
+    matrix."""
     extra = np.ones(7, dtype=np.float64) * 0.01
     extra[3] = 7.5
     noise = ScalableProcessNoise(
@@ -308,10 +306,11 @@ def test_build_Q_at_zero_frame_step_zeroes_kinematic_block_only() -> None:
 
 
 def test_build_Q_at_negative_frame_step_documents_sign_inverted_dwna() -> None:
-    """frame_step=-1.0 is not degenerate like 0.0: dt2=1, dt3=-1, dt4=1 build a real,
-    non-zero, sign-inverted DWNA matrix. This pins current documented behavior rather than
-    guarding a bug — ``build_Q`` does not validate ``frame_step`` and no shipped tracker
-    calls it with a negative step.
+    """frame_step=-1.0 is not degenerate like 0.0: dt2=1, dt3=-1, dt4=1 build a real, non-zero, sign-inverted DWNA
+    matrix.
+
+    This pins current documented behavior rather than guarding a bug — ``build_Q`` does not validate ``frame_step`` and
+    no shipped tracker calls it with a negative step.
     """
     extra = np.ones(7, dtype=np.float64) * 0.01
     extra[3] = 7.5

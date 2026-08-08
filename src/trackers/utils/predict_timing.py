@@ -6,9 +6,9 @@
 
 """Timing for one Kalman predict step.
 
-Stores how large the predict step is (in frame units) and how many seconds passed since the
-last step. Two fields are used because Kalman ``F``/``Q`` scale in frame units,
-while timestamped updates also need real elapsed time between calls.
+Stores how large the predict step is (in frame units) and how many seconds passed since the last step. Two fields are
+used because Kalman ``F``/``Q`` scale in frame units, while timestamped updates also need real elapsed time between
+calls.
 """
 
 from __future__ import annotations

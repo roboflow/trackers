@@ -24,15 +24,12 @@ from trackers.utils.state_representations import (
 
 
 class OCSORTTracker(BaseTracker):
-    """OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm,
-    using detections to correct Kalman filter errors accumulated during occlusions. It
-    introduces Observation-Centric Re-Update to generate virtual trajectories for
-    parameter refinement upon track reactivation. Association incorporates
-    Observation-Centric Momentum, blending IoU with direction consistency from
-    historical observations. Short-term recoveries are aided by heuristics linking
-    unmatched tracks to prior detections. This rethinking prioritizes real measurements
-    over estimations, making OC-SORT particularly adept at handling real-world tracking
-    challenges.
+    """OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm, using detections to correct
+    Kalman filter errors accumulated during occlusions. It introduces Observation-Centric Re-Update to generate virtual
+    trajectories for parameter refinement upon track reactivation. Association incorporates Observation-Centric
+    Momentum, blending IoU with direction consistency from historical observations. Short-term recoveries are aided by
+    heuristics linking unmatched tracks to prior detections. This rethinking prioritizes real measurements over
+    estimations, making OC-SORT particularly adept at handling real-world tracking challenges.
 
     OC-SORT's primary strength is its robustness to non-linear motions and occlusions,
     outperforming baselines on datasets with erratic movements like DanceTrack. It
@@ -123,8 +120,7 @@ class OCSORTTracker(BaseTracker):
         iou_matrix: np.ndarray,
         direction_consistency_matrix: np.ndarray | None,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """
-        Associate detections to tracks based on IOU.
+        """Associate detections to tracks based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
@@ -327,6 +323,7 @@ class OCSORTTracker(BaseTracker):
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
+
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
@@ -356,8 +353,7 @@ class OCSORTTracker(BaseTracker):
         ]
 
     def _compute_direction_consistency_matrix(self, detection_boxes: np.ndarray, confidences: np.ndarray) -> np.ndarray:
-        """Compute the direction consistency matrix for association,
-        including confidence scaling."""
+        """Compute the direction consistency matrix for association, including confidence scaling."""
         tracklet_velocities = np.array(
             [t.velocity if t.velocity is not None else np.array([0.0, 0.0]) for t in self.tracks]
         )

@@ -203,9 +203,8 @@ class SAMBoxMaskGenerator(MaskGenerator):
     def _convert_masks(self, masks: Any) -> np.ndarray:
         """Convert SAM mask tensor to McByte mask format.
 
-        SAM returns masks with shape ``(N, C, H, W)``, where ``C`` is the number
-        of candidate masks per prompt. With ``multimask_output=False``, ``C`` is
-        expected to be 1. McByte keeps one binary mask per tracklet, so this method
+        SAM returns masks with shape ``(N, C, H, W)``, where ``C`` is the number of candidate masks per prompt. With
+        ``multimask_output=False``, ``C`` is expected to be 1. McByte keeps one binary mask per tracklet, so this method
         converts the tensor to a NumPy array with shape ``(N, H, W)``.
         """
         masks_np = masks.detach().cpu().numpy()

@@ -208,10 +208,9 @@ class TestResolveTrackIdFilter:
 class TestTrackerParameterAbbreviations:
     """Abbreviated CLI parameter names must survive the trip to the constructor.
 
-    ``_init_tracker`` forwards only keys matching the tracker ``__init__``
-    signature, so a CLI-side rename with no matching alias is dropped without
-    an error and the tracker silently keeps its own default. These tests make
-    that failure mode visible.
+    ``_init_tracker`` forwards only keys matching the tracker ``__init__`` signature, so a CLI-side rename with no
+    matching alias is dropped without an error and the tracker silently keeps its own default. These tests make that
+    failure mode visible.
     """
 
     @pytest.mark.parametrize(

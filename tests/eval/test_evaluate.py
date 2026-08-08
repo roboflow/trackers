@@ -74,7 +74,7 @@ class TestEvaluateMOTSequence:
         assert result.Identity is not None
 
     def test_table_hota_only(self, sample_mot_files: tuple[Path, Path]) -> None:
-        """table() shows HOTA and DetA; MOTA absent when only HOTA computed."""
+        """Table() shows HOTA and DetA; MOTA absent when only HOTA computed."""
         gt_path, tracker_path = sample_mot_files
 
         result = evaluate_mot_sequence(
@@ -89,7 +89,7 @@ class TestEvaluateMOTSequence:
         assert "MOTA" not in table_str
 
     def test_json_hota_only(self, sample_mot_files: tuple[Path, Path]) -> None:
-        """json() includes HOTA fields when only HOTA computed."""
+        """Json() includes HOTA fields when only HOTA computed."""
         gt_path, tracker_path = sample_mot_files
 
         result = evaluate_mot_sequence(
