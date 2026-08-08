@@ -99,7 +99,18 @@ DEFAULT_OUTPUT_ROOT = INSPECT_OUTPUT_ROOT / "mask_manager"
 MaskManagerMode = Literal["manual", "gt"]
 
 _MANUAL_ONLY_OPTIONS = ("start_file", "end_file", "box", "add_at", "remove_at")
-_GT_ONLY_OPTIONS = ("gt_file", "start_frame", "end_frame", "tracklet_id")
+_GT_ONLY_OPTIONS = (
+    "gt_file",
+    "start_frame",
+    "end_frame",
+    "tracklet_id",
+    "mask_creation_bbox_overlap_threshold",
+)
+# Options taking a list. An empty list is the caller giving nothing, so the mode
+# guard must read ``--box='[]'`` as absent rather than as a supplied value.
+_LIST_OPTIONS = frozenset({"box", "add_at", "remove_at", "tracklet_id"})
+
+DEFAULT_MASK_CREATION_BBOX_OVERLAP_THRESHOLD = 0.6
 
 
 @dataclass(frozen=True)
@@ -638,7 +649,7 @@ def run_gt_mode(
     cutie_model_type: str = "base-mega",
     cutie_config_path: Path | None = None,
     cutie_config_name: str = "eval_config",
-    mask_creation_bbox_overlap_threshold: float = 0.6,
+    mask_creation_bbox_overlap_threshold: float = DEFAULT_MASK_CREATION_BBOX_OVERLAP_THRESHOLD,
 ) -> int:
     """Replay GT tracklets through MaskManager and save per-frame outputs.
 
@@ -779,6 +790,56 @@ def run_gt_mode(
     return 0
 
 
+def _was_supplied(option: str, value: Any) -> bool:
+    """Return whether the caller actually gave a value for ``option``.
+
+    A list option holds ``[]`` when the caller passed an empty bracket literal,
+    which is the same as not passing the option at all. Every other option keeps
+    the ``is not None`` test so that a legitimate ``0`` or ``False`` still counts
+    as supplied.
+
+    Args:
+        option: Option name in underscore spelling.
+        value: The value the caller gave.
+
+    Returns:
+        ``True`` when the option carries a usable value.
+
+    Examples:
+        >>> _was_supplied("box", [])
+        False
+        >>> _was_supplied("start_frame", 0)
+        True
+    """
+    if option in _LIST_OPTIONS:
+        return bool(value)
+    return value is not None
+
+
+def _flag_spellings(option: str) -> str:
+    """Return an option's flag name, naming the hyphenated spelling when it differs.
+
+    Both spellings reach the same option, so an error must not report only the
+    underscore one to a caller who typed hyphens.
+
+    Args:
+        option: Option name in underscore spelling.
+
+    Returns:
+        The flag name for use in an error message.
+
+    Examples:
+        >>> _flag_spellings("gt_file")
+        '--gt_file (or --gt-file)'
+        >>> _flag_spellings("box")
+        '--box'
+    """
+    hyphenated = option.replace("_", "-")
+    if hyphenated == option:
+        return f"--{option}"
+    return f"--{option} (or --{hyphenated})"
+
+
 def _raise_for_mode_option_conflict(mode: MaskManagerMode, supplied: Mapping[str, Any]) -> None:
     """Reject options belonging to the mode that was not selected.
 
@@ -800,18 +861,19 @@ def _raise_for_mode_option_conflict(mode: MaskManagerMode, supplied: Mapping[str
         >>> _raise_for_mode_option_conflict("manual", {"gt_file": "gt.txt"})
         Traceback (most recent call last):
         ...
-        ValueError: --gt_file is a --mode gt option and cannot be used with --mode manual.
+        ValueError: --gt_file (or --gt-file) is a --mode gt option and cannot be used with --mode manual.
     """
     foreign = _GT_ONLY_OPTIONS if mode == "manual" else _MANUAL_ONLY_OPTIONS
     other_mode = "gt" if mode == "manual" else "manual"
     for option in foreign:
-        if supplied.get(option) is not None:
-            raise ValueError(f"--{option} is a --mode {other_mode} option and cannot be used with --mode {mode}.")
+        if _was_supplied(option, supplied.get(option)):
+            flag = _flag_spellings(option)
+            raise ValueError(f"{flag} is a --mode {other_mode} option and cannot be used with --mode {mode}.")
 
     required = ("start_file", "end_file", "box") if mode == "manual" else ("gt_file", "start_frame", "end_frame")
-    missing = [option for option in required if supplied.get(option) is None]
+    missing = [option for option in required if not _was_supplied(option, supplied.get(option))]
     if missing:
-        joined = ", ".join(f"--{option}" for option in missing)
+        joined = ", ".join(_flag_spellings(option) for option in missing)
         raise ValueError(f"--mode {mode} requires {joined}.")
 
 
@@ -833,7 +895,7 @@ def mask_manager_command(
     cutie_model_type: str = "base-mega",
     cutie_config_path: Path | None = None,
     cutie_config_name: str = "eval_config",
-    mask_creation_bbox_overlap_threshold: float = 0.6,
+    mask_creation_bbox_overlap_threshold: float | None = None,
 ) -> int:
     """Run MaskManager over a frame range and save per-frame visualizations.
 
@@ -888,7 +950,7 @@ def mask_manager_command(
             config shipped with the installed Cutie package.
         cutie_config_name: Name of the Cutie config to load.
         mask_creation_bbox_overlap_threshold: ``gt`` mode. Overlap threshold
-            above which mask creation is delayed.
+            above which mask creation is delayed. Defaults to ``0.6``.
 
     Returns:
         Exit code: ``0`` on success, ``1`` on validation error.
@@ -910,6 +972,7 @@ def mask_manager_command(
         "start_frame": start_frame,
         "end_frame": end_frame,
         "tracklet_id": tracklet_id,
+        "mask_creation_bbox_overlap_threshold": mask_creation_bbox_overlap_threshold,
     }
     try:
         _raise_for_mode_option_conflict(mode, supplied)
@@ -930,7 +993,11 @@ def mask_manager_command(
             cutie_model_type=cutie_model_type,
             cutie_config_path=cutie_config_path,
             cutie_config_name=cutie_config_name,
-            mask_creation_bbox_overlap_threshold=mask_creation_bbox_overlap_threshold,
+            mask_creation_bbox_overlap_threshold=(
+                DEFAULT_MASK_CREATION_BBOX_OVERLAP_THRESHOLD
+                if mask_creation_bbox_overlap_threshold is None
+                else mask_creation_bbox_overlap_threshold
+            ),
         )
 
     return run_manual_mode(

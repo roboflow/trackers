@@ -104,7 +104,7 @@ class TestMaskManagerModeValidation:
             pytest.param(
                 "manual",
                 {"start_file": "a.jpg", "end_file": "b.jpg", "box": [(1.0, 2.0, 3.0, 4.0)], "gt_file": "gt.txt"},
-                "--gt_file is a --mode gt option",
+                r"--gt_file \(or --gt-file\) is a --mode gt option",
                 id="gt-option-under-manual",
             ),
             pytest.param(
@@ -171,7 +171,7 @@ class TestMaskManagerModeValidation:
         exit_code = mask_manager_command(Path("does-not-exist"), mode="manual", gt_file=Path("gt.txt"))
 
         assert exit_code == 1
-        assert "--gt_file is a --mode gt option" in capsys.readouterr().err
+        assert "--gt_file (or --gt-file) is a --mode gt option" in capsys.readouterr().err
 
 
 class TestInspectCommonHelpers:
