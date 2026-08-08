@@ -17,11 +17,11 @@ description: Render what each stage of the mask pipeline produced, frame by fram
 
 Each name is the thing being inspected, not the tracker that happens to use it:
 
-| Command                         | Inspects                       | Answers                                                     |
-| ------------------------------- | ------------------------------ | ----------------------------------------------------------- |
-| `trackers inspect sam`          | `SAMBoxMaskGenerator`          | Did SAM turn these boxes into the masks I expected?         |
-| `trackers inspect cutie`        | `CutieMaskPropagator`          | Did the masks survive propagation across frames?            |
-| `trackers inspect mask-manager` | `MaskManager`                  | Were masks created, added, and removed on the right frames? |
+| Command                         | Inspects                                 | Answers                                                     |
+| ------------------------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| `trackers inspect sam`          | `SAMBoxMaskGenerator`                    | Did SAM turn these boxes into the masks I expected?         |
+| `trackers inspect cutie`        | `CutieMaskPropagator`                    | Did the masks survive propagation across frames?            |
+| `trackers inspect mask-manager` | `MaskManager`                            | Were masks created, added, and removed on the right frames? |
 | `trackers inspect mcbyte`       | [`McByteTracker`](../trackers/mcbyte.md) | What did mask conditioning change versus locked IoU?        |
 
 The first three live in `trackers.core.masks` and are tracker-agnostic: nothing in them depends on McByte. Only the last one inspects a tracker.
