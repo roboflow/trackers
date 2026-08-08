@@ -17,10 +17,12 @@ from pathlib import Path
 
 import pytest
 import yaml
-from jsonargparse import ActionConfigFile, ArgumentParser
+from jsonargparse import ActionConfigFile, ArgumentParser, auto_parser
 
 from trackers.cli.__main__ import (
+    _BENCHMARK_HELP,
     _COMMANDS,
+    _INSPECT_HELP,
     _CLIParser,
     _translate_legacy_args,
 )
@@ -955,3 +957,37 @@ class TestEntryPointCentralisation:
                         raise AssertionError(
                             f"{filepath.name} must not import from __main__; found: from {node.module} import ..."
                         )
+
+
+class TestTopLevelHelp:
+    """``trackers --help`` describes every command, including the two groups."""
+
+    @staticmethod
+    def _rendered_help() -> str:
+        """Return the top-level help as one whitespace-normalised line.
+
+        ``format_help`` wraps to the terminal width, so a summary that fits on
+        one line here can be split across two on a narrower terminal. Collapsing
+        the whitespace lets a test assert on whole sentences.
+        """
+        parser = auto_parser(_COMMANDS, args=[], as_positional=False, prog="trackers", parser_class=_CLIParser)
+        return " ".join(parser.format_help().split())
+
+    def test_the_command_groups_are_described(self) -> None:
+        """A group is a dict, which has no docstring for jsonargparse to lift.
+
+        ``track`` and friends get their summary from the command's docstring;
+        ``benchmark`` and ``inspect`` only have one because ``_COMMANDS`` gives
+        them a ``_help`` key. Dropping that key leaves them blank in ``--help``,
+        which is silent — nothing errors, the description is simply missing.
+        """
+        rendered = self._rendered_help()
+
+        assert _BENCHMARK_HELP in rendered
+        assert _INSPECT_HELP in rendered
+
+    def test_the_help_key_is_not_offered_as_a_subcommand(self) -> None:
+        """``_help`` carries a description, so it must not also read as a command."""
+        rendered = self._rendered_help()
+
+        assert "_help" not in rendered

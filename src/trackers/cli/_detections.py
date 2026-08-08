@@ -57,6 +57,16 @@ DetectionFileFormat = Literal["mot_tlwh", "mot", "xyxy"]
 
 _FRAME_NUMBER_WIDTHS = (6, 8)
 
+_FRAME_LAYOUT_HINTS: dict[Path, tuple[int, str]] = {}
+"""Per-directory memo of the ``(width, extension)`` pair that last matched.
+
+A sequence directory names every frame the same way, so the pair that matched
+the previous frame matches the next one. Trying it first costs one ``is_file``
+call in the steady state instead of the ten the full search can reach; a miss
+just falls through to that search, so the memo can never change which path is
+returned. Bounded by the number of sequence directories one command touches.
+"""
+
 
 @dataclass(frozen=True)
 class DetectionRecord:
@@ -175,7 +185,8 @@ def find_frame_path(image_dir: Path, frame_number: int) -> Path:
     """Locate a frame by number, trying the common MOT filename widths.
 
     Tries 6- and 8-digit zero-padded stems against every suffix in
-    :data:`IMAGE_EXTENSIONS`.
+    :data:`IMAGE_EXTENSIONS`, after first retrying whichever combination last
+    matched in ``image_dir`` (see :data:`_FRAME_LAYOUT_HINTS`).
 
     Args:
         image_dir: Sequence frame directory to search.
@@ -195,13 +206,22 @@ def find_frame_path(image_dir: Path, frame_number: int) -> Path:
         ...     find_frame_path(root, 7).name
         '000007.jpg'
     """
-    stems = [f"{frame_number:0{width}d}" for width in _FRAME_NUMBER_WIDTHS]
-    for stem in stems:
+    hint = _FRAME_LAYOUT_HINTS.get(image_dir)
+    if hint is not None:
+        hinted_width, hinted_extension = hint
+        frame_path = image_dir / f"{frame_number:0{hinted_width}d}{hinted_extension}"
+        if frame_path.is_file():
+            return frame_path
+
+    for width in _FRAME_NUMBER_WIDTHS:
+        stem = f"{frame_number:0{width}d}"
         for extension in IMAGE_EXTENSIONS:
             frame_path = image_dir / f"{stem}{extension}"
             if frame_path.is_file():
+                _FRAME_LAYOUT_HINTS[image_dir] = (width, extension)
                 return frame_path
 
+    stems = [f"{frame_number:0{width}d}" for width in _FRAME_NUMBER_WIDTHS]
     attempted = [f"{stem}{extension}" for stem in stems for extension in IMAGE_EXTENSIONS]
     raise FileNotFoundError(f"Could not find frame {frame_number} in {image_dir}. Tried: {attempted}")
 

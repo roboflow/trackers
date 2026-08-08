@@ -120,8 +120,12 @@ def annotate_masks(
     if len(masks) == 0:
         return image.copy()
 
+    # ``xyxy`` is a required field but an unread one here: ``MaskAnnotator``
+    # paints in ``Detections.area`` order, and ``area`` measures the mask rather
+    # than the box whenever a mask is set. Deriving real boxes from the masks
+    # would scan every mask twice for a value nothing looks at.
     detections = sv.Detections(
-        xyxy=sv.mask_to_xyxy(masks),
+        xyxy=np.zeros((len(masks), 4), dtype=np.float32),
         mask=masks,
         tracker_id=np.asarray(tracker_ids, dtype=int),
     )
