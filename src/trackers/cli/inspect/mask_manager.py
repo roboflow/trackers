@@ -63,23 +63,35 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-import cv2
 import numpy as np
 
 # Imported at runtime, not under TYPE_CHECKING: jsonargparse resolves this
 # command's annotations when it builds the parser.
 from jsonargparse.typing import PositiveInt
 
+from trackers.cli._annotate import (
+    LIFECYCLE_MASKED,
+    LIFECYCLE_NEW,
+    LIFECYCLE_PENDING,
+    LIFECYCLE_TRACKED,
+    annotate_lifecycle_boxes,
+    annotate_masks,
+    annotate_tracklet_boxes,
+    draw_status_lines,
+)
 from trackers.cli.inspect._common import (
     INSPECT_OUTPUT_ROOT,
+    get_mask_tracklet_ids_in_order,
+    get_masked_tracklet_ids,
     list_selected_frame_paths,
     load_rgb_image,
     parse_xyxy_box,
     save_rgb_image,
     timestamped_run_dir,
+    tracklet_boxes,
+    validate_and_clip_xyxy_box,
     validate_device,
 )
-from trackers.cli.inspect._mask_manager_gt import run_gt_mode
 from trackers.core.masks.base import MaskOutput, TrackletSnapshot
 
 DEFAULT_OUTPUT_ROOT = INSPECT_OUTPUT_ROOT / "mask_manager"
@@ -139,28 +151,6 @@ def parse_remove_tracklet_event(event: str) -> RemoveTrackletEvent:
     return RemoveTrackletEvent(frame_file=frame_file, tracker_id=tracker_id)
 
 
-def validate_and_clip_xyxy_box(
-    box: tuple[float, float, float, float],
-    image_shape: tuple[int, int],
-) -> np.ndarray:
-    """Validate and clip an ``xyxy`` box to image boundaries."""
-    height, width = image_shape
-    x1, y1, x2, y2 = box
-
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError(f"Invalid xyxy box with non-positive size: {box}")
-
-    x1 = np.clip(x1, 0, width)
-    x2 = np.clip(x2, 0, width)
-    y1 = np.clip(y1, 0, height)
-    y2 = np.clip(y2, 0, height)
-
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError(f"Box is outside image after clipping: {box}")
-
-    return np.array([x1, y1, x2, y2], dtype=np.float32)
-
-
 def group_add_events_by_source_frame(
     frame_paths: list[Path],
     events: list[AddTrackletEvent],
@@ -217,89 +207,7 @@ def validate_lifecycle_events(
             raise ValueError("Remove events cannot be scheduled on the first selected frame.")
 
 
-def color_from_id(object_id: int) -> np.ndarray:
-    """Return a deterministic RGB color for a stable tracklet ID."""
-    rng = np.random.default_rng(object_id)
-    return rng.integers(0, 255, size=3, dtype=np.uint8)
-
-
-def overlay_masks(
-    image: np.ndarray,
-    masks: np.ndarray,
-    tracklet_ids: list[int],
-    alpha: float = 0.45,
-) -> np.ndarray:
-    """Overlay binary masks on an RGB image.
-
-    Each tracklet is rendered using a deterministic color derived from its
-    tracklet ID. The ordering of ``tracklet_ids`` must match the ordering of
-    ``masks``.
-    """
-    if masks.shape[0] != len(tracklet_ids):
-        raise ValueError(
-            "Number of masks must match number of tracklet IDs. "
-            f"Got {masks.shape[0]} masks and {len(tracklet_ids)} tracklet IDs."
-        )
-
-    output = image.copy()
-    for mask, tracklet_id in zip(masks, tracklet_ids):
-        color = color_from_id(tracklet_id)
-        colored_mask = np.zeros_like(output)
-        colored_mask[mask] = color
-
-        output = np.where(
-            mask[..., None],
-            (alpha * colored_mask + (1.0 - alpha) * output).astype(np.uint8),
-            output,
-        )
-
-    return output
-
-
-def get_mask_tracklet_ids_in_order(tracklet_mask_dict: dict[int, int]) -> list[int]:
-    """Return tracklet IDs in the same order as ``MaskOutput.masks``."""
-    return [
-        tracklet_id
-        for tracklet_id, _ in sorted(
-            tracklet_mask_dict.items(),
-            key=lambda item: item[1],
-        )
-    ]
-
-
-def draw_boxes(image: np.ndarray, tracklets: list[TrackletSnapshot]) -> np.ndarray:
-    """Draw tracklet bounding boxes and IDs on an RGB image."""
-    output = image.copy()
-
-    for tracklet in tracklets:
-        x1, y1, x2, y2 = tracklet.xyxy.astype(int)
-        cv2.rectangle(output, (x1, y1), (x2, y2), color=(91, 10, 145), thickness=2)
-        cv2.putText(
-            output,
-            str(tracklet.tracker_id),
-            (x1, max(y1 - 5, 0)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 0, 0),
-            2,
-            cv2.LINE_AA,
-        )
-
-    return output
-
-
-def draw_frame_label(image: np.ndarray, frame_name: str, status: str) -> np.ndarray:
-    """Draw the frame filename and lifecycle status in the top-left corner."""
-    output = image.copy()
-    label = f"{frame_name} | {status}"
-
-    cv2.putText(output, label, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 3, cv2.LINE_AA)
-    cv2.putText(output, label, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 1, cv2.LINE_AA)
-
-    return output
-
-
-def visualize_output(
+def _save_manual_frame(
     frame: np.ndarray,
     frame_name: str,
     mask_output: MaskOutput | None,
@@ -312,14 +220,14 @@ def visualize_output(
 
     if mask_output is not None and mask_output.masks is not None:
         tracklet_ids = get_mask_tracklet_ids_in_order(mask_output.tracklet_mask_dict)
-        visual = overlay_masks(
-            image=visual,
-            masks=mask_output.masks,
-            tracklet_ids=tracklet_ids,
-        )
+        visual = annotate_masks(visual, mask_output.masks, tracklet_ids)
 
-    visual = draw_boxes(visual, tracklets)
-    visual = draw_frame_label(visual, frame_name, status)
+    visual = annotate_tracklet_boxes(
+        visual,
+        tracklet_boxes(tracklets),
+        [tracklet.tracker_id for tracklet in tracklets],
+    )
+    visual = draw_status_lines(visual, [frame_name, status])
     save_rgb_image(visual, output_path)
 
 
@@ -519,7 +427,7 @@ def run_manual_mode(
         previous_removed_tracklet_ids = removed_tracklet_ids_for_next_frame
 
         tracklets_vis = list(active_tracklets.values()) if frame_index == 0 else previous_new_tracklets
-        visualize_output(
+        _save_manual_frame(
             frame=frame,
             frame_name=frame_path.name,
             mask_output=mask_output,
@@ -527,6 +435,345 @@ def run_manual_mode(
             output_path=output_dir / frame_path.name,
             status=status,
         )
+
+    print(f"Done. Outputs saved to {output_dir.resolve()}")
+    return 0
+
+
+@dataclass(frozen=True)
+class FrameTrackletState:
+    """Tracklet lifecycle state produced for one replayed frame."""
+
+    tracklets: list[TrackletSnapshot]
+    new_tracklets: list[TrackletSnapshot]
+    removed_tracklet_ids: list[int]
+
+
+def frame_number_to_filename(frame_number: int) -> str:
+    """Convert integer frame number to SoccerNet/MOT image filename."""
+    return f"{frame_number:06d}.jpg"
+
+
+def validate_frame_range(start_frame: int, end_frame: int) -> None:
+    """Validate requested frame range."""
+    if start_frame <= 0:
+        raise ValueError("start-frame must be positive.")
+    if end_frame < start_frame:
+        raise ValueError("end-frame must not be smaller than start-frame.")
+
+
+def parse_selected_tracklet_ids(tracklet_ids: list[int | str] | None) -> set[int] | None:
+    """Return selected tracklet IDs, or ``None`` when all should be selected."""
+    if tracklet_ids is None:
+        return None
+
+    if "all" in tracklet_ids:
+        return None
+
+    return {tracklet_id for tracklet_id in tracklet_ids if isinstance(tracklet_id, int)}
+
+
+def read_gt_tracklets(
+    gt_file: Path,
+    selected_tracklet_ids: set[int] | None,
+) -> dict[int, list[TrackletSnapshot]]:
+    """Read MOT-style GT annotations grouped by frame number.
+
+    Expected line format:
+    ``frame_no,tracklet_id,left,top,width,height,...``.
+    """
+    tracklets_by_frame: dict[int, list[TrackletSnapshot]] = defaultdict(list)
+
+    with gt_file.open("r", encoding="utf-8") as file:
+        for line in file:
+            line = line.strip()
+            if not line:
+                continue
+
+            values = line.split(",")
+            if len(values) < 6:
+                raise ValueError(f"Invalid GT line with fewer than 6 columns: {line}")
+
+            frame_number = int(values[0])
+            tracklet_id = int(values[1])
+
+            if selected_tracklet_ids is not None and tracklet_id not in selected_tracklet_ids:
+                continue
+
+            left = float(values[2])
+            top = float(values[3])
+            width = float(values[4])
+            height = float(values[5])
+
+            xyxy = np.array(
+                [
+                    left,
+                    top,
+                    left + width,
+                    top + height,
+                ],
+                dtype=np.float32,
+            )
+
+            tracklets_by_frame[frame_number].append(
+                TrackletSnapshot(
+                    tracker_id=tracklet_id,
+                    xyxy=xyxy,
+                )
+            )
+
+    return dict(tracklets_by_frame)
+
+
+def build_frame_tracklet_state(
+    current_tracklets: list[TrackletSnapshot],
+    previous_visible_tracklet_ids: set[int],
+) -> FrameTrackletState:
+    """Build visible/new/removed lifecycle state for one replayed frame."""
+    current_tracklet_ids = {tracklet.tracker_id for tracklet in current_tracklets}
+    new_tracklet_ids = current_tracklet_ids - previous_visible_tracklet_ids
+    removed_tracklet_ids = sorted(previous_visible_tracklet_ids - current_tracklet_ids)
+
+    new_tracklets = [tracklet for tracklet in current_tracklets if tracklet.tracker_id in new_tracklet_ids]
+
+    return FrameTrackletState(
+        tracklets=current_tracklets,
+        new_tracklets=new_tracklets,
+        removed_tracklet_ids=removed_tracklet_ids,
+    )
+
+
+def _lifecycle_state(
+    tracker_id: int,
+    new_tracklet_ids: set[int],
+    pending_tracklet_ids: set[int],
+    masked_tracklet_ids: set[int],
+) -> int:
+    """Classify one tracklet's mask-lifecycle state for colouring.
+
+    Precedence matches what the state machine does: a tracklet that just became
+    visible is reported as new even while its mask is still pending.
+
+    Args:
+        tracker_id: Tracklet being classified.
+        new_tracklet_ids: Tracklets that became visible on this frame.
+        pending_tracklet_ids: Tracklets waiting for mask creation.
+        masked_tracklet_ids: Tracklets that already hold a mask.
+
+    Returns:
+        One of the ``LIFECYCLE_*`` constants.
+
+    Examples:
+        >>> _lifecycle_state(1, {1}, set(), set()) == LIFECYCLE_NEW
+        True
+        >>> _lifecycle_state(2, set(), set(), set()) == LIFECYCLE_TRACKED
+        True
+    """
+    if tracker_id in new_tracklet_ids:
+        return LIFECYCLE_NEW
+    if tracker_id in pending_tracklet_ids:
+        return LIFECYCLE_PENDING
+    if tracker_id in masked_tracklet_ids:
+        return LIFECYCLE_MASKED
+    return LIFECYCLE_TRACKED
+
+
+def _save_gt_frame(
+    frame: np.ndarray,
+    frame_number: int,
+    mask_output: MaskOutput | None,
+    current_tracklets: list[TrackletSnapshot],
+    current_new_tracklets: list[TrackletSnapshot],
+    pending_tracklet_ids: set[int],
+    removed_tracklet_ids_from_previous_frame: list[int],
+    output_path: Path,
+) -> None:
+    """Overlay masks, GT boxes, lifecycle status, and save the frame."""
+    visual = frame.copy()
+
+    masked_tracklet_ids = get_masked_tracklet_ids(mask_output)
+    if mask_output is not None and mask_output.masks is not None:
+        tracklet_ids = get_mask_tracklet_ids_in_order(mask_output.tracklet_mask_dict)
+        visual = annotate_masks(visual, mask_output.masks, tracklet_ids)
+
+    current_tracklet_ids = [tracklet.tracker_id for tracklet in current_tracklets]
+    current_new_tracklet_ids = {tracklet.tracker_id for tracklet in current_new_tracklets}
+
+    visual = annotate_lifecycle_boxes(
+        visual,
+        tracklet_boxes(current_tracklets),
+        current_tracklet_ids,
+        [
+            _lifecycle_state(
+                tracker_id=tracklet.tracker_id,
+                new_tracklet_ids=current_new_tracklet_ids,
+                pending_tracklet_ids=pending_tracklet_ids,
+                masked_tracklet_ids=masked_tracklet_ids,
+            )
+            for tracklet in current_tracklets
+        ],
+    )
+
+    status_lines = [
+        f"Frame: {frame_number}",
+        f"Visible: {current_tracklet_ids}",
+        f"New: {sorted(current_new_tracklet_ids)}",
+        f"Removed prev: {removed_tracklet_ids_from_previous_frame}",
+        f"Pending: {sorted(pending_tracklet_ids)}",
+        f"Masks: {sorted(masked_tracklet_ids)}",
+    ]
+    visual = draw_status_lines(visual, status_lines)
+    save_rgb_image(visual, output_path)
+
+
+def run_gt_mode(
+    image_dir: Path,
+    gt_file: Path,
+    start_frame: int,
+    end_frame: int,
+    output_root: Path,
+    tracklet_id: list[PositiveInt | Literal["all"]] | None = None,
+    device: str = "cuda",
+    sam_model_type: str = "vit_b",
+    cutie_model_type: str = "base-mega",
+    cutie_config_path: Path | None = None,
+    cutie_config_name: str = "eval_config",
+    mask_creation_bbox_overlap_threshold: float = 0.6,
+) -> int:
+    """Replay GT tracklets through MaskManager and save per-frame outputs.
+
+    The script follows the original McByte execution order.
+
+    For frame ``t``:
+
+        1. MaskManager produces masks for frame ``t`` using tracker outputs
+           from frame ``t-1``.
+        2. The tracker is emulated by reading ground-truth tracklets for frame
+           ``t`` and treating them as tracker outputs.
+        3. Newly visible and disappeared GT tracklets are stored as lifecycle
+           events consumed by MaskManager on frame ``t+1``.
+
+    This mirrors the timing used by the original McByte implementation while
+    using ground-truth boxes and IDs to make delayed mask creation easier to
+    inspect visually.
+
+    Every option is spelled with underscores here, but hyphens work just as
+    well on the command line: ``--image-dir`` and ``--image_dir`` are the same
+    option.
+
+    ``tracklet_id`` is a list, so it takes the bracket syntax rather than a
+    repeated option: ``--tracklet_id=[3,7]`` selects two tracklets and
+    ``--tracklet_id+=9`` appends a third.
+
+    Args:
+        image_dir: Directory containing input frames.
+        gt_file: MOT-style GT file.
+        start_frame: First frame number, inclusive.
+        end_frame: Last frame number, inclusive.
+        tracklet_id: Tracklet IDs to replay, e.g. ``[3,7]``. Omit this option,
+            or pass ``--tracklet_id=[all]``, to replay all tracklets.
+        output_root: Root directory for timestamped outputs.
+        device: Device used by SAM and Cutie, for example ``cpu`` or ``cuda``.
+        sam_model_type: SAM model type.
+        cutie_model_type: Cutie model type.
+        cutie_config_path: Optional path to Cutie's Hydra config directory.
+        cutie_config_name: Cutie Hydra config name.
+        mask_creation_bbox_overlap_threshold: Overlap threshold above which
+            mask creation is delayed.
+
+    Returns:
+        Exit code: ``0`` on success, ``1`` on a validation error.
+    """
+    try:
+        validate_frame_range(start_frame, end_frame)
+        selected_tracklet_ids = parse_selected_tracklet_ids(tracklet_id)
+        tracklets_by_frame = read_gt_tracklets(
+            gt_file=gt_file,
+            selected_tracklet_ids=selected_tracklet_ids,
+        )
+    except (FileNotFoundError, ValueError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    output_dir = timestamped_run_dir(output_root)
+
+    try:
+        device = validate_device(device, label="SAM/Cutie")
+    except (ImportError, RuntimeError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    from trackers.core.masks.cutie import CutieMaskPropagator
+    from trackers.core.masks.manager import MaskManager
+    from trackers.core.masks.sam import SAMBoxMaskGenerator
+
+    mask_manager = MaskManager(
+        mask_generator=SAMBoxMaskGenerator(
+            model_type=sam_model_type,
+            device=device,
+        ),
+        mask_propagator=CutieMaskPropagator(
+            model_type=cutie_model_type,
+            config_path=cutie_config_path,
+            config_name=cutie_config_name,
+            device=device,
+        ),
+        mask_creation_bbox_overlap_threshold=mask_creation_bbox_overlap_threshold,
+    )
+
+    print(f"Selected tracklets: {'all' if selected_tracklet_ids is None else sorted(selected_tracklet_ids)}")
+    print(f"Selected frame range: {start_frame} to {end_frame}")
+    print(f"Saving outputs to {output_dir}")
+
+    previous_frame: np.ndarray | None = None
+    previous_tracklets: list[TrackletSnapshot] = []
+    previous_new_tracklets: list[TrackletSnapshot] = []
+    previous_removed_tracklet_ids: list[int] = []
+    previous_visible_tracklet_ids: set[int] = set()
+
+    for frame_number in range(start_frame, end_frame + 1):
+        frame_path = image_dir / frame_number_to_filename(frame_number)
+        frame = load_rgb_image(frame_path)
+
+        mask_output = mask_manager.get_updated_masks(
+            frame=frame,
+            previous_frame=previous_frame,
+            previous_tracklets=previous_tracklets,
+            new_tracklets=previous_new_tracklets,
+            removed_tracklet_ids=previous_removed_tracklet_ids,
+        )
+
+        current_tracklets = tracklets_by_frame.get(frame_number, [])
+        current_state = build_frame_tracklet_state(
+            current_tracklets=current_tracklets,
+            previous_visible_tracklet_ids=previous_visible_tracklet_ids,
+        )
+
+        _save_gt_frame(
+            frame=frame,
+            frame_number=frame_number,
+            mask_output=mask_output,
+            current_tracklets=current_state.tracklets,
+            current_new_tracklets=current_state.new_tracklets,
+            pending_tracklet_ids=mask_manager._pending_tracklet_ids,
+            removed_tracklet_ids_from_previous_frame=previous_removed_tracklet_ids,
+            output_path=output_dir / frame_path.name,
+        )
+
+        print(
+            f"Frame {frame_number}: "
+            f"visible={sorted(tracklet.tracker_id for tracklet in current_state.tracklets)}, "
+            f"new={sorted(tracklet.tracker_id for tracklet in current_state.new_tracklets)}, "
+            f"removed={current_state.removed_tracklet_ids}, "
+            f"pending={sorted(mask_manager._pending_tracklet_ids)}, "
+            f"masks={sorted(get_masked_tracklet_ids(mask_output))}"
+        )
+
+        previous_frame = frame
+        previous_tracklets = current_state.tracklets
+        previous_new_tracklets = current_state.new_tracklets
+        previous_removed_tracklet_ids = current_state.removed_tracklet_ids
+        previous_visible_tracklet_ids = {tracklet.tracker_id for tracklet in current_state.tracklets}
 
     print(f"Done. Outputs saved to {output_dir.resolve()}")
     return 0

@@ -32,138 +32,20 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import cv2
-import numpy as np
-
+from trackers.cli._annotate import annotate_masks, annotate_tracklet_boxes
 from trackers.cli.inspect._common import (
     INSPECT_OUTPUT_ROOT,
+    get_mask_tracklet_ids_in_order,
     load_rgb_image,
     print_device_info,
     save_rgb_image,
+    tracklet_boxes,
+    validate_and_clip_xyxy_box,
     validate_device,
 )
 from trackers.core.masks.base import TrackletSnapshot
 
 DEFAULT_OUTPUT_PATH = INSPECT_OUTPUT_ROOT / "sam" / "sam_masks.jpg"
-
-
-def overlay_masks(
-    image: np.ndarray,
-    masks: np.ndarray,
-    alpha: float = 0.45,
-) -> np.ndarray:
-    """Overlay binary masks on an RGB image.
-
-    Args:
-        image: RGB image with shape ``(H, W, 3)``.
-        masks: Boolean mask array with shape ``(N, H, W)``.
-        alpha: Mask overlay opacity.
-
-    Returns:
-        RGB image with semi-transparent mask overlays.
-
-    Examples:
-        >>> image = np.zeros((2, 2, 3), dtype=np.uint8)
-        >>> masks = np.ones((1, 2, 2), dtype=bool)
-        >>> overlay_masks(image, masks).shape
-        (2, 2, 3)
-    """
-    output = image.copy()
-    rng = np.random.default_rng(0)
-
-    for mask in masks:
-        color = rng.integers(0, 255, size=3, dtype=np.uint8)
-        colored_mask = np.zeros_like(output)
-        colored_mask[mask] = color
-
-        output = np.where(
-            mask[..., None],
-            (alpha * colored_mask + (1.0 - alpha) * output).astype(np.uint8),
-            output,
-        )
-
-    return output
-
-
-def draw_boxes(
-    image: np.ndarray,
-    tracklets: list[TrackletSnapshot],
-) -> np.ndarray:
-    """Draw tracklet bounding boxes and tracker IDs on an RGB image.
-
-    Args:
-        image: RGB image with shape ``(H, W, 3)``.
-        tracklets: Tracklets whose boxes are drawn.
-
-    Returns:
-        RGB image with boxes and IDs drawn.
-
-    Examples:
-        >>> image = np.zeros((8, 8, 3), dtype=np.uint8)
-        >>> box = np.array([1, 1, 5, 5], dtype=np.float32)
-        >>> draw_boxes(image, [TrackletSnapshot(tracker_id=1, xyxy=box)]).shape
-        (8, 8, 3)
-    """
-    output = image.copy()
-
-    for tracklet in tracklets:
-        x1, y1, x2, y2 = tracklet.xyxy.astype(int)
-        cv2.rectangle(
-            output,
-            (x1, y1),
-            (x2, y2),
-            color=(91, 10, 145),
-            thickness=2,
-        )
-        cv2.putText(
-            output,
-            str(tracklet.tracker_id),
-            (x1, max(y1 - 5, 0)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 0, 0),
-            2,
-            cv2.LINE_AA,
-        )
-
-    return output
-
-
-def validate_and_clip_xyxy_box(
-    box: tuple[float, float, float, float],
-    image_shape: tuple[int, int],
-) -> np.ndarray:
-    """Validate and clip an ``xyxy`` box to image boundaries.
-
-    Args:
-        box: Bounding box in ``(x1, y1, x2, y2)`` format.
-        image_shape: Image shape as ``(height, width)``.
-
-    Returns:
-        Clipped box as a float32 NumPy array.
-
-    Raises:
-        ValueError: If the box has non-positive area before or after clipping.
-
-    Examples:
-        >>> validate_and_clip_xyxy_box((1.0, 2.0, 5.0, 6.0), (10, 10))
-        array([1., 2., 5., 6.], dtype=float32)
-    """
-    height, width = image_shape
-    x1, y1, x2, y2 = box
-
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError(f"Invalid xyxy box with non-positive size: {box}")
-
-    x1 = np.clip(x1, 0, width)
-    x2 = np.clip(x2, 0, width)
-    y1 = np.clip(y1, 0, height)
-    y2 = np.clip(y2, 0, height)
-
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError(f"Box is outside image after clipping: {box}")
-
-    return np.array([x1, y1, x2, y2], dtype=np.float32)
 
 
 def sam_command(
@@ -233,8 +115,13 @@ def sam_command(
     if mask_output.masks is None:
         raise RuntimeError("SAM did not return masks.")
 
-    visual_rgb = overlay_masks(image_rgb, mask_output.masks)
-    visual_rgb = draw_boxes(visual_rgb, tracklets)
+    tracker_ids = get_mask_tracklet_ids_in_order(mask_output.tracklet_mask_dict)
+    visual_rgb = annotate_masks(image_rgb, mask_output.masks, tracker_ids)
+    visual_rgb = annotate_tracklet_boxes(
+        visual_rgb,
+        tracklet_boxes(tracklets),
+        [tracklet.tracker_id for tracklet in tracklets],
+    )
     save_rgb_image(visual_rgb, output_path)
 
     print(f"Saved visualization to {output_path.resolve()}")

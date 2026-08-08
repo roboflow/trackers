@@ -13,7 +13,7 @@ and each draws the state its own component actually has. Unifying them would
 silently change what the visualizations look like.
 
 ``torch`` is imported inside the functions that need it rather than at module
-scope, matching :mod:`trackers.cli.mcbyte`, so that importing the CLI does not
+scope, matching :mod:`trackers.cli.benchmark.mcbyte`, so that importing the CLI does not
 pull in the deep-learning stack.
 """
 
@@ -26,18 +26,29 @@ from typing import TYPE_CHECKING, Any
 import cv2
 import numpy as np
 
+from trackers.core.masks.base import MaskOutput, TrackletSnapshot
+
+# Device validation is not CLI-specific, so it lives with the other device
+# helpers. Re-exported here because every inspect component reaches for it.
+from trackers.utils.device import _validate_device as validate_device
+
 if TYPE_CHECKING:
     import torch
 
 __all__ = [
     "IMAGE_EXTENSIONS",
     "INSPECT_OUTPUT_ROOT",
+    "get_mask_tracklet_ids_in_order",
+    "get_masked_tracklet_ids",
     "list_selected_frame_paths",
     "load_rgb_image",
     "parse_xyxy_box",
     "print_device_info",
+    "require_torch",
     "save_rgb_image",
     "timestamped_run_dir",
+    "tracklet_boxes",
+    "validate_and_clip_xyxy_box",
     "validate_device",
 ]
 
@@ -74,6 +85,95 @@ def require_torch() -> Any:
     except ImportError as error:  # pragma: no cover - depends on install extras
         raise ImportError(_MASK_EXTRA_HINT) from error
     return torch
+
+
+def get_mask_tracklet_ids_in_order(tracklet_mask_dict: dict[int, int]) -> list[int]:
+    """Return tracklet IDs in the same order as ``MaskOutput.masks``.
+
+    Args:
+        tracklet_mask_dict: Mapping of tracklet ID to its row in ``masks``.
+
+    Returns:
+        Tracklet IDs ordered by mask row, so they line up with the mask array.
+
+    Examples:
+        >>> get_mask_tracklet_ids_in_order({7: 1, 3: 0})
+        [3, 7]
+    """
+    return [tracklet_id for tracklet_id, _ in sorted(tracklet_mask_dict.items(), key=lambda item: item[1])]
+
+
+def get_masked_tracklet_ids(mask_output: MaskOutput | None) -> set[int]:
+    """Return tracklet IDs currently represented in a mask output.
+
+    Args:
+        mask_output: Masks for one frame, or ``None`` when none were produced.
+
+    Returns:
+        The tracklet IDs holding a mask, empty when there are none.
+
+    Examples:
+        >>> get_masked_tracklet_ids(None)
+        set()
+    """
+    if mask_output is None or mask_output.masks is None:
+        return set()
+    return set(mask_output.tracklet_mask_dict)
+
+
+def validate_and_clip_xyxy_box(
+    box: tuple[float, float, float, float],
+    image_shape: tuple[int, int],
+) -> np.ndarray:
+    """Validate and clip an ``xyxy`` box to image boundaries.
+
+    Args:
+        box: Bounding box in ``(x1, y1, x2, y2)`` format.
+        image_shape: Image shape as ``(height, width)``.
+
+    Returns:
+        Clipped box as a float32 NumPy array.
+
+    Raises:
+        ValueError: If the box has non-positive area before or after clipping.
+
+    Examples:
+        >>> validate_and_clip_xyxy_box((1.0, 2.0, 5.0, 6.0), (10, 10))
+        array([1., 2., 5., 6.], dtype=float32)
+    """
+    height, width = image_shape
+    x1, y1, x2, y2 = box
+
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError(f"Invalid xyxy box with non-positive size: {box}")
+
+    x1 = np.clip(x1, 0, width)
+    x2 = np.clip(x2, 0, width)
+    y1 = np.clip(y1, 0, height)
+    y2 = np.clip(y2, 0, height)
+
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError(f"Box is outside image after clipping: {box}")
+
+    return np.array([x1, y1, x2, y2], dtype=np.float32)
+
+
+def tracklet_boxes(tracklets: list[TrackletSnapshot]) -> np.ndarray:
+    """Stack tracklet boxes into an ``(N, 4)`` array for the annotators.
+
+    Args:
+        tracklets: Tracklets to stack.
+
+    Returns:
+        Boxes with shape ``(N, 4)``, or ``(0, 4)`` when ``tracklets`` is empty.
+
+    Examples:
+        >>> tracklet_boxes([]).shape
+        (0, 4)
+    """
+    if not tracklets:
+        return np.zeros((0, 4), dtype=float)
+    return np.stack([tracklet.xyxy for tracklet in tracklets])
 
 
 def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
@@ -209,33 +309,6 @@ def timestamped_run_dir(output_root: Path) -> Path:
     run_dir = output_root / datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
-
-
-def validate_device(device: str, label: str | None = None) -> str:
-    """Validate that the requested execution device is available.
-
-    Args:
-        device: Requested device string, for example ``cpu`` or ``cuda``.
-        label: Optional component name used in the error message.
-
-    Returns:
-        The validated device string, unchanged.
-
-    Raises:
-        RuntimeError: If a CUDA device is requested but CUDA is unavailable.
-
-    Examples:
-        >>> validate_device("cpu")
-        'cpu'
-    """
-    torch = require_torch()
-    if device.startswith("cuda") and not torch.cuda.is_available():  # type: ignore[attr-defined]
-        subject = f" for {label}" if label else ""
-        raise RuntimeError(
-            f"CUDA was requested{subject}, but torch.cuda.is_available() is False. "
-            "Use a CPU device or install a CUDA-enabled PyTorch build."
-        )
-    return device
 
 
 def print_device_info(device: torch.device, label: str = "Device") -> None:

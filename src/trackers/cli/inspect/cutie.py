@@ -38,17 +38,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import cv2
 import numpy as np
 
+from trackers.cli._annotate import annotate_masks, annotate_tracklet_boxes, draw_status_lines
 from trackers.cli.inspect._common import (
     INSPECT_OUTPUT_ROOT,
+    get_mask_tracklet_ids_in_order,
     list_selected_frame_paths,
     load_rgb_image,
     parse_xyxy_box,
     print_device_info,
     save_rgb_image,
     timestamped_run_dir,
+    tracklet_boxes,
+    validate_and_clip_xyxy_box,
     validate_device,
 )
 from trackers.core.masks.base import TrackletSnapshot
@@ -192,135 +195,6 @@ def validate_lifecycle_events(
             raise ValueError("Remove events cannot be scheduled on the first selected frame.")
 
 
-def validate_and_clip_xyxy_box(
-    box: tuple[float, float, float, float],
-    image_shape: tuple[int, int],
-) -> np.ndarray:
-    """Validate and clip an ``xyxy`` box to image boundaries."""
-    height, width = image_shape
-    x1, y1, x2, y2 = box
-
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError(f"Invalid xyxy box with non-positive size: {box}")
-
-    x1 = np.clip(x1, 0, width)
-    x2 = np.clip(x2, 0, width)
-    y1 = np.clip(y1, 0, height)
-    y2 = np.clip(y2, 0, height)
-
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError(f"Box is outside image after clipping: {box}")
-
-    return np.array([x1, y1, x2, y2], dtype=np.float32)
-
-
-def color_from_id(object_id: int) -> np.ndarray:
-    """Return a deterministic RGB color for a stable object/manual ID."""
-    rng = np.random.default_rng(object_id)
-    return rng.integers(0, 255, size=3, dtype=np.uint8)
-
-
-def overlay_masks(
-    image: np.ndarray,
-    masks: np.ndarray,
-    object_ids: list[int],
-    alpha: float = 0.45,
-) -> np.ndarray:
-    """Overlay binary masks on an RGB image using stable object-ID colors."""
-    if masks.shape[0] != len(object_ids):
-        raise ValueError(
-            "Number of masks must match number of object IDs. "
-            f"Got {masks.shape[0]} masks and {len(object_ids)} object IDs."
-        )
-
-    output = image.copy()
-
-    for mask, object_id in zip(masks, object_ids):
-        color = color_from_id(object_id)
-        colored_mask = np.zeros_like(output)
-        colored_mask[mask] = color
-
-        output = np.where(
-            mask[..., None],
-            (alpha * colored_mask + (1.0 - alpha) * output).astype(np.uint8),
-            output,
-        )
-
-    return output
-
-
-def get_mask_tracklet_ids_in_order(tracklet_mask_dict: dict[int, int]) -> list[int]:
-    """Return tracklet/manual IDs in the same order as MaskOutput.masks."""
-    return [
-        tracklet_id
-        for tracklet_id, _ in sorted(
-            tracklet_mask_dict.items(),
-            key=lambda item: item[1],
-        )
-    ]
-
-
-def draw_boxes(
-    image: np.ndarray,
-    tracklets: list[TrackletSnapshot],
-) -> np.ndarray:
-    """Draw tracklet bounding boxes and tracker IDs on an RGB image."""
-    output = image.copy()
-
-    for tracklet in tracklets:
-        x1, y1, x2, y2 = tracklet.xyxy.astype(int)
-        cv2.rectangle(
-            output,
-            (x1, y1),
-            (x2, y2),
-            color=(91, 10, 145),
-            thickness=2,
-        )
-        cv2.putText(
-            output,
-            str(tracklet.tracker_id),
-            (x1, max(y1 - 5, 0)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 0, 0),
-            2,
-            cv2.LINE_AA,
-        )
-
-    return output
-
-
-def draw_frame_label(
-    image: np.ndarray,
-    frame_name: str,
-) -> np.ndarray:
-    """Draw the frame filename in the top-left corner."""
-    output = image.copy()
-
-    cv2.putText(
-        output,
-        frame_name,
-        (20, 35),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.0,
-        (255, 255, 255),
-        3,  # white outline
-        cv2.LINE_AA,
-    )
-    cv2.putText(
-        output,
-        frame_name,
-        (20, 35),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.0,
-        (0, 0, 0),
-        1,  # black fill
-        cv2.LINE_AA,
-    )
-
-    return output
-
-
 def apply_add_events(
     *,
     sam_generator: SAMBoxMaskGenerator,
@@ -410,19 +284,12 @@ def initialize_first_frame(
         mask_output=initial_mask_output,
     )
 
-    initial_visual = overlay_masks(
-        image=initial_frame,
-        masks=initial_mask_output.masks,
-        # Use manual IDs for the first-frame SAM masks so their colors match the later
-        # Cutie outputs. SAM local mask indices start at 0, while Cutie object IDs start
-        # at 1.
-        object_ids=[tracklet.tracker_id for tracklet in tracklets],
-    )
-    initial_visual = draw_boxes(initial_visual, tracklets)
-    initial_visual = draw_frame_label(
-        initial_visual,
-        output_path.name,
-    )
+    # Use manual IDs for the first-frame SAM masks so their colours match the later
+    # Cutie outputs. SAM local mask indices start at 0, while Cutie object IDs start at 1.
+    tracker_ids = [tracklet.tracker_id for tracklet in tracklets]
+    initial_visual = annotate_masks(initial_frame, initial_mask_output.masks, tracker_ids)
+    initial_visual = annotate_tracklet_boxes(initial_visual, tracklet_boxes(tracklets), tracker_ids)
+    initial_visual = draw_status_lines(initial_visual, [output_path.name])
 
     save_rgb_image(initial_visual, output_path)
     print(f"Saved {output_path.name} (SAM)")
@@ -459,12 +326,12 @@ def propagate_and_save_frame(
     if propagated_mask_output is None or propagated_mask_output.masks is None:
         raise RuntimeError(f"Cutie did not return masks for frame: {frame_path}")
 
-    visual = overlay_masks(
-        image=frame,
-        masks=propagated_mask_output.masks,
-        object_ids=get_mask_tracklet_ids_in_order(propagated_mask_output.tracklet_mask_dict),
+    visual = annotate_masks(
+        frame,
+        propagated_mask_output.masks,
+        get_mask_tracklet_ids_in_order(propagated_mask_output.tracklet_mask_dict),
     )
-    visual = draw_frame_label(visual, frame_path.name)
+    visual = draw_status_lines(visual, [frame_path.name])
     save_rgb_image(visual, output_path)
 
     print(

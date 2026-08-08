@@ -26,10 +26,10 @@ from jsonargparse import CLI
 from trackers.cli._legacy import _translate_legacy_args
 from trackers.cli._parser import _CLIParser
 from trackers.cli._parser import _normalise_option as _normalise_option  # re-export
+from trackers.cli.benchmark import BENCHMARK_COMMANDS
 from trackers.cli.download import download_command
 from trackers.cli.eval import eval_command
 from trackers.cli.inspect import INSPECT_COMPONENTS
-from trackers.cli.mcbyte import benchmark_command
 from trackers.cli.track import track_command
 from trackers.cli.tune import tune_command
 
@@ -43,7 +43,7 @@ _COMMANDS = {
     "eval": eval_command,
     "tune": tune_command,
     "download": download_command,
-    "benchmark": {"mcbyte": benchmark_command},
+    "benchmark": BENCHMARK_COMMANDS,
     "inspect": INSPECT_COMPONENTS,
 }
 

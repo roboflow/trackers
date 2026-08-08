@@ -17,7 +17,12 @@ import numpy as np
 import pytest
 
 from trackers.cli.__main__ import _CLIParser, _normalise_option
-from trackers.cli.mcbyte import (
+from trackers.cli._detections import (
+    DetectionRecord,
+    build_detections,
+    read_detection_file,
+)
+from trackers.cli.benchmark.mcbyte import (
     DATASETS,
     MOT17_EXISTING,
     MOT17_MISSING,
@@ -25,14 +30,11 @@ from trackers.cli.mcbyte import (
     DatasetConfig,
     DatasetName,
     DatasetPaths,
-    DetectionRecord,
     _runtime_error,
     _unknown_datasets_error,
     benchmark_command,
-    build_detections,
     image_directory,
     prepare_mot17_submission,
-    read_detection_file,
     resolve_datasets,
     run_dataset,
     sequence_name,
@@ -265,9 +267,7 @@ class TestReadDetectionFile:
         """The XYXY branch reads frame, box corners and confidence directly."""
         detection_file = tmp_path / "seq.txt"
         detection_file.write_text("1,10,20,30,40,0.9\n")
-        config = DatasetConfig(name="test", detection_format="xyxy")
-
-        grouped = read_detection_file(detection_file, config)
+        grouped = read_detection_file(detection_file, "xyxy")
 
         record = grouped[1][0]
         np.testing.assert_allclose(record.xyxy, [10.0, 20.0, 30.0, 40.0])
@@ -277,9 +277,7 @@ class TestReadDetectionFile:
         """The MOT branch converts left/top/width/height into XYXY corners."""
         detection_file = tmp_path / "seq.txt"
         detection_file.write_text("1,-1,10,20,15,25,0.5,-1,-1,-1\n")
-        config = DatasetConfig(name="test", detection_format="mot")
-
-        grouped = read_detection_file(detection_file, config)
+        grouped = read_detection_file(detection_file, "mot")
 
         record = grouped[1][0]
         np.testing.assert_allclose(record.xyxy, [10.0, 20.0, 25.0, 45.0])
@@ -289,9 +287,7 @@ class TestReadDetectionFile:
         """SoccerNet-style datasets can pin confidence instead of trusting column 7."""
         detection_file = tmp_path / "seq.txt"
         detection_file.write_text("1,-1,10,20,15,25,0.5,-1,-1,-1\n")
-        config = DatasetConfig(name="test", detection_format="mot", confidence_override=1.0)
-
-        grouped = read_detection_file(detection_file, config)
+        grouped = read_detection_file(detection_file, "mot", confidence_override=1.0)
 
         assert grouped[1][0].confidence == 1.0
 
@@ -299,9 +295,7 @@ class TestReadDetectionFile:
         """A box with zero or negative width/height is filtered, not raised."""
         detection_file = tmp_path / "seq.txt"
         detection_file.write_text("1,10,20,10,40,0.9\n1,10,20,30,40,0.8\n")
-        config = DatasetConfig(name="test", detection_format="xyxy")
-
-        grouped = read_detection_file(detection_file, config)
+        grouped = read_detection_file(detection_file, "xyxy")
 
         assert len(grouped[1]) == 1
         assert grouped[1][0].confidence == pytest.approx(0.8)
@@ -310,19 +304,15 @@ class TestReadDetectionFile:
         """A zero or negative frame number is rejected rather than silently grouped."""
         detection_file = tmp_path / "seq.txt"
         detection_file.write_text("0,10,20,30,40,0.9\n")
-        config = DatasetConfig(name="test", detection_format="xyxy")
-
         with pytest.raises(ValueError, match="Non-positive frame number"):
-            read_detection_file(detection_file, config)
+            read_detection_file(detection_file, "xyxy")
 
     def test_malformed_line_error_names_the_line_number(self, tmp_path: Path) -> None:
         """A parse failure points back at the offending line, not just the file."""
         detection_file = tmp_path / "seq.txt"
         detection_file.write_text("1,10,20,30,40,0.9\n1,not,a,number,20,0.5\n")
-        config = DatasetConfig(name="test", detection_format="xyxy")
-
-        with pytest.raises(ValueError, match="Invalid line 2"):
-            read_detection_file(detection_file, config)
+        with pytest.raises(ValueError, match="line 2"):
+            read_detection_file(detection_file, "xyxy")
 
 
 class TestBuildDetections:

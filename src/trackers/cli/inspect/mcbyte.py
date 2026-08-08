@@ -48,7 +48,6 @@ from __future__ import annotations
 
 import shutil
 import sys
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, TextIO
@@ -58,8 +57,20 @@ import numpy as np
 import supervision as sv
 from jsonargparse import ArgumentParser
 
-from trackers.cli.inspect._common import INSPECT_OUTPUT_ROOT, require_torch
-from trackers.core.masks.base import MaskOutput
+from trackers.cli._annotate import annotate_masks, annotate_tracklet_boxes, draw_status_lines
+from trackers.cli._detections import (
+    DetectionRecord,
+    build_detections,
+    find_frame_path,
+    load_rgb_frame,
+    read_detection_file,
+)
+from trackers.cli.inspect._common import (
+    INSPECT_OUTPUT_ROOT,
+    get_mask_tracklet_ids_in_order,
+    get_masked_tracklet_ids,
+    require_torch,
+)
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.utils.cmc import CMCMethod
 
@@ -70,14 +81,6 @@ RunMode = Literal["locked_iou", "mask_conditioned"]
 RUN_MODES: tuple[RunMode, ...] = ("locked_iou", "mask_conditioned")
 
 DetectionFileFormat = Literal["mot_tlwh", "xyxy"]
-
-
-@dataclass(frozen=True)
-class DetectionRecord:
-    """One detection parsed from a MOT-style detection file."""
-
-    xyxy: np.ndarray
-    confidence: float
 
 
 @dataclass
@@ -176,149 +179,6 @@ def validate_options(
     return None
 
 
-def read_detection_file(
-    det_file: Path,
-    detection_format: DetectionFileFormat,
-) -> dict[int, list[DetectionRecord]]:
-    """Read detections and group them by frame number.
-
-    Supported formats are:
-
-    ``mot_tlwh``:
-        ``frame,id,left,top,width,height,confidence,...``
-
-        The input identity column is ignored. Bounding boxes are interpreted as
-        top-left coordinates plus width and height.
-
-    ``xyxy``:
-        ``frame,x1,y1,x2,y2,confidence``
-
-        Bounding boxes are interpreted directly as top-left and bottom-right
-        coordinates.
-
-    Detection confidence is preserved and used by McByte's high- and
-    low-confidence association stages.
-    """
-    detections_by_frame: dict[int, list[DetectionRecord]] = defaultdict(list)
-
-    minimum_column_count = 7 if detection_format == "mot_tlwh" else 6
-
-    with det_file.open("r", encoding="utf-8") as file:
-        for line_number, line in enumerate(file, start=1):
-            line = line.strip()
-            if not line:
-                continue
-
-            values = [value.strip() for value in line.split(",")]
-
-            if len(values) < minimum_column_count:
-                raise ValueError(
-                    f"Detection format {detection_format!r} requires at least "
-                    f"{minimum_column_count} columns. Invalid line "
-                    f"{line_number}: {line}"
-                )
-
-            try:
-                frame_number = int(float(values[0]))
-
-                if detection_format == "mot_tlwh":
-                    left = float(values[2])
-                    top = float(values[3])
-                    width = float(values[4])
-                    height = float(values[5])
-                    confidence = float(values[6])
-
-                    if width <= 0 or height <= 0:
-                        continue
-
-                    right = left + width
-                    bottom = top + height
-
-                else:
-                    left = float(values[1])
-                    top = float(values[2])
-                    right = float(values[3])
-                    bottom = float(values[4])
-                    confidence = float(values[5])
-
-                    if right <= left or bottom <= top:
-                        continue
-
-            except ValueError as exc:
-                raise ValueError(
-                    f"Could not parse detection line {line_number} using format {detection_format!r}: {line}"
-                ) from exc
-
-            if frame_number <= 0:
-                raise ValueError(f"Invalid non-positive frame number on line {line_number}.")
-
-            numeric_values = np.array(
-                [left, top, right, bottom, confidence],
-                dtype=np.float64,
-            )
-            if not np.all(np.isfinite(numeric_values)):
-                raise ValueError(f"Non-finite value on detection line {line_number}: {line}")
-
-            xyxy = np.array(
-                [left, top, right, bottom],
-                dtype=np.float32,
-            )
-
-            detections_by_frame[frame_number].append(
-                DetectionRecord(
-                    xyxy=xyxy,
-                    confidence=confidence,
-                )
-            )
-
-    return dict(detections_by_frame)
-
-
-def find_frame_path(
-    image_dir: Path,
-    frame_number: int,
-) -> Path:
-    """Find a frame using common MOT filename widths and image extensions."""
-    filename_stems = (
-        f"{frame_number:06d}",
-        f"{frame_number:08d}",
-    )
-
-    for stem in filename_stems:
-        for extension in IMAGE_EXTENSIONS:
-            frame_path = image_dir / f"{stem}{extension}"
-            if frame_path.is_file():
-                return frame_path
-
-    attempted_names = [f"{stem}{extension}" for stem in filename_stems for extension in IMAGE_EXTENSIONS]
-    raise FileNotFoundError(f"Could not find frame {frame_number} in {image_dir}. Tried: {attempted_names}")
-
-
-def load_rgb_frame(frame_path: Path) -> np.ndarray:
-    """Load one image and convert it from OpenCV BGR to RGB."""
-    frame_bgr = cv2.imread(str(frame_path))
-    if frame_bgr is None:
-        raise RuntimeError(f"cv2.imread failed for frame: {frame_path}")
-
-    return cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-
-
-def build_detections(
-    records: list[DetectionRecord],
-) -> sv.Detections:
-    """Convert parsed detection records into ``sv.Detections``."""
-    if not records:
-        return sv.Detections.empty()
-
-    return sv.Detections(
-        xyxy=np.stack([record.xyxy for record in records]).astype(np.float32),
-        confidence=np.array(
-            [record.confidence for record in records],
-            dtype=np.float32,
-        ),
-    )
-
-
 def create_tracker(
     *,
     use_masks: bool,
@@ -373,146 +233,6 @@ def prepare_run_directory(
     return frames_dir, results_path
 
 
-def color_from_id(tracker_id: int) -> tuple[int, int, int]:
-    """Return a deterministic RGB color for a tracker ID."""
-    if tracker_id < 0:
-        return 180, 180, 180
-
-    rng = np.random.default_rng(tracker_id)
-    color = rng.integers(40, 256, size=3, dtype=np.uint8)
-    return int(color[0]), int(color[1]), int(color[2])
-
-
-def get_mask_tracklet_ids_in_order(
-    tracklet_mask_dict: dict[int, int],
-) -> list[int]:
-    """Return tracklet IDs ordered according to ``MaskOutput.masks``."""
-    return [
-        tracklet_id
-        for tracklet_id, _ in sorted(
-            tracklet_mask_dict.items(),
-            key=lambda item: item[1],
-        )
-    ]
-
-
-def overlay_masks(
-    frame: np.ndarray,
-    mask_output: MaskOutput | None,
-    alpha: float = 0.45,
-) -> np.ndarray:
-    """Overlay propagated masks using deterministic tracklet colors."""
-    if mask_output is None or mask_output.masks is None:
-        return frame.copy()
-
-    tracklet_ids = get_mask_tracklet_ids_in_order(mask_output.tracklet_mask_dict)
-
-    if len(tracklet_ids) != mask_output.masks.shape[0]:
-        raise ValueError(
-            "The mask count does not match tracklet_mask_dict. "
-            f"Got {mask_output.masks.shape[0]} masks and "
-            f"{len(tracklet_ids)} mapped tracklet IDs."
-        )
-
-    output = frame.copy()
-
-    for mask, tracker_id in zip(mask_output.masks, tracklet_ids):
-        mask_bool = mask.astype(bool, copy=False)
-        if not np.any(mask_bool):
-            continue
-
-        color = np.array(color_from_id(tracker_id), dtype=np.uint8)
-        colored_mask = np.zeros_like(output)
-        colored_mask[mask_bool] = color
-
-        output = np.where(
-            mask_bool[..., None],
-            (alpha * colored_mask + (1.0 - alpha) * output).astype(np.uint8),
-            output,
-        )
-
-    return output
-
-
-def draw_tracking_boxes(
-    frame: np.ndarray,
-    tracked_detections: sv.Detections,
-) -> np.ndarray:
-    """Draw tracker boxes and stable IDs on an RGB frame."""
-    output = frame.copy()
-
-    tracker_ids = tracked_detections.tracker_id
-    if tracker_ids is None:
-        tracker_ids = np.full(len(tracked_detections), -1, dtype=int)
-
-    for xyxy, tracker_id_value in zip(
-        tracked_detections.xyxy,
-        tracker_ids,
-    ):
-        tracker_id = int(tracker_id_value)
-        x1, y1, x2, y2 = np.rint(xyxy).astype(int)
-
-        color = color_from_id(tracker_id)
-        label = str(tracker_id) if tracker_id >= 0 else "unmatched"
-
-        cv2.rectangle(
-            output,
-            (x1, y1),
-            (x2, y2),
-            color=color,
-            thickness=2,
-        )
-        cv2.putText(
-            output,
-            label,
-            (x1, max(y1 - 6, 0)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
-            color,
-            2,
-            cv2.LINE_AA,
-        )
-
-    return output
-
-
-def draw_text_panel(
-    frame: np.ndarray,
-    lines: list[str],
-) -> np.ndarray:
-    """Draw readable status text in the top-left corner."""
-    output = frame.copy()
-    x = 20
-    initial_y = 30
-    line_height = 24
-
-    for line_index, line in enumerate(lines):
-        y = initial_y + line_index * line_height
-
-        cv2.putText(
-            output,
-            line,
-            (x, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
-            (255, 255, 255),
-            3,
-            cv2.LINE_AA,
-        )
-        cv2.putText(
-            output,
-            line,
-            (x, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
-            (0, 0, 0),
-            1,
-            cv2.LINE_AA,
-        )
-
-    return output
-
-
 def get_pending_tracklet_ids(
     tracker: McByteTracker,
 ) -> set[int]:
@@ -524,16 +244,6 @@ def get_pending_tracklet_ids(
         return set()
 
     return set(tracker.mask_manager._pending_tracklet_ids)
-
-
-def get_masked_tracklet_ids(
-    mask_output: MaskOutput | None,
-) -> set[int]:
-    """Return tracklet IDs represented in the current mask output."""
-    if mask_output is None or mask_output.masks is None:
-        return set()
-
-    return set(mask_output.tracklet_mask_dict)
 
 
 def visualize_frame(
@@ -549,18 +259,22 @@ def visualize_frame(
     """Create one complete comparison visualization frame."""
     visual = frame.copy()
 
-    if use_masks:
-        visual = overlay_masks(
-            frame=visual,
-            mask_output=tracker._last_mask_output,
+    mask_output = tracker._last_mask_output
+    if use_masks and mask_output is not None and mask_output.masks is not None:
+        visual = annotate_masks(
+            visual,
+            mask_output.masks,
+            get_mask_tracklet_ids_in_order(mask_output.tracklet_mask_dict),
         )
 
-    visual = draw_tracking_boxes(
-        frame=visual,
-        tracked_detections=tracked_detections,
-    )
-
     tracker_ids = tracked_detections.tracker_id
+    if tracker_ids is not None and len(tracked_detections) > 0:
+        visual = annotate_tracklet_boxes(
+            visual,
+            tracked_detections.xyxy,
+            [int(tracker_id) for tracker_id in tracker_ids],
+        )
+
     valid_tracker_ids = (
         [] if tracker_ids is None else sorted(int(tracker_id) for tracker_id in tracker_ids if tracker_id >= 0)
     )
@@ -580,10 +294,7 @@ def visualize_frame(
             ]
         )
 
-    return draw_text_panel(
-        frame=visual,
-        lines=status_lines,
-    )
+    return draw_status_lines(visual, status_lines)
 
 
 def append_mot_results(
