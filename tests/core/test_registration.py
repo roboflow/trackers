@@ -340,6 +340,7 @@ class TestSearchSpaceValidation:
 
                 def reset(self) -> None:
                     pass
+
     def test_tracker_without_search_space_works(self) -> None:
         """Trackers without search_space are still valid."""
 
@@ -359,8 +360,10 @@ class TestSearchSpaceValidation:
 
             def reset(self) -> None:
                 pass
+
         assert not hasattr(MinimalTracker, "search_space") or getattr(MinimalTracker, "search_space", None) is None
         assert "minimal" in BaseTracker._registered_trackers()
+
     def test_tracker_with_empty_search_space_works(self) -> None:
         """Trackers with empty search_space skip validation."""
 
@@ -457,6 +460,7 @@ class TestTrackerInstantiation:
         tracker = info.tracker_class(lost_track_buffer=60, frame_rate=60.0)  # type: ignore[call-arg]
         # max(1, ceil(60.0/30.0 * 60)) = 120
         assert tracker.maximum_frames_without_update == 120  # type: ignore[attr-defined]
+
     def test_instantiate_with_registry_params(self) -> None:
         """Test creating tracker with params dict like CLI would do."""
         info = BaseTracker._lookup_tracker("sort")
