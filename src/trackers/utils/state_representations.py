@@ -323,6 +323,8 @@ class XYXYStateEstimator(BaseStateEstimator):
 
     def clamp_velocity(self, frame_step: float = 1.0) -> None:
         """Ignore `frame_step`; kept for interface compatibility because XYXY-style velocity is unconstrained."""
+        return None
+
 
 # ---------------------------------------------------------------------------
 # Factory helper
