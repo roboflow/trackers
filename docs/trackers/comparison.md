@@ -26,8 +26,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
 !!! info
 
-    Parameters were tuned on the validation set. Results are reported on the
-    test set via Codabench submission. Detections come from a YOLOX model.
+    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model.
 
 === "Default"
 
@@ -112,8 +111,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 
 !!! info
 
-    Parameters were tuned on the validation set. Results are reported on the
-    test set via Codabench submission. Detections come from a YOLOX model.
+    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model.
 
 === "Default"
 
@@ -198,9 +196,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the test
-    set. SoccerNet-tracking has no validation split. This dataset provides
-    oracle (ground-truth) detections.
+    Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections.
 
 === "Default"
 
@@ -276,10 +272,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 !!! note "SoccerNet buffer ordering exception"
 
-    This config uses `buffer_ratio_first: 0.68 > buffer_ratio_second: 0.50`, which reverses
-    the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering).
-    Optuna found this ordering yields higher HOTA on SoccerNet's dense, long-sequence scenarios.
-    On most other datasets the `b1 < b2` default applies.
+    This config uses `buffer_ratio_first: 0.68 > buffer_ratio_second: 0.50`, which reverses the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering). Optuna found this ordering yields higher HOTA on SoccerNet's dense, long-sequence scenarios. On most other datasets the `b1 < b2` default applies.
 
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
@@ -292,9 +285,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 !!! info
 
-    Parameters were tuned on the validation set. Results are reported on the
-    test set via [Codabench](https://www.codabench.org/competitions/14885/) submission.
-    Detections come from a YOLOX model.
+    Parameters were tuned on the validation set. Results are reported on the test set via [Codabench](https://www.codabench.org/competitions/14885/) submission. Detections come from a YOLOX model.
 
 === "Default"
 
@@ -311,9 +302,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 === "Tuned"
 
-    Hyperparameter tuning, reporting the best tuned configuration per
-    tracker evaluated on the test set (tuning performed on the valid split;
-    if tuning did not outperform registry defaults, defaults are shown).
+    Hyperparameter tuning, reporting the best tuned configuration per tracker evaluated on the test set (tuning performed on the valid split; if tuning did not outperform registry defaults, defaults are shown).
 
     |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
     | :-------: | :------: | :------: | :------: |
@@ -372,27 +361,17 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 !!! note "DanceTrack buffer ordering exception"
 
-    This config uses `buffer_ratio_first: 0.12 > buffer_ratio_second: 0.10`, which reverses
-    the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering).
-    Optuna found this ordering on DanceTrack's validation split; the margin (0.02) is small
-    and the `b1 < b2` default applies on most other datasets.
+    This config uses `buffer_ratio_first: 0.12 > buffer_ratio_second: 0.10`, which reverses the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering). Optuna found this ordering on DanceTrack's validation split; the margin (0.02) is small and the `b1 < b2` default applies on most other datasets.
 
 ## Methodology
 
 ### Detections
 
-Each dataset uses one of two detection sources: oracle detections (ground-truth
-bounding boxes provided by the dataset) or model detections (produced by a YOLOX
-detector following the ByteTrack procedure). The source is noted per dataset above.
+Each dataset uses one of two detection sources: oracle detections (ground-truth bounding boxes provided by the dataset) or model detections (produced by a YOLOX detector following the ByteTrack procedure). The source is noted per dataset above.
 
 ### Tuning
 
-Best parameters per tracker and dataset were found via grid search (SORT, ByteTrack,
-OC-SORT, BoT-SORT) or Optuna (`n_trials=100`, objective HOTA, trial 0 = defaults for
-C-BIoU), selecting the configuration with the highest HOTA on the tune split. McByte is
-not tuned here: defaults with mask-conditioned association enabled are reported, matching
-the [McByte](mcbyte.md) page (source: [PR #513](https://github.com/roboflow/trackers/pull/513)).
-Tuning and evaluation always use separate data splits to reflect real-world usage:
+Best parameters per tracker and dataset were found via grid search (SORT, ByteTrack, OC-SORT, BoT-SORT) or Optuna (`n_trials=100`, objective HOTA, trial 0 = defaults for C-BIoU), selecting the configuration with the highest HOTA on the tune split. McByte is not tuned here: defaults with mask-conditioned association enabled are reported, matching the [McByte](mcbyte.md) page (source: [PR #513](https://github.com/roboflow/trackers/pull/513)). Tuning and evaluation always use separate data splits to reflect real-world usage:
 
 - Train + validation + test: tune on validation, report on test.
 - Train + validation: tune on train, report on validation.
@@ -400,28 +379,13 @@ Tuning and evaluation always use separate data splits to reflect real-world usag
 
 ## When to Use Each Tracker
 
-**SORT** is the right choice when speed is the primary constraint and scenes are not heavily
-occluded. Its Kalman filter plus Hungarian matching runs at hundreds of frames per second and
-produces clean, easy-to-debug results. Use SORT as a baseline before adding more complex
-trackers, or when deploying on edge devices with tight compute budgets.
+**SORT** is the right choice when speed is the primary constraint and scenes are not heavily occluded. Its Kalman filter plus Hungarian matching runs at hundreds of frames per second and produces clean, easy-to-debug results. Use SORT as a baseline before adding more complex trackers, or when deploying on edge devices with tight compute budgets.
 
-**ByteTrack** is the default recommendation for most applications. It outperforms SORT on all
-four benchmarks by recovering low-confidence detections that SORT discards. The two-stage
-association adds almost no extra compute and consistently reduces missed tracks and identity
-switches. Use ByteTrack when your detector produces noisy or variable-confidence outputs —
-sports video, aerial footage, and crowded retail scenes all benefit.
+**ByteTrack** is the default recommendation for most applications. It outperforms SORT on all four benchmarks by recovering low-confidence detections that SORT discards. The two-stage association adds almost no extra compute and consistently reduces missed tracks and identity switches. Use ByteTrack when your detector produces noisy or variable-confidence outputs — sports video, aerial footage, and crowded retail scenes all benefit.
 
-**OC-SORT** is best when camera motion is significant or objects follow non-linear paths. Its
-observation-centric re-update mechanism and direction consistency cost reduce drift from the
-linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns,
-camera pans, or erratic motion — the benchmark edge on MOT17 reflects exactly
-these conditions.
+**OC-SORT** is best when camera motion is significant or objects follow non-linear paths. Its observation-centric re-update mechanism and direction consistency cost reduce drift from the linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns, camera pans, or erratic motion — the benchmark edge on MOT17 reflects exactly these conditions.
 
-**BoT-SORT** is the choice when camera ego-motion is strong and you need the most stable
-identities. It extends ByteTrack with camera motion compensation (CMC) and confidence-aware
-association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports
-broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is
-small relative to the detector, so the trade-off favors identity stability over raw speed.
+**BoT-SORT** is the choice when camera ego-motion is strong and you need the most stable identities. It extends ByteTrack with camera motion compensation (CMC) and confidence-aware association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is small relative to the detector, so the trade-off favors identity stability over raw speed.
 
 **C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](cbiou.md) for buffer scales **b1** and **b2**.
 
@@ -429,18 +393,8 @@ small relative to the detector, so the trade-off favors identity stability over 
 
 ## Metric Definitions
 
-**HOTA** (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes
-tracking quality into detection accuracy (DetA) and association accuracy (AssA), then takes
-their geometric mean. It weights identity consistency equally with detection recall and
-precision, unlike older metrics that under-penalize fragmented tracks. Higher HOTA indicates
-both good detection and stable long-term identity.
+**HOTA** (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes tracking quality into detection accuracy (DetA) and association accuracy (AssA), then takes their geometric mean. It weights identity consistency equally with detection recall and precision, unlike older metrics that under-penalize fragmented tracks. Higher HOTA indicates both good detection and stable long-term identity.
 
-**IDF1** (Identity F1) — measures how long the system correctly identifies each ground-truth
-object over its lifetime. IDF1 is the harmonic mean of identification precision and
-identification recall. High IDF1 means tracks stay on the correct identity; low IDF1 means
-frequent identity switches.
+**IDF1** (Identity F1) — measures how long the system correctly identifies each ground-truth object over its lifetime. IDF1 is the harmonic mean of identification precision and identification recall. High IDF1 means tracks stay on the correct identity; low IDF1 means frequent identity switches.
 
-**MOTA** (Multiple Object Tracking Accuracy) — combines the count of false positives, missed
-detections, and identity switches into a single score relative to the total number of
-ground-truth objects. MOTA is dominated by detection recall and precision; a detector with
-near-perfect recall produces high MOTA even when identity switches are frequent.
+**MOTA** (Multiple Object Tracking Accuracy) — combines the count of false positives, missed detections, and identity switches into a single score relative to the total number of ground-truth objects. MOTA is dominated by detection recall and precision; a detector with near-perfect recall produces high MOTA even when identity switches are frequent.
