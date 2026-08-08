@@ -341,7 +341,7 @@ def propagate_and_save_frame(
     )
 
 
-def cutie_command(
+def cutie_inspection(
     image_dir: Path,
     start_file: str,
     end_file: str,

@@ -47,7 +47,7 @@ from trackers.core.masks.base import TrackletSnapshot
 DEFAULT_OUTPUT_PATH = INSPECT_OUTPUT_ROOT / "sam" / "sam_masks.jpg"
 
 
-def sam_command(
+def sam_inspection(
     image_path: Path,
     box: list[tuple[float, float, float, float]],
     output_path: Path = DEFAULT_OUTPUT_PATH,
@@ -81,7 +81,7 @@ def sam_command(
         An unreadable image is reported on stderr and exits non-zero, so only
         the return value shows up here.
 
-        >>> sam_command(Path("missing.jpg"), box=[(1.0, 2.0, 3.0, 4.0)])
+        >>> sam_inspection(Path("missing.jpg"), box=[(1.0, 2.0, 3.0, 4.0)])
         1
     """
     try:

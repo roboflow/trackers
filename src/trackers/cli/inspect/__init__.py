@@ -16,22 +16,22 @@ heavy imports are deferred into the command bodies so that importing the CLI
 stays cheap for everyone else.
 """
 
-from trackers.cli.inspect.cutie import cutie_command
-from trackers.cli.inspect.mask_manager import mask_manager_command
-from trackers.cli.inspect.mcbyte import compare_mcbyte_command
-from trackers.cli.inspect.sam import sam_command
+from trackers.cli.inspect.cutie import cutie_inspection
+from trackers.cli.inspect.mask_manager import mask_manager_inspection
+from trackers.cli.inspect.mcbyte import mcbyte_inspection
+from trackers.cli.inspect.sam import sam_inspection
 
 __all__ = [
     "INSPECT_COMPONENTS",
-    "compare_mcbyte_command",
-    "cutie_command",
-    "mask_manager_command",
-    "sam_command",
+    "cutie_inspection",
+    "mask_manager_inspection",
+    "mcbyte_inspection",
+    "sam_inspection",
 ]
 
 INSPECT_COMPONENTS = {
-    "sam": sam_command,
-    "cutie": cutie_command,
-    "mask-manager": mask_manager_command,
-    "mcbyte": compare_mcbyte_command,
+    "sam": sam_inspection,
+    "cutie": cutie_inspection,
+    "mask-manager": mask_manager_inspection,
+    "mcbyte": mcbyte_inspection,
 }

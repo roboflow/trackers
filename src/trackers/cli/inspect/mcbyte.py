@@ -429,7 +429,7 @@ def run_mode(
     print(f"[{mode_name}] Results: {results_path}")
 
 
-def compare_mcbyte_command(
+def mcbyte_inspection(
     sequence: SequenceOptions,
     cmc: CMCOptions | None = None,
     mask: MaskOptions | None = None,
@@ -542,4 +542,4 @@ def _add_compare_arguments(parser: ArgumentParser) -> list[str]:
 # local subclass would never be constructed. Registering from here rather than
 # being named in ``_parser`` is what keeps this module, and the cv2 and
 # supervision imports above it, out of the parser build for every other command.
-register_argument_adder(compare_mcbyte_command, _add_compare_arguments)
+register_argument_adder(mcbyte_inspection, _add_compare_arguments)

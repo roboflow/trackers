@@ -36,7 +36,7 @@ from trackers.cli.inspect.mask_manager import (
     _MANUAL_ONLY_OPTIONS,
     MaskManagerMode,
     _raise_for_mode_option_conflict,
-    mask_manager_command,
+    mask_manager_inspection,
 )
 
 
@@ -127,7 +127,7 @@ class TestMaskManagerModeValidation:
         Equality rather than containment, so a tuple entry left behind by a
         rename is caught in the same assertion.
         """
-        parameters = set(inspect.signature(mask_manager_command).parameters)
+        parameters = set(inspect.signature(mask_manager_inspection).parameters)
 
         mode_specific = parameters - _SHARED_MASK_MANAGER_OPTIONS
 
@@ -203,7 +203,7 @@ class TestMaskManagerModeValidation:
         The image directory does not exist either. Reaching the filesystem check
         first would mean the mode check ran too late to be the guard it claims.
         """
-        exit_code = mask_manager_command(Path("does-not-exist"), mode="manual", gt_file=Path("gt.txt"))
+        exit_code = mask_manager_inspection(Path("does-not-exist"), mode="manual", gt_file=Path("gt.txt"))
 
         assert exit_code == 1
         assert "--gt_file (or --gt-file) is a --mode gt option" in capsys.readouterr().err

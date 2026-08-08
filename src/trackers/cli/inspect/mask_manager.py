@@ -898,7 +898,7 @@ def _raise_for_mode_option_conflict(mode: MaskManagerMode, supplied: Mapping[str
         raise ValueError(f"--mode {mode} requires {joined}.")
 
 
-def mask_manager_command(
+def mask_manager_inspection(
     image_dir: Path,
     mode: MaskManagerMode,
     start_file: str | None = None,
@@ -983,7 +983,7 @@ def mask_manager_command(
         A foreign option is reported on stderr and exits non-zero, so only the
         return value shows up here.
 
-        >>> mask_manager_command(Path("frames"), mode="manual", gt_file=Path("gt.txt"))
+        >>> mask_manager_inspection(Path("frames"), mode="manual", gt_file=Path("gt.txt"))
         1
     """
     supplied = {
