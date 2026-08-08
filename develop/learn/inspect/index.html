@@ -6,19 +6,19 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI.">
+        <meta name="description" content="Render what each stage of the mask pipeline produced, frame by frame, with the trackers inspect command.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/cli-migration/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/inspect/">
       
       
-        <link rel="prev" href="../track/">
+        <link rel="prev" href="../mcbyte-benchmark/">
       
       
-        <link rel="next" href="../dynamic-frame-rate/">
+        <link rel="next" href="../detection-quality/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>CLI Migration Guide | Trackers - Trackers</title>
+        <title>Inspect the Mask Pipeline — SAM, Cutie, MaskManager | Trackers - Trackers</title>
       
     
     
@@ -129,12 +129,12 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "CLI Migration Guide",
-  "description": "Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI.",
-  "url": "https://trackers.roboflow.com/latest/develop/learn/cli-migration/",
+  "headline": "Inspect Mask Pipeline",
+  "description": "Render what each stage of the mask pipeline produced, frame by frame, with the trackers inspect command.",
+  "url": "https://trackers.roboflow.com/latest/develop/learn/inspect/",
   "mainEntityOfPage": {
     "@type": "WebPage",
-    "@id": "https://trackers.roboflow.com/latest/develop/learn/cli-migration/"
+    "@id": "https://trackers.roboflow.com/latest/develop/learn/inspect/"
   },
   "image": {
     "@type": "ImageObject",
@@ -161,8 +161,8 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-07",
-  "datePublished": "2026-08-07"
+  "dateModified": "2026-08-08",
+  "datePublished": "2026-08-08"
 }
 </script>
 
@@ -179,9 +179,9 @@
 
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
-<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/cli-migration/" />
-<meta property="og:title" content="CLI Migration Guide | Trackers" />
-<meta property="og:description" content="Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI." />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/inspect/" />
+<meta property="og:title" content="Inspect the Mask Pipeline — SAM, Cutie, MaskManager | Trackers" />
+<meta property="og:description" content="Render what each stage of the mask pipeline produced, frame by frame, with the trackers inspect command." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -192,8 +192,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="CLI Migration Guide | Trackers" />
-<meta name="twitter:description" content="Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI." />
+<meta name="twitter:title" content="Inspect the Mask Pipeline — SAM, Cutie, MaskManager | Trackers" />
+<meta name="twitter:description" content="Render what each stage of the mask pipeline produced, frame by frame, with the trackers inspect command." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -210,7 +210,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cli-migration-guide" class="md-skip">
+        <a href="#inspect-the-mask-pipeline" class="md-skip">
           Skip to content
         </a>
       
@@ -276,7 +276,7 @@
 
             </a>
             
-              CLI Migration Guide | Trackers
+              Inspect the Mask Pipeline — SAM, Cutie, MaskManager | Trackers
             
           </span>
         </div>
@@ -780,37 +780,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    CLI Migration Guide
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../cli-migration/" class="md-nav__link">
         
   
   
@@ -826,109 +799,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#track-command" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Track command
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Track command">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#list-valued-filters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        List-valued filters
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#abbreviated-tracker-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Abbreviated tracker parameters
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#hyphens-and-underscores" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hyphens and underscores
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#eval-prediction-inputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        eval prediction inputs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#other-commands" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Other commands
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#yaml-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        YAML configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1078,10 +948,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../inspect/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inspect Mask Pipeline
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1097,6 +994,120 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-sam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect SAM
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-cutie" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Cutie
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-maskmanager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect MaskManager
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inspect MaskManager">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ground-truth-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ground-truth mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compare-mcbyte-association-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare McByte association modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared conventions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1702,22 +1713,55 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#track-command" class="md-nav__link">
+  <a href="#components" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Track command
+        Components
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Track command">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-sam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect SAM
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-cutie" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Cutie
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-maskmanager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect MaskManager
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inspect MaskManager">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#list-valued-filters" class="md-nav__link">
+  <a href="#manual-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        List-valued filters
+        Manual mode
       
     </span>
   </a>
@@ -1725,10 +1769,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#abbreviated-tracker-parameters" class="md-nav__link">
+  <a href="#ground-truth-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Abbreviated tracker parameters
+        Ground-truth mode
       
     </span>
   </a>
@@ -1741,10 +1785,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hyphens-and-underscores" class="md-nav__link">
+  <a href="#compare-mcbyte-association-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hyphens and underscores
+        Compare McByte association modes
       
     </span>
   </a>
@@ -1752,32 +1796,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#eval-prediction-inputs" class="md-nav__link">
+  <a href="#shared-conventions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        eval prediction inputs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#other-commands" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Other commands
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#yaml-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        YAML configuration
+        Shared conventions
       
     </span>
   </a>
@@ -1804,389 +1826,149 @@
   
 
 
-<h1 id="cli-migration-guide">CLI Migration Guide</h1>
-<p>The CLI now groups <code>track</code> options by responsibility. The new dotted arguments
-map directly to the option dataclasses used by <code>track</code>, and are also available
-in YAML configuration files.</p>
-<p>Semantic legacy spellings remain available during the transition. Each use
-emits a <code>FutureWarning</code> with the replacement. Do not combine a legacy argument
-and its replacement in one command; the CLI rejects that ambiguity. Develop's
-<code>--no-boxes</code> and <code>--no-ids</code> still work and map to <code>--show.no_boxes</code> and
-<code>--show.no_ids</code>. Each warning names the release that removes it: 2.10.0.</p>
-<h2 id="track-command">Track command</h2>
-<p>Use dotted paths for grouped detection, filtering, output, visualization, and
-tracker options. <code>--display</code> remains ungrouped.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>trackers track \
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    --source source.mp4 \
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    --detection.model rfdetr-base \
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    --detection.confidence 0.3 \
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    --filters.classes [person,car] \
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    --tracker sort \
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    --tracker.lost_track_buffer 40 \
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    --output.video tracked.mp4 \
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    --show.no_boxes
-</span></code></pre></div>
-<p>Every boolean option is a pair: <code>--show.boxes</code> turns it on, <code>--show.no_boxes</code>
-turns it off, and <code>--show.boxes false</code> or <code>--show.boxes=false</code> spell the same
-thing explicitly. The negation sits on the field rather than the group, so it
-stays readable for any group name — <code>--detection.no_fast</code>, never
-<code>--no_detection.fast</code>. Repeating both halves is allowed; the last one wins. A
-<code>--config</code> file keeps one plain boolean key per field, and a command-line flag
-always overrides it.</p>
-<p>This covers ungrouped options too — <code>--display</code> / <code>--no_display</code>,
-<code>--no_enqueue_defaults</code> on <code>tune</code>, <code>--no_list_available</code> on <code>download</code>.</p>
-<p>The algorithm and its parameters share one group, mirroring <code>--detection.model</code>
-and the rest of the detection options. <code>--tracker sort</code> is shorthand for
-<code>--tracker.name sort</code>; both spellings are supported and neither warns.</p>
-<p>Tracker parameters are the exception: they default to <code>None</code>, meaning "leave the
-tracker's own default alone", so they take an explicit value and have no
-negative half. Develop's bare <code>--tracker.enable_cmc</code> flag turned camera motion
-compensation <strong>off</strong>, since the parameter itself defaults to <code>True</code>, so the bare
-spelling still maps to <code>--tracker.enable_cmc=false</code> and warns. Prefer
-<code>--tracker.enable_cmc true</code> or <code>--tracker.enable_cmc false</code>; they say what they
-do. The same applies to <code>--tracker.instant_first_frame_activation</code>.</p>
-<p>As in develop, specify either a model or a precomputed MOT file, not both.</p>
-<table>
-<thead>
-<tr>
-<th>Legacy argument</th>
-<th>Current argument</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--model</code></td>
-<td><code>--detection.model</code></td>
-</tr>
-<tr>
-<td><code>--detections</code></td>
-<td><code>--detection.mot_file</code></td>
-</tr>
-<tr>
-<td><code>--model.confidence</code></td>
-<td><code>--detection.confidence</code></td>
-</tr>
-<tr>
-<td><code>--model.device</code></td>
-<td><code>--detection.device</code></td>
-</tr>
-<tr>
-<td><code>--model.api_key</code></td>
-<td><code>--detection.api_key</code></td>
-</tr>
-<tr>
-<td><code>--classes</code></td>
-<td><code>--filters.classes</code></td>
-</tr>
-<tr>
-<td><code>--track_ids</code></td>
-<td><code>--filters.track_ids</code></td>
-</tr>
-<tr>
-<td><code>--tracker</code></td>
-<td><code>--tracker</code> (unchanged)</td>
-</tr>
-<tr>
-<td><code>--tracker.&lt;name&gt;</code></td>
-<td><code>--tracker.&lt;name&gt;</code></td>
-</tr>
-<tr>
-<td><code>-o</code>, <code>--output</code></td>
-<td><code>--output.video</code></td>
-</tr>
-<tr>
-<td><code>--mot-output</code></td>
-<td><code>--output.mot_results</code></td>
-</tr>
-<tr>
-<td><code>--overwrite</code></td>
-<td><code>--output.overwrite</code></td>
-</tr>
-<tr>
-<td><code>--display</code></td>
-<td><code>--display</code> (unchanged)</td>
-</tr>
-<tr>
-<td><code>--show-boxes</code></td>
-<td><code>--show.boxes</code></td>
-</tr>
-<tr>
-<td><code>--no-boxes</code></td>
-<td><code>--show.no_boxes</code></td>
-</tr>
-<tr>
-<td><code>--no-show.boxes</code></td>
-<td>Removed; use <code>--show.no_boxes</code></td>
-</tr>
-<tr>
-<td><code>--show-masks</code></td>
-<td><code>--show.masks</code></td>
-</tr>
-<tr>
-<td><code>--show-labels</code></td>
-<td><code>--show.labels</code></td>
-</tr>
-<tr>
-<td><code>--show-ids</code></td>
-<td><code>--show.ids</code></td>
-</tr>
-<tr>
-<td><code>--no-ids</code></td>
-<td><code>--show.no_ids</code></td>
-</tr>
-<tr>
-<td><code>--no-show.ids</code></td>
-<td>Removed; use <code>--show.no_ids</code></td>
-</tr>
-<tr>
-<td><code>--show-confidence</code></td>
-<td><code>--show.confidence</code></td>
-</tr>
-<tr>
-<td><code>--show-trajectories</code></td>
-<td><code>--show.trajectories</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="list-valued-filters">List-valued filters</h3>
-<p><code>--filters.classes</code> and <code>--filters.track_ids</code> take lists, matching the
-list-valued <code>--metrics</code> and <code>--columns</code> options of <code>eval</code> and <code>tune</code>. Bracket
-shorthand needs no quoting, so <code>--filters.classes [person,car]</code>,
-<code>--filters.classes [0,2]</code>, and the mixed <code>--filters.classes [person,2]</code> all
-work. Comma-separated strings remain available as a warning-emitting alias.</p>
-<table>
-<thead>
-<tr>
-<th>Legacy value form</th>
-<th>Current value form</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--filters.classes person,car</code></td>
-<td><code>--filters.classes [person,car]</code></td>
-</tr>
-<tr>
-<td><code>--filters.track_ids 1,3,5</code></td>
-<td><code>--filters.track_ids [1,3,5]</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="abbreviated-tracker-parameters">Abbreviated tracker parameters</h3>
-<p>Tracker parameter names abbreviate their standard leading token on the command
-line: <code>minimum_</code> becomes <code>min_</code> and <code>maximum_</code> becomes <code>max_</code>. Domain words such
-as <code>threshold</code> stay spelled out. Every develop parameter path whose spelling did
-not change keeps working as-is, without a warning; the unabbreviated paths remain
-as warning-emitting aliases.</p>
-<table>
-<thead>
-<tr>
-<th>Legacy argument</th>
-<th>Current argument</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--tracker.minimum_consecutive_frames</code></td>
-<td><code>--tracker.min_consecutive_frames</code></td>
-</tr>
-<tr>
-<td><code>--tracker.minimum_iou_threshold</code></td>
-<td><code>--tracker.min_iou_threshold</code></td>
-</tr>
-<tr>
-<td><code>--tracker.minimum_iou_threshold_first_assoc</code></td>
-<td><code>--tracker.min_iou_threshold_first_assoc</code></td>
-</tr>
-<tr>
-<td><code>--tracker.minimum_iou_threshold_second_assoc</code></td>
-<td><code>--tracker.min_iou_threshold_second_assoc</code></td>
-</tr>
-<tr>
-<td><code>--tracker.minimum_iou_threshold_unconfirmed_assoc</code></td>
-<td><code>--tracker.min_iou_threshold_unconfirmed_assoc</code></td>
-</tr>
-<tr>
-<td><code>--tracker.iou</code></td>
-<td><code>--tracker.iou_variant</code></td>
-</tr>
-</tbody>
-</table>
-<p>These short forms are <strong>CLI aliases only</strong>. The Python constructor keywords are
-unchanged, so <code>ByteTrackTracker(minimum_iou_threshold=0.3)</code> stays correct, and
-so do <code>tune --fixed_params</code>, each tracker's <code>search_space</code> keys, and the
-"Valid parameters" list printed on a <code>search_space</code> error. A consequence worth
-knowing: <code>tune</code> reports the long parameter names, so its output cannot be
-pasted verbatim into a <code>track</code> command — abbreviate the leading <code>minimum_</code> or
-<code>maximum_</code> token first.</p>
-<h2 id="hyphens-and-underscores">Hyphens and underscores</h2>
-<p>Interchangeable in every option name, on every command, without a warning. Only
-the name is rewritten: each <code>-</code> after the leading <code>--</code> becomes <code>_</code>, and values
-are left alone, so <code>--detection.model rfdetr-base</code> and
-<code>--source my-dir/clip.mp4</code> keep their hyphens. This covers dotted paths and
-negations alike — <code>--show.no-ids</code>, <code>--tracker.min-iou-threshold</code> and
-<code>--no-display</code> all reach the parser as their underscore spellings. The canonical
-documentation spelling uses underscores.</p>
-<p>Anything after a bare <code>--</code> is passed through untouched.</p>
-<p>This holds for the deprecated spellings in the tables below too, so a develop
-command ports without also having to guess which separator each option wanted:
-<code>--no-boxes</code> and <code>--no_boxes</code> resolve alike, as do <code>--mot-output</code> and
-<code>--mot_output</code>, <code>--track-ids</code> and <code>--track_ids</code>. <code>--help</code> lists the underscore
-spelling.</p>
-<h2 id="eval-prediction-inputs"><code>eval</code> prediction inputs</h2>
-<p><code>--tracker</code> names the tracking algorithm in <code>track</code> and <code>tune</code>. In <code>eval</code> it
-meant something else entirely — a file of results that algorithm had already
-produced. Both prediction inputs are renamed so one option name no longer
-carries two meanings:</p>
-<table>
-<thead>
-<tr>
-<th>Legacy argument</th>
-<th>Current argument</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--tracker</code></td>
-<td><code>--predictions</code></td>
-</tr>
-<tr>
-<td><code>--tracker_dir</code></td>
-<td><code>--predictions_dir</code></td>
-</tr>
-</tbody>
-</table>
-<p>The old spellings still parse and warn.</p>
-<h2 id="other-commands">Other commands</h2>
+<h1 id="inspect-the-mask-pipeline">Inspect the Mask Pipeline</h1>
+<p><code>trackers inspect</code> renders what one stage of the mask pipeline actually produced, frame by frame, so you can look at it instead of guessing from metrics.</p>
+<p><strong>What you'll learn:</strong></p>
+<ul>
+<li>Which component each subcommand inspects</li>
+<li>How to drive <code>mask-manager</code> from hand-written boxes or from ground truth</li>
+<li>How to compare McByte's two association modes on one sequence</li>
+</ul>
+<h2 id="components">Components</h2>
+<p>Each name is the thing being inspected, not the tracker that happens to use it:</p>
 <table>
 <thead>
 <tr>
 <th>Command</th>
-<th>Hyphenated spelling</th>
-<th>Canonical underscore spelling</th>
+<th>Inspects</th>
+<th>Answers</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>eval</code></td>
-<td><code>--gt-dir</code></td>
-<td><code>--gt_dir</code></td>
+<td><code>trackers inspect sam</code></td>
+<td><code>SAMBoxMaskGenerator</code></td>
+<td>Did SAM turn these boxes into the masks I expected?</td>
 </tr>
 <tr>
-<td><code>eval</code></td>
-<td><code>--predictions-dir</code></td>
-<td><code>--predictions_dir</code></td>
+<td><code>trackers inspect cutie</code></td>
+<td><code>CutieMaskPropagator</code></td>
+<td>Did the masks survive propagation across frames?</td>
 </tr>
 <tr>
-<td><code>tune</code></td>
-<td><code>--gt-dir</code></td>
-<td><code>--gt_dir</code></td>
+<td><code>trackers inspect mask-manager</code></td>
+<td><code>MaskManager</code></td>
+<td>Were masks created, added, and removed on the right frames?</td>
 </tr>
 <tr>
-<td><code>tune</code></td>
-<td><code>--detections-dir</code></td>
-<td><code>--detections_dir</code></td>
-</tr>
-<tr>
-<td><code>tune</code></td>
-<td><code>--n-trials</code></td>
-<td><code>--n_trials</code></td>
-</tr>
-<tr>
-<td><code>tune</code></td>
-<td><code>--fixed-params</code></td>
-<td><code>--fixed_params</code></td>
-</tr>
-<tr>
-<td><code>tune</code></td>
-<td><code>--images-dir</code></td>
-<td><code>--images_dir</code></td>
-</tr>
-<tr>
-<td><code>tune</code></td>
-<td><code>--no-enqueue-defaults</code></td>
-<td><code>--no_enqueue_defaults</code></td>
-</tr>
-<tr>
-<td><code>download</code></td>
-<td><code>--cache-dir</code></td>
-<td><code>--cache_dir</code></td>
+<td><code>trackers inspect mcbyte</code></td>
+<td><a href="../../trackers/mcbyte/"><code>McByteTracker</code></a></td>
+<td>What did mask conditioning change versus locked IoU?</td>
 </tr>
 </tbody>
 </table>
-<p>The remaining deprecated transitions are:</p>
+<p>The first three live in <code>trackers.core.masks</code> and are tracker-agnostic: nothing in them depends on McByte. Only the last one inspects a tracker.</p>
+<div class="admonition warning">
+<p class="admonition-title">Requires the mask extra</p>
+<p>Every <code>inspect</code> command builds SAM and Cutie, so install them first:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;trackers[mask]&quot;</span>
+</span></code></pre></div>
+<p>Without the extra the command exits with an install hint rather than a traceback.</p>
+</div>
+<h2 id="inspect-sam">Inspect SAM</h2>
+<p>Give it an image and one or more boxes; it saves the image with masks and boxes overlaid.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers<span class="w"> </span>inspect<span class="w"> </span>sam<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span>--image_path<span class="w"> </span>frame.jpg<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>--box<span class="o">=</span><span class="s1">&#39;[[10,20,110,220],[30,40,130,240]]&#39;</span>
+</span></code></pre></div>
+<p>Boxes are one list, not a repeated option. <code>--box+='[[300,400,430,540]]'</code> appends to boxes already given.</p>
+<h2 id="inspect-cutie">Inspect Cutie</h2>
+<p>SAM initializes masks on the first selected frame, then Cutie propagates them across the rest.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers<span class="w"> </span>inspect<span class="w"> </span>cutie<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span>--image_dir<span class="w"> </span>frames<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>--start_file<span class="w"> </span><span class="m">000001</span>.jpg<span class="w"> </span>--end_file<span class="w"> </span><span class="m">000010</span>.jpg<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span>--box<span class="o">=</span><span class="s1">&#39;[[10,20,110,220]]&#39;</span>
+</span></code></pre></div>
+<p>Masks can be added and removed mid-range to see how propagation reacts:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>trackers<span class="w"> </span>inspect<span class="w"> </span>cutie<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>--image_dir<span class="w"> </span>frames<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span>--start_file<span class="w"> </span><span class="m">000001</span>.jpg<span class="w"> </span>--end_file<span class="w"> </span><span class="m">000010</span>.jpg<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span>--box<span class="o">=</span><span class="s1">&#39;[[10,20,110,220]]&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span>--add_at+<span class="w"> </span><span class="m">000004</span>.jpg:300,400,430,540<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span>--remove_at+<span class="w"> </span><span class="m">000007</span>.jpg:1
+</span></code></pre></div>
+<p>An add event names the frame where the box is valid; the mask is applied there and propagated to the next frame, matching McByte timing. Add events therefore cannot sit on the last selected frame, and remove events cannot sit on the first.</p>
+<h2 id="inspect-maskmanager">Inspect MaskManager</h2>
+<p>This one calls <code>MaskManager.get_updated_masks()</code> directly, so it exercises the real orchestration: initialize, propagate, add, remove. <code>--mode</code> is required and selects where tracklets come from.</p>
+<h3 id="manual-mode">Manual mode</h3>
+<p>Tracklets come from boxes you write, with lifecycle events you schedule.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>trackers<span class="w"> </span>inspect<span class="w"> </span>mask-manager<span class="w"> </span>--mode<span class="w"> </span>manual<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span>--image_dir<span class="w"> </span>frames<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span>--start_file<span class="w"> </span><span class="m">000001</span>.jpg<span class="w"> </span>--end_file<span class="w"> </span><span class="m">000010</span>.jpg<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span>--box<span class="o">=</span><span class="s1">&#39;[[10,20,110,220]]&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span>--add_at+<span class="w"> </span><span class="m">000004</span>.jpg:300,400,430,540<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span>--remove_at+<span class="w"> </span><span class="m">000007</span>.jpg:2
+</span></code></pre></div>
+<h3 id="ground-truth-mode">Ground-truth mode</h3>
+<p>Tracklets are replayed from a MOT-format ground-truth file, which is the better way to watch delayed mask creation on crowded real data.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>trackers<span class="w"> </span>inspect<span class="w"> </span>mask-manager<span class="w"> </span>--mode<span class="w"> </span>gt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span>--image_dir<span class="w"> </span>frames<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span>--gt_file<span class="w"> </span>gt.txt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span>--start_frame<span class="w"> </span><span class="m">1</span><span class="w"> </span>--end_frame<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span>--tracklet_id<span class="o">=</span><span class="s1">&#39;[3,7]&#39;</span>
+</span></code></pre></div>
+<p>Omit <code>--tracklet_id</code>, or pass <code>--tracklet_id='[all]'</code>, to replay every tracklet.</p>
+<p>Ground-truth mode colors each box by its lifecycle state:</p>
 <table>
 <thead>
 <tr>
-<th>Command</th>
-<th>Legacy argument</th>
-<th>Current argument</th>
+<th>Color</th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>eval</code>, <code>tune</code>, <code>download</code></td>
-<td><code>-o</code></td>
-<td><code>--output</code></td>
+<td>Blue</td>
+<td>Newly visible tracklet</td>
 </tr>
 <tr>
-<td><code>eval</code></td>
-<td><code>--metrics CLEAR HOTA</code></td>
-<td><code>--metrics '["CLEAR", "HOTA"]'</code></td>
+<td>Yellow</td>
+<td>Pending mask creation</td>
 </tr>
 <tr>
-<td><code>eval</code></td>
-<td><code>--columns MOTA HOTA</code></td>
-<td><code>--columns '["MOTA", "HOTA"]'</code></td>
+<td>Green</td>
+<td>Tracklet already has a mask</td>
 </tr>
 <tr>
-<td><code>tune</code></td>
-<td><code>--metrics CLEAR HOTA</code></td>
-<td><code>--metrics '["CLEAR", "HOTA"]'</code></td>
-</tr>
-<tr>
-<td><code>download</code></td>
-<td>positional <code>DATASET</code></td>
-<td><code>--name DATASET</code></td>
-</tr>
-<tr>
-<td><code>download</code></td>
-<td><code>--dataset</code></td>
-<td><code>--name</code></td>
-</tr>
-<tr>
-<td><code>download</code></td>
-<td><code>--list</code></td>
-<td><code>--list_available</code></td>
+<td>Purple</td>
+<td>Visible, but not masked, pending, or new</td>
 </tr>
 </tbody>
 </table>
-<p>For example, replace:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers download mot17 --cache-dir .cache
+<p>Options belong to one mode. Passing <code>--gt_file</code> with <code>--mode manual</code> is an error rather than a silently ignored option, and the check runs before any model loads:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gp">$ </span>trackers<span class="w"> </span>inspect<span class="w"> </span>mask-manager<span class="w"> </span>--mode<span class="w"> </span>manual<span class="w"> </span>--image_dir<span class="w"> </span>frames<span class="w"> </span>--gt_file<span class="w"> </span>gt.txt
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">Error: --gt_file (or --gt-file) is a --mode gt option and cannot be used with --mode manual.</span>
 </span></code></pre></div>
-<p>with:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers download --name mot17 --cache_dir .cache
+<h2 id="compare-mcbyte-association-modes">Compare McByte association modes</h2>
+<p>Runs the same detections through two McByte configurations on one sequence: <code>locked_iou</code> (clear-match locking, no MaskManager) and <code>mask_conditioned</code> (the full mask pipeline).</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>trackers<span class="w"> </span>inspect<span class="w"> </span>mcbyte<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>--sequence.image_dir<span class="w"> </span>frames<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span>--sequence.det_file<span class="w"> </span>det.txt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span>--sequence.det_format<span class="w"> </span>mot_tlwh<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span>--sequence.start_frame<span class="w"> </span><span class="m">1</span><span class="w"> </span>--sequence.end_frame<span class="w"> </span><span class="m">200</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span>--mask.device<span class="w"> </span>cuda
 </span></code></pre></div>
-<h2 id="yaml-configuration">YAML configuration</h2>
-<p>The same nesting is used in <code>--config</code> files. Command-line values override
-configuration values.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source.mp4</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">detection</span><span class="p">:</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rfdetr-base</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nt">tracker</span><span class="p">:</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytetrack</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">40</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="nt">output</span><span class="p">:</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="nt">video</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tracked.mp4</span>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span><span class="nt">overwrite</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="nt">display</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="nt">show</span><span class="p">:</span>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">  </span><span class="nt">boxes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</span></code></pre></div>
-<p>Run it with:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>trackers track --config tracking.yaml
-</span></code></pre></div>
+<p>Both runs save per-frame visualizations and MOTChallenge-format results, so the two directories can be diffed or scored against each other. <code>--modes=[locked_iou]</code> runs just one of them.</p>
+<p>Detection files are read as either <code>mot_tlwh</code> (<code>frame,id,left,top,width,height,confidence,...</code>, identity column ignored) or <code>xyxy</code> (<code>frame,x1,y1,x2,y2,confidence</code>).</p>
+<h2 id="shared-conventions">Shared conventions</h2>
+<p>Every <code>inspect</code> command follows the same rules as the rest of the CLI:</p>
+<ul>
+<li><code>--image-dir</code> and <code>--image_dir</code> are the same option.</li>
+<li><code>--config run.yaml</code> supplies the same keys from a file.</li>
+<li>Boolean options have a negative half, such as <code>--cmc.no_enable</code>.</li>
+<li>List options take bracket syntax (<code>--modes=[locked_iou]</code>) and append with <code>+</code>.</li>
+</ul>
+<p>Outputs go to <code>outputs/inspect/&lt;component&gt;/</code> under the current working directory, one timestamped directory per run. <code>mask-manager</code> groups its runs by mode first, so they land in <code>outputs/inspect/mask-manager/&lt;mode&gt;/</code>, and a manual run is never mixed in with a ground-truth one. The resolved path is printed when the run finishes.</p>
 
 
 
@@ -2209,7 +1991,7 @@ configuration values.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 21:00:46 UTC">2026-08-07</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 8, 2026 19:44:52 UTC">2026-08-08</span>
   </span>
 
     
@@ -2219,7 +2001,7 @@ configuration values.</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 15:56:00 UTC">2026-08-07</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 8, 2026 19:44:52 UTC">2026-08-08</span>
   </span>
 
     
@@ -2250,7 +2032,7 @@ configuration values.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../track/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Track Objects">
+          <a href="../mcbyte-benchmark/" class="md-footer__link md-footer__link--prev" aria-label="Previous: McByte Benchmarks">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2260,20 +2042,20 @@ configuration values.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Track Objects
+                McByte Benchmarks
               </div>
             </div>
           </a>
         
         
           
-          <a href="../dynamic-frame-rate/" class="md-footer__link md-footer__link--next" aria-label="Next: Dynamic Frame Rate">
+          <a href="../detection-quality/" class="md-footer__link md-footer__link--next" aria-label="Next: Detection Quality Matters">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Dynamic Frame Rate
+                Detection Quality Matters
               </div>
             </div>
             <div class="md-footer__button md-icon">
