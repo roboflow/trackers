@@ -293,6 +293,10 @@ def save_rgb_image(
 def timestamped_run_dir(output_root: Path) -> Path:
     """Create and return a timestamped run directory under ``output_root``.
 
+    The timestamp carries microseconds and the directory is created without
+    ``exist_ok``, so two runs started within the same second cannot land in one
+    directory and merge their outputs. The name stays sortable by start time.
+
     Args:
         output_root: Directory holding one subdirectory per run.
 
@@ -306,8 +310,8 @@ def timestamped_run_dir(output_root: Path) -> Path:
         ...     run_dir.is_dir()
         True
     """
-    run_dir = output_root / datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = output_root / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    run_dir.mkdir(parents=True, exist_ok=False)
     return run_dir
 
 

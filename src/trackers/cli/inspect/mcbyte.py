@@ -46,7 +46,6 @@ accepted in the option name: ``--sequence.image-dir`` and
 
 from __future__ import annotations
 
-import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,11 +64,13 @@ from trackers.cli._detections import (
     load_rgb_frame,
     read_detection_file,
 )
+from trackers.cli._parser import register_argument_adder
 from trackers.cli.inspect._common import (
     INSPECT_OUTPUT_ROOT,
     get_mask_tracklet_ids_in_order,
     get_masked_tracklet_ids,
     require_torch,
+    timestamped_run_dir,
 )
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.utils.cmc import CMCMethod
@@ -217,15 +218,14 @@ def prepare_run_directory(
     output_root: Path,
     mode_name: str,
 ) -> tuple[Path, Path]:
-    """Recreate the output directory for one comparison mode.
+    """Create the output directory for one comparison mode.
 
-    Any existing directory for the selected mode is removed before new outputs are
-    written.
+    ``output_root`` is a fresh run directory, so the mode directory starts empty
+    without deleting anything. Frames are named after the frame number, and a
+    shorter re-run into a populated directory would leave stale frames from a
+    longer previous run interleaved with the new ones.
     """
     run_dir = output_root / mode_name
-    if run_dir.exists():
-        shutil.rmtree(run_dir)
-
     frames_dir = run_dir / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
 
@@ -450,7 +450,8 @@ def compare_mcbyte_command(
         modes: Tracker configurations to run, given in bracket syntax such as
             ``--modes=[locked_iou]``. By default, both the mask-free locked-IoU
             baseline and full mask-conditioned McByte are run.
-        output_dir: Root directory for both comparison runs.
+        output_dir: Directory holding one timestamped run directory per
+            invocation. Both comparison runs write inside it.
 
     Returns:
         Exit code: ``0`` on success, ``1`` on a validation error.
@@ -475,13 +476,16 @@ def compare_mcbyte_command(
         print(f"Error: {parse_error}", file=sys.stderr)
         return 1
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # One run directory per invocation, with a subdirectory per mode inside it,
+    # so both modes of a single comparison stay together while a re-run never
+    # writes into the outputs of an earlier one.
+    run_root = timestamped_run_dir(output_dir)
 
     print(f"Image directory: {sequence.image_dir}")
     print(f"Detection file: {sequence.det_file}")
     print(f"Detection format: {sequence.det_format}")
     print(f"Frame range: {sequence.start_frame} to {sequence.end_frame} (inclusive)")
-    print(f"Output root: {output_dir}")
+    print(f"Output root: {run_root}")
 
     for mode_name in modes:
         run_mode(
@@ -490,7 +494,7 @@ def compare_mcbyte_command(
             image_dir=sequence.image_dir,
             start_frame=sequence.start_frame,
             end_frame=sequence.end_frame,
-            output_root=output_dir,
+            output_root=run_root,
             frame_rate=sequence.frame_rate,
             device=mask.device,
             enable_cmc=cmc.enable,
@@ -531,7 +535,7 @@ def _add_compare_arguments(parser: ArgumentParser) -> list[str]:
         "--output_dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
-        help="Root directory for both comparison runs.",
+        help=("Directory holding one timestamped run directory per invocation. Both comparison runs write inside it."),
     )
     added_args.extend(["modes", "output_dir"])
     return added_args
@@ -540,4 +544,7 @@ def _add_compare_arguments(parser: ArgumentParser) -> list[str]:
 # ``_add_compare_arguments`` is dispatched from ``trackers.cli._parser._CLIParser``
 # rather than from a parser subclass of its own. Every subcommand shares one
 # ``parser_class`` once the commands are nested under ``trackers inspect``, so a
-# local subclass would never be constructed.
+# local subclass would never be constructed. Registering from here rather than
+# being named in ``_parser`` is what keeps this module, and the cv2 and
+# supervision imports above it, out of the parser build for every other command.
+register_argument_adder(compare_mcbyte_command, _add_compare_arguments)

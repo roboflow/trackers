@@ -18,6 +18,9 @@ Import from here instead.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from jsonargparse import ActionYesNo, ArgumentParser
 
 from trackers.cli.track import (
@@ -47,6 +50,36 @@ _TRACKER_NAME_OPTION = "--tracker.name"
 _TRACKER_SHORTHAND_OPTION = "--tracker"
 # Prefix marking the negative half of a boolean option pair.
 _NEGATION_PREFIX = "no_"
+# Commands whose arguments are registered by hand rather than derived from the
+# signature, keyed by the command callable. Each command module registers its
+# own entry, so adding a command never edits this module and no command module
+# is imported here to find out whether it has one.
+_ARGUMENT_ADDERS: dict[Callable[..., Any], Callable[[ArgumentParser], list[str]]] = {}
+
+
+def register_argument_adder(
+    function: Callable[..., Any],
+    adder: Callable[[ArgumentParser], list[str]],
+) -> None:
+    """Register a hand-written argument registration for one command.
+
+    A command whose options cannot be derived from its signature calls this at
+    import time. ``add_function_arguments`` then finds it by lookup, which is
+    what keeps the parser from importing command modules to identify them.
+
+    Args:
+        function: The command callable the registration belongs to.
+        adder: Callable registering the arguments and returning their names.
+
+    Examples:
+        >>> def _adder(parser):
+        ...     return []
+        >>> def _command(): ...
+        >>> register_argument_adder(_command, _adder)
+        >>> _ARGUMENT_ADDERS[_command] is _adder
+        True
+    """
+    _ARGUMENT_ADDERS[function] = adder
 
 
 def _normalise_option(arg: str) -> str:
@@ -165,15 +198,9 @@ class _CLIParser(ArgumentParser):
         return super().add_argument(*args, **kwargs)
 
     def add_function_arguments(self, function, *args, **kwargs):  # type: ignore[override]
-        if function is track_command:
-            return _add_track_arguments(self)
-        # Imported here rather than at module scope: the inspect components pull
-        # in cv2 and supervision, and this module is imported to build the
-        # parser for every command, including the ones that need neither.
-        from trackers.cli.inspect.mcbyte import _add_compare_arguments, compare_mcbyte_command
-
-        if function is compare_mcbyte_command:
-            return _add_compare_arguments(self)
+        adder = _ARGUMENT_ADDERS.get(function)
+        if adder is not None:
+            return adder(self)
         return super().add_function_arguments(function, *args, **kwargs)
 
 
@@ -193,6 +220,9 @@ def _add_track_arguments(parser: ArgumentParser) -> list[str]:
     parser.add_argument("--display", type=bool, default=False, help="Show a live preview window.")
     added_args.append("display")
     return added_args
+
+
+register_argument_adder(track_command, _add_track_arguments)
 
 
 def _expand_tracker_shorthand(args: list[str]) -> list[str]:
