@@ -98,9 +98,7 @@ class _VideoOutput:
         self._size_mismatch_logged = False
 
     def write(self, frame: np.ndarray) -> bool:
-        """Write a frame to the video file.
-
-        Initializes writer on first call.
+        """Write a frame to the video file; initializes writer on first call.
                 The writer is bound to the first frame's resolution, and a video file
                 cannot hold frames of mixed sizes. A later frame of a different size
                 (e.g. a mid-stream resolution change from an RTSP renegotiation) is
