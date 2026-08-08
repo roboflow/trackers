@@ -2169,14 +2169,12 @@
 
 
 
-        <p>In SORT, object tracking begins with high-confidence detections fed into a
-Kalman filter framework assuming uniform motion for state prediction across frames.
-Association occurs via IoU-based costs in the Hungarian algorithm, enforcing a
-threshold to filter weak matches and initialize new identities. Tracks persist only
-with consistent associations, terminating quickly to avoid erroneous propagation.
-This detection-driven approach underscores the importance of upstream detector
-performance in achieving competitive multi-object tracking results. Over time, SORT
-has become a cornerstone for evaluating motion-based improvements in the field.</p>
+        <p>In SORT, object tracking begins with high-confidence detections fed into a Kalman filter framework assuming
+uniform motion for state prediction across frames. Association occurs via IoU-based costs in the Hungarian
+algorithm, enforcing a threshold to filter weak matches and initialize new identities. Tracks persist only with
+consistent associations, terminating quickly to avoid erroneous propagation. This detection-driven approach
+underscores the importance of upstream detector performance in achieving competitive multi-object tracking results.
+Over time, SORT has become a cornerstone for evaluating motion-based improvements in the field.</p>
 <p>SORT's standout strength is its real-time capability, processing hundreds of frames
 per second while maintaining accuracy comparable to more complex offline methods. It
 performs well in controlled environments with reliable detections, minimizing
@@ -2531,8 +2529,8 @@ camera motion compensation (CMC), the frame is ignored.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Reset tracker state by clearing all tracks and resetting ID counter.
-Call this method when switching to a new video or scene.</p>
+        <p>Reset tracker state by clearing all tracks and resetting ID counter.</p>
+<p>Call this method when switching to a new video or scene.</p>
 
 
     </div>
@@ -2565,15 +2563,13 @@ Call this method when switching to a new video or scene.</p>
 
 
 
-        <p>ByteTrack operates online by processing all detector outputs, categorizing them
-by confidence thresholds to enable a two-stage association process. High-score boxes
-are initially linked to tracklets via Kalman filter predictions and IoU-based
-Hungarian matching, optionally enhanced with appearance features. Low-score boxes
-follow in a secondary matching phase using pure motion similarity to revive occluded
-tracks. Tracks without matches are kept briefly for potential re-association,
-preventing premature termination. This inclusive approach addresses common pitfalls
-in detection filtering, establishing ByteTrack as a flexible enhancer for existing
-tracking frameworks.</p>
+        <p>ByteTrack operates online by processing all detector outputs, categorizing them by confidence thresholds to
+enable a two-stage association process. High-score boxes are initially linked to tracklets via Kalman filter
+predictions and IoU-based Hungarian matching, optionally enhanced with appearance features. Low-score boxes follow
+in a secondary matching phase using pure motion similarity to revive occluded tracks. Tracks without matches are
+kept briefly for potential re-association, preventing premature termination. This inclusive approach addresses
+common pitfalls in detection filtering, establishing ByteTrack as a flexible enhancer for existing tracking
+frameworks.</p>
 <p>ByteTrack excels in dense environments, where its low-score recovery mechanism
 minimizes missed detections and enhances overall trajectory completeness. It
 consistently improves performance across diverse datasets, demonstrating robustness
@@ -2944,8 +2940,8 @@ camera motion compensation (CMC), the frame is ignored.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Reset tracker state by clearing all tracks and resetting ID counter.
-Call this method when switching to a new video or scene.</p>
+        <p>Reset tracker state by clearing all tracks and resetting ID counter.</p>
+<p>Call this method when switching to a new video or scene.</p>
 
 
     </div>
@@ -2978,15 +2974,12 @@ Call this method when switching to a new video or scene.</p>
 
 
 
-        <p>OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm,
-using detections to correct Kalman filter errors accumulated during occlusions. It
-introduces Observation-Centric Re-Update to generate virtual trajectories for
-parameter refinement upon track reactivation. Association incorporates
-Observation-Centric Momentum, blending IoU with direction consistency from
-historical observations. Short-term recoveries are aided by heuristics linking
-unmatched tracks to prior detections. This rethinking prioritizes real measurements
-over estimations, making OC-SORT particularly adept at handling real-world tracking
-challenges.</p>
+        <p>OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm, using detections to correct
+Kalman filter errors accumulated during occlusions. It introduces Observation-Centric Re-Update to generate virtual
+trajectories for parameter refinement upon track reactivation. Association incorporates Observation-Centric
+Momentum, blending IoU with direction consistency from historical observations. Short-term recoveries are aided by
+heuristics linking unmatched tracks to prior detections. This rethinking prioritizes real measurements over
+estimations, making OC-SORT particularly adept at handling real-world tracking challenges.</p>
 <p>OC-SORT's primary strength is its robustness to non-linear motions and occlusions,
 outperforming baselines on datasets with erratic movements like DanceTrack. It
 maintains extreme efficiency, processing over 700 frames per second on CPUs for
@@ -3353,8 +3346,8 @@ camera motion compensation (CMC), the frame is ignored.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Reset tracker state by clearing all tracks and resetting ID counter.
-Call this method when switching to a new video or scene.</p>
+        <p>Reset tracker state by clearing all tracks and resetting ID counter.</p>
+<p>Call this method when switching to a new video or scene.</p>
 
 
     </div>
@@ -3879,8 +3872,8 @@ the last state.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Reset tracker state by clearing all tracks and resetting ID counter.
-Call this method when switching to a new video or scene.</p>
+        <p>Reset tracker state by clearing all tracks and resetting ID counter.</p>
+<p>Call this method when switching to a new video or scene.</p>
 
 
     </div>
