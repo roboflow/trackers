@@ -73,10 +73,10 @@ from trackers.cli.inspect._common import (
     require_torch,
     save_rgb_image,
     timestamped_run_dir,
-    validate_device,
 )
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.utils.cmc import CMCMethod
+from trackers.utils.device import _validate_device
 
 DEFAULT_OUTPUT_DIR = INSPECT_OUTPUT_ROOT / "mcbyte"
 
@@ -179,7 +179,7 @@ def validate_options(
     # runs first so a missing mask extra still reports the pip hint.
     require_torch()
     try:
-        validate_device(mask.device, label="SAM/Cutie")
+        _validate_device(mask.device, label="SAM/Cutie")
     except RuntimeError as error:
         return str(error)
 

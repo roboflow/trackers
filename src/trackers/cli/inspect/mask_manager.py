@@ -92,9 +92,9 @@ from trackers.cli.inspect._common import (
     timestamped_run_dir,
     tracklet_boxes,
     validate_and_clip_xyxy_box,
-    validate_device,
 )
 from trackers.core.masks.base import MaskOutput, TrackletSnapshot
+from trackers.utils.device import _validate_device
 
 # The directory segment matches the ``mask-manager`` component key registered in
 # INSPECT_COMPONENTS, so ``outputs/inspect/<component>/`` holds for every
@@ -335,7 +335,7 @@ def run_manual_mode(
 
         output_dir = timestamped_run_dir(output_root)
 
-        resolved_device = validate_device(device, label="SAM/Cutie")
+        resolved_device = _validate_device(device, label="SAM/Cutie")
 
         # The deferred imports and the constructors are inside the guard because
         # both report a missing or unusable install by raising: without the SAM
@@ -725,7 +725,7 @@ def run_gt_mode(
     output_dir = timestamped_run_dir(output_root)
 
     try:
-        device = validate_device(device, label="SAM/Cutie")
+        device = _validate_device(device, label="SAM/Cutie")
 
         # The deferred imports and the constructors are inside the guard because
         # both report a missing or unusable install by raising: without the SAM

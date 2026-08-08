@@ -13,8 +13,7 @@ What lives where, so that no component keeps a private copy of a shared helper:
 - :mod:`trackers.cli._annotate`: the drawing helpers, because the ``benchmark``
   commands render the same overlays and must not drift from ``inspect``;
 - :mod:`trackers.utils.device`: device selection and validation, which are not
-  CLI-specific. ``validate_device`` is re-exported here because every component
-  calls it.
+  CLI-specific. Each component imports ``_validate_device`` from there directly.
 
 A helper stays local to one component only when its behaviour genuinely differs
 there, not merely because the name is repeated.
@@ -34,9 +33,6 @@ import cv2
 import numpy as np
 
 from trackers.core.masks.base import MaskOutput, TrackletSnapshot
-
-# Device validation is not CLI-specific, so it lives with the other device
-# helpers. Re-exported here because every inspect component reaches for it.
 
 if TYPE_CHECKING:
     import torch

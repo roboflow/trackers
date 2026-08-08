@@ -40,9 +40,9 @@ from trackers.cli.inspect._common import (
     save_rgb_image,
     tracklet_boxes,
     validate_and_clip_xyxy_box,
-    validate_device,
 )
 from trackers.core.masks.base import TrackletSnapshot
+from trackers.utils.device import _validate_device
 
 DEFAULT_OUTPUT_PATH = INSPECT_OUTPUT_ROOT / "sam" / "sam_masks.jpg"
 
@@ -96,7 +96,7 @@ def sam_inspection(
             )
             for index, single_box in enumerate(box)
         ]
-        resolved_device = validate_device(device, label="SAM")
+        resolved_device = _validate_device(device, label="SAM")
 
         # The deferred import and the constructor are inside the guard because
         # both report a missing or unusable install by raising: without the SAM

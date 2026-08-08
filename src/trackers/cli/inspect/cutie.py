@@ -52,9 +52,9 @@ from trackers.cli.inspect._common import (
     timestamped_run_dir,
     tracklet_boxes,
     validate_and_clip_xyxy_box,
-    validate_device,
 )
 from trackers.core.masks.base import TrackletSnapshot
+from trackers.utils.device import _validate_device
 
 if TYPE_CHECKING:
     from trackers.core.masks.cutie import CutieMaskPropagator
@@ -451,7 +451,7 @@ def cutie_inspection(
     )
 
     try:
-        device = validate_device(device, label="SAM/Cutie")
+        device = _validate_device(device, label="SAM/Cutie")
 
         # The deferred imports and the constructors are inside the guard because
         # both report a missing or unusable install by raising: without the SAM
