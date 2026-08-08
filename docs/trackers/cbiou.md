@@ -53,8 +53,7 @@ C-BIoU keeps the [ByteTrack](bytetrack.md)-style association pipeline used in [B
 
 !!! warning "Frame input is ignored by C-BIoU"
 
-    `CBIoUTracker.update()` accepts `frame` for API consistency with other trackers, but C-BIoU does not use image/frame pixels.
-    If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+    `CBIoUTracker.update()` accepts `frame` for API consistency with other trackers, but C-BIoU does not use image/frame pixels. If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
 
 ## Run on video, webcam, or RTSP stream
 

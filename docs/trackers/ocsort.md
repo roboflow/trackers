@@ -8,10 +8,7 @@ description: OC-SORT (Observation-Centric SORT) enhances SORT with three mechani
 
 ## What is OC-SORT?
 
-OC-SORT remains Simple, Online, and Real-Time like ([SORT](sort.md)) but improves robustness during occlusion and non-linear motion.
-It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These
-mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost
-due to object stopping or short-term occlusion.
+OC-SORT remains Simple, Online, and Real-Time like ([SORT](sort.md)) but improves robustness during occlusion and non-linear motion. It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost due to object stopping or short-term occlusion.
 
 ## How does OC-SORT compare to other trackers?
 
@@ -54,8 +51,7 @@ Together, these three mechanisms make OC-SORT effective for group dancing, sport
 
 !!! warning "Frame input is ignored by OC-SORT"
 
-    `OCSORTTracker.update()` accepts `frame` for API consistency with other trackers, but OC-SORT does not use image/frame pixels.
-    If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+    `OCSORTTracker.update()` accepts `frame` for API consistency with other trackers, but OC-SORT does not use image/frame pixels. If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
 
 ## Run on video, webcam, or RTSP stream
 
