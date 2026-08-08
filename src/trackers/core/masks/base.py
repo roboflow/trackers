@@ -47,7 +47,7 @@ class TrackletSnapshot:
 
 @dataclass(frozen=True)
 class MaskOutput:
-    """Mask information produced before McByte association."""
+    """Masks for one frame, keyed back to the tracklets they belong to."""
 
     masks: np.ndarray | None
     tracklet_mask_dict: dict[int, int]
