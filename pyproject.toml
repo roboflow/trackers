@@ -201,6 +201,10 @@ markers = [
     "integration: marks tests as integration tests (require external data download)",
 ]
 
+[tool.docformatter]
+wrap-summaries = 120
+wrap-descriptions = 120
+
 [tool.codespell]
 skip = "*.pth,*.svg"
 ignore-words-list = "mot"
