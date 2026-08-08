@@ -145,4 +145,4 @@ Every `inspect` command follows the same rules as the rest of the CLI:
 - Boolean options have a negative half, such as `--cmc.no_enable`.
 - List options take bracket syntax (`--modes=[locked_iou]`) and append with `+`.
 
-Outputs go to `outputs/inspect/<component>/` under the current working directory, one timestamped directory per run. The resolved path is printed when the run finishes.
+Outputs go to `outputs/inspect/<component>/` under the current working directory, one timestamped directory per run. `mask-manager` groups its runs by mode first, so they land in `outputs/inspect/mask-manager/<mode>/`, and a manual run is never mixed in with a ground-truth one. The resolved path is printed when the run finishes.

@@ -6,7 +6,9 @@
 
 """Compare locked-IoU and mask-conditioned McByte on one sequence.
 
-The script supports two detection-file layouts:
+A supported inspection command, in beta while the ``inspect`` group settles.
+
+Two detection-file layouts are supported:
 
 ``mot_tlwh``:
     ``frame,id,left,top,width,height,confidence,...``
@@ -127,12 +129,13 @@ class MaskOptions:
     """Settings that only the mask-conditioned run reads.
 
     Attributes:
-        device: Device used by SAM and Cutie in the mask-conditioned run.
+        device: Device used by SAM and Cutie in the mask-conditioned run. The
+            default ``auto`` resolves to CUDA when available, otherwise CPU.
         enable_isolated_matching: Allow mask evidence to rescue isolated
             positive-IoU pairs below the normal association threshold.
     """
 
-    device: str = "cuda"
+    device: str = "auto"
     enable_isolated_matching: bool = False
 
 

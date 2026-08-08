@@ -6,10 +6,10 @@
 
 """Visual sanity check for :class:`CutieMaskPropagator`.
 
-Intended for local validation only. No image assets are bundled and nothing here
-runs as part of the test suite. The caller supplies an image directory, a frame
-range, and one or more bounding boxes. SAM initializes masks on the first
-selected frame, then Cutie propagates them over the remaining selected frames.
+A supported inspection command, in beta while the ``inspect`` group settles. The
+caller supplies an image directory, a frame range, and one or more bounding
+boxes. SAM initializes masks on the first selected frame, then Cutie propagates
+them over the remaining selected frames.
 
 Usage
 -----
@@ -349,7 +349,7 @@ def cutie_command(
     add_at: list[str] | None = None,
     remove_at: list[str] | None = None,
     output_root: Path = DEFAULT_OUTPUT_ROOT,
-    device: str = "cuda",
+    device: str = "auto",
     sam_model_type: str = "vit_b",
     cutie_model_type: str = "base-mega",
     cutie_config_path: Path | None = None,
@@ -385,13 +385,15 @@ def cutie_command(
             or appended one at a time with ``--remove_at+ frame.jpg:3``.
         output_root: Root directory for timestamped outputs.
         device: Device used by SAM and Cutie, for example ``cpu`` or ``cuda``.
+            The default ``auto`` resolves to CUDA when available, otherwise CPU.
         sam_model_type: SAM model type.
         cutie_model_type: Cutie model type.
         cutie_config_path: Optional path to Cutie's Hydra config directory.
         cutie_config_name: Cutie Hydra config name.
 
     Returns:
-        Exit code: ``0`` on success, ``1`` on a validation error.
+        Exit code: ``0`` on success, ``1`` on a validation error or a failure to
+        build the models, such as a missing SAM or Cutie install.
     """
     try:
         add_events = [parse_add_mask_event(event) for event in add_at or []]
@@ -450,23 +452,28 @@ def cutie_command(
 
     try:
         device = validate_device(device, label="SAM/Cutie")
-    except (ImportError, RuntimeError) as error:
+
+        # The deferred imports and the constructors are inside the guard because
+        # both report a missing or unusable install by raising: without the SAM
+        # or Cutie extra the constructors raise ImportError carrying the install
+        # command. Left outside, that reaches the caller as a traceback rather
+        # than the exit code this command documents.
+        from trackers.core.masks.cutie import CutieMaskPropagator
+        from trackers.core.masks.sam import SAMBoxMaskGenerator
+
+        sam_generator = SAMBoxMaskGenerator(
+            model_type=sam_model_type,
+            device=device,
+        )
+        cutie_propagator = CutieMaskPropagator(
+            model_type=cutie_model_type,
+            config_path=cutie_config_path,
+            config_name=cutie_config_name,
+            device=device,
+        )
+    except (FileNotFoundError, ImportError, ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
-
-    from trackers.core.masks.cutie import CutieMaskPropagator
-    from trackers.core.masks.sam import SAMBoxMaskGenerator
-
-    sam_generator = SAMBoxMaskGenerator(
-        model_type=sam_model_type,
-        device=device,
-    )
-    cutie_propagator = CutieMaskPropagator(
-        model_type=cutie_model_type,
-        config_path=cutie_config_path,
-        config_name=cutie_config_name,
-        device=device,
-    )
 
     print_device_info(sam_generator.device, label="SAM/Cutie")
     print(f"Selected {len(frame_paths)} frames.")

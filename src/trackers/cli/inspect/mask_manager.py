@@ -6,7 +6,8 @@
 
 """Visual sanity check for :class:`MaskManager` with SAM + Cutie.
 
-Validates the real MaskManager orchestration:
+A supported inspection command, in beta while the ``inspect`` group settles. It
+validates the real MaskManager orchestration:
 
 - initialize masks from previous-frame tracklets,
 - propagate masks to the current frame,
@@ -94,7 +95,12 @@ from trackers.cli.inspect._common import (
 )
 from trackers.core.masks.base import MaskOutput, TrackletSnapshot
 
-DEFAULT_OUTPUT_ROOT = INSPECT_OUTPUT_ROOT / "mask_manager"
+# The directory segment matches the ``mask-manager`` component key registered in
+# INSPECT_COMPONENTS, so ``outputs/inspect/<component>/`` holds for every
+# component. Each mode then gets its own level, because manual and gt runs
+# produce different visualizations and reading them interleaved by timestamp
+# alone tells you nothing about which mode wrote what.
+DEFAULT_OUTPUT_ROOT = INSPECT_OUTPUT_ROOT / "mask-manager"
 
 MaskManagerMode = Literal["manual", "gt"]
 
@@ -250,7 +256,7 @@ def run_manual_mode(
     output_root: Path,
     add_at: list[str] | None = None,
     remove_at: list[str] | None = None,
-    device: str = "cuda",
+    device: str = "auto",
     sam_model_type: str = "vit_b",
     cutie_model_type: str = "base-mega",
     cutie_config_path: Path | None = None,
@@ -294,6 +300,7 @@ def run_manual_mode(
             ``--remove_at+ frame.jpg:3``.
         output_root: Directory holding one timestamped run directory per run.
         device: Device used by SAM and Cutie, for example ``cuda`` or ``cpu``.
+            The default ``auto`` resolves to CUDA when available, otherwise CPU.
         sam_model_type: SAM model type.
         cutie_model_type: Cutie model type.
         cutie_config_path: Directory holding the Cutie config; ``None`` uses the
@@ -301,7 +308,8 @@ def run_manual_mode(
         cutie_config_name: Name of the Cutie config to load.
 
     Returns:
-        Exit code: ``0`` on success, ``1`` on validation error.
+        Exit code: ``0`` on success, ``1`` on validation error or a failure to
+        build the models, such as a missing SAM or Cutie install.
     """
     try:
         add_events = [parse_add_tracklet_event(event) for event in add_at or []]
@@ -327,26 +335,31 @@ def run_manual_mode(
         output_dir = timestamped_run_dir(output_root)
 
         resolved_device = validate_device(device, label="SAM/Cutie")
+
+        # The deferred imports and the constructors are inside the guard because
+        # both report a missing or unusable install by raising: without the SAM
+        # or Cutie extra the constructors raise ImportError carrying the install
+        # command. Left outside, that reaches the caller as a traceback rather
+        # than the exit code this command documents.
+        from trackers.core.masks.cutie import CutieMaskPropagator
+        from trackers.core.masks.manager import MaskManager
+        from trackers.core.masks.sam import SAMBoxMaskGenerator
+
+        mask_manager = MaskManager(
+            mask_generator=SAMBoxMaskGenerator(
+                model_type=sam_model_type,
+                device=resolved_device,
+            ),
+            mask_propagator=CutieMaskPropagator(
+                model_type=cutie_model_type,
+                config_path=cutie_config_path,
+                config_name=cutie_config_name,
+                device=resolved_device,
+            ),
+        )
     except (FileNotFoundError, ImportError, ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
-
-    from trackers.core.masks.cutie import CutieMaskPropagator
-    from trackers.core.masks.manager import MaskManager
-    from trackers.core.masks.sam import SAMBoxMaskGenerator
-
-    mask_manager = MaskManager(
-        mask_generator=SAMBoxMaskGenerator(
-            model_type=sam_model_type,
-            device=resolved_device,
-        ),
-        mask_propagator=CutieMaskPropagator(
-            model_type=cutie_model_type,
-            config_path=cutie_config_path,
-            config_name=cutie_config_name,
-            device=resolved_device,
-        ),
-    )
 
     try:
         first_frame = load_rgb_image(frame_paths[0])
@@ -644,7 +657,7 @@ def run_gt_mode(
     end_frame: int,
     output_root: Path,
     tracklet_id: list[PositiveInt | Literal["all"]] | None = None,
-    device: str = "cuda",
+    device: str = "auto",
     sam_model_type: str = "vit_b",
     cutie_model_type: str = "base-mega",
     cutie_config_path: Path | None = None,
@@ -685,6 +698,7 @@ def run_gt_mode(
             or pass ``--tracklet_id=[all]``, to replay all tracklets.
         output_root: Root directory for timestamped outputs.
         device: Device used by SAM and Cutie, for example ``cpu`` or ``cuda``.
+            The default ``auto`` resolves to CUDA when available, otherwise CPU.
         sam_model_type: SAM model type.
         cutie_model_type: Cutie model type.
         cutie_config_path: Optional path to Cutie's Hydra config directory.
@@ -693,7 +707,8 @@ def run_gt_mode(
             mask creation is delayed.
 
     Returns:
-        Exit code: ``0`` on success, ``1`` on a validation error.
+        Exit code: ``0`` on success, ``1`` on a validation error or a failure to
+        build the models, such as a missing SAM or Cutie install.
     """
     try:
         validate_frame_range(start_frame, end_frame)
@@ -710,27 +725,32 @@ def run_gt_mode(
 
     try:
         device = validate_device(device, label="SAM/Cutie")
-    except (ImportError, RuntimeError) as error:
+
+        # The deferred imports and the constructors are inside the guard because
+        # both report a missing or unusable install by raising: without the SAM
+        # or Cutie extra the constructors raise ImportError carrying the install
+        # command. Left outside, that reaches the caller as a traceback rather
+        # than the exit code this command documents.
+        from trackers.core.masks.cutie import CutieMaskPropagator
+        from trackers.core.masks.manager import MaskManager
+        from trackers.core.masks.sam import SAMBoxMaskGenerator
+
+        mask_manager = MaskManager(
+            mask_generator=SAMBoxMaskGenerator(
+                model_type=sam_model_type,
+                device=device,
+            ),
+            mask_propagator=CutieMaskPropagator(
+                model_type=cutie_model_type,
+                config_path=cutie_config_path,
+                config_name=cutie_config_name,
+                device=device,
+            ),
+            mask_creation_bbox_overlap_threshold=mask_creation_bbox_overlap_threshold,
+        )
+    except (FileNotFoundError, ImportError, ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
-
-    from trackers.core.masks.cutie import CutieMaskPropagator
-    from trackers.core.masks.manager import MaskManager
-    from trackers.core.masks.sam import SAMBoxMaskGenerator
-
-    mask_manager = MaskManager(
-        mask_generator=SAMBoxMaskGenerator(
-            model_type=sam_model_type,
-            device=device,
-        ),
-        mask_propagator=CutieMaskPropagator(
-            model_type=cutie_model_type,
-            config_path=cutie_config_path,
-            config_name=cutie_config_name,
-            device=device,
-        ),
-        mask_creation_bbox_overlap_threshold=mask_creation_bbox_overlap_threshold,
-    )
 
     print(f"Selected tracklets: {'all' if selected_tracklet_ids is None else sorted(selected_tracklet_ids)}")
     print(f"Selected frame range: {start_frame} to {end_frame}")
@@ -890,7 +910,7 @@ def mask_manager_command(
     end_frame: int | None = None,
     tracklet_id: list[PositiveInt | Literal["all"]] | None = None,
     output_root: Path = DEFAULT_OUTPUT_ROOT,
-    device: str = "cuda",
+    device: str = "auto",
     sam_model_type: str = "vit_b",
     cutie_model_type: str = "base-mega",
     cutie_config_path: Path | None = None,
@@ -942,8 +962,10 @@ def mask_manager_command(
         tracklet_id: ``gt`` mode. Tracklet IDs to replay, for example
             ``--tracklet_id='[3,7]'``. Omit the option, or pass
             ``--tracklet_id='[all]'``, to replay every tracklet.
-        output_root: Directory holding one timestamped run directory per run.
+        output_root: Directory holding the run directories. Runs are grouped by
+            mode, so each one lands in ``<output_root>/<mode>/<timestamp>/``.
         device: Device used by SAM and Cutie, for example ``cuda`` or ``cpu``.
+            The default ``auto`` resolves to CUDA when available, otherwise CPU.
         sam_model_type: SAM model type.
         cutie_model_type: Cutie model type.
         cutie_config_path: Directory holding the Cutie config; ``None`` uses the
@@ -953,7 +975,8 @@ def mask_manager_command(
             above which mask creation is delayed. Defaults to ``0.6``.
 
     Returns:
-        Exit code: ``0`` on success, ``1`` on validation error.
+        Exit code: ``0`` on success, ``1`` on validation error or a failure to
+        build the models, such as a missing SAM or Cutie install.
 
     Examples:
         A foreign option is reported on stderr and exits non-zero, so only the
@@ -980,13 +1003,17 @@ def mask_manager_command(
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
+    # The mode is inserted here rather than in either runner, so a caller-supplied
+    # --output_root is grouped the same way the default one is.
+    mode_output_root = output_root / mode
+
     if mode == "gt":
         return run_gt_mode(
             image_dir=image_dir,
             gt_file=gt_file,  # type: ignore[arg-type]
             start_frame=start_frame,  # type: ignore[arg-type]
             end_frame=end_frame,  # type: ignore[arg-type]
-            output_root=output_root,
+            output_root=mode_output_root,
             tracklet_id=tracklet_id,
             device=device,
             sam_model_type=sam_model_type,
@@ -1005,7 +1032,7 @@ def mask_manager_command(
         start_file=start_file,  # type: ignore[arg-type]
         end_file=end_file,  # type: ignore[arg-type]
         box=box,  # type: ignore[arg-type]
-        output_root=output_root,
+        output_root=mode_output_root,
         add_at=add_at,
         remove_at=remove_at,
         device=device,

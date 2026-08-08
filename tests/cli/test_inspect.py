@@ -13,7 +13,9 @@ that a wrong invocation is rejected before any model is touched.
 
 from __future__ import annotations
 
+import inspect
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -26,6 +28,7 @@ from trackers.cli.inspect._common import (
     INSPECT_OUTPUT_ROOT,
     list_selected_frame_paths,
     parse_xyxy_box,
+    require_torch,
     timestamped_run_dir,
 )
 from trackers.cli.inspect.mask_manager import (
@@ -91,12 +94,44 @@ class TestInspectArgumentNormalisation:
         assert translated[1] == "mask-manager"
 
 
+# Parameters of ``mask_manager_command`` that belong to neither mode: the two
+# frame sources (``image_dir``), the selector itself (``mode``), and the model
+# and output settings both modes read. Everything else is mode-specific and must
+# be registered in one of the two tuples, which is what the guard below asserts.
+_SHARED_MASK_MANAGER_OPTIONS = frozenset(
+    {
+        "image_dir",
+        "mode",
+        "output_root",
+        "device",
+        "sam_model_type",
+        "cutie_model_type",
+        "cutie_config_path",
+        "cutie_config_name",
+    }
+)
+
+
 class TestMaskManagerModeValidation:
     """``--mode`` selects one option set, and the other is rejected, not ignored."""
 
     def test_manual_and_gt_option_sets_are_disjoint(self) -> None:
         """The two tables must not overlap, or an option would be foreign to both modes."""
         assert not set(_MANUAL_ONLY_OPTIONS) & set(_GT_ONLY_OPTIONS)
+
+    def test_every_mode_specific_parameter_is_registered(self) -> None:
+        """A new mode-specific option must join a mode tuple, or its mode is never enforced.
+
+        The tuples are hand-maintained, so they drift from the signature silently:
+        an unregistered option is accepted under both modes instead of one.
+        Equality rather than containment, so a tuple entry left behind by a
+        rename is caught in the same assertion.
+        """
+        parameters = set(inspect.signature(mask_manager_command).parameters)
+
+        mode_specific = parameters - _SHARED_MASK_MANAGER_OPTIONS
+
+        assert mode_specific == set(_MANUAL_ONLY_OPTIONS) | set(_GT_ONLY_OPTIONS)
 
     @pytest.mark.parametrize(
         ("mode", "supplied", "expected"),
@@ -186,12 +221,31 @@ class TestInspectCommonHelpers:
         [
             pytest.param("10,20,110", id="too-few"),
             pytest.param("10,20,110,220,330", id="too-many"),
+            pytest.param("a,b,c,d", id="non-numeric"),
+            pytest.param("10,20,110,left", id="one-non-numeric"),
+            pytest.param("", id="empty"),
         ],
     )
-    def test_parse_xyxy_box_rejects_wrong_arity(self, box: str) -> None:
-        """A box that is not exactly four values is an error."""
-        with pytest.raises(ValueError, match="exactly 4 comma-separated values"):
+    def test_parse_xyxy_box_rejects_malformed_input(self, box: str) -> None:
+        """Wrong count and non-numeric tokens are the same mistake, reported the same way.
+
+        A non-numeric token used to escape as a bare ``could not convert string
+        to float`` from the standard library, naming neither the option nor the
+        expected format.
+        """
+        with pytest.raises(ValueError, match="exactly 4 comma-separated numbers"):
             parse_xyxy_box(box)
+
+    def test_require_torch_names_the_mask_extra(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A torch-free install is told which extra to install, not that an import failed.
+
+        ``None`` in ``sys.modules`` makes the interpreter itself refuse the
+        import, which is the closest stand-in for the extra being absent.
+        """
+        monkeypatch.setitem(sys.modules, "torch", None)
+
+        with pytest.raises(ImportError, match=re.escape("trackers[mask]")):
+            require_torch()
 
     def test_output_root_is_relative_to_the_working_directory(self) -> None:
         """Outputs land where the caller ran the command, never in the source tree."""

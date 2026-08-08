@@ -6,10 +6,9 @@
 
 """Visual sanity check for :class:`SAMBoxMaskGenerator`.
 
-Intended for local validation and development debugging. No image assets are
-bundled and nothing here runs as part of the test suite. The caller supplies an
-image and one or more bounding boxes; the command saves an image with SAM masks
-and boxes overlaid.
+A supported inspection command, in beta while the ``inspect`` group settles. The
+caller supplies an image and one or more bounding boxes; the command saves an
+image with SAM masks and boxes overlaid.
 
 Usage
 -----
@@ -52,7 +51,7 @@ def sam_command(
     image_path: Path,
     box: list[tuple[float, float, float, float]],
     output_path: Path = DEFAULT_OUTPUT_PATH,
-    device: str = "cpu",
+    device: str = "auto",
     model_type: str = "vit_b",
 ) -> int:
     """Run SAM mask generation, report the execution device, and save a visualization.
@@ -67,11 +66,13 @@ def sam_command(
             ``--box='[[10,20,110,220],[30,40,130,240]]'`` for two, and
             ``--box+='[[30,40,130,240]]'`` to append to boxes already given.
         output_path: Path to save the visualization.
-        device: Device used by SAM, for example ``cpu`` or ``cuda``.
+        device: Device used by SAM, for example ``cpu`` or ``cuda``. The default
+            ``auto`` resolves to CUDA when available, otherwise CPU.
         model_type: SAM model type.
 
     Returns:
-        Exit code: ``0`` on success, ``1`` on validation error.
+        Exit code: ``0`` on success, ``1`` on validation error or a failure to
+        build the model, such as a missing SAM install.
 
     Raises:
         RuntimeError: If SAM returns no masks for the given boxes.
@@ -96,16 +97,22 @@ def sam_command(
             for index, single_box in enumerate(box)
         ]
         resolved_device = validate_device(device, label="SAM")
+
+        # The deferred import and the constructor are inside the guard because
+        # both report a missing or unusable install by raising: without the SAM
+        # extra the constructor raises ImportError carrying the install command.
+        # Left outside, that reaches the caller as a traceback rather than the
+        # exit code this command documents.
+        from trackers.core.masks.sam import SAMBoxMaskGenerator
+
+        generator = SAMBoxMaskGenerator(
+            model_type=model_type,
+            device=resolved_device,
+        )
     except (FileNotFoundError, ImportError, ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    from trackers.core.masks.sam import SAMBoxMaskGenerator
-
-    generator = SAMBoxMaskGenerator(
-        model_type=model_type,
-        device=resolved_device,
-    )
     print_device_info(generator.device, label="SAM")
 
     mask_output = generator.generate(

@@ -186,15 +186,28 @@ def parse_xyxy_box(box: str) -> tuple[float, float, float, float]:
         The box as an ``(x1, y1, x2, y2)`` tuple.
 
     Raises:
-        ValueError: If the string does not hold exactly four values.
+        ValueError: If the string does not hold exactly four numbers.
 
     Examples:
         >>> parse_xyxy_box("10,20,110,220")
         (10.0, 20.0, 110.0, 220.0)
+        >>> parse_xyxy_box("10,20,110,left")
+        Traceback (most recent call last):
+        ...
+        ValueError: Each box must contain exactly 4 comma-separated numbers: x1,y1,x2,y2. Got '10,20,110,left'.
     """
-    values = [float(value) for value in box.split(",")]
+    message = f"Each box must contain exactly 4 comma-separated numbers: x1,y1,x2,y2. Got {box!r}."
+
+    # A non-numeric token is the same user mistake as the wrong count, so it is
+    # reported the same way. Letting float() surface its own "could not convert
+    # string to float" would name neither the option nor the expected format.
+    try:
+        values = [float(value) for value in box.split(",")]
+    except ValueError as error:
+        raise ValueError(message) from error
+
     if len(values) != 4:
-        raise ValueError("Each box must contain exactly 4 comma-separated values: x1,y1,x2,y2.")
+        raise ValueError(message)
     return values[0], values[1], values[2], values[3]
 
 
