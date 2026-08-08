@@ -1,8 +1,6 @@
 # GitHub Copilot Instructions — Roboflow Trackers
 
-Roboflow Trackers is a Python library for multi-object tracking (MOT). It provides clean-room
-implementations of SORT, ByteTrack, and OC-SORT that plug into any detection model via the
-`supervision` library.
+Roboflow Trackers is a Python library for multi-object tracking (MOT). It provides clean-room implementations of SORT, ByteTrack, and OC-SORT that plug into any detection model via the `supervision` library.
 
 ## Installation
 
@@ -59,8 +57,7 @@ trackers/
 
 ## Detection Format
 
-Input: `supervision.Detections` with `.xyxy` bounding boxes.
-Output: same `supervision.Detections` with `.tracker_id` populated.
+Input: `supervision.Detections` with `.xyxy` bounding boxes. Output: same `supervision.Detections` with `.tracker_id` populated.
 
 Internal state uses `xcycsr` (center-x, center-y, area, aspect ratio) for Kalman filter.
 

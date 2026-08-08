@@ -32,17 +32,11 @@ For more options, see the [install guide](install.md).
 
 The tuner needs matching MOT files for ground truth and detections.
 
-By default, the **first trial** evaluates a baseline parameter set before Optuna
-samples further combinations. That trial counts toward `--n-trials` / `n_trials`.
-Set `enqueue_defaults=False` on `Tuner` to disable this behavior.
+By default, the **first trial** evaluates a baseline parameter set before Optuna samples further combinations. That trial counts toward `--n-trials` / `n_trials`. Set `enqueue_defaults=False` on `Tuner` to disable this behavior.
 
-For each `search_space` key, the baseline uses the tracker's default
-when it lies within the search space.
+For each `search_space` key, the baseline uses the tracker's default when it lies within the search space.
 
-Options that are not tuned (or differ from `__init__`) are set with
-`fixed_params` on `Tuner`. They apply to every trial, including the baseline,
-override the same key in `search_space` if present, and are returned from
-`run()` merged into the best parameter dict.
+Options that are not tuned (or differ from `__init__`) are set with `fixed_params` on `Tuner`. They apply to every trial, including the baseline, override the same key in `search_space` if present, and are returned from `run()` merged into the best parameter dict.
 
 === "Python"
 
@@ -79,9 +73,7 @@ override the same key in `search_space` if present, and are returned from
         --fixed_params '{"enable_cmc": false}'
     ```
 
-Images are read from `{images_dir}/{sequence}/img1/` using MOT-style stems:
-6-digit (`000001.jpg`, MOT17/SportsMOT) or 8-digit (`00000001.jpg`, DanceTrack),
-plus common extensions (`.jpg`, `.png`, …).
+Images are read from `{images_dir}/{sequence}/img1/` using MOT-style stems: 6-digit (`000001.jpg`, MOT17/SportsMOT) or 8-digit (`00000001.jpg`, DanceTrack), plus common extensions (`.jpg`, `.png`, …).
 
 ```text
 data
