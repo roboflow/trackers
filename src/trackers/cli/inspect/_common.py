@@ -41,16 +41,14 @@ from trackers.core.masks.base import MaskOutput, TrackletSnapshot
 if TYPE_CHECKING:
     import torch
 
+# Frame file suffixes recognised when listing an image directory.
 IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".webp"})
-"""Frame file suffixes recognised when listing an image directory."""
 
+# Base output directory, resolved against the current working directory.
+# Every component defaults to ``INSPECT_OUTPUT_ROOT / <component>``. The path is
+# deliberately relative to the working directory rather than to the repository, so
+# an installed ``trackers`` writes somewhere the caller chose.
 INSPECT_OUTPUT_ROOT = Path("outputs/inspect")
-"""Base output directory, resolved against the current working directory.
-
-Every component defaults to ``INSPECT_OUTPUT_ROOT / <component>``. The path is
-deliberately relative to the working directory rather than to the repository, so
-an installed ``trackers`` writes somewhere the caller chose.
-"""
 
 _MASK_EXTRA_HINT = "trackers inspect requires the mask extra: pip install 'trackers[mask]'"
 
