@@ -6,14 +6,12 @@
 
 """Parser conventions shared by every trackers command.
 
-Everything here is permanent: the option-name spelling rule, the boolean option
-pair, and the nested option groups of ``track``. The transitional rewrites that
-accept the previous release's spellings live in :mod:`trackers.cli._legacy`.
+Everything here is permanent: the option-name spelling rule, the boolean option pair, and the nested option groups of
+``track``. The transitional rewrites that accept the previous release's spellings live in :mod:`trackers.cli._legacy`.
 
-This module deliberately imports nothing from :mod:`trackers.cli.__main__`. The
-entry point imports every subcommand, so a subcommand reaching back for the
-shared parser through ``__main__`` would import a half-initialised module.
-Import from here instead.
+This module deliberately imports nothing from :mod:`trackers.cli.__main__`. The entry point imports every subcommand, so
+a subcommand reaching back for the shared parser through ``__main__`` would import a half-initialised module. Import
+from here instead.
 """
 
 from __future__ import annotations

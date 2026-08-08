@@ -206,10 +206,8 @@ def test_mcbyte_does_not_advance_masks_on_duplicate_timestamp() -> None:
 def test_mcbyte_warns_once_for_mask_manager_with_dynamic_rate_timestamps() -> None:
     """enable_mask_manager + dynamic-rate timestamps warns once, not on every call.
 
-    The mask backend advances one step per update() call regardless of
-    elapsed time, while Kalman prediction and pruning scale by timestamp —
-    a desync that grows with gap size. Disclosed in docs; this warning
-    surfaces it at runtime too.
+    The mask backend advances one step per update() call regardless of elapsed time, while Kalman prediction and pruning
+    scale by timestamp — a desync that grows with gap size. Disclosed in docs; this warning surfaces it at runtime too.
     """
     mask_manager = SpyMaskManager()
     tracker = McByteTracker(
@@ -804,10 +802,9 @@ def test_mcbyte_rejects_unused_mask_config() -> None:
 def test_get_iou_matrix_raises_contextual_error_on_cache_miss() -> None:
     """_get_iou_matrix raises a contextual KeyError when a tracklet is absent from the cache.
 
-    The decode-once map must contain every tracklet passed to the helper (it is
-    built from ``self.tracks`` once per ``update()``). A miss is an internal-invariant
-    violation; the helper surfaces it with a message naming the cache contract rather
-    than a bare ``KeyError: <id int>``.
+    The decode-once map must contain every tracklet passed to the helper (it is built from ``self.tracks`` once per
+    ``update()``). A miss is an internal-invariant violation; the helper surfaces it with a message naming the cache
+    contract rather than a bare ``KeyError: <id int>``.
     """
     tracker = McByteTracker(enable_cmc=False, enable_mask_manager=False)
     tracklet = McByteTracklet(initial_bbox=np.array([0.0, 0.0, 10.0, 10.0], dtype=np.float32))

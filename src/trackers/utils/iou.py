@@ -424,8 +424,8 @@ class CIoU(BaseIoU):
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
         """Shift and clamp CIoU scores into ``[0, 1]`` for BoT-SORT fusion.
 
-        CIoU can fall below ``-1`` (see class docstring), so the clamp inside
-        :func:`_shift_signed_to_unit_range` is non-trivial here.
+        CIoU can fall below ``-1`` (see class docstring), so the clamp inside :func:`_shift_signed_to_unit_range` is
+        non-trivial here.
         """
         return _shift_signed_to_unit_range(similarity_matrix)
 

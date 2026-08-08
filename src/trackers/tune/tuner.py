@@ -200,9 +200,8 @@ class Tuner:
     def _validate_sequence_files(self) -> None:
         """Validate that every selected sequence has required MOT files.
 
-        This performs eager filesystem validation so configuration errors are
-        reported during tuner initialization rather than later during trial
-        execution.
+        This performs eager filesystem validation so configuration errors are reported during tuner initialization
+        rather than later during trial execution.
         """
         missing_detection_files = [
             str(self._detections_dir / f"{seq_name}.txt")

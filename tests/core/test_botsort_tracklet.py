@@ -6,8 +6,7 @@
 
 """BoT-SORT-specific tracklet tests.
 
-Generic predict/update contracts (time_since_update, age) are covered for all
-tracklet classes in test_tracklets.py.
+Generic predict/update contracts (time_since_update, age) are covered for all tracklet classes in test_tracklets.py.
 """
 
 from __future__ import annotations

@@ -39,8 +39,7 @@ class TestResolveAutoDevice:
     def test_mps_is_never_auto_selected(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """MPS is measurably slower than CPU for this pipeline, so ``auto`` must skip it.
 
-        Availability is forced on for both accelerators; only an explicit
-        ``device="mps"`` may opt in.
+        Availability is forced on for both accelerators; only an explicit ``device="mps"`` may opt in.
         """
         monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
         monkeypatch.setattr(torch.backends.mps, "is_available", lambda: True)

@@ -239,8 +239,7 @@ class CMC:
     """
 
     def __init__(self, cfg: CMCConfig | None = None) -> None:
-        """
-        Initialize CMC.
+        """Initialize CMC.
 
         Args:
             cfg: Optional configuration. If None, defaults are used.
@@ -297,8 +296,7 @@ class CMC:
         self.reset()
 
     def reset(self) -> None:
-        """
-        Reset internal state.
+        """Reset internal state.
 
         After calling reset:
         - The next `estimate()` call returns identity and initializes prev-frame state.
@@ -357,9 +355,9 @@ class CMC:
         return np.eye(2, 3, dtype=np.float32)
 
     def _estimate_feature_affine(self, frame_bgr: np.ndarray, dets_xyxy: np.ndarray | None = None) -> np.ndarray:
-        """
-        Feature affine estimation. ORB-based or SIFT-based
-        (different initializations of self.detector, self.extractor and self.matcher for
+        """Feature affine estimation.
+
+        ORB-based or SIFT-based (different initializations of self.detector, self.extractor and self.matcher for
         ORB and SIFT)
 
         Steps:
@@ -486,8 +484,7 @@ class CMC:
         return affine_mtx
 
     def _estimate_sparse_optflow(self, frame_bgr: np.ndarray) -> np.ndarray:
-        """
-        Sparse optical-flow-based affine estimation.
+        """Sparse optical-flow-based affine estimation.
 
         Steps:
             1) grayscale (+ optional downscale)
@@ -603,8 +600,7 @@ class CMC:
         return affine_mtx
 
     def _estimate_ecc(self, frame_bgr: np.ndarray) -> np.ndarray:
-        """
-        ECC-based affine motion estimation.
+        """ECC-based affine motion estimation.
 
         This method estimates a global 2D Euclidean transform between the previous
         frame and the current frame using OpenCV's Enhanced Correlation Coefficient

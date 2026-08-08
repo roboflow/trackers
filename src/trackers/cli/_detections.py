@@ -6,19 +6,15 @@
 
 """Detection-file reading shared by ``benchmark`` and ``inspect``.
 
-Both command groups replay pre-computed detections through a tracker, so both
-need the same parser, the same frame lookup, and the same frame loader. They had
-their own copies, which had already drifted apart in error wording and in the
-set of image extensions they accepted.
+Both command groups replay pre-computed detections through a tracker, so both need the same parser, the same frame
+lookup, and the same frame loader. They had their own copies, which had already drifted apart in error wording and in
+the set of image extensions they accepted.
 
-Not merged into :mod:`trackers.io.mot`: ``load_mot_file`` there returns
-evaluation-shaped ``_MOTFrameData`` — boxes as ``xywh``, plus the class and
-visibility columns that ground-truth filtering needs — and handles one layout.
-What these commands need is a detection record across two layouts. Same file
-extension, different contract.
+Not merged into :mod:`trackers.io.mot`: ``load_mot_file`` there returns evaluation-shaped ``_MOTFrameData`` — boxes as
+``xywh``, plus the class and visibility columns that ground-truth filtering needs — and handles one layout. What these
+commands need is a detection record across two layouts. Same file extension, different contract.
 
-Infrastructure module, not a command — see :mod:`trackers.cli` for the layout
-rule.
+Infrastructure module, not a command — see :mod:`trackers.cli` for the layout rule.
 """
 
 from __future__ import annotations
@@ -47,12 +43,10 @@ IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 DetectionFileFormat = Literal["mot_tlwh", "mot", "xyxy"]
 """Detection-file column layout.
 
-``mot_tlwh`` (spelled ``mot`` by the benchmark datasets)
-    ``frame,id,left,top,width,height,confidence,...`` — the identity column is
-    ignored, since tracker identities are what these commands produce.
+``mot_tlwh`` (spelled ``mot`` by the benchmark datasets)     ``frame,id,left,top,width,height,confidence,...`` — the
+identity column is     ignored, since tracker identities are what these commands produce.
 
-``xyxy``
-    ``frame,x1,y1,x2,y2,confidence``
+``xyxy``     ``frame,x1,y1,x2,y2,confidence``
 """
 
 _FRAME_NUMBER_WIDTHS = (6, 8)

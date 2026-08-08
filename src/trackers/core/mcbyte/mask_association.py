@@ -88,9 +88,8 @@ def _get_clear_matches(
 ) -> list[tuple[int, int]]:
     """Return threshold-valid pairs that are unique in both row and column.
 
-    Eligibility is determined from the untouched similarity matrix. A pair is
-    clear when it is the only threshold-valid candidate for both its tracklet
-    row and its detection column.
+    Eligibility is determined from the untouched similarity matrix. A pair is clear when it is the only threshold-valid
+    candidate for both its tracklet row and its detection column.
     """
     eligible = similarity >= minimum_similarity
     row_candidate_counts = eligible.sum(axis=1)
@@ -135,9 +134,8 @@ def _get_ambiguous_candidate_matrix(
 ) -> np.ndarray:
     """Return eligible pairs belonging to an ambiguous row or column.
 
-    Ambiguity is always computed from the untouched base similarity matrix.
-    A pair is ambiguous when its tracklet has multiple eligible detections or
-    its detection has multiple eligible tracklets.
+    Ambiguity is always computed from the untouched base similarity matrix. A pair is ambiguous when its tracklet has
+    multiple eligible detections or its detection has multiple eligible tracklets.
     """
     eligible = similarity >= minimum_similarity
     ambiguous_rows = eligible.sum(axis=1) > 1
@@ -153,9 +151,8 @@ def _get_isolated_candidate_matrix(
 ) -> np.ndarray:
     """Return isolated positive-IoU pairs below the normal threshold.
 
-    A pair is isolated when it is the only positive-IoU edge in both its row
-    and its column. Isolation is based exclusively on raw IoU geometry, not on
-    score-fused similarity.
+    A pair is isolated when it is the only positive-IoU edge in both its row and its column. Isolation is based
+    exclusively on raw IoU geometry, not on score-fused similarity.
     """
     positive_iou = raw_iou_similarity > 0.0
     isolated_rows = positive_iou.sum(axis=1) == 1

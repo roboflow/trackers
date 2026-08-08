@@ -25,8 +25,8 @@ def _sequential_hota_reference(
 ) -> dict[str, np.ndarray]:
     """Pre-vectorization HOTA reference: per-alpha Python loop + dict id-remapping.
 
-    Mirrors the pre-PR second-pass logic (commit 2ca10bd^) for differential testing.
-    Used only by test_output_matches_sequential_reference to guard the hot path.
+    Mirrors the pre-PR second-pass logic (commit 2ca10bd^) for differential testing. Used only by
+    test_output_matches_sequential_reference to guard the hot path.
     """
     from scipy.optimize import linear_sum_assignment
 
@@ -301,9 +301,8 @@ class TestComputeHOTAMetrics:
     def test_metrics_invariant_to_id_relabeling(self) -> None:
         """HOTA depends only on association structure, not on the integer id values.
 
-        Relabeling ground-truth and tracker ids with a consistent, non-monotonic
-        bijection (including ids that are unsorted within a frame) must leave every
-        metric unchanged. This guards the internal id-to-index remapping.
+        Relabeling ground-truth and tracker ids with a consistent, non-monotonic bijection (including ids that are
+        unsorted within a frame) must leave every metric unchanged. This guards the internal id-to-index remapping.
         """
         gt_ids = [
             np.array([0, 1, 2]),
@@ -395,9 +394,8 @@ class TestComputeHOTAMetrics:
     ) -> None:
         """Vectorized implementation is bit-identical to pre-vectorization sequential version.
 
-        Guards the hot path against future silent drift. Compares per-alpha arrays
-        between the vectorized code and _sequential_hota_reference (dict map +
-        per-alpha Python loop, matching commit 2ca10bd^).
+        Guards the hot path against future silent drift. Compares per-alpha arrays between the vectorized code and
+        _sequential_hota_reference (dict map + per-alpha Python loop, matching commit 2ca10bd^).
         """
         new_result = compute_hota_metrics(gt_ids, tracker_ids, similarity_scores)
         ref_result = _sequential_hota_reference(gt_ids, tracker_ids, similarity_scores)

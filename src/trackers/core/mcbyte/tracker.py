@@ -150,7 +150,6 @@ def _build_default_mask_manager(
     config: McByteMaskConfig,
 ) -> MaskManager:
     """Create McByte's standard SAM + Cutie mask-management pipeline."""
-
     from trackers.core.masks.cutie import CutieMaskPropagator
     from trackers.core.masks.sam import SAMBoxMaskGenerator
 
@@ -759,8 +758,8 @@ class McByteTracker(BaseTracker):
     ) -> list[TrackletSnapshot]:
         """Convert tracker output detections into mask-manager tracklet snapshots.
 
-        Only detections with valid non-negative tracker IDs are converted. The returned
-        snapshots contain the tracker ID and ``xyxy`` box needed by mask generators.
+        Only detections with valid non-negative tracker IDs are converted. The returned snapshots contain the tracker ID
+        and ``xyxy`` box needed by mask generators.
         """
         if detections.tracker_id is None:
             return []
@@ -782,10 +781,9 @@ class McByteTracker(BaseTracker):
     ) -> None:
         """Store tracker outputs and mask lifecycle events for the next frame.
 
-        The mask manager consumes these values at the beginning of the next ``update()``
-        call. New tracklets are detected among current visible outputs that do not yet
-        have masks. Removed tracklets are provided explicitly from tracker pruning, so
-        temporarily lost but still alive tracklets keep their masks.
+        The mask manager consumes these values at the beginning of the next ``update()`` call. New tracklets are
+        detected among current visible outputs that do not yet have masks. Removed tracklets are provided explicitly
+        from tracker pruning, so temporarily lost but still alive tracklets keep their masks.
         """
         if self.mask_manager is None or frame is None:
             self._previous_frame = None
@@ -1020,10 +1018,8 @@ class McByteTracker(BaseTracker):
         similarity_matrix: np.ndarray,
         min_similarity_thresh: float,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """
-        Associate detections to tracks based on Similarity (IoU) using the
-        Jonker-Volgenant algorithm approach with no initialization instead of the
-        Hungarian algorithm as mentioned in the SORT paper, but it solves the
+        """Associate detections to tracks based on Similarity (IoU) using the Jonker-Volgenant algorithm approach with
+        no initialization instead of the Hungarian algorithm as mentioned in the SORT paper, but it solves the
         assignment problem in an optimal way.
 
         Args:
@@ -1100,9 +1096,9 @@ class McByteTracker(BaseTracker):
     def reset(self) -> None:
         """Reset tracker, camera-motion, and mask-manager state.
 
-        This clears active tracklets, resets the global McByte track ID counter, clears
-        stored mask lifecycle inputs, and resets optional camera motion compensation and
-        mask-manager components. Call this when switching to a new video or scene.
+        This clears active tracklets, resets the global McByte track ID counter, clears stored mask lifecycle inputs,
+        and resets optional camera motion compensation and mask-manager components. Call this when switching to a new
+        video or scene.
         """
         self.tracks = []
         self.frame_id = 0

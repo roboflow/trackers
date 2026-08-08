@@ -6,17 +6,14 @@
 
 """Drawing shared by every command that renders frames.
 
-Everything here delegates to ``supervision`` annotators rather than calling
-OpenCV directly. The library is already a hard dependency and already speaks
-:class:`sv.Detections`, so a bespoke box or mask drawer buys nothing but a
-second visual style to keep in sync.
+Everything here delegates to ``supervision`` annotators rather than calling OpenCV directly. The library is already a
+hard dependency and already speaks :class:`sv.Detections`, so a bespoke box or mask drawer buys nothing but a second
+visual style to keep in sync.
 
-One consequence worth stating: ``trackers track`` and ``trackers inspect`` now
-draw from the same palette, so a track ID keeps its colour whether you are
-watching a live run or inspecting one stage of the mask pipeline.
+One consequence worth stating: ``trackers track`` and ``trackers inspect`` now draw from the same palette, so a track ID
+keeps its colour whether you are watching a live run or inspecting one stage of the mask pipeline.
 
-Infrastructure module, not a command — see :mod:`trackers.cli` for the layout
-rule.
+Infrastructure module, not a command — see :mod:`trackers.cli` for the layout rule.
 """
 
 from __future__ import annotations
@@ -62,9 +59,8 @@ LIFECYCLE_TRACKED = 3
 LIFECYCLE_LABELS = ("new", "pending", "masked", "tracked")
 """Mask-lifecycle states, used as ``class_id`` so colour follows state not ID.
 
-Ground-truth replay knows whether a tracklet is newly visible, waiting for mask
-creation, already masked, or none of those. Encoding that as a class lets
-``supervision`` colour it, instead of a hand-rolled branch per state.
+Ground-truth replay knows whether a tracklet is newly visible, waiting for mask creation, already masked, or none of
+those. Encoding that as a class lets ``supervision`` colour it, instead of a hand-rolled branch per state.
 """
 
 _LIFECYCLE_PALETTE = sv.ColorPalette.from_hex(

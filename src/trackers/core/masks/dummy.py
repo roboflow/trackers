@@ -60,9 +60,8 @@ class DummyBoxMaskGenerator(MaskGenerator):
 class DummyIdentityMaskPropagator(MaskPropagator):
     """In-memory mask propagator used for lightweight MaskManager tests.
 
-    The propagator keeps the last initialized ``MaskOutput`` and returns copies
-    of it during propagation. It also supports simple add/remove lifecycle
-    operations so MaskManager tests can validate mask indexing without requiring
+    The propagator keeps the last initialized ``MaskOutput`` and returns copies of it during propagation. It also
+    supports simple add/remove lifecycle operations so MaskManager tests can validate mask indexing without requiring
     SAM, Cutie, checkpoints, or GPU.
     """
 

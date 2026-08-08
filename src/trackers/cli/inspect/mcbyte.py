@@ -226,10 +226,9 @@ def prepare_run_directory(
 ) -> tuple[Path, Path]:
     """Create the output directory for one comparison mode.
 
-    ``output_root`` is a fresh run directory, so the mode directory starts empty
-    without deleting anything. Frames are named after the frame number, and a
-    shorter re-run into a populated directory would leave stale frames from a
-    longer previous run interleaved with the new ones.
+    ``output_root`` is a fresh run directory, so the mode directory starts empty without deleting anything. Frames are
+    named after the frame number, and a shorter re-run into a populated directory would leave stale frames from a longer
+    previous run interleaved with the new ones.
     """
     run_dir = output_root / mode_name
     frames_dir = run_dir / "frames"
@@ -357,8 +356,7 @@ def run_mode(
 ) -> None:
     """Run one McByte configuration over the requested inclusive frame range.
 
-    Tracking results are written in MOTChallenge format and one annotated image is
-    saved for every processed frame.
+    Tracking results are written in MOTChallenge format and one annotated image is saved for every processed frame.
     """
     use_masks = mode_name == "mask_conditioned"
 

@@ -6,18 +6,15 @@
 
 """Transitional CLI spellings, kept parsing until 2.10.0.
 
-Everything in this module exists to let a command written against the previous
-release keep working, with a ``FutureWarning`` naming its replacement. It is
-deliberately one file so the removal is a deletion rather than an archaeology
-exercise: at 2.10.0 this module goes, along with the ``_translate_legacy_args``
-call in :func:`trackers.cli.__main__.main`.
+Everything in this module exists to let a command written against the previous release keep working, with a
+``FutureWarning`` naming its replacement. It is deliberately one file so the removal is a deletion rather than an
+archaeology exercise: at 2.10.0 this module goes, along with the ``_translate_legacy_args`` call in
+:func:`trackers.cli.__main__.main`.
 
-TODO(v2.10): three passes in :func:`_translate_legacy_args` are NOT deprecations
-and must survive the deletion — the ``_normalise_option`` sweep that makes
-hyphens and underscores interchangeable, ``_expand_tracker_shorthand``, and
-``_translate_legacy_list_args`` which converts space-separated and ``=`` values
-to JSON lists. All three live in :mod:`trackers.cli._parser`; move the calls
-there rather than dropping them with this file.
+TODO(v2.10): three passes in :func:`_translate_legacy_args` are NOT deprecations and must survive the deletion — the
+``_normalise_option`` sweep that makes hyphens and underscores interchangeable, ``_expand_tracker_shorthand``, and
+``_translate_legacy_list_args`` which converts space-separated and ``=`` values to JSON lists. All three live in
+:mod:`trackers.cli._parser`; move the calls there rather than dropping them with this file.
 """
 
 from __future__ import annotations
@@ -208,8 +205,8 @@ def _warn_legacy_cli(message: str) -> None:
 def _translate_legacy_args(args: list[str]) -> list[str]:
     """Translate deprecated CLI spellings to their current argument paths.
 
-    The translator runs before jsonargparse sees argv, allowing legacy scalar
-    arguments to target fields in the track command's nested option dataclasses.
+    The translator runs before jsonargparse sees argv, allowing legacy scalar arguments to target fields in the track
+    command's nested option dataclasses.
     """
     subcommand_index = next((index for index, arg in enumerate(args) if arg in _SUBCOMMANDS), None)
     if subcommand_index is None:

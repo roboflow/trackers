@@ -118,11 +118,9 @@ def test_cmc_survives_resolution_change(
 ) -> None:
     """No CMC method crashes when the frame size changes mid-stream.
 
-    A source that renegotiates resolution (e.g. an RTSP camera after a
-    reconnect, or switching clips without a reset) feeds consecutive frames of
-    different sizes. sparseOptFlow feeds both into calcOpticalFlowPyrLK, which
-    asserts they share the same size, so it used to crash; the others already
-    coped. Every method must return a finite affine matrix.
+    A source that renegotiates resolution (e.g. an RTSP camera after a reconnect, or switching clips without a reset)
+    feeds consecutive frames of different sizes. sparseOptFlow feeds both into calcOpticalFlowPyrLK, which asserts they
+    share the same size, so it used to crash; the others already coped. Every method must return a finite affine matrix.
     """
     rng = np.random.default_rng(0)
     small = rng.integers(0, 255, (480, 640, 3), dtype=np.uint8)
@@ -137,7 +135,7 @@ def test_cmc_survives_resolution_change(
 
 
 def test_cmc_sparse_optflow_returns_identity_on_resolution_change() -> None:
-    """sparseOptFlow re-inits and returns identity when the frame size changes.
+    """SparseOptFlow re-inits and returns identity when the frame size changes.
 
     This is the guarded path: the cached previous frame no longer matches the
     new frame size, so the optical-flow step is skipped for that frame.

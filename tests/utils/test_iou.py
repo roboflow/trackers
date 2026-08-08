@@ -192,10 +192,9 @@ class TestIoUVariantsAgainstTorchvision:
     ) -> None:
         """Validate variant-vs-reference parity across shared geometric scenarios.
 
-        `upper_bound` is used only for cases where the original tests expected
-        negative scores for non-overlapping boxes (GIoU/DIoU/CIoU).
-        BIoU is intentionally excluded from this check because buffered IoU is
-        IoU-like (non-negative) and can be zero or positive for such cases.
+        `upper_bound` is used only for cases where the original tests expected negative scores for non-overlapping boxes
+        (GIoU/DIoU/CIoU). BIoU is intentionally excluded from this check because buffered IoU is IoU-like (non-negative)
+        and can be zero or positive for such cases.
         """
         result = ours.compute(boxes_1, boxes_2)
         expected = ref_or_baseline(boxes_1, boxes_2)
@@ -402,9 +401,8 @@ class TestNormalizeForFusion:
     def test_output_in_unit_range_over_random_batch(self, metric: BaseIoU) -> None:
         """normalize_for_fusion must map similarities into [0, 1] for score fusion.
 
-        CIoU's aspect-ratio penalty drives raw scores below -1, so the naive
-        ``(x + 1) / 2`` shift (without clamping) yields negatives that corrupt
-        ``_fuse_score``. The other variants already lie in [0, 1] post-shift.
+        CIoU's aspect-ratio penalty drives raw scores below -1, so the naive ``(x + 1) / 2`` shift (without clamping)
+        yields negatives that corrupt ``_fuse_score``. The other variants already lie in [0, 1] post-shift.
         """
         rng = np.random.default_rng(103)
         xy = rng.uniform(0, 500, size=(100, 2))

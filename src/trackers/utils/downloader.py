@@ -94,9 +94,8 @@ def _download_file(
 def _safe_zip_member_parts(member_name: str) -> tuple[str, ...]:
     """Return sanitized ZIP path parts for a member.
 
-    ZIP member names are treated as forward-slash paths. Backslashes and
-    Windows drive-rooted forms are rejected so the extraction contract is
-    consistent across platforms.
+    ZIP member names are treated as forward-slash paths. Backslashes and Windows drive-rooted forms are rejected so the
+    extraction contract is consistent across platforms.
     """
     if not member_name:
         raise ValueError("ZIP archive contains an empty member name")
@@ -179,9 +178,8 @@ def _extract_zip_member_by_path(
 ) -> None:
     """Extract a single ZIP member using validated paths.
 
-    Windows does not expose the dir-fd primitives used by the Unix path, so
-    the fallback keeps the same member validation and writes to resolved
-    absolute paths.
+    Windows does not expose the dir-fd primitives used by the Unix path, so the fallback keeps the same member
+    validation and writes to resolved absolute paths.
     """
     member_parts = _safe_zip_member_parts(zip_info.filename)
     member_path = output_dir.joinpath(*member_parts)

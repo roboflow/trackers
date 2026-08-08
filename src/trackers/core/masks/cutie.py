@@ -26,9 +26,8 @@ CUTIE_RELEASE_URL = "https://github.com/hkchengrex/Cutie/releases/download/v1.0"
 class CutieAsset(Enum):
     """Known downloadable Cutie checkpoint assets.
 
-    Each member pairs a checkpoint filename with its expected MD5 checksum,
-    used to locate, download, and validate the default weights for a given
-    Cutie ``model_type``.
+    Each member pairs a checkpoint filename with its expected MD5 checksum, used to locate, download, and validate the
+    default weights for a given Cutie ``model_type``.
     """
 
     BASE_MEGA = (
@@ -83,7 +82,6 @@ def _ensure_weights_exist(
 
 def _get_cutie_package_dir(cutie_module: Any) -> Path:
     """Return the root directory of the installed Cutie package."""
-
     if getattr(cutie_module, "__file__", None) is not None:
         return Path(cutie_module.__file__).resolve().parent
 
@@ -145,9 +143,7 @@ def _image_to_torch(
     frame: np.ndarray,
     device: torch.device,
 ) -> torch.Tensor:
-    """Convert an RGB frame from ``(H, W, 3)`` NumPy format to ``(3, H, W)`` Cutie
-    tensor format.
-    """
+    """Convert an RGB frame from ``(H, W, 3)`` NumPy format to ``(3, H, W)`` Cutie tensor format."""
     # Normalize by dtype, not by pixel magnitude. A ``max() > 1`` heuristic
     # mis-scales a near-black uint8 frame whose brightest pixel is 0 or 1
     # (treated as already-normalized and left un-divided). An unsigned-integer
@@ -304,9 +300,9 @@ def _binary_masks_to_non_overlapping_torch(
 ) -> torch.Tensor:
     """Convert binary masks to non-overlapping Cutie mask channels.
 
-    Input masks have shape ``(N, H, W)``. If masks overlap, earlier masks keep
-    priority, matching the original McByte initialization behavior. The returned
-    tensor has shape ``(N, H, W)``, dtype ``float32``, and values ``0.0`` or ``1.0``.
+    Input masks have shape ``(N, H, W)``. If masks overlap, earlier masks keep priority, matching the original McByte
+    initialization behavior. The returned tensor has shape ``(N, H, W)``, dtype ``float32``, and values ``0.0`` or
+    ``1.0``.
     """
     # Coerce to bool for the same reason as _binary_masks_to_indexed_mask:
     # ``mask & ~occupied`` requires boolean arrays to act as set difference.
@@ -342,8 +338,8 @@ def _build_tracklet_object_dict(
 ) -> dict[int, int]:
     """Map tracklet IDs to Cutie object IDs.
 
-    Mask generators return local mask array indices starting from 0. Cutie uses
-    positive object IDs, with 0 reserved for background.
+    Mask generators return local mask array indices starting from 0. Cutie uses positive object IDs, with 0 reserved for
+    background.
     """
     return {tracklet_id: local_mask_index + 1 for tracklet_id, local_mask_index in tracklet_mask_dict.items()}
 
@@ -356,13 +352,11 @@ def _compute_mask_avg_prob_dict(
 ) -> dict[int, float]:
     """Compute average Cutie confidence for each predicted object region.
 
-    The input probability tensor has shape ``(num_objects + 1, H, W)``, where
-    channel 0 is background and channels ``1..num_objects`` follow Cutie's
-    current temporary object IDs. For each immutable object ID, confidence is
-    averaged over pixels where that object's current temporary ID wins the argmax
-    prediction. ``max_result`` optionally supplies a precomputed
-    ``torch.max(prob, dim=0)`` so callers that already reduced ``prob`` (for the
-    indexed mask) avoid a second full-resolution pass.
+    The input probability tensor has shape ``(num_objects + 1, H, W)``, where channel 0 is background and channels
+    ``1..num_objects`` follow Cutie's current temporary object IDs. For each immutable object ID, confidence is averaged
+    over pixels where that object's current temporary ID wins the argmax prediction. ``max_result`` optionally supplies
+    a precomputed ``torch.max(prob, dim=0)`` so callers that already reduced ``prob`` (for the indexed mask) avoid a
+    second full-resolution pass.
     """
     num_channels = int(prob.shape[0])
     if max_result is None:
@@ -763,11 +757,9 @@ class CutieMaskPropagator(MaskPropagator):
     ) -> Any:
         """Load Cutie Hydra config and inject runtime overrides.
 
-        Besides the selected weights path, streaming-oriented runtime options
-        (``max_internal_size``, ``mem_every``, ``use_long_term``) are written
-        into the top-level config. Non-``None`` top-level values survive
-        Cutie's ``get_dataset_cfg`` escalation and are read by
-        ``InferenceCore`` and ``MemoryManager`` at construction time.
+        Besides the selected weights path, streaming-oriented runtime options (``max_internal_size``, ``mem_every``,
+        ``use_long_term``) are written into the top-level config. Non-``None`` top-level values survive Cutie's
+        ``get_dataset_cfg`` escalation and are read by ``InferenceCore`` and ``MemoryManager`` at construction time.
         """
         try:
             from hydra import compose, initialize_config_dir
@@ -819,10 +811,9 @@ class CutieMaskPropagator(MaskPropagator):
     ) -> None:
         """Add externally generated masks to Cutie memory.
 
-        This method does not create masks itself. It receives masks through
-        ``MaskOutput``, for example from ``SAMBoxMaskGenerator``. The method assigns
-        new immutable Cutie object IDs, feeds the masks into Cutie memory on the
-        given reference frame, and updates the propagator's tracklet/object state.
+        This method does not create masks itself. It receives masks through ``MaskOutput``, for example from
+        ``SAMBoxMaskGenerator``. The method assigns new immutable Cutie object IDs, feeds the masks into Cutie memory on
+        the given reference frame, and updates the propagator's tracklet/object state.
         """
         if not self._initialized:
             raise RuntimeError(

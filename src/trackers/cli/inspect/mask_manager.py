@@ -175,9 +175,8 @@ def group_add_events_by_source_frame(
 ) -> dict[str, list[AddTrackletEvent]]:
     """Group add events by the frame where new tracklets are created.
 
-    The grouped events are converted into ``previous_new_tracklets`` after the
-    MaskManager call for that frame. They are then consumed by MaskManager on
-    the next frame, matching the original McByte timing.
+    The grouped events are converted into ``previous_new_tracklets`` after the MaskManager call for that frame. They are
+    then consumed by MaskManager on the next frame, matching the original McByte timing.
     """
     filenames = [path.name for path in frame_paths]
     grouped: dict[str, list[AddTrackletEvent]] = defaultdict(list)
@@ -193,9 +192,8 @@ def group_add_events_by_source_frame(
 def group_remove_events(events: list[RemoveTrackletEvent]) -> dict[str, list[int]]:
     """Group remove events by the frame where tracklets are terminated.
 
-    The grouped events are converted into ``previous_removed_tracklet_ids`` after
-    the MaskManager call for that frame. They are then consumed by MaskManager on
-    the next frame, matching the original McByte timing.
+    The grouped events are converted into ``previous_removed_tracklet_ids`` after the MaskManager call for that frame.
+    They are then consumed by MaskManager on the next frame, matching the original McByte timing.
     """
     grouped: dict[str, list[int]] = defaultdict(list)
     for event in events:

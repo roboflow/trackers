@@ -29,12 +29,13 @@ class TestParseDocstringArguments:
             ("", {}),
             # No Args section
             (
-                """
-                Some description without Args section.
+                """Some description without Args section.
 
                 Returns:
                     Something.
-                """,
+                """
+
+                   ,
                 {},
             ),
             # Simple param_name: description format
@@ -51,7 +52,9 @@ class TestParseDocstringArguments:
                 Args:
                     param1: Description that spans
                         multiple lines here.
-                """,
+                """
+
+                   ,
                 {"param1": "Description that spans multiple lines here."},
             ),
             # Multiple parameters
@@ -76,7 +79,9 @@ class TestParseDocstringArguments:
 
                 Returns:
                     Something.
-                """,
+                """
+
+                   ,
                 {"param1": "Description."},
             ),
             # Real-world style with type in description
@@ -94,7 +99,9 @@ class TestParseDocstringArguments:
                 Args:
                     param1 (int): First parameter.
                     param2 (str): Second parameter.
-                """,
+                """
+
+                   ,
                 {"param1": "First parameter.", "param2": "Second parameter."},
             ),
             # param (type, optional): format
@@ -111,7 +118,9 @@ class TestParseDocstringArguments:
                 Args:
                     config.threshold: The threshold value for detection.
                     model.weights: Path to model weights file.
-                """,
+                """
+
+                   ,
                 {
                     "config.threshold": "The threshold value for detection.",
                     "model.weights": "Path to model weights file.",
@@ -290,7 +299,6 @@ class TestTrackerAutoRegistration:
 
 class TestSearchSpaceValidation:
     """Tests for search_space ClassVar validation in __init_subclass__."""
-
     def test_search_space_keys_match_init_params(self) -> None:
         """Registered trackers' search_space keys are valid __init__ params."""
         from trackers import (
@@ -311,10 +319,8 @@ class TestSearchSpaceValidation:
             init_params = set(inspect.signature(tracker_cls.__init__).parameters) - {"self"}
             for key in tracker_cls.search_space:
                 assert key in init_params, f"{tracker_cls.__name__}.search_space has invalid key: {key}"
-
     def test_search_space_invalid_key_raises_value_error(self) -> None:
         """A tracker with search_space key not in __init__ raises ValueError."""
-
         with pytest.raises(ValueError, match=r"search_space key .* is not a parameter"):
 
             class BadTracker(BaseTracker):

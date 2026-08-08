@@ -137,9 +137,8 @@ class ScalableProcessNoise:
     def _ensure_calibrated(self) -> None:
         """Extract per-axis acceleration variance from the stored reference Q.
 
-        The velocity-diagonal entries of ``baseline_Q`` define ``sigma_a2``,
-        which scales noise for ``frame_step != 1.0`` via DWNA. Runs only when a
-        ``calibrate`` call marked the extraction as pending.
+        The velocity-diagonal entries of ``baseline_Q`` define ``sigma_a2``, which scales noise for ``frame_step !=
+        1.0`` via DWNA. Runs only when a ``calibrate`` call marked the extraction as pending.
         """
         if not self._needs_calibration:
             return
@@ -341,8 +340,8 @@ class KalmanMotionModel:
     def reset_cache(self) -> None:
         """Clear cached step and matrices.
 
-        Call after restoring a filter state (e.g. via ``set_state``) to ensure
-        the next ``apply`` recomputes transition_matrix and Q rather than reusing stale values.
+        Call after restoring a filter state (e.g. via ``set_state``) to ensure the next ``apply`` recomputes
+        transition_matrix and Q rather than reusing stale values.
         """
         self.cached_step = None
         self._cached_transition_mtx = None

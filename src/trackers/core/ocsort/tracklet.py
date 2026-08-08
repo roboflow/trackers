@@ -59,7 +59,6 @@ class OCSORTTracklet(BaseTracklet):
                 Higher values use observations further in the past to estimate
                 motion direction, providing more stable velocity estimates.
         """
-
         # Initialize state estimator (wraps KalmanFilter + state repr)
         super().__init__(initial_bbox, state_estimator_class)
         self._configure_noise()
@@ -109,10 +108,9 @@ class OCSORTTracklet(BaseTracklet):
     def _unfreeze_xcycsr(self, new_bbox: np.ndarray, time_gap: int, sub_step: float) -> None:
         """ORU interpolation for XCYCSR representation.
 
-        Generates time_gap predict+update cycles with virtual observations
-        interpolated from the last observation to the new bbox. The interpolation
-        factors go from 0 to (time_gap-1)/time_gap. The caller is responsible
-        for the final real update at factor 1.0.
+        Generates time_gap predict+update cycles with virtual observations interpolated from the last observation to the
+        new bbox. The interpolation factors go from 0 to (time_gap-1)/time_gap. The caller is responsible for the final
+        real update at factor 1.0.
         """
         # Convert to (x, y, s, r) format
         last_xcycsr = xyxy_to_xcycsr(self.last_observation)

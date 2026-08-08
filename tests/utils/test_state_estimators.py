@@ -72,10 +72,9 @@ def test_xcycsr_clamp_velocity_guards_projected_scale_over_frame_step(
 ) -> None:
     """``clamp_velocity`` guards the *projected* scale ``s + frame_step * vs``.
 
-    A negative scale velocity that passes the one-frame check (``s + vs > 0``)
-    used to extrapolate scale below zero over a gap, and ``xcycsr_to_xyxy``
-    then took ``sqrt`` of a negative scale -> NaN boxes. The guard must fire
-    on a non-positive projection and stay out of the way otherwise.
+    A negative scale velocity that passes the one-frame check (``s + vs > 0``) used to extrapolate scale below zero over
+    a gap, and ``xcycsr_to_xyxy`` then took ``sqrt`` of a negative scale -> NaN boxes. The guard must fire on a non-
+    positive projection and stay out of the way otherwise.
     """
     est = XCYCSRStateEstimator(BBOX.copy())
     est.kf.state[2] = 1000.0  # scale (area); s + vs > 0, so the one-frame check passes

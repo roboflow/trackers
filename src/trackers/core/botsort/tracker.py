@@ -24,8 +24,7 @@ from trackers.utils.state_representations import (
 
 
 class BoTSORTTracker(BaseTracker):
-    """
-    BoT-SORT-style multi-object tracker (IoU association + optional CMC).
+    """BoT-SORT-style multi-object tracker (IoU association + optional CMC).
 
     The tracker maintains a list of active tracks (Kalman-filter-based) and, for each
     frame, performs:
@@ -395,10 +394,8 @@ class BoTSORTTracker(BaseTracker):
         similarity_matrix: np.ndarray,
         min_similarity_thresh: float,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """
-        Associate detections to tracks based on Similarity (IoU) using the
-        Jonker-Volgenant algorithm approach with no initialization instead of the
-        Hungarian algorithm as mentioned in the SORT paper, but it solves the
+        """Associate detections to tracks based on Similarity (IoU) using the Jonker-Volgenant algorithm approach with
+        no initialization instead of the Hungarian algorithm as mentioned in the SORT paper, but it solves the
         assignment problem in an optimal way.
 
         Args:
@@ -465,6 +462,7 @@ class BoTSORTTracker(BaseTracker):
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
+
         Call this method when switching to a new video or scene.
         """
         self.tracks = []

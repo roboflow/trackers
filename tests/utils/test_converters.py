@@ -18,7 +18,7 @@ from trackers.utils.converters import (
 
 
 class TestXYWHConversion:
-    """xyxy ↔ xywh conversions and round-trip."""
+    """Xyxy ↔ xywh conversions and round-trip."""
 
     @pytest.mark.parametrize(
         ("xyxy", "expected"),
@@ -71,14 +71,14 @@ class TestXYWHConversion:
         ],
     )
     def test_roundtrip(self, xyxy: np.ndarray) -> None:
-        """xyxy → xywh → xyxy round-trip recovers the original box without drift."""
+        """Xyxy → xywh → xyxy round-trip recovers the original box without drift."""
         xywh = xyxy_to_xywh(xyxy)
         recovered = xywh_to_xyxy(xywh)
         np.testing.assert_array_almost_equal(recovered, xyxy, decimal=6)
 
 
 class TestXCYCSRConversion:
-    """xyxy ↔ xcycsr (center-x, center-y, scale, aspect) conversions and round-trip."""
+    """Xyxy ↔ xcycsr (center-x, center-y, scale, aspect) conversions and round-trip."""
 
     @pytest.mark.parametrize(
         ("xyxy", "expected"),
@@ -258,13 +258,13 @@ class TestXCYCSRConversion:
         ],
     )
     def test_roundtrip(self, xyxy: np.ndarray) -> None:
-        """xyxy → xcycsr → xyxy round-trip recovers the original 1-D box."""
+        """Xyxy → xcycsr → xyxy round-trip recovers the original 1-D box."""
         xcycsr = xyxy_to_xcycsr(xyxy)
         recovered = xcycsr_to_xyxy(xcycsr)
         np.testing.assert_array_almost_equal(recovered, xyxy, decimal=5)
 
     def test_roundtrip_2d(self) -> None:
-        """xyxy → xcycsr → xyxy round-trip preserves the original 2-D shape."""
+        """Xyxy → xcycsr → xyxy round-trip preserves the original 2-D shape."""
         xyxy = np.array([[0.0, 0.0, 10.0, 10.0]])
         xcycsr = xyxy_to_xcycsr(xyxy)
         recovered = xcycsr_to_xyxy(xcycsr)
@@ -272,7 +272,7 @@ class TestXCYCSRConversion:
         np.testing.assert_array_almost_equal(recovered, xyxy, decimal=5)
 
     def test_roundtrip_degenerate_is_lossy(self) -> None:
-        """xyxy → xcycsr → xyxy is lossy for zero-area boxes; asserts the known result."""
+        """Xyxy → xcycsr → xyxy is lossy for zero-area boxes; asserts the known result."""
         xyxy = np.array([0.0, 0.0, 10.0, 0.0])
         xcycsr = xyxy_to_xcycsr(xyxy)
         recovered = xcycsr_to_xyxy(xcycsr)
