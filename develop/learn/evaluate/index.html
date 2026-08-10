@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-07",
+  "dateModified": "2026-08-10",
   "datePublished": "2026-02-04"
 }
 </script>
@@ -1813,105 +1813,62 @@
 <p>For more options, see the <a href="../install/">install guide</a>.</p>
 <hr />
 <h2 id="download-data">Download Data</h2>
-<p>Use <code>trackers download</code> to pull ground-truth annotations and detections from supported benchmarks like MOT17.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Python</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Fetch MOT17 validation annotations and detections from the command line.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers download \
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    --name mot17 \
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    --split val \
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    --asset annotations,detections \
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    --output ./data
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>Fetch MOT17 validation annotations and detections from Python.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="p">,</span> <span class="n">DatasetSplit</span><span class="p">,</span> <span class="n">download_dataset</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">download_dataset</span><span class="p">(</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">name</span><span class="o">=</span><span class="n">Dataset</span><span class="o">.</span><span class="n">MOT17</span><span class="p">,</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">split</span><span class="o">=</span><span class="n">DatasetSplit</span><span class="o">.</span><span class="n">VAL</span><span class="p">,</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">asset</span><span class="o">=</span><span class="p">[</span><span class="n">DatasetAsset</span><span class="o">.</span><span class="n">ANNOTATIONS</span><span class="p">,</span> <span class="n">DatasetAsset</span><span class="o">.</span><span class="n">DETECTIONS</span><span class="p">],</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">output</span><span class="o">=</span><span class="s2">&quot;./data&quot;</span><span class="p">,</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">)</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<p>After downloading, your data directory will look like this.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>data/
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>└── mot17/
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    └── val/
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        ├── MOT17-02-FRCNN/
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        │   ├── det/
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        │   │   └── det.txt
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        │   └── gt/
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        │       └── gt.txt
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        ├── MOT17-04-FRCNN/
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        │   ├── det/
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        │   │   └── det.txt
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        │   └── gt/
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        │       └── gt.txt
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        └── ...
-</span></code></pre></div>
-<p>For more download options, see the <a href="../download/">download guide</a>.</p>
+<p>Download ground-truth annotations and detections for MOT17 validation — see the <a href="../download/">download guide</a> for the full command and output layout. This guide assumes data lands at <code>./data/mot17/val/&lt;sequence&gt;/det/det.txt</code> and <code>./data/mot17/val/&lt;sequence&gt;/gt/gt.txt</code>, matching that guide's default output.</p>
 <hr />
 <h2 id="run-tracking">Run Tracking</h2>
-<p>Feed the pre-computed detections into a tracker and write the results to a file for evaluation.</p>
-<p>Pass <code>--detection.mot_file</code> to provide precomputed MOT detector output and <code>--output.mot_results</code> to save the tracker output in MOT format.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>trackers track \
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    --detection.mot_file ./data/mot17/val/MOT17-02-FRCNN/det/det.txt \
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    --tracker bytetrack \
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    --output.mot_results results/MOT17-02-FRCNN.txt
+<p>Feed the pre-computed detections into a tracker and write the results to a file for evaluation. Pass <code>--detection.mot_file</code> to provide precomputed MOT detector output and <code>--output.mot_results</code> to save the tracker output in MOT format — see the <a href="../track/">track guide</a> for more on <code>trackers track</code>.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers track \
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    --detection.mot_file ./data/mot17/val/MOT17-02-FRCNN/det/det.txt \
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    --tracker bytetrack \
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    --output.mot_results results/MOT17-02-FRCNN.txt
 </span></code></pre></div>
 <hr />
 <h2 id="evaluate">Evaluate</h2>
 <p>Compare the tracker output against ground truth to compute standard MOT metrics.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>trackers eval \
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    --gt ./data/mot17/val/MOT17-02-FRCNN/gt/gt.txt \
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    --predictions results/MOT17-02-FRCNN.txt \
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers eval \
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    --gt ./data/mot17/val/MOT17-02-FRCNN/gt/gt.txt \
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    --predictions results/MOT17-02-FRCNN.txt \
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
 </span></code></pre></div>
 <p><strong>Output:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>                                MOTA    HOTA    IDF1
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>----------------------------------------------------
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>gt                            30.192  35.475  38.515
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>                                MOTA    HOTA    IDF1
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>----------------------------------------------------
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>gt                            30.192  35.475  38.515
 </span></code></pre></div>
 <hr />
 <h2 id="data-format">Data Format</h2>
 <p>Ground-truth and tracker output files use the MOT Challenge text format.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>&lt;frame&gt;,&lt;id&gt;,&lt;bb_left&gt;,&lt;bb_top&gt;,&lt;bb_width&gt;,&lt;bb_height&gt;,&lt;conf&gt;,&lt;x&gt;,&lt;y&gt;,&lt;z&gt;
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&lt;frame&gt;,&lt;id&gt;,&lt;bb_left&gt;,&lt;bb_top&gt;,&lt;bb_width&gt;,&lt;bb_height&gt;,&lt;conf&gt;,&lt;x&gt;,&lt;y&gt;,&lt;z&gt;
 </span></code></pre></div>
 <p><strong>Example:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>1,1,100,200,50,80,1,-1,-1,-1
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>1,2,300,150,60,90,1,-1,-1,-1
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>2,1,105,198,50,80,1,-1,-1,-1
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>1,1,100,200,50,80,1,-1,-1,-1
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>1,2,300,150,60,90,1,-1,-1,-1
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>2,1,105,198,50,80,1,-1,-1,-1
 </span></code></pre></div>
 <p>Each line contains the frame number, object ID, bounding box (<code>left</code>, <code>top</code>, <code>width</code>, <code>height</code>), confidence score, and 3D position (set to <code>-1</code> when unused).</p>
 <hr />
 <h2 id="multi-sequence-evaluation">Multi-Sequence Evaluation</h2>
 <p>Evaluate all sequences at once and get per-sequence results plus a combined aggregate.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>trackers eval \
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    --gt_dir ./data/mot17/val \
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    --predictions_dir results \
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39; \
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    --output results.json
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>trackers eval \
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    --gt_dir ./data/mot17/val \
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    --predictions_dir results \
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39; \
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    --output results.json
 </span></code></pre></div>
 <p><strong>Output:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Sequence                        MOTA    HOTA    IDF1
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>----------------------------------------------------
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>MOT17-02-FRCNN                30.192  35.475  38.515
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>MOT17-04-FRCNN                48.912  55.096  61.854
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>MOT17-05-FRCNN                52.755  45.515  55.705
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>MOT17-09-FRCNN                51.441  50.108  57.038
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>MOT17-10-FRCNN                51.832  49.648  55.797
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>MOT17-11-FRCNN                55.501  49.401  55.061
-</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>MOT17-13-FRCNN                60.488  58.651  69.884
-</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>----------------------------------------------------
-</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>COMBINED                      47.406  50.355  56.600
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Sequence                        MOTA    HOTA    IDF1
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>----------------------------------------------------
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>MOT17-02-FRCNN                30.192  35.475  38.515
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>MOT17-04-FRCNN                48.912  55.096  61.854
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>MOT17-05-FRCNN                52.755  45.515  55.705
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>MOT17-09-FRCNN                51.441  50.108  57.038
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>MOT17-10-FRCNN                51.832  49.648  55.797
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>MOT17-11-FRCNN                55.501  49.401  55.061
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>MOT17-13-FRCNN                60.488  58.651  69.884
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>----------------------------------------------------
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>COMBINED                      47.406  50.355  56.600
 </span></code></pre></div>
 <p>Use <code>--output</code> to save the full results to a JSON file for later analysis.</p>
 <hr />
@@ -2000,7 +1957,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 21:00:46 UTC">2026-08-07</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 15:29:41 UTC">2026-08-10</span>
   </span>
 
     

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Python API reference for SORT, ByteTrack, OC-SORT, and BoT-SORT tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples.">
+        <meta name="description" content="Python API reference for SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples.">
       
       
         <meta name="author" content="Roboflow">
@@ -130,7 +130,7 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Trackers",
-  "description": "Python API reference for SORT, ByteTrack, OC-SORT, and BoT-SORT tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples.",
+  "description": "Python API reference for SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples.",
   "url": "https://trackers.roboflow.com/latest/develop/api/trackers/",
   "mainEntityOfPage": {
     "@type": "WebPage",
@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-05-17",
+  "dateModified": "2026-08-10",
   "datePublished": "2026-02-04"
 }
 </script>
@@ -181,7 +181,7 @@
 <meta property="og:site_name" content="Roboflow Trackers" />
 <meta property="og:url" content="https://trackers.roboflow.com/latest/develop/api/trackers/" />
 <meta property="og:title" content="Trackers — Roboflow Trackers" />
-<meta property="og:description" content="Python API reference for SORT, ByteTrack, OC-SORT, and BoT-SORT tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples." />
+<meta property="og:description" content="Python API reference for SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -193,7 +193,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
 <meta name="twitter:title" content="Trackers — Roboflow Trackers" />
-<meta name="twitter:description" content="Python API reference for SORT, ByteTrack, OC-SORT, and BoT-SORT tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples." />
+<meta name="twitter:description" content="Python API reference for SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -1687,6 +1687,117 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#c-biou" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C-BIoU
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.core.cbiou.tracker.CBIoUTracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;CBIoUTracker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" CBIoUTracker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.cbiou.tracker.CBIoUTracker.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcbyte" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        McByte
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteTracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;McByteTracker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" McByteTracker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteTracker.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteTracker.reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;reset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteTracker.apply_cmc_batch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;apply_cmc_batch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteMaskConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;McByteMaskConfig
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#utilities" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2092,6 +2203,117 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c-biou" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C-BIoU
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.core.cbiou.tracker.CBIoUTracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;CBIoUTracker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" CBIoUTracker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.cbiou.tracker.CBIoUTracker.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcbyte" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        McByte
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteTracker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;McByteTracker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" McByteTracker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteTracker.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteTracker.reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;reset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteTracker.apply_cmc_batch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;apply_cmc_batch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trackers.core.mcbyte.tracker.McByteMaskConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;McByteMaskConfig
+      
+    </span>
+  </a>
   
 </li>
       
@@ -3944,6 +4166,1578 @@ If None, this method is a no-op.</p>
 
     </div>
 
+</div><h2 id="c-biou">C-BIoU</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="trackers.core.cbiou.tracker.CBIoUTracker" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>trackers.core.cbiou.tracker.CBIoUTracker</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.core.botsort.tracker.BoTSORTTracker&lt;/code&gt;" href="#trackers.core.botsort.tracker.BoTSORTTracker">BoTSORTTracker</a></code></p>
+
+
+
+        <p>Cascaded-Buffered IoU (C-BIoU) tracker.</p>
+<p>Implements the matching strategy from Yang et al., <em>Hard To Track Objects with
+Irregular Motions and Similar Appearances? Make It Easier by Buffering the
+Matching Space</em>, WACV 2023
+(<a href="https://openaccess.thecvf.com/content/WACV2023/papers/Yang_Hard_To_Track_Objects_With_Irregular_Motions_and_Similar_Appearances_WACV_2023_paper.pdf">paper</a>).</p>
+<p>The paper proposes <strong>Buffered IoU (BIoU)</strong> — expanding boxes by a proportional
+margin before computing overlap — and <strong>cascaded matching</strong> with a small buffer
+scale <code>b1</code> followed by a larger scale <code>b2</code> (typically <code>b1 &lt; b2</code>).</p>
+<p>Each association step uses its own <code>buffer_ratio</code>:</p>
+<ul>
+<li><code>buffer_ratio_first</code> — first pass (high-confidence detections vs tracks;
+  paper: small <code>b1</code>).</li>
+<li><code>buffer_ratio_second</code> — second pass (remaining <em>confirmed</em> tracks vs
+  low-confidence detections; paper: large <code>b2</code>).</li>
+</ul>
+<p>The ByteTrack-style unconfirmed-track step (leftover high-confidence
+detections vs tentative tracks) reuses <strong>b1</strong> (<code>iou_first</code>).</p>
+<p>Camera motion compensation is not used (detection-only / MOT-file workflows).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>lost_track_buffer</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Time buffer (in frames at 30 FPS) for keeping lost
+tracks alive before deletion. Scaled by <code>frame_rate</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>30</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame_rate</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Video frame rate used to scale the lost track buffer.</p>
+              </div>
+            </td>
+            <td>
+                  <code>30.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>track_activation_threshold</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum detection confidence to spawn a
+new track.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.7</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_consecutive_frames</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of successful updates required
+before assigning a stable track ID.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_iou_threshold_first_assoc</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum fused similarity for the
+first association step.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.2</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_iou_threshold_second_assoc</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum fused similarity for the
+second association step.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_iou_threshold_unconfirmed_assoc</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum fused similarity for
+the unconfirmed association step.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>high_conf_det_threshold</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Confidence threshold splitting high / low
+detections.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.6</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>instant_first_frame_activation</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>True</code>, first-frame tracks receive
+a real ID immediately.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>state_estimator_class</code>
+            </td>
+            <td>
+                  <code><span title="type">type</span>[<span title="trackers.utils.state_representations.BaseStateEstimator">BaseStateEstimator</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Kalman state representation for tracklets.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.utils.state_representations.XCYCWHStateEstimator">XCYCWHStateEstimator</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>buffer_ratio_first</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Buffer scale <code>b1</code> for the first BIoU pass. It is suggested to
+be <strong>less than</strong> <code>buffer_ratio_second</code> (<code>b1 &lt; b2</code>) per the paper.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>buffer_ratio_second</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Buffer scale <code>b2</code> for the second BIoU pass. It is suggested to
+be <strong>greater than</strong> <code>buffer_ratio_first</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>lost_track_buffer</code> is negative or <code>frame_rate</code> is not a
+finite positive value (inherited from <code>BoTSORTTracker</code>).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>buffer_ratio_first</code> or <code>buffer_ratio_second</code> is negative.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Note</summary>
+  <p>Unmatched low-confidence detections (confidence in <code>(0.1, high_conf_det_threshold)</code>)
+that are not associated in Step 2 appear in the output with <code>tracker_id == -1</code>,
+consistent with <code>BoTSORTTracker</code> behaviour. Callers filtering by
+<code>tracker_id &gt;= 0</code> will silently drop these rows.
+Tracks that already hold a real <code>tracker_id</code> (for example, instant-activated
+tracks) remain confirmed on a miss even before <code>minimum_consecutive_frames</code> is
+reached.</p>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <p>Run C-BIoU on a batch of detections::</p>
+<div class="language-text highlight"><pre><span></span><code>import numpy as np
+import supervision as sv
+from trackers import CBIoUTracker
+
+tracker = CBIoUTracker()
+detections = sv.Detections(
+    xyxy=np.array([[0.0, 0.0, 100.0, 100.0]]),
+    confidence=np.array([0.9]),
+)
+result = tracker.update(detections)
+</code></pre></div>
+</details>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.core.cbiou.tracker.CBIoUTracker.update" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Update the C-BIoU tracker with detections from the current frame.</p>
+<p>Runs the association pipeline with a distinct BIoU instance per step
+(cascaded buffers per Yang et al., WACV 2023). Does not use frames or CMC.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>detections</code>
+            </td>
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Supervision detections for the current frame.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unused. Emits a <code>UserWarning</code> if provided.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>timestamp</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Absolute time of the current frame in seconds, or <code>None</code>
+for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Detections with <code>tracker_id</code> assigned. Unmatched</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>low-confidence detections are included with <code>tracker_id == -1</code>;</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>callers filtering by <code>tracker_id &gt;= 0</code> will silently drop these rows.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Warns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>UserWarning</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>frame</code> is passed but C-BIoU does not perform
+camera motion compensation (CMC), the frame is ignored.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="mcbyte">McByte</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="trackers.core.mcbyte.tracker.McByteTracker" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>trackers.core.mcbyte.tracker.McByteTracker</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="trackers.core.base.BaseTracker">BaseTracker</span></code></p>
+
+
+
+        <p>McByte multi-object tracker with optional mask-conditioned association.</p>
+<p>McByte extends a ByteTrack-style multi-stage tracking pipeline with
+clear-match locking, reduced assignment, optional camera motion
+compensation, and optional propagated-mask evidence.</p>
+<p>The tracker can operate in two configurations:</p>
+<ul>
+<li>without a <code>MaskManager</code>, association uses the McByte clear-match locking
+  and reduced-assignment procedure with IoU-based similarities;</li>
+<li>with a <code>MaskManager</code> (full McByte), masks are additionally used to condition
+  ambiguous associations and, when enabled, isolated positive-IoU associations
+  below the normal stage threshold.</li>
+</ul>
+<p>When <code>enable_mask_manager=True</code>, the default mask pipeline initializes
+masks from detection boxes using SAM and propagates them temporally using
+Cutie. A custom <code>MaskManager</code> may instead be supplied directly, for
+example to inject alternative mask components or lightweight test doubles.</p>
+<p>Mask processing follows the original McByte timing. At frame <code>t</code>, masks
+are updated before association using the frame, visible tracklets, newly
+created tracklets, and removed-tracklet events stored after processing frame
+<code>t - 1</code>. Temporarily lost but still active tracklets retain their masks.
+Masks are removed only after the corresponding tracklets are terminated
+during tracker pruning.</p>
+<p>Input frames are expected in RGB channel order. A frame is required when
+mask management is enabled and is also needed for camera motion
+compensation. When no frame is supplied, those frame-dependent operations
+are skipped.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>lost_track_buffer</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Time buffer, expressed as a number of frames at
+30 FPS, for retaining unmatched tracks before deletion. The value
+is scaled according to <code>frame_rate</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>30</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame_rate</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sequence frame rate used to scale <code>lost_track_buffer</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>30.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>track_activation_threshold</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum detection confidence required to
+create a new tracklet.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.7</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_consecutive_frames</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of successful tracklet updates
+required before assigning a confirmed non-negative tracker ID.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_iou_threshold_first_assoc</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum association similarity for
+matching high-confidence detections to confirmed and lost tracks.
+The default of <code>0.1</code> follows ByteTrack's deliberately low
+first-association threshold: a broad candidate set is admitted and
+resolved by fused IoU and detection score. In the default mode
+(<code>enable_mask_manager=False</code>) this ByteTrack parity is the sole
+safety net. When mask management is enabled, the same broad
+candidate set additionally lets mask-conditioned association resolve
+ambiguities and optional isolations.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.1</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_iou_threshold_second_assoc</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum association similarity for
+matching low-confidence detections to remaining tracked tracks.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_iou_threshold_unconfirmed_assoc</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum association similarity
+for matching unconfirmed tracks to remaining high-confidence
+detections.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>high_conf_det_threshold</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Confidence threshold separating high- and
+low-confidence detections. Detections with confidence at or below
+0.1 are discarded.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.6</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>enable_cmc</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to apply camera motion compensation before
+association.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cmc_method</code>
+            </td>
+            <td>
+                  <code><span title="trackers.utils.cmc.CMCMethod">CMCMethod</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Camera motion compensation method.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;sparseOptFlow&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cmc_downscale</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Image downscale factor used during camera motion
+estimation. Defaults to 6 based on the 1280x720 SportsMOT
+validation aggregate-performance criterion; it is not a strict
+per-clip guarantee. Tune it for other workloads or pass 2 to
+preserve the previous conservative behavior.</p>
+              </div>
+            </td>
+            <td>
+                  <code>6</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>instant_first_frame_activation</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether tracklets created on the first
+frame receive confirmed tracker IDs immediately.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>state_estimator_class</code>
+            </td>
+            <td>
+                  <code><span title="type">type</span>[<span title="trackers.utils.state_representations.BaseStateEstimator">BaseStateEstimator</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>State estimator class used by newly created
+<code>McByteTracklet</code> instances.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.utils.state_representations.XCYCWHStateEstimator">XCYCWHStateEstimator</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iou</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.utils.iou.BaseIoU&lt;/code&gt;" href="../../learn/iou/#trackers.utils.iou.BaseIoU">BaseIoU</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>IoU implementation used to compute association similarities. When
+omitted, the default <code>IoU</code> implementation is used.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>enable_mask_manager</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to construct McByte's default SAM and
+Cutie mask pipeline. It is disabled by default to avoid loading
+optional heavyweight models when mask-conditioned tracking is not
+requested.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>mask_manager</code>
+            </td>
+            <td>
+                  <code><span title="trackers.core.masks.manager.MaskManager">MaskManager</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional custom <code>MaskManager</code>. When supplied, it is used
+directly regardless of <code>enable_mask_manager</code>, and automatic
+SAM/Cutie construction is skipped.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>mask_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.core.mcbyte.tracker.McByteMaskConfig&lt;/code&gt;
+
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt;" href="#trackers.core.mcbyte.tracker.McByteMaskConfig">McByteMaskConfig</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Configuration for automatic construction of the default
+SAM/Cutie pipeline. It requires <code>enable_mask_manager=True</code> and
+cannot be combined with a custom <code>mask_manager</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_mask_average_confidence</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum average confidence of a
+propagated mask before it may influence association.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.core.mcbyte.mask_association.MINIMUM_MASK_AVERAGE_CONFIDENCE">MINIMUM_MASK_AVERAGE_CONFIDENCE</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_mask_coverage</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum fraction of the visible tracklet mask
+that must lie inside a candidate detection box.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.core.mcbyte.mask_association.MINIMUM_MASK_COVERAGE">MINIMUM_MASK_COVERAGE</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_mask_fill_ratio</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum fraction of a candidate detection-box
+area that must be occupied by the tracklet mask.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.core.mcbyte.mask_association.MINIMUM_MASK_FILL_RATIO">MINIMUM_MASK_FILL_RATIO</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>enable_isolated_mask_matching</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether mask evidence may rescue an
+isolated candidate with positive IoU whose association similarity
+is below the normal stage threshold.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>minimum_mask_creation_frames</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of consecutive frames a confirmed
+tracklet must remain visible in tracker output before its mask is
+created (the SAM prompt plus Cutie <code>add_masks</code>). This defers the
+per-appearance mask encode for very-short-lived tracklets: those
+that terminate before reaching the threshold never pay the encode,
+at the cost of running IoU-only association for those tracklets
+until their mask exists. Because mask conditioning is deferred, this
+can alter tracking output and must be validated for CLEAR/HOTA/
+Identity parity on the target workload. Use <code>1</code> to create masks on
+a tracklet's first visible frame (the original immediate-creation
+timing). A deferred tracklet is withheld from the mask pipeline
+entirely, including Cutie's initial mask set: when every confirmed
+tracklet is still inside its defer window the first masks are
+produced only once at least one tracklet reaches the threshold.</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.core.mcbyte.tracker.McByteTracker.update" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Update the tracker with detections from the current frame.</p>
+<p>This is the main per-frame entry point. If a mask manager is configured and a
+frame is provided, masks are updated before association using tracker lifecycle
+events stored from the previous call. After association, the method stores the
+current frame's visible tracklets, newly created tracklets, and explicitly
+terminated tracklet IDs for the next frame's mask update.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>detections</code>
+            </td>
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Supervision detections for the current frame. Must include
+<code>.xyxy</code>. Confidence (<code>detections.confidence</code>) is optional but
+recommended. This method does not mutate the input detections; it
+returns a new <code>sv.Detections</code> with <code>tracker_id</code> assigned.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>frame</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current frame in <strong>RGB</strong> channel order, shape <code>(H, W, 3)</code>.
+Note this deviates from the <code>BaseTracker.update</code> default of BGR:
+McByte's SAM and Cutie mask backends consume the frame as RGB
+without any internal channel conversion, so a BGR frame silently
+degrades mask quality (and therefore mask-conditioned
+association). Required for camera motion compensation and for
+mask-manager propagation.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>timestamp</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Absolute time of the current frame in seconds, or <code>None</code>
+for fixed-rate mode (<code>frame_step = 1.0</code> per call). When provided,
+capture times must be non-decreasing; elapsed seconds are converted
+to Kalman frame units for prediction and used directly for
+lost-track pruning.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>New sv.Detections with tracker_id assigned for each output detection.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Confirmed tracks have tracker_id &gt;= 0; unmatched/unconfirmed detections have</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>tracker_id of -1. When the update is skipped (backwards or non-finite</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>timestamp), all <code>tracker_id</code> values are <code>-1</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Warns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>UserWarning</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>timestamp</code> is earlier than the previous call
+(backwards order); the whole update is skipped and all output
+IDs are <code>-1</code>. If <code>timestamp</code> equals the previous call
+(duplicate); predict is skipped but association still runs on
+the last state.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.core.mcbyte.tracker.McByteTracker.reset" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">reset</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Reset tracker, camera-motion, and mask-manager state.</p>
+<p>This clears active tracklets, resets the global McByte track ID counter, clears stored mask lifecycle inputs,
+and resets optional camera motion compensation and mask-manager components. Call this when switching to a new
+video or scene.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="trackers.core.mcbyte.tracker.McByteTracker.apply_cmc_batch" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">apply_cmc_batch</span><span class="p">(</span><span class="n">H</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Apply camera motion compensation to all active tracks.</p>
+<p>Convenience wrapper around :meth:<code>CMC.apply_batch</code> for callers that hold
+a tracker instance and an affine transform. <code>update()</code> applies CMC
+directly and does not rely on this method.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>H</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>2x3 affine transform matrix returned by CMC.estimate().
+If None, this method is a no-op.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">tracker</span> <span class="o">=</span> <span class="n">McByteTracker</span><span class="p">()</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">tracker</span><span class="o">.</span><span class="n">apply_cmc_batch</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>  <span class="c1"># no-op</span>
+</span></code></pre></div>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="trackers.core.mcbyte.tracker.McByteMaskConfig" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <code>trackers.core.mcbyte.tracker.McByteMaskConfig</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Configuration for McByte's SAM and Cutie mask pipeline.</p>
+<p>The configuration is used only when <code>McByteTracker</code> automatically creates
+its default real <code>MaskManager</code>. It is ignored when a custom manager is
+supplied directly.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Device shared by SAM and Cutie, for example <code>"cuda"</code>,
+<code>"cuda:0"</code>, <code>"mps"</code>, or <code>"cpu"</code>. The default <code>"auto"</code>
+resolves to CUDA when available, otherwise CPU. Apple MPS is
+never auto-selected (measured roughly an order of magnitude
+slower than CPU for this pipeline); pass <code>device="mps"</code>
+explicitly to use it.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;auto&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sam_checkpoint_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <span title="pathlib.Path">Path</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional SAM checkpoint path. When omitted, the
+default checkpoint for <code>sam_model_type</code> is used and downloaded
+automatically when necessary.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sam_model_type</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>SAM model variant used for box-prompted mask generation.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;vit_b&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_weights_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <span title="pathlib.Path">Path</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional Cutie checkpoint path. When omitted, the
+default checkpoint for <code>cutie_model_type</code> is used and downloaded
+automatically when necessary.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_model_type</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Cutie model variant used for temporal propagation.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;base-mega&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_config_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | <span title="pathlib.Path">Path</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional Cutie Hydra configuration directory. When
+omitted, it is inferred from the installed Cutie package.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_config_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Hydra configuration name loaded by Cutie.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;eval_config&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_use_amp</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether Cutie may use automatic mixed precision. AMP is
+activated only when Cutie runs on a CUDA device. Disabled by
+default so that default runs use full fp32 precision on every
+backend; opt in explicitly after validating tracking-quality
+parity on your hardware.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_max_internal_size</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum shortest side of frames processed
+internally by Cutie. Larger frames are downscaled before the
+encoder and the propagated masks are restored to the original
+resolution, matching Cutie's own streaming preset. Use <code>-1</code> to
+propagate at full input resolution (Cutie's offline-benchmark
+behavior; substantially slower on high-resolution streams).</p>
+              </div>
+            </td>
+            <td>
+                  <code>480</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_mem_every</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>How often, in frames, Cutie updates its working
+memory. Higher values speed up processing. <code>None</code> keeps the
+value from the loaded Cutie configuration.</p>
+              </div>
+            </td>
+            <td>
+                  <code>10</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_use_long_term</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether Cutie uses bounded long-term memory,
+recommended for videos longer than roughly one minute. <code>None</code>
+keeps the value from the loaded Cutie configuration.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_channels_last</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Opt-in <code>channels_last</code> memory format for the
+Cutie model. Off by default so default runs are unchanged; it may
+alter kernel selection, so validate fp32 tracking-quality parity on
+your backend before enabling. Primarily helps CUDA.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutie_compile</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Opt-in <code>torch.compile</code> of Cutie's shape-stable
+per-frame encoder path. Off by default; incurs first-call warmup
+and may alter numerics, so validate fp32 parity before enabling.
+<code>torch.compile</code> support on MPS is experimental.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>mask_creation_bbox_overlap_threshold</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bounding-box overlap fraction at
+or above which mask creation is delayed by <code>MaskManager</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="trackers.core.masks.manager.MASK_CREATION_BBOX_OVERLAP_THRESHOLD">MASK_CREATION_BBOX_OVERLAP_THRESHOLD</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
 </div><h2 id="utilities">Utilities</h2>
 
 
@@ -4168,7 +5962,7 @@ value is undefined.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="May 17, 2026 20:01:36 UTC">2026-05-17</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 15:29:41 UTC">2026-08-10</span>
   </span>
 
     

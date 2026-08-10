@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-08",
+  "dateModified": "2026-08-10",
   "datePublished": "2026-07-27"
 }
 </script>
@@ -2120,6 +2120,12 @@ mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
 <td>Whether mask evidence may rescue an isolated candidate with positive IoU below the normal stage threshold.</td>
 <td>Conservative default. Enable to recover more matches under heavy occlusion at the risk of more false positives.</td>
 </tr>
+<tr>
+<td><code>minimum_mask_creation_frames</code></td>
+<td><code>3</code></td>
+<td>Consecutive visible frames a confirmed tracklet needs before its mask is created (SAM prompt + Cutie <code>add_masks</code>).</td>
+<td><code>1</code> creates masks on a tracklet's first visible frame (immediate-creation timing). Higher values defer the per-appearance mask encode for short-lived tracklets, at the cost of IoU-only association until the mask exists.</td>
+</tr>
 </tbody>
 </table>
 <h3 id="mask-pipeline-parameters-mcbytemaskconfig">Mask Pipeline Parameters (<code>McByteMaskConfig</code>)</h3>
@@ -2135,8 +2141,8 @@ mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
 <tbody>
 <tr>
 <td><code>device</code></td>
-<td>Device shared by SAM and Cutie, e.g. <code>"cuda"</code>, <code>"cuda:0"</code>, or <code>"cpu"</code>.</td>
-<td><code>"cpu"</code></td>
+<td>Device shared by SAM and Cutie, e.g. <code>"cuda"</code>, <code>"cuda:0"</code>, <code>"cpu"</code>, or <code>"auto"</code> to resolve automatically.</td>
+<td><code>"auto"</code></td>
 </tr>
 <tr>
 <td><code>sam_checkpoint_path</code></td>
@@ -2166,7 +2172,32 @@ mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
 <tr>
 <td><code>cutie_use_amp</code></td>
 <td>Whether Cutie may use automatic mixed precision (only activated on a CUDA device).</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>cutie_max_internal_size</code></td>
+<td>Maximum shortest side Cutie processes internally; larger frames are downscaled before the encoder and masks are resized back. <code>-1</code> propagates at full input resolution (substantially slower).</td>
+<td><code>480</code></td>
+</tr>
+<tr>
+<td><code>cutie_mem_every</code></td>
+<td>How often, in frames, Cutie updates its working memory. Higher values speed up processing. <code>None</code> keeps Cutie's own configured value.</td>
+<td><code>10</code></td>
+</tr>
+<tr>
+<td><code>cutie_use_long_term</code></td>
+<td>Whether Cutie uses bounded long-term memory, recommended for videos longer than roughly one minute. <code>None</code> keeps Cutie's own configured value.</td>
 <td><code>True</code></td>
+</tr>
+<tr>
+<td><code>cutie_channels_last</code></td>
+<td>Opt-in <code>channels_last</code> memory format for the Cutie model. Off by default; primarily helps CUDA and may alter kernel selection.</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>cutie_compile</code></td>
+<td>Opt-in <code>torch.compile</code> of Cutie's shape-stable per-frame encoder path. Incurs first-call warmup and may alter numerics.</td>
+<td><code>False</code></td>
 </tr>
 <tr>
 <td><code>mask_creation_bbox_overlap_threshold</code></td>
@@ -2231,7 +2262,7 @@ mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
 <p>The mask pipeline is the expensive part of McByte. <strong>Cutie</strong>, the temporal mask propagator, is the heaviest component: it stores all masks as one <code>(N, H, W)</code> tensor (<code>N</code> ≈ number of tracklets, <code>H</code>×<code>W</code> = frame resolution) and recomputes the whole tensor on every frame, so cost grows with both the number of tracked objects and the frame size. <strong>SAM</strong>, the initial mask creator, is lighter because it only runs when new tracklets appear. The mask-free configuration (<code>enable_mask_manager=False</code>) has none of this overhead.</p>
 <p>Ideas for speeding up the full pipeline, from least to most invasive:</p>
 <ul>
-<li><strong>Shrink Cutie's internal mask resolution.</strong> Cutie's <code>max_internal_size</code> (in its <code>eval_config</code>) defaults to <code>-1</code> (no resizing). Setting it to the desired shorter edge — e.g. <code>540</code> for <code>1920x1080</code> input — makes Cutie propagate at <code>960x540</code> internally, then resize the mask back before it reaches the tracker. This is the most conservative option (no code changes to Cutie). Smaller masks are less precise, especially under occlusion or for small objects, which can affect association quality.</li>
+<li><strong>Tune Cutie's internal mask resolution.</strong> McByte's own default (<code>McByteMaskConfig.cutie_max_internal_size = 480</code>) already downscales to a 480px shortest side before propagation, resizing the mask back before it reaches the tracker — raw Cutie's own <code>eval_config</code> default of <code>-1</code> (no resizing, full input resolution) is <em>not</em> what McByte runs out of the box. Lowering <code>cutie_max_internal_size</code> below <code>480</code> trades further precision for speed; setting it to <code>-1</code> reverts to full-resolution propagation, which is slower, not faster. Smaller masks are less precise, especially under occlusion or for small objects, which can affect association quality.</li>
 <li><strong>Propagate less often.</strong> Running Cutie every few frames instead of every frame cuts the dominant cost, but requires changes in <code>mask_manager.py</code> / the tracker's <code>update()</code> call, and careful handling of the add-mask/remove-mask events when tracklets are created or terminated.</li>
 <li><strong>Use a smaller SAM model.</strong> <code>McByteMaskConfig(sam_model_type=...)</code> can select a lighter SAM variant, trading initial-mask quality for speed.</li>
 <li><strong>Downscale CMC input.</strong> McByte's <code>cmc_downscale</code> aggregate-performance default changed from <code>2</code> to <code>6</code>; generic <code>CMCConfig</code> and <code>BoTSORTTracker</code> remain at <code>2</code>. On the complete 45-clip SportsMOT validation split at 1280x720, using ground-truth detections with <code>enable_mask_manager=False</code>, factor <code>6</code> reduced median CMC latency by approximately 50% versus factor <code>2</code>. Combined and mean HOTA/IDF1 improved, while median per-sequence HOTA/MOTA/IDF1 deltas were neutral. Nine clips regressed under the previous strict per-clip gate, so the new default is not a strict per-clip quality guarantee. Pass <code>cmc_downscale=2</code> to preserve prior behavior or when conservative per-sequence stability matters, and benchmark other detectors, resolutions, or domains.</li>
@@ -2266,7 +2297,7 @@ mf^{i,j} = \frac{|\mathrm{mask}(tracklet_i) \cap bbox_j|}{|bbox_j|}
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 8, 2026 19:44:52 UTC">2026-08-08</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 15:29:41 UTC">2026-08-10</span>
   </span>
 
     

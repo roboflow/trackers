@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-07",
+  "dateModified": "2026-08-10",
   "datePublished": "2026-03-13"
 }
 </script>
@@ -1959,7 +1959,7 @@
 <hr />
 <h2 id="install">Install</h2>
 <p>Install <code>trackers</code> with the detection extra to enable built-in model support.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install trackers[detection]
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install &quot;trackers[detection]&quot;
 </span></code></pre></div>
 <p>For more options, see the <a href="../install/">install guide</a>.</p>
 <hr />
@@ -2000,13 +2000,7 @@
 </table>
 <hr />
 <h2 id="download-data">Download Data</h2>
-<p>Pull the MOT17 validation split. You need frames for detection and annotations for evaluation.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers download \
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    --name mot17 \
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    --split val \
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    --asset frames,annotations \
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    --output ./data
-</span></code></pre></div>
+<p>Download the MOT17 validation split (frames for detection, annotations for evaluation) — see the <a href="../download/">download guide</a> for the full command and available options.</p>
 <hr />
 <h2 id="run-the-experiment">Run the Experiment</h2>
 <p>Run ByteTrack with default parameters three times, changing only the detection model each time.</p>
@@ -2014,23 +2008,23 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Single sequence</label><label for="__tabbed_1_2">All sequences</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>--detection.model<span class="w"> </span>yolo26n-640<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span>--output.mot_results<span class="w"> </span>results/yolo26n/MOT17-13-FRCNN.txt
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>--detection.model<span class="w"> </span>yolo26n-640<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span>--output.mot_results<span class="w"> </span>results/yolo26n/MOT17-13-FRCNN.txt
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">        </span>--detection.model<span class="w"> </span>yolo26n-640<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">        </span>--output.mot_results<span class="w"> </span>results/yolo26n/<span class="nv">$seq</span>.txt
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">        </span>--detection.model<span class="w"> </span>yolo26n-640<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">        </span>--output.mot_results<span class="w"> </span>results/yolo26n/<span class="nv">$seq</span>.txt
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="k">done</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2044,23 +2038,23 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Single sequence</label><label for="__tabbed_2_2">All sequences</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span>--detection.model<span class="w"> </span>rfdetr-nano<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span>--output.mot_results<span class="w"> </span>results/rfdetr-nano/MOT17-13-FRCNN.txt
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span>--detection.model<span class="w"> </span>rfdetr-nano<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span>--output.mot_results<span class="w"> </span>results/rfdetr-nano/MOT17-13-FRCNN.txt
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">        </span>--detection.model<span class="w"> </span>rfdetr-nano<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">        </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">        </span>--output.mot_results<span class="w"> </span>results/rfdetr-nano/<span class="nv">$seq</span>.txt
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">        </span>--detection.model<span class="w"> </span>rfdetr-nano<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">        </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span>--output.mot_results<span class="w"> </span>results/rfdetr-nano/<span class="nv">$seq</span>.txt
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="k">done</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2074,23 +2068,23 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Single sequence</label><label for="__tabbed_3_2">All sequences</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span>--detection.model<span class="w"> </span>rfdetr-medium<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span>--output.mot_results<span class="w"> </span>results/rfdetr-medium/MOT17-13-FRCNN.txt
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span>--source<span class="w"> </span>./data/mot17/val/MOT17-13-FRCNN/img1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span>--detection.model<span class="w"> </span>rfdetr-medium<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span>--output.mot_results<span class="w"> </span>results/rfdetr-medium/MOT17-13-FRCNN.txt
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">        </span>--detection.model<span class="w"> </span>rfdetr-medium<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">        </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">        </span>--output.mot_results<span class="w"> </span>results/rfdetr-medium/<span class="nv">$seq</span>.txt
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">for</span><span class="w"> </span>seq<span class="w"> </span><span class="k">in</span><span class="w"> </span>MOT17-02-FRCNN<span class="w"> </span>MOT17-04-FRCNN<span class="w"> </span>MOT17-05-FRCNN<span class="w"> </span>MOT17-09-FRCNN<span class="w"> </span>MOT17-10-FRCNN<span class="w"> </span>MOT17-11-FRCNN<span class="w"> </span>MOT17-13-FRCNN<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">        </span>--source<span class="w"> </span>./data/mot17/val/<span class="nv">$seq</span>/img1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">        </span>--detection.model<span class="w"> </span>rfdetr-medium<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">        </span>--tracker<span class="w"> </span>bytetrack<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">        </span>--filters.classes<span class="w"> </span><span class="o">[</span>person<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">        </span>--output.mot_results<span class="w"> </span>results/rfdetr-medium/<span class="nv">$seq</span>.txt
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="k">done</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2104,40 +2098,40 @@
 <h2 id="evaluate">Evaluate</h2>
 <p>Evaluate each run against ground truth using CLEAR, HOTA, and Identity metrics.</p>
 <h3 id="yolo26-nano_1">YOLO26 Nano</h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>trackers eval \
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    --gt_dir ./data/mot17/val \
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    --predictions_dir results/yolo26n \
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>trackers eval \
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    --gt_dir ./data/mot17/val \
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    --predictions_dir results/yolo26n \
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
 </span></code></pre></div>
 <p><strong>Output:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>                                MOTA    HOTA    IDF1
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>----------------------------------------------------
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>COMBINED                      23.444  32.874  34.411
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>                                MOTA    HOTA    IDF1
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>----------------------------------------------------
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>COMBINED                      23.444  32.874  34.411
 </span></code></pre></div>
 <h3 id="rf-detr-nano_1">RF-DETR Nano</h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>trackers eval \
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    --gt_dir ./data/mot17/val \
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    --predictions_dir results/rfdetr-nano \
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>trackers eval \
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    --gt_dir ./data/mot17/val \
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    --predictions_dir results/rfdetr-nano \
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
 </span></code></pre></div>
 <p><strong>Output:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>                                MOTA    HOTA    IDF1
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>----------------------------------------------------
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>COMBINED                      25.667  35.735  38.182
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>                                MOTA    HOTA    IDF1
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>----------------------------------------------------
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>COMBINED                      25.667  35.735  38.182
 </span></code></pre></div>
 <h3 id="rf-detr-medium_1">RF-DETR Medium</h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>trackers eval \
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    --gt_dir ./data/mot17/val \
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    --predictions_dir results/rfdetr-medium \
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>trackers eval \
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    --gt_dir ./data/mot17/val \
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    --predictions_dir results/rfdetr-medium \
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
 </span></code></pre></div>
 <p><strong>Output:</strong></p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>                                MOTA    HOTA    IDF1
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>----------------------------------------------------
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>COMBINED                      29.141  38.637  41.950
+<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>                                MOTA    HOTA    IDF1
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>----------------------------------------------------
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>COMBINED                      29.141  38.637  41.950
 </span></code></pre></div>
 <hr />
 <h2 id="results">Results</h2>
@@ -2198,7 +2192,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 21:00:46 UTC">2026-08-07</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 15:29:41 UTC">2026-08-10</span>
   </span>
 
     
