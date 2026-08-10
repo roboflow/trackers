@@ -131,7 +131,6 @@ nav:
     - Install Trackers: learn/install.md
     - Track Objects: learn/track.md
     - CLI Reference: learn/cli.md
-    - CLI Migration Guide: learn/cli-migration.md
     - Dynamic Frame Rate: learn/dynamic-frame-rate.md
     - Download Datasets: learn/download.md
     - Evaluate Trackers: learn/evaluate.md
@@ -157,6 +156,7 @@ nav:
     - Datasets: api/datasets.md
     - Evals: api/evals.md
     - I/O: api/io.md
+    - CLI Migration Guide: learn/cli-migration.md
+    - Changelog: changelog.md
   - Community:
     - Contributing: contributing.md
-    - Changelog: changelog.md
