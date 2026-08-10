@@ -6,19 +6,19 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte.">
+        <meta name="description" content="Measure tracker accuracy with standard MOT metrics — HOTA, IDF1, and MOTA — using Roboflow Trackers built-in evaluation pipeline on MOT benchmark datasets.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/evaluations/evaluate/">
       
       
-        <link rel="prev" href="../cli/">
+        <link rel="prev" href="../download/">
       
       
-        <link rel="next" href="../detection-quality/">
+        <link rel="next" href="../benchmark-runner/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Dynamic Frame Rate — Variable-Gap Tracking | Trackers - Trackers</title>
+        <title>Evaluate Tracker Performance — HOTA, IDF1, MOTA Metrics | Trackers - Trackers</title>
       
     
     
@@ -129,12 +129,12 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "Dynamic Frame Rate",
-  "description": "Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte.",
-  "url": "https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/",
+  "headline": "Benchmark Trackers",
+  "description": "Measure tracker accuracy with standard MOT metrics — HOTA, IDF1, and MOTA — using Roboflow Trackers built-in evaluation pipeline on MOT benchmark datasets.",
+  "url": "https://trackers.roboflow.com/latest/develop/evaluations/evaluate/",
   "mainEntityOfPage": {
     "@type": "WebPage",
-    "@id": "https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/"
+    "@id": "https://trackers.roboflow.com/latest/develop/evaluations/evaluate/"
   },
   "image": {
     "@type": "ImageObject",
@@ -161,8 +161,8 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-03",
-  "datePublished": "2026-07-01"
+  "dateModified": "2026-08-10",
+  "datePublished": "2026-02-04"
 }
 </script>
 
@@ -179,9 +179,9 @@
 
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
-<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/" />
-<meta property="og:title" content="Dynamic Frame Rate — Variable-Gap Tracking | Trackers" />
-<meta property="og:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte." />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/evaluations/evaluate/" />
+<meta property="og:title" content="Evaluate Tracker Performance — HOTA, IDF1, MOTA Metrics | Trackers" />
+<meta property="og:description" content="Measure tracker accuracy with standard MOT metrics — HOTA, IDF1, and MOTA — using Roboflow Trackers built-in evaluation pipeline on MOT benchmark datasets." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -192,8 +192,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="Dynamic Frame Rate — Variable-Gap Tracking | Trackers" />
-<meta name="twitter:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte." />
+<meta name="twitter:title" content="Evaluate Tracker Performance — HOTA, IDF1, MOTA Metrics | Trackers" />
+<meta name="twitter:description" content="Measure tracker accuracy with standard MOT metrics — HOTA, IDF1, and MOTA — using Roboflow Trackers built-in evaluation pipeline on MOT benchmark datasets." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -210,7 +210,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#dynamic-frame-rate" class="md-skip">
+        <a href="#evaluate-trackers" class="md-skip">
           Skip to content
         </a>
       
@@ -276,7 +276,7 @@
 
             </a>
             
-              Dynamic Frame Rate — Variable-Gap Tracking | Trackers
+              Evaluate Tracker Performance — HOTA, IDF1, MOTA Metrics | Trackers
             
           </span>
         </div>
@@ -480,7 +480,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../install/" class="md-tabs__link">
+        <a href="../../guides/install/" class="md-tabs__link">
           
   
   
@@ -496,13 +496,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../guides/dynamic-frame-rate/" class="md-tabs__link">
           
   
   
@@ -522,7 +520,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../inspect/" class="md-tabs__link">
+        <a href="../../guides/inspect/" class="md-tabs__link">
           
   
   
@@ -538,11 +536,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../evaluations/download/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../download/" class="md-tabs__link">
           
   
   
@@ -832,7 +832,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../install/" class="md-nav__link">
+      <a href="../../guides/install/" class="md-nav__link">
         
   
   
@@ -860,7 +860,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../track/" class="md-nav__link">
+      <a href="../../guides/track/" class="md-nav__link">
         
   
   
@@ -888,7 +888,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli/" class="md-nav__link">
+      <a href="../../guides/cli/" class="md-nav__link">
         
   
   
@@ -920,29 +920,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -960,7 +957,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -975,37 +972,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dynamic Frame Rate
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../guides/dynamic-frame-rate/" class="md-nav__link">
         
   
   
@@ -1021,103 +991,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-to-use-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        When to Use It
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fixed-rate-vs-dynamic-rate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fixed Rate vs Dynamic Rate
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-happens-on-a-long-gap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What Happens on a Long Gap
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Usage
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#things-to-know" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Things to Know
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#takeaway" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Takeaway
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1130,7 +1003,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../detection-quality/" class="md-nav__link">
+      <a href="../../guides/detection-quality/" class="md-nav__link">
         
   
   
@@ -1158,7 +1031,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tune/" class="md-nav__link">
+      <a href="../../guides/tune/" class="md-nav__link">
         
   
   
@@ -1186,7 +1059,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../iou/" class="md-nav__link">
+      <a href="../../guides/iou/" class="md-nav__link">
         
   
   
@@ -1214,7 +1087,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../state-estimators/" class="md-nav__link">
+      <a href="../../guides/state-estimators/" class="md-nav__link">
         
   
   
@@ -1301,7 +1174,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../inspect/" class="md-nav__link">
+      <a href="../../guides/inspect/" class="md-nav__link">
         
   
   
@@ -1333,26 +1206,29 @@
       
   
   
+    
   
   
+  
     
     
     
     
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
       
         
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1370,7 +1246,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1388,7 +1264,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/download/" class="md-nav__link">
+      <a href="../download/" class="md-nav__link">
         
   
   
@@ -1413,10 +1289,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../evaluations/evaluate/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark Trackers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1432,6 +1335,103 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#download-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Download Data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Tracking
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Format
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-sequence-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Sequence Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1444,7 +1444,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/benchmark-runner/" class="md-nav__link">
+      <a href="../benchmark-runner/" class="md-nav__link">
         
   
   
@@ -1472,7 +1472,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/results/" class="md-nav__link">
+      <a href="../results/" class="md-nav__link">
         
   
   
@@ -1500,7 +1500,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/methodology/" class="md-nav__link">
+      <a href="../methodology/" class="md-nav__link">
         
   
   
@@ -1954,7 +1954,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../migration_cli/" class="md-nav__link">
+      <a href="../../guides/migration_cli/" class="md-nav__link">
         
   
   
@@ -2191,10 +2191,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-to-use-it" class="md-nav__link">
+  <a href="#download-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        When to Use It
+        Download Data
       
     </span>
   </a>
@@ -2202,10 +2202,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#fixed-rate-vs-dynamic-rate" class="md-nav__link">
+  <a href="#run-tracking" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fixed Rate vs Dynamic Rate
+        Run Tracking
       
     </span>
   </a>
@@ -2213,10 +2213,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-happens-on-a-long-gap" class="md-nav__link">
+  <a href="#evaluate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What Happens on a Long Gap
+        Evaluate
       
     </span>
   </a>
@@ -2224,10 +2224,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
+  <a href="#data-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Usage
+        Data Format
       
     </span>
   </a>
@@ -2235,10 +2235,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#things-to-know" class="md-nav__link">
+  <a href="#multi-sequence-evaluation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Things to Know
+        Multi-Sequence Evaluation
       
     </span>
   </a>
@@ -2246,10 +2246,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#takeaway" class="md-nav__link">
+  <a href="#cli-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Takeaway
+        CLI Reference
       
     </span>
   </a>
@@ -2276,113 +2276,149 @@
   
 
 
-<h1 id="dynamic-frame-rate">Dynamic Frame Rate</h1>
-<p>Most tracking examples assume you call <code>update()</code> once per video frame, in order, at a steady FPS. That breaks when <strong>frames are dropped</strong> (you skip frame 2 but still call <code>update()</code> on frame 3) or when you <strong>only process some frames</strong>. Processing delay is fine, a frame that arrives late but with the right capture timestamp still has the correct gap to the previous frame you tracked. What matters is the <strong>time between captured frames you actually update on</strong>, not how long inference took.</p>
-<p>Pass an optional <strong><code>timestamp</code></strong> (seconds) on <code>update()</code> so the tracker knows how much time actually passed. Prediction and pruning then follow the real gap. Omit <code>timestamp</code> and nothing changes: fixed-rate behaviour.</p>
+<h1 id="evaluate-trackers">Evaluate Trackers</h1>
+<p>Measure tracker quality with standard MOT metrics to get reproducible scores for development and benchmarking.</p>
 <p><strong>What you'll learn:</strong></p>
 <ul>
-<li>How to use dynamic frame rate mode</li>
-<li>When it's worth to use it</li>
-<li>How fixed-rate and dynamic-rate modes differ</li>
+<li>Download ground-truth annotations and detections for evaluation</li>
+<li>Run tracking on pre-computed detections</li>
+<li>Evaluate tracking results against ground truth</li>
 </ul>
+<video width="100%" controls autoplay muted loop>
+  <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/MOT17_MOT17-04-DPM-1280x720.mp4" type="video/mp4">
+</video>
+<p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>
+
 <hr />
 <h2 id="install">Install</h2>
 <p>Get started by installing the package.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install trackers
 </span></code></pre></div>
-<p>For more options, see the <a href="../install/">install guide</a>.</p>
+<p>For more options, see the <a href="../../guides/install/">install guide</a>.</p>
 <hr />
-<h2 id="when-to-use-it">When to Use It</h2>
-<p>Turn on timestamps when the <strong>capture-time gap</strong> between two <code>update()</code> calls is not always one frame period, we call that <strong>dynamic frame rate</strong>, and some cases where it happens are:</p>
-<ul>
-<li><strong>Dropped or skipped frames</strong>: you process frame 100 after frame 97; the tracker should treat that as three frame periods of motion, not one</li>
-<li><strong>Sparse decode</strong>: variable-FPS files or sampling every Nth frame, using the container or camera clock</li>
-<li><strong>Out-of-order completion</strong>: workers may finish in any order, but you should call <code>update()</code> in <strong>non-decreasing capture time</strong> (sort by capture time or frame index before updating). A later frame must not be updated before an earlier one</li>
-</ul>
-<p>Stick with the default when you process <strong>every</strong> frame in order at a steady rate. A normal <code>VideoCapture</code> loop that reads all frames does not need timestamps.</p>
-<p><code>SORTTracker</code>, <code>ByteTrackTracker</code>, <code>OCSORTTracker</code>, <code>BoTSORTTracker</code>, <code>CBIoUTracker</code>, and <code>McByteTracker</code> all accept <code>timestamp</code> on <code>update()</code>.</p>
+<h2 id="download-data">Download Data</h2>
+<p>Download ground-truth annotations and detections for MOT17 validation — see the <a href="../download/">download guide</a> for the full command and output layout. This guide assumes data lands at <code>./mot17/val/&lt;sequence&gt;/det/det.txt</code> and <code>./mot17/val/&lt;sequence&gt;/gt/gt.txt</code>, matching that guide's default output (<code>--output</code> defaults to the current directory, <code>.</code>).</p>
 <hr />
-<h2 id="fixed-rate-vs-dynamic-rate">Fixed Rate vs Dynamic Rate</h2>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>Fixed rate (default)</th>
-<th>Dynamic rate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>timestamp</code></td>
-<td><code>None</code> (omit)</td>
-<td>Monotonic seconds, e.g. video clock</td>
-</tr>
-<tr>
-<td>Kalman <code>frame_step</code></td>
-<td><code>1.0</code> per call (frame units)</td>
-<td><code>elapsed_seconds × frame_rate</code> (frame units)</td>
-</tr>
-</tbody>
-</table>
-<p><strong><code>lost_track_buffer</code> is always the same integer</strong> — frames at a <strong>30 FPS reference</strong> (MOT-style tuning), not seconds you type in. The tracker converts it for you:</p>
-<ul>
-<li><strong>Fixed rate:</strong> <code>maximum_frames_without_update = int(frame_rate / 30 × lost_track_buffer)</code> so a 60 FPS pipeline with <code>lost_track_buffer=30</code> keeps lost tracks for 60 frames (~1 s if you update every frame).</li>
-<li><strong>Dynamic rate:</strong> <code>maximum_time_without_update = lost_track_buffer / 30</code> seconds between <code>update()</code> calls. The same <code>lost_track_buffer=30</code> gives a <strong>1.0 s</strong> budget; that does <strong>not</strong> scale with <code>frame_rate</code>.</li>
-</ul>
-<p>Set <strong><code>frame_rate</code></strong> on the tracker in both modes. In fixed mode it scales the frame budget above. When you pass <code>timestamp</code>, it also turns elapsed seconds into Kalman frame units (<code>elapsed_seconds × frame_rate</code>).</p>
-<p>If the video is actually steady 25 FPS and you pass timestamps every frame, <code>frame_step</code> stays at <code>1.0</code> for Kalman purposes — dynamic mode lines up with fixed mode. It lands <em>near</em> <code>1.0</code> rather than on it, because <code>frame_step</code> comes out of a subtraction: a float clock is off by ~1e-12, <code>cv2.CAP_PROP_POS_MSEC</code> rounds to whole milliseconds, and capture jitter adds a couple more. The tolerance around <code>1.0</code> is a fixed <strong>~4 ms of wall-clock slack</strong>, scaled by your tracker's <code>frame_rate</code> into frame units — that keeps the tolerance the same physical size at any FPS, rather than a fixed percentage of a frame. A step within that budget counts as one nominal frame and runs the same process noise as fixed mode.</p>
-<p>Two differences remain. <code>frame_step</code> still scales the transition matrix, so a clock reporting 1.02 frames does extrapolate 2% further — sub-pixel in practice. And lost-track pruning is not symmetric: dynamic mode drops time-expired tracks <em>before</em> association, fixed mode enforces its frame budget <em>after</em>, so a track whose budget runs out on the step where a detection would have re-matched it survives in fixed mode and not in dynamic mode.</p>
-<hr />
-<h2 id="what-happens-on-a-long-gap">What Happens on a Long Gap</h2>
-<p>On each predict, the filter adjusts how far it extrapolates and how uncertain it is:</p>
-<ul>
-<li><strong>Position</strong> moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (<code>frame_step</code>).</li>
-<li><strong>Process noise</strong> grows on longer gaps so the box does not stay artificially tight. Within the ~4 ms wall-clock tolerance of <code>frame_step = 1.0</code> (see above) you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.</li>
-<li><strong>Scale velocity</strong> is frozen if the projected area over the gap would go non-positive.</li>
-</ul>
-<hr />
-<h2 id="usage">Usage</h2>
-<p>Feed <strong><code>timestamp</code></strong> in seconds into <code>tracker.update()</code> alongside your detections. Use <strong>capture time</strong> of each frame in the video, or <code>frame_index / fps</code>.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Python</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Read the video clock from OpenCV and pass it to ByteTrack each frame.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inference</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_model</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">(</span><span class="s2">&quot;rfdetr-medium&quot;</span><span class="p">)</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">(</span><span class="n">frame_rate</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span> <span class="n">lost_track_buffer</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">cap</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="s2">&quot;source.mp4&quot;</span><span class="p">)</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">ret</span><span class="p">,</span> <span class="n">frame</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">ret</span><span class="p">:</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        <span class="k">break</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">CAP_PROP_POS_MSEC</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000.0</span>
-</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
-</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">frame</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">Detections</span><span class="o">.</span><span class="n">from_inference</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">)</span>
+<h2 id="run-tracking">Run Tracking</h2>
+<p>Feed the pre-computed detections into a tracker and write the results to a file for evaluation. Pass <code>--detection.mot_file</code> to provide precomputed MOT detector output and <code>--output.mot_results</code> to save the tracker output in MOT format — see the <a href="../../guides/track/">track guide</a> for more on <code>trackers track</code>.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers track \
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    --detection.mot_file ./mot17/val/MOT17-02-FRCNN/det/det.txt \
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    --tracker bytetrack \
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    --output.mot_results results/MOT17-02-FRCNN.txt
 </span></code></pre></div>
-</div>
-</div>
-</div>
-<p>Call <strong><code>tracker.reset()</code></strong> when you switch videos so the last timestamp does not leak into the next file.</p>
 <hr />
-<h2 id="things-to-know">Things to Know</h2>
-<p><strong>You can mix modes per call.</strong> Only steps that pass <code>timestamp</code> use seconds for pruning and scaled predict. Calling <code>update()</code> without <code>timestamp</code> resets the internal timestamp anchor — the next <code>update()</code> that <em>does</em> pass a <code>timestamp</code> will be treated as a fresh start (Kalman frame step <code>1 / frame_rate</code>), not a measured gap from the last timestamped call.</p>
-<p><strong>The first timestamped step is special.</strong> The tracker does not use your absolute clock value as the first gap. It assumes <code>1 / frame_rate</code> seconds so the first Kalman predict still looks like one frame.</p>
-<p><strong>Timestamps must not go backwards.</strong> If <code>timestamp</code> is less than the previous call, <code>update()</code> <strong>warns and skips the whole step</strong> (tracks unchanged, output IDs are <code>-1</code>). Reorder by capture time and call again. <strong>Duplicate</strong> timestamps (same capture time twice) only skip predict; association still runs on the last state.</p>
-<p><strong><code>frame_rate</code> should match your reference timeline.</strong> If the file is 24 FPS but you set <code>frame_rate=30</code>, each step over-predicts motion. Same parameter already mattered for threshold scaling in fixed mode; it matters more when gaps are measured in seconds.</p>
-<p><strong>OC-SORT:</strong> ORU still steps in frame units, not wall-clock gaps.</p>
-<p><strong>McByte:</strong> the optional mask pipeline (<code>enable_mask_manager=True</code>) still propagates one step per <code>update()</code> call; timestamps scale Kalman prediction and lost-track pruning, not mask propagation.</p>
+<h2 id="evaluate">Evaluate</h2>
+<p>Compare the tracker output against ground truth to compute standard MOT metrics.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>trackers eval \
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    --gt ./mot17/val/MOT17-02-FRCNN/gt/gt.txt \
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    --predictions results/MOT17-02-FRCNN.txt \
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
+</span></code></pre></div>
+<p><strong>Output:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>                                MOTA    HOTA    IDF1
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>----------------------------------------------------
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>gt                            30.192  35.475  38.515
+</span></code></pre></div>
 <hr />
-<h2 id="takeaway">Takeaway</h2>
-<p>Timestamps are optional on <code>update()</code>. Skip them when you track every frame in order. Use them when frames are <strong>dropped or sparse</strong>, pass <strong>capture time</strong> (not inference finish time), call <code>update()</code> in <strong>time order</strong>, set <code>frame_rate</code> to the FPS you tuned against, and <code>reset()</code> between videos.</p>
+<h2 id="data-format">Data Format</h2>
+<p>Ground-truth and tracker output files use the MOT Challenge text format.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&lt;frame&gt;,&lt;id&gt;,&lt;bb_left&gt;,&lt;bb_top&gt;,&lt;bb_width&gt;,&lt;bb_height&gt;,&lt;conf&gt;,&lt;x&gt;,&lt;y&gt;,&lt;z&gt;
+</span></code></pre></div>
+<p><strong>Example:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>1,1,100,200,50,80,1,-1,-1,-1
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>1,2,300,150,60,90,1,-1,-1,-1
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>2,1,105,198,50,80,1,-1,-1,-1
+</span></code></pre></div>
+<p>Each line contains the frame number, object ID, bounding box (<code>left</code>, <code>top</code>, <code>width</code>, <code>height</code>), confidence score, and 3D position (set to <code>-1</code> when unused).</p>
+<hr />
+<h2 id="multi-sequence-evaluation">Multi-Sequence Evaluation</h2>
+<p>Evaluate all sequences at once and get per-sequence results plus a combined aggregate.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>trackers eval \
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    --gt_dir ./mot17/val \
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    --predictions_dir results \
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39; \
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    --output results.json
+</span></code></pre></div>
+<p><strong>Output:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Sequence                        MOTA    HOTA    IDF1
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>----------------------------------------------------
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>MOT17-02-FRCNN                30.192  35.475  38.515
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>MOT17-04-FRCNN                48.912  55.096  61.854
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>MOT17-05-FRCNN                52.755  45.515  55.705
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>MOT17-09-FRCNN                51.441  50.108  57.038
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>MOT17-10-FRCNN                51.832  49.648  55.797
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>MOT17-11-FRCNN                55.501  49.401  55.061
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>MOT17-13-FRCNN                60.488  58.651  69.884
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>----------------------------------------------------
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>COMBINED                      47.406  50.355  56.600
+</span></code></pre></div>
+<p>Use <code>--output</code> to save the full results to a JSON file for later analysis.</p>
+<hr />
+<h2 id="cli-reference">CLI Reference</h2>
+<p>All arguments accepted by <code>trackers eval</code>.</p>
+<table>
+  <colgroup>
+    <col style="width: 40%">
+    <col style="width: 40%">
+    <col style="width: 20%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Argument</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>--gt</code></td>
+      <td>Path to a single ground-truth file in MOT format.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--predictions</code></td>
+      <td>Path to a single tracker predictions file in MOT format. Formerly <code>--tracker</code>.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--gt_dir</code></td>
+      <td>Directory containing ground-truth files for multi-sequence evaluation.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--predictions_dir</code></td>
+      <td>Directory containing tracker prediction files for multi-sequence evaluation. Formerly <code>--tracker_dir</code>.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--seqmap</code></td>
+      <td>Sequence map file listing sequences to evaluate. If omitted, all sequences in the directory are evaluated.</td>
+      <td>all</td>
+    </tr>
+    <tr>
+      <td><code>--metrics</code></td>
+      <td>Metric families to compute. Options: <code>CLEAR</code>, <code>HOTA</code>, <code>Identity</code>.</td>
+      <td><code>CLEAR</code></td>
+    </tr>
+    <tr>
+      <td><code>--threshold</code></td>
+      <td>IoU threshold for CLEAR and Identity matching. HOTA evaluates across multiple thresholds internally.</td>
+      <td><code>0.5</code></td>
+    </tr>
+    <tr>
+      <td><code>--columns</code></td>
+      <td>Metric columns to display. If omitted, all columns for the selected metrics are shown.</td>
+      <td>auto</td>
+    </tr>
+    <tr>
+      <td><code>--output</code></td>
+      <td>Save results to a JSON file at the given path.</td>
+      <td>none</td>
+    </tr>
+  </tbody>
+</table>
 
 
 
@@ -2405,7 +2441,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 3, 2026 20:48:33 UTC">2026-08-03</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 15:29:41 UTC">2026-08-10</span>
   </span>
 
     
@@ -2415,7 +2451,7 @@
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 1, 2026 19:50:09 UTC">2026-07-01</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="February 4, 2026 23:18:18 UTC">2026-02-04</span>
   </span>
 
     
@@ -2446,7 +2482,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../cli/" class="md-footer__link md-footer__link--prev" aria-label="Previous: CLI Reference">
+          <a href="../download/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Download Datasets">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2456,20 +2492,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                CLI Reference
+                Download Datasets
               </div>
             </div>
           </a>
         
         
           
-          <a href="../detection-quality/" class="md-footer__link md-footer__link--next" aria-label="Next: Detection Quality Matters">
+          <a href="../benchmark-runner/" class="md-footer__link md-footer__link--next" aria-label="Next: Benchmark Runner">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Detection Quality Matters
+                Benchmark Runner
               </div>
             </div>
             <div class="md-footer__button md-icon">

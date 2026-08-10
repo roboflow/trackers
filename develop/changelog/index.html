@@ -540,7 +540,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../benchmarking/download/" class="md-tabs__link">
+        <a href="../evaluations/download/" class="md-tabs__link">
           
   
   
@@ -1261,7 +1261,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../benchmarking/download/" class="md-nav__link">
+      <a href="../evaluations/download/" class="md-nav__link">
         
   
   
@@ -1289,7 +1289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../benchmarking/evaluate/" class="md-nav__link">
+      <a href="../evaluations/evaluate/" class="md-nav__link">
         
   
   
@@ -1317,7 +1317,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../benchmarking/benchmark-runner/" class="md-nav__link">
+      <a href="../evaluations/benchmark-runner/" class="md-nav__link">
         
   
   
@@ -1345,7 +1345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../benchmarking/results/" class="md-nav__link">
+      <a href="../evaluations/results/" class="md-nav__link">
         
   
   
@@ -1373,7 +1373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../benchmarking/methodology/" class="md-nav__link">
+      <a href="../evaluations/methodology/" class="md-nav__link">
         
   
   
@@ -1921,12 +1921,12 @@
   <a href="#unreleased" class="md-nav__link">
     <span class="md-ellipsis">
       
-        [Unreleased]
+        Unreleased
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[Unreleased]">
+    <nav class="md-nav" aria-label="Unreleased">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1971,12 +1971,12 @@
   <a href="#260-2026-08-03" class="md-nav__link">
     <span class="md-ellipsis">
       
-        [2.6.0] — 2026-08-03
+        2.6.0 — 2026-08-03
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[2.6.0] — 2026-08-03">
+    <nav class="md-nav" aria-label="2.6.0 — 2026-08-03">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2043,12 +2043,12 @@
   <a href="#250-2026-06-22" class="md-nav__link">
     <span class="md-ellipsis">
       
-        [2.5.0] — 2026-06-22
+        2.5.0 — 2026-06-22
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[2.5.0] — 2026-06-22">
+    <nav class="md-nav" aria-label="2.5.0 — 2026-06-22">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2500,12 +2500,12 @@
   <a href="#unreleased" class="md-nav__link">
     <span class="md-ellipsis">
       
-        [Unreleased]
+        Unreleased
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[Unreleased]">
+    <nav class="md-nav" aria-label="Unreleased">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2550,12 +2550,12 @@
   <a href="#260-2026-08-03" class="md-nav__link">
     <span class="md-ellipsis">
       
-        [2.6.0] — 2026-08-03
+        2.6.0 — 2026-08-03
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[2.6.0] — 2026-08-03">
+    <nav class="md-nav" aria-label="2.6.0 — 2026-08-03">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2622,12 +2622,12 @@
   <a href="#250-2026-06-22" class="md-nav__link">
     <span class="md-ellipsis">
       
-        [2.5.0] — 2026-06-22
+        2.5.0 — 2026-06-22
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[2.5.0] — 2026-06-22">
+    <nav class="md-nav" aria-label="2.5.0 — 2026-06-22">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2913,7 +2913,7 @@
 <h1 id="changelog">Changelog</h1>
 <p>All notable changes to this project are documented in this file.</p>
 <p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>, and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
-<h2 id="unreleased">[Unreleased]</h2>
+<h2 id="unreleased"><a href="https://github.com/roboflow/trackers/compare/2.6.0...HEAD">Unreleased</a></h2>
 <h3 id="added">🚀 Added</h3>
 <ul>
 <li><strong><code>trackers benchmark mcbyte</code> subcommand</strong> — runs McByte over complete MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking benchmark test sets and writes MOTChallenge-format results, with flags for dataset selection (<code>--dataset</code>), per-dataset detection/image roots (<code>--dataset_roots</code>), device, output location, CMC method/downscale, isolated mask matching, skip-existing, and partial-result retention (<a href="https://github.com/roboflow/trackers/pull/541">#541</a>, <a href="https://github.com/roboflow/trackers/pull/543">#543</a>).</li>
@@ -2928,7 +2928,7 @@
 <li><strong>McByte CMC now defaults to <code>cmc_downscale=6</code></strong> — this aggregate-performance default halves median CMC latency versus factor <code>2</code> on the complete 45-clip, 1280x720 SportsMOT validation split and passes the dataset-level mean/median quality criterion. The benchmark used ground-truth detections with masks disabled; 9/45 clips regressed under the previous strict per-clip gate. Pass <code>cmc_downscale=2</code> to preserve the previous conservative behavior. Generic <code>CMCConfig</code> and <code>BoTSORTTracker</code> remain at <code>2</code>.</li>
 <li><strong>Mask stack moved from <code>trackers.core.mcbyte.masks</code> to <code>trackers.core.masks</code></strong> — SAM mask generation, Cutie propagation, and <code>MaskManager</code> reference no tracker and are not McByte-specific, so they now live beside the trackers rather than inside one. Import from <code>trackers.core.masks</code> instead (<a href="https://github.com/roboflow/trackers/pull/543">#543</a>).</li>
 </ul>
-<h2 id="260-2026-08-03">[2.6.0] — 2026-08-03</h2>
+<h2 id="260-2026-08-03"><a href="https://github.com/roboflow/trackers/compare/2.5.0...2.6.0">2.6.0</a> — 2026-08-03</h2>
 <h3 id="added_1">🚀 Added</h3>
 <ul>
 <li><strong><code>McByteTracker</code></strong> — new mask-conditioned ByteTrack tracker combining mask-conditioned association with SAM box-mask generation and Cutie mask propagation; exported from <code>trackers</code> (<code>McByteMaskConfig</code> also exported) and CLI-discoverable. New <code>trackers[mask]</code> extra installs <code>torch</code>, <code>torchvision</code>, <code>rf-segment-anything</code>, and <code>rf-cutie[inference]</code> (<code>rf-cutie</code> now ships on PyPI instead of git). Device selection defaults to <code>"auto"</code> (CUDA → MPS → CPU); Cutie streaming behaviour is tunable via <code>cutie_max_internal_size</code> (480), <code>cutie_mem_every</code> (10), and <code>cutie_use_long_term</code> (<code>True</code>), with <code>cutie_channels_last</code> / <code>cutie_compile</code> and AMP left off by default; <code>minimum_mask_creation_frames</code> (3) defers SAM/Cutie encoding for short-lived tracklets. Frames are expected in <strong>RGB</strong> (<code>BaseTracker</code>'s other trackers expect BGR). Mask checkpoints load with <code>weights_only=True</code> (CWE-502 guard, never shipped unsafe) (<a href="https://github.com/roboflow/trackers/pull/388">#388</a>, <a href="https://github.com/roboflow/trackers/pull/418">#418</a>, <a href="https://github.com/roboflow/trackers/pull/441">#441</a>, <a href="https://github.com/roboflow/trackers/pull/452">#452</a>, <a href="https://github.com/roboflow/trackers/pull/459">#459</a>, <a href="https://github.com/roboflow/trackers/pull/481">#481</a>, <a href="https://github.com/roboflow/trackers/pull/491">#491</a>, <a href="https://github.com/roboflow/trackers/pull/508">#508</a>, <a href="https://github.com/roboflow/trackers/pull/513">#513</a>, <a href="https://github.com/roboflow/trackers/pull/519">#519</a>, <a href="https://github.com/roboflow/trackers/pull/520">#520</a>, <a href="https://github.com/roboflow/trackers/pull/521">#521</a>, <a href="https://github.com/roboflow/trackers/pull/522">#522</a>, <a href="https://github.com/roboflow/trackers/pull/523">#523</a>, <a href="https://github.com/roboflow/trackers/pull/524">#524</a>, <a href="https://github.com/roboflow/trackers/pull/525">#525</a>, <a href="https://github.com/roboflow/trackers/pull/526">#526</a>, <a href="https://github.com/roboflow/trackers/pull/529">#529</a>, <a href="https://github.com/roboflow/trackers/pull/532">#532</a>).</li>
@@ -2962,7 +2962,7 @@
 <ul>
 <li><strong>Hardened ZIP extraction against Zip Slip / path traversal (CWE-22)</strong> — archive members with absolute paths, traversal segments, empty names, or Windows-style backslash paths are now rejected; validated archives are contained so they cannot write outside the destination directory, including path-swap protection (<a href="https://github.com/roboflow/trackers/pull/495">#495</a>).</li>
 </ul>
-<h2 id="250-2026-06-22">[2.5.0] — 2026-06-22</h2>
+<h2 id="250-2026-06-22"><a href="https://github.com/roboflow/trackers/compare/2.4.0...2.5.0">2.5.0</a> — 2026-06-22</h2>
 <h3 id="added_2">🚀 Added</h3>
 <ul>
 <li><strong>Pluggable IoU variants</strong> — <code>iou=</code> parameter on all four trackers (<code>SORTTracker</code>, <code>ByteTrackTracker</code>, <code>OCSORTTracker</code>, <code>BoTSORTTracker</code>) accepts any <code>BaseIoU</code> subclass. Built-in variants: <code>IoU</code> (standard), <code>GIoU</code>, <code>DIoU</code>, <code>CIoU</code>, <code>BIoU</code> (Buffered IoU) (<a href="https://github.com/roboflow/trackers/pull/403">#403</a>).</li>

@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/trackers/sort/">
       
       
-        <link rel="prev" href="../../benchmarking/methodology/">
+        <link rel="prev" href="../../evaluations/methodology/">
       
       
         <link rel="next" href="../bytetrack/">
@@ -549,7 +549,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../benchmarking/download/" class="md-tabs__link">
+        <a href="../../evaluations/download/" class="md-tabs__link">
           
   
   
@@ -1270,7 +1270,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/download/" class="md-nav__link">
+      <a href="../../evaluations/download/" class="md-nav__link">
         
   
   
@@ -1298,7 +1298,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/evaluate/" class="md-nav__link">
+      <a href="../../evaluations/evaluate/" class="md-nav__link">
         
   
   
@@ -1326,7 +1326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/benchmark-runner/" class="md-nav__link">
+      <a href="../../evaluations/benchmark-runner/" class="md-nav__link">
         
   
   
@@ -1354,7 +1354,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/results/" class="md-nav__link">
+      <a href="../../evaluations/results/" class="md-nav__link">
         
   
   
@@ -1382,7 +1382,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/methodology/" class="md-nav__link">
+      <a href="../../evaluations/methodology/" class="md-nav__link">
         
   
   
@@ -2289,7 +2289,9 @@
 <h2 id="what-is-sort">What is SORT?</h2>
 <p>SORT is a classic online, tracking-by-detection method that predicts object motion with a Kalman filter and matches predicted tracks to detections using the Hungarian algorithm based on Intersection over Union (IoU). The tracker uses only geometric cues from bounding boxes, without appearance features, so it runs extremely fast and scales to hundreds of frames per second on typical hardware. Detections from a strong CNN detector feed SORT, which updates each track's state via a constant velocity motion model and prunes stale tracks. Because SORT lacks explicit re-identification or appearance cues, it can suffer identity switches and fragmented tracks under long occlusions or heavy crowding.</p>
 <h2 id="how-does-sort-compare-to-other-trackers">How does SORT compare to other trackers?</h2>
-<p>For comparisons with other trackers, plus dataset context and evaluation details, see the <a href="../../benchmarking/results/">tracker comparison</a> page.</p>
+<p>For comparisons with other trackers, plus dataset context and evaluation details, see the <a href="../../evaluations/results/">tracker comparison</a> page.</p>
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (Algorithms table), [README.md](../../README.md) (Algorithms table), and [.github/copilot-instructions.md](../../.github/copilot-instructions.md) (Benchmark Results table, including DanceTrack). No DanceTrack row here by design (see results.md dancetrack-default xref). Update results.md first, then mirror here. -->
+
 <table>
 <thead>
 <tr>
@@ -2308,9 +2310,9 @@
 </tr>
 <tr>
 <td style="text-align: center;">SportsMOT</td>
-<td style="text-align: center;">70.9</td>
+<td style="text-align: center;">70.8</td>
 <td style="text-align: center;">68.9</td>
-<td style="text-align: center;">95.7</td>
+<td style="text-align: center;">95.5</td>
 </tr>
 <tr>
 <td style="text-align: center;">SoccerNet</td>
@@ -2326,10 +2328,10 @@
 </video>
 
 <h2 id="how-does-sort-work">How does SORT work?</h2>
-<p>SORT models each tracked object with a seven-dimensional state vector <code>[x, y, s, r, dx, dy, ds]</code>, where <code>x</code> and <code>y</code> are the bounding-box center coordinates, <code>s</code> is the box area (scale), <code>r</code> is the aspect ratio (held constant across predictions), and <code>dx</code>, <code>dy</code>, <code>ds</code> are the corresponding velocities.</p>
+<p>SORT models each tracked object with an eight-dimensional state vector <code>[x1, y1, x2, y2, vx1, vy1, vx2, vy2]</code> by default, where <code>x1, y1</code> and <code>x2, y2</code> are the top-left and bottom-right corners of the bounding box and each corner has its own independent velocity. This corner-based representation lets the box's width, height, and aspect ratio change over time rather than assuming a fixed aspect ratio. SORT can alternatively be configured with <code>state_estimator_class=XCYCSRStateEstimator</code> for the original center-based, constant-aspect-ratio representation <code>[x, y, s, r, dx, dy, ds]</code>.</p>
 <p><strong>Prediction.</strong> A constant-velocity Kalman filter propagates each track's state to the next frame. The filter assumes linear motion between frames and maintains an uncertainty covariance that grows when a track is not matched to a detection.</p>
 <p><strong>Association.</strong> The Hungarian algorithm solves the assignment between predicted track positions and incoming detections. The cost matrix is computed from pairwise IoU between predicted boxes and detection boxes. Any assignment where the IoU falls below <code>minimum_iou_threshold</code> is rejected, leaving both the track and the detection unmatched.</p>
-<p><strong>Track lifecycle.</strong> When a detection is not matched to any existing track, a new tentative track is created. The track is promoted to confirmed status only after it receives <code>minimum_consecutive_frames</code> consecutive matches. A confirmed track that goes unmatched for more than <code>lost_track_buffer</code> frames is deleted. This lifecycle prevents single spurious detections from creating permanent tracks and limits unbounded growth of the track set.</p>
+<p><strong>Track lifecycle.</strong> When a detection is not matched to any existing track, a new tentative track is created. The track is promoted to confirmed status only after it accumulates <code>minimum_consecutive_frames</code> successful updates (this count does not reset on a miss). A confirmed track that goes unmatched for more than <code>lost_track_buffer</code> frames is deleted. This lifecycle prevents single spurious detections from creating permanent tracks and limits unbounded growth of the track set.</p>
 <p><strong>Limitations.</strong> SORT uses no appearance features. When two objects cross paths or one object occludes another, the IoU-only matching can swap identities, producing ID switches. For scenes with frequent occlusion, <a href="../bytetrack/">ByteTrack</a> and <a href="../ocsort/">OC-SORT</a> provide mechanisms that reduce these errors.</p>
 <h2 id="key-parameters">Key Parameters</h2>
 <table>
@@ -2353,7 +2355,7 @@
 </tr>
 <tr>
 <td><code>minimum_consecutive_frames</code></td>
-<td>Consecutive detections required to confirm a new track.</td>
+<td>Successful updates required to confirm a new track (count does not reset on a miss).</td>
 <td>1 confirms immediately; 2-3 filters out single-frame false positives.</td>
 </tr>
 <tr>
@@ -2529,7 +2531,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 19:12:53 UTC">2026-08-10</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 23:10:50 UTC">2026-08-10</span>
   </span>
 
     
@@ -2621,7 +2623,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../benchmarking/methodology/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Methodology">
+          <a href="../../evaluations/methodology/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Methodology">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>

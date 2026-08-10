@@ -542,7 +542,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../benchmarking/download/" class="md-tabs__link">
+        <a href="../../evaluations/download/" class="md-tabs__link">
           
   
   
@@ -1377,7 +1377,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/download/" class="md-nav__link">
+      <a href="../../evaluations/download/" class="md-nav__link">
         
   
   
@@ -1405,7 +1405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/evaluate/" class="md-nav__link">
+      <a href="../../evaluations/evaluate/" class="md-nav__link">
         
   
   
@@ -1433,7 +1433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/benchmark-runner/" class="md-nav__link">
+      <a href="../../evaluations/benchmark-runner/" class="md-nav__link">
         
   
   
@@ -1461,7 +1461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/results/" class="md-nav__link">
+      <a href="../../evaluations/results/" class="md-nav__link">
         
   
   
@@ -1489,7 +1489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/methodology/" class="md-nav__link">
+      <a href="../../evaluations/methodology/" class="md-nav__link">
         
   
   
@@ -2325,7 +2325,7 @@
 <p>Use MOT format lines:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&lt;frame&gt;,&lt;id&gt;,&lt;bb_left&gt;,&lt;bb_top&gt;,&lt;bb_width&gt;,&lt;bb_height&gt;,&lt;conf&gt;,&lt;x&gt;,&lt;y&gt;,&lt;z&gt;
 </span></code></pre></div>
-<p>For detections, use <code>id=-1</code>. For more details on the format and evaluation workflow, see the <a href="../../benchmarking/evaluate/">evaluation guide</a>.</p>
+<p>For detections, use <code>id=-1</code>. For more details on the format and evaluation workflow, see the <a href="../../evaluations/evaluate/">evaluation guide</a>.</p>
 <hr />
 <h2 id="quickstart">Quickstart</h2>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">CLI</label><label for="__tabbed_2_2">Python</label></div>
@@ -2456,6 +2456,16 @@
       <td>None</td>
     </tr>
     <tr>
+      <td><code>--images_dir</code></td>
+      <td>MOT-style image root for frame-based features such as CMC. Frames are read from <code>{images_dir}/{sequence}/img1/</code>.</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td><code>--enqueue_defaults</code></td>
+      <td>Evaluate the tracker's default parameters as the first trial before Optuna sampling begins. Negate with <code>--no_enqueue_defaults</code>.</td>
+      <td><code>true</code></td>
+    </tr>
+    <tr>
       <td><code>--metrics</code></td>
       <td>Metric families to compute: <code>CLEAR</code>, <code>HOTA</code>, <code>Identity</code>. The family required by <code>--objective</code> is added automatically.</td>
       <td><code>CLEAR</code></td>
@@ -2504,7 +2514,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 19:12:53 UTC">2026-08-10</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 23:10:50 UTC">2026-08-10</span>
   </span>
 
     

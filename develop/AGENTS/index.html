@@ -6,34 +6,30 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte.">
+        <meta name="description" content="A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/AGENTS/">
       
       
-        <link rel="prev" href="../cli/">
-      
-      
-        <link rel="next" href="../detection-quality/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/logo-trackers-black.svg">
+      <link rel="icon" href="../assets/logo-trackers-black.svg">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
-        <title>Dynamic Frame Rate — Variable-Gap Tracking | Trackers - Trackers</title>
+        <title>docs/AGENTS.md - Trackers</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -52,15 +48,15 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../stylesheets/style.css">
+      <link rel="stylesheet" href="../stylesheets/style.css">
     
-      <link rel="stylesheet" href="../../stylesheets/rf.css">
+      <link rel="stylesheet" href="../stylesheets/rf.css">
     
-      <link rel="stylesheet" href="../../stylesheets/command_builder.css">
+      <link rel="stylesheet" href="../stylesheets/command_builder.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -83,7 +79,7 @@
       "url": "https://roboflow.com",
       "description": "Roboflow builds computer vision infrastructure and tools for training and deploying vision AI models.",
       "foundingDate": "2019",
-      "logo": "../../assets/logo-trackers-violet.svg",
+      "logo": "../assets/logo-trackers-violet.svg",
       "sameAs": [
         "https://github.com/roboflow",
         "https://twitter.com/roboflow",
@@ -125,47 +121,6 @@
 
 
 
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "TechArticle",
-  "headline": "Dynamic Frame Rate",
-  "description": "Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte.",
-  "url": "https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/",
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/"
-  },
-  "image": {
-    "@type": "ImageObject",
-    "url": "https://trackers.roboflow.com/latest/develop/assets/logo-trackers-violet.svg"
-  },
-  "author": {
-    "@type": "Organization",
-    "@id": "https://roboflow.com/#organization",
-    "name": "Roboflow"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "@id": "https://roboflow.com/#organization",
-    "name": "Roboflow",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://trackers.roboflow.com/latest/develop/assets/logo-trackers-violet.svg"
-    }
-  },
-  "speakable": {
-    "@type": "SpeakableSpecification",
-    "cssSelector": [
-      "h1",
-      ".md-content p:first-of-type"
-    ]
-  },
-  "dateModified": "2026-08-03",
-  "datePublished": "2026-07-01"
-}
-</script>
-
 
 
 
@@ -179,9 +134,9 @@
 
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
-<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/" />
-<meta property="og:title" content="Dynamic Frame Rate — Variable-Gap Tracking | Trackers" />
-<meta property="og:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte." />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/AGENTS/" />
+<meta property="og:title" content="docs/AGENTS.md — Roboflow Trackers" />
+<meta property="og:description" content="A unified library for multi-object tracking with SORT, ByteTrack, OC-SORT, and BoT-SORT." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -192,8 +147,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="Dynamic Frame Rate — Variable-Gap Tracking | Trackers" />
-<meta name="twitter:description" content="Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte." />
+<meta name="twitter:title" content="docs/AGENTS.md — Roboflow Trackers" />
+<meta name="twitter:description" content="A unified library for multi-object tracking with SORT, ByteTrack, OC-SORT, and BoT-SORT." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -210,7 +165,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#dynamic-frame-rate" class="md-skip">
+        <a href="#docsagentsmd" class="md-skip">
           Skip to content
         </a>
       
@@ -236,14 +191,14 @@
 
     <!-- Link to home -->
     <a
-      href="../.."
+      href=".."
       title="Trackers"
       class="md-header__button md-logo"
       aria-label="Trackers"
       data-md-component="logo"
     >
       
-  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
+  <img src="../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
 
     </a>
 
@@ -264,7 +219,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis" style="display: flex; align-items: center; gap: 0.5rem;">
             <a
-            href="../.."
+            href=".."
             title="Trackers"
             class="md-header__button md-logo"
             aria-label="Trackers"
@@ -272,11 +227,11 @@
             id="item-logo"
             >
             
-  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
+  <img src="../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
 
             </a>
             
-              Dynamic Frame Rate — Variable-Gap Tracking | Trackers
+              docs/AGENTS.md
             
           </span>
         </div>
@@ -460,7 +415,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../.." class="md-tabs__link">
+        <a href=".." class="md-tabs__link">
           
   
   
@@ -480,7 +435,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../install/" class="md-tabs__link">
+        <a href="../guides/install/" class="md-tabs__link">
           
   
   
@@ -496,13 +451,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../guides/dynamic-frame-rate/" class="md-tabs__link">
           
   
   
@@ -522,7 +475,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../inspect/" class="md-tabs__link">
+        <a href="../guides/inspect/" class="md-tabs__link">
           
   
   
@@ -542,7 +495,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../evaluations/download/" class="md-tabs__link">
+        <a href="../evaluations/download/" class="md-tabs__link">
           
   
   
@@ -562,7 +515,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../trackers/sort/" class="md-tabs__link">
+        <a href="../trackers/sort/" class="md-tabs__link">
           
   
   
@@ -582,7 +535,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../api/trackers/" class="md-tabs__link">
+        <a href="../api/trackers/" class="md-tabs__link">
           
   
   
@@ -602,7 +555,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../contributing/" class="md-tabs__link">
+        <a href="../contributing/" class="md-tabs__link">
           
   
   
@@ -636,9 +589,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Trackers" class="md-nav__button md-logo" aria-label="Trackers" data-md-component="logo">
+    <a href=".." title="Trackers" class="md-nav__button md-logo" aria-label="Trackers" data-md-component="logo">
       
-  <img src="../../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
+  <img src="../assets/logo-trackers-violet.svg" alt="Trackers logo" width="218" height="198">
 
     </a>
     Trackers
@@ -717,7 +670,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -745,7 +698,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../details/" class="md-nav__link">
+      <a href="../details/" class="md-nav__link">
         
   
   
@@ -832,7 +785,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../install/" class="md-nav__link">
+      <a href="../guides/install/" class="md-nav__link">
         
   
   
@@ -860,7 +813,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../track/" class="md-nav__link">
+      <a href="../guides/track/" class="md-nav__link">
         
   
   
@@ -888,7 +841,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli/" class="md-nav__link">
+      <a href="../guides/cli/" class="md-nav__link">
         
   
   
@@ -920,29 +873,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -960,7 +910,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -975,37 +925,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dynamic Frame Rate
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../guides/dynamic-frame-rate/" class="md-nav__link">
         
   
   
@@ -1021,103 +944,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-to-use-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        When to Use It
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fixed-rate-vs-dynamic-rate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fixed Rate vs Dynamic Rate
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-happens-on-a-long-gap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What Happens on a Long Gap
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Usage
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#things-to-know" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Things to Know
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#takeaway" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Takeaway
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1130,7 +956,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../detection-quality/" class="md-nav__link">
+      <a href="../guides/detection-quality/" class="md-nav__link">
         
   
   
@@ -1158,7 +984,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tune/" class="md-nav__link">
+      <a href="../guides/tune/" class="md-nav__link">
         
   
   
@@ -1186,7 +1012,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../iou/" class="md-nav__link">
+      <a href="../guides/iou/" class="md-nav__link">
         
   
   
@@ -1214,7 +1040,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../state-estimators/" class="md-nav__link">
+      <a href="../guides/state-estimators/" class="md-nav__link">
         
   
   
@@ -1301,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../inspect/" class="md-nav__link">
+      <a href="../guides/inspect/" class="md-nav__link">
         
   
   
@@ -1388,7 +1214,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/download/" class="md-nav__link">
+      <a href="../evaluations/download/" class="md-nav__link">
         
   
   
@@ -1416,7 +1242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/evaluate/" class="md-nav__link">
+      <a href="../evaluations/evaluate/" class="md-nav__link">
         
   
   
@@ -1444,7 +1270,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/benchmark-runner/" class="md-nav__link">
+      <a href="../evaluations/benchmark-runner/" class="md-nav__link">
         
   
   
@@ -1472,7 +1298,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/results/" class="md-nav__link">
+      <a href="../evaluations/results/" class="md-nav__link">
         
   
   
@@ -1500,7 +1326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../evaluations/methodology/" class="md-nav__link">
+      <a href="../evaluations/methodology/" class="md-nav__link">
         
   
   
@@ -1587,7 +1413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../trackers/sort/" class="md-nav__link">
+      <a href="../trackers/sort/" class="md-nav__link">
         
   
   
@@ -1615,7 +1441,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../trackers/bytetrack/" class="md-nav__link">
+      <a href="../trackers/bytetrack/" class="md-nav__link">
         
   
   
@@ -1643,7 +1469,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../trackers/ocsort/" class="md-nav__link">
+      <a href="../trackers/ocsort/" class="md-nav__link">
         
   
   
@@ -1671,7 +1497,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../trackers/botsort/" class="md-nav__link">
+      <a href="../trackers/botsort/" class="md-nav__link">
         
   
   
@@ -1699,7 +1525,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../trackers/cbiou/" class="md-nav__link">
+      <a href="../trackers/cbiou/" class="md-nav__link">
         
   
   
@@ -1727,7 +1553,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../trackers/mcbyte/" class="md-nav__link">
+      <a href="../trackers/mcbyte/" class="md-nav__link">
         
   
   
@@ -1814,7 +1640,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/trackers/" class="md-nav__link">
+      <a href="../api/trackers/" class="md-nav__link">
         
   
   
@@ -1842,7 +1668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/motion/" class="md-nav__link">
+      <a href="../api/motion/" class="md-nav__link">
         
   
   
@@ -1870,7 +1696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datasets/" class="md-nav__link">
+      <a href="../api/datasets/" class="md-nav__link">
         
   
   
@@ -1898,7 +1724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/evals/" class="md-nav__link">
+      <a href="../api/evals/" class="md-nav__link">
         
   
   
@@ -1926,7 +1752,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/io/" class="md-nav__link">
+      <a href="../api/io/" class="md-nav__link">
         
   
   
@@ -1954,7 +1780,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../migration_cli/" class="md-nav__link">
+      <a href="../guides/migration_cli/" class="md-nav__link">
         
   
   
@@ -1982,7 +1808,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../changelog/" class="md-nav__link">
+      <a href="../changelog/" class="md-nav__link">
         
   
   
@@ -2069,7 +1895,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../contributing/" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -2097,7 +1923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../code-of-conduct/" class="md-nav__link">
+      <a href="../code-of-conduct/" class="md-nav__link">
         
   
   
@@ -2125,7 +1951,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../governance/" class="md-nav__link">
+      <a href="../governance/" class="md-nav__link">
         
   
   
@@ -2173,91 +1999,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-to-use-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        When to Use It
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fixed-rate-vs-dynamic-rate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fixed Rate vs Dynamic Rate
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-happens-on-a-long-gap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What Happens on a Long Gap
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Usage
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#things-to-know" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Things to Know
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#takeaway" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Takeaway
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -2276,113 +2017,105 @@
   
 
 
-<h1 id="dynamic-frame-rate">Dynamic Frame Rate</h1>
-<p>Most tracking examples assume you call <code>update()</code> once per video frame, in order, at a steady FPS. That breaks when <strong>frames are dropped</strong> (you skip frame 2 but still call <code>update()</code> on frame 3) or when you <strong>only process some frames</strong>. Processing delay is fine, a frame that arrives late but with the right capture timestamp still has the correct gap to the previous frame you tracked. What matters is the <strong>time between captured frames you actually update on</strong>, not how long inference took.</p>
-<p>Pass an optional <strong><code>timestamp</code></strong> (seconds) on <code>update()</code> so the tracker knows how much time actually passed. Prediction and pruning then follow the real gap. Omit <code>timestamp</code> and nothing changes: fixed-rate behaviour.</p>
-<p><strong>What you'll learn:</strong></p>
-<ul>
-<li>How to use dynamic frame rate mode</li>
-<li>When it's worth to use it</li>
-<li>How fixed-rate and dynamic-rate modes differ</li>
-</ul>
-<hr />
-<h2 id="install">Install</h2>
-<p>Get started by installing the package.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install trackers
-</span></code></pre></div>
-<p>For more options, see the <a href="../install/">install guide</a>.</p>
-<hr />
-<h2 id="when-to-use-it">When to Use It</h2>
-<p>Turn on timestamps when the <strong>capture-time gap</strong> between two <code>update()</code> calls is not always one frame period, we call that <strong>dynamic frame rate</strong>, and some cases where it happens are:</p>
-<ul>
-<li><strong>Dropped or skipped frames</strong>: you process frame 100 after frame 97; the tracker should treat that as three frame periods of motion, not one</li>
-<li><strong>Sparse decode</strong>: variable-FPS files or sampling every Nth frame, using the container or camera clock</li>
-<li><strong>Out-of-order completion</strong>: workers may finish in any order, but you should call <code>update()</code> in <strong>non-decreasing capture time</strong> (sort by capture time or frame index before updating). A later frame must not be updated before an earlier one</li>
-</ul>
-<p>Stick with the default when you process <strong>every</strong> frame in order at a steady rate. A normal <code>VideoCapture</code> loop that reads all frames does not need timestamps.</p>
-<p><code>SORTTracker</code>, <code>ByteTrackTracker</code>, <code>OCSORTTracker</code>, <code>BoTSORTTracker</code>, <code>CBIoUTracker</code>, and <code>McByteTracker</code> all accept <code>timestamp</code> on <code>update()</code>.</p>
-<hr />
-<h2 id="fixed-rate-vs-dynamic-rate">Fixed Rate vs Dynamic Rate</h2>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>Fixed rate (default)</th>
-<th>Dynamic rate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>timestamp</code></td>
-<td><code>None</code> (omit)</td>
-<td>Monotonic seconds, e.g. video clock</td>
-</tr>
-<tr>
-<td>Kalman <code>frame_step</code></td>
-<td><code>1.0</code> per call (frame units)</td>
-<td><code>elapsed_seconds × frame_rate</code> (frame units)</td>
-</tr>
-</tbody>
-</table>
-<p><strong><code>lost_track_buffer</code> is always the same integer</strong> — frames at a <strong>30 FPS reference</strong> (MOT-style tuning), not seconds you type in. The tracker converts it for you:</p>
-<ul>
-<li><strong>Fixed rate:</strong> <code>maximum_frames_without_update = int(frame_rate / 30 × lost_track_buffer)</code> so a 60 FPS pipeline with <code>lost_track_buffer=30</code> keeps lost tracks for 60 frames (~1 s if you update every frame).</li>
-<li><strong>Dynamic rate:</strong> <code>maximum_time_without_update = lost_track_buffer / 30</code> seconds between <code>update()</code> calls. The same <code>lost_track_buffer=30</code> gives a <strong>1.0 s</strong> budget; that does <strong>not</strong> scale with <code>frame_rate</code>.</li>
-</ul>
-<p>Set <strong><code>frame_rate</code></strong> on the tracker in both modes. In fixed mode it scales the frame budget above. When you pass <code>timestamp</code>, it also turns elapsed seconds into Kalman frame units (<code>elapsed_seconds × frame_rate</code>).</p>
-<p>If the video is actually steady 25 FPS and you pass timestamps every frame, <code>frame_step</code> stays at <code>1.0</code> for Kalman purposes — dynamic mode lines up with fixed mode. It lands <em>near</em> <code>1.0</code> rather than on it, because <code>frame_step</code> comes out of a subtraction: a float clock is off by ~1e-12, <code>cv2.CAP_PROP_POS_MSEC</code> rounds to whole milliseconds, and capture jitter adds a couple more. The tolerance around <code>1.0</code> is a fixed <strong>~4 ms of wall-clock slack</strong>, scaled by your tracker's <code>frame_rate</code> into frame units — that keeps the tolerance the same physical size at any FPS, rather than a fixed percentage of a frame. A step within that budget counts as one nominal frame and runs the same process noise as fixed mode.</p>
-<p>Two differences remain. <code>frame_step</code> still scales the transition matrix, so a clock reporting 1.02 frames does extrapolate 2% further — sub-pixel in practice. And lost-track pruning is not symmetric: dynamic mode drops time-expired tracks <em>before</em> association, fixed mode enforces its frame budget <em>after</em>, so a track whose budget runs out on the step where a detection would have re-matched it survives in fixed mode and not in dynamic mode.</p>
-<hr />
-<h2 id="what-happens-on-a-long-gap">What Happens on a Long Gap</h2>
-<p>On each predict, the filter adjusts how far it extrapolates and how uncertain it is:</p>
-<ul>
-<li><strong>Position</strong> moves with constant velocity, scaled by the difference in timestamps scaled by the previous frame rate (<code>frame_step</code>).</li>
-<li><strong>Process noise</strong> grows on longer gaps so the box does not stay artificially tight. Within the ~4 ms wall-clock tolerance of <code>frame_step = 1.0</code> (see above) you get the same as with default usage. On bigger steps the library rescales noise the way a constant-velocity model expects (stronger growth on position than velocity), instead of naively multiplying a one-frame matrix by Δt.</li>
-<li><strong>Scale velocity</strong> is frozen if the projected area over the gap would go non-positive.</li>
-</ul>
-<hr />
-<h2 id="usage">Usage</h2>
-<p>Feed <strong><code>timestamp</code></strong> in seconds into <code>tracker.update()</code> alongside your detections. Use <strong>capture time</strong> of each frame in the video, or <code>frame_index / fps</code>.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Python</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Read the video clock from OpenCV and pass it to ByteTrack each frame.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inference</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_model</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">(</span><span class="s2">&quot;rfdetr-medium&quot;</span><span class="p">)</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">(</span><span class="n">frame_rate</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span> <span class="n">lost_track_buffer</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">cap</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="s2">&quot;source.mp4&quot;</span><span class="p">)</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">ret</span><span class="p">,</span> <span class="n">frame</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">ret</span><span class="p">:</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        <span class="k">break</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">CAP_PROP_POS_MSEC</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000.0</span>
-</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
-</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">frame</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">Detections</span><span class="o">.</span><span class="n">from_inference</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">)</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<p>Call <strong><code>tracker.reset()</code></strong> when you switch videos so the last timestamp does not leak into the next file.</p>
-<hr />
-<h2 id="things-to-know">Things to Know</h2>
-<p><strong>You can mix modes per call.</strong> Only steps that pass <code>timestamp</code> use seconds for pruning and scaled predict. Calling <code>update()</code> without <code>timestamp</code> resets the internal timestamp anchor — the next <code>update()</code> that <em>does</em> pass a <code>timestamp</code> will be treated as a fresh start (Kalman frame step <code>1 / frame_rate</code>), not a measured gap from the last timestamped call.</p>
-<p><strong>The first timestamped step is special.</strong> The tracker does not use your absolute clock value as the first gap. It assumes <code>1 / frame_rate</code> seconds so the first Kalman predict still looks like one frame.</p>
-<p><strong>Timestamps must not go backwards.</strong> If <code>timestamp</code> is less than the previous call, <code>update()</code> <strong>warns and skips the whole step</strong> (tracks unchanged, output IDs are <code>-1</code>). Reorder by capture time and call again. <strong>Duplicate</strong> timestamps (same capture time twice) only skip predict; association still runs on the last state.</p>
-<p><strong><code>frame_rate</code> should match your reference timeline.</strong> If the file is 24 FPS but you set <code>frame_rate=30</code>, each step over-predicts motion. Same parameter already mattered for threshold scaling in fixed mode; it matters more when gaps are measured in seconds.</p>
-<p><strong>OC-SORT:</strong> ORU still steps in frame units, not wall-clock gaps.</p>
-<p><strong>McByte:</strong> the optional mask pipeline (<code>enable_mask_manager=True</code>) still propagates one step per <code>update()</code> call; timestamps scale Kalman prediction and lost-track pruning, not mask propagation.</p>
-<hr />
-<h2 id="takeaway">Takeaway</h2>
-<p>Timestamps are optional on <code>update()</code>. Skip them when you track every frame in order. Use them when frames are <strong>dropped or sparse</strong>, pass <strong>capture time</strong> (not inference finish time), call <code>update()</code> in <strong>time order</strong>, set <code>frame_rate</code> to the FPS you tuned against, and <code>reset()</code> between videos.</p>
+<h1 id="docsagentsmd">docs/AGENTS.md</h1>
+<p>Guidance for AI coding agents working under <code>docs/</code> (and the doc-duplicate sites outside it: <code>README.md</code>, <code>.github/copilot-instructions.md</code>). Scoped here — not in the root <code>AGENTS.md</code> — because none of this applies to source/test work; keeping it out of the root file keeps every non-docs session from loading it.</p>
+<!--
+BENCH-XREF MAP — canonical source: [evaluations/results.md](evaluations/results.md) (Default + Tuned tables per benchmark section).
+Every other file below COPIES numbers out of that file by hand; nothing is templated/generated. If you change a
+cell in results.md, grep this repo for `BENCH-XREF` (every duplicate site carries that token in an inline HTML
+comment) and update every listed sibling. If you change a cell somewhere else first, go fix results.md too —
+it's the source of truth, not just another copy.
+
+Discover live: grep -rn BENCH-XREF docs/ README.md .github/copilot-instructions.md
+(16 xref comments as of 2026-08-11: 5 in results.md, 6 in docs/trackers/*.md, 3 in docs/index.md, 1 in README.md, 1 in .github/copilot-instructions.md)
+
+## Canonical tables ([evaluations/results.md](evaluations/results.md))
+- id=mot17-default       (## MOT17 -> === "Default")
+- id=sportsmot-default   (## SportsMOT -> === "Default")
+- id=soccernet-default   (## SoccerNet-tracking -> === "Default")
+- id=dancetrack-default  (## DanceTrack -> === "Default")
+- Tuned tables (all 4 benchmarks) have NO external duplicates — only referenced from within results.md itself.
+
+## Duplicate sites, per canonical row
+
+SORT row (mot17/sportsmot/soccernet/dancetrack):
+  -> [trackers/sort.md](trackers/sort.md)                      (Dataset|HOTA|IDF1|MOTA table, full row, first 3 benchmarks only)
+  -> [index.md](index.md)                                      (Algorithms table, HOTA column only)
+  -> [../README.md](../README.md)                              (Algorithms table, HOTA column only)
+  -> [../.github/copilot-instructions.md](../.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
+
+ByteTrack row (mot17/sportsmot/soccernet/dancetrack):
+  -> [trackers/bytetrack.md](trackers/bytetrack.md)            (table, full row, first 3 benchmarks only)
+  -> [index.md](index.md)                                      (L13 headline sentence: MOT17 HOTA only; Algorithms table, HOTA column)
+  -> [../README.md](../README.md)                              (Algorithms table, HOTA column only)
+  -> [../.github/copilot-instructions.md](../.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
+
+OC-SORT row (mot17/sportsmot/soccernet/dancetrack):
+  -> [trackers/ocsort.md](trackers/ocsort.md)                  (table, full row, first 3 benchmarks only)
+  -> [index.md](index.md)                                      (L13 headline sentence: MOT17 HOTA only; Algorithms table, HOTA column)
+  -> [../README.md](../README.md)                              (Algorithms table, HOTA column only)
+  -> [../.github/copilot-instructions.md](../.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
+
+BoT-SORT row (mot17/sportsmot/soccernet/dancetrack):
+  -> [trackers/botsort.md](trackers/botsort.md)                (table, full row, first 3 benchmarks only)
+  -> [index.md](index.md)                                      (Algorithms table, HOTA column)
+  -> [../README.md](../README.md)                              (Algorithms table, HOTA column only)
+  -> [../.github/copilot-instructions.md](../.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
+  -> [trackers/mcbyte.md](trackers/mcbyte.md)                  (BoT-SORT baseline row, matching benchmark tab, full row)
+
+C-BIoU row (mot17/sportsmot/soccernet/dancetrack — the only tracker doc with a DanceTrack row):
+  -> [trackers/cbiou.md](trackers/cbiou.md)                    (table, full row, all 4 benchmarks)
+  -> [../README.md](../README.md)                              (Algorithms table, HOTA column only)
+  -> docs/index.md does NOT have a C-BIoU row — don't add one when editing, that's existing scope, not a gap.
+
+McByte row (mot17/sportsmot/soccernet/dancetrack):
+  -> [trackers/mcbyte.md](trackers/mcbyte.md)                  (McByte row, matching benchmark tab, full row)
+  -> [index.md](index.md) FAQ "Which tracker should I use?" answer: "McByte leads every benchmark in our evaluation"
+     — this claim is TRUE only while McByte is bolded-best in all 4 Default tables. Re-verify, don't assume.
+
+## Structural asymmetries (intentional — do not "fix" by adding rows)
+- docs/trackers/{sort,bytetrack,ocsort,botsort}.md tables cover MOT17/SportsMOT/SoccerNet only, no DanceTrack row.
+- docs/trackers/cbiou.md is the only individual-tracker doc with a DanceTrack row.
+- docs/index.md Algorithms table has 4 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT), no C-BIoU/McByte rows.
+- README.md Algorithms table has 5 tracker rows (adds C-BIoU vs index.md), still no McByte row (McByte covered
+  in prose below the table instead, linking to [trackers/mcbyte.md](trackers/mcbyte.md)).
+- .github/copilot-instructions.md Benchmark Results table has 4 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT)
+  across all 4 benchmarks, with no C-BIoU/McByte rows.
+- docs/trackers/mcbyte.md reports McByte vs a BoT-SORT baseline only (not vs SORT/ByteTrack/OC-SORT/C-BIoU).
+
+## Derived prose claims (not raw copies, but stale if the tables move)
+- [index.md](index.md) FAQ: "McByte leads every benchmark in our evaluation" (needs McByte = best in all 4 Default tables)
+- [evaluations/results.md](evaluations/results.md) "When to Use Each Tracker" section: multiple leader/ranking claims
+  ("C-BIoU ... leads on SoccerNet when tuned", "McByte improves HOTA and IDF1 on all four datasets", etc.)
+  sourced from the Default+Tuned tables above it on the same page.
+
+## Version / methodology note (not a number, but same class of drift risk)
+[evaluations/results.md](evaluations/results.md) states "Results use trackers vX.Y.Z" (currently v2.6.0) — must be bumped whenever
+a tracker whose results appear in the tables changes default behavior in a way that would shift these numbers
+(e.g. the v2.6.0 lost-track `<` -> `<=` boundary change). Check [../CHANGELOG.md](../CHANGELOG.md) before assuming the version string
+is still accurate.
+
+## Directory note
+This map was written when the page lived at docs/benchmarking/results.md; it was renamed to
+[evaluations/results.md](evaluations/results.md) on 2026-08-11 to match the mkdocs nav tab name ("Evaluations"),
+mirroring how docs/trackers/ already matches the "Trackers" tab. mkdocs.yml nav + redirect_maps and
+docs/hooks/schema_inject.py's hardcoded `src_path == "evaluations/results.md"` check were updated in the same pass —
+check both if this page ever moves again.
+
+## Verification note for whoever wrote/updated this map
+Traced every entry above directly against results.md line content (not from memory or the
+prior audit report) on 2026-08-10, then cross-checked design with a stronger-model advisor pass before writing
+the BENCH-XREF comments. README.md was NOT part of the original audit scope and was found to have one stale
+SORT SportsMOT HOTA value (corrected to 70.8) only because this crossref exercise forced a check outside docs/.
+On 2026-08-11, expanding discovery to .github/copilot-instructions.md found the same stale copied cell there —
+a reminder that this map is only as complete as the last review of its search scope.
+Path references above use markdown-link syntax `[label](path)` even though this whole block is an HTML comment
+(invisible in rendered docs either way) — several editors still resolve links for click-through inside comments,
+and it keeps the format consistent with the BENCH-XREF comments in the actual doc files.
+Moved here from the root `AGENTS.md` on 2026-08-11 — scoped file, not root file, since it's docs-only guidance
+(see this file's header). Paths above are relative to `docs/` (this file's directory), not repo root; the
+root-AGENTS.md version used repo-root-relative paths — don't copy-paste those without adjusting.
+-->
 
 
 
@@ -2405,7 +2138,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 3, 2026 20:48:33 UTC">2026-08-03</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 23:10:50 UTC">2026-08-10</span>
   </span>
 
     
@@ -2415,7 +2148,7 @@
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 1, 2026 19:50:09 UTC">2026-07-01</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 23:10:50 UTC">2026-08-10</span>
   </span>
 
     
@@ -2441,44 +2174,6 @@
       
         <footer class="md-footer">
   
-    
-      
-      <nav class="md-footer__inner md-grid" aria-label="Footer" >
-        
-          
-          <a href="../cli/" class="md-footer__link md-footer__link--prev" aria-label="Previous: CLI Reference">
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
-            </div>
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              <div class="md-ellipsis">
-                CLI Reference
-              </div>
-            </div>
-          </a>
-        
-        
-          
-          <a href="../detection-quality/" class="md-footer__link md-footer__link--next" aria-label="Next: Detection Quality Matters">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                Detection Quality Matters
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
-            </div>
-          </a>
-        
-      </nav>
     
   
   <div class="md-footer-meta md-typeset">
@@ -2593,18 +2288,18 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.annotate", "content.code.copy", "content.code.select", "content.tabs.link", "content.tooltips", "navigation.footer", "navigation.tracking", "navigation.expand", "navigation.tabs"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.annotate", "content.code.copy", "content.code.select", "content.tabs.link", "content.tooltips", "navigation.footer", "navigation.tracking", "navigation.expand", "navigation.tabs"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
-        <script src="../../javascripts/pycon_copy.js"></script>
+        <script src="../javascripts/pycon_copy.js"></script>
       
-        <script src="../../javascripts/mathjax.js"></script>
+        <script src="../javascripts/mathjax.js"></script>
       
-        <script src="../../javascripts/cli_builder_framework.js"></script>
+        <script src="../javascripts/cli_builder_framework.js"></script>
       
-        <script src="../../javascripts/command_builder.js"></script>
+        <script src="../javascripts/command_builder.js"></script>
       
     
   </body>

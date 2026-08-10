@@ -5,6 +5,10 @@
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
+         <loc>https://trackers.roboflow.com/latest/develop/AGENTS/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
          <loc>https://trackers.roboflow.com/latest/develop/changelog/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
@@ -45,23 +49,23 @@
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/benchmark-runner/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/evaluations/benchmark-runner/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/download/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/evaluations/download/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/evaluate/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/evaluations/evaluate/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/methodology/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/evaluations/methodology/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/results/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/evaluations/results/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>

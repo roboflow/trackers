@@ -542,7 +542,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../benchmarking/download/" class="md-tabs__link">
+        <a href="../../evaluations/download/" class="md-tabs__link">
           
   
   
@@ -1421,7 +1421,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/download/" class="md-nav__link">
+      <a href="../../evaluations/download/" class="md-nav__link">
         
   
   
@@ -1449,7 +1449,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/evaluate/" class="md-nav__link">
+      <a href="../../evaluations/evaluate/" class="md-nav__link">
         
   
   
@@ -1477,7 +1477,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/benchmark-runner/" class="md-nav__link">
+      <a href="../../evaluations/benchmark-runner/" class="md-nav__link">
         
   
   
@@ -1505,7 +1505,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/results/" class="md-nav__link">
+      <a href="../../evaluations/results/" class="md-nav__link">
         
   
   
@@ -1533,7 +1533,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/methodology/" class="md-nav__link">
+      <a href="../../evaluations/methodology/" class="md-nav__link">
         
   
   
@@ -2618,6 +2618,7 @@
 <hr />
 <h2 id="cli-reference">CLI Reference</h2>
 <p>The commonly used arguments accepted by the <code>trackers track</code> command. <code>--tracker.*</code> is generated from the tracker registry, so it also carries parameters specific to one algorithm (<code>cbiou</code>'s buffer ratios, <code>botsort</code>/<code>mcbyte</code>'s camera motion compensation, <code>mcbyte</code>'s mask pipeline) that this table does not enumerate. Run <code>trackers track --help</code> for the complete, always-current set, and <code>trackers track --tracker.mask.help</code> for the mcbyte mask sub-options.</p>
+<p>Most <code>--tracker.*</code> flags default to <code>null</code> on the CLI — leaving a flag unset means the selected tracker's own default value is used, and that value differs per algorithm. See the <a href="../../api/trackers/">tracker API reference</a> for actual constructor defaults and the individual <a href="../../trackers/sort/">SORT</a>, <a href="../../trackers/bytetrack/">ByteTrack</a>, <a href="../../trackers/ocsort/">OC-SORT</a>, <a href="../../trackers/botsort/">BoT-SORT</a>, <a href="../../trackers/cbiou/">C-BIoU</a>, and <a href="../../trackers/mcbyte/">McByte</a> pages for parameter guidance. Note that OC-SORT has no <code>track_activation_threshold</code> parameter, even though <code>--tracker.track_activation_threshold</code> is exposed globally on the CLI.</p>
 <table>
   <colgroup>
     <col style="width: 40%">
@@ -2648,6 +2649,11 @@
       <td><code>false</code></td>
     </tr>
     <tr>
+      <td><code>--output.mot_results</code></td>
+      <td>Path to write MOT-format predictions.</td>
+      <td>none</td>
+    </tr>
+    <tr>
       <td><code>--detection.model</code></td>
       <td>Model identifier. Pretrained: <code>rfdetr-nano</code>, <code>rfdetr-small</code>, <code>rfdetr-medium</code>, <code>rfdetr-large</code>. Segmentation: <code>rfdetr-seg-*</code>.</td>
       <td><code>rfdetr-nano</code></td>
@@ -2668,6 +2674,11 @@
       <td>none</td>
     </tr>
     <tr>
+      <td><code>--detection.mot_file</code></td>
+      <td>Path to a pre-computed MOT-format detector-output file. When set, this takes precedence over <code>--detection.model</code>, which is ignored.</td>
+      <td>none</td>
+    </tr>
+    <tr>
       <td><code>--filters.classes</code></td>
       <td>List of class names or IDs to track. Example: <code>[person,car]</code>, <code>[0,2]</code>, or the mixed <code>[person,2]</code>.</td>
       <td>all</td>
@@ -2683,24 +2694,59 @@
       <td><code>bytetrack</code></td>
     </tr>
     <tr>
+      <td><code>--tracker.frame_rate</code></td>
+      <td>Video frame rate used to scale the lost track buffer to time-like behavior. Must be positive.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
       <td><code>--tracker.lost_track_buffer</code></td>
       <td>Frames to retain a track without detections. Higher values improve occlusion handling but risk ID drift.</td>
-      <td><code>30</code></td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.track_activation_threshold</code></td>
-      <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives.</td>
-      <td><code>0.7</code></td>
+      <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives. Not used by OC-SORT.</td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.min_consecutive_frames</code></td>
-      <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
-      <td><code>2</code></td>
+      <td>Successful matched detections required before a track is confirmed. Whether a miss resets this count depends on the selected tracker.</td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.min_iou_threshold</code></td>
       <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
-      <td><code>0.1</code></td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.min_iou_threshold_first_assoc</code></td>
+      <td>Minimum score-fused geometric similarity for first-pass association. BoT-SORT and McByte use IoU; C-BIoU uses buffered IoU. McByte may further condition association with masks.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.min_iou_threshold_second_assoc</code></td>
+      <td>Minimum geometric similarity for second-pass association without detection-score fusion. BoT-SORT and McByte use IoU; C-BIoU uses buffered IoU. McByte may further condition association with masks.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.min_iou_threshold_unconfirmed_assoc</code></td>
+      <td>Minimum score-fused geometric similarity for matching unconfirmed tracks to remaining high-confidence detections. BoT-SORT and McByte use IoU; C-BIoU uses buffered IoU. McByte may further condition association with masks.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.high_conf_det_threshold</code></td>
+      <td>Confidence threshold splitting detections into high- and low-confidence sets for two-stage association.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.direction_consistency_weight</code></td>
+      <td>Weight for direction consistency in the association cost. Higher values prioritize angle alignment between motion and association direction. <code>ocsort</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.delta_t</code></td>
+      <td>Number of past frames used for velocity estimation. Higher values give more stable direction estimates during occlusion. <code>ocsort</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.iou_variant</code></td>
@@ -2710,12 +2756,27 @@
     <tr>
       <td><code>--tracker.enable_cmc</code></td>
       <td>Camera motion compensation toggle. <code>botsort</code> and <code>mcbyte</code> only.</td>
-      <td><code>true</code></td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.cmc_method</code></td>
+      <td>CMC method. Options: <code>orb</code>, <code>sift</code>, <code>sparseOptFlow</code>, <code>ecc</code>. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.cmc_downscale</code></td>
+      <td>Downscale factor used inside CMC for speed/robustness. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.instant_first_frame_activation</code></td>
+      <td>If <code>true</code>, tracks spawned on the very first frame receive a real track ID immediately. If <code>false</code>, they start unconfirmed (<code>-1</code>) and must survive <code>min_consecutive_frames</code> like any other track.</td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.state_estimator_class</code></td>
       <td>State estimator used by newly created tracks, given as a dotted class path (e.g. <code>trackers.utils.state_representations.XCYCWHStateEstimator</code>).</td>
-      <td><code>XCYCWHStateEstimator</code></td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.enable_mask_manager</code></td>
@@ -2786,7 +2847,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 20:32:49 UTC">2026-08-10</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 23:10:50 UTC">2026-08-10</span>
   </span>
 
     

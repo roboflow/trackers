@@ -305,8 +305,8 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
             breadcrumbs, ensure_ascii=False, indent=2
         )
 
-    # ── Dataset JSON-LD (benchmarking results page only) ──
-    if page.file.src_path == "benchmarking/results.md":
+    # ── Dataset JSON-LD (evaluations results page only) ──
+    if page.file.src_path == "evaluations/results.md":
         datasets = []
         for ds in _BENCHMARK_DATASETS:
             datasets.append(
