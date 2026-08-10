@@ -61,7 +61,7 @@ while cap.isOpened():
     tracked = tracker.update(detections)
 ```
 
-For more examples, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
+For more examples, see the [tracking guide](https://trackers.roboflow.com/develop/guides/track/).
 
 ## Track from CLI
 
@@ -148,8 +148,8 @@ Want to see it in action before writing any code? Try trackers in your browser w
 
 ## Where to go next
 
-- **New to tracking?** Start with the [tracking guide](https://trackers.roboflow.com/develop/learn/track/) — it walks through the Python API and CLI end to end.
-- **Want benchmarks?** The [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) covers all four algorithms across all four datasets, at default and tuned parameters, with guidance on which to pick for your scene.
+- **New to tracking?** Start with the [tracking guide](https://trackers.roboflow.com/develop/guides/track/) — it walks through the Python API and CLI end to end.
+- **Want benchmarks?** The [tracker comparison](https://trackers.roboflow.com/develop/evaluations/results/) covers all four algorithms across all four datasets, at default and tuned parameters, with guidance on which to pick for your scene.
 - **Building a research pipeline?** The [evaluation guide](https://trackers.roboflow.com/develop/evaluations/evaluate/) and [download guide](https://trackers.roboflow.com/develop/evaluations/download/) cover the full offline benchmarking workflow.
 - **Full API reference** → [trackers.roboflow.com](https://trackers.roboflow.com)
 - **Try without installing** → [Hugging Face Playground](https://huggingface.co/spaces/roboflow/trackers)
