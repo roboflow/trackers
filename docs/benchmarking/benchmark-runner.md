@@ -24,12 +24,12 @@ Run a tracker over a complete benchmark test set — MOT17, DanceTrack, SportsMO
 
 ## Step 1 — Get Your Data
 
-| Dataset | Detection format | Layout note |
+| Dataset      | Detection format | Layout note                                                 |
 | ------------ | ---------------- | ----------------------------------------------------------- |
-| `mot17` | `xyxy` | Frame directories use the `<sequence>-FRCNN` suffix. |
-| `dancetrack` | `xyxy` | — |
-| `sportsmot` | `xyxy` | — |
-| `soccernet` | `mot` | Detection filenames follow the SoccerNet naming convention. |
+| `mot17`      | `xyxy`           | Frame directories use the `<sequence>-FRCNN` suffix.        |
+| `dancetrack` | `xyxy`           | —                                                           |
+| `sportsmot`  | `xyxy`           | —                                                           |
+| `soccernet`  | `mot`            | Detection filenames follow the SoccerNet naming convention. |
 
 `mot17` and `sportsmot` can be fetched directly with `trackers download` — see [Download Datasets](download.md). `dancetrack` and `soccernet` aren't downloadable via that command yet; supply your own `detection_root`/`image_root` directories for those two, pointed at in Step 2.
 
