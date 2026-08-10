@@ -15,9 +15,9 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) BoT-SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (Algorithms table), [README.md](../../README.md) (Algorithms table), and [mcbyte.md](mcbyte.md) (BoT-SORT baseline row, matching tab per benchmark). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
-| Dataset | HOTA | IDF1 | MOTA |
+|  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
-| MOT17 | 63.7 | 78.7 | 79.2 |
+|   MOT17   | 63.7 | 78.7 | 79.2 |
 | SportsMOT | 73.8 | 73.4 | 96.9 |
 | SoccerNet | 84.5 | 79.3 | 96.6 |
 
@@ -41,16 +41,16 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 
 ## Key Parameters
 
-| Parameter | Purpose | Tuning guidance |
+| Parameter                                 | Purpose                                                                                                                     | Tuning guidance                                                                                                                                                                                                                        |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lost_track_buffer` | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps. |
-| `track_activation_threshold` | Minimum detection confidence required to start a new track. | Higher reduces noisy track creation; lower retains harder objects. 0.5-0.9 typical depending on detector quality. This does not control low-confidence association, which still discards detections at a fixed `0.1` confidence floor. |
-| `minimum_consecutive_frames` | Consecutive matches required before confirming a new track. | 1 for immediate activation; 2-3 improves robustness against flicker and false positives. |
-| `minimum_iou_threshold_first_assoc` | Minimum fused similarity (IoU x detection confidence) for the first association pass with high-confidence detections. | Lower helps maintain matches under fast motion or imperfect compensation; higher is stricter and reduces risky matches. |
-| `minimum_iou_threshold_second_assoc` | Minimum IoU for the second association pass with lower-confidence detections. | Typically set higher than the first-pass threshold: this pass has no confidence fusion, so a stricter geometric threshold guards against over-matching low-confidence detections. |
-| `minimum_iou_threshold_unconfirmed_assoc` | Minimum IoU when associating unconfirmed tracks. | Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive. |
-| `high_conf_det_threshold` | Confidence split between stage-1 and stage-2 detections. | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage. |
-| `enable_cmc` | Enables camera motion compensation before association. | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed. |
+| `lost_track_buffer`                       | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps.                                                                                                           |
+| `track_activation_threshold`              | Minimum detection confidence required to start a new track.                                                                 | Higher reduces noisy track creation; lower retains harder objects. 0.5-0.9 typical depending on detector quality. This does not control low-confidence association, which still discards detections at a fixed `0.1` confidence floor. |
+| `minimum_consecutive_frames`              | Consecutive matches required before confirming a new track.                                                                 | 1 for immediate activation; 2-3 improves robustness against flicker and false positives.                                                                                                                                               |
+| `minimum_iou_threshold_first_assoc`       | Minimum fused similarity (IoU x detection confidence) for the first association pass with high-confidence detections.       | Lower helps maintain matches under fast motion or imperfect compensation; higher is stricter and reduces risky matches.                                                                                                                |
+| `minimum_iou_threshold_second_assoc`      | Minimum IoU for the second association pass with lower-confidence detections.                                               | Typically set higher than the first-pass threshold: this pass has no confidence fusion, so a stricter geometric threshold guards against over-matching low-confidence detections.                                                      |
+| `minimum_iou_threshold_unconfirmed_assoc` | Minimum IoU when associating unconfirmed tracks.                                                                            | Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.                                                                                                              |
+| `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.                                                                    | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                                                                                                                                 |
+| `enable_cmc`                              | Enables camera motion compensation before association.                                                                      | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                         |
 
 ## Run on video, webcam, or RTSP stream
 

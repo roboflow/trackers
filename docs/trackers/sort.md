@@ -16,9 +16,9 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (Algorithms table) and [README.md](../../README.md) (Algorithms table). No DanceTrack row here by design (see results.md dancetrack-default xref). Update results.md first, then mirror here. -->
 
-| Dataset | HOTA | IDF1 | MOTA |
+|  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
-| MOT17 | 58.4 | 69.9 | 67.2 |
+|   MOT17   | 58.4 | 69.9 | 67.2 |
 | SportsMOT | 70.8 | 68.9 | 95.5 |
 | SoccerNet | 81.6 | 76.2 | 95.1 |
 
@@ -42,12 +42,12 @@ SORT models each tracked object with an eight-dimensional state vector `[x1, y1,
 
 ## Key Parameters
 
-| Parameter | Purpose | Tuning guidance |
+| Parameter                    | Purpose                                                                                                                     | Tuning guidance                                                                                                              |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `lost_track_buffer` | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions. |
-| `track_activation_threshold` | Minimum detection confidence to create or continue a track. | Higher reduces spurious tracks; lower catches weak detections. 0.5-0.9 typical. |
-| `minimum_consecutive_frames` | Successful updates required to confirm a new track (count does not reset on a miss). | 1 confirms immediately; 2-3 filters out single-frame false positives. |
-| `minimum_iou_threshold` | Minimum IoU to accept a track-detection match. | Lower associates through more displacement between frames. 0.1-0.3 typical. |
+| `lost_track_buffer`          | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions. |
+| `track_activation_threshold` | Minimum detection confidence to create or continue a track.                                                                 | Higher reduces spurious tracks; lower catches weak detections. 0.5-0.9 typical.                                              |
+| `minimum_consecutive_frames` | Successful updates required to confirm a new track (count does not reset on a miss).                                        | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                        |
+| `minimum_iou_threshold`      | Minimum IoU to accept a track-detection match.                                                                              | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                  |
 
 !!! warning "Frame input is ignored by SORT"
 

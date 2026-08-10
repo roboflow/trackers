@@ -119,12 +119,12 @@ Clean, modular implementations of leading trackers. All HOTA scores use default 
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT rows (no C-BIoU/McByte rows here). Also duplicated in [README.md](../README.md)'s own Algorithms table (which additionally has a C-BIoU row). Update results.md first, then mirror here and in README.md. -->
 
-| Algorithm | Description | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+|                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
 | :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-| [SORT](https://arxiv.org/abs/1602.00763) | Kalman filter + Hungarian matching baseline. | 58.4 | 70.8 | 81.6 | 47.2 |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. | 60.1 | 73.0 | 84.0 | 53.3 |
-| [OC-SORT](https://arxiv.org/abs/2203.14360) | Observation-centric recovery for lost tracks. | 61.9 | 71.7 | 78.4 | 54.1 |
-| [BoT-SORT](https://arxiv.org/abs/2206.14651) | Camera motion compensation | **63.7** | **73.8** | **84.5** | **57.8** |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.8      |      81.6      |      47.2       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    60.1    |      73.0      |      84.0      |      53.3       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |      54.1       |
+| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                   Camera motion compensation                    |  **63.7**  |    **73.8**    |    **84.5**    |    **57.8**     |
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](evaluations/results.md).
 
@@ -142,10 +142,10 @@ trackers download --name mot17 \
     --asset annotations,detections
 ```
 
-| Dataset | Description | Splits | Assets | License |
+|   Dataset   |                               Description                               |         Splits         |                Assets                 |     License     |
 | :---------: | :---------------------------------------------------------------------: | :--------------------: | :-----------------------------------: | :-------------: |
-| `mot17` | Pedestrian tracking with crowded scenes and frequent occlusions. | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
-| `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` | `frames`, `annotations` | CC BY 4.0 |
+|   `mot17`   |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
+| `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
 
 For more download options, see the [download guide](evaluations/download.md).
 
