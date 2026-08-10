@@ -422,8 +422,9 @@ def plot_gap_sweep(rows: list[dict[str, object]], *, title: str, out_path: Path)
         xticklabels=labels,
     )
     ax_auc.set_title(
-        "how often a same-ID pair scores below a different-ID pair (1.0 = always, 0.5 = coin flip)",
-        fontsize=8.5,
+        "take one same-ID and one different-ID pair at random: how often is the same-ID one closer?"
+        "\n1.0 = always, 0.5 = coin flip. Counts every sampled pair, not the shaded overlap above.",
+        fontsize=8,
         color="#333333",
         pad=4,
     )

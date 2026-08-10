@@ -120,10 +120,12 @@ across the 16 to 30 band and 0.28 beyond 120 frames.
 
 ROC AUC below is the chance that a random same-ID pair scores closer than a random
 different-ID pair. 1.0 means the two distributions never overlap, 0.5 means
-appearance carries no information at all. It is reported because it needs no
-operating point, so the column does not depend on a target true-positive or
-false-positive rate. The two rates beside it evaluate the thresholds Trackers
-actually ships rather than deriving a new one.
+appearance carries no information at all. It is not the area where the shaded
+bands cross in the figure: it counts every sampled pair, tails included, so at a
+1-frame gap the bands do not touch at all yet the AUC is 0.998 rather than 1.0.
+It is reported because it needs no operating point, so the column does not depend
+on a target true-positive or false-positive rate. The two rates beside it evaluate
+the thresholds Trackers actually ships rather than deriving a new one.
 
 | Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
 | :--------- | :-----: | :---------------: | :--------------------: |
