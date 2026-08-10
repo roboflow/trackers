@@ -42,7 +42,7 @@ The table below lists every dataset you can download, along with its splits, ass
 | `dancetrack` |                             *Coming soon.*                              |           —            |                   —                   |        —        |
 | `soccernet`  |                             *Coming soon.*                              |           —            |                   —                   |        —        |
 
-`dancetrack` and `soccernet` aren't downloadable via `trackers download` yet, but both are already usable with `trackers benchmark mcbyte` if you supply your own detection and frame directories — see [McByte Benchmark Runner](mcbyte-benchmark-runner.md#supported-datasets).
+`dancetrack` and `soccernet` aren't downloadable via `trackers download` yet, but both are already usable with `trackers benchmark mcbyte` if you supply your own detection and frame directories — see [Benchmark Runner](benchmark-runner.md#step-1-get-your-data).
 
 === "CLI"
 

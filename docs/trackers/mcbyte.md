@@ -233,7 +233,7 @@ To run McByte over a complete benchmark test set (MOT17, DanceTrack, SportsMOT, 
 trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
 ```
 
-See the [McByte Benchmark Runner guide](../benchmarking/mcbyte-benchmark-runner.md) for how to supply dataset paths and read the CLI reference.
+See the [Benchmark Runner guide](../benchmarking/benchmark-runner.md) for how to supply dataset paths and read the CLI reference.
 
 ## Reference
 

@@ -46,22 +46,22 @@ pip install trackers
     <tr>
       <td><code>trackers track</code></td>
       <td>Run a tracker on a video, webcam, RTSP stream, or image directory.</td>
-      <td><a href="track.md#cli-reference">Track guide</a></td>
+      <td><a href="../track/#cli-reference">Track guide</a></td>
     </tr>
     <tr>
       <td><code>trackers eval</code></td>
       <td>Score tracker output against ground truth with CLEAR, HOTA, and Identity metrics.</td>
-      <td><a href="evaluate.md#cli-reference">Evaluate guide</a></td>
+      <td><a href="../../benchmarking/evaluate/#cli-reference">Evaluate guide</a></td>
     </tr>
     <tr>
       <td><code>trackers download</code></td>
       <td>Download MOT benchmark datasets — MOT17 and SportsMOT.</td>
-      <td><a href="download.md#cli-reference">Download guide</a></td>
+      <td><a href="../../benchmarking/download/#cli-reference">Download guide</a></td>
     </tr>
     <tr>
       <td><code>trackers tune</code></td>
       <td>Search tracker hyperparameters with Optuna.</td>
-      <td><a href="tune.md#cli-reference">Tune guide</a></td>
+      <td><a href="../tune/#cli-reference">Tune guide</a></td>
     </tr>
     <tr>
       <td><code>trackers inspect sam</code></td>
@@ -86,7 +86,7 @@ pip install trackers
     <tr>
       <td><code>trackers benchmark mcbyte</code></td>
       <td>Run McByte over complete benchmark test sets and write MOTChallenge-format results.</td>
-      <td><a href="mcbyte-benchmark-runner.md#cli-reference">McByte Benchmark Runner guide</a></td>
+      <td><a href="../../benchmarking/benchmark-runner/#cli-reference">Benchmark Runner guide</a></td>
     </tr>
   </tbody>
 </table>

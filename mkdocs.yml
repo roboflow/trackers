@@ -110,7 +110,7 @@ plugins:
         learn/download.md: benchmarking/download.md
         learn/evaluate.md: benchmarking/evaluate.md
         learn/tune.md: guides/tune.md
-        learn/mcbyte-benchmark.md: benchmarking/mcbyte-benchmark-runner.md
+        learn/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
         learn/inspect.md: guides/inspect.md
         learn/detection-quality.md: guides/detection-quality.md
         learn/state-estimators.md: guides/state-estimators.md
@@ -118,8 +118,9 @@ plugins:
         learn/about.md: details.md
         guides/download.md: benchmarking/download.md
         guides/evaluate.md: benchmarking/evaluate.md
-        guides/mcbyte-benchmark.md: benchmarking/mcbyte-benchmark-runner.md
-        benchmarking/mcbyte-benchmark.md: benchmarking/mcbyte-benchmark-runner.md
+        guides/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
+        benchmarking/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
+        benchmarking/mcbyte-benchmark-runner.md: benchmarking/benchmark-runner.md
         guides/about.md: details.md
         trackers/comparison.md: benchmarking/results.md
   - git-revision-date-localized:
@@ -165,7 +166,7 @@ nav:
   - Evaluations:
     - Download Datasets: benchmarking/download.md
     - Benchmark Trackers: benchmarking/evaluate.md
-    - McByte Benchmark Runner: benchmarking/mcbyte-benchmark-runner.md
+    - Benchmark Runner: benchmarking/benchmark-runner.md
     - Results: benchmarking/results.md
     - Methodology: benchmarking/methodology.md
   - Trackers:

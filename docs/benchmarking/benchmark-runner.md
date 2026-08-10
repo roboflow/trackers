@@ -1,11 +1,11 @@
 ---
-title: McByte Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Trackers
-description: Run McByte over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark mcbyte command.
+title: Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Trackers
+description: Run a tracker over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark command.
 ---
 
-# McByte Benchmark Runner
+# Benchmark Runner
 
-Run McByte over a complete benchmark test set — MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking — and write one MOTChallenge-format result file per sequence, step by step.
+Run a tracker over a complete benchmark test set — MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking — and write one MOTChallenge-format result file per sequence, step by step.
 
 **What you'll learn:**
 
@@ -14,22 +14,26 @@ Run McByte over a complete benchmark test set — MOT17, DanceTrack, SportsMOT, 
 - Select one or more datasets to run
 - Read the output layout, including the MOT17 submission files
 
-`trackers benchmark mcbyte` always builds McByte's full SAM + Cutie mask pipeline (`enable_mask_manager=True`), so — unlike the default `McByteTracker()` construction described on the [McByte page](../trackers/mcbyte.md) — both SAM and Cutie must be installed before running this command. See the [optional heavyweight dependencies note](../trackers/mcbyte.md#overview) for install steps.
+`trackers benchmark` is a command group, one subcommand per tracker with a benchmark harness. McByte is the only one available today, so every example below reads `trackers benchmark mcbyte`; the steps and the output layout are the same for any harness added later.
+
+!!! note "McByte specifics"
+
+    `trackers benchmark mcbyte` always builds McByte's full SAM + Cutie mask pipeline (`enable_mask_manager=True`), so — unlike the default `McByteTracker()` construction described on the [McByte page](../trackers/mcbyte.md) — both SAM and Cutie must be installed before running this command. See the [optional heavyweight dependencies note](../trackers/mcbyte.md#overview) for install steps.
 
 ---
 
 ## Step 1 — Get Your Data
 
-| Dataset      | Detection format | Layout note                                                 |
+| Dataset | Detection format | Layout note |
 | ------------ | ---------------- | ----------------------------------------------------------- |
-| `mot17`      | `xyxy`           | Frame directories use the `<sequence>-FRCNN` suffix.        |
-| `dancetrack` | `xyxy`           | —                                                           |
-| `sportsmot`  | `xyxy`           | —                                                           |
-| `soccernet`  | `mot`            | Detection filenames follow the SoccerNet naming convention. |
+| `mot17` | `xyxy` | Frame directories use the `<sequence>-FRCNN` suffix. |
+| `dancetrack` | `xyxy` | — |
+| `sportsmot` | `xyxy` | — |
+| `soccernet` | `mot` | Detection filenames follow the SoccerNet naming convention. |
 
 `mot17` and `sportsmot` can be fetched directly with `trackers download` — see [Download Datasets](download.md). `dancetrack` and `soccernet` aren't downloadable via that command yet; supply your own `detection_root`/`image_root` directories for those two, pointed at in Step 2.
 
-Each sequence is processed independently with a fresh McByte tracker. If a sequence fails, the error is logged and the run continues with the remaining sequences.
+Each sequence is processed independently with a fresh tracker instance. If a sequence fails, the error is logged and the run continues with the remaining sequences.
 
 ---
 
@@ -80,7 +84,7 @@ datasets/dancetrack/test/
     ...
 ```
 
-MOT17, DanceTrack and SportsMOT detections use `frame,x1,y1,x2,y2,confidence` (XYXY). SoccerNet-tracking detections use the original ground-truth MOT layout, `frame,id,left,top,width,height,confidence,...` — the identity column is ignored, since tracker identities are produced by McByte.
+MOT17, DanceTrack and SportsMOT detections use `frame,x1,y1,x2,y2,confidence` (XYXY). SoccerNet-tracking detections use the original ground-truth MOT layout, `frame,id,left,top,width,height,confidence,...` — the identity column is ignored, since identities are produced by the tracker.
 
 ---
 
@@ -125,7 +129,7 @@ Each sequence result is first written to a `.partial` file and only replaces the
 
 ### MOT17 submission files
 
-The MOT17 evaluation server expects one result file per detector name (`FRCNN`, `SDP`, `DPM`). Since McByte is detector-agnostic, `trackers benchmark mcbyte` duplicates each completed sequence's result across all three suffixes under `mot17/submission/`. The remaining MOT17 sequence numbers this run produces no result for are written as empty placeholder files for all three suffixes, so the submission directory always contains the complete set of names.
+The MOT17 evaluation server expects one result file per detector name (`FRCNN`, `SDP`, `DPM`). Since the tracker is detector-agnostic, `trackers benchmark mcbyte` duplicates each completed sequence's result across all three suffixes under `mot17/submission/`. The remaining MOT17 sequence numbers this run produces no result for are written as empty placeholder files for all three suffixes, so the submission directory always contains the complete set of names.
 
 `trackers benchmark mcbyte` writes raw per-sequence result files, not aggregate scores — it doesn't compute HOTA/IDF1/MOTA itself. Score the output with `trackers eval` (see [Evaluate Trackers](evaluate.md)); published McByte numbers already appear on the [Results](results.md) page.
 
