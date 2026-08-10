@@ -6,19 +6,19 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Run McByte over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark mcbyte command.">
+        <meta name="description" content="One-page reference for every trackers CLI command and subcommand, including the full flag tables for trackers inspect and a link to each command's detailed guide.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/mcbyte-benchmark/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/learn/cli/">
       
       
-        <link rel="prev" href="../tune/">
+        <link rel="prev" href="../track/">
       
       
-        <link rel="next" href="../inspect/">
+        <link rel="next" href="../cli-migration/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>McByte Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Trackers - Trackers</title>
+        <title>CLI Command Reference — trackers track, eval, tune, inspect | Trackers - Trackers</title>
       
     
     
@@ -129,12 +129,12 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "McByte Benchmarks",
-  "description": "Run McByte over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark mcbyte command.",
-  "url": "https://trackers.roboflow.com/latest/develop/learn/mcbyte-benchmark/",
+  "headline": "CLI Reference",
+  "description": "One-page reference for every trackers CLI command and subcommand, including the full flag tables for trackers inspect and a link to each command's detailed guide.",
+  "url": "https://trackers.roboflow.com/latest/develop/learn/cli/",
   "mainEntityOfPage": {
     "@type": "WebPage",
-    "@id": "https://trackers.roboflow.com/latest/develop/learn/mcbyte-benchmark/"
+    "@id": "https://trackers.roboflow.com/latest/develop/learn/cli/"
   },
   "image": {
     "@type": "ImageObject",
@@ -161,8 +161,8 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-08",
-  "datePublished": "2026-08-07"
+  "dateModified": "2026-08-10",
+  "datePublished": "2026-08-10"
 }
 </script>
 
@@ -179,9 +179,9 @@
 
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
-<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/mcbyte-benchmark/" />
-<meta property="og:title" content="McByte Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Trackers" />
-<meta property="og:description" content="Run McByte over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark mcbyte command." />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/learn/cli/" />
+<meta property="og:title" content="CLI Command Reference — trackers track, eval, tune, inspect | Trackers" />
+<meta property="og:description" content="One-page reference for every trackers CLI command and subcommand, including the full flag tables for trackers inspect and a link to each command's detailed guide." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -192,8 +192,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="McByte Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Trackers" />
-<meta name="twitter:description" content="Run McByte over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark mcbyte command." />
+<meta name="twitter:title" content="CLI Command Reference — trackers track, eval, tune, inspect | Trackers" />
+<meta name="twitter:description" content="One-page reference for every trackers CLI command and subcommand, including the full flag tables for trackers inspect and a link to each command's detailed guide." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -210,7 +210,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#mcbyte-benchmarks" class="md-skip">
+        <a href="#cli-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -276,7 +276,7 @@
 
             </a>
             
-              McByte Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Trackers
+              CLI Command Reference — trackers track, eval, tune, inspect | Trackers
             
           </span>
         </div>
@@ -780,10 +780,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../cli/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -799,6 +826,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requires-the-mask-extra" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requires the mask extra
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-subcommands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Subcommands
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -948,37 +1039,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    McByte Benchmarks
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../mcbyte-benchmark/" class="md-nav__link">
         
   
   
@@ -994,120 +1058,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-datasets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Datasets
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configure-dataset-roots" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configure Dataset Roots
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#select-datasets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Select Datasets
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#expected-directory-layout" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Expected Directory Layout
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Output">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#mot17-submission-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MOT17 submission files
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cli-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI Reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1752,10 +1702,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-datasets" class="md-nav__link">
+  <a href="#commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supported Datasets
+        Commands
       
     </span>
   </a>
@@ -1763,10 +1713,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configure-dataset-roots" class="md-nav__link">
+  <a href="#requires-the-mask-extra" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configure Dataset Roots
+        Requires the mask extra
       
     </span>
   </a>
@@ -1774,60 +1724,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#select-datasets" class="md-nav__link">
+  <a href="#inspect-subcommands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Select Datasets
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#expected-directory-layout" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Expected Directory Layout
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Output">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#mot17-submission-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MOT17 submission files
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cli-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI Reference
+        Inspect Subcommands
       
     </span>
   </a>
@@ -1854,125 +1754,100 @@
   
 
 
-<h1 id="mcbyte-benchmarks">McByte Benchmarks</h1>
-<p>Run McByte over a complete benchmark test set — MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking — and write one MOTChallenge-format result file per sequence.</p>
+<h1 id="cli-reference">CLI Reference</h1>
+<p>Every command the <code>trackers</code> CLI exposes, in one table, plus the full flag reference for <code>trackers inspect</code>'s four subcommands — the one part of the CLI with no flag table anywhere else in the docs.</p>
 <p><strong>What you'll learn:</strong></p>
 <ul>
-<li>Point the command at your detection and frame directories</li>
-<li>Select one or more datasets to run</li>
-<li>Read the output layout, including the MOT17 submission files</li>
+<li>Every top-level command and subcommand the CLI exposes</li>
+<li>Where each command's detailed guide and flag table lives</li>
+<li>The full flag reference for <code>trackers inspect sam</code> / <code>cutie</code> / <code>mask-manager</code> / <code>mcbyte</code></li>
 </ul>
 <hr />
 <h2 id="install">Install</h2>
 <p>Get started by installing the package.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install trackers
 </span></code></pre></div>
-<p><code>trackers benchmark mcbyte</code> always builds McByte's full SAM + Cutie mask pipeline (<code>enable_mask_manager=True</code>), so — unlike the default <code>McByteTracker()</code> construction described on the <a href="../../trackers/mcbyte/">McByte page</a> — both SAM and Cutie must be installed before running this command. See the <a href="../../trackers/mcbyte/#overview">optional heavyweight dependencies note</a> for install steps. For more general install options, see the <a href="../install/">install guide</a>.</p>
+<p><code>inspect</code> subcommands additionally need the <code>mask</code> extra — see <a href="#requires-the-mask-extra">Requires the mask extra</a> below. For more options, see the <a href="../install/">install guide</a>.</p>
 <hr />
-<h2 id="supported-datasets">Supported Datasets</h2>
+<h2 id="commands">Commands</h2>
 <table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th>Detection format</th>
-<th>Layout note</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mot17</code></td>
-<td><code>xyxy</code></td>
-<td>Frame directories use the <code>&lt;sequence&gt;-FRCNN</code> suffix.</td>
-</tr>
-<tr>
-<td><code>dancetrack</code></td>
-<td><code>xyxy</code></td>
-<td>—</td>
-</tr>
-<tr>
-<td><code>sportsmot</code></td>
-<td><code>xyxy</code></td>
-<td>—</td>
-</tr>
-<tr>
-<td><code>soccernet</code></td>
-<td><code>mot</code></td>
-<td>Detection filenames follow the SoccerNet naming convention.</td>
-</tr>
-</tbody>
+  <colgroup>
+    <col style="width: 30%">
+    <col style="width: 45%">
+    <col style="width: 25%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Command</th>
+      <th>Purpose</th>
+      <th>Reference</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>trackers track</code></td>
+      <td>Run a tracker on a video, webcam, RTSP stream, or image directory.</td>
+      <td><a href="track.md#cli-reference">Track guide</a></td>
+    </tr>
+    <tr>
+      <td><code>trackers eval</code></td>
+      <td>Score tracker output against ground truth with CLEAR, HOTA, and Identity metrics.</td>
+      <td><a href="evaluate.md#cli-reference">Evaluate guide</a></td>
+    </tr>
+    <tr>
+      <td><code>trackers download</code></td>
+      <td>Download MOT benchmark datasets — MOT17 and SportsMOT.</td>
+      <td><a href="download.md#cli-reference">Download guide</a></td>
+    </tr>
+    <tr>
+      <td><code>trackers tune</code></td>
+      <td>Search tracker hyperparameters with Optuna.</td>
+      <td><a href="tune.md#cli-reference">Tune guide</a></td>
+    </tr>
+    <tr>
+      <td><code>trackers inspect sam</code></td>
+      <td>Run SAM mask generation on a single image and save a visualization.</td>
+      <td><a href="#inspect-subcommands">Below</a></td>
+    </tr>
+    <tr>
+      <td><code>trackers inspect cutie</code></td>
+      <td>Seed masks with SAM on the first frame, then propagate them with Cutie across a frame range.</td>
+      <td><a href="#inspect-subcommands">Below</a></td>
+    </tr>
+    <tr>
+      <td><code>trackers inspect mask-manager</code></td>
+      <td>Run the real <code>MaskManager</code> orchestration — initialize, propagate, add, remove — in <code>manual</code> or <code>gt</code> mode.</td>
+      <td><a href="#inspect-subcommands">Below</a></td>
+    </tr>
+    <tr>
+      <td><code>trackers inspect mcbyte</code></td>
+      <td>Compare locked-IoU vs. mask-conditioned McByte on one sequence.</td>
+      <td><a href="#inspect-subcommands">Below</a></td>
+    </tr>
+    <tr>
+      <td><code>trackers benchmark mcbyte</code></td>
+      <td>Run McByte over complete benchmark test sets and write MOTChallenge-format results.</td>
+      <td><a href="mcbyte-benchmark.md#cli-reference">McByte Benchmarks guide</a></td>
+    </tr>
+  </tbody>
 </table>
-<p>Each sequence is processed independently with a fresh McByte tracker. If a sequence fails, the error is logged and the run continues with the remaining sequences.</p>
+
+<p>For a narrative walkthrough of <code>track</code>, <code>eval</code>, <code>download</code>, or <code>tune</code>, see their own guides linked above. For <code>inspect</code>, see the <a href="../inspect/">Inspect the Mask Pipeline guide</a> for worked examples — the flag tables below cover the full surface of each subcommand.</p>
+<p>Every <code>trackers</code> subcommand accepts <code>--config &lt;file&gt;</code> to load arguments from a YAML file, and hyphens and underscores are interchangeable in flag names (<code>--cmc-downscale</code> and <code>--cmc_downscale</code> are the same option). Boolean flags gain a negated <code>--no_&lt;name&gt;</code> counterpart.</p>
 <hr />
-<h2 id="configure-dataset-roots">Configure Dataset Roots</h2>
-<p>Every dataset needs a <code>detection_root</code> (one detection file per sequence) and an <code>image_root</code> (one frame directory per sequence). Neither has a built-in value — supply both per run, either through a <code>--config</code> file or inline as JSON with <code>--dataset_roots</code>.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Config file</label></div>
+<h2 id="requires-the-mask-extra">Requires the mask extra</h2>
+<p>All four <code>inspect</code> subcommands build SAM and Cutie, so install them first:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;trackers[mask]&quot;</span>
+</span></code></pre></div>
+<p>Without the extra, the command exits with an install hint rather than a traceback. For more options, see the <a href="../install/">install guide</a>.</p>
+<hr />
+<h2 id="inspect-subcommands">Inspect Subcommands</h2>
+<p>Each tab lists all arguments accepted by that <code>trackers inspect</code> subcommand.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">sam</label><label for="__tabbed_1_2">cutie</label><label for="__tabbed_1_3">mask-manager</label><label for="__tabbed_1_4">mcbyte</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>Supply roots as JSON on the command line.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trackers benchmark mcbyte --dataset_roots=&#39;{&quot;mot17&quot;: {&quot;detection_root&quot;: &quot;/data/dets&quot;, &quot;image_root&quot;: &quot;/data/frames&quot;}}&#39;
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>A config file is the readable spelling.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># run.yaml</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mot17</span><span class="p p-Indicator">]</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">dataset_roots</span><span class="p">:</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">mot17</span><span class="p">:</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">detection_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/detections/MOT17/test</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="nt">image_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/datasets/MOT17/test</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>trackers benchmark mcbyte --config run.yaml
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<hr />
-<h2 id="select-datasets">Select Datasets</h2>
-<p>Pass <code>--dataset</code> as a list to choose which datasets to run. Omit it to run every dataset in the table above.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
-</span></code></pre></div>
-<p>A bare repeated <code>--dataset</code> overwrites the previous value — use <code>--dataset+</code> to append instead:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>trackers benchmark mcbyte --dataset+ mot17 --dataset+ soccernet
-</span></code></pre></div>
-<p>As with every <code>trackers</code> subcommand, hyphens and underscores are interchangeable (<code>--cmc-downscale</code> and <code>--cmc_downscale</code> are the same option), and every boolean flag has a <code>--no_</code> negation, e.g. <code>--no_enable_cmc</code>.</p>
-<hr />
-<h2 id="expected-directory-layout">Expected Directory Layout</h2>
-<p><code>detection_root</code> holds one detection <code>.txt</code> file per sequence:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>detections/MOT17/test/MOT17-01.txt
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>detections/dancetrack/test/dancetrack0003.txt
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>detections/sportsmot/test/v_-9kabh1K8UA_c008.txt
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>detections/SoccerNet_tracking_2022_test_set_dets/SNMOT-116__det.txt
-</span></code></pre></div>
-<p><code>image_root</code> holds one directory per sequence, each with an <code>img1</code> subdirectory of frames, for every dataset:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>datasets/dancetrack/test/
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    dancetrack0003/img1/
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    dancetrack0009/img1/
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    ...
-</span></code></pre></div>
-<p>MOT17, DanceTrack and SportsMOT detections use <code>frame,x1,y1,x2,y2,confidence</code> (XYXY). SoccerNet-tracking detections use the original ground-truth MOT layout, <code>frame,id,left,top,width,height,confidence,...</code> — the identity column is ignored, since tracker identities are produced by McByte.</p>
-<hr />
-<h2 id="output">Output</h2>
-<p>Results are written under <code>--output_root</code>, in one timestamped directory per run (<code>&lt;timestamp&gt;__isolation</code> or <code>&lt;timestamp&gt;__no_isolation</code>, reflecting <code>--enable_isolated_mask_matching</code>), with one subdirectory per dataset and a <code>run.log</code> capturing progress and failures.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>outputs/mcbyte_benchmarks/
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>└── 20260807_120000__no_isolation/
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    ├── run.log
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    └── mot17/
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        ├── raw/
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        │   ├── MOT17-01.txt
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        │   └── ...
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        └── submission/
-</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>            ├── MOT17-01-FRCNN.txt
-</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>            ├── MOT17-01-SDP.txt
-</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>            ├── MOT17-01-DPM.txt
-</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>            └── ...
-</span></code></pre></div>
-<p>Each sequence result is first written to a <code>.partial</code> file and only replaces the final file on success; use <code>--skip_existing</code> to skip a sequence whose result file is already present, and <code>--keep_partial_results</code> to keep a failed sequence's <code>.partial</code> file instead of deleting it.</p>
-<h3 id="mot17-submission-files">MOT17 submission files</h3>
-<p>The MOT17 evaluation server expects one result file per detector name (<code>FRCNN</code>, <code>SDP</code>, <code>DPM</code>). Since McByte is detector-agnostic, <code>trackers benchmark mcbyte</code> duplicates each completed sequence's result across all three suffixes under <code>mot17/submission/</code>. The remaining MOT17 sequence numbers this run produces no result for are written as empty placeholder files for all three suffixes, so the submission directory always contains the complete set of names.</p>
-<hr />
-<h2 id="cli-reference">CLI Reference</h2>
-<p>All arguments accepted by <code>trackers benchmark mcbyte</code>.</p>
-<table>
+<p><code>trackers inspect sam</code></p>
+<p><table>
   <colgroup>
     <col style="width: 40%">
     <col style="width: 40%">
@@ -1987,67 +1862,307 @@
   </thead>
   <tbody>
     <tr>
-      <td><code>--config</code></td>
-      <td>Path to a configuration file.</td>
+      <td><code>--image_path</code></td>
+      <td>Path to the input image.</td>
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--print_config</code></td>
-      <td>Print the configuration after applying all other arguments, then exit.</td>
+      <td><code>--box</code></td>
+      <td>Bounding boxes in <code>xyxy</code> format, given as one list: <code>--box='[[x1,y1,x2,y2]]'</code>. Append with <code>--box+=...</code>.</td>
       <td>—</td>
     </tr>
     <tr>
-      <td><code>--dataset</code></td>
-      <td>Datasets to run, as a list: <code>--dataset=[mot17,soccernet]</code>. Repeat as <code>--dataset+</code> to append instead of overwrite.</td>
-      <td>all datasets</td>
-    </tr>
-    <tr>
-      <td><code>--dataset_roots</code></td>
-      <td>Where each dataset's files live, keyed by the same names <code>--dataset</code> selects. Each entry holds a <code>detection_root</code> and an <code>image_root</code>; neither has a built-in value.</td>
-      <td>—</td>
+      <td><code>--output_path</code></td>
+      <td>Path to save the visualization.</td>
+      <td><code>outputs/inspect/sam/sam_masks.jpg</code></td>
     </tr>
     <tr>
       <td><code>--device</code></td>
-      <td>Device for SAM + Cutie, e.g. <code>cuda</code>, <code>cpu</code>, or <code>mps</code>. <code>auto</code> resolves to CUDA when available, otherwise CPU; MPS is never auto-selected and must be requested explicitly.</td>
+      <td>Device used by SAM, e.g. <code>cpu</code> or <code>cuda</code>. <code>auto</code> resolves to CUDA when available, otherwise CPU.</td>
       <td><code>auto</code></td>
     </tr>
     <tr>
-      <td><code>--enable_isolated_mask_matching</code></td>
-      <td>Match masks in isolation. Negate with <code>--no_enable_isolated_mask_matching</code>.</td>
-      <td><code>false</code></td>
+      <td><code>--model_type</code></td>
+      <td>SAM model type.</td>
+      <td><code>vit_b</code></td>
+    </tr>
+  </tbody>
+</table></p>
+</div>
+<div class="tabbed-block">
+<p><code>trackers inspect cutie</code></p>
+<p><table>
+  <colgroup>
+    <col style="width: 40%">
+    <col style="width: 40%">
+    <col style="width: 20%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Argument</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>--image_dir</code></td>
+      <td>Directory containing input frames.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--start_file</code></td>
+      <td>First frame filename, included in the selected frame range.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--end_file</code></td>
+      <td>Last frame filename, included in the selected frame range.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--box</code></td>
+      <td>Bounding boxes on the first selected frame, <code>xyxy</code>, as one list. Append with <code>--box+=...</code>.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--add_at</code></td>
+      <td>Masks to add via a box on a given frame, each <code>filename:x1,y1,x2,y2</code>. Applied on that frame then propagated to the next, matching McByte timing; each event is treated as a new object.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--remove_at</code></td>
+      <td>Masks to remove before propagating to the given frame, each <code>filename:manual_mask_id</code>.</td>
+      <td>none</td>
     </tr>
     <tr>
       <td><code>--output_root</code></td>
-      <td>Directory holding one timestamped run directory per run.</td>
-      <td><code>outputs/mcbyte_benchmarks</code></td>
+      <td>Root directory for timestamped outputs.</td>
+      <td><code>outputs/inspect/cutie</code></td>
     </tr>
     <tr>
-      <td><code>--skip_existing</code></td>
-      <td>Skip a sequence whose result file is already present. Negate with <code>--no_skip_existing</code>.</td>
+      <td><code>--device</code></td>
+      <td>Device used by SAM and Cutie, e.g. <code>cpu</code>/<code>cuda</code>. <code>auto</code> resolves to CUDA when available, otherwise CPU.</td>
+      <td><code>auto</code></td>
+    </tr>
+    <tr>
+      <td><code>--sam_model_type</code></td>
+      <td>SAM model type.</td>
+      <td><code>vit_b</code></td>
+    </tr>
+    <tr>
+      <td><code>--cutie_model_type</code></td>
+      <td>Cutie model type.</td>
+      <td><code>base-mega</code></td>
+    </tr>
+    <tr>
+      <td><code>--cutie_config_path</code></td>
+      <td>Optional path to Cutie's Hydra config directory.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--cutie_config_name</code></td>
+      <td>Cutie Hydra config name.</td>
+      <td><code>eval_config</code></td>
+    </tr>
+  </tbody>
+</table></p>
+</div>
+<div class="tabbed-block">
+<p><code>trackers inspect mask-manager</code> — <code>--mode</code> selects <code>manual</code> or <code>gt</code>; passing an option that belongs to the other mode is an error.</p>
+<p><table>
+  <colgroup>
+    <col style="width: 40%">
+    <col style="width: 40%">
+    <col style="width: 20%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Argument</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>--image_dir</code></td>
+      <td>Directory holding the frame images.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--mode</code></td>
+      <td><code>manual</code> (boxes and lifecycle events from the CLI) or <code>gt</code> (replay from a MOT-format ground-truth file).</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--start_file</code></td>
+      <td><em>Manual mode.</em> Filename of the first frame to process.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--end_file</code></td>
+      <td><em>Manual mode.</em> Filename of the last frame to process.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--box</code></td>
+      <td><em>Manual mode.</em> Initial tracklet boxes on the first selected frame, <code>xyxy</code>, as one list. Append with <code>--box+=...</code>.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--add_at</code></td>
+      <td><em>Manual mode.</em> New tracklets to add from given frame boxes, each <code>filename:x1,y1,x2,y2</code>.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--remove_at</code></td>
+      <td><em>Manual mode.</em> Tracklets to remove before propagating to the given frame, each <code>filename:tracklet_id</code>.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--gt_file</code></td>
+      <td><em>GT mode.</em> MOT-format ground-truth file to replay.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--start_frame</code></td>
+      <td><em>GT mode.</em> First frame number to replay.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--end_frame</code></td>
+      <td><em>GT mode.</em> Last frame number to replay.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--tracklet_id</code></td>
+      <td><em>GT mode.</em> Tracklet IDs to replay, e.g. <code>--tracklet_id='[3,7]'</code>. Omit, or pass <code>[all]</code>, to replay every tracklet.</td>
+      <td>all</td>
+    </tr>
+    <tr>
+      <td><code>--output_root</code></td>
+      <td>Directory holding run directories, grouped by mode (<code>&lt;output_root&gt;/&lt;mode&gt;/&lt;timestamp&gt;/</code>).</td>
+      <td><code>outputs/inspect/mask-manager</code></td>
+    </tr>
+    <tr>
+      <td><code>--device</code></td>
+      <td>Device used by SAM and Cutie, e.g. <code>cuda</code>/<code>cpu</code>. <code>auto</code> resolves to CUDA when available, otherwise CPU.</td>
+      <td><code>auto</code></td>
+    </tr>
+    <tr>
+      <td><code>--sam_model_type</code></td>
+      <td>SAM model type.</td>
+      <td><code>vit_b</code></td>
+    </tr>
+    <tr>
+      <td><code>--cutie_model_type</code></td>
+      <td>Cutie model type.</td>
+      <td><code>base-mega</code></td>
+    </tr>
+    <tr>
+      <td><code>--cutie_config_path</code></td>
+      <td>Directory holding the Cutie config. Omit to use the config shipped with the installed Cutie package.</td>
+      <td>none</td>
+    </tr>
+    <tr>
+      <td><code>--cutie_config_name</code></td>
+      <td>Name of the Cutie config to load.</td>
+      <td><code>eval_config</code></td>
+    </tr>
+    <tr>
+      <td><code>--mask_creation_bbox_overlap_threshold</code></td>
+      <td><em>GT mode.</em> Overlap threshold above which mask creation is delayed.</td>
+      <td><code>0.6</code></td>
+    </tr>
+  </tbody>
+</table></p>
+</div>
+<div class="tabbed-block">
+<p><code>trackers inspect mcbyte</code> — options are grouped into nested dataclasses: <code>--sequence.*</code>, <code>--cmc.*</code>, <code>--mask.*</code>.</p>
+<p><table>
+  <colgroup>
+    <col style="width: 40%">
+    <col style="width: 40%">
+    <col style="width: 20%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Argument</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>--sequence.image_dir</code></td>
+      <td>Directory containing sequence frames.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--sequence.det_file</code></td>
+      <td>Path to the detection file.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--sequence.start_frame</code></td>
+      <td>First frame number to process, inclusive.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--sequence.end_frame</code></td>
+      <td>Last frame number to process, inclusive.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>--sequence.det_format</code></td>
+      <td>Detection-file column format: <code>mot_tlwh</code> (<code>frame,id,left,top,width,height,confidence,...</code>) or <code>xyxy</code> (<code>frame,x1,y1,x2,y2,confidence</code>).</td>
+      <td><code>mot_tlwh</code></td>
+    </tr>
+    <tr>
+      <td><code>--sequence.frame_rate</code></td>
+      <td>Sequence frame rate used to scale the lost-track buffer.</td>
+      <td><code>30.0</code></td>
+    </tr>
+    <tr>
+      <td><code>--cmc.enable</code></td>
+      <td>Enable camera motion compensation in both runs.</td>
       <td><code>false</code></td>
     </tr>
     <tr>
-      <td><code>--enable_cmc</code></td>
-      <td>Compensate for camera motion. Negate with <code>--no_enable_cmc</code>.</td>
-      <td><code>true</code></td>
-    </tr>
-    <tr>
-      <td><code>--cmc_method</code></td>
+      <td><code>--cmc.method</code></td>
       <td>Camera-motion compensation method. Options: <code>orb</code>, <code>sift</code>, <code>sparseOptFlow</code>, <code>ecc</code>.</td>
       <td><code>sparseOptFlow</code></td>
     </tr>
     <tr>
-      <td><code>--cmc_downscale</code></td>
-      <td>Frame downscale factor applied before compensation.</td>
+      <td><code>--cmc.downscale</code></td>
+      <td>Image downscale factor used by CMC.</td>
       <td><code>6</code></td>
     </tr>
     <tr>
-      <td><code>--keep_partial_results</code></td>
-      <td>Keep the <code>.partial</code> file a failed sequence leaves behind instead of deleting it. Negate with <code>--no_keep_partial_results</code>.</td>
+      <td><code>--mask.device</code></td>
+      <td>Device used by SAM and Cutie in the mask-conditioned run. <code>auto</code> resolves to CUDA when available, otherwise CPU.</td>
+      <td><code>auto</code></td>
+    </tr>
+    <tr>
+      <td><code>--mask.enable_isolated_matching</code></td>
+      <td>Allow mask evidence to rescue isolated positive-IoU pairs below the normal association threshold.</td>
       <td><code>false</code></td>
     </tr>
+    <tr>
+      <td><code>--modes</code></td>
+      <td>Tracker configurations to run: <code>--modes=[locked_iou]</code>.</td>
+      <td>both <code>locked_iou</code> and <code>mask_conditioned</code></td>
+    </tr>
+    <tr>
+      <td><code>--output_dir</code></td>
+      <td>Directory holding one timestamped run directory per invocation; both comparison runs write inside it.</td>
+      <td><code>outputs/inspect/mcbyte</code></td>
+    </tr>
   </tbody>
-</table>
+</table></p>
+</div>
+</div>
+</div>
 
 
 
@@ -2070,7 +2185,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 8, 2026 19:44:52 UTC">2026-08-08</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 16:17:05 UTC">2026-08-10</span>
   </span>
 
     
@@ -2080,7 +2195,7 @@
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 7, 2026 21:00:46 UTC">2026-08-07</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 16:17:05 UTC">2026-08-10</span>
   </span>
 
     
@@ -2111,7 +2226,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../tune/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Tune Trackers">
+          <a href="../track/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Track Objects">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2121,20 +2236,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Tune Trackers
+                Track Objects
               </div>
             </div>
           </a>
         
         
           
-          <a href="../inspect/" class="md-footer__link md-footer__link--next" aria-label="Next: Inspect Mask Pipeline">
+          <a href="../cli-migration/" class="md-footer__link md-footer__link--next" aria-label="Next: CLI Migration Guide">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Inspect Mask Pipeline
+                CLI Migration Guide
               </div>
             </div>
             <div class="md-footer__button md-icon">
