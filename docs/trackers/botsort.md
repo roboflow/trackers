@@ -58,6 +58,17 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 
     Pass the current video frame as `tracker.update(detections, frame=frame_bgr)` to enable Camera Motion Compensation.
 
+=== "CLI"
+
+    Run BoT-SORT on a video without writing any Python. See the [CLI reference](../learn/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
+
+    ```bash
+    trackers track \
+        --source <SOURCE_VIDEO_PATH> \
+        --tracker botsort \
+        --output.video output.mp4
+    ```
+
 === "Video"
 
     ```python
