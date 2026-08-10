@@ -243,6 +243,16 @@ All arguments accepted by `trackers tune`.
       <td>None</td>
     </tr>
     <tr>
+      <td><code>--images_dir</code></td>
+      <td>MOT-style image root for frame-based features such as CMC. Frames are read from <code>{images_dir}/{sequence}/img1/</code>.</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td><code>--enqueue_defaults</code></td>
+      <td>Evaluate the tracker's default parameters as the first trial before Optuna sampling begins. Negate with <code>--no_enqueue_defaults</code>.</td>
+      <td><code>true</code></td>
+    </tr>
+    <tr>
       <td><code>--metrics</code></td>
       <td>Metric families to compute: <code>CLEAR</code>, <code>HOTA</code>, <code>Identity</code>. The family required by <code>--objective</code> is added automatically.</td>
       <td><code>CLEAR</code></td>

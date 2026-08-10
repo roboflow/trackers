@@ -14,6 +14,8 @@ ByteTrack builds on the same Kalman filter plus Hungarian algorithm framework as
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
 
+<!-- BENCH-XREF copy-of: docs/benchmarking/results.md ByteTrack row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in docs/index.md (L13 headline + Algorithms table) and README.md (Algorithms table). No DanceTrack row here by design. Update results.md first, then mirror here. -->
+
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
 |   MOT17   | 60.1 | 73.2 | 74.1 |
@@ -30,7 +32,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as [SORT](sort.md) but changes how detections are associated to tracks. Instead of discarding low-confidence detections, ByteTrack uses a two-stage matching strategy that recovers valid objects the detector scored low due to occlusion, blur, or partial visibility.
 
-**Stage 1 -- high-confidence matching.** Detections with confidence above `high_conf_det_threshold` are matched to confirmed tracks using IoU-based Hungarian assignment, identical to SORT. Unmatched tracks and unmatched high-confidence detections pass to the next stage.
+**Stage 1 -- high-confidence matching.** Detections with confidence above `high_conf_det_threshold` are matched to all existing tracks (confirmed and unconfirmed alike) using IoU-based Hungarian assignment, identical to SORT. Unmatched tracks and unmatched high-confidence detections pass to the next stage.
 
 **Stage 2 -- low-confidence matching.** Detections with confidence below `high_conf_det_threshold` are matched to the remaining unmatched tracks using IoU. This second pass associates weak detections to already-established tracks, recovering objects that would otherwise be lost. Unmatched high-confidence detections whose confidence falls below `track_activation_threshold` are returned with `tracker_id` of `-1` and never start new tracks.
 

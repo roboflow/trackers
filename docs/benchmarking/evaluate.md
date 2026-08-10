@@ -34,7 +34,7 @@ For more options, see the [install guide](../guides/install.md).
 
 ## Download Data
 
-Download ground-truth annotations and detections for MOT17 validation — see the [download guide](download.md) for the full command and output layout. This guide assumes data lands at `./data/mot17/val/<sequence>/det/det.txt` and `./data/mot17/val/<sequence>/gt/gt.txt`, matching that guide's default output.
+Download ground-truth annotations and detections for MOT17 validation — see the [download guide](download.md) for the full command and output layout. This guide assumes data lands at `./mot17/val/<sequence>/det/det.txt` and `./mot17/val/<sequence>/gt/gt.txt`, matching that guide's default output (`--output` defaults to the current directory, `.`).
 
 ---
 
@@ -44,7 +44,7 @@ Feed the pre-computed detections into a tracker and write the results to a file 
 
 ```text
 trackers track \
-    --detection.mot_file ./data/mot17/val/MOT17-02-FRCNN/det/det.txt \
+    --detection.mot_file ./mot17/val/MOT17-02-FRCNN/det/det.txt \
     --tracker bytetrack \
     --output.mot_results results/MOT17-02-FRCNN.txt
 ```
@@ -57,7 +57,7 @@ Compare the tracker output against ground truth to compute standard MOT metrics.
 
 ```text
 trackers eval \
-    --gt ./data/mot17/val/MOT17-02-FRCNN/gt/gt.txt \
+    --gt ./mot17/val/MOT17-02-FRCNN/gt/gt.txt \
     --predictions results/MOT17-02-FRCNN.txt \
     --metrics '[CLEAR,HOTA,Identity]' \
     --columns '[MOTA,HOTA,IDF1]'
@@ -99,7 +99,7 @@ Evaluate all sequences at once and get per-sequence results plus a combined aggr
 
 ```text
 trackers eval \
-    --gt_dir ./data/mot17/val \
+    --gt_dir ./mot17/val \
     --predictions_dir results \
     --metrics '[CLEAR,HOTA,Identity]' \
     --columns '[MOTA,HOTA,IDF1]' \

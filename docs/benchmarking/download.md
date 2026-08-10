@@ -35,12 +35,16 @@ For more options, see the [install guide](../guides/install.md).
 
 The table below lists every dataset you can download, along with its splits, assets, and license. Assets include raw video frames, ground-truth bounding box annotations, and pre-computed detections.
 
-|   Dataset    |                               Description                               |         Splits         |                Assets                 |     License     |
-| :----------: | :---------------------------------------------------------------------: | :--------------------: | :-----------------------------------: | :-------------: |
-|   `mot17`    |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
-| `sportsmot`  | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
-| `dancetrack` |                             *Coming soon.*                              |           —            |                   —                   |        —        |
-| `soccernet`  |                             *Coming soon.*                              |           —            |                   —                   |        —        |
+|   Dataset    |                               Description                               |     Split      |                Assets                 |     License     |
+| :----------: | :---------------------------------------------------------------------: | :------------: | :-----------------------------------: | :-------------: |
+|   `mot17`    |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
+|   `mot17`    |                                                                         |     `test`     |        `frames`, `detections`         | CC BY-NC-SA 3.0 |
+| `sportsmot`  | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val` |        `frames`, `annotations`        |    CC BY 4.0    |
+| `sportsmot`  |                                                                         |     `test`     |               `frames`                |    CC BY 4.0    |
+| `dancetrack` |                             *Coming soon.*                              |       —        |                   —                   |        —        |
+| `soccernet`  |                             *Coming soon.*                              |       —        |                   —                   |        —        |
+
+`mot17` has no `annotations` for `test` (the official test-set ground truth is not public), and `sportsmot` has no `detections` for any split.
 
 `dancetrack` and `soccernet` aren't downloadable via `trackers download` yet, but both are already usable with `trackers benchmark mcbyte` if you supply your own detection and frame directories — see [Benchmark Runner](benchmark-runner.md#step-1-get-your-data).
 
@@ -156,7 +160,7 @@ Dataset files are extracted to the current directory by default. Set a custom ou
     ```text
     trackers download --name mot17 \
         --split train,val \
-        --asset annotations,frames \
+        --asset annotations,frames,detections \
         --output ./datasets
     ```
 
@@ -170,7 +174,7 @@ Dataset files are extracted to the current directory by default. Set a custom ou
     download_dataset(
         name=Dataset.MOT17,
         split=[DatasetSplit.TRAIN, DatasetSplit.VAL],
-        asset=[DatasetAsset.ANNOTATIONS, DatasetAsset.FRAMES],
+        asset=[DatasetAsset.ANNOTATIONS, DatasetAsset.FRAMES, DatasetAsset.DETECTIONS],
         output="./datasets",
     )
     ```
@@ -182,6 +186,8 @@ datasets/
 └── mot17/
     ├── train/
     │   ├── MOT17-02-FRCNN/
+    │   │   ├── det/
+    │   │   │   └── det.txt
     │   │   ├── gt/
     │   │   │   └── gt.txt
     │   │   └── img1/
@@ -189,6 +195,8 @@ datasets/
     │   │       ├── 000002.jpg
     │   │       └── ...
     │   ├── MOT17-04-FRCNN/
+    │   │   ├── det/
+    │   │   │   └── det.txt
     │   │   ├── gt/
     │   │   │   └── gt.txt
     │   │   └── img1/
@@ -196,6 +204,8 @@ datasets/
     │   └── ...
     └── val/
         ├── MOT17-02-FRCNN/
+        │   ├── det/
+        │   │   └── det.txt
         │   ├── gt/
         │   │   └── gt.txt
         │   └── img1/

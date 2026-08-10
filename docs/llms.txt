@@ -1,16 +1,17 @@
 # Roboflow Trackers
 
-> Clean-room Python implementations of SORT, ByteTrack, OC-SORT, and BoT-SORT —
-> multi-object tracking algorithms that plug into any detection model
-> via the supervision library. Apache 2.0. 71,000+ monthly PyPI installs.
+> Clean-room Python implementations of SORT, ByteTrack, OC-SORT, BoT-SORT,
+> C-BIoU, and McByte — multi-object tracking algorithms that plug into any
+> detection model via the supervision library. Apache 2.0. 71,000+ monthly
+> PyPI installs.
 
 ## Documentation
 
 - [Quickstart](https://trackers.roboflow.com/latest/): Install and run your first tracking pipeline
-- [Tracker Comparison](https://trackers.roboflow.com/latest/trackers/comparison/): HOTA/IDF1/MOTA benchmarks across MOT17, SportsMOT, SoccerNet, DanceTrack
-- [Track Objects](https://trackers.roboflow.com/latest/learn/track/): CLI and Python API
-- [Evaluate Trackers](https://trackers.roboflow.com/latest/learn/evaluate/): HOTA, IDF1, MOTA metrics guide
-- [Detection Quality Matters](https://trackers.roboflow.com/latest/learn/detection-quality/): How detector quality affects tracking
+- [Tracker Comparison](https://trackers.roboflow.com/latest/benchmarking/results/): HOTA/IDF1/MOTA benchmarks across MOT17, SportsMOT, SoccerNet, DanceTrack
+- [Track Objects](https://trackers.roboflow.com/latest/guides/track/): CLI and Python API
+- [Evaluate Trackers](https://trackers.roboflow.com/latest/benchmarking/evaluate/): HOTA, IDF1, MOTA metrics guide
+- [Detection Quality Matters](https://trackers.roboflow.com/latest/guides/detection-quality/): How detector quality affects tracking
 - [SORT](https://trackers.roboflow.com/latest/trackers/sort/): Kalman + Hungarian algorithm tracker
 - [ByteTrack](https://trackers.roboflow.com/latest/trackers/bytetrack/): Low-confidence detection association tracker
 - [OC-SORT](https://trackers.roboflow.com/latest/trackers/ocsort/): Observation-centric re-update tracker
@@ -20,9 +21,11 @@
 - [Trackers API](https://trackers.roboflow.com/latest/api/trackers/)
 - [Motion API](https://trackers.roboflow.com/latest/api/motion/)
 - [Evals API](https://trackers.roboflow.com/latest/api/evals/)
+- [Datasets API](https://trackers.roboflow.com/latest/api/datasets/)
+- [I/O API](https://trackers.roboflow.com/latest/api/io/)
 
 ## Optional
 
 - [GitHub](https://github.com/roboflow/trackers): Source, 3,300+ stars, Apache 2.0
 - [PyPI](https://pypi.org/project/trackers/): pip install trackers
-- [About](https://trackers.roboflow.com/latest/learn/about/): Project background and contributors
+- [About](https://trackers.roboflow.com/latest/details/): Project background and contributors

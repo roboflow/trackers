@@ -77,21 +77,23 @@ trackers track \
     --show.trajectories
 ```
 
-For all CLI options, see the [tracking guide](https://trackers.roboflow.com/develop/learn/track/).
+For all CLI options, see the [tracking guide](https://trackers.roboflow.com/develop/guides/track/).
 
 ## Algorithms
 
 Each tracker below is a faithful implementation of its original paper. Pick the one that fits your scene, or run the benchmark to find out which performs best on your data.
 
+<!-- BENCH-XREF copy-of: docs/benchmarking/results.md mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 5 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU). Also duplicated in docs/index.md's Algorithms table (which has no C-BIoU row). Update results.md first, then mirror here and in docs/index.md. -->
+
 |                                                                           Algorithm                                                                           |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|                                                           [SORT](https://arxiv.org/abs/1602.00763)                                                            |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      47.2       |
+|                                                           [SORT](https://arxiv.org/abs/1602.00763)                                                            |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.8      |      81.6      |      47.2       |
 |                                                         [ByteTrack](https://arxiv.org/abs/2110.06864)                                                         | Two-stage association using high and low confidence detections. |    60.1    |      73.0      |      84.0      |      53.3       |
 |                                                          [OC-SORT](https://arxiv.org/abs/2203.14360)                                                          |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |      54.1       |
 |                                                         [BoT-SORT](https://arxiv.org/abs/2206.14651)                                                          |                   Camera motion compensation                    |  **63.7**  |    **73.8**    |    **84.5**    |    **57.8**     |
 | [C-BIoU](https://openaccess.thecvf.com/content/WACV2023/papers/Yang_Hard_To_Track_Objects_With_Irregular_Motions_and_Similar_Appearances_WACV_2023_paper.pdf) |  Cascaded buffered IoU matching for fast or irregular motion.   |    63.0    |      73.1      |      82.6      |      56.7       |
 
-All scores use default parameters on the standard split. See the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) for tuned numbers and methodology.
+All scores use default parameters on the standard split. See the [tracker comparison](https://trackers.roboflow.com/develop/benchmarking/results/) for tuned numbers and methodology.
 
 `trackers` also ships [McByte](https://trackers.roboflow.com/develop/trackers/mcbyte/), a mask-conditioned tracker that extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an extra matching cue. It requires optional heavyweight dependencies (`torch`, SAM, Cutie) not installed by default — see the [McByte docs](https://trackers.roboflow.com/develop/trackers/mcbyte/) for setup and benchmark numbers.
 

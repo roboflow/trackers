@@ -332,6 +332,8 @@ See the [Dynamic Frame Rate guide](dynamic-frame-rate.md) for when to enable it,
 
 The commonly used arguments accepted by the `trackers track` command. `--tracker.*` is generated from the tracker registry, so it also carries parameters specific to one algorithm (`cbiou`'s buffer ratios, `botsort`/`mcbyte`'s camera motion compensation, `mcbyte`'s mask pipeline) that this table does not enumerate. Run `trackers track --help` for the complete, always-current set, and `trackers track --tracker.mask.help` for the mcbyte mask sub-options.
 
+Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset means the selected tracker's own default value is used, and that value differs per algorithm. See each tracker's own doc page for its actual defaults: [SORT](../trackers/sort.md), [ByteTrack](../trackers/bytetrack.md), [OC-SORT](../trackers/ocsort.md), [BoT-SORT](../trackers/botsort.md), [C-BIoU](../trackers/cbiou.md), [McByte](../trackers/mcbyte.md). Note that OC-SORT has no `track_activation_threshold` parameter, even though `--tracker.track_activation_threshold` is exposed globally on the CLI.
+
 <table>
   <colgroup>
     <col style="width: 40%">
@@ -362,6 +364,11 @@ The commonly used arguments accepted by the `trackers track` command. `--tracker
       <td><code>false</code></td>
     </tr>
     <tr>
+      <td><code>--output.mot_results</code></td>
+      <td>Path to write MOT-format predictions.</td>
+      <td>none</td>
+    </tr>
+    <tr>
       <td><code>--detection.model</code></td>
       <td>Model identifier. Pretrained: <code>rfdetr-nano</code>, <code>rfdetr-small</code>, <code>rfdetr-medium</code>, <code>rfdetr-large</code>. Segmentation: <code>rfdetr-seg-*</code>.</td>
       <td><code>rfdetr-nano</code></td>
@@ -382,6 +389,11 @@ The commonly used arguments accepted by the `trackers track` command. `--tracker
       <td>none</td>
     </tr>
     <tr>
+      <td><code>--detection.mot_file</code></td>
+      <td>Path to a pre-computed MOT-format detector-output file. Mutually exclusive with <code>--detection.model</code>; supply one or the other.</td>
+      <td>none</td>
+    </tr>
+    <tr>
       <td><code>--filters.classes</code></td>
       <td>List of class names or IDs to track. Example: <code>[person,car]</code>, <code>[0,2]</code>, or the mixed <code>[person,2]</code>.</td>
       <td>all</td>
@@ -397,24 +409,59 @@ The commonly used arguments accepted by the `trackers track` command. `--tracker
       <td><code>bytetrack</code></td>
     </tr>
     <tr>
+      <td><code>--tracker.frame_rate</code></td>
+      <td>Video frame rate used to scale the lost track buffer to time-like behavior. Must be positive.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
       <td><code>--tracker.lost_track_buffer</code></td>
       <td>Frames to retain a track without detections. Higher values improve occlusion handling but risk ID drift.</td>
-      <td><code>30</code></td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.track_activation_threshold</code></td>
-      <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives.</td>
-      <td><code>0.7</code></td>
+      <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives. Not used by OC-SORT.</td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.min_consecutive_frames</code></td>
       <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
-      <td><code>2</code></td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.min_iou_threshold</code></td>
       <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
-      <td><code>0.1</code></td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.min_iou_threshold_first_assoc</code></td>
+      <td>Minimum fused similarity (IoU x detection confidence) to accept a detection-track association in the first association step. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.min_iou_threshold_second_assoc</code></td>
+      <td>Minimum plain IoU (no score fusion) to accept a detection-track association in the second association step. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.min_iou_threshold_unconfirmed_assoc</code></td>
+      <td>Minimum fused similarity (IoU x score) to match an unconfirmed track against a remaining high-confidence detection. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.high_conf_det_threshold</code></td>
+      <td>Confidence threshold splitting detections into high- and low-confidence sets for two-stage association.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.direction_consistency_weight</code></td>
+      <td>Weight for direction consistency in the association cost. Higher values prioritize angle alignment between motion and association direction. <code>ocsort</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.delta_t</code></td>
+      <td>Number of past frames used for velocity estimation. Higher values give more stable direction estimates during occlusion. <code>ocsort</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.iou_variant</code></td>
@@ -424,12 +471,27 @@ The commonly used arguments accepted by the `trackers track` command. `--tracker
     <tr>
       <td><code>--tracker.enable_cmc</code></td>
       <td>Camera motion compensation toggle. <code>botsort</code> and <code>mcbyte</code> only.</td>
-      <td><code>true</code></td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.cmc_method</code></td>
+      <td>CMC method. Options: <code>orb</code>, <code>sift</code>, <code>sparseOptFlow</code>, <code>ecc</code>. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.cmc_downscale</code></td>
+      <td>Downscale factor used inside CMC for speed/robustness. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td><code>null</code> (tracker default)</td>
+    </tr>
+    <tr>
+      <td><code>--tracker.instant_first_frame_activation</code></td>
+      <td>If <code>true</code>, tracks spawned on the very first frame receive a real track ID immediately. If <code>false</code>, they start unconfirmed (<code>-1</code>) and must survive <code>min_consecutive_frames</code> like any other track.</td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.state_estimator_class</code></td>
       <td>State estimator used by newly created tracks, given as a dotted class path (e.g. <code>trackers.utils.state_representations.XCYCWHStateEstimator</code>).</td>
-      <td><code>XCYCWHStateEstimator</code></td>
+      <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.enable_mask_manager</code></td>

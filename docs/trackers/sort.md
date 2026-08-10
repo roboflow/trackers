@@ -14,10 +14,12 @@ SORT is a classic online, tracking-by-detection method that predicts object moti
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
 
+<!-- BENCH-XREF copy-of: docs/benchmarking/results.md SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in docs/index.md (Algorithms table) and README.md (Algorithms table). No DanceTrack row here by design (see results.md dancetrack-default xref). Update results.md first, then mirror here. -->
+
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
 |   MOT17   | 58.4 | 69.9 | 67.2 |
-| SportsMOT | 70.9 | 68.9 | 95.7 |
+| SportsMOT | 70.8 | 68.9 | 95.5 |
 | SoccerNet | 81.6 | 76.2 | 95.1 |
 
 ## Watch It in Action
@@ -28,13 +30,13 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ## How does SORT work?
 
-SORT models each tracked object with a seven-dimensional state vector `[x, y, s, r, dx, dy, ds]`, where `x` and `y` are the bounding-box center coordinates, `s` is the box area (scale), `r` is the aspect ratio (held constant across predictions), and `dx`, `dy`, `ds` are the corresponding velocities.
+SORT models each tracked object with an eight-dimensional state vector `[x1, y1, x2, y2, vx1, vy1, vx2, vy2]` by default, where `x1, y1` and `x2, y2` are the top-left and bottom-right corners of the bounding box and each corner has its own independent velocity. This corner-based representation lets the box's width, height, and aspect ratio change over time rather than assuming a fixed aspect ratio. SORT can alternatively be configured with `state_estimator_class=XCYCSRStateEstimator` for the original center-based, constant-aspect-ratio representation `[x, y, s, r, dx, dy, ds]`.
 
 **Prediction.** A constant-velocity Kalman filter propagates each track's state to the next frame. The filter assumes linear motion between frames and maintains an uncertainty covariance that grows when a track is not matched to a detection.
 
 **Association.** The Hungarian algorithm solves the assignment between predicted track positions and incoming detections. The cost matrix is computed from pairwise IoU between predicted boxes and detection boxes. Any assignment where the IoU falls below `minimum_iou_threshold` is rejected, leaving both the track and the detection unmatched.
 
-**Track lifecycle.** When a detection is not matched to any existing track, a new tentative track is created. The track is promoted to confirmed status only after it receives `minimum_consecutive_frames` consecutive matches. A confirmed track that goes unmatched for more than `lost_track_buffer` frames is deleted. This lifecycle prevents single spurious detections from creating permanent tracks and limits unbounded growth of the track set.
+**Track lifecycle.** When a detection is not matched to any existing track, a new tentative track is created. The track is promoted to confirmed status only after it accumulates `minimum_consecutive_frames` successful updates (this count does not reset on a miss). A confirmed track that goes unmatched for more than `lost_track_buffer` frames is deleted. This lifecycle prevents single spurious detections from creating permanent tracks and limits unbounded growth of the track set.
 
 **Limitations.** SORT uses no appearance features. When two objects cross paths or one object occludes another, the IoU-only matching can swap identities, producing ID switches. For scenes with frequent occlusion, [ByteTrack](bytetrack.md) and [OC-SORT](ocsort.md) provide mechanisms that reduce these errors.
 
@@ -44,7 +46,7 @@ SORT models each tracked object with a seven-dimensional state vector `[x, y, s,
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `lost_track_buffer`          | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions. |
 | `track_activation_threshold` | Minimum detection confidence to create or continue a track.                                                                 | Higher reduces spurious tracks; lower catches weak detections. 0.5-0.9 typical.                                              |
-| `minimum_consecutive_frames` | Consecutive detections required to confirm a new track.                                                                     | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                        |
+| `minimum_consecutive_frames` | Successful updates required to confirm a new track (count does not reset on a miss).                                        | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                        |
 | `minimum_iou_threshold`      | Minimum IoU to accept a track-detection match.                                                                              | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                  |
 
 !!! warning "Frame input is ignored by SORT"

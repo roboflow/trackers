@@ -201,3 +201,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 [2.2.0]: https://github.com/roboflow/trackers/compare/2.1.0...2.2.0
 [2.3.0]: https://github.com/roboflow/trackers/compare/2.2.0...2.3.0
 [2.4.0]: https://github.com/roboflow/trackers/compare/2.3.0...2.4.0
+[2.5.0]: https://github.com/roboflow/trackers/compare/2.4.0...2.5.0
+[2.6.0]: https://github.com/roboflow/trackers/compare/2.5.0...2.6.0
+[unreleased]: https://github.com/roboflow/trackers/compare/2.6.0...HEAD

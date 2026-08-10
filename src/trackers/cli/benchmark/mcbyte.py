@@ -11,7 +11,7 @@ Usage
 
 ::
 
-    trackers mcbyte --dataset=[mot17,soccernet] --device=cuda
+    trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
 
 Options come from the :func:`benchmark_command` signature, the way every
 ``trackers`` subcommand is built, so the shared conventions hold here too:
@@ -30,7 +30,7 @@ Dataset roots are supplied through ``--dataset_roots``, keyed by the same names
         detection_root: /data/detections/MOT17/test
         image_root: /data/datasets/MOT17/test
 
-    trackers mcbyte --config run.yaml
+    trackers benchmark mcbyte --config run.yaml
 
 Supported datasets
 ------------------
