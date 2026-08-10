@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
 
 import cv2
@@ -38,6 +39,11 @@ N_INTER = 10000
 MIN_FRAME_GAP = 1
 MAX_FRAME_GAP = 30
 BINS = np.linspace(0.0, 1.0, 51)
+
+# Gap bands for the sweep. The first four sit inside the default lost-track buffer
+# (30 frames); the rest probe re-association after longer occlusions.
+GAP_BUCKETS = [(1, 1), (2, 5), (6, 15), (16, 30), (31, 60), (61, 120), (121, 240)]
+N_SWEEP_PER_CLASS = 8000
 
 MOT17_VAL_SEQS = [
     "MOT17-02-FRCNN",
@@ -140,8 +146,68 @@ def collect_embeddings(
     )
 
 
+def load_or_collect_embeddings(
+    cache_path: Path | None,
+    build: Callable[[], tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    if cache_path is not None and cache_path.is_file():
+        print(f"  loading cached embeddings from {cache_path}", flush=True)
+        blob = np.load(cache_path)
+        return blob["emb"], blob["ids"], blob["frames"], blob["seqs"]
+    emb, ids, frames, seqs = build()
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(cache_path, emb=emb, ids=ids, frames=frames, seqs=seqs)
+        print(f"  cached embeddings to {cache_path}", flush=True)
+    return emb, ids, frames, seqs
+
+
 def _d_app(a: np.ndarray, b: np.ndarray) -> float:
     return 0.5 * (1.0 - float(a @ b))
+
+
+class SequenceIndex:
+    """Frame-sorted crop index for one sequence, with O(log n) frame-window lookup.
+
+    ``order`` holds global crop indexes sorted by frame; ``frames`` is the matching
+    frame array. ``positions_by_id`` maps a GT id to its slots inside ``order``,
+    which are themselves frame-sorted because the sort is stable.
+    """
+
+    def __init__(self, global_indexes: np.ndarray, gt_ids: np.ndarray, frame_ids: np.ndarray) -> None:
+        order = np.argsort(frame_ids[global_indexes], kind="stable")
+        self.order = global_indexes[order]
+        self.frames = frame_ids[self.order]
+        self.ids = gt_ids[self.order]
+        positions_by_id: dict[int, list[int]] = defaultdict(list)
+        for slot, pid in enumerate(self.ids):
+            positions_by_id[int(pid)].append(slot)
+        self.positions_by_id = {pid: np.asarray(slots) for pid, slots in positions_by_id.items()}
+        self.pairable_ids = [pid for pid, slots in self.positions_by_id.items() if len(slots) > 1]
+
+    def window(self, frames: np.ndarray, anchor_frame: int, lo: int, hi: int) -> tuple[int, int, int, int]:
+        """Half-open slot ranges of ``frames`` whose gap to ``anchor_frame`` is in ``[lo, hi]``."""
+        before = (
+            int(np.searchsorted(frames, anchor_frame - hi, side="left")),
+            int(np.searchsorted(frames, anchor_frame - lo, side="right")),
+        )
+        after = (
+            int(np.searchsorted(frames, anchor_frame + lo, side="left")),
+            int(np.searchsorted(frames, anchor_frame + hi, side="right")),
+        )
+        return before[0], before[1], after[0], after[1]
+
+
+def _pick_in_window(rng: np.random.Generator, window: tuple[int, int, int, int]) -> int | None:
+    """Uniformly pick one slot across the two half-open ranges, or ``None`` if empty."""
+    b_lo, b_hi, a_lo, a_hi = window
+    n_before = max(0, b_hi - b_lo)
+    n_after = max(0, a_hi - a_lo)
+    total = n_before + n_after
+    if total == 0:
+        return None
+    draw = int(rng.integers(total))
+    return b_lo + draw if draw < n_before else a_lo + (draw - n_before)
 
 
 def sample_association_local(
@@ -155,58 +221,200 @@ def sample_association_local(
     min_frame_gap: int,
     max_frame_gap: int,
     seed: int = 0,
+    max_tries_per_sample: int = 64,
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Sample same-ID and different-ID crop pairs inside the association horizon.
+
+    Pairs are drawn directly rather than enumerated into a pool, so no cap can bias
+    the result toward whichever sequence happens to be visited first. Each sequence
+    gets an equal quota. Within a sequence, same-ID pairs pick an identity uniformly
+    (so long tracks do not dominate) and different-ID pairs pick an anchor crop
+    uniformly, then a partner uniformly among the crops inside the gap band.
+    """
+    # A zero gap would let a crop pair with itself, which is the artefact that puts a
+    # spike at distance 0 in the original BoT-SORT figure.
+    if min_frame_gap < 1 or max_frame_gap < min_frame_gap:
+        raise ValueError(f"invalid gap band [{min_frame_gap}, {max_frame_gap}], expected 1 <= min <= max")
     normed = embeddings / (np.linalg.norm(embeddings, axis=1, keepdims=True) + 1e-12)
     rng = np.random.default_rng(seed)
-    by_seq_id: dict[tuple[int, int], list[int]] = defaultdict(list)
-    by_seq: dict[int, list[int]] = defaultdict(list)
-    for idx in range(len(gt_ids)):
-        by_seq_id[(int(seq_ids[idx]), int(gt_ids[idx]))].append(idx)
-        by_seq[int(seq_ids[idx])].append(idx)
 
-    pos_pairs: list[tuple[int, int]] = []
-    for idxs in by_seq_id.values():
-        for a in range(len(idxs)):
-            ia, fa = idxs[a], int(frame_ids[idxs[a]])
-            for b in range(a + 1, len(idxs)):
-                ib = idxs[b]
-                gap = abs(fa - int(frame_ids[ib]))
-                if min_frame_gap <= gap <= max_frame_gap:
-                    pos_pairs.append((ia, ib))
-    if not pos_pairs:
-        raise ValueError("No same-ID association-local pairs.")
+    unique_seqs = np.unique(seq_ids)
+    indexes = {int(sid): SequenceIndex(np.flatnonzero(seq_ids == sid), gt_ids, frame_ids) for sid in unique_seqs}
 
-    neg_pairs: list[tuple[int, int]] = []
-    max_neg_pool = max(n_inter * 40, 50_000)
-    for idxs in by_seq.values():
-        idxs_sorted = sorted(idxs, key=lambda i: int(frame_ids[i]))
-        frames = [int(frame_ids[i]) for i in idxs_sorted]
-        for a, ia in enumerate(idxs_sorted):
-            fa, pid_a = frames[a], int(gt_ids[ia])
-            b = a + 1
-            while b < len(idxs_sorted) and frames[b] - fa <= max_frame_gap:
-                ib = idxs_sorted[b]
-                if int(gt_ids[ib]) != pid_a:
-                    neg_pairs.append((ia, ib))
-                    if len(neg_pairs) >= max_neg_pool:
-                        break
-                b += 1
-            if len(neg_pairs) >= max_neg_pool:
-                break
-        if len(neg_pairs) >= max_neg_pool:
-            break
-    if not neg_pairs:
-        raise ValueError("No different-ID association-local pairs.")
+    intra: list[float] = []
+    inter: list[float] = []
+    for quota, out, same_id in ((n_intra, intra, True), (n_inter, inter, False)):
+        per_seq = _split_quota(quota, len(unique_seqs))
+        for sid, n_wanted in zip(sorted(indexes), per_seq, strict=True):
+            index = indexes[sid]
+            drawn = 0
+            attempts = 0
+            budget = n_wanted * max_tries_per_sample
+            while drawn < n_wanted and attempts < budget:
+                attempts += 1
+                pair = (
+                    _draw_same_id_pair(rng, index, min_frame_gap, max_frame_gap)
+                    if same_id
+                    else _draw_diff_id_pair(rng, index, min_frame_gap, max_frame_gap)
+                )
+                if pair is None:
+                    continue
+                i, j = pair
+                out.append(_d_app(normed[i], normed[j]))
+                drawn += 1
+            if drawn < n_wanted:
+                label = "same-ID" if same_id else "different-ID"
+                print(
+                    f"  warning: sequence {sid} yielded {drawn}/{n_wanted} {label} pairs "
+                    f"in gap band [{min_frame_gap}, {max_frame_gap}]",
+                    flush=True,
+                )
+    if not intra or not inter:
+        raise ValueError(f"No association-local pairs in gap band [{min_frame_gap}, {max_frame_gap}].")
+    return np.asarray(intra), np.asarray(inter)
 
-    intra = np.empty(n_intra)
-    inter = np.empty(n_inter)
-    for k in range(n_intra):
-        i, j = pos_pairs[int(rng.integers(len(pos_pairs)))]
-        intra[k] = _d_app(normed[i], normed[j])
-    for k in range(n_inter):
-        i, j = neg_pairs[int(rng.integers(len(neg_pairs)))]
-        inter[k] = _d_app(normed[i], normed[j])
-    return intra, inter
+
+def _split_quota(total: int, n_buckets: int) -> list[int]:
+    base, remainder = divmod(total, n_buckets)
+    return [base + (1 if k < remainder else 0) for k in range(n_buckets)]
+
+
+def _draw_same_id_pair(
+    rng: np.random.Generator,
+    index: SequenceIndex,
+    lo: int,
+    hi: int,
+) -> tuple[int, int] | None:
+    if not index.pairable_ids:
+        return None
+    slots = index.positions_by_id[index.pairable_ids[int(rng.integers(len(index.pairable_ids)))]]
+    anchor = int(slots[int(rng.integers(len(slots)))])
+    partner_slot = _pick_in_window(rng, index.window(index.frames[slots], int(index.frames[anchor]), lo, hi))
+    if partner_slot is None:
+        return None
+    partner = int(slots[partner_slot])
+    if partner == anchor:
+        return None
+    return int(index.order[anchor]), int(index.order[partner])
+
+
+def _draw_diff_id_pair(
+    rng: np.random.Generator,
+    index: SequenceIndex,
+    lo: int,
+    hi: int,
+) -> tuple[int, int] | None:
+    anchor = int(rng.integers(len(index.order)))
+    partner = _pick_in_window(rng, index.window(index.frames, int(index.frames[anchor]), lo, hi))
+    if partner is None or index.ids[partner] == index.ids[anchor]:
+        return None
+    return int(index.order[anchor]), int(index.order[partner])
+
+
+def roc_auc(intra: np.ndarray, inter: np.ndarray) -> float:
+    """P(same-ID distance < different-ID distance), ties counted as half.
+
+    Threshold-free separability, so it needs no true-positive or false-positive
+    target. 1.0 means the two distributions are disjoint, 0.5 means appearance
+    carries no information.
+    """
+    inter_sorted = np.sort(inter)
+    n_greater = len(inter) - np.searchsorted(inter_sorted, intra, side="right")
+    n_equal = np.searchsorted(inter_sorted, intra, side="right") - np.searchsorted(inter_sorted, intra, side="left")
+    return float(np.mean((n_greater + 0.5 * n_equal) / len(inter)))
+
+
+def sweep_frame_gap(
+    embeddings: np.ndarray,
+    gt_ids: np.ndarray,
+    frame_ids: np.ndarray,
+    seq_ids: np.ndarray,
+    *,
+    buckets: list[tuple[int, int]],
+    n_per_class: int,
+    seed: int,
+) -> list[dict[str, object]]:
+    """Measure separability inside each frame-gap band."""
+    rows: list[dict[str, object]] = []
+    for lo, hi in buckets:
+        try:
+            intra, inter = sample_association_local(
+                embeddings,
+                gt_ids,
+                frame_ids,
+                seq_ids,
+                n_intra=n_per_class,
+                n_inter=n_per_class,
+                min_frame_gap=lo,
+                max_frame_gap=hi,
+                seed=seed,
+            )
+        except ValueError as exc:
+            print(f"  gap [{lo},{hi}]: skipped ({exc})", flush=True)
+            continue
+        rows.append(
+            {
+                "lo": lo,
+                "hi": hi,
+                "label": f"{lo}" if lo == hi else f"{lo}-{hi}",
+                "intra": intra,
+                "inter": inter,
+                "auc": roc_auc(intra, inter),
+            }
+        )
+    return rows
+
+
+def plot_gap_sweep(rows: list[dict[str, object]], *, title: str, out_path: Path) -> None:
+    """Plot how the same-ID and different-ID distance ranges move with the frame gap.
+
+    Deliberately threshold-free: the bands are distribution quantiles, and the only
+    thresholds drawn are the ones Trackers actually ships, as reference lines.
+    """
+    labels = [r["label"] for r in rows]
+    x = np.arange(len(rows))
+    intra_q = np.array([np.percentile(r["intra"], [25, 50, 95]) for r in rows])
+    inter_q = np.array([np.percentile(r["inter"], [5, 50, 75]) for r in rows])
+
+    fig, (ax_dist, ax_auc) = plt.subplots(
+        2, 1, figsize=(8, 6.5), sharex=True, gridspec_kw={"height_ratios": [2.2, 1.0]}
+    )
+
+    ax_dist.fill_between(x, intra_q[:, 0], intra_q[:, 2], color="#3366CC", alpha=0.25, label="same-ID p25-p95")
+    ax_dist.plot(x, intra_q[:, 1], color="#3366CC", marker="o", lw=2, label="same-ID median")
+    ax_dist.fill_between(x, inter_q[:, 0], inter_q[:, 2], color="#DC3912", alpha=0.25, label="diff-ID p5-p75")
+    ax_dist.plot(x, inter_q[:, 1], color="#DC3912", marker="o", lw=2, label="diff-ID median")
+    ax_dist.axhline(0.25, color="#666666", ls=":", lw=1.5, label="θ=0.25 (BoT-SORT default)")
+    ax_dist.axhline(0.20, color="#111111", ls="--", lw=1.5, label="θ=0.20 (Trackers docs)")
+    ax_dist.set(ylabel=r"$d_{app} = 0.5\cdot(1-\cos)$", title=title)
+    ax_dist.legend(loc="lower right", fontsize=8, ncol=2, framealpha=0.92, edgecolor="none")
+    ax_dist.grid(True, alpha=0.25)
+
+    ax_auc.plot(x, [r["auc"] for r in rows], color="#111111", marker="s", lw=2)
+    ax_auc.axhline(0.5, color="#999999", ls=":", lw=1.2)
+    ax_auc.set(
+        xlabel="frame gap between the two crops",
+        ylabel="ROC AUC",
+        ylim=(0.45, 1.02),
+        xticks=x,
+        xticklabels=labels,
+    )
+    ax_auc.grid(True, alpha=0.25)
+
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Wrote {out_path}")
+    header = f"  {'gap':>8} {'AUC':>6} {'same p50':>9} {'same p95':>9} {'diff p5':>8}"
+    print(f"{header} {'T<0.20':>7} {'F<0.20':>7} {'T<0.25':>7} {'F<0.25':>7}")
+    for r in rows:
+        intra, inter = r["intra"], r["inter"]
+        print(
+            f"  {r['label']:>8} {r['auc']:6.3f} {np.median(intra):9.3f} {np.percentile(intra, 95):9.3f} "
+            f"{np.percentile(inter, 5):8.3f} {100 * np.mean(intra < 0.20):6.1f}% {100 * np.mean(inter < 0.20):6.1f}% "
+            f"{100 * np.mean(intra < 0.25):6.1f}% {100 * np.mean(inter < 0.25):6.1f}%"
+        )
 
 
 def plot_and_save(
@@ -287,6 +495,54 @@ def soccernet_sequences(
     return out
 
 
+def report(
+    emb: np.ndarray,
+    ids: np.ndarray,
+    frames: np.ndarray,
+    seqs: np.ndarray,
+    args: argparse.Namespace,
+    *,
+    title: str,
+    slug: str,
+) -> None:
+    """Write the association-local histogram and, optionally, the frame-gap sweep."""
+    print(f"pool={len(emb)} crops, {len(np.unique(ids))} ids", flush=True)
+    intra, inter = sample_association_local(
+        emb,
+        ids,
+        frames,
+        seqs,
+        n_intra=args.n_intra,
+        n_inter=args.n_inter,
+        min_frame_gap=MIN_FRAME_GAP,
+        max_frame_gap=args.max_frame_gap,
+        seed=args.seed,
+    )
+    plot_and_save(
+        intra,
+        inter,
+        title=f"{title} (gap {MIN_FRAME_GAP}-{args.max_frame_gap})",
+        theta=0.2,
+        out_path=ASSETS / f"{slug}-appearance-distances.png",
+    )
+    if not args.gap_sweep:
+        return
+    rows = sweep_frame_gap(
+        emb,
+        ids,
+        frames,
+        seqs,
+        buckets=GAP_BUCKETS,
+        n_per_class=args.n_sweep,
+        seed=args.seed,
+    )
+    plot_gap_sweep(
+        rows,
+        title=f"{title}: separability vs frame gap",
+        out_path=ASSETS / f"{slug}-appearance-distances-vs-gap.png",
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", choices=("mot17", "soccernet", "both"), default="both")
@@ -303,9 +559,22 @@ def main() -> None:
         action="store_true",
         help="Use every sequence under --soccernet-root (default: docs 8-seq subset).",
     )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help="Cache GT embeddings here so sampling can be re-run without re-encoding.",
+    )
     parser.add_argument("--max-frame-gap", type=int, default=MAX_FRAME_GAP)
     parser.add_argument("--n-intra", type=int, default=N_INTRA)
     parser.add_argument("--n-inter", type=int, default=N_INTER)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--gap-sweep",
+        action="store_true",
+        help="Also write the separability-vs-frame-gap figure.",
+    )
+    parser.add_argument("--n-sweep", type=int, default=N_SWEEP_PER_CLASS, help="Pairs per class per gap band.")
     parser.add_argument(
         "--frame-stride",
         type=int,
@@ -316,30 +585,23 @@ def main() -> None:
 
     if args.dataset in ("mot17", "both"):
         print("=== MOT17 val / fastreid_mot17_sbs50 ===", flush=True)
-        model = ReIDModel.from_pretrained(FASTREID_MOT17_SBS50)
-        emb, ids, frames, seqs = collect_embeddings(
-            model,
-            mot17_sequences(args.mot17_val),
-            pedestrian_only=True,
-            frame_stride=args.frame_stride,
+        emb, ids, frames, seqs = load_or_collect_embeddings(
+            None if args.cache_dir is None else args.cache_dir / f"mot17-fastreid-stride{args.frame_stride}.npz",
+            lambda: collect_embeddings(
+                ReIDModel.from_pretrained(FASTREID_MOT17_SBS50),
+                mot17_sequences(args.mot17_val),
+                pedestrian_only=True,
+                frame_stride=args.frame_stride,
+            ),
         )
-        print(f"pool={len(emb)} crops, {len(np.unique(ids))} ids", flush=True)
-        intra, inter = sample_association_local(
+        report(
             emb,
             ids,
             frames,
             seqs,
-            n_intra=args.n_intra,
-            n_inter=args.n_inter,
-            min_frame_gap=MIN_FRAME_GAP,
-            max_frame_gap=args.max_frame_gap,
-        )
-        plot_and_save(
-            intra,
-            inter,
+            args,
             title="fastreid_mot17_sbs50 on MOT17 val GT",
-            theta=0.2,
-            out_path=ASSETS / "mot17-fastreid-appearance-distances.png",
+            slug="mot17-fastreid",
         )
 
     if args.dataset in ("soccernet", "both"):
@@ -350,34 +612,27 @@ def main() -> None:
             )
         # Same association-local protocol as notebooks/how-to-add-reid-to-trackers.ipynb §6b.
         print("=== SoccerNet test / osnet_x1_0_msmt17_combineall ===", flush=True)
-        model = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall")
-        emb, ids, frames, seqs = collect_embeddings(
-            model,
-            soccernet_sequences(
-                root,
-                args.soccernet_max_seqs,
-                seq_names=None if args.soccernet_all_seqs else SOCCERNET_DOC_SEQS,
+        emb, ids, frames, seqs = load_or_collect_embeddings(
+            None if args.cache_dir is None else args.cache_dir / f"soccernet-osnet-stride{args.frame_stride}.npz",
+            lambda: collect_embeddings(
+                ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall"),
+                soccernet_sequences(
+                    root,
+                    args.soccernet_max_seqs,
+                    seq_names=None if args.soccernet_all_seqs else SOCCERNET_DOC_SEQS,
+                ),
+                pedestrian_only=False,
+                frame_stride=args.frame_stride,
             ),
-            pedestrian_only=False,
-            frame_stride=args.frame_stride,
         )
-        print(f"pool={len(emb)} crops, {len(np.unique(ids))} ids", flush=True)
-        intra, inter = sample_association_local(
+        report(
             emb,
             ids,
             frames,
             seqs,
-            n_intra=args.n_intra,
-            n_inter=args.n_inter,
-            min_frame_gap=MIN_FRAME_GAP,
-            max_frame_gap=args.max_frame_gap,
-        )
-        plot_and_save(
-            intra,
-            inter,
+            args,
             title="osnet_x1_0_msmt17_combineall on SoccerNet test GT",
-            theta=0.2,
-            out_path=ASSETS / "soccernet-osnet-appearance-distances.png",
+            slug="soccernet-osnet",
         )
 
 

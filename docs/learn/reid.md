@@ -72,27 +72,85 @@ you will track with:
 1. Embed GT crops.
 2. Histogram `d_app` for association-local pairs: same video only, with
     frame gap bounded by the lost-track horizon (default 30 frames). Positives
-    are same-ID; negatives are different-ID that could co-compete.
+    are same-ID; negatives are different-ID that could co-compete. Sample both
+    classes with the same per-sequence quota, otherwise one crowded sequence
+    decides the answer.
 3. Choose θ so most same-ID pairs fall below it and most different-ID pairs fall
     above it.
 
+Regenerate these figures with
+[`notebooks/plot_reid_appearance_distances.py`](https://github.com/roboflow/trackers/blob/develop/notebooks/plot_reid_appearance_distances.py).
+
 **MOT17 val, `fastreid_mot17_sbs50`.** Same-ID distances peak near 0 and
 different-ID near 0.4. On association-local GT crop pairs (5000 same-ID, 10000
-different-ID), θ=0.2 keeps 77% of same-ID pairs while passing 1% of different-ID
-pairs, which is why it beats the BoT-SORT default 0.25 here
+different-ID, frame gap 1 to 30), θ=0.2 keeps 68% of same-ID pairs while passing
+1.1% of different-ID pairs. Raising θ to the BoT-SORT default 0.25 recovers
+same-ID pairs (79%) but nearly triples the different-ID pairs it admits (2.9%),
+which is why 0.2 is the better operating point here
 ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf)
 Table 8 uses the same threshold).
 
 ![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.png)
 
-**SoccerNet test, `osnet_x1_0_msmt17_combineall`.** Same-ID and different-ID
-distances overlap heavily (similar kits). On association-local GT crop pairs
-(5000 same-ID, 10000 different-ID), θ=0.2 admits 97% of same-ID pairs but also
-52% of different-ID pairs, and tracking stays flat against CMC-only. θ=0.1 holds
-different-ID pairs to 6%, yet appearance still assists a mix of correct and
-same-kit pairs and costs HOTA and IDF1 (see the SoccerNet table below).
+**SoccerNet test, `osnet_x1_0_msmt17_combineall`.** A pedestrian encoder on soccer
+footage squeezes every distance into a narrow range: same-ID pairs peak near 0.05
+and different-ID pairs near 0.20 (similar kits). The two shapes still separate, but
+the scale no longer matches the thresholds BoT-SORT was tuned with. On
+association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to
+30), θ=0.2 admits 96% of same-ID pairs but also 49% of different-ID pairs, and
+tracking stays flat against CMC-only. θ=0.1 holds different-ID pairs to 9%, yet
+appearance still assists a mix of correct and same-kit pairs and costs HOTA and
+IDF1 (see the SoccerNet table below). Calibrate θ on your own domain rather than
+carrying 0.2 or 0.25 across.
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
+
+---
+
+## How far the threshold carries
+
+A histogram fixes one frame gap, so it only describes re-association over that
+horizon. Sweeping the gap shows how long a track can stay lost before appearance
+stops helping to re-find it.
+
+On MOT17 val, different-ID distances barely move with the gap: the median stays
+near 0.41 and the 5th percentile near 0.27 from a 1-frame gap out to 240 frames.
+Same-ID distances spread steadily, from a median of 0.04 at a 1-frame gap to 0.20
+across the 16 to 30 band and 0.28 beyond 120 frames.
+
+| Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
+| :--------- | :-----: | :---------------: | :--------------------: |
+| 1          |  0.998  |       98.0%       |          1.7%          |
+| 2 to 5     |  0.987  |       87.6%       |          1.5%          |
+| 6 to 15    |  0.957  |       67.4%       |          1.1%          |
+| 16 to 30   |  0.929  |       51.4%       |          1.1%          |
+| 31 to 60   |  0.899  |       39.8%       |          0.9%          |
+| 61 to 120  |  0.865  |       31.7%       |          0.8%          |
+| 121 to 240 |  0.854  |       28.6%       |          0.8%          |
+
+![FastReID MOT17 SBS separability vs frame gap](../assets/reid/mot17-fastreid-appearance-distances-vs-gap.png)
+
+Two things follow. First, a threshold validated on adjacent frames says little
+about re-association: at θ=0.2 appearance helps 98% of same-ID pairs one frame
+apart but only 51% across the default 30-frame lost-track buffer. Second, the
+price of a tight θ over long gaps is missed re-associations rather than extra
+wrong ones, because the different-ID rate stays near 1% throughout. If you raise
+`lost_track_buffer` to recover tracks after long occlusions, raise
+`appearance_threshold` with it and re-check the different-ID column.
+
+The cross-domain encoder fails differently. On SoccerNet the different-ID rate at
+θ=0.2 is flat near 49% at every gap, so the frame gap is not what limits it; the
+encoder simply cannot separate players in matching kits at any horizon. Widening
+the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the
+different-ID side usable, which is why θ has to come down to about 0.1 on this
+domain instead of being traded against the gap.
+
+![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
+
+ROC AUC is reported because it needs no operating point, so the curve does not
+depend on a target true-positive or false-positive rate. The rates in the table
+evaluate the two thresholds Trackers actually ships rather than deriving a new
+one.
 
 ---
 
