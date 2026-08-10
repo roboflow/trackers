@@ -142,47 +142,60 @@ Mask evidence is applied only to genuinely uncertain pairs — those that are *a
 
 ## Run on video
 
-The example below runs McByte in its lightweight, mask-free configuration (clear-match locking with IoU only), which needs no extra dependencies beyond `trackers` itself.
+The examples below run McByte in its lightweight, mask-free configuration (clear-match locking with IoU only), which needs no extra dependencies beyond `trackers` itself.
 
-```python
-import cv2
-import supervision as sv
-from rfdetr import RFDETRMedium
-from trackers import McByteTracker
+=== "CLI"
 
-tracker = McByteTracker()
-model = RFDETRMedium()
+    Run McByte on a video without writing any Python. See the [CLI reference](../learn/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
 
-box_annotator = sv.BoxAnnotator()
-label_annotator = sv.LabelAnnotator()
+    ```bash
+    trackers track \
+        --source <SOURCE_VIDEO_PATH> \
+        --tracker mcbyte \
+        --output.video output.mp4
+    ```
 
-video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
-if not video_capture.isOpened():
-    raise RuntimeError("Failed to open video source")
+=== "Video"
 
-while True:
-    success, frame_bgr = video_capture.read()
-    if not success:
-        break
+    ```python
+    import cv2
+    import supervision as sv
+    from rfdetr import RFDETRMedium
+    from trackers import McByteTracker
 
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-    detections = model.predict(frame_rgb)
-    detections = tracker.update(detections, frame=frame_bgr)
+    tracker = McByteTracker()
+    model = RFDETRMedium()
 
-    annotated_frame = box_annotator.annotate(frame_bgr, detections)
-    annotated_frame = label_annotator.annotate(
-        annotated_frame,
-        detections,
-        labels=detections.tracker_id,
-    )
+    box_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
 
-    cv2.imshow("RF-DETR + McByte", annotated_frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
+    video_capture = cv2.VideoCapture("<SOURCE_VIDEO_PATH>")
+    if not video_capture.isOpened():
+        raise RuntimeError("Failed to open video source")
 
-video_capture.release()
-cv2.destroyAllWindows()
-```
+    while True:
+        success, frame_bgr = video_capture.read()
+        if not success:
+            break
+
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        detections = model.predict(frame_rgb)
+        detections = tracker.update(detections, frame=frame_bgr)
+
+        annotated_frame = box_annotator.annotate(frame_bgr, detections)
+        annotated_frame = label_annotator.annotate(
+            annotated_frame,
+            detections,
+            labels=detections.tracker_id,
+        )
+
+        cv2.imshow("RF-DETR + McByte", annotated_frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    video_capture.release()
+    cv2.destroyAllWindows()
+    ```
 
 To enable the full SAM + Cutie mask pipeline, install SAM and Cutie (see the [PR #513 installation notes](https://github.com/roboflow/trackers/pull/513)), then construct the tracker with `enable_mask_manager=True` and, optionally, a `McByteMaskConfig`. Everything else in the loop above stays the same — only the tracker construction changes:
 

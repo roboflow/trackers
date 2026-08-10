@@ -74,6 +74,42 @@ The `detection` extra installs `inference-models`, enabling the CLI to run detec
 
     For GPU support, ensure PyTorch is installed with CUDA or MPS.
 
+### Tune
+
+The `tune` extra installs `optuna`, enabling automated hyperparameter search — see the [tune guide](tune.md).
+
+=== "pip"
+
+    ```bash
+    pip install "trackers[tune]"
+    ```
+
+=== "uv"
+
+    ```bash
+    uv pip install "trackers[tune]"
+    ```
+
+### Mask
+
+The `mask` extra installs `torch`, `torchvision`, `rf-segment-anything`, and `rf-cutie`, enabling the SAM + Cutie mask pipeline used by McByte, `trackers inspect`, and the mask-conditioned benchmarking commands — see the [inspect guide](inspect.md).
+
+=== "pip"
+
+    ```bash
+    pip install "trackers[mask]"
+    ```
+
+=== "uv"
+
+    ```bash
+    uv pip install "trackers[mask]"
+    ```
+
+!!! tip "GPU Acceleration"
+
+    For GPU support, ensure PyTorch is installed with CUDA or MPS.
+
 ---
 
 ## Development Setup

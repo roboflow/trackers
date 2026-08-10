@@ -57,6 +57,17 @@ Together, these three mechanisms make OC-SORT effective for group dancing, sport
 
 These examples use OpenCV for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.
 
+=== "CLI"
+
+    Run OC-SORT on a video without writing any Python. See the [CLI reference](../learn/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
+
+    ```bash
+    trackers track \
+        --source <SOURCE_VIDEO_PATH> \
+        --tracker ocsort \
+        --output.video output.mp4
+    ```
+
 === "Video"
 
     ```python
