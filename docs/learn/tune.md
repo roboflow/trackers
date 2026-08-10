@@ -240,7 +240,7 @@ All arguments accepted by `trackers tune`.
     <tr>
       <td><code>--fixed_params</code></td>
       <td>Tracker constructor kwargs held constant across every trial (JSON object). Applied on top of, and taking priority over, any overlapping <code>search_space</code> key; also merged into the returned best-parameter dict.</td>
-      <td>none</td>
+      <td>None</td>
     </tr>
     <tr>
       <td><code>--metrics</code></td>

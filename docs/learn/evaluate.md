@@ -34,7 +34,7 @@ For more options, see the [install guide](install.md).
 
 ## Download Data
 
-Download ground-truth annotations and detections for MOT17 validation — see the [download guide](download.md) for the full command and output layout. This guide assumes data lands at `./data/mot17/val/<sequence>/{det,gt}/det.txt` and `gt.txt`, matching that guide's default output.
+Download ground-truth annotations and detections for MOT17 validation — see the [download guide](download.md) for the full command and output layout. This guide assumes data lands at `./data/mot17/val/<sequence>/det/det.txt` and `./data/mot17/val/<sequence>/gt/gt.txt`, matching that guide's default output.
 
 ---
 
