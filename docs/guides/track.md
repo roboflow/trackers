@@ -332,7 +332,7 @@ See the [Dynamic Frame Rate guide](dynamic-frame-rate.md) for when to enable it,
 
 The commonly used arguments accepted by the `trackers track` command. `--tracker.*` is generated from the tracker registry, so it also carries parameters specific to one algorithm (`cbiou`'s buffer ratios, `botsort`/`mcbyte`'s camera motion compensation, `mcbyte`'s mask pipeline) that this table does not enumerate. Run `trackers track --help` for the complete, always-current set, and `trackers track --tracker.mask.help` for the mcbyte mask sub-options.
 
-Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset means the selected tracker's own default value is used, and that value differs per algorithm. See each tracker's own doc page for its actual defaults: [SORT](../trackers/sort.md), [ByteTrack](../trackers/bytetrack.md), [OC-SORT](../trackers/ocsort.md), [BoT-SORT](../trackers/botsort.md), [C-BIoU](../trackers/cbiou.md), [McByte](../trackers/mcbyte.md). Note that OC-SORT has no `track_activation_threshold` parameter, even though `--tracker.track_activation_threshold` is exposed globally on the CLI.
+Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset means the selected tracker's own default value is used, and that value differs per algorithm. See the [tracker API reference](../api/trackers.md) for actual constructor defaults and the individual [SORT](../trackers/sort.md), [ByteTrack](../trackers/bytetrack.md), [OC-SORT](../trackers/ocsort.md), [BoT-SORT](../trackers/botsort.md), [C-BIoU](../trackers/cbiou.md), and [McByte](../trackers/mcbyte.md) pages for parameter guidance. Note that OC-SORT has no `track_activation_threshold` parameter, even though `--tracker.track_activation_threshold` is exposed globally on the CLI.
 
 <table>
   <colgroup>
@@ -390,7 +390,7 @@ Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset m
     </tr>
     <tr>
       <td><code>--detection.mot_file</code></td>
-      <td>Path to a pre-computed MOT-format detector-output file. Mutually exclusive with <code>--detection.model</code>; supply one or the other.</td>
+      <td>Path to a pre-computed MOT-format detector-output file. When set, this takes precedence over <code>--detection.model</code>, which is ignored.</td>
       <td>none</td>
     </tr>
     <tr>
@@ -425,7 +425,7 @@ Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset m
     </tr>
     <tr>
       <td><code>--tracker.min_consecutive_frames</code></td>
-      <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
+      <td>Successful matched detections required before a track is confirmed. Whether a miss resets this count depends on the selected tracker.</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
@@ -435,17 +435,17 @@ Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset m
     </tr>
     <tr>
       <td><code>--tracker.min_iou_threshold_first_assoc</code></td>
-      <td>Minimum fused similarity (IoU x detection confidence) to accept a detection-track association in the first association step. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td>Minimum score-fused geometric similarity for first-pass association. BoT-SORT and McByte use IoU; C-BIoU uses buffered IoU. McByte may further condition association with masks.</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.min_iou_threshold_second_assoc</code></td>
-      <td>Minimum plain IoU (no score fusion) to accept a detection-track association in the second association step. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td>Minimum geometric similarity for second-pass association without detection-score fusion. BoT-SORT and McByte use IoU; C-BIoU uses buffered IoU. McByte may further condition association with masks.</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.min_iou_threshold_unconfirmed_assoc</code></td>
-      <td>Minimum fused similarity (IoU x score) to match an unconfirmed track against a remaining high-confidence detection. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td>Minimum score-fused geometric similarity for matching unconfirmed tracks to remaining high-confidence detections. BoT-SORT and McByte use IoU; C-BIoU uses buffered IoU. McByte may further condition association with masks.</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
