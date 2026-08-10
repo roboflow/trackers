@@ -107,15 +107,22 @@ plugins:
         learn/cli.md: guides/cli.md
         learn/cli-migration.md: guides/migration_cli.md
         learn/dynamic-frame-rate.md: guides/dynamic-frame-rate.md
-        learn/download.md: guides/download.md
-        learn/evaluate.md: guides/evaluate.md
+        learn/download.md: benchmarking/download.md
+        learn/evaluate.md: benchmarking/evaluate.md
         learn/tune.md: guides/tune.md
-        learn/mcbyte-benchmark.md: guides/mcbyte-benchmark.md
+        learn/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
         learn/inspect.md: guides/inspect.md
         learn/detection-quality.md: guides/detection-quality.md
         learn/state-estimators.md: guides/state-estimators.md
         learn/iou.md: guides/iou.md
-        learn/about.md: guides/about.md
+        learn/about.md: details.md
+        guides/download.md: benchmarking/download.md
+        guides/evaluate.md: benchmarking/evaluate.md
+        guides/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
+        benchmarking/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
+        benchmarking/mcbyte-benchmark-runner.md: benchmarking/benchmark-runner.md
+        guides/about.md: details.md
+        trackers/comparison.md: benchmarking/results.md
   - git-revision-date-localized:
       enable_creation_date: true
       type: iso_date
@@ -143,29 +150,32 @@ plugins:
 nav:
   - Home:
     - Quickstart: index.md
-  - Guides:
+    - Details: details.md
+  - Usage:
     - Install Trackers: guides/install.md
     - Track Objects: guides/track.md
     - CLI Reference: guides/cli.md
+  - Tuning:
     - Dynamic Frame Rate: guides/dynamic-frame-rate.md
-    - Download Datasets: guides/download.md
-    - Evaluate Trackers: guides/evaluate.md
-    - Tune Trackers: guides/tune.md
-    - McByte Benchmarks: guides/mcbyte-benchmark.md
-    - Inspect Mask Pipeline: guides/inspect.md
     - Detection Quality Matters: guides/detection-quality.md
-    - State Estimators: guides/state-estimators.md
+    - Tune Trackers: guides/tune.md
     - IoU Variants: guides/iou.md
-    - About: guides/about.md
+    - State Estimators: guides/state-estimators.md
+  - Developer:
+    - Inspect Mask Pipeline: guides/inspect.md
+  - Evaluations:
+    - Download Datasets: benchmarking/download.md
+    - Benchmark Trackers: benchmarking/evaluate.md
+    - Benchmark Runner: benchmarking/benchmark-runner.md
+    - Results: benchmarking/results.md
+    - Methodology: benchmarking/methodology.md
   - Trackers:
-    - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md
     - ByteTrack: trackers/bytetrack.md
     - OC-SORT: trackers/ocsort.md
     - BoT-SORT: trackers/botsort.md
     - C-BIoU: trackers/cbiou.md
     - McByte: trackers/mcbyte.md
-
   - API Reference:
     - Trackers: api/trackers.md
     - Motion: api/motion.md

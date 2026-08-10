@@ -12,7 +12,7 @@ SORT is a classic online, tracking-by-detection method that predicts object moti
 
 ## How does SORT compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |

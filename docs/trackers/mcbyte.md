@@ -18,7 +18,7 @@ McByte was originally developed by [Tomasz Stańczyk](https://www.linkedin.com/i
 
 ## How does McByte compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
 
 The per-dataset results below compare McByte (mask-conditioned association enabled) against BoT-SORT without re-identification — the baseline association pipeline McByte builds on — using default parameters for both trackers, with no dataset-specific tuning.
 
@@ -233,7 +233,7 @@ To run McByte over a complete benchmark test set (MOT17, DanceTrack, SportsMOT, 
 trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
 ```
 
-See the [McByte Benchmarks guide](../guides/mcbyte-benchmark.md) for how to supply dataset paths and read the CLI reference.
+See the [Benchmark Runner guide](../benchmarking/benchmark-runner.md) for how to supply dataset paths and read the CLI reference.
 
 ## Reference
 

@@ -44,7 +44,7 @@ We pick three models that span a wide accuracy range on COCO, from a lightweight
 
 ## Download Data
 
-Download the MOT17 validation split (frames for detection, annotations for evaluation) — see the [download guide](download.md) for the full command and available options.
+Download the MOT17 validation split (frames for detection, annotations for evaluation) — see the [download guide](../benchmarking/download.md) for the full command and available options.
 
 ---
 

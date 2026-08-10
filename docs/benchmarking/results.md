@@ -9,7 +9,7 @@ This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, 
 
 !!! info "Benchmark version"
 
-    Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits. See [Methodology](#methodology) for details.
+    Results use **trackers v2.3.0** (released 2026-03-16). Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits. See [Methodology](methodology.md) for details.
 
 !!! note "Benchmark methodology"
 
@@ -272,7 +272,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 !!! note "SoccerNet buffer ordering exception"
 
-    This config uses `buffer_ratio_first: 0.68 > buffer_ratio_second: 0.50`, which reverses the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering). Optuna found this ordering yields higher HOTA on SoccerNet's dense, long-sequence scenarios. On most other datasets the `b1 < b2` default applies.
+    This config uses `buffer_ratio_first: 0.68 > buffer_ratio_second: 0.50`, which reverses the general `b1 < b2` recommendation in the [C-BIoU docs](../trackers/cbiou.md#buffer-ordering). Optuna found this ordering yields higher HOTA on SoccerNet's dense, long-sequence scenarios. On most other datasets the `b1 < b2` default applies.
 
 ## [DanceTrack](https://arxiv.org/abs/2111.14690)
 
@@ -361,21 +361,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 !!! note "DanceTrack buffer ordering exception"
 
-    This config uses `buffer_ratio_first: 0.12 > buffer_ratio_second: 0.10`, which reverses the general `b1 < b2` recommendation in the [C-BIoU docs](cbiou.md#buffer-ordering). Optuna found this ordering on DanceTrack's validation split; the margin (0.02) is small and the `b1 < b2` default applies on most other datasets.
-
-## Methodology
-
-### Detections
-
-Each dataset uses one of two detection sources: oracle detections (ground-truth bounding boxes provided by the dataset) or model detections (produced by a YOLOX detector following the ByteTrack procedure). The source is noted per dataset above.
-
-### Tuning
-
-Best parameters per tracker and dataset were found via grid search (SORT, ByteTrack, OC-SORT, BoT-SORT) or Optuna (`n_trials=100`, objective HOTA, trial 0 = defaults for C-BIoU), selecting the configuration with the highest HOTA on the tune split. McByte is not tuned here: defaults with mask-conditioned association enabled are reported, matching the [McByte](mcbyte.md) page (source: [PR #513](https://github.com/roboflow/trackers/pull/513)). Tuning and evaluation always use separate data splits to reflect real-world usage:
-
-- Train + validation + test: tune on validation, report on test.
-- Train + validation: tune on train, report on validation.
-- Train + test: tune on train, report on test.
+    This config uses `buffer_ratio_first: 0.12 > buffer_ratio_second: 0.10`, which reverses the general `b1 < b2` recommendation in the [C-BIoU docs](../trackers/cbiou.md#buffer-ordering). Optuna found this ordering on DanceTrack's validation split; the margin (0.02) is small and the `b1 < b2` default applies on most other datasets.
 
 ## When to Use Each Tracker
 
@@ -387,9 +373,9 @@ Best parameters per tracker and dataset were found via grid search (SORT, ByteTr
 
 **BoT-SORT** is the choice when camera ego-motion is strong and you need the most stable identities. It extends ByteTrack with camera motion compensation (CMC) and confidence-aware association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is small relative to the detector, so the trade-off favors identity stability over raw speed.
 
-**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](cbiou.md) for buffer scales **b1** and **b2**.
+**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](../trackers/cbiou.md) for buffer scales **b1** and **b2**.
 
-**McByte** is the choice when you want the highest identity stability and can afford optional SAM/Cutie mask dependencies. It extends BoT-SORT-style association with temporally propagated segmentation masks as an extra matching cue, requiring no per-video tuning. Reported against Trackers' BoT-SORT baseline (without re-identification) at default parameters, McByte improves HOTA and IDF1 on all four datasets in this comparison, with the largest gain on DanceTrack. Use McByte when identity consistency matters more than raw throughput or dependency footprint. See [McByte](mcbyte.md) for setup and the mask-conditioning parameters.
+**McByte** is the choice when you want the highest identity stability and can afford optional SAM/Cutie mask dependencies. It extends BoT-SORT-style association with temporally propagated segmentation masks as an extra matching cue, requiring no per-video tuning. Reported against Trackers' BoT-SORT baseline (without re-identification) at default parameters, McByte improves HOTA and IDF1 on all four datasets in this comparison, with the largest gain on DanceTrack. Use McByte when identity consistency matters more than raw throughput or dependency footprint. See [McByte](../trackers/mcbyte.md) for setup and the mask-conditioning parameters.
 
 ## Metric Definitions
 

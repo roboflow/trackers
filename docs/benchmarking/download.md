@@ -27,7 +27,7 @@ Get started by installing the package.
 pip install trackers
 ```
 
-For more options, see the [install guide](install.md).
+For more options, see the [install guide](../guides/install.md).
 
 ---
 
@@ -41,6 +41,8 @@ The table below lists every dataset you can download, along with its splits, ass
 | `sportsmot`  | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
 | `dancetrack` |                             *Coming soon.*                              |           —            |                   —                   |        —        |
 | `soccernet`  |                             *Coming soon.*                              |           —            |                   —                   |        —        |
+
+`dancetrack` and `soccernet` aren't downloadable via `trackers download` yet, but both are already usable with `trackers benchmark mcbyte` if you supply your own detection and frame directories — see [Benchmark Runner](benchmark-runner.md#step-1-get-your-data).
 
 === "CLI"
 
