@@ -160,3 +160,5 @@ nav:
     - Changelog: changelog.md
   - Community:
     - Contributing: contributing.md
+    - Code of Conduct: code-of-conduct.md
+    - Governance: governance.md
