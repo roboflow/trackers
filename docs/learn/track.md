@@ -29,7 +29,7 @@ pip install trackers
 ```
 
 ```text
-pip install trackers[detection]
+pip install "trackers[detection]"
 ```
 
 For more options, see the [install guide](install.md).
@@ -393,7 +393,7 @@ All arguments accepted by the `trackers track` command.
     </tr>
     <tr>
       <td><code>--tracker</code></td>
-      <td>Tracking algorithm. Options: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>, <code>botsort</code>.</td>
+      <td>Tracking algorithm. Options: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>, <code>botsort</code>, <code>cbiou</code>, <code>mcbyte</code>.</td>
       <td><code>bytetrack</code></td>
     </tr>
     <tr>
@@ -404,17 +404,17 @@ All arguments accepted by the `trackers track` command.
     <tr>
       <td><code>--tracker.track_activation_threshold</code></td>
       <td>Minimum confidence to start a new track. Lower values catch more objects but increase false positives.</td>
-      <td><code>0.25</code></td>
+      <td><code>0.7</code></td>
     </tr>
     <tr>
       <td><code>--tracker.min_consecutive_frames</code></td>
       <td>Consecutive detections required before a track is confirmed. Suppresses spurious detections.</td>
-      <td><code>3</code></td>
+      <td><code>2</code></td>
     </tr>
     <tr>
       <td><code>--tracker.min_iou_threshold</code></td>
       <td>Minimum IoU overlap to match a detection to an existing track. Higher values require tighter alignment.</td>
-      <td><code>0.3</code></td>
+      <td><code>0.1</code></td>
     </tr>
     <tr>
       <td><code>--tracker.iou_variant</code></td>

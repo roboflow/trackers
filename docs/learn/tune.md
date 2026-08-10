@@ -238,6 +238,11 @@ All arguments accepted by `trackers tune`.
       <td><code>100</code></td>
     </tr>
     <tr>
+      <td><code>--fixed_params</code></td>
+      <td>Tracker constructor kwargs held constant across every trial (JSON object). Applied on top of, and taking priority over, any overlapping <code>search_space</code> key; also merged into the returned best-parameter dict.</td>
+      <td>None</td>
+    </tr>
+    <tr>
       <td><code>--metrics</code></td>
       <td>Metric families to compute: <code>CLEAR</code>, <code>HOTA</code>, <code>Identity</code>. The family required by <code>--objective</code> is added automatically.</td>
       <td><code>CLEAR</code></td>

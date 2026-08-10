@@ -34,63 +34,13 @@ For more options, see the [install guide](install.md).
 
 ## Download Data
 
-Use `trackers download` to pull ground-truth annotations and detections from supported benchmarks like MOT17.
-
-=== "CLI"
-
-    Fetch MOT17 validation annotations and detections from the command line.
-
-    ```text
-    trackers download \
-        --name mot17 \
-        --split val \
-        --asset annotations,detections \
-        --output ./data
-    ```
-
-=== "Python"
-
-    Fetch MOT17 validation annotations and detections from Python.
-
-    ```python
-    from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
-
-    download_dataset(
-        name=Dataset.MOT17,
-        split=DatasetSplit.VAL,
-        asset=[DatasetAsset.ANNOTATIONS, DatasetAsset.DETECTIONS],
-        output="./data",
-    )
-    ```
-
-After downloading, your data directory will look like this.
-
-```text
-data/
-└── mot17/
-    └── val/
-        ├── MOT17-02-FRCNN/
-        │   ├── det/
-        │   │   └── det.txt
-        │   └── gt/
-        │       └── gt.txt
-        ├── MOT17-04-FRCNN/
-        │   ├── det/
-        │   │   └── det.txt
-        │   └── gt/
-        │       └── gt.txt
-        └── ...
-```
-
-For more download options, see the [download guide](download.md).
+Download ground-truth annotations and detections for MOT17 validation — see the [download guide](download.md) for the full command and output layout. This guide assumes data lands at `./data/mot17/val/<sequence>/det/det.txt` and `./data/mot17/val/<sequence>/gt/gt.txt`, matching that guide's default output.
 
 ---
 
 ## Run Tracking
 
-Feed the pre-computed detections into a tracker and write the results to a file for evaluation.
-
-Pass `--detection.mot_file` to provide precomputed MOT detector output and `--output.mot_results` to save the tracker output in MOT format.
+Feed the pre-computed detections into a tracker and write the results to a file for evaluation. Pass `--detection.mot_file` to provide precomputed MOT detector output and `--output.mot_results` to save the tracker output in MOT format — see the [track guide](track.md) for more on `trackers track`.
 
 ```text
 trackers track \

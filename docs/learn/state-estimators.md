@@ -5,7 +5,7 @@ Every tracker in `trackers` uses a Kalman filter to predict where objects will a
 **What you'll learn:**
 
 - What state estimators are and why they matter
-- How `XYXYStateEstimator` and `XCYCSRStateEstimator` represent bounding boxes
+- How `XYXYStateEstimator`, `XCYCSRStateEstimator`, and `XCYCWHStateEstimator` represent bounding boxes
 - When to use each representation
 - How to swap the state estimator in any tracker
 
@@ -27,12 +27,13 @@ For more options, see the [install guide](install.md).
 
 A state estimator wraps a Kalman filter and defines how bounding boxes are encoded into the filter's state vector. The Kalman filter then predicts the next position of each tracked object and corrects that prediction when a new detection arrives.
 
-Two representations are available:
+Three representations are available:
 
 |       Estimator        | State Dimensions | Representation                                        | Aspect Ratio  |
 | :--------------------: | :--------------: | :---------------------------------------------------- | :-----------: |
 |  `XYXYStateEstimator`  |        8         | Top-left and bottom-right corners + their velocities  |  Can change   |
 | `XCYCSRStateEstimator` |        7         | Center point, area, their velocities and aspect ratio | Held constant |
+| `XCYCWHStateEstimator` |        8         | Center point, width, height + their velocities        |  Can change   |
 
 They accept `[x1, y1, x2, y2]` bounding boxes on input and produce `[x1, y1, x2, y2]` bounding boxes on output. The difference is entirely in how the filter models motion internally.
 
@@ -85,7 +86,7 @@ vy2' = vy2
 
 Because each corner moves freely, the box width and height can change between frames. This makes XYXY a natural fit when objects change shape — due to camera perspective, non-rigid motion, or inconsistent detections.
 
-**In Trackers, this is the configurable default** for `ByteTrackTracker` and `SORTTracker` via the `state_estimator_class` parameter. Note: previous versions used hand-rolled Kalman filters internally — `XYXYStateEstimator` is the new unified implementation introduced in this refactoring.
+**In Trackers, this is the configurable default** for `ByteTrackTracker` and `SORTTracker` via the `state_estimator_class` parameter.
 
 ---
 
@@ -139,15 +140,67 @@ The aspect ratio `r = w / h` is carried forward unchanged. This acts as a regula
 
 ---
 
+## XCYCWH — Center-Width-Height
+
+`XCYCWHStateEstimator` tracks the box center, width, and height. Unlike `XCYCSRStateEstimator`, width and height each get their own velocity term instead of being coupled through a fixed aspect ratio, giving the filter 8 state variables:
+
+```
+State:   [x_center, y_center, w, h, vx, vy, vw, vh]
+Measure: [x_center, y_center, w, h]
+```
+
+The transition matrix $F$ is the same constant-velocity pattern as XYXY, applied to a center-width-height state instead of two corners.
+
+State order: $[x_c, y_c, w, h, v_{x_c}, v_{y_c}, v_w, v_h]$
+
+$$
+F =
+\begin{bmatrix}
+1 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 & 0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 0 & 0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 & 0 & 0 & 0 & 1 \\
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
+\end{bmatrix}
+$$
+
+Equivalent update equations:
+
+```text
+x_center' = x_center + vx
+y_center' = y_center + vy
+w'        = w  + vw
+h'        = h  + vh
+vx'       = vx
+vy'       = vy
+vw'       = vw
+vh'       = vh
+```
+
+| Row | Meaning                                                 |
+| :-- | :------------------------------------------------------ |
+| 1-4 | Center, width, and height are updated by their velocity |
+| 5-8 | Velocities persist unchanged from frame to frame        |
+
+Width and height evolve independently, so — like XYXY, and unlike XCYCSR — the aspect ratio is free to change between frames. This makes XCYCWH a natural fit when objects change shape without needing the corner-independent freedom of XYXY.
+
+**This is the default** for `BoTSORTTracker`, `CBIoUTracker`, and `McByteTracker`.
+
+---
+
 ## When to Use Each
 
-| Scenario                                     |      Recommended       | Why                                                        |
-| :------------------------------------------- | :--------------------: | :--------------------------------------------------------- |
-| Pedestrians, vehicles, rigid objects         | `XCYCSRStateEstimator` | Constant aspect ratio stabilizes predictions               |
-| Non-rigid or deformable objects              |  `XYXYStateEstimator`  | Corners move independently to track shape changes          |
-| Noisy detections with fluctuating box sizes  | `XCYCSRStateEstimator` | Aspect ratio constraint absorbs size noise                 |
-| Strong perspective changes (camera pan/zoom) |  `XYXYStateEstimator`  | Box proportions shift with viewpoint; corners adapt freely |
-| Default choice when unsure                   |  `XYXYStateEstimator`  | More general, fewer assumptions                            |
+| Scenario                                            |      Recommended       | Why                                                        |
+| :-------------------------------------------------- | :--------------------: | :--------------------------------------------------------- |
+| Pedestrians, vehicles, rigid objects                | `XCYCSRStateEstimator` | Constant aspect ratio stabilizes predictions               |
+| Non-rigid or deformable objects                     |  `XYXYStateEstimator`  | Corners move independently to track shape changes          |
+| Noisy detections with fluctuating box sizes         | `XCYCSRStateEstimator` | Aspect ratio constraint absorbs size noise                 |
+| Strong perspective changes (camera pan/zoom)        |  `XYXYStateEstimator`  | Box proportions shift with viewpoint; corners adapt freely |
+| BoT-SORT-style pipelines (BoT-SORT, C-BIoU, McByte) | `XCYCWHStateEstimator` | Matches each tracker's configured default                  |
+| Default choice when unsure                          |  `XYXYStateEstimator`  | More general, fewer assumptions                            |
 
 We can also benchmark the trackers using the different State Estimators and we get:
 

@@ -36,6 +36,8 @@ The first three live in `trackers.core.masks` and are tracker-agnostic: nothing 
 
     Without the extra the command exits with an install hint rather than a traceback.
 
+    For more options, see the [install guide](install.md).
+
 ## Inspect SAM
 
 Give it an image and one or more boxes; it saves the image with masks and boxes overlaid.
