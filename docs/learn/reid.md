@@ -118,6 +118,13 @@ near 0.41 and the 5th percentile near 0.27 from a 1-frame gap out to 240 frames.
 Same-ID distances spread steadily, from a median of 0.04 at a 1-frame gap to 0.20
 across the 16 to 30 band and 0.28 beyond 120 frames.
 
+ROC AUC below is the chance that a random same-ID pair scores closer than a random
+different-ID pair. 1.0 means the two distributions never overlap, 0.5 means
+appearance carries no information at all. It is reported because it needs no
+operating point, so the column does not depend on a target true-positive or
+false-positive rate. The two rates beside it evaluate the thresholds Trackers
+actually ships rather than deriving a new one.
+
 | Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
 | :--------- | :-----: | :---------------: | :--------------------: |
 | 1          |  0.998  |       98.0%       |          1.7%          |
@@ -146,11 +153,6 @@ different-ID side usable, which is why θ has to come down to about 0.1 on this
 domain instead of being traded against the gap.
 
 ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
-
-ROC AUC is reported because it needs no operating point, so the curve does not
-depend on a target true-positive or false-positive rate. The rates in the table
-evaluate the two thresholds Trackers actually ships rather than deriving a new
-one.
 
 ---
 

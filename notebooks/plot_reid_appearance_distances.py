@@ -390,14 +390,40 @@ def plot_gap_sweep(rows: list[dict[str, object]], *, title: str, out_path: Path)
     ax_dist.legend(loc="lower right", fontsize=8, ncol=2, framealpha=0.92, edgecolor="none")
     ax_dist.grid(True, alpha=0.25)
 
-    ax_auc.plot(x, [r["auc"] for r in rows], color="#111111", marker="s", lw=2)
+    aucs = [r["auc"] for r in rows]
+    ax_auc.plot(x, aucs, color="#111111", marker="s", lw=2)
+    for xi, auc in zip(x, aucs):
+        ax_auc.annotate(
+            f"{auc:.3f}",
+            (xi, auc),
+            textcoords="offset points",
+            xytext=(0, 7),
+            ha="center",
+            fontsize=7.5,
+            color="#111111",
+        )
     ax_auc.axhline(0.5, color="#999999", ls=":", lw=1.2)
+    ax_auc.annotate(
+        "0.5 = chance, appearance carries no information",
+        (len(rows) - 1, 0.5),
+        textcoords="offset points",
+        xytext=(0, 5),
+        ha="right",
+        fontsize=7.5,
+        color="#666666",
+    )
     ax_auc.set(
         xlabel="frame gap between the two crops",
-        ylabel="ROC AUC",
-        ylim=(0.45, 1.02),
+        ylabel="P(same-ID pair is closer)",
+        ylim=(0.42, 1.12),
         xticks=x,
         xticklabels=labels,
+    )
+    ax_auc.set_title(
+        "Separability (ROC AUC): chance a random same-ID pair scores below a random different-ID pair",
+        fontsize=8.5,
+        color="#333333",
+        pad=4,
     )
     ax_auc.grid(True, alpha=0.25)
 
