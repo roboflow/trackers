@@ -19,7 +19,7 @@ Tracking quality starts at the detector. If it misses an object, the tracker nev
 Install `trackers` with the detection extra to enable built-in model support.
 
 ```text
-pip install trackers[detection]
+pip install "trackers[detection]"
 ```
 
 For more options, see the [install guide](install.md).
@@ -44,15 +44,7 @@ We pick three models that span a wide accuracy range on COCO, from a lightweight
 
 ## Download Data
 
-Pull the MOT17 validation split. You need frames for detection and annotations for evaluation.
-
-```text
-trackers download \
-    --name mot17 \
-    --split val \
-    --asset frames,annotations \
-    --output ./data
-```
+Download the MOT17 validation split (frames for detection, annotations for evaluation) — see the [download guide](download.md) for the full command and available options.
 
 ---
 
