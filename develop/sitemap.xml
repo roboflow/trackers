@@ -5,6 +5,22 @@
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
+         <loc>https://trackers.roboflow.com/latest/develop/changelog/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
+         <loc>https://trackers.roboflow.com/latest/develop/code-of-conduct/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
+         <loc>https://trackers.roboflow.com/latest/develop/contributing/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
+         <loc>https://trackers.roboflow.com/latest/develop/governance/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
          <loc>https://trackers.roboflow.com/latest/develop/api/datasets/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
@@ -25,59 +41,59 @@
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/about/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/about/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/cli-migration/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/cli/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/cli/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/detection-quality/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/detection-quality/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/download/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/download/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/dynamic-frame-rate/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/evaluate/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/evaluate/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/inspect/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/inspect/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/install/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/install/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/iou/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/iou/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/mcbyte-benchmark/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/mcbyte-benchmark/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/migration_cli/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/state-estimators/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/state-estimators/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/track/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/track/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/learn/tune/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/guides/tune/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
