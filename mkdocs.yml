@@ -84,7 +84,9 @@ markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
   # Allows including content from other files
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      # Fails the build on a broken/typo'd include path instead of rendering a warning comment
+      check_paths: true
   # Enables nested code blocks and custom fences
   - pymdownx.superfences
   # Adds support for callouts/notes/warnings
@@ -155,3 +157,6 @@ nav:
     - Datasets: api/datasets.md
     - Evals: api/evals.md
     - I/O: api/io.md
+  - Community:
+    - Contributing: contributing.md
+    - Changelog: changelog.md
