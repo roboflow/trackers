@@ -34,62 +34,13 @@ For more options, see the [install guide](install.md).
 
 ## Download Data
 
-Use `trackers download` to pull ground-truth annotations and detections from supported benchmarks like MOT17.
-
-=== "CLI"
-
-    Fetch MOT17 validation annotations and detections from the command line.
-
-    ```text
-    trackers download mot17 \
-        --split val \
-        --asset annotations,detections \
-        --output ./data
-    ```
-
-=== "Python"
-
-    Fetch MOT17 validation annotations and detections from Python.
-
-    ```python
-    from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
-
-    download_dataset(
-        dataset=Dataset.MOT17,
-        split=DatasetSplit.VAL,
-        asset=[DatasetAsset.ANNOTATIONS, DatasetAsset.DETECTIONS],
-        output="./data",
-    )
-    ```
-
-After downloading, your data directory will look like this.
-
-```text
-data/
-└── mot17/
-    └── val/
-        ├── MOT17-02-FRCNN/
-        │   ├── det/
-        │   │   └── det.txt
-        │   └── gt/
-        │       └── gt.txt
-        ├── MOT17-04-FRCNN/
-        │   ├── det/
-        │   │   └── det.txt
-        │   └── gt/
-        │       └── gt.txt
-        └── ...
-```
-
-For more download options, see the [download guide](download.md).
+Download MOT17 validation annotations and detections as described in the [download guide](download.md). For the examples below, use `--split val --asset annotations,detections --output ./data`; they expect files at `./data/mot17/val/<sequence>/det/det.txt` and `./data/mot17/val/<sequence>/gt/gt.txt`.
 
 ---
 
 ## Run Tracking
 
-Feed the pre-computed detections into a tracker and write the results to a file for evaluation.
-
-Pass `--detections` to provide input detections and `--mot-output` to save the tracker output in MOT format.
+Feed the pre-computed detections into a tracker and write the results to a file for evaluation. Pass `--detections` for input MOT detections and `--mot-output` for MOT-format tracking results; see the [track guide](track.md) for more on `trackers track`.
 
 ```text
 trackers track \
