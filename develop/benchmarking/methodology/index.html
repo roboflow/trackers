@@ -6,19 +6,19 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes.">
+        <meta name="description" content="How Trackers' benchmark results are produced — detection sources, tuning procedure, and train/validation/test split usage.">
       
       
         <meta name="author" content="Roboflow">
       
       
-        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/trackers/ocsort/">
+        <link rel="canonical" href="https://trackers.roboflow.com/latest/develop/benchmarking/methodology/">
       
       
-        <link rel="prev" href="../bytetrack/">
+        <link rel="prev" href="../results/">
       
       
-        <link rel="next" href="../botsort/">
+        <link rel="next" href="../../trackers/sort/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>OC-SORT — Observation-Centric SORT Tracker | Trackers - Trackers</title>
+        <title>Benchmark Methodology | Trackers - Trackers</title>
       
     
     
@@ -129,12 +129,12 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "OC-SORT",
-  "description": "OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes.",
-  "url": "https://trackers.roboflow.com/latest/develop/trackers/ocsort/",
+  "headline": "Methodology",
+  "description": "How Trackers' benchmark results are produced — detection sources, tuning procedure, and train/validation/test split usage.",
+  "url": "https://trackers.roboflow.com/latest/develop/benchmarking/methodology/",
   "mainEntityOfPage": {
     "@type": "WebPage",
-    "@id": "https://trackers.roboflow.com/latest/develop/trackers/ocsort/"
+    "@id": "https://trackers.roboflow.com/latest/develop/benchmarking/methodology/"
   },
   "image": {
     "@type": "ImageObject",
@@ -162,16 +162,7 @@
     ]
   },
   "dateModified": "2026-08-10",
-  "datePublished": "2025-04-22",
-  "citation": {
-    "@type": "ScholarlyArticle",
-    "name": "Observation-Centric SORT: Rethinking SORT for Robust Multi-Object Tracking",
-    "url": "https://arxiv.org/abs/2203.14360",
-    "author": {
-      "@type": "Person",
-      "name": "Cao et al."
-    }
-  }
+  "datePublished": "2026-08-10"
 }
 </script>
 
@@ -188,9 +179,9 @@
 
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Roboflow Trackers" />
-<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/trackers/ocsort/" />
-<meta property="og:title" content="OC-SORT — Observation-Centric SORT Tracker | Trackers" />
-<meta property="og:description" content="OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes." />
+<meta property="og:url" content="https://trackers.roboflow.com/latest/develop/benchmarking/methodology/" />
+<meta property="og:title" content="Benchmark Methodology | Trackers" />
+<meta property="og:description" content="How Trackers' benchmark results are produced — detection sources, tuning procedure, and train/validation/test split usage." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -201,8 +192,8 @@
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
-<meta name="twitter:title" content="OC-SORT — Observation-Centric SORT Tracker | Trackers" />
-<meta name="twitter:description" content="OC-SORT (Observation-Centric SORT) enhances SORT with three mechanisms for robust tracking under occlusion and non-linear motion, improving identity consistency on crowded scenes." />
+<meta name="twitter:title" content="Benchmark Methodology | Trackers" />
+<meta name="twitter:description" content="How Trackers' benchmark results are produced — detection sources, tuning procedure, and train/validation/test split usage." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -219,7 +210,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#oc-sort" class="md-skip">
+        <a href="#methodology" class="md-skip">
           Skip to content
         </a>
       
@@ -285,7 +276,7 @@
 
             </a>
             
-              OC-SORT — Observation-Centric SORT Tracker | Trackers
+              Benchmark Methodology | Trackers
             
           </span>
         </div>
@@ -545,11 +536,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../benchmarking/download/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../download/" class="md-tabs__link">
           
   
   
@@ -565,13 +558,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../sort/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../trackers/sort/" class="md-tabs__link">
           
   
   
@@ -1215,26 +1206,29 @@
       
   
   
+    
   
   
+  
     
     
     
     
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
       
         
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1252,7 +1246,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1270,7 +1264,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/download/" class="md-nav__link">
+      <a href="../download/" class="md-nav__link">
         
   
   
@@ -1298,7 +1292,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/evaluate/" class="md-nav__link">
+      <a href="../evaluate/" class="md-nav__link">
         
   
   
@@ -1326,7 +1320,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/benchmark-runner/" class="md-nav__link">
+      <a href="../benchmark-runner/" class="md-nav__link">
         
   
   
@@ -1354,7 +1348,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../benchmarking/results/" class="md-nav__link">
+      <a href="../results/" class="md-nav__link">
         
   
   
@@ -1362,152 +1356,6 @@
     
   
     Results
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../benchmarking/methodology/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Methodology
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Trackers
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Trackers
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../sort/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    SORT
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../bytetrack/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    ByteTrack
   
 
     
@@ -1544,7 +1392,7 @@
   <span class="md-ellipsis">
     
   
-    OC-SORT
+    Methodology
   
 
     
@@ -1562,7 +1410,7 @@
   <span class="md-ellipsis">
     
   
-    OC-SORT
+    Methodology
   
 
     
@@ -1588,10 +1436,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-is-oc-sort" class="md-nav__link">
+  <a href="#detections" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is OC-SORT?
+        Detections
       
     </span>
   </a>
@@ -1599,65 +1447,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-does-oc-sort-compare-to-other-trackers" class="md-nav__link">
+  <a href="#tuning" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How does OC-SORT compare to other trackers?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#watch-it-in-action" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Watch It in Action
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-does-oc-sort-work" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How does OC-SORT work?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Parameters
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-on-video-webcam-or-rtsp-stream" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run on video, webcam, or RTSP stream
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference
+        Tuning
       
     </span>
   </a>
@@ -1673,6 +1466,65 @@
 
               
             
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trackers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Trackers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
               
                 
   
@@ -1680,7 +1532,91 @@
   
   
     <li class="md-nav__item">
-      <a href="../botsort/" class="md-nav__link">
+      <a href="../../trackers/sort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SORT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../trackers/bytetrack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ByteTrack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../trackers/ocsort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OC-SORT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../trackers/botsort/" class="md-nav__link">
         
   
   
@@ -1708,7 +1644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cbiou/" class="md-nav__link">
+      <a href="../../trackers/cbiou/" class="md-nav__link">
         
   
   
@@ -1736,7 +1672,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mcbyte/" class="md-nav__link">
+      <a href="../../trackers/mcbyte/" class="md-nav__link">
         
   
   
@@ -2189,10 +2125,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-is-oc-sort" class="md-nav__link">
+  <a href="#detections" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is OC-SORT?
+        Detections
       
     </span>
   </a>
@@ -2200,65 +2136,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-does-oc-sort-compare-to-other-trackers" class="md-nav__link">
+  <a href="#tuning" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How does OC-SORT compare to other trackers?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#watch-it-in-action" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Watch It in Action
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-does-oc-sort-work" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How does OC-SORT work?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Parameters
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-on-video-webcam-or-rtsp-stream" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run on video, webcam, or RTSP stream
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference
+        Tuning
       
     </span>
   </a>
@@ -2285,222 +2166,16 @@
   
 
 
-<h1 id="oc-sort">OC-SORT</h1>
-<h2 id="what-is-oc-sort">What is OC-SORT?</h2>
-<p>OC-SORT remains Simple, Online, and Real-Time like (<a href="../sort/">SORT</a>) but improves robustness during occlusion and non-linear motion. It recognizes limitations from SORT and the linear motion assumption of the Kalman filter, and adds three mechanisms to enhance tracking. These mechanisms help having better Kalman Filter parameters after an occlusion, add a term to the association process to incorporate how consistent is the direction with the new association with respect to the tracks' previous direction and add a second-stage association step between the last observation of unmatched tracks and the unmatched observations after the usual association to attempt to recover tracks that were lost due to object stopping or short-term occlusion.</p>
-<h2 id="how-does-oc-sort-compare-to-other-trackers">How does OC-SORT compare to other trackers?</h2>
-<p>For comparisons with other trackers, plus dataset context and evaluation details, see the <a href="../../benchmarking/results/">tracker comparison</a> page.</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: center;">Dataset</th>
-<th style="text-align: center;">HOTA</th>
-<th style="text-align: center;">IDF1</th>
-<th style="text-align: center;">MOTA</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: center;">MOT17</td>
-<td style="text-align: center;">61.9</td>
-<td style="text-align: center;">76.1</td>
-<td style="text-align: center;">76.7</td>
-</tr>
-<tr>
-<td style="text-align: center;">SportsMOT</td>
-<td style="text-align: center;">71.7</td>
-<td style="text-align: center;">71.4</td>
-<td style="text-align: center;">95.0</td>
-</tr>
-<tr>
-<td style="text-align: center;">SoccerNet</td>
-<td style="text-align: center;">78.4</td>
-<td style="text-align: center;">72.6</td>
-<td style="text-align: center;">94.1</td>
-</tr>
-</tbody>
-</table>
-<h2 id="watch-it-in-action">Watch It in Action</h2>
-<video title="OC-SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls>
-  <source src="https://github.com/user-attachments/assets/9ccae3a0-9dc2-4c9c-b9cf-ff6e3982b147" type="video/mp4">
-</video>
-
-<h2 id="how-does-oc-sort-work">How does OC-SORT work?</h2>
-<p>OC-SORT extends <a href="../sort/">SORT</a> with three observation-centric mechanisms that address the linear motion assumption's failures during occlusion and non-linear trajectories. It retains the same Kalman filter and Hungarian algorithm backbone but adds corrections that use stored observations rather than relying solely on the filter's predicted state.</p>
-<p><strong>OCM (Observation-Centric Momentum).</strong> When a track reappears after being unmatched for several frames, the Kalman filter's velocity estimate may have drifted because it continued predicting without corrections. OCM re-computes the velocity using the time gap (<code>delta_t</code>) between the last matched observation and the current detection, then feeds this corrected velocity back into the filter. This produces a more accurate state estimate at the moment of re-association.</p>
-<p><strong>OCV (Observation-Centric Velocity).</strong> Standard IoU matching ignores direction of motion. OCV adds a velocity direction consistency term to the association cost: if a candidate match would require the track to have moved in a direction inconsistent with its recent observation history, that match is penalized. The <code>direction_consistency_weight</code> parameter controls the strength of this penalty. This helps prevent cross-identity matches when two objects are close but moving in different directions.</p>
-<p><strong>ORU (Observation-Centric Re-Update).</strong> After the primary Hungarian matching, ORU performs a second-stage re-association between the last known positions of unmatched (lost) tracks and unmatched current detections. This recovers tracks that were briefly lost due to a momentary stop or 1-2 frame occlusion, where the Kalman prediction drifted too far from the actual position for primary matching to succeed.</p>
-<p>Together, these three mechanisms make OC-SORT effective for group dancing, sports, and other scenarios where objects follow non-linear paths, stop and restart, or are occluded in dense groups.</p>
-<h2 id="key-parameters">Key Parameters</h2>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Purpose</th>
-<th>Tuning guidance</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>lost_track_buffer</code></td>
-<td>Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by <code>frame_rate</code>).</td>
-<td>Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions.</td>
-</tr>
-<tr>
-<td><code>minimum_consecutive_frames</code></td>
-<td>Consecutive detections required to confirm a new track.</td>
-<td>1 confirms immediately; 2-3 filters out single-frame false positives.</td>
-</tr>
-<tr>
-<td><code>minimum_iou_threshold</code></td>
-<td>Minimum IoU to accept a track-detection match.</td>
-<td>Lower associates through more displacement between frames. 0.1-0.3 typical.</td>
-</tr>
-<tr>
-<td><code>direction_consistency_weight</code></td>
-<td>Strength of the OCV velocity direction penalty.</td>
-<td>0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.</td>
-</tr>
-<tr>
-<td><code>high_conf_det_threshold</code></td>
-<td>Minimum detection confidence used for association.</td>
-<td>0.5-0.7 typical. Lower values include more detections in association; higher values keep association to more confident detections.</td>
-</tr>
-<tr>
-<td><code>delta_t</code></td>
-<td>Frame gap for OCM velocity re-estimation after occlusion.</td>
-<td>1-3 typical. Larger values smooth velocity estimate over more frames.</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition warning">
-<p class="admonition-title">Frame input is ignored by OC-SORT</p>
-<p><code>OCSORTTracker.update()</code> accepts <code>frame</code> for API consistency with other trackers, but OC-SORT does not use image/frame pixels. If you pass <code>frame</code> with a non-<code>None</code> value, the tracker emits a <code>UserWarning</code> and ignores it.</p>
-</div>
-<h2 id="run-on-video-webcam-or-rtsp-stream">Run on video, webcam, or RTSP stream</h2>
-<p>These examples use OpenCV for decoding and display. Replace <code>&lt;SOURCE_VIDEO_PATH&gt;</code>, <code>&lt;WEBCAM_INDEX&gt;</code>, and <code>&lt;RTSP_STREAM_URL&gt;</code> with your inputs. <code>&lt;WEBCAM_INDEX&gt;</code> is usually 0 for the default camera.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Video</label><label for="__tabbed_1_3">Webcam</label><label for="__tabbed_1_4">RTSP</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>Run OC-SORT on a video without writing any Python. See the <a href="../../guides/cli/">CLI reference</a> for every argument, including <code>--source 0</code> for a webcam or an <code>rtsp://</code> URL for a stream.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>trackers<span class="w"> </span>track<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span>--source<span class="w"> </span>&lt;SOURCE_VIDEO_PATH&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span>--tracker<span class="w"> </span>ocsort<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span>--output.video<span class="w"> </span>output.mp4
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rfdetr</span><span class="w"> </span><span class="kn">import</span> <span class="n">RFDETRMedium</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">OCSORTTracker</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">OCSORTTracker</span><span class="p">()</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RFDETRMedium</span><span class="p">()</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">box_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">BoxAnnotator</span><span class="p">()</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">label_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">LabelAnnotator</span><span class="p">()</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">video_capture</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="s2">&quot;&lt;SOURCE_VIDEO_PATH&gt;&quot;</span><span class="p">)</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="k">if</span> <span class="ow">not</span> <span class="n">video_capture</span><span class="o">.</span><span class="n">isOpened</span><span class="p">():</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Failed to open video source&quot;</span><span class="p">)</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="n">success</span><span class="p">,</span> <span class="n">frame_bgr</span> <span class="o">=</span> <span class="n">video_capture</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">success</span><span class="p">:</span>
-</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>        <span class="k">break</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>
-</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">frame_rgb</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2RGB</span><span class="p">)</span>
-</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">frame_rgb</span><span class="p">)</span>
-</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span>
-</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>
-</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">box_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">detections</span><span class="p">)</span>
-</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">label_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">annotated_frame</span><span class="p">,</span> <span class="n">detections</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span><span class="p">)</span>
-</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>
-</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + OC-SORT&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
-</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
-</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>        <span class="k">break</span>
-</span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>
-</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
-</span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rfdetr</span><span class="w"> </span><span class="kn">import</span> <span class="n">RFDETRMedium</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">OCSORTTracker</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">OCSORTTracker</span><span class="p">()</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RFDETRMedium</span><span class="p">()</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">box_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">BoxAnnotator</span><span class="p">()</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">label_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">LabelAnnotator</span><span class="p">()</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">video_capture</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="s2">&quot;&lt;WEBCAM_INDEX&gt;&quot;</span><span class="p">)</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="k">if</span> <span class="ow">not</span> <span class="n">video_capture</span><span class="o">.</span><span class="n">isOpened</span><span class="p">():</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Failed to open webcam&quot;</span><span class="p">)</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    <span class="n">success</span><span class="p">,</span> <span class="n">frame_bgr</span> <span class="o">=</span> <span class="n">video_capture</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">success</span><span class="p">:</span>
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        <span class="k">break</span>
-</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
-</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    <span class="n">frame_rgb</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2RGB</span><span class="p">)</span>
-</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">frame_rgb</span><span class="p">)</span>
-</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span>
-</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
-</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">box_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">detections</span><span class="p">)</span>
-</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">label_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">annotated_frame</span><span class="p">,</span> <span class="n">detections</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span><span class="p">)</span>
-</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
-</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + OC-SORT&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
-</span><span id="__span-2-29"><a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
-</span><span id="__span-2-30"><a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>        <span class="k">break</span>
-</span><span id="__span-2-31"><a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>
-</span><span id="__span-2-32"><a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
-</span><span id="__span-2-33"><a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
-</span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rfdetr</span><span class="w"> </span><span class="kn">import</span> <span class="n">RFDETRMedium</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">OCSORTTracker</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">OCSORTTracker</span><span class="p">()</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RFDETRMedium</span><span class="p">()</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">box_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">BoxAnnotator</span><span class="p">()</span>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">label_annotator</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">LabelAnnotator</span><span class="p">()</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="n">video_capture</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="s2">&quot;&lt;RTSP_STREAM_URL&gt;&quot;</span><span class="p">)</span>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="k">if</span> <span class="ow">not</span> <span class="n">video_capture</span><span class="o">.</span><span class="n">isOpened</span><span class="p">():</span>
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Failed to open RTSP stream&quot;</span><span class="p">)</span>
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">success</span><span class="p">,</span> <span class="n">frame_bgr</span> <span class="o">=</span> <span class="n">video_capture</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">success</span><span class="p">:</span>
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        <span class="k">break</span>
-</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
-</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="n">frame_rgb</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2RGB</span><span class="p">)</span>
-</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">frame_rgb</span><span class="p">)</span>
-</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    <span class="n">detections</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">)</span>
-</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
-</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">box_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">frame_bgr</span><span class="p">,</span> <span class="n">detections</span><span class="p">)</span>
-</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    <span class="n">annotated_frame</span> <span class="o">=</span> <span class="n">label_annotator</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">annotated_frame</span><span class="p">,</span> <span class="n">detections</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">detections</span><span class="o">.</span><span class="n">tracker_id</span><span class="p">)</span>
-</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>
-</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s2">&quot;RF-DETR + OC-SORT&quot;</span><span class="p">,</span> <span class="n">annotated_frame</span><span class="p">)</span>
-</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>    <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s2">&quot;q&quot;</span><span class="p">):</span>
-</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>        <span class="k">break</span>
-</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>
-</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a><span class="n">video_capture</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
-</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a><span class="n">cv2</span><span class="o">.</span><span class="n">destroyAllWindows</span><span class="p">()</span>
-</span></code></pre></div>
-</div>
-</div>
-</div>
-<h2 id="reference">Reference</h2>
-<p>Cao, J., Pang, J., Weng, X., Khirodkar, R., and Kitani, K. (2023). Observation-Centric SORT: Rethinking SORT for Robust Multi-Object Tracking. CVPR. <a href="https://arxiv.org/abs/2203.14360">arXiv:2203.14360</a></p>
+<h1 id="methodology">Methodology</h1>
+<h3 id="detections">Detections</h3>
+<p>Each dataset uses one of two detection sources: oracle detections (ground-truth bounding boxes provided by the dataset) or model detections (produced by a YOLOX detector following the ByteTrack procedure). The source is noted per dataset on the <a href="../results/">Results</a> page.</p>
+<h3 id="tuning">Tuning</h3>
+<p>Best parameters per tracker and dataset were found via grid search (SORT, ByteTrack, OC-SORT, BoT-SORT) or Optuna (<code>n_trials=100</code>, objective HOTA, trial 0 = defaults for C-BIoU), selecting the configuration with the highest HOTA on the tune split. McByte is not tuned here: defaults with mask-conditioned association enabled are reported, matching the <a href="../../trackers/mcbyte/">McByte</a> page (source: <a href="https://github.com/roboflow/trackers/pull/513">PR #513</a>). Tuning and evaluation always use separate data splits to reflect real-world usage:</p>
+<ul>
+<li>Train + validation + test: tune on validation, report on test.</li>
+<li>Train + validation: tune on train, report on validation.</li>
+<li>Train + test: tune on train, report on test.</li>
+</ul>
 
 
 
@@ -2533,7 +2208,7 @@
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 22, 2025 14:59:15 UTC">2025-04-22</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 19:12:53 UTC">2026-08-10</span>
   </span>
 
     
@@ -2544,57 +2219,6 @@
 
 
 
-
-<h2 id="__comments">Comments</h2>
-
-<script src="https://giscus.app/client.js"
-        data-repo="roboflow/trackers"
-        data-repo-id="R_kgDOOZe2kQ"
-        data-category="Docs"
-        data-category-id="DIC_kwDOOZe2kc4CpZFf"
-        data-mapping="pathname"
-        data-strict="0"
-        data-reactions-enabled="1"
-        data-emit-metadata="0"
-        data-input-position="top"
-        data-theme="preferred_color_scheme"
-        data-lang="en"
-        data-loading="lazy"
-        crossorigin="anonymous"
-        async>
-</script>
-
-<!-- Synchronize Giscus theme with palette -->
-<script>
-    var giscus = document.querySelector("script[src*=giscus]")
-
-    /* Set palette on initial load */
-    var palette = __md_get("__palette")
-    if (palette && typeof palette.color === "object") {
-      var theme = palette.color.scheme === "slate" ? "dark" : "light"
-      giscus.setAttribute("data-theme", theme)
-    }
-
-    /* Register event handlers after documented loaded */
-    document.addEventListener("DOMContentLoaded", function() {
-      var ref = document.querySelector("[data-md-component=palette]")
-      if (!ref || !giscus) return
-      ref.addEventListener("change", function() {
-        var palette = __md_get("__palette")
-        if (palette && typeof palette.color === "object") {
-          var theme = palette.color.scheme === "slate" ? "dark" : "light"
-
-          /* Instruct Giscus to change theme */
-          var frame = document.querySelector(".giscus-frame")
-          if (!frame) return
-          frame.contentWindow.postMessage(
-            { giscus: { setConfig: { theme } } },
-            "https://giscus.app"
-          )
-        }
-      })
-    })
-</script>
 
                 
               </article>
@@ -2615,7 +2239,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../bytetrack/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ByteTrack">
+          <a href="../results/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Results">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2625,20 +2249,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                ByteTrack
+                Results
               </div>
             </div>
           </a>
         
         
           
-          <a href="../botsort/" class="md-footer__link md-footer__link--next" aria-label="Next: BoT-SORT">
+          <a href="../../trackers/sort/" class="md-footer__link md-footer__link--next" aria-label="Next: SORT">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                BoT-SORT
+                SORT
               </div>
             </div>
             <div class="md-footer__button md-icon">

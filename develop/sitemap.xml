@@ -17,6 +17,10 @@
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
+         <loc>https://trackers.roboflow.com/latest/develop/details/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
          <loc>https://trackers.roboflow.com/latest/develop/governance/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
@@ -41,7 +45,23 @@
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/guides/about/</loc>
+         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/benchmark-runner/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
+         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/download/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
+         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/evaluate/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
+         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/methodology/</loc>
+         <lastmod>2026-08-10</lastmod>
+    </url>
+    <url>
+         <loc>https://trackers.roboflow.com/latest/develop/benchmarking/results/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
@@ -53,15 +73,7 @@
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
-         <loc>https://trackers.roboflow.com/latest/develop/guides/download/</loc>
-         <lastmod>2026-08-10</lastmod>
-    </url>
-    <url>
          <loc>https://trackers.roboflow.com/latest/develop/guides/dynamic-frame-rate/</loc>
-         <lastmod>2026-08-10</lastmod>
-    </url>
-    <url>
-         <loc>https://trackers.roboflow.com/latest/develop/guides/evaluate/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
@@ -74,10 +86,6 @@
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/develop/guides/iou/</loc>
-         <lastmod>2026-08-10</lastmod>
-    </url>
-    <url>
-         <loc>https://trackers.roboflow.com/latest/develop/guides/mcbyte-benchmark/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
@@ -106,10 +114,6 @@
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/develop/trackers/cbiou/</loc>
-         <lastmod>2026-08-10</lastmod>
-    </url>
-    <url>
-         <loc>https://trackers.roboflow.com/latest/develop/trackers/comparison/</loc>
          <lastmod>2026-08-10</lastmod>
     </url>
     <url>
