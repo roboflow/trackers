@@ -14,15 +14,19 @@ import pytest
 import supervision as sv
 
 from trackers.cli.track import (
+    _EXCLUDED_TRACKER_PARAMETERS,
     ShowOptions,
     TrackerOptions,
     _abbreviate_parameter_name,
+    _abbreviated_tracker_parameters,
     _expand_parameter_name,
     _format_labels,
     _init_annotators,
     _init_tracker,
     _resolve_class_filter,
     _resolve_track_id_filter,
+    _resolve_tracker_kwargs,
+    _tracker_options_as_dict,
 )
 from trackers.core.base import BaseTracker
 
@@ -257,20 +261,92 @@ class TestTrackerParameterAbbreviations:
 
         assert getattr(tracker, keyword) == pytest.approx(value)
 
-    def test_every_option_field_maps_to_a_known_tracker_parameter(self) -> None:
-        """No TrackerOptions field can be dropped silently by _init_tracker."""
+    def test_registry_parameters_map_bidirectionally_to_option_fields(self) -> None:
+        """TrackerOptions fields and the registry union agree in both directions.
+
+        The old version of this test only checked that every ``TrackerOptions``
+        field mapped to a known registry parameter — sufficient for a
+        hand-maintained dataclass, but vacuous once the fields are generated
+        from that same registry. The reverse direction is what actually
+        guards against drift: a newly registered tracker parameter that never
+        made it into the generated dataclass.
+        """
         # ``name`` selects the tracker and ``iou_variant`` aliases ``iou``;
-        # neither is forwarded to the constructor under its own field name.
+        # neither is a registry parameter under its own field name. Walking
+        # ``.items()`` rather than the dict directly matters: it is the
+        # override that drops ``iou`` (see ``TrackerParameters.items``),
+        # matching what ``_tracker_parameter_union`` itself iterates over.
         accepted = {"name", "iou_variant"}
+        registry_names: set[str] = set()
         for tracker_id in BaseTracker._registered_trackers():
             info = BaseTracker._lookup_tracker(tracker_id)
             assert info is not None
-            accepted.update(info.parameters)
+            registry_names.update(name for name, _ in info.parameters.items())
+        accepted.update(registry_names)
 
-        unmatched = [
-            field.name
-            for field in fields(TrackerOptions)
-            if field.name not in accepted and _expand_parameter_name(field.name) not in accepted
+        option_fields = {field.name for field in fields(TrackerOptions)}
+
+        unmatched_fields = [
+            name for name in option_fields if name not in accepted and _expand_parameter_name(name) not in accepted
+        ]
+        unmatched_registry_names = [
+            name
+            for name in registry_names
+            if name not in _EXCLUDED_TRACKER_PARAMETERS and _abbreviate_parameter_name(name) not in option_fields
         ]
 
-        assert unmatched == []
+        assert unmatched_fields == []
+        assert unmatched_registry_names == []
+
+    def test_abbreviation_round_trips_for_every_registry_parameter(self) -> None:
+        """Every registry parameter's CLI name expands back to its Python name."""
+        for tracker_id in BaseTracker._registered_trackers():
+            info = BaseTracker._lookup_tracker(tracker_id)
+            assert info is not None
+            for python_name, _ in info.parameters.items():
+                if python_name in _EXCLUDED_TRACKER_PARAMETERS:
+                    continue
+                cli_name = _abbreviate_parameter_name(python_name)
+                assert _expand_parameter_name(cli_name) == python_name
+
+    def test_mask_rename_is_not_listed_as_a_deprecation(self) -> None:
+        """``mask_config`` never shipped under its Python name, so it is not deprecated.
+
+        Pins the deliberate exclusion in ``_abbreviated_tracker_parameters``: warning that ``--tracker.mask_config`` is
+        deprecated would be a lie, since no released CLI ever exposed that spelling.
+        """
+        assert "mask_config" not in _abbreviated_tracker_parameters()
+
+    def test_mask_field_reaches_the_tracker_as_a_dataclass_not_a_dict(self) -> None:
+        """``mask`` is forwarded intact, not flattened by ``dataclasses.asdict``.
+
+        Regression guard for the bug ``_init_tracker`` had before it stopped using ``asdict``: that call recurses into
+        nested dataclass fields, so ``mask`` would have reached ``McByteTracker`` as a plain ``dict`` instead of the
+        ``McByteMaskConfig`` instance it requires.
+        """
+        from trackers.core.mcbyte.tracker import McByteMaskConfig
+
+        mask_config = McByteMaskConfig(cutie_mem_every=7)
+        options = TrackerOptions(name="mcbyte", mask=mask_config)
+
+        raw = _tracker_options_as_dict(options)
+        assert raw["mask"] is mask_config
+
+        info = BaseTracker._lookup_tracker("mcbyte")
+        assert info is not None
+        kwargs, dropped = _resolve_tracker_kwargs(
+            {k: v for k, v in raw.items() if k not in ("name", "iou_variant")},
+            set(info.parameters),
+        )
+
+        assert dropped == []
+        assert kwargs["mask_config"] is mask_config
+
+    def test_unsupported_override_is_dropped_with_a_warning(self) -> None:
+        """A field the selected tracker does not accept warns instead of vanishing."""
+        options = TrackerOptions(name="sort", min_mask_coverage=0.3)
+
+        with pytest.warns(UserWarning, match=r"sort.*--tracker\.min_mask_coverage"):
+            tracker = _init_tracker(options)
+
+        assert not hasattr(tracker, "minimum_mask_coverage")

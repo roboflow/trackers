@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from trackers.cli.tune import tune_command
+from trackers.cli.tune import TrackerSelection, tune_command
 
 
 class TestTune:
@@ -24,7 +24,7 @@ class TestTune:
         gt_dir.mkdir()
         det_dir = tmp_path / "det"
         det_dir.mkdir()
-        result = tune_command("nonexistent_tracker_xyz", gt_dir, det_dir)
+        result = tune_command(TrackerSelection(name="nonexistent_tracker_xyz"), gt_dir, det_dir)
         assert result == 1
 
     def test_returns_1_on_missing_files(self, tmp_path: Path) -> None:
@@ -34,7 +34,7 @@ class TestTune:
         det_dir = tmp_path / "det"
         det_dir.mkdir()
         # bytetrack is registered; empty det_dir → FileNotFoundError via Tuner
-        result = tune_command("bytetrack", gt_dir, det_dir)
+        result = tune_command(TrackerSelection(name="bytetrack"), gt_dir, det_dir)
         assert result == 1
 
     def test_returns_1_on_import_error(self, tmp_path: Path) -> None:
@@ -45,7 +45,7 @@ class TestTune:
             "trackers.tune.Tuner",
             side_effect=ImportError("optuna is required"),
         ):
-            result = tune_command("bytetrack", gt_dir, det_dir)
+            result = tune_command(TrackerSelection(name="bytetrack"), gt_dir, det_dir)
         assert result == 1
 
     def test_returns_0_on_success(self, tmp_path: Path) -> None:
@@ -56,7 +56,7 @@ class TestTune:
         mock_tuner.run.return_value = {"high_thresh": 0.6}
         mock_tuner.study = None
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
-            result = tune_command("bytetrack", gt_dir, det_dir)
+            result = tune_command(TrackerSelection(name="bytetrack"), gt_dir, det_dir)
         assert result == 0
 
     def test_writes_json_output_on_success(self, tmp_path: Path) -> None:
@@ -69,7 +69,7 @@ class TestTune:
         mock_tuner.run.return_value = best
         mock_tuner.study = None
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
-            result = tune_command("bytetrack", gt_dir, det_dir, output=output_path)
+            result = tune_command(TrackerSelection(name="bytetrack"), gt_dir, det_dir, output=output_path)
         assert result == 0
         assert output_path.exists()
         assert json.loads(output_path.read_text()) == best
@@ -86,7 +86,7 @@ class TestTune:
             patch("trackers.tune.Tuner", return_value=mock_tuner),
             patch.object(Path, "write_text", side_effect=OSError("permission denied")),
         ):
-            result = tune_command("bytetrack", gt_dir, det_dir, output=output_path)
+            result = tune_command(TrackerSelection(name="bytetrack"), gt_dir, det_dir, output=output_path)
         assert result == 1
 
     def test_returns_1_on_tuner_run_exception(self, tmp_path: Path) -> None:
@@ -96,7 +96,7 @@ class TestTune:
         mock_tuner = MagicMock()
         mock_tuner.run.side_effect = RuntimeError("optimization failed")
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
-            result = tune_command("bytetrack", gt_dir, det_dir)
+            result = tune_command(TrackerSelection(name="bytetrack"), gt_dir, det_dir)
         assert result == 1
 
 

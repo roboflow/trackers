@@ -93,7 +93,7 @@ pip install trackers
 
 For a narrative walkthrough of `track`, `eval`, `download`, or `tune`, see their own guides linked above. For `inspect`, see the [Inspect the Mask Pipeline guide](inspect.md) for worked examples — the flag tables below cover the full surface of each subcommand.
 
-Every `trackers` subcommand accepts `--config <file>` to load arguments from a YAML file, and hyphens and underscores are interchangeable in flag names (`--cmc-downscale` and `--cmc_downscale` are the same option). Boolean flags gain a negated `--no_<name>` counterpart.
+Every `trackers` subcommand accepts `--config <file>` to load arguments from a YAML file, and hyphens and underscores are interchangeable in flag names (`--cmc-downscale` and `--cmc_downscale` are the same option). Boolean flags gain a negated `--no_<name>` counterpart. A nested option group (e.g. `--tracker.mask.*`) exposes a `.help` sub-command — `--tracker.mask.help` lists that group's fields without printing the rest of `--help`.
 
 ---
 
