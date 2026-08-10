@@ -210,11 +210,14 @@ def _tracker_parameter_union() -> list[tuple[str, ParameterInfo, Any]]:
         info = BaseTracker._lookup_tracker(tracker_id)
         if info is None:
             continue
-        hints = get_type_hints(info.tracker_class.__init__)
+        try:
+            hints = get_type_hints(info.tracker_class.__init__)
+        except Exception:
+            hints = {}
         for name, parameter_info in info.parameters.items():
             if name in _EXCLUDED_TRACKER_PARAMETERS or name in seen:
                 continue
-            seen[name] = (parameter_info, hints[name])
+            seen[name] = (parameter_info, hints.get(name, parameter_info.param_type))
     return [(name, parameter_info, annotation) for name, (parameter_info, annotation) in seen.items()]
 
 
