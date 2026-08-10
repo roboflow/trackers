@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-08",
+  "dateModified": "2026-08-10",
   "datePublished": "2026-08-07"
 }
 </script>
@@ -1923,6 +1923,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#mcbyte-mask-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mcbyte mask settings
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2219,6 +2230,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#mcbyte-mask-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mcbyte mask settings
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2305,7 +2327,7 @@
 </span></code></pre></div>
 <p>Every boolean option is a pair: <code>--show.boxes</code> turns it on, <code>--show.no_boxes</code> turns it off, and <code>--show.boxes false</code> or <code>--show.boxes=false</code> spell the same thing explicitly. The negation sits on the field rather than the group, so it stays readable for any group name — <code>--detection.no_fast</code>, never <code>--no_detection.fast</code>. Repeating both halves is allowed; the last one wins. A <code>--config</code> file keeps one plain boolean key per field, and a command-line flag always overrides it.</p>
 <p>This covers ungrouped options too — <code>--display</code> / <code>--no_display</code>, <code>--no_enqueue_defaults</code> on <code>tune</code>, <code>--no_list_available</code> on <code>download</code>.</p>
-<p>The algorithm and its parameters share one group, mirroring <code>--detection.model</code> and the rest of the detection options. <code>--tracker sort</code> is shorthand for <code>--tracker.name sort</code>; both spellings are supported and neither warns.</p>
+<p>The algorithm and its parameters share one group, mirroring <code>--detection.model</code> and the rest of the detection options. <code>--tracker sort</code> is shorthand for <code>--tracker.name sort</code>; both spellings are supported and neither warns. <code>tune</code> accepts the same two spellings for its own <code>--tracker.name</code> group — <code>tune --tracker sort</code> and <code>tune --tracker.name sort</code> are identical, though <code>tune</code> has no <code>--tracker.&lt;param&gt;</code> group of its own (its per-run overrides are <code>--fixed_params</code> and <code>search_space</code>). This also changes the <code>--config</code> YAML shape for <code>tune</code>: a flat <code>tracker: sort</code> key no longer parses — use <code>tracker: {name: sort}</code>, matching <code>track</code>'s config shape.</p>
 <p>Tracker parameters are the exception: they default to <code>None</code>, meaning "leave the tracker's own default alone", so they take an explicit value and have no negative half. Develop's bare <code>--tracker.enable_cmc</code> flag turned camera motion compensation <strong>off</strong>, since the parameter itself defaults to <code>True</code>, so the bare spelling still maps to <code>--tracker.enable_cmc=false</code> and warns. Prefer <code>--tracker.enable_cmc true</code> or <code>--tracker.enable_cmc false</code>; they say what they do. The same applies to <code>--tracker.instant_first_frame_activation</code>.</p>
 <p>As in develop, specify either a model or a precomputed MOT file, not both.</p>
 <table>
@@ -2467,6 +2489,9 @@
 </tbody>
 </table>
 <p>These short forms are <strong>CLI aliases only</strong>. The Python constructor keywords are unchanged, so <code>ByteTrackTracker(minimum_iou_threshold=0.3)</code> stays correct, and so do <code>tune --fixed_params</code>, each tracker's <code>search_space</code> keys, and the "Valid parameters" list printed on a <code>search_space</code> error. A consequence worth knowing: <code>tune</code> reports the long parameter names, so its output cannot be pasted verbatim into a <code>track</code> command — abbreviate the leading <code>minimum_</code> or <code>maximum_</code> token first.</p>
+<h3 id="mcbyte-mask-settings">mcbyte mask settings</h3>
+<p><code>mcbyte</code>'s mask pipeline configuration (<code>McByteMaskConfig</code> — SAM/Cutie device, checkpoints, Hydra config) is one more exact-name rename: it appears on the command line as <code>--tracker.mask.*</code>, not <code>--tracker.mask_config.*</code>. Unlike the <code>minimum_</code>/<code>maximum_</code> prefixes above, this is not a deprecation alias — <code>mask_config</code> never shipped under its Python name on any CLI release, so there is nothing to warn about and no legacy spelling to migrate from. Run <code>trackers track --tracker.mask.help</code> for the full sub-option list.</p>
+<p>Note this differs from <code>trackers inspect mcbyte</code>, whose own comparison-only <code>--mask.*</code> group is a peer of <code>--sequence.*</code> and <code>--cmc.*</code> rather than nested under a tracker selector — see the <a href="../inspect/">Inspect the Mask Pipeline guide</a>.</p>
 <h2 id="hyphens-and-underscores">Hyphens and underscores</h2>
 <p>Interchangeable in every option name, on every command, without a warning. Only the name is rewritten: each <code>-</code> after the leading <code>--</code> becomes <code>_</code>, and values are left alone, so <code>--detection.model rfdetr-base</code> and <code>--source my-dir/clip.mp4</code> keep their hyphens. This covers dotted paths and negations alike — <code>--show.no-ids</code>, <code>--tracker.min-iou-threshold</code> and <code>--no-display</code> all reach the parser as their underscore spellings. The canonical documentation spelling uses underscores.</p>
 <p>Anything after a bare <code>--</code> is passed through untouched.</p>
@@ -2643,7 +2668,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 8, 2026 20:02:52 UTC">2026-08-08</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 20:32:49 UTC">2026-08-10</span>
   </span>
 
     
