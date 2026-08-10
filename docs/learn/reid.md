@@ -114,7 +114,7 @@ horizon. Sweeping the gap shows how long a track can stay lost before appearance
 stops helping to re-find it.
 
 On MOT17 val, different-ID distances barely move with the gap: the median stays
-near 0.41 and the 5th percentile near 0.27 from a 1-frame gap out to 240 frames.
+near 0.41 and the 10th percentile near 0.31 from a 1-frame gap out to 240 frames.
 Same-ID distances spread steadily, from a median of 0.04 at a 1-frame gap to 0.20
 across the 16 to 30 band and 0.28 beyond 120 frames.
 

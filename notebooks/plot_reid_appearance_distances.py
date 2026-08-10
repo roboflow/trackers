@@ -44,6 +44,9 @@ BINS = np.linspace(0.0, 1.0, 51)
 # (30 frames); the rest probe re-association after longer occlusions.
 GAP_BUCKETS = [(1, 1), (2, 5), (6, 15), (16, 30), (31, 60), (61, 120), (121, 240)]
 N_SWEEP_PER_CLASS = 8000
+# Symmetric band so both classes are read the same way, wide enough to show the
+# tails that decide where the two distributions start to overlap.
+BAND_PERCENTILES = (10, 90)
 
 MOT17_VAL_SEQS = [
     "MOT17-02-FRCNN",
@@ -373,21 +376,29 @@ def plot_gap_sweep(rows: list[dict[str, object]], *, title: str, out_path: Path)
     """
     labels = [r["label"] for r in rows]
     x = np.arange(len(rows))
-    intra_q = np.array([np.percentile(r["intra"], [25, 50, 95]) for r in rows])
-    inter_q = np.array([np.percentile(r["inter"], [5, 50, 75]) for r in rows])
+    lo_pct, hi_pct = BAND_PERCENTILES
+    intra_q = np.array([np.percentile(r["intra"], [lo_pct, 50, hi_pct]) for r in rows])
+    inter_q = np.array([np.percentile(r["inter"], [lo_pct, 50, hi_pct]) for r in rows])
 
     fig, (ax_dist, ax_auc) = plt.subplots(
         2, 1, figsize=(8, 6.5), sharex=True, gridspec_kw={"height_ratios": [2.2, 1.0]}
     )
 
-    ax_dist.fill_between(x, intra_q[:, 0], intra_q[:, 2], color="#3366CC", alpha=0.25, label="same-ID p25-p95")
-    ax_dist.plot(x, intra_q[:, 1], color="#3366CC", marker="o", lw=2, label="same-ID median")
-    ax_dist.fill_between(x, inter_q[:, 0], inter_q[:, 2], color="#DC3912", alpha=0.25, label="diff-ID p5-p75")
-    ax_dist.plot(x, inter_q[:, 1], color="#DC3912", marker="o", lw=2, label="diff-ID median")
-    ax_dist.axhline(0.25, color="#666666", ls=":", lw=1.5, label="θ=0.25 (BoT-SORT default)")
-    ax_dist.axhline(0.20, color="#111111", ls="--", lw=1.5, label="θ=0.20 (Trackers docs)")
-    ax_dist.set(ylabel=r"$d_{app} = 0.5\cdot(1-\cos)$", title=title)
-    ax_dist.legend(loc="lower right", fontsize=8, ncol=2, framealpha=0.92, edgecolor="none")
+    ax_dist.fill_between(x, intra_q[:, 0], intra_q[:, 2], color="#3366CC", alpha=0.22)
+    ax_dist.plot(x, intra_q[:, 1], color="#3366CC", marker="o", lw=2, label="same ID")
+    ax_dist.fill_between(x, inter_q[:, 0], inter_q[:, 2], color="#DC3912", alpha=0.22)
+    ax_dist.plot(x, inter_q[:, 1], color="#DC3912", marker="o", lw=2, label="different ID")
+    ax_dist.axhline(0.20, color="#111111", ls="--", lw=1.5, label="θ = 0.20 (Trackers)")
+    ax_dist.axhline(0.25, color="#666666", ls=":", lw=1.5, label="θ = 0.25 (BoT-SORT)")
+    ax_dist.set(ylabel="appearance distance")
+    ax_dist.set_title(
+        f"line = median, shaded = {lo_pct}th to {hi_pct}th percentile",
+        fontsize=8.5,
+        color="#333333",
+        pad=4,
+    )
+    fig.suptitle(title, y=0.995)
+    ax_dist.legend(loc="lower right", fontsize=9, ncol=2, framealpha=0.92, edgecolor="none")
     ax_dist.grid(True, alpha=0.25)
 
     aucs = [r["auc"] for r in rows]
@@ -403,24 +414,15 @@ def plot_gap_sweep(rows: list[dict[str, object]], *, title: str, out_path: Path)
             color="#111111",
         )
     ax_auc.axhline(0.5, color="#999999", ls=":", lw=1.2)
-    ax_auc.annotate(
-        "0.5 = chance, appearance carries no information",
-        (len(rows) - 1, 0.5),
-        textcoords="offset points",
-        xytext=(0, 5),
-        ha="right",
-        fontsize=7.5,
-        color="#666666",
-    )
     ax_auc.set(
-        xlabel="frame gap between the two crops",
-        ylabel="P(same-ID pair is closer)",
+        xlabel="frames between the two crops",
+        ylabel="separability",
         ylim=(0.42, 1.12),
         xticks=x,
         xticklabels=labels,
     )
     ax_auc.set_title(
-        "Separability (ROC AUC): chance a random same-ID pair scores below a random different-ID pair",
+        "how often a same-ID pair scores below a different-ID pair (1.0 = always, 0.5 = coin flip)",
         fontsize=8.5,
         color="#333333",
         pad=4,
@@ -432,13 +434,14 @@ def plot_gap_sweep(rows: list[dict[str, object]], *, title: str, out_path: Path)
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"Wrote {out_path}")
-    header = f"  {'gap':>8} {'AUC':>6} {'same p50':>9} {'same p95':>9} {'diff p5':>8}"
+    header = f"  {'gap':>8} {'AUC':>6} {'same p50':>9} {f'same p{hi_pct}':>9} {f'diff p{lo_pct}':>9}"
     print(f"{header} {'T<0.20':>7} {'F<0.20':>7} {'T<0.25':>7} {'F<0.25':>7}")
     for r in rows:
         intra, inter = r["intra"], r["inter"]
         print(
-            f"  {r['label']:>8} {r['auc']:6.3f} {np.median(intra):9.3f} {np.percentile(intra, 95):9.3f} "
-            f"{np.percentile(inter, 5):8.3f} {100 * np.mean(intra < 0.20):6.1f}% {100 * np.mean(inter < 0.20):6.1f}% "
+            f"  {r['label']:>8} {r['auc']:6.3f} {np.median(intra):9.3f} {np.percentile(intra, hi_pct):9.3f} "
+            f"{np.percentile(inter, lo_pct):9.3f} {100 * np.mean(intra < 0.20):6.1f}% "
+            f"{100 * np.mean(inter < 0.20):6.1f}% "
             f"{100 * np.mean(intra < 0.25):6.1f}% {100 * np.mean(inter < 0.25):6.1f}%"
         )
 
