@@ -95,7 +95,7 @@ Use MOT format lines:
 <frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,<conf>,<x>,<y>,<z>
 ```
 
-For detections, use `id=-1`. For more details on the format and evaluation workflow, see the [evaluation guide](../benchmarking/evaluate.md).
+For detections, use `id=-1`. For more details on the format and evaluation workflow, see the [evaluation guide](../evaluations/evaluate.md).
 
 ---
 

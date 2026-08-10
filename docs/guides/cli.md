@@ -51,12 +51,12 @@ pip install trackers
     <tr>
       <td><code>trackers eval</code></td>
       <td>Score tracker output against ground truth with CLEAR, HOTA, and Identity metrics.</td>
-      <td><a href="../../benchmarking/evaluate/#cli-reference">Evaluate guide</a></td>
+      <td><a href="../../evaluations/evaluate/#cli-reference">Evaluate guide</a></td>
     </tr>
     <tr>
       <td><code>trackers download</code></td>
       <td>Download MOT benchmark datasets — MOT17 and SportsMOT.</td>
-      <td><a href="../../benchmarking/download/#cli-reference">Download guide</a></td>
+      <td><a href="../../evaluations/download/#cli-reference">Download guide</a></td>
     </tr>
     <tr>
       <td><code>trackers tune</code></td>
@@ -86,7 +86,7 @@ pip install trackers
     <tr>
       <td><code>trackers benchmark mcbyte</code></td>
       <td>Run McByte over complete benchmark test sets and write MOTChallenge-format results.</td>
-      <td><a href="../../benchmarking/benchmark-runner/#cli-reference">Benchmark Runner guide</a></td>
+      <td><a href="../../evaluations/benchmark-runner/#cli-reference">Benchmark Runner guide</a></td>
     </tr>
   </tbody>
 </table>

@@ -8,9 +8,9 @@
 ## Documentation
 
 - [Quickstart](https://trackers.roboflow.com/latest/): Install and run your first tracking pipeline
-- [Tracker Comparison](https://trackers.roboflow.com/latest/benchmarking/results/): HOTA/IDF1/MOTA benchmarks across MOT17, SportsMOT, SoccerNet, DanceTrack
+- [Tracker Comparison](https://trackers.roboflow.com/latest/evaluations/results/): HOTA/IDF1/MOTA benchmarks across MOT17, SportsMOT, SoccerNet, DanceTrack
 - [Track Objects](https://trackers.roboflow.com/latest/guides/track/): CLI and Python API
-- [Evaluate Trackers](https://trackers.roboflow.com/latest/benchmarking/evaluate/): HOTA, IDF1, MOTA metrics guide
+- [Evaluate Trackers](https://trackers.roboflow.com/latest/evaluations/evaluate/): HOTA, IDF1, MOTA metrics guide
 - [Detection Quality Matters](https://trackers.roboflow.com/latest/guides/detection-quality/): How detector quality affects tracking
 - [SORT](https://trackers.roboflow.com/latest/trackers/sort/): Kalman + Hungarian algorithm tracker
 - [ByteTrack](https://trackers.roboflow.com/latest/trackers/bytetrack/): Low-confidence detection association tracker

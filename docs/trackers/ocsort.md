@@ -12,13 +12,13 @@ OC-SORT remains Simple, Online, and Real-Time like ([SORT](sort.md)) but improve
 
 ## How does OC-SORT compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../evaluations/results.md) page.
 
-<!-- BENCH-XREF copy-of: docs/benchmarking/results.md OC-SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in docs/index.md (L13 headline + Algorithms table) and README.md (Algorithms table). No DanceTrack row here by design. Update results.md first, then mirror here. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) OC-SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (L13 headline + Algorithms table) and [README.md](../../README.md) (Algorithms table). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
-|  Dataset  | HOTA | IDF1 | MOTA |
+| Dataset | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
-|   MOT17   | 61.9 | 76.4 | 76.0 |
+| MOT17 | 61.9 | 76.4 | 76.0 |
 | SportsMOT | 71.7 | 71.4 | 95.0 |
 | SoccerNet | 78.4 | 72.6 | 94.1 |
 
@@ -42,14 +42,14 @@ Together, these three mechanisms make OC-SORT effective for group dancing, sport
 
 ## Key Parameters
 
-| Parameter                      | Purpose                                                                                                                     | Tuning guidance                                                                                                                    |
+| Parameter | Purpose | Tuning guidance |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `lost_track_buffer`            | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions.       |
-| `minimum_consecutive_frames`   | Consecutive detections required to confirm a new track.                                                                     | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                              |
-| `minimum_iou_threshold`        | Minimum IoU to accept a track-detection match.                                                                              | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                        |
-| `direction_consistency_weight` | Strength of the OCM direction-consistency penalty in the primary association cost.                                          | 0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.                                       |
-| `high_conf_det_threshold`      | Minimum detection confidence used for association.                                                                          | 0.5-0.7 typical. Lower values include more detections in association; higher values keep association to more confident detections. |
-| `delta_t`                      | Frame lookback used to compute each track's velocity, feeding the OCM direction-consistency term.                           | 1-3 typical. Larger values smooth velocity estimate over more frames.                                                              |
+| `lost_track_buffer` | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions. |
+| `minimum_consecutive_frames` | Consecutive detections required to confirm a new track. | 1 confirms immediately; 2-3 filters out single-frame false positives. |
+| `minimum_iou_threshold` | Minimum IoU to accept a track-detection match. | Lower associates through more displacement between frames. 0.1-0.3 typical. |
+| `direction_consistency_weight` | Strength of the OCM direction-consistency penalty in the primary association cost. | 0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes. |
+| `high_conf_det_threshold` | Minimum detection confidence used for association. | 0.5-0.7 typical. Lower values include more detections in association; higher values keep association to more confident detections. |
+| `delta_t` | Frame lookback used to compute each track's velocity, feeding the OCM direction-consistency term. | 1-3 typical. Larger values smooth velocity estimate over more frames. |
 
 !!! warning "Frame input is ignored by OC-SORT"
 

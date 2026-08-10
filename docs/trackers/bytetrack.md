@@ -12,13 +12,13 @@ ByteTrack builds on the same Kalman filter plus Hungarian algorithm framework as
 
 ## How does ByteTrack compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../evaluations/results.md) page.
 
-<!-- BENCH-XREF copy-of: docs/benchmarking/results.md ByteTrack row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in docs/index.md (L13 headline + Algorithms table) and README.md (Algorithms table). No DanceTrack row here by design. Update results.md first, then mirror here. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) ByteTrack row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (L13 headline + Algorithms table) and [README.md](../../README.md) (Algorithms table). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
-|  Dataset  | HOTA | IDF1 | MOTA |
+| Dataset | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
-|   MOT17   | 60.1 | 73.2 | 74.1 |
+| MOT17 | 60.1 | 73.2 | 74.1 |
 | SportsMOT | 73.0 | 72.5 | 96.4 |
 | SoccerNet | 84.0 | 78.1 | 97.8 |
 
@@ -42,13 +42,13 @@ ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as 
 
 ## Key Parameters
 
-| Parameter                    | Purpose                                                                                                                                                                                             | Tuning guidance                                                                                                              |
+| Parameter | Purpose | Tuning guidance |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `lost_track_buffer`          | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`).                                                                         | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions. |
-| `track_activation_threshold` | Minimum confidence for an unmatched high-confidence detection to spawn a new track. Detections that clear `high_conf_det_threshold` but not this threshold are still returned with `tracker_id=-1`. | Higher reduces spurious tracks; lower catches weak detections. 0.5-0.9 typical.                                              |
-| `minimum_consecutive_frames` | Consecutive detections required to confirm a new track.                                                                                                                                             | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                        |
-| `minimum_iou_threshold`      | Minimum IoU to accept a track-detection match.                                                                                                                                                      | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                  |
-| `high_conf_det_threshold`    | Confidence threshold separating stage-1 from stage-2 detections.                                                                                                                                    | 0.5-0.7 typical. Lower sends more detections to stage 1; higher relies more on stage-2 recovery.                             |
+| `lost_track_buffer` | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions. |
+| `track_activation_threshold` | Minimum confidence for an unmatched high-confidence detection to spawn a new track. Detections that clear `high_conf_det_threshold` but not this threshold are still returned with `tracker_id=-1`. | Higher reduces spurious tracks; lower catches weak detections. 0.5-0.9 typical. |
+| `minimum_consecutive_frames` | Consecutive detections required to confirm a new track. | 1 confirms immediately; 2-3 filters out single-frame false positives. |
+| `minimum_iou_threshold` | Minimum IoU to accept a track-detection match. | Lower associates through more displacement between frames. 0.1-0.3 typical. |
+| `high_conf_det_threshold` | Confidence threshold separating stage-1 from stage-2 detections. | 0.5-0.7 typical. Lower sends more detections to stage 1; higher relies more on stage-2 recovery. |
 
 !!! warning "Frame input is ignored by ByteTrack"
 
