@@ -743,7 +743,7 @@ class TestBooleanOptionSyntax:
         [
             pytest.param(
                 tune_command,
-                ["--no_enqueue_defaults", "--tracker", "sort", "--gt_dir", "gt", "--detections_dir", "det"],
+                ["--no_enqueue_defaults", "--tracker.name", "sort", "--gt_dir", "gt", "--detections_dir", "det"],
                 "enqueue_defaults",
                 id="tune",
             ),
@@ -853,6 +853,60 @@ class TestTrackerChoices:
         assert parsed.tracker.name == DEFAULT_TRACKER
 
 
+class TestGeneratedTrackerOptions:
+    """``TrackerOptions`` is generated from the registry — verify what that buys."""
+
+    def test_mask_config_nests_under_tracker_mask(self) -> None:
+        """``mask_config`` is the one exact-name rename, spelled ``mask``."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+        options = {option for action in parser._actions for option in action.option_strings}
+
+        assert "--tracker.mask" in options
+        assert "--tracker.mask.help" in options
+        assert "--tracker.mask_config" not in options
+
+    def test_nested_mask_field_parses_and_instantiates(self) -> None:
+        """A ``--tracker.mask.*`` sub-option reaches a real ``McByteMaskConfig``."""
+        from trackers.core.mcbyte.tracker import McByteMaskConfig
+
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        parsed = parser.instantiate_classes(
+            parser.parse_args(["--tracker.name", "mcbyte", "--tracker.mask.cutie_mem_every", "7"])
+        )
+
+        assert isinstance(parsed.tracker.mask, McByteMaskConfig)
+        assert parsed.tracker.mask.cutie_mem_every == 7
+
+    def test_class_path_parameter_resolves_to_the_class(self) -> None:
+        """``state_estimator_class`` takes a dotted class path, not a string."""
+        from trackers.utils.state_representations import XCYCWHStateEstimator
+
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        parsed = parser.instantiate_classes(
+            parser.parse_args(
+                [
+                    "--tracker.state_estimator_class",
+                    "trackers.utils.state_representations.XCYCWHStateEstimator",
+                ]
+            )
+        )
+
+        assert parsed.tracker.state_estimator_class is XCYCWHStateEstimator
+
+    def test_literal_parameter_rejects_an_unknown_choice(self) -> None:
+        """``cmc_method``'s ``Literal`` annotation becomes CLI-enforced choices."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(track_command)
+
+        with pytest.raises(ArgumentError):
+            parser.parse_args(["--tracker.cmc_method", "not_a_real_method"])
+
+
 class TestTrackerShorthand:
     """``--tracker <id>`` stays the short spelling of ``--tracker.name <id>``."""
 
@@ -888,6 +942,38 @@ class TestTrackerShorthand:
         parser = _CLIParser(exit_on_error=False)
         parser.add_function_arguments(track_command)
         args = _translate_legacy_args(["track", "--tracker", "ocsort"])
+
+        parsed = parser.instantiate_classes(parser.parse_args(args[1:]))
+
+        assert parsed.tracker.name == "ocsort"
+
+
+class TestTuneTrackerShorthand:
+    """``tune`` accepts the same two tracker spellings as ``track``."""
+
+    def test_shorthand_expands_to_the_name_field(self) -> None:
+        """``--tracker <id>`` expands to ``--tracker.name <id>`` for tune too."""
+        assert _translate_legacy_args(["tune", "--tracker", "sort"]) == ["tune", "--tracker.name", "sort"]
+
+    def test_shorthand_does_not_warn(self) -> None:
+        """``--tracker`` is a supported spelling, not a deprecated one."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", FutureWarning)
+            assert _translate_legacy_args(["tune", "--tracker", "sort"]) == ["tune", "--tracker.name", "sort"]
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            pytest.param(["--tracker", "ocsort"], id="shorthand"),
+            pytest.param(["--tracker.name", "ocsort"], id="explicit"),
+        ],
+    )
+    def test_both_spellings_parse_into_tracker_selection(self, arguments: list[str]) -> None:
+        """Shorthand and explicit spellings both populate the tracker selector."""
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_function_arguments(tune_command)
+        required = ["--gt_dir", "gt", "--detections_dir", "det"]
+        args = _translate_legacy_args(["tune", *arguments, *required])
 
         parsed = parser.instantiate_classes(parser.parse_args(args[1:]))
 

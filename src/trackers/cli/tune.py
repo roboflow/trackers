@@ -11,11 +11,31 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 
+@dataclass
+class TrackerSelection:
+    """Tracking algorithm selection for ``tune``.
+
+    A minimal, one-field counterpart to
+    :class:`trackers.cli.track.TrackerOptions` — tune has no per-parameter CLI
+    surface (that is what ``fixed_params`` and ``search_space`` are for), so
+    only the algorithm selector needs a nested group.
+
+    Attributes:
+        name: Tracker ID to tune (e.g. ``bytetrack``, ``sort``, ``ocsort``).
+            Discoverable via ``BaseTracker._registered_trackers()``.
+            ``--tracker <id>`` is the shorthand spelling of
+            ``--tracker.name <id>``, matching ``trackers track``.
+    """
+
+    name: str
+
+
 def tune_command(
-    tracker: str,
+    tracker: TrackerSelection,
     gt_dir: Path,
     detections_dir: Path,
     objective: str = "HOTA",
@@ -32,7 +52,7 @@ def tune_command(
     """Tune tracker hyperparameters using Optuna.
 
     Args:
-        tracker: Tracker ID to tune (e.g. ``bytetrack``, ``sort``, ``ocsort``).
+        tracker: Tracking algorithm selection.
         gt_dir: Directory of ground-truth MOT files.
         detections_dir: Directory of pre-computed detection files in MOT flat
             format (one ``{seq}.txt`` per sequence).
@@ -63,7 +83,7 @@ def tune_command(
 
     try:
         tuner = Tuner(
-            tracker_id=tracker,
+            tracker_id=tracker.name,
             gt_dir=gt_dir,
             detections_dir=detections_dir,
             metrics=metrics,
@@ -86,7 +106,7 @@ def tune_command(
         print(f"Error during tuning: {e}", file=sys.stderr)
         return 1
 
-    print(f"\nBest parameters for {tracker}:")
+    print(f"\nBest parameters for {tracker.name}:")
     for name, value in best_params.items():
         print(f"  {name}: {value}")
     if tuner.study is not None:

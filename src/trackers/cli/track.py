@@ -12,9 +12,9 @@ from __future__ import annotations
 import sys
 import warnings
 from contextlib import nullcontext, suppress
-from dataclasses import asdict, dataclass, fields
+from dataclasses import dataclass, fields, make_dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, get_type_hints
 
 import numpy as np
 import supervision as sv
@@ -22,7 +22,7 @@ import supervision as sv
 from trackers import frames_from_source
 from trackers.cli._annotate import COLOR_PALETTE as _COLOR_PALETTE
 from trackers.cli._progress import _classify_source, _SourceInfo, _TrackingProgress
-from trackers.core.base import BaseTracker
+from trackers.core.base import BaseTracker, ParameterInfo
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
@@ -120,65 +120,20 @@ class ShowOptions:
     trajectories: bool = False
 
 
-@dataclass
-class TrackerOptions:
-    """Optional tracker-specific parameters.
-
-    Union of parameters across all registered trackers; each tracker only
-    receives the keys it knows about. Fields left as ``None`` are dropped
-    before instantiation so the tracker's own defaults apply.
-
-    CLI names abbreviate the standard leading token only — ``minimum_`` becomes
-    ``min_`` and ``maximum_`` becomes ``max_``. Domain words such as
-    ``threshold`` stay spelled out. The Python keyword names are unchanged;
-    :func:`_init_tracker` maps the short CLI name back to the long keyword.
-
-    Attributes:
-        name: Tracking algorithm ID. Discoverable via
-            ``BaseTracker._registered_trackers()``. ``--tracker <id>`` is the
-            shorthand spelling of ``--tracker.name <id>``.
-        lost_track_buffer: Frames to keep a lost track before discarding.
-        frame_rate: Source frame rate for time-based logic.
-        track_activation_threshold: Detection score needed to spawn a track.
-        min_consecutive_frames: Consecutive matches to confirm a track.
-        min_iou_threshold: IoU threshold for SORT/OC-SORT association.
-        min_iou_threshold_first_assoc: BoT-SORT first-stage IoU.
-        min_iou_threshold_second_assoc: BoT-SORT second-stage IoU.
-        min_iou_threshold_unconfirmed_assoc: BoT-SORT unconfirmed IoU.
-        high_conf_det_threshold: High-confidence detection threshold.
-        direction_consistency_weight: OC-SORT direction consistency weight.
-        delta_t: OC-SORT velocity delta horizon.
-        enable_cmc: BoT-SORT camera motion compensation toggle.
-        cmc_method: BoT-SORT CMC method name.
-        cmc_downscale: BoT-SORT CMC downscale factor.
-        instant_first_frame_activation: BoT-SORT first-frame activation toggle.
-        iou_variant: IoU similarity metric for data association. One of
-            ``iou`` (standard), ``giou``, ``diou``, ``ciou``, ``biou``.
-            Applies to all trackers. Defaults to ``iou``.
-    """
-
-    name: str = DEFAULT_TRACKER
-    lost_track_buffer: int | None = None
-    frame_rate: float | None = None
-    track_activation_threshold: float | None = None
-    min_consecutive_frames: int | None = None
-    min_iou_threshold: float | None = None
-    min_iou_threshold_first_assoc: float | None = None
-    min_iou_threshold_second_assoc: float | None = None
-    min_iou_threshold_unconfirmed_assoc: float | None = None
-    high_conf_det_threshold: float | None = None
-    direction_consistency_weight: float | None = None
-    delta_t: int | None = None
-    enable_cmc: bool | None = None
-    cmc_method: str | None = None
-    cmc_downscale: int | None = None
-    instant_first_frame_activation: bool | None = None
-    iou_variant: str | None = None
-
-
 # Standard leading tokens abbreviated on the CLI, mapping long Python prefix to
 # short CLI prefix. Domain words (``threshold``, ``consecutive``) stay in full.
 _CLI_PARAMETER_ABBREVIATIONS = {"minimum_": "min_", "maximum_": "max_"}
+
+# Exact-name CLI renames, checked before the prefix rule above. ``mask_config``
+# never shipped under its Python name on any CLI release, so unlike the
+# prefixes it carries no deprecation alias — see `_abbreviated_tracker_parameters`.
+_CLI_PARAMETER_RENAMES = {"mask_config": "mask"}
+_CLI_PARAMETER_RENAMES_REVERSED = {short: long for long, short in _CLI_PARAMETER_RENAMES.items()}
+
+# Tracker registry parameters that never reach the CLI. ``mask_manager`` takes
+# a live ``MaskManager`` instance, not a value a command line can express;
+# ``enable_mask_manager`` is its CLI-facing switch.
+_EXCLUDED_TRACKER_PARAMETERS = frozenset({"mask_manager"})
 
 
 def _abbreviate_parameter_name(name: str) -> str:
@@ -188,14 +143,19 @@ def _abbreviate_parameter_name(name: str) -> str:
         name: Python keyword name (e.g. ``minimum_iou_threshold``).
 
     Returns:
-        Abbreviated CLI name, or ``name`` unchanged when no prefix applies.
+        Renamed or abbreviated CLI name, or ``name`` unchanged when neither
+        rule applies.
 
     Examples:
         >>> _abbreviate_parameter_name("minimum_iou_threshold")
         'min_iou_threshold'
+        >>> _abbreviate_parameter_name("mask_config")
+        'mask'
         >>> _abbreviate_parameter_name("lost_track_buffer")
         'lost_track_buffer'
     """
+    if name in _CLI_PARAMETER_RENAMES:
+        return _CLI_PARAMETER_RENAMES[name]
     for long_prefix, short_prefix in _CLI_PARAMETER_ABBREVIATIONS.items():
         if name.startswith(long_prefix):
             return f"{short_prefix}{name.removeprefix(long_prefix)}"
@@ -208,28 +168,137 @@ def _expand_parameter_name(name: str) -> str:
     Inverse of :func:`_abbreviate_parameter_name`.
 
     Args:
-        name: Abbreviated CLI name (e.g. ``min_iou_threshold``).
+        name: Abbreviated or renamed CLI name (e.g. ``min_iou_threshold``).
 
     Returns:
-        Python keyword name, or ``name`` unchanged when no prefix applies.
+        Python keyword name, or ``name`` unchanged when neither rule applies.
 
     Examples:
         >>> _expand_parameter_name("min_iou_threshold")
         'minimum_iou_threshold'
+        >>> _expand_parameter_name("mask")
+        'mask_config'
         >>> _expand_parameter_name("lost_track_buffer")
         'lost_track_buffer'
     """
+    if name in _CLI_PARAMETER_RENAMES_REVERSED:
+        return _CLI_PARAMETER_RENAMES_REVERSED[name]
     for long_prefix, short_prefix in _CLI_PARAMETER_ABBREVIATIONS.items():
         if name.startswith(short_prefix):
             return f"{long_prefix}{name.removeprefix(short_prefix)}"
     return name
 
 
+def _tracker_parameter_union() -> list[tuple[str, ParameterInfo, Any]]:
+    """Collect every CLI-eligible parameter across the tracker registry.
+
+    Trackers are visited in :func:`BaseTracker._registered_trackers` order,
+    each tracker's own parameters in ``__init__`` order. The first tracker to
+    define a given name provides its description and annotation, so a
+    parameter shared by several trackers (e.g. ``lost_track_buffer``) is not
+    duplicated.
+
+    Returns:
+        ``(python_name, parameter_info, annotation)`` triples. The annotation
+        comes from :func:`typing.get_type_hints` rather than
+        ``parameter_info.param_type``, which is normalized for argparse and
+        would collapse ``type[BaseStateEstimator]`` to ``abc.ABCMeta`` and a
+        ``Literal`` to ``str``.
+    """
+    seen: dict[str, tuple[ParameterInfo, Any]] = {}
+    for tracker_id in BaseTracker._registered_trackers():
+        info = BaseTracker._lookup_tracker(tracker_id)
+        if info is None:
+            continue
+        hints = get_type_hints(info.tracker_class.__init__)
+        for name, parameter_info in info.parameters.items():
+            if name in _EXCLUDED_TRACKER_PARAMETERS or name in seen:
+                continue
+            seen[name] = (parameter_info, hints[name])
+    return [(name, parameter_info, annotation) for name, (parameter_info, annotation) in seen.items()]
+
+
+def _build_tracker_options() -> type:
+    """Generate the ``TrackerOptions`` dataclass from the tracker registry.
+
+    Union of parameters across all registered trackers; each tracker only
+    receives the keys it knows about (:func:`_init_tracker` drops the rest).
+    Every field defaults to ``None`` so an unset option leaves the tracker's
+    own default alone. CLI names abbreviate the standard leading token only —
+    ``minimum_`` becomes ``min_`` and ``maximum_`` becomes ``max_`` — plus the
+    one exact-name rename, ``mask_config`` to ``mask``; the Python keyword
+    names are unchanged, and :func:`_init_tracker` maps a short CLI name back
+    to its long keyword.
+
+    Generating this from the registry means a newly registered tracker
+    parameter is reachable from the CLI without a manual edit here.
+
+    Returns:
+        A dataclass equivalent to a hand-written ``@dataclass class
+        TrackerOptions``, with a per-field ``Attributes:`` docstring section
+        jsonargparse reads for ``--help`` text.
+    """
+    field_specs: list[tuple[str, Any, Any]] = [("name", str, DEFAULT_TRACKER)]
+    doc_lines = [
+        "Optional tracker-specific parameters.",
+        "",
+        "Union of parameters across all registered trackers; each tracker only",
+        "receives the keys it knows about. Fields left as ``None`` are dropped",
+        "before instantiation so the tracker's own defaults apply. Generated",
+        "from the tracker registry, so a newly registered tracker parameter is",
+        "reachable from the CLI without a manual edit here.",
+        "",
+        "CLI names abbreviate the standard leading token only — ``minimum_``",
+        "becomes ``min_`` and ``maximum_`` becomes ``max_`` — plus one",
+        "exact-name rename, ``mask_config`` to ``mask``. The Python keyword",
+        "names are unchanged; :func:`_init_tracker` maps the short CLI name",
+        "back to the long keyword.",
+        "",
+        "Attributes:",
+        "    name: Tracking algorithm ID. Discoverable via",
+        "        ``BaseTracker._registered_trackers()``. ``--tracker <id>`` is the",
+        "        shorthand spelling of ``--tracker.name <id>``.",
+    ]
+    for python_name, parameter_info, annotation in _tracker_parameter_union():
+        cli_name = _abbreviate_parameter_name(python_name)
+        # ``annotation | None`` rather than ``typing.Optional[annotation]``: a
+        # generic alias such as ``type[BaseStateEstimator]`` supports ``|``
+        # directly, and an annotation already optional (``McByteMaskConfig |
+        # None``) collapses back to itself instead of double-wrapping.
+        field_specs.append((cli_name, annotation | None, None))
+        doc_lines.append(f"    {cli_name}: {parameter_info.description}")
+    field_specs.append(("iou_variant", str | None, None))
+    doc_lines.append(
+        "    iou_variant: IoU similarity metric for data association. One of "
+        "``iou`` (standard), ``giou``, ``diou``, ``ciou``, ``biou``. Applies "
+        "to all trackers. Defaults to ``iou``."
+    )
+
+    cls = make_dataclass("TrackerOptions", field_specs)
+    cls.__module__ = __name__
+    cls.__doc__ = "\n".join(doc_lines)
+    return cls
+
+
+# Not guarded by ``if TYPE_CHECKING`` — jsonargparse's own parameter resolver
+# walks this module's source for ``track_command`` and treats a
+# ``TYPE_CHECKING`` branch as taken the same way a type checker does, which
+# would make it resolve ``tracker`` as ``Any`` and silently stop validating or
+# instantiating ``--config`` values for that group. A single unconditional
+# assignment keeps that resolution correct; the `# type: ignore[valid-type]`
+# comments where ``TrackerOptions`` is used as an annotation cover the mypy
+# cost instead (see :func:`_build_tracker_options`).
+TrackerOptions = _build_tracker_options()
+
+
 def _abbreviated_tracker_parameters() -> dict[str, str]:
     """Map every abbreviated :class:`TrackerOptions` field to its former CLI name.
 
     Derived from the dataclass fields so the deprecation aliases in the CLI
-    entry point cannot drift from the option definitions.
+    entry point cannot drift from the option definitions. The exact-name
+    ``mask`` rename is excluded: ``mask_config`` never shipped under its
+    Python name on any CLI release, so warning that it is deprecated would be
+    a lie.
 
     Returns:
         Mapping of long (deprecated) name to short (current) name.
@@ -240,6 +309,8 @@ def _abbreviated_tracker_parameters() -> dict[str, str]:
     """
     renamed = {}
     for field in fields(TrackerOptions):
+        if field.name in _CLI_PARAMETER_RENAMES_REVERSED:
+            continue
         expanded = _expand_parameter_name(field.name)
         if expanded != field.name:
             renamed[expanded] = field.name
@@ -250,7 +321,7 @@ def track_command(
     source: str | None = None,
     detection: DetectionOptions | None = None,
     filters: FilterOptions | None = None,
-    tracker: TrackerOptions | None = None,
+    tracker: TrackerOptions | None = None,  # type: ignore[valid-type]
     output: OutputOptions | None = None,
     display: bool = False,
     show: ShowOptions | None = None,
@@ -560,18 +631,84 @@ def _run_model(model: AnyModel, frame: np.ndarray, confidence: float) -> sv.Dete
     return dets
 
 
-def _init_tracker(params: TrackerOptions | None) -> BaseTracker:
+def _tracker_options_as_dict(params: TrackerOptions | None) -> dict[str, Any]:  # type: ignore[valid-type]
+    """Return ``params`` as a shallow field-name-to-value mapping.
+
+    Deliberately not :func:`dataclasses.asdict`: that recurses into nested
+    dataclass fields such as ``mask``, handing the tracker a plain ``dict``
+    instead of the ``McByteMaskConfig`` instance it expects.
+
+    Args:
+        params: Tracker selection and parameter overrides, or ``None``.
+
+    Returns:
+        One entry per field, values unconverted.
+    """
+    if params is None:
+        return {}
+    return {f.name: getattr(params, f.name) for f in fields(params)}
+
+
+def _resolve_tracker_kwargs(raw: dict[str, Any], accepted: set[str]) -> tuple[dict[str, Any], list[str]]:
+    """Split parsed CLI overrides into tracker kwargs and unsupported names.
+
+    Abbreviated CLI names are resolved back to their tracker ``__init__``
+    keyword before the membership check, so ``min_iou_threshold`` reaches the
+    tracker as ``minimum_iou_threshold`` and ``mask`` as ``mask_config``.
+    Without that step a renamed CLI option would silently fail the membership
+    test and leave the tracker on its own default.
+
+    Args:
+        raw: Parsed ``TrackerOptions`` fields, ``name`` and ``iou_variant``
+            already removed.
+        accepted: Parameter names the selected tracker's ``__init__`` accepts.
+
+    Returns:
+        ``(kwargs, dropped)`` — forwarded keyword arguments, and the CLI names
+        of overrides the selected tracker does not accept.
+    """
+    kwargs: dict[str, Any] = {}
+    dropped: list[str] = []
+    for name, value in raw.items():
+        if value is None:
+            continue
+        keyword = name if name in accepted else _expand_parameter_name(name)
+        if keyword in accepted:
+            kwargs[keyword] = value
+        else:
+            dropped.append(name)
+    return kwargs, dropped
+
+
+def _warn_dropped_tracker_overrides(tracker_id: str, dropped: list[str]) -> None:
+    """Warn once per CLI override the selected tracker silently ignored.
+
+    Every :class:`TrackerOptions` field defaults to ``None``, so a non-``None``
+    value absent from the tracker's accepted parameters means the user set an
+    option this tracker does not support — most consequently the mcbyte
+    mask settings, where a dropped override reads as "masks enabled" while the
+    tracker silently ran without them.
+
+    Args:
+        tracker_id: Selected tracker's registry ID.
+        dropped: CLI names of overrides the tracker does not accept.
+    """
+    for name in dropped:
+        warnings.warn(
+            f"Tracker '{tracker_id}' does not support --tracker.{name}; it will be ignored.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+
+def _init_tracker(params: TrackerOptions | None) -> BaseTracker:  # type: ignore[valid-type]
     """Create a tracker instance from the registry.
 
     ``params.name`` selects the algorithm; every other field is a parameter
     override. Only fields the chosen tracker accepts are forwarded; ``None``
-    values are always dropped so the tracker's own defaults apply.
-
-    Abbreviated CLI names are resolved back to their tracker ``__init__``
-    keyword before the forwarding check, so ``min_iou_threshold`` reaches the
-    tracker as ``minimum_iou_threshold``. Without that step a renamed CLI
-    option would silently fail the membership test and leave the tracker on its
-    own default. ``iou_variant`` is the same kind of alias for ``iou``.
+    values are always dropped so the tracker's own defaults apply. A non-
+    ``None`` value the chosen tracker does not accept is dropped with a
+    warning rather than silently, via :func:`_warn_dropped_tracker_overrides`.
 
     Args:
         params: Tracker selection and parameter overrides.
@@ -582,7 +719,7 @@ def _init_tracker(params: TrackerOptions | None) -> BaseTracker:
     Raises:
         ValueError: If ``params.name`` is not registered.
     """
-    raw = asdict(params) if params is not None else {}
+    raw = _tracker_options_as_dict(params)
     tracker_id = raw.pop("name", DEFAULT_TRACKER)
     info = BaseTracker._lookup_tracker(tracker_id)
     if info is None:
@@ -591,13 +728,8 @@ def _init_tracker(params: TrackerOptions | None) -> BaseTracker:
 
     iou_variant = raw.pop("iou_variant", None)
     accepted = set(info.parameters)
-    kwargs = {}
-    for name, value in raw.items():
-        if value is None:
-            continue
-        keyword = name if name in accepted else _expand_parameter_name(name)
-        if keyword in accepted:
-            kwargs[keyword] = value
+    kwargs, dropped = _resolve_tracker_kwargs(raw, accepted)
+    _warn_dropped_tracker_overrides(tracker_id, dropped)
     if iou_variant is not None:
         if "iou" in accepted:
             kwargs["iou"] = variant_from_name(iou_variant)

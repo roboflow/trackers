@@ -29,7 +29,7 @@ Every boolean option is a pair: `--show.boxes` turns it on, `--show.no_boxes` tu
 
 This covers ungrouped options too — `--display` / `--no_display`, `--no_enqueue_defaults` on `tune`, `--no_list_available` on `download`.
 
-The algorithm and its parameters share one group, mirroring `--detection.model` and the rest of the detection options. `--tracker sort` is shorthand for `--tracker.name sort`; both spellings are supported and neither warns.
+The algorithm and its parameters share one group, mirroring `--detection.model` and the rest of the detection options. `--tracker sort` is shorthand for `--tracker.name sort`; both spellings are supported and neither warns. `tune` accepts the same two spellings for its own `--tracker.name` group — `tune --tracker sort` and `tune --tracker.name sort` are identical, though `tune` has no `--tracker.<param>` group of its own (its per-run overrides are `--fixed_params` and `search_space`). This also changes the `--config` YAML shape for `tune`: a flat `tracker: sort` key no longer parses — use `tracker: {name: sort}`, matching `track`'s config shape.
 
 Tracker parameters are the exception: they default to `None`, meaning "leave the tracker's own default alone", so they take an explicit value and have no negative half. Develop's bare `--tracker.enable_cmc` flag turned camera motion compensation **off**, since the parameter itself defaults to `True`, so the bare spelling still maps to `--tracker.enable_cmc=false` and warns. Prefer `--tracker.enable_cmc true` or `--tracker.enable_cmc false`; they say what they do. The same applies to `--tracker.instant_first_frame_activation`.
 
@@ -84,6 +84,12 @@ Tracker parameter names abbreviate their standard leading token on the command l
 | `--tracker.iou`                                     | `--tracker.iou_variant`                         |
 
 These short forms are **CLI aliases only**. The Python constructor keywords are unchanged, so `ByteTrackTracker(minimum_iou_threshold=0.3)` stays correct, and so do `tune --fixed_params`, each tracker's `search_space` keys, and the "Valid parameters" list printed on a `search_space` error. A consequence worth knowing: `tune` reports the long parameter names, so its output cannot be pasted verbatim into a `track` command — abbreviate the leading `minimum_` or `maximum_` token first.
+
+### mcbyte mask settings
+
+`mcbyte`'s mask pipeline configuration (`McByteMaskConfig` — SAM/Cutie device, checkpoints, Hydra config) is one more exact-name rename: it appears on the command line as `--tracker.mask.*`, not `--tracker.mask_config.*`. Unlike the `minimum_`/`maximum_` prefixes above, this is not a deprecation alias — `mask_config` never shipped under its Python name on any CLI release, so there is nothing to warn about and no legacy spelling to migrate from. Run `trackers track --tracker.mask.help` for the full sub-option list.
+
+Note this differs from `trackers inspect mcbyte`, whose own comparison-only `--mask.*` group is a peer of `--sequence.*` and `--cmc.*` rather than nested under a tracker selector — see the [Inspect the Mask Pipeline guide](inspect.md).
 
 ## Hyphens and underscores
 

@@ -330,7 +330,7 @@ See the [Dynamic Frame Rate guide](dynamic-frame-rate.md) for when to enable it,
 
 ## CLI Reference
 
-All arguments accepted by the `trackers track` command.
+The commonly used arguments accepted by the `trackers track` command. `--tracker.*` is generated from the tracker registry, so it also carries parameters specific to one algorithm (`cbiou`'s buffer ratios, `botsort`/`mcbyte`'s camera motion compensation, `mcbyte`'s mask pipeline) that this table does not enumerate. Run `trackers track --help` for the complete, always-current set, and `trackers track --tracker.mask.help` for the mcbyte mask sub-options.
 
 <table>
   <colgroup>
@@ -420,6 +420,26 @@ All arguments accepted by the `trackers track` command.
       <td><code>--tracker.iou_variant</code></td>
       <td>IoU similarity metric for data association. Options: <code>iou</code>, <code>giou</code>, <code>diou</code>, <code>ciou</code>, <code>biou</code>. Applies to all trackers.</td>
       <td><code>iou</code></td>
+    </tr>
+    <tr>
+      <td><code>--tracker.enable_cmc</code></td>
+      <td>Camera motion compensation toggle. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td><code>true</code></td>
+    </tr>
+    <tr>
+      <td><code>--tracker.state_estimator_class</code></td>
+      <td>State estimator used by newly created tracks, given as a dotted class path (e.g. <code>trackers.utils.state_representations.XCYCWHStateEstimator</code>).</td>
+      <td><code>XCYCWHStateEstimator</code></td>
+    </tr>
+    <tr>
+      <td><code>--tracker.enable_mask_manager</code></td>
+      <td>Enable McByte's SAM + Cutie mask pipeline. <code>mcbyte</code> only; see <code>--tracker.mask.*</code> below.</td>
+      <td><code>false</code></td>
+    </tr>
+    <tr>
+      <td><code>--tracker.mask.*</code></td>
+      <td>Backend settings for the mcbyte mask pipeline — SAM/Cutie device and checkpoints. Run <code>trackers track --tracker.mask.help</code> for the full sub-option list.</td>
+      <td>—</td>
     </tr>
     <tr>
       <td><code>--display</code></td>

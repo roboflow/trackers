@@ -30,7 +30,7 @@ from trackers.cli._parser import (
     _raise_for_detection_source_conflict,
     _target_for_option,
 )
-from trackers.cli.track import TrackerOptions, _abbreviated_tracker_parameters
+from trackers.cli.track import TrackerOptions, _abbreviate_parameter_name, _abbreviated_tracker_parameters
 from trackers.core.base import BaseTracker
 
 # Release that introduced this batch of CLI deprecations, and the one that drops
@@ -104,6 +104,13 @@ def _develop_store_false_tracker_flags() -> frozenset[str]:
     Booleans defaulting to ``False`` are excluded: develop's ``store_true`` flag
     and an explicit ``true`` already agree, so no rewrite is owed.
 
+    The membership test and the emitted flag both use the CLI spelling
+    (:func:`_abbreviate_parameter_name`), not the raw registry name: a
+    boolean parameter behind an abbreviated or renamed CLI field (none
+    today, but nothing guarantees that stays true) would otherwise fail the
+    ``option_fields`` check under its unabbreviated name and never end up in
+    the returned set.
+
     Returns:
         Option strings whose bare form must be rewritten to an explicit ``false``.
     """
@@ -114,8 +121,9 @@ def _develop_store_false_tracker_flags() -> frozenset[str]:
         if tracker_info is None:
             continue
         for parameter_name, parameter in tracker_info.parameters.items():
-            if parameter.param_type is bool and parameter.default_value and parameter_name in option_fields:
-                flags.add(f"--tracker.{parameter_name}")
+            cli_name = _abbreviate_parameter_name(parameter_name)
+            if parameter.param_type is bool and parameter.default_value and cli_name in option_fields:
+                flags.add(f"--tracker.{cli_name}")
     return frozenset(flags)
 
 
@@ -214,8 +222,12 @@ def _translate_legacy_args(args: list[str]) -> list[str]:
 
     subcommand = args[subcommand_index]
     command_args = args[subcommand_index + 1 :]
-    if subcommand == "track":
+    if subcommand in ("track", "tune"):
+        # Both subcommands expose a ``--tracker.name`` group, so both accept
+        # the ``--tracker <id>`` shorthand. ``tune`` has no tracker-parameter
+        # booleans, so only ``track`` needs the develop bare-flag rewrite.
         command_args = _expand_tracker_shorthand(command_args)
+    if subcommand == "track":
         command_args = _translate_develop_boolean_flags(command_args)
     command_args = _translate_legacy_list_args(subcommand, command_args)
     legacy_arguments = _LEGACY_ARGUMENTS[subcommand]
