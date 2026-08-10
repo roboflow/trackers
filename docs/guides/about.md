@@ -20,12 +20,12 @@ A full list of contributors is available on the [GitHub contributors page](https
 
 Roboflow Trackers is distributed as the [`trackers` package on PyPI](https://pypi.org/project/trackers/). The source code is hosted on [GitHub](https://github.com/roboflow/trackers) under the Apache 2.0 license.
 
-| Detail         | Value                                                                        |
-| :------------- | :--------------------------------------------------------------------------- |
-| **PyPI**       | [`trackers`](https://pypi.org/project/trackers/)                             |
-| **Repository** | [roboflow/trackers](https://github.com/roboflow/trackers)                    |
-| **License**    | [Apache License 2.0](https://github.com/roboflow/trackers/blob/main/LICENSE) |
-| **Python**     | 3.10+                                                                        |
+| Detail         | Value                                                                           |
+| :------------- | :------------------------------------------------------------------------------ |
+| **PyPI**       | [`trackers`](https://pypi.org/project/trackers/)                                |
+| **Repository** | [roboflow/trackers](https://github.com/roboflow/trackers)                       |
+| **License**    | [Apache License 2.0](https://github.com/roboflow/trackers/blob/develop/LICENSE) |
+| **Python**     | 3.10+                                                                           |
 
 ## Support
 
@@ -45,11 +45,11 @@ Contributions are welcome. To get started:
 4. Run `pre-commit run --all-files` to check formatting, linting, and type checks.
 5. Open a pull request against the `develop` branch.
 
-See the repository's [contributing guidelines](https://github.com/roboflow/trackers/blob/main/CONTRIBUTING.md) for full details on code style, commit conventions, and the review process.
+See the [contributing guidelines](../contributing.md) for full details on code style, commit conventions, and the review process.
 
 ## License
 
-Roboflow Trackers is released under the [Apache License 2.0](https://github.com/roboflow/trackers/blob/main/LICENSE). You are free to use, modify, and distribute the library in both commercial and non-commercial projects, subject to the terms of the license.
+Roboflow Trackers is released under the [Apache License 2.0](https://github.com/roboflow/trackers/blob/develop/LICENSE). You are free to use, modify, and distribute the library in both commercial and non-commercial projects, subject to the terms of the license.
 
 ## Citing Roboflow Trackers
 

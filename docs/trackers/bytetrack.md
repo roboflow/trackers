@@ -58,7 +58,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 
 === "CLI"
 
-    Run ByteTrack on a video without writing any Python. See the [CLI reference](../learn/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
+    Run ByteTrack on a video without writing any Python. See the [CLI reference](../guides/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
 
     ```bash
     trackers track \

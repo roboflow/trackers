@@ -13,7 +13,7 @@ This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, 
 
 !!! note "Benchmark methodology"
 
-    Results measured using YOLOX detections (MOT17, SportsMOT, DanceTrack) or oracle ground-truth boxes (SoccerNet) with default and grid-searched parameters. Performance varies across detectors — see [Detection Quality Matters](../learn/detection-quality.md) for the impact of detector quality on tracking metrics.
+    Results measured using YOLOX detections (MOT17, SportsMOT, DanceTrack) or oracle ground-truth boxes (SoccerNet) with default and grid-searched parameters. Performance varies across detectors — see [Detection Quality Matters](../guides/detection-quality.md) for the impact of detector quality on tracking metrics.
 
 ## [MOT17](https://arxiv.org/abs/1603.00831)
 

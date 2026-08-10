@@ -146,7 +146,7 @@ The examples below run McByte in its lightweight, mask-free configuration (clear
 
 === "CLI"
 
-    Run McByte on a video without writing any Python. See the [CLI reference](../learn/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
+    Run McByte on a video without writing any Python. See the [CLI reference](../guides/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
 
     ```bash
     trackers track \
@@ -233,7 +233,7 @@ To run McByte over a complete benchmark test set (MOT17, DanceTrack, SportsMOT, 
 trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
 ```
 
-See the [McByte Benchmarks guide](../learn/mcbyte-benchmark.md) for how to supply dataset paths and read the CLI reference.
+See the [McByte Benchmarks guide](../guides/mcbyte-benchmark.md) for how to supply dataset paths and read the CLI reference.
 
 ## Reference
 

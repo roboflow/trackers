@@ -4,7 +4,7 @@ site_author: Roboflow
 site_description: A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.
 repo_name: roboflow/trackers
 repo_url: https://github.com/roboflow/trackers
-edit_uri: https://github.com/roboflow/trackers/tree/main/docs
+edit_uri: https://github.com/roboflow/trackers/tree/develop/docs
 copyright: >
   Roboflow 2026. All rights reserved. |
   <a href="https://roboflow.com/privacy">Privacy Policy</a> |
@@ -84,7 +84,9 @@ markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
   # Allows including content from other files
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      # Fails the build on a broken/typo'd include path instead of rendering a warning comment
+      check_paths: true
   # Enables nested code blocks and custom fences
   - pymdownx.superfences
   # Adds support for callouts/notes/warnings
@@ -98,6 +100,22 @@ markdown_extensions:
 
 plugins:
   - search
+  - redirects:
+      redirect_maps:
+        learn/install.md: guides/install.md
+        learn/track.md: guides/track.md
+        learn/cli.md: guides/cli.md
+        learn/cli-migration.md: guides/migration_cli.md
+        learn/dynamic-frame-rate.md: guides/dynamic-frame-rate.md
+        learn/download.md: guides/download.md
+        learn/evaluate.md: guides/evaluate.md
+        learn/tune.md: guides/tune.md
+        learn/mcbyte-benchmark.md: guides/mcbyte-benchmark.md
+        learn/inspect.md: guides/inspect.md
+        learn/detection-quality.md: guides/detection-quality.md
+        learn/state-estimators.md: guides/state-estimators.md
+        learn/iou.md: guides/iou.md
+        learn/about.md: guides/about.md
   - git-revision-date-localized:
       enable_creation_date: true
       type: iso_date
@@ -126,20 +144,19 @@ nav:
   - Home:
     - Quickstart: index.md
   - Guides:
-    - Install Trackers: learn/install.md
-    - Track Objects: learn/track.md
-    - CLI Reference: learn/cli.md
-    - CLI Migration Guide: learn/cli-migration.md
-    - Dynamic Frame Rate: learn/dynamic-frame-rate.md
-    - Download Datasets: learn/download.md
-    - Evaluate Trackers: learn/evaluate.md
-    - Tune Trackers: learn/tune.md
-    - McByte Benchmarks: learn/mcbyte-benchmark.md
-    - Inspect Mask Pipeline: learn/inspect.md
-    - Detection Quality Matters: learn/detection-quality.md
-    - State Estimators: learn/state-estimators.md
-    - IoU Variants: learn/iou.md
-    - About: learn/about.md
+    - Install Trackers: guides/install.md
+    - Track Objects: guides/track.md
+    - CLI Reference: guides/cli.md
+    - Dynamic Frame Rate: guides/dynamic-frame-rate.md
+    - Download Datasets: guides/download.md
+    - Evaluate Trackers: guides/evaluate.md
+    - Tune Trackers: guides/tune.md
+    - McByte Benchmarks: guides/mcbyte-benchmark.md
+    - Inspect Mask Pipeline: guides/inspect.md
+    - Detection Quality Matters: guides/detection-quality.md
+    - State Estimators: guides/state-estimators.md
+    - IoU Variants: guides/iou.md
+    - About: guides/about.md
   - Trackers:
     - Comparison: trackers/comparison.md
     - SORT: trackers/sort.md
@@ -155,3 +172,9 @@ nav:
     - Datasets: api/datasets.md
     - Evals: api/evals.md
     - I/O: api/io.md
+    - "Migration: CLI": guides/migration_cli.md
+    - Changelog: changelog.md
+  - Community:
+    - Contributing: contributing.md
+    - Code of Conduct: code-of-conduct.md
+    - Governance: governance.md

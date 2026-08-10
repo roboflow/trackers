@@ -27,7 +27,7 @@ Get started by installing the package.
 pip install trackers
 ```
 
-For more options, see the [install guide](learn/install.md).
+For more options, see the [install guide](guides/install.md).
 
 ---
 
@@ -49,7 +49,7 @@ trackers track \
     --show.trajectories
 ```
 
-For all CLI options, see the [tracking guide](learn/track.md).
+For all CLI options, see the [tracking guide](guides/track.md).
 
 ---
 
@@ -77,7 +77,7 @@ while cap.isOpened():
     tracked = tracker.update(detections)
 ```
 
-For more examples, see the [tracking guide](learn/track.md).
+For more examples, see the [tracking guide](guides/track.md).
 
 ---
 
@@ -107,7 +107,7 @@ MOT17-13-FRCNN                60.488  58.651  69.884
 COMBINED                      47.406  50.355  56.600
 ```
 
-For the full evaluation workflow, see the [evaluation guide](learn/evaluate.md).
+For the full evaluation workflow, see the [evaluation guide](guides/evaluate.md).
 
 ---
 
@@ -143,7 +143,7 @@ trackers download --name mot17 \
 |   `mot17`   |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
 | `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
 
-For more download options, see the [download guide](learn/download.md).
+For more download options, see the [download guide](guides/download.md).
 
 ---
 
@@ -191,7 +191,7 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     Optimize tracker settings with Optuna to maximize HOTA, MOTA, or IDF1 on your dataset.
 
-    [:material-tune-variant: Read Tuning Guide](learn/tune.md)
+    [:material-tune-variant: Read Tuning Guide](guides/tune.md)
 
 </div>
 
@@ -213,8 +213,8 @@ No. Roboflow Trackers works with any detector that outputs `supervision.Detectio
 
 **What MOT datasets does the library support?**
 
-MOT17 and SportsMOT are supported for download and evaluation. Use `trackers download <dataset>` to pull frames, annotations, and pre-computed detections in one command. DanceTrack and SoccerNet-tracking support is coming soon. See the [download guide](learn/download.md) for asset options.
+MOT17 and SportsMOT are supported for download and evaluation. Use `trackers download <dataset>` to pull frames, annotations, and pre-computed detections in one command. DanceTrack and SoccerNet-tracking support is coming soon. See the [download guide](guides/download.md) for asset options.
 
 **How do I evaluate my tracker?**
 
-Run `trackers eval` against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table. See the [evaluation guide](learn/evaluate.md) for the full workflow.
+Run `trackers eval` against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table. See the [evaluation guide](guides/evaluate.md) for the full workflow.
