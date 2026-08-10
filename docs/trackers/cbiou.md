@@ -61,7 +61,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 
 === "CLI"
 
-    Run C-BIoU on a video without writing any Python. See the [CLI reference](../learn/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
+    Run C-BIoU on a video without writing any Python. See the [CLI reference](../guides/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
 
     ```bash
     trackers track \
@@ -196,7 +196,7 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
     cv2.destroyAllWindows()
     ```
 
-For BIoU mathematics and using `BIoU(buffer_ratio=...)` on other trackers, see [IoU variants](../learn/iou.md#biou). To tune hyperparameters with Optuna, see [Hyperparameter tuning](../learn/tune.md).
+For BIoU mathematics and using `BIoU(buffer_ratio=...)` on other trackers, see [IoU variants](../guides/iou.md#biou). To tune hyperparameters with Optuna, see [Hyperparameter tuning](../guides/tune.md).
 
 ## Reference
 
