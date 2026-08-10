@@ -3,31 +3,22 @@ title: McByte Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Tra
 description: Run McByte over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark mcbyte command.
 ---
 
-# McByte Benchmarks
+# McByte Benchmark Runner
 
-Run McByte over a complete benchmark test set — MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking — and write one MOTChallenge-format result file per sequence.
+Run McByte over a complete benchmark test set — MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking — and write one MOTChallenge-format result file per sequence, step by step.
 
 **What you'll learn:**
 
+- Get detection/frame data in place, downloaded or self-supplied
 - Point the command at your detection and frame directories
 - Select one or more datasets to run
 - Read the output layout, including the MOT17 submission files
 
----
-
-## Install
-
-Get started by installing the package.
-
-```text
-pip install trackers
-```
-
-`trackers benchmark mcbyte` always builds McByte's full SAM + Cutie mask pipeline (`enable_mask_manager=True`), so — unlike the default `McByteTracker()` construction described on the [McByte page](../trackers/mcbyte.md) — both SAM and Cutie must be installed before running this command. See the [optional heavyweight dependencies note](../trackers/mcbyte.md#overview) for install steps. For more general install options, see the [install guide](install.md).
+`trackers benchmark mcbyte` always builds McByte's full SAM + Cutie mask pipeline (`enable_mask_manager=True`), so — unlike the default `McByteTracker()` construction described on the [McByte page](../trackers/mcbyte.md) — both SAM and Cutie must be installed before running this command. See the [optional heavyweight dependencies note](../trackers/mcbyte.md#overview) for install steps.
 
 ---
 
-## Supported Datasets
+## Step 1 — Get Your Data
 
 | Dataset      | Detection format | Layout note                                                 |
 | ------------ | ---------------- | ----------------------------------------------------------- |
@@ -36,11 +27,13 @@ pip install trackers
 | `sportsmot`  | `xyxy`           | —                                                           |
 | `soccernet`  | `mot`            | Detection filenames follow the SoccerNet naming convention. |
 
+`mot17` and `sportsmot` can be fetched directly with `trackers download` — see [Download Datasets](download.md). `dancetrack` and `soccernet` aren't downloadable via that command yet; supply your own `detection_root`/`image_root` directories for those two, pointed at in Step 2.
+
 Each sequence is processed independently with a fresh McByte tracker. If a sequence fails, the error is logged and the run continues with the remaining sequences.
 
 ---
 
-## Configure Dataset Roots
+## Step 2 — Configure Dataset Roots
 
 Every dataset needs a `detection_root` (one detection file per sequence) and an `image_root` (one frame directory per sequence). Neither has a built-in value — supply both per run, either through a `--config` file or inline as JSON with `--dataset_roots`.
 
@@ -69,28 +62,6 @@ Every dataset needs a `detection_root` (one detection file per sequence) and an 
     trackers benchmark mcbyte --config run.yaml
     ```
 
----
-
-## Select Datasets
-
-Pass `--dataset` as a list to choose which datasets to run. Omit it to run every dataset in the table above.
-
-```text
-trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
-```
-
-A bare repeated `--dataset` overwrites the previous value — use `--dataset+` to append instead:
-
-```text
-trackers benchmark mcbyte --dataset+ mot17 --dataset+ soccernet
-```
-
-As with every `trackers` subcommand, hyphens and underscores are interchangeable (`--cmc-downscale` and `--cmc_downscale` are the same option), and every boolean flag has a `--no_` negation, e.g. `--no_enable_cmc`.
-
----
-
-## Expected Directory Layout
-
 `detection_root` holds one detection `.txt` file per sequence:
 
 ```text
@@ -113,7 +84,25 @@ MOT17, DanceTrack and SportsMOT detections use `frame,x1,y1,x2,y2,confidence` (X
 
 ---
 
-## Output
+## Step 3 — Select Datasets
+
+Pass `--dataset` as a list to choose which datasets to run. Omit it to run every dataset from Step 1's table.
+
+```text
+trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
+```
+
+A bare repeated `--dataset` overwrites the previous value — use `--dataset+` to append instead:
+
+```text
+trackers benchmark mcbyte --dataset+ mot17 --dataset+ soccernet
+```
+
+As with every `trackers` subcommand, hyphens and underscores are interchangeable (`--cmc-downscale` and `--cmc_downscale` are the same option), and every boolean flag has a `--no_` negation, e.g. `--no_enable_cmc`.
+
+---
+
+## Step 4 — Run and Read the Output
 
 Results are written under `--output_root`, in one timestamped directory per run (`<timestamp>__isolation` or `<timestamp>__no_isolation`, reflecting `--enable_isolated_mask_matching`), with one subdirectory per dataset and a `run.log` capturing progress and failures.
 
@@ -137,6 +126,8 @@ Each sequence result is first written to a `.partial` file and only replaces the
 ### MOT17 submission files
 
 The MOT17 evaluation server expects one result file per detector name (`FRCNN`, `SDP`, `DPM`). Since McByte is detector-agnostic, `trackers benchmark mcbyte` duplicates each completed sequence's result across all three suffixes under `mot17/submission/`. The remaining MOT17 sequence numbers this run produces no result for are written as empty placeholder files for all three suffixes, so the submission directory always contains the complete set of names.
+
+`trackers benchmark mcbyte` writes raw per-sequence result files, not aggregate scores — it doesn't compute HOTA/IDF1/MOTA itself. Score the output with `trackers eval` (see [Evaluate Trackers](evaluate.md)); published McByte numbers already appear on the [Results](results.md) page.
 
 ---
 

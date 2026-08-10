@@ -86,7 +86,7 @@ pip install trackers
     <tr>
       <td><code>trackers benchmark mcbyte</code></td>
       <td>Run McByte over complete benchmark test sets and write MOTChallenge-format results.</td>
-      <td><a href="mcbyte-benchmark.md#cli-reference">McByte Benchmarks guide</a></td>
+      <td><a href="mcbyte-benchmark-runner.md#cli-reference">McByte Benchmark Runner guide</a></td>
     </tr>
   </tbody>
 </table>

@@ -256,7 +256,7 @@ Left: IoU. Right: BIoU. Notice how ID switches happen when fast players temporar
 
 We evaluate how much each variant changes performance across datasets. For each `(dataset, tracker)` pair, we keep the `state_estimator` with the highest **IoU HOTA** on the evaluation split, then report mean `ΔHOTA = HOTA(variant) − HOTA(IoU)` over trackers (same split; thresholds tuned per experiment).
 
-For more information on the datasets, see: [dataset comparison](../trackers/comparison.md).
+For more information on the datasets, see: [dataset comparison](../benchmarking/results.md).
 
 <style>
   .iou-variant-figure {

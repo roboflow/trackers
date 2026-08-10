@@ -28,7 +28,7 @@ Get started by installing the package.
 pip install trackers
 ```
 
-For more options, see the [install guide](install.md).
+For more options, see the [install guide](../guides/install.md).
 
 ---
 
@@ -40,7 +40,7 @@ Download ground-truth annotations and detections for MOT17 validation — see th
 
 ## Run Tracking
 
-Feed the pre-computed detections into a tracker and write the results to a file for evaluation. Pass `--detection.mot_file` to provide precomputed MOT detector output and `--output.mot_results` to save the tracker output in MOT format — see the [track guide](track.md) for more on `trackers track`.
+Feed the pre-computed detections into a tracker and write the results to a file for evaluation. Pass `--detection.mot_file` to provide precomputed MOT detector output and `--output.mot_results` to save the tracker output in MOT format — see the [track guide](../guides/track.md) for more on `trackers track`.
 
 ```text
 trackers track \

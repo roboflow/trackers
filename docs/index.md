@@ -107,7 +107,7 @@ MOT17-13-FRCNN                60.488  58.651  69.884
 COMBINED                      47.406  50.355  56.600
 ```
 
-For the full evaluation workflow, see the [evaluation guide](guides/evaluate.md).
+For the full evaluation workflow, see the [evaluation guide](benchmarking/evaluate.md).
 
 ---
 
@@ -122,7 +122,7 @@ Clean, modular implementations of leading trackers. All HOTA scores use default 
 |  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |      54.1       |
 | [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                   Camera motion compensation                    |  **63.7**  |    **73.8**    |    **84.5**    |    **57.8**     |
 
-For detailed benchmarks and tuned configurations, see the [tracker comparison](trackers/comparison.md).
+For detailed benchmarks and tuned configurations, see the [tracker comparison](benchmarking/results.md).
 
 Trackers also ships [McByte](trackers/mcbyte.md), a mask-conditioned tracker that extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an extra matching cue. It requires optional heavyweight dependencies (`torch`, SAM, Cutie) not installed by default — see the [McByte docs](trackers/mcbyte.md) for setup and benchmark numbers.
 
@@ -143,7 +143,7 @@ trackers download --name mot17 \
 |   `mot17`   |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
 | `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
 
-For more download options, see the [download guide](guides/download.md).
+For more download options, see the [download guide](benchmarking/download.md).
 
 ---
 
@@ -205,7 +205,7 @@ Object detection finds and classifies objects in a single image frame. Multi-obj
 
 **Which tracker should I use?**
 
-Start with ByteTrack — out of the box, it performs best across two out of four benchmarks in our evaluation and handles variable-confidence detectors well, while providing real time latency. Use SORT if speed or device constraints require the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow non-linear paths. See the [tracker comparison](trackers/comparison.md) for benchmark scores.
+Start with ByteTrack — out of the box, it performs best across two out of four benchmarks in our evaluation and handles variable-confidence detectors well, while providing real time latency. Use SORT if speed or device constraints require the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow non-linear paths. See the [tracker comparison](benchmarking/results.md) for benchmark scores.
 
 **Do I need a specific detector?**
 
@@ -213,8 +213,8 @@ No. Roboflow Trackers works with any detector that outputs `supervision.Detectio
 
 **What MOT datasets does the library support?**
 
-MOT17 and SportsMOT are supported for download and evaluation. Use `trackers download <dataset>` to pull frames, annotations, and pre-computed detections in one command. DanceTrack and SoccerNet-tracking support is coming soon. See the [download guide](guides/download.md) for asset options.
+MOT17 and SportsMOT are supported for download and evaluation. Use `trackers download <dataset>` to pull frames, annotations, and pre-computed detections in one command. DanceTrack and SoccerNet-tracking support is coming soon. See the [download guide](benchmarking/download.md) for asset options.
 
 **How do I evaluate my tracker?**
 
-Run `trackers eval` against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table. See the [evaluation guide](guides/evaluate.md) for the full workflow.
+Run `trackers eval` against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table. See the [evaluation guide](benchmarking/evaluate.md) for the full workflow.

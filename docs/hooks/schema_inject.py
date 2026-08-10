@@ -306,7 +306,7 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
         )
 
     # ── Dataset JSON-LD (comparison page only) ──
-    if page.file.src_path == "trackers/comparison.md":
+    if page.file.src_path == "benchmarking/results.md":
         datasets = []
         for ds in _BENCHMARK_DATASETS:
             datasets.append(

@@ -11,7 +11,7 @@ BoT-SORT extends [ByteTrack](bytetrack.md) with camera motion compensation (CMC)
 
 ## How does BoT-SORT compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |

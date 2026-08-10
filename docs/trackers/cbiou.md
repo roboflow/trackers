@@ -12,7 +12,7 @@ C-BIoU builds on the same tracking pipeline as [ByteTrack](bytetrack.md) but rep
 
 ## How does C-BIoU compare to other trackers?
 
-For comparisons with other trackers, plus default and tuned parameters, see the [tracker comparison](comparison.md) page.
+For comparisons with other trackers, plus default and tuned parameters, see the [tracker comparison](../benchmarking/results.md) page.
 
 |  Dataset   | HOTA | IDF1 | MOTA |
 | :--------: | :--: | :--: | :--: |

@@ -6,7 +6,7 @@ description: Learn about Roboflow Trackers — who built it, how to cite it, whe
 
 ## What is Roboflow Trackers?
 
-Roboflow Trackers is an open-source Python library that provides clean-room implementations of leading multi-object tracking (MOT) algorithms: [SORT](../trackers/sort.md), [ByteTrack](../trackers/bytetrack.md), [OC-SORT](../trackers/ocsort.md), and [BoT-SORT](../trackers/botsort.md). The library is designed to plug into any object detection model through the [supervision](https://github.com/roboflow/supervision) library, giving you a single `tracker.update(detections)` call to add tracking to an existing detection pipeline.
+Roboflow Trackers is an open-source Python library that provides clean-room implementations of leading multi-object tracking (MOT) algorithms: [SORT](trackers/sort.md), [ByteTrack](trackers/bytetrack.md), [OC-SORT](trackers/ocsort.md), and [BoT-SORT](trackers/botsort.md). The library is designed to plug into any object detection model through the [supervision](https://github.com/roboflow/supervision) library, giving you a single `tracker.update(detections)` call to add tracking to an existing detection pipeline.
 
 Every algorithm is implemented from scratch following the original papers, with a shared interface and consistent parameter naming. The library ships with built-in evaluation tools for HOTA, IDF1, and MOTA metrics, a CLI for running trackers on video files, and dataset download utilities for standard MOT benchmarks.
 
@@ -33,7 +33,7 @@ If you run into a bug, have a feature request, or need help with integration:
 
 - **GitHub Issues** — open an issue on the [trackers repository](https://github.com/roboflow/trackers/issues) for bug reports and feature requests.
 - **Discord** — join the [Roboflow Discord server](https://discord.gg/GbfgXGJ8Bk) for real-time help and community discussion.
-- **Documentation** — browse the [Guides](install.md) and [API Reference](../api/trackers.md) sections of this site.
+- **Documentation** — browse the [Guides](guides/install.md) and [API Reference](api/trackers.md) sections of this site.
 
 ## Contributing
 
@@ -45,7 +45,7 @@ Contributions are welcome. To get started:
 4. Run `pre-commit run --all-files` to check formatting, linting, and type checks.
 5. Open a pull request against the `develop` branch.
 
-See the [contributing guidelines](../contributing.md) for full details on code style, commit conventions, and the review process.
+See the [contributing guidelines](contributing.md) for full details on code style, commit conventions, and the review process.
 
 ## License
 
@@ -65,7 +65,7 @@ If you use Roboflow Trackers in academic work or publications, please cite the l
 }
 ```
 
-For citations of specific tracking algorithms, see the Reference section on each tracker page: [SORT](../trackers/sort.md#reference), [ByteTrack](../trackers/bytetrack.md#reference), [OC-SORT](../trackers/ocsort.md#reference).
+For citations of specific tracking algorithms, see the Reference section on each tracker page: [SORT](trackers/sort.md#reference), [ByteTrack](trackers/bytetrack.md#reference), [OC-SORT](trackers/ocsort.md#reference).
 
 ## Learn More About Roboflow
 
