@@ -95,7 +95,7 @@ Use MOT format lines:
 <frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,<conf>,<x>,<y>,<z>
 ```
 
-For detections, use `id=-1`. For more details on the format and evaluation workflow, see the [evaluation guide](../benchmarking/evaluate.md).
+For detections, use `id=-1`. For more details on the format and evaluation workflow, see the [evaluation guide](../evaluations/evaluate.md).
 
 ---
 
@@ -241,6 +241,16 @@ All arguments accepted by `trackers tune`.
       <td><code>--fixed_params</code></td>
       <td>Tracker constructor kwargs held constant across every trial (JSON object). Applied on top of, and taking priority over, any overlapping <code>search_space</code> key; also merged into the returned best-parameter dict.</td>
       <td>None</td>
+    </tr>
+    <tr>
+      <td><code>--images_dir</code></td>
+      <td>MOT-style image root for frame-based features such as CMC. Frames are read from <code>{images_dir}/{sequence}/img1/</code>.</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td><code>--enqueue_defaults</code></td>
+      <td>Evaluate the tracker's default parameters as the first trial before Optuna sampling begins. Negate with <code>--no_enqueue_defaults</code>.</td>
+      <td><code>true</code></td>
     </tr>
     <tr>
       <td><code>--metrics</code></td>

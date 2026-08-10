@@ -107,22 +107,27 @@ plugins:
         learn/cli.md: guides/cli.md
         learn/cli-migration.md: guides/migration_cli.md
         learn/dynamic-frame-rate.md: guides/dynamic-frame-rate.md
-        learn/download.md: benchmarking/download.md
-        learn/evaluate.md: benchmarking/evaluate.md
+        learn/download.md: evaluations/download.md
+        learn/evaluate.md: evaluations/evaluate.md
         learn/tune.md: guides/tune.md
-        learn/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
+        learn/mcbyte-benchmark.md: evaluations/benchmark-runner.md
         learn/inspect.md: guides/inspect.md
         learn/detection-quality.md: guides/detection-quality.md
         learn/state-estimators.md: guides/state-estimators.md
         learn/iou.md: guides/iou.md
         learn/about.md: details.md
-        guides/download.md: benchmarking/download.md
-        guides/evaluate.md: benchmarking/evaluate.md
-        guides/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
-        benchmarking/mcbyte-benchmark.md: benchmarking/benchmark-runner.md
-        benchmarking/mcbyte-benchmark-runner.md: benchmarking/benchmark-runner.md
+        guides/download.md: evaluations/download.md
+        guides/evaluate.md: evaluations/evaluate.md
+        guides/mcbyte-benchmark.md: evaluations/benchmark-runner.md
+        benchmarking/mcbyte-benchmark.md: evaluations/benchmark-runner.md
+        benchmarking/mcbyte-benchmark-runner.md: evaluations/benchmark-runner.md
         guides/about.md: details.md
-        trackers/comparison.md: benchmarking/results.md
+        trackers/comparison.md: evaluations/results.md
+        benchmarking/download.md: evaluations/download.md
+        benchmarking/evaluate.md: evaluations/evaluate.md
+        benchmarking/benchmark-runner.md: evaluations/benchmark-runner.md
+        benchmarking/results.md: evaluations/results.md
+        benchmarking/methodology.md: evaluations/methodology.md
   - git-revision-date-localized:
       enable_creation_date: true
       type: iso_date
@@ -164,11 +169,11 @@ nav:
   - Developer:
     - Inspect Mask Pipeline: guides/inspect.md
   - Evaluations:
-    - Download Datasets: benchmarking/download.md
-    - Benchmark Trackers: benchmarking/evaluate.md
-    - Benchmark Runner: benchmarking/benchmark-runner.md
-    - Results: benchmarking/results.md
-    - Methodology: benchmarking/methodology.md
+    - Download Datasets: evaluations/download.md
+    - Benchmark Trackers: evaluations/evaluate.md
+    - Benchmark Runner: evaluations/benchmark-runner.md
+    - Results: evaluations/results.md
+    - Methodology: evaluations/methodology.md
   - Trackers:
     - SORT: trackers/sort.md
     - ByteTrack: trackers/bytetrack.md

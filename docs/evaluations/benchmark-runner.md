@@ -129,7 +129,7 @@ Each sequence result is first written to a `.partial` file and only replaces the
 
 ### MOT17 submission files
 
-The MOT17 evaluation server expects one result file per detector name (`FRCNN`, `SDP`, `DPM`). Since the tracker is detector-agnostic, `trackers benchmark mcbyte` duplicates each completed sequence's result across all three suffixes under `mot17/submission/`. The remaining MOT17 sequence numbers this run produces no result for are written as empty placeholder files for all three suffixes, so the submission directory always contains the complete set of names.
+The MOT17 evaluation server expects one result file per detector name (`FRCNN`, `SDP`, `DPM`). Since the tracker is detector-agnostic, `trackers benchmark mcbyte` duplicates each completed sequence's result across all three suffixes under `mot17/submission/`. Seven MOT17 test-sequence numbers (`02`, `04`, `05`, `09`, `10`, `11`, `13`) have no detection file in this benchmark's layout and are never attempted — for these, all three suffixes always get an empty placeholder file. The other seven (`01`, `03`, `06`, `07`, `08`, `12`, `14`) are attempted; if one of them fails, its raw result is missing and no placeholder is written for it — that sequence's submission files are simply absent, and a warning is logged instead.
 
 `trackers benchmark mcbyte` writes raw per-sequence result files, not aggregate scores — it doesn't compute HOTA/IDF1/MOTA itself. Score the output with `trackers eval` (see [Evaluate Trackers](evaluate.md)); published McByte numbers already appear on the [Results](results.md) page.
 

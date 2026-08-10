@@ -18,9 +18,11 @@ McByte was originally developed by [Tomasz Stańczyk](https://www.linkedin.com/i
 
 ## How does McByte compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../evaluations/results.md) page.
 
 The per-dataset results below compare McByte (mask-conditioned association enabled) against BoT-SORT without re-identification — the baseline association pipeline McByte builds on — using default parameters for both trackers, with no dataset-specific tuning.
+
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) — BoT-SORT rows are copies of the BoT-SORT row in each of mot17/sportsmot/soccernet/dancetrack-default tables (also mirrored in [botsort.md](botsort.md) + [docs/index.md](../index.md)/[README.md](../../README.md) Algorithms tables). McByte rows are copies of the McByte row in the same 4 tables (also feeds docs/index.md FAQ "leads every benchmark" claim). Update results.md first, then mirror all 4 tabs below. -->
 
 === "MOT17"
 
@@ -106,7 +108,7 @@ Mask evidence is applied only to genuinely uncertain pairs — those that are *a
 | `minimum_consecutive_frames`              | `2`               | Consecutive matches required before confirming a new track.                                                                              | 1 for immediate activation; 2-3 improves robustness against flicker and false positives.                                                                                                                                                        |
 | `instant_first_frame_activation`          | `True`            | Whether tracklets created on the very first frame receive confirmed IDs immediately, bypassing `minimum_consecutive_frames`.             | Keep `True` to emit IDs from frame 1; set `False` to require the normal confirmation streak even at sequence start.                                                                                                                             |
 | `minimum_iou_threshold_first_assoc`       | `0.1`             | Minimum association similarity for the first pass (high-confidence detections vs. confirmed and lost tracks).                            | Intentionally lower than in BoT-SORT: it only rejects clearly implausible pairs, leaving a broader candidate set for mask-conditioned association to resolve.                                                                                   |
-| `minimum_iou_threshold_second_assoc`      | `0.5`             | Minimum association similarity for the second pass (low-confidence detections vs. remaining tracked tracks).                             | Usually set lower than the first-pass threshold to recover weak detections without over-matching.                                                                                                                                               |
+| `minimum_iou_threshold_second_assoc`      | `0.5`             | Minimum association similarity for the second pass (low-confidence detections vs. remaining tracked tracks).                             | Typically set higher than the first-pass threshold: this pass has no confidence fusion, so a stricter geometric threshold guards against over-matching low-confidence detections.                                                               |
 | `minimum_iou_threshold_unconfirmed_assoc` | `0.3`             | Minimum association similarity when associating unconfirmed tracks.                                                                      | Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.                                                                                                                       |
 | `high_conf_det_threshold`                 | `0.6`             | Confidence split between stage-1 and stage-2 detections.                                                                                 | 0.5-0.7 common. Higher shifts more detections to the recovery stage; lower gives stage-1 broader coverage.                                                                                                                                      |
 | `enable_cmc`                              | `True`            | Enables camera motion compensation before association.                                                                                   | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                                  |
@@ -233,7 +235,7 @@ To run McByte over a complete benchmark test set (MOT17, DanceTrack, SportsMOT, 
 trackers benchmark mcbyte --dataset=[mot17,soccernet] --device=cuda
 ```
 
-See the [Benchmark Runner guide](../benchmarking/benchmark-runner.md) for how to supply dataset paths and read the CLI reference.
+See the [Benchmark Runner guide](../evaluations/benchmark-runner.md) for how to supply dataset paths and read the CLI reference.
 
 ## Reference
 

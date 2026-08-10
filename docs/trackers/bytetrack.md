@@ -12,7 +12,9 @@ ByteTrack builds on the same Kalman filter plus Hungarian algorithm framework as
 
 ## How does ByteTrack compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../evaluations/results.md) page.
+
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) ByteTrack row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (L13 headline + Algorithms table), [README.md](../../README.md) (Algorithms table), and [.github/copilot-instructions.md](../../.github/copilot-instructions.md) (Benchmark Results table, including DanceTrack). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
@@ -30,7 +32,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as [SORT](sort.md) but changes how detections are associated to tracks. Instead of discarding low-confidence detections, ByteTrack uses a two-stage matching strategy that recovers valid objects the detector scored low due to occlusion, blur, or partial visibility.
 
-**Stage 1 -- high-confidence matching.** Detections with confidence above `high_conf_det_threshold` are matched to confirmed tracks using IoU-based Hungarian assignment, identical to SORT. Unmatched tracks and unmatched high-confidence detections pass to the next stage.
+**Stage 1 -- high-confidence matching.** Detections with confidence above `high_conf_det_threshold` are matched to all existing tracks (confirmed and unconfirmed alike) using IoU-based Hungarian assignment, identical to SORT. Unmatched tracks and unmatched high-confidence detections pass to the next stage.
 
 **Stage 2 -- low-confidence matching.** Detections with confidence below `high_conf_det_threshold` are matched to the remaining unmatched tracks using IoU. This second pass associates weak detections to already-established tracks, recovering objects that would otherwise be lost. Unmatched high-confidence detections whose confidence falls below `track_activation_threshold` are returned with `tracker_id` of `-1` and never start new tracks.
 

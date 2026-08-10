@@ -12,11 +12,13 @@ OC-SORT remains Simple, Online, and Real-Time like ([SORT](sort.md)) but improve
 
 ## How does OC-SORT compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../benchmarking/results.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../evaluations/results.md) page.
+
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) OC-SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (L13 headline + Algorithms table), [README.md](../../README.md) (Algorithms table), and [.github/copilot-instructions.md](../../.github/copilot-instructions.md) (Benchmark Results table, including DanceTrack). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
-|   MOT17   | 61.9 | 76.1 | 76.7 |
+|   MOT17   | 61.9 | 76.4 | 76.0 |
 | SportsMOT | 71.7 | 71.4 | 95.0 |
 | SoccerNet | 78.4 | 72.6 | 94.1 |
 
@@ -30,11 +32,11 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 OC-SORT extends [SORT](sort.md) with three observation-centric mechanisms that address the linear motion assumption's failures during occlusion and non-linear trajectories. It retains the same Kalman filter and Hungarian algorithm backbone but adds corrections that use stored observations rather than relying solely on the filter's predicted state.
 
-**OCM (Observation-Centric Momentum).** When a track reappears after being unmatched for several frames, the Kalman filter's velocity estimate may have drifted because it continued predicting without corrections. OCM re-computes the velocity using the time gap (`delta_t`) between the last matched observation and the current detection, then feeds this corrected velocity back into the filter. This produces a more accurate state estimate at the moment of re-association.
+**OCM (Observation-Centric Momentum).** Standard IoU matching ignores direction of motion. OCM adds a direction-consistency term to the cost matrix used in the primary (1st-stage) Hungarian matching: for each track-detection candidate pair, it compares the direction implied by the match against the track's stored velocity, computed from its recent observation history. A candidate match that would require the track to have moved in a direction inconsistent with its recent history is penalized. The `direction_consistency_weight` parameter controls the strength of this penalty. This helps prevent cross-identity matches when two objects are close but moving in different directions.
 
-**OCV (Observation-Centric Velocity).** Standard IoU matching ignores direction of motion. OCV adds a velocity direction consistency term to the association cost: if a candidate match would require the track to have moved in a direction inconsistent with its recent observation history, that match is penalized. The `direction_consistency_weight` parameter controls the strength of this penalty. This helps prevent cross-identity matches when two objects are close but moving in different directions.
+**ORU (Observation-Centric Re-Update).** When a track goes unmatched, it freezes its Kalman filter state. Once the track is re-matched to a new detection, ORU restores that frozen state and replays a virtual trajectory: it linearly interpolates a sequence of observations between the last real observation and the new detection across the missed frames, running a predict-and-update cycle at each interpolated step before applying the real update. This smooths the filter's re-entry into tracking instead of jumping straight to the new detection from a potentially drifted prediction.
 
-**ORU (Observation-Centric Re-Update).** After the primary Hungarian matching, ORU performs a second-stage re-association between the last known positions of unmatched (lost) tracks and unmatched current detections. This recovers tracks that were briefly lost due to a momentary stop or 1-2 frame occlusion, where the Kalman prediction drifted too far from the actual position for primary matching to succeed.
+**OCR (second-chance association).** After the primary OCM-weighted matching, OCR performs a second-stage association using plain IoU between the last observation of tracks left unmatched and the detections left unmatched. This recovers tracks that were briefly lost due to a momentary stop or 1-2 frame occlusion, where the Kalman prediction drifted too far from the actual position for the primary pass to succeed.
 
 Together, these three mechanisms make OC-SORT effective for group dancing, sports, and other scenarios where objects follow non-linear paths, stop and restart, or are occluded in dense groups.
 
@@ -45,9 +47,9 @@ Together, these three mechanisms make OC-SORT effective for group dancing, sport
 | `lost_track_buffer`            | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`). | Higher tolerates longer occlusions but risks false re-association. 10-30 for most scenes; up to 60 for very long occlusions.       |
 | `minimum_consecutive_frames`   | Consecutive detections required to confirm a new track.                                                                     | 1 confirms immediately; 2-3 filters out single-frame false positives.                                                              |
 | `minimum_iou_threshold`        | Minimum IoU to accept a track-detection match.                                                                              | Lower associates through more displacement between frames. 0.1-0.3 typical.                                                        |
-| `direction_consistency_weight` | Strength of the OCV velocity direction penalty.                                                                             | 0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.                                       |
+| `direction_consistency_weight` | Strength of the OCM direction-consistency penalty in the primary association cost.                                          | 0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.                                       |
 | `high_conf_det_threshold`      | Minimum detection confidence used for association.                                                                          | 0.5-0.7 typical. Lower values include more detections in association; higher values keep association to more confident detections. |
-| `delta_t`                      | Frame gap for OCM velocity re-estimation after occlusion.                                                                   | 1-3 typical. Larger values smooth velocity estimate over more frames.                                                              |
+| `delta_t`                      | Frame lookback used to compute each track's velocity, feeding the OCM direction-consistency term.                           | 1-3 typical. Larger values smooth velocity estimate over more frames.                                                              |
 
 !!! warning "Frame input is ignored by OC-SORT"
 

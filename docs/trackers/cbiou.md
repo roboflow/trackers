@@ -12,14 +12,16 @@ C-BIoU builds on the same tracking pipeline as [ByteTrack](bytetrack.md) but rep
 
 ## How does C-BIoU compare to other trackers?
 
-For comparisons with other trackers, plus default and tuned parameters, see the [tracker comparison](../benchmarking/results.md) page.
+For comparisons with other trackers, plus default and tuned parameters, see the [tracker comparison](../evaluations/results.md) page.
+
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) C-BIoU row in mot17-default/sportsmot-default/soccernet-default/dancetrack-default tables. Also duplicated in [README.md](../../README.md) (Algorithms table) — note [docs/index.md](../index.md)'s Algorithms table has NO C-BIoU row (only SORT/ByteTrack/OC-SORT/BoT-SORT), so C-BIoU changes don't touch index.md. Update results.md first, then mirror here. -->
 
 |  Dataset   | HOTA | IDF1 | MOTA |
 | :--------: | :--: | :--: | :--: |
 |   MOT17    | 63.0 | 79.1 | 77.4 |
 | SportsMOT  | 73.1 | 72.6 | 96.7 |
 | SoccerNet  | 82.6 | 76.6 | 97.0 |
-| DanceTrack | 53.8 | 53.8 | 90.1 |
+| DanceTrack | 56.7 | 56.7 | 92.2 |
 
 ## How does C-BIoU work?
 
@@ -41,7 +43,7 @@ C-BIoU keeps the [ByteTrack](bytetrack.md)-style association pipeline used in [B
 | `track_activation_threshold`              | Minimum detection confidence required to start a new track.           | Higher value reduces noisy track creation; lower value retains harder objects. 0.5-0.9 typical depending on detector quality. This does not control low-confidence association, which still discards detections at a fixed `0.1` confidence floor. |
 | `minimum_consecutive_frames`              | Number of consecutive matches required before confirming a new track. | 1 for immediate activation; 2-3 improves robustness against flicker and false positives.                                                                                                                                                           |
 | `minimum_iou_threshold_first_assoc`       | Minimum fused BIoU similarity for the first association pass.         | Lower value helps maintain matches under fast motion; higher value is stricter.                                                                                                                                                                    |
-| `minimum_iou_threshold_second_assoc`      | Minimum BIoU similarity for the second association pass.              | Usually set to a lower value than the first-pass threshold to recover weak detections without over-matching.                                                                                                                                       |
+| `minimum_iou_threshold_second_assoc`      | Minimum BIoU similarity for the second association pass.              | Typically set higher than the first-pass threshold: this pass has no confidence fusion, so a stricter geometric threshold guards against over-matching low-confidence detections.                                                                  |
 | `minimum_iou_threshold_unconfirmed_assoc` | Minimum fused BIoU similarity when associating unconfirmed tracks.    | Higher value makes tentative tracks harder to confirm spuriously; lower value helps short-lived or noisy objects survive.                                                                                                                          |
 | `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.              | 0.5-0.7 common. Higher value shifts more detections to recovery stage; lower value gives stage-1 broader coverage.                                                                                                                                 |
 | `buffer_ratio_first`                      | Paper **b1**, small BIoU buffer for the first association pass.       | Typical range 0.1-0.7. Should be **less than** `buffer_ratio_second`.                                                                                                                                                                              |
