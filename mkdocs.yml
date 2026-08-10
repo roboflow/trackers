@@ -4,7 +4,7 @@ site_author: Roboflow
 site_description: A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.
 repo_name: roboflow/trackers
 repo_url: https://github.com/roboflow/trackers
-edit_uri: https://github.com/roboflow/trackers/tree/main/docs
+edit_uri: https://github.com/roboflow/trackers/tree/develop/docs
 copyright: >
   Roboflow 2026. All rights reserved. |
   <a href="https://roboflow.com/privacy">Privacy Policy</a> |
@@ -156,7 +156,7 @@ nav:
     - Datasets: api/datasets.md
     - Evals: api/evals.md
     - I/O: api/io.md
-    - CLI Migration Guide: learn/cli-migration.md
+    - "Migration: CLI": learn/migration_cli.md
     - Changelog: changelog.md
   - Community:
     - Contributing: contributing.md

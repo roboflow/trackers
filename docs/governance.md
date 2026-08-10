@@ -7,7 +7,7 @@ description: Who reviews and merges changes to Roboflow Trackers, the branching 
 
 ## Maintainers & Code Review
 
-Roboflow Trackers is maintained by the [Roboflow](https://roboflow.com) team. Pull requests are reviewed according to the repository's [`CODEOWNERS`](https://github.com/roboflow/trackers/blob/main/.github/CODEOWNERS) file, which currently designates [@SkalskiP](https://github.com/SkalskiP) as the default reviewer for all changes.
+Roboflow Trackers is maintained by the [Roboflow](https://roboflow.com) team. Pull requests are reviewed according to the repository's [`CODEOWNERS`](https://github.com/roboflow/trackers/blob/develop/.github/CODEOWNERS) file, which currently designates [@SkalskiP](https://github.com/SkalskiP) as the default reviewer for all changes.
 
 A full list of contributors is available on the [GitHub contributors page](https://github.com/roboflow/trackers/graphs/contributors).
 
