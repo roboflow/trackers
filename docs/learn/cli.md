@@ -280,7 +280,7 @@ Each tab lists all arguments accepted by that `trackers inspect` subcommand.
         </tr>
         <tr>
           <td><code>--box</code></td>
-          <td><em>Manual mode.</em> Initial tracklet boxes on the first selected frame, <code>xyxy</code>, as one list. Append with <code>+</code>.</td>
+          <td><em>Manual mode.</em> Initial tracklet boxes on the first selected frame, <code>xyxy</code>, as one list. Append with <code>--box+=...</code>.</td>
           <td>none</td>
         </tr>
         <tr>
@@ -436,5 +436,3 @@ Each tab lists all arguments accepted by that `trackers inspect` subcommand.
         </tr>
       </tbody>
     </table>
-
-</content>
