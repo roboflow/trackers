@@ -44,11 +44,11 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |  McByte   | **64.1** | **79.7** |   79.1   |
 
     <!-- BENCH-XREF canonical:this-table id=mot17-default
-         SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table + L13 headline not from this row), README.md (Algorithms table)
-         ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table)
-         OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table)
-         BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "MOT17" tab)
-         C-BIoU row    -> README.md (Algorithms table only; no docs/trackers/cbiou.md row change needed here, MOT17 already present there)
+         SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table + L13 headline not from this row), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table), docs/trackers/mcbyte.md (BoT-SORT row, "MOT17" tab)
+         C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table)
          McByte row    -> docs/trackers/mcbyte.md (McByte row, "MOT17" tab), docs/index.md FAQ "leads every benchmark" claim
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
@@ -138,11 +138,11 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |  McByte   | **76.5** | **76.9** | **97.0** |
 
     <!-- BENCH-XREF canonical:this-table id=sportsmot-default
-         SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
-         ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
-         OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
-         BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "SportsMOT" tab)
-         C-BIoU row    -> README.md (Algorithms table only)
+         SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table), docs/trackers/mcbyte.md (BoT-SORT row, "SportsMOT" tab)
+         C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table only)
          McByte row    -> docs/trackers/mcbyte.md (McByte row, "SportsMOT" tab), docs/index.md FAQ "leads every benchmark" claim
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
@@ -232,11 +232,11 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |  McByte   | **85.0** | **79.9** |   97.0   |
 
     <!-- BENCH-XREF canonical:this-table id=soccernet-default
-         SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
-         ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
-         OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
-         BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "SoccerNet" tab)
-         C-BIoU row    -> README.md (Algorithms table only)
+         SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
+         BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table), docs/trackers/mcbyte.md (BoT-SORT row, "SoccerNet" tab)
+         C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table only)
          McByte row    -> docs/trackers/mcbyte.md (McByte row, "SoccerNet" tab), docs/index.md FAQ "leads every benchmark" claim
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
@@ -330,7 +330,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |  McByte   | **67.2** | **68.6** | **92.5** |
 
     <!-- BENCH-XREF canonical:this-table id=dancetrack-default
-         SORT/ByteTrack/OC-SORT/BoT-SORT rows -> docs/index.md (Algorithms table, HOTA col only), README.md (Algorithms table, HOTA col only).
+         SORT/ByteTrack/OC-SORT/BoT-SORT rows -> docs/index.md (Algorithms table, HOTA col only), README.md (Algorithms table, HOTA col only), .github/copilot-instructions.md (Benchmark Results table, HOTA col only).
          Note: docs/trackers/{sort,bytetrack,ocsort,botsort}.md intentionally have NO DanceTrack row — don't add one, that's existing scope not a gap.
          BoT-SORT row also -> docs/trackers/mcbyte.md (BoT-SORT row, "DanceTrack" tab)
          C-BIoU row    -> docs/trackers/cbiou.md (table, DanceTrack row), README.md (Algorithms table)

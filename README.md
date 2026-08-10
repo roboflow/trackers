@@ -83,7 +83,7 @@ For all CLI options, see the [tracking guide](https://trackers.roboflow.com/deve
 
 Each tracker below is a faithful implementation of its original paper. Pick the one that fits your scene, or run the benchmark to find out which performs best on your data.
 
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 5 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU). Also duplicated in [docs/index.md](docs/index.md)'s Algorithms table (which has no C-BIoU row). Update results.md first, then mirror here and in docs/index.md. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 5 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU). Also duplicated in [docs/index.md](docs/index.md)'s Algorithms table and [.github/copilot-instructions.md](.github/copilot-instructions.md)'s Benchmark Results table (both omit C-BIoU). Update results.md first, then mirror all three copies. -->
 
 |                                                                           Algorithm                                                                           |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |

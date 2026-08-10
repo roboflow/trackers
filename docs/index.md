@@ -117,7 +117,7 @@ For the full evaluation workflow, see the [evaluation guide](evaluations/evaluat
 
 Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
 
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT rows (no C-BIoU/McByte rows here). Also duplicated in [README.md](../README.md)'s own Algorithms table (which additionally has a C-BIoU row). Update results.md first, then mirror here and in README.md. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT rows (no C-BIoU/McByte rows here). Also duplicated in [README.md](../README.md)'s Algorithms table (which additionally has a C-BIoU row) and [.github/copilot-instructions.md](../.github/copilot-instructions.md)'s Benchmark Results table. Update results.md first, then mirror all three copies. -->
 
 |                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
 | :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |

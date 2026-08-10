@@ -77,9 +77,11 @@ trackers download mot17 --split val --asset annotations,detections
 
 ## Benchmark Results (HOTA, default parameters)
 
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT rows (no C-BIoU/McByte rows here). Also duplicated in [docs/index.md](../docs/index.md) and [README.md](../README.md). Update results.md first, then mirror all three copies. -->
+
 | Tracker   | MOT17 | SportsMOT | SoccerNet | DanceTrack |
 | --------- | ----- | --------- | --------- | ---------- |
-| SORT      | 58.4  | 70.9      | 81.6      | 47.2       |
+| SORT      | 58.4  | 70.8      | 81.6      | 47.2       |
 | ByteTrack | 60.1  | 73.0      | 84.0      | 53.3       |
 | OC-SORT   | 61.9  | 71.7      | 78.4      | 54.1       |
 | BoT-SORT  | 63.7  | 73.8      | 84.5      | 57.8       |

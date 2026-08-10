@@ -9,8 +9,8 @@ cell in results.md, grep this repo for `BENCH-XREF` (every duplicate site carrie
 comment) and update every listed sibling. If you change a cell somewhere else first, go fix results.md too —
 it's the source of truth, not just another copy.
 
-Discover live: grep -rn BENCH-XREF docs/ README.md
-(15 xref comments as of 2026-08-10: 5 in results.md, 6 in docs/trackers/*.md, 3 in docs/index.md, 1 in README.md)
+Discover live: grep -rn BENCH-XREF docs/ README.md .github/copilot-instructions.md
+(16 xref comments as of 2026-08-11: 5 in results.md, 6 in docs/trackers/*.md, 3 in docs/index.md, 1 in README.md, 1 in .github/copilot-instructions.md)
 
 ## Canonical tables ([docs/evaluations/results.md](docs/evaluations/results.md))
 - id=mot17-default       (## MOT17 -> === "Default")
@@ -21,25 +21,29 @@ Discover live: grep -rn BENCH-XREF docs/ README.md
 
 ## Duplicate sites, per canonical row
 
-SORT row (mot17/sportsmot/soccernet only — no DanceTrack row exists for SORT anywhere):
-  -> [docs/trackers/sort.md](docs/trackers/sort.md)            (Dataset|HOTA|IDF1|MOTA table, full row)
+SORT row (mot17/sportsmot/soccernet/dancetrack):
+  -> [docs/trackers/sort.md](docs/trackers/sort.md)            (Dataset|HOTA|IDF1|MOTA table, full row, first 3 benchmarks only)
   -> [docs/index.md](docs/index.md)                            (Algorithms table, HOTA column only)
   -> [README.md](README.md)                                    (Algorithms table, HOTA column only)
+  -> [.github/copilot-instructions.md](.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
 
-ByteTrack row (mot17/sportsmot/soccernet only):
-  -> [docs/trackers/bytetrack.md](docs/trackers/bytetrack.md)  (table, full row)
+ByteTrack row (mot17/sportsmot/soccernet/dancetrack):
+  -> [docs/trackers/bytetrack.md](docs/trackers/bytetrack.md)  (table, full row, first 3 benchmarks only)
   -> [docs/index.md](docs/index.md)                            (L13 headline sentence: MOT17 HOTA only; Algorithms table, HOTA column)
   -> [README.md](README.md)                                    (Algorithms table, HOTA column only)
+  -> [.github/copilot-instructions.md](.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
 
-OC-SORT row (mot17/sportsmot/soccernet only):
-  -> [docs/trackers/ocsort.md](docs/trackers/ocsort.md)        (table, full row)
+OC-SORT row (mot17/sportsmot/soccernet/dancetrack):
+  -> [docs/trackers/ocsort.md](docs/trackers/ocsort.md)        (table, full row, first 3 benchmarks only)
   -> [docs/index.md](docs/index.md)                            (L13 headline sentence: MOT17 HOTA only; Algorithms table, HOTA column)
   -> [README.md](README.md)                                    (Algorithms table, HOTA column only)
+  -> [.github/copilot-instructions.md](.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
 
-BoT-SORT row (mot17/sportsmot/soccernet only):
-  -> [docs/trackers/botsort.md](docs/trackers/botsort.md)      (table, full row)
+BoT-SORT row (mot17/sportsmot/soccernet/dancetrack):
+  -> [docs/trackers/botsort.md](docs/trackers/botsort.md)      (table, full row, first 3 benchmarks only)
   -> [docs/index.md](docs/index.md)                            (Algorithms table, HOTA column)
   -> [README.md](README.md)                                    (Algorithms table, HOTA column only)
+  -> [.github/copilot-instructions.md](.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
   -> [docs/trackers/mcbyte.md](docs/trackers/mcbyte.md)        (BoT-SORT baseline row, matching benchmark tab, full row)
 
 C-BIoU row (mot17/sportsmot/soccernet/dancetrack — the only tracker doc with a DanceTrack row):
@@ -58,6 +62,8 @@ McByte row (mot17/sportsmot/soccernet/dancetrack):
 - docs/index.md Algorithms table has 4 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT), no C-BIoU/McByte rows.
 - README.md Algorithms table has 5 tracker rows (adds C-BIoU vs index.md), still no McByte row (McByte covered
   in prose below the table instead, linking to [docs/trackers/mcbyte.md](docs/trackers/mcbyte.md)).
+- .github/copilot-instructions.md Benchmark Results table has 4 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT)
+  across all 4 benchmarks, with no C-BIoU/McByte rows.
 - docs/trackers/mcbyte.md reports McByte vs a BoT-SORT baseline only (not vs SORT/ByteTrack/OC-SORT/C-BIoU).
 
 ## Derived prose claims (not raw copies, but stale if the tables move)
@@ -83,8 +89,9 @@ check both if this page ever moves again.
 Traced every entry above directly against results.md line content (not from memory or the
 prior audit report) on 2026-08-10, then cross-checked design with a stronger-model advisor pass before writing
 the BENCH-XREF comments. README.md was NOT part of the original audit scope and was found to have one stale
-number (SORT SportsMOT HOTA 70.9, corrected to 70.8) only because this crossref exercise forced a check outside
-docs/ — a reminder that this map's file list is only as complete as the last time someone grepped for it.
+SORT SportsMOT HOTA value (corrected to 70.8) only because this crossref exercise forced a check outside docs/.
+On 2026-08-11, expanding discovery to .github/copilot-instructions.md found the same stale copied cell there —
+a reminder that this map is only as complete as the last review of its search scope.
 Path references above use markdown-link syntax `[label](path)` even though this whole block is an HTML comment
 (invisible in rendered docs either way) — several editors still resolve links for click-through inside comments,
 and it keeps the format consistent with the BENCH-XREF comments in the actual doc files.
