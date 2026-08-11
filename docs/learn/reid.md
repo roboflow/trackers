@@ -119,13 +119,17 @@ Same-ID distances spread steadily, from a median of 0.04 at a 1-frame gap to 0.2
 across the 16 to 30 band and 0.28 beyond 120 frames.
 
 ROC AUC below is the chance that a random same-ID pair scores closer than a random
-different-ID pair. 1.0 means the two distributions never overlap, 0.5 means
-appearance carries no information at all. It is not the area where the shaded
-bands cross in the figure: it counts every sampled pair, tails included, so at a
-1-frame gap the bands do not touch at all yet the AUC is 0.998 rather than 1.0.
-It is reported because it needs no operating point, so the column does not depend
-on a target true-positive or false-positive rate. The two rates beside it evaluate
-the thresholds Trackers actually ships rather than deriving a new one.
+different-ID pair: 1.0 means the two never cross, 0.5 means appearance carries no
+information, and its complement is how often a same-ID pair sits farther apart
+than a different-ID one. It is the area under the curve traced by sweeping θ from
+0 to 1 and plotting the two rates next to it, so it summarises every threshold
+instead of the single one we ship.
+
+It is not the area where the shaded bands cross in the figure. That is two
+percentile ranges intersecting, which ignores where the mass sits and which side
+is closer; at a 1-frame gap the bands never touch yet the AUC is 0.998 rather than
+1.0. The two rates beside it evaluate the thresholds Trackers actually ships
+rather than deriving a new one.
 
 | Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
 | :--------- | :-----: | :---------------: | :--------------------: |
