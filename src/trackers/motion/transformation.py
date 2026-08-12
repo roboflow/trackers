@@ -78,7 +78,8 @@ class HomographyTransformation(CoordinatesTransformation):
             coordinates.
 
     Raises:
-        ValueError: If the matrix is not 3x3.
+        ValueError: If the matrix is not 3x3, is not finite, or is singular
+            and therefore cannot be inverted.
 
     Example:
         ```python
@@ -102,7 +103,14 @@ class HomographyTransformation(CoordinatesTransformation):
         self.homography_matrix = np.array(homography_matrix, dtype=np.float64)
         if self.homography_matrix.shape != (3, 3):
             raise ValueError(f"Homography matrix must be 3x3, got {self.homography_matrix.shape}")
-        self.inverse_homography_matrix = np.linalg.inv(self.homography_matrix)
+        if not np.isfinite(self.homography_matrix).all():
+            raise ValueError(f"Homography matrix must be finite, got:\n{self.homography_matrix}")
+        try:
+            self.inverse_homography_matrix = np.linalg.inv(self.homography_matrix)
+        except np.linalg.LinAlgError as error:
+            raise ValueError(
+                f"Homography matrix is singular and cannot be inverted, got:\n{self.homography_matrix}"
+            ) from error
 
     def _transform_points(self, points: np.ndarray, matrix: np.ndarray) -> np.ndarray:
         """Apply homography transformation to points.

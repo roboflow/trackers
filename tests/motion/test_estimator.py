@@ -7,14 +7,28 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from trackers.motion.estimator import MotionEstimator
-from trackers.motion.transformation import CoordinatesTransformation
+from trackers.motion.transformation import (
+    CoordinatesTransformation,
+    HomographyTransformation,
+    IdentityTransformation,
+)
 
 
 def _noise_frame(height: int, width: int, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
     return rng.integers(0, 255, (height, width, 3), dtype=np.uint8)
+
+
+def _translated_correspondences() -> tuple[np.ndarray, np.ndarray]:
+    """Return point sets related by a pure translation, enough for findHomography to succeed."""
+    previous = np.array(
+        [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0], [5.0, 2.0], [2.0, 7.0]],
+        dtype=np.float32,
+    )
+    return previous, previous + np.array([3.0, -2.0], dtype=np.float32)
 
 
 def test_motion_estimator_survives_resolution_change() -> None:
@@ -59,3 +73,32 @@ def test_motion_estimator_resets_frame_on_resolution_change() -> None:
 
     point = np.array([[0.0, 0.0]], dtype=np.float32)
     np.testing.assert_allclose(transform.abs_to_rel(point), point)  # re-baselined, not 50/30
+
+
+def test_estimate_homography_normalizes_accumulated_scale() -> None:
+    """Chained homographies are renormalized so the projective scale stays pinned at 1.
+
+    Each `update` multiplies the accumulator by the frame-to-frame homography. Without renormalizing, the overall scale
+    compounds every frame and eventually drives the accumulator into a numerically degenerate state.
+    """
+    estimator = MotionEstimator()
+    estimator._accumulated_homography = np.eye(3) * 4.0  # scale left over from earlier chaining
+    previous, current = _translated_correspondences()
+
+    transform = estimator._estimate_homography(previous, current)
+
+    assert isinstance(transform, HomographyTransformation)
+    assert transform.homography_matrix[2, 2] == pytest.approx(1.0)
+    assert estimator._accumulated_homography[2, 2] == pytest.approx(1.0)
+
+
+def test_estimate_homography_rebaselines_degenerate_accumulator() -> None:
+    """A degenerate accumulator re-baselines to identity instead of raising."""
+    estimator = MotionEstimator()
+    estimator._accumulated_homography = np.zeros((3, 3))
+    previous, current = _translated_correspondences()
+
+    transform = estimator._estimate_homography(previous, current)
+
+    assert isinstance(transform, IdentityTransformation)
+    np.testing.assert_allclose(estimator._accumulated_homography, np.eye(3))
