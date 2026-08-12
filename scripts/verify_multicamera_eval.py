@@ -153,9 +153,8 @@ def split_multicamera_file_by_scene(
 ) -> dict[str, Path]:
     """Stream a monolithic AI City file into per-scene text files.
 
-    Verification-only helper (not part of the public ``trackers`` API). Routes
-    each row to the scene that owns its ``camera_id``, preserving file order
-    within each scene. Cameras shared by multiple scenes are written to every
+    Verification-only helper (not part of the public ``trackers`` API). Routes each row to the scene that owns its
+    ``camera_id``, preserving file order within each scene. Cameras shared by multiple scenes are written to every
     matching scene file. Unknown cameras are dropped silently.
     """
     path = Path(path)

@@ -1,80 +1,80 @@
 {
-  "oracle": "NVIDIA MTMC_Tracking_2024/eval/main.py from nvidia/PhysicalAI-SmartSpaces",
-  "dataset_revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
-  "evaluator": {
-    "path": "~/.cache/trackers-nvidia-eval/1eebcf0f74a510994fe4c886f4fa77fbc6724ea8/MTMC_Tracking_2024/eval",
-    "tree_sha256": "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c",
-    "canonical_tree_sha256": "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c",
-    "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
-    "verified": true
-  },
-  "download": "hf_hub_download(repo_id='nvidia/PhysicalAI-SmartSpaces', repo_type='dataset', revision='1eebcf0f74a510994fe4c886f4fa77fbc6724ea8') - no GCS mirror",
-  "command": "python scripts/verify_multicamera_eval.py --tier1 --tier2 [--tier3] [--write-goldens]",
-  "numpy": "2.2.6",
-  "scipy": "1.15.3",
-  "pandas": "3.0.5",
-  "python": "3.12.2",
-  "tiers_validated": [
-    "tier1",
-    "tier2",
-    "tier3"
-  ],
-  "notes": "Goldens are fractions in [0, 1]. NVIDIA prints percentages. Tier 3 was independently validated against NVIDIA per scene; per-scene numeric values were not retained and are not reconstructed here.",
-  "tier3": {
-    "command": "python scripts/verify_multicamera_eval.py --tier3 --tier3-sample-dir /tmp/aic24eval_full/MTMC_Tracking_2024/eval/sample_file --num-cores 1",
-    "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
-    "runtime_seconds": 1081.75,
-    "validation_artifact": "tests/data/multicamera/tier3_validation.md",
-    "validation_artifact_sha256": "4398af61a10f431b5f5e7a0b3f6074f28ef7f451520db0901195a08d952d5025",
-    "scene_parity": {
-      "scene_061": "passed",
-      "scene_062": "passed",
-      "scene_063": "passed",
-      "scene_064": "passed",
-      "scene_065": "passed",
-      "scene_066": "passed",
-      "scene_067": "passed",
-      "scene_068": "passed",
-      "scene_069": "passed",
-      "scene_070": "passed",
-      "scene_071": "passed",
-      "scene_072": "passed",
-      "scene_073": "passed",
-      "scene_074": "passed",
-      "scene_075": "passed",
-      "scene_076": "passed",
-      "scene_077": "passed",
-      "scene_078": "passed",
-      "scene_079": "passed",
-      "scene_080": "passed",
-      "scene_081": "passed",
-      "scene_082": "passed",
-      "scene_083": "passed",
-      "scene_084": "passed",
-      "scene_085": "passed",
-      "scene_086": "passed",
-      "scene_087": "passed",
-      "scene_088": "passed",
-      "scene_089": "passed",
-      "scene_090": "passed"
+    "oracle": "NVIDIA MTMC_Tracking_2024/eval/main.py from nvidia/PhysicalAI-SmartSpaces",
+    "dataset_revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
+    "evaluator": {
+        "path": "~/.cache/trackers-nvidia-eval/1eebcf0f74a510994fe4c886f4fa77fbc6724ea8/MTMC_Tracking_2024/eval",
+        "tree_sha256": "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c",
+        "canonical_tree_sha256": "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c",
+        "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
+        "verified": true
     },
-    "comparison_receipt_sha256": "1a9658d1d67dd05ef430e2c1c7a1b658b58e0c36f8b26657d5447181223dd9bb",
-    "headline_percent": {
-      "HOTA": 49.2826,
-      "DetA": 49.1998,
-      "AssA": 49.3655,
-      "LocA": 77.0546
-    },
-    "environment": {
-      "python": "3.12.2",
-      "numpy": "2.2.6",
-      "scipy": "1.15.3",
-      "pandas": "3.0.5"
-    },
-    "input_sha256": {
-      "ground_truth_test_full.txt": "76fc83dae03807622ef62246ba7ebdf43f8109f5a99a2447e681fd8c94955c14",
-      "pred.txt": "a51d3f9ff529cfcc1ed7c7e5dbe65307f05ce1e634b369cfedb4d23f5c83fcc3",
-      "scene_name_2_cam_id_full.json": "f1f1c873d40a50e075d85a364554d902968b2c6717f16ebd5e63d43300f50bac"
+    "download": "hf_hub_download(repo_id='nvidia/PhysicalAI-SmartSpaces', repo_type='dataset', revision='1eebcf0f74a510994fe4c886f4fa77fbc6724ea8') - no GCS mirror",
+    "command": "python scripts/verify_multicamera_eval.py --tier1 --tier2 [--tier3] [--write-goldens]",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3",
+    "pandas": "3.0.5",
+    "python": "3.12.2",
+    "tiers_validated": [
+        "tier1",
+        "tier2",
+        "tier3"
+    ],
+    "notes": "Goldens are fractions in [0, 1]. NVIDIA prints percentages. Tier 3 was independently validated against NVIDIA per scene; per-scene numeric values were not retained and are not reconstructed here.",
+    "tier3": {
+        "command": "python scripts/verify_multicamera_eval.py --tier3 --tier3-sample-dir /tmp/aic24eval_full/MTMC_Tracking_2024/eval/sample_file --num-cores 1",
+        "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
+        "runtime_seconds": 1081.75,
+        "validation_artifact": "tests/data/multicamera/tier3_validation.md",
+        "validation_artifact_sha256": "4398af61a10f431b5f5e7a0b3f6074f28ef7f451520db0901195a08d952d5025",
+        "scene_parity": {
+            "scene_061": "passed",
+            "scene_062": "passed",
+            "scene_063": "passed",
+            "scene_064": "passed",
+            "scene_065": "passed",
+            "scene_066": "passed",
+            "scene_067": "passed",
+            "scene_068": "passed",
+            "scene_069": "passed",
+            "scene_070": "passed",
+            "scene_071": "passed",
+            "scene_072": "passed",
+            "scene_073": "passed",
+            "scene_074": "passed",
+            "scene_075": "passed",
+            "scene_076": "passed",
+            "scene_077": "passed",
+            "scene_078": "passed",
+            "scene_079": "passed",
+            "scene_080": "passed",
+            "scene_081": "passed",
+            "scene_082": "passed",
+            "scene_083": "passed",
+            "scene_084": "passed",
+            "scene_085": "passed",
+            "scene_086": "passed",
+            "scene_087": "passed",
+            "scene_088": "passed",
+            "scene_089": "passed",
+            "scene_090": "passed"
+        },
+        "comparison_receipt_sha256": "1a9658d1d67dd05ef430e2c1c7a1b658b58e0c36f8b26657d5447181223dd9bb",
+        "headline_percent": {
+            "HOTA": 49.2826,
+            "DetA": 49.1998,
+            "AssA": 49.3655,
+            "LocA": 77.0546
+        },
+        "environment": {
+            "python": "3.12.2",
+            "numpy": "2.2.6",
+            "scipy": "1.15.3",
+            "pandas": "3.0.5"
+        },
+        "input_sha256": {
+            "ground_truth_test_full.txt": "76fc83dae03807622ef62246ba7ebdf43f8109f5a99a2447e681fd8c94955c14",
+            "pred.txt": "a51d3f9ff529cfcc1ed7c7e5dbe65307f05ce1e634b369cfedb4d23f5c83fcc3",
+            "scene_name_2_cam_id_full.json": "f1f1c873d40a50e075d85a364554d902968b2c6717f16ebd5e63d43300f50bac"
+        }
     }
-  }
 }

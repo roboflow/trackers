@@ -622,7 +622,6 @@ def _assemble_multicamera_sequence(
     zero_distance: float,
 ) -> _MultiCameraSequenceData:
     """Build dense sequence semantics from compact prepared rows."""
-
     gt_grouped = _group_by_frame(gt_prepared)
     pred_grouped = _group_by_frame(pred_prepared)
 

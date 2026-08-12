@@ -1,29 +1,29 @@
 {
-  "recipe": {
-    "source": "MTMC_Tracking_2024/test/scene_061/ground_truth.txt",
-    "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
-    "max_frame": 30,
-    "drop_every_k": 7,
-    "id_swap_frame_start": 10,
-    "id_swap_frame_end": 20,
-    "dedup_dup_rows": 5,
-    "camera_ids": [
-      535,
-      536,
-      537,
-      538,
-      539,
-      540,
-      541,
-      542,
-      543,
-      544
-    ]
-  },
-  "scene_061": {
-    "HOTA": 0.6767445554101719,
-    "DetA": 0.8907563025210085,
-    "AssA": 0.5141509433962264,
-    "LocA": 1.0
-  }
+    "recipe": {
+        "source": "MTMC_Tracking_2024/test/scene_061/ground_truth.txt",
+        "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
+        "max_frame": 30,
+        "drop_every_k": 7,
+        "id_swap_frame_start": 10,
+        "id_swap_frame_end": 20,
+        "dedup_dup_rows": 5,
+        "camera_ids": [
+            535,
+            536,
+            537,
+            538,
+            539,
+            540,
+            541,
+            542,
+            543,
+            544
+        ]
+    },
+    "scene_061": {
+        "HOTA": 0.6767445554101719,
+        "DetA": 0.8907563025210085,
+        "AssA": 0.5141509433962264,
+        "LocA": 1.0
+    }
 }
