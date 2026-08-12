@@ -17,7 +17,7 @@
 - **`supervision.Detections` native.** Plugs directly into the supervision ecosystem. Pass detections in, get tracked detections back — zero glue code.
 - **Benchmarked across four datasets.** MOT17, SportsMOT, SoccerNet, and DanceTrack — at default parameters and after hyperparameter tuning (McByte: defaults only, by design), so you know what to expect before you deploy.
 - **Tunable with one extra.** Optuna-based hyperparameter search via `trackers tune` (`pip install "trackers[tune]"`) so you can optimize for your specific scene and detector.
-- **Camera motion compensation.** BoT-SORT, C-BIoU, and McByte handle moving cameras natively, keeping track IDs stable even when the whole frame shifts.
+- **Camera motion compensation.** BoT-SORT and McByte handle moving cameras natively, keeping track IDs stable even when the whole frame shifts.
 
 ## Install
 
