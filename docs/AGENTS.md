@@ -53,17 +53,18 @@ C-BIoU row (mot17/sportsmot/soccernet/dancetrack — the only tracker doc with a
 
 McByte row (mot17/sportsmot/soccernet/dancetrack):
   -> [trackers/mcbyte.md](trackers/mcbyte.md)                  (McByte row, matching benchmark tab, full row)
-  -> [index.md](index.md) FAQ "Which tracker should I use?" answer: "McByte leads every benchmark in our evaluation"
+  -> [index.md](index.md)                                      (Algorithms table, HOTA column only; FAQ "Which tracker should I use?" answer: "McByte leads every benchmark in our evaluation")
+  -> [../README.md](../README.md)                              (Algorithms table, HOTA column only; includes C-BIoU row too)
+  -> [../.github/copilot-instructions.md](../.github/copilot-instructions.md) (Benchmark Results table, HOTA column only)
      — this claim is TRUE only while McByte is bolded-best in all 4 Default tables. Re-verify, don't assume.
 
 ## Structural asymmetries (intentional — do not "fix" by adding rows)
 - docs/trackers/{sort,bytetrack,ocsort,botsort}.md tables cover MOT17/SportsMOT/SoccerNet only, no DanceTrack row.
 - docs/trackers/cbiou.md is the only individual-tracker doc with a DanceTrack row.
-- docs/index.md Algorithms table has 4 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT), no C-BIoU/McByte rows.
-- README.md Algorithms table has 5 tracker rows (adds C-BIoU vs index.md), still no McByte row (McByte covered
-  in prose below the table instead, linking to [trackers/mcbyte.md](trackers/mcbyte.md)).
-- .github/copilot-instructions.md Benchmark Results table has 4 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT)
-  across all 4 benchmarks, with no C-BIoU/McByte rows.
+- docs/index.md Algorithms table has 5 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT/McByte), no C-BIoU row.
+- README.md Algorithms table has 6 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte).
+- .github/copilot-instructions.md Benchmark Results table has 5 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT/McByte)
+  across all 4 benchmarks, with no C-BIoU row.
 - docs/trackers/mcbyte.md reports McByte vs a BoT-SORT baseline only (not vs SORT/ByteTrack/OC-SORT/C-BIoU).
 
 ## Derived prose claims (not raw copies, but stale if the tables move)

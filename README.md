@@ -7,7 +7,7 @@
 
 </div>
 
-Keeping track of objects across video frames is one of those problems that sounds simple until you try it — occlusions, fast motion, similar-looking targets, and moving cameras all conspire against you. `trackers` gives you clean, benchmarked implementations of SORT, ByteTrack, OC-SORT, BoT-SORT, and C-BIoU so you can skip the plumbing and focus on your application. It speaks `supervision.Detections` natively, which means it slots into any detector you already use — YOLO, DETR, RT-DETR, or anything else — without glue code. Whether you are a researcher comparing algorithms, an engineer shipping a production pipeline, or a hobbyist building something cool, `trackers` gives you a single consistent interface for all of them. Requires Python ≥ 3.10.
+`trackers` gives you clean-room, benchmarked implementations of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte — so occlusions, fast motion, and moving cameras stop being your problem to solve from scratch. It speaks `supervision.Detections` natively, slotting into any detector you already use — YOLO, DETR, RT-DETR, or anything else — without glue code. One consistent interface, whether you're a researcher comparing algorithms, an engineer shipping a production pipeline, or a hobbyist building something cool. Requires Python ≥ 3.10.
 
 ## Why trackers?
 
@@ -83,19 +83,20 @@ For all CLI options, see the [tracking guide](https://trackers.roboflow.com/deve
 
 Each tracker below is a faithful implementation of its original paper. Pick the one that fits your scene, or run the benchmark to find out which performs best on your data.
 
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 5 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU). Also duplicated in [docs/index.md](docs/index.md)'s Algorithms table and [.github/copilot-instructions.md](.github/copilot-instructions.md)'s Benchmark Results table (both omit C-BIoU). Update results.md first, then mirror all three copies. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 6 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte). Also duplicated in [docs/index.md](docs/index.md)'s Algorithms table and [.github/copilot-instructions.md](.github/copilot-instructions.md)'s Benchmark Results table (both omit C-BIoU). Update results.md first, then mirror all three copies. -->
 
-|                                                                           Algorithm                                                                           |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
-| :-----------------------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|                                                           [SORT](https://arxiv.org/abs/1602.00763)                                                            |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.8      |      81.6      |      47.2       |
-|                                                         [ByteTrack](https://arxiv.org/abs/2110.06864)                                                         | Two-stage association using high and low confidence detections. |    60.1    |      73.0      |      84.0      |      53.3       |
-|                                                          [OC-SORT](https://arxiv.org/abs/2203.14360)                                                          |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |      54.1       |
-|                                                         [BoT-SORT](https://arxiv.org/abs/2206.14651)                                                          |                   Camera motion compensation                    |  **63.7**  |    **73.8**    |    **84.5**    |    **57.8**     |
-| [C-BIoU](https://openaccess.thecvf.com/content/WACV2023/papers/Yang_Hard_To_Track_Objects_With_Irregular_Motions_and_Similar_Appearances_WACV_2023_paper.pdf) |  Cascaded buffered IoU matching for fast or irregular motion.   |    63.0    |      73.1      |      82.6      |      56.7       |
+|                            Algorithm                             |                                   Description                                    | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :--------------------------------------------------------------: | :------------------------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
+|             [SORT](https://arxiv.org/abs/1602.00763)             |                   Kalman filter + Hungarian matching baseline.                   |    58.4    |      70.8      |      81.6      |      47.2       |
+|          [ByteTrack](https://arxiv.org/abs/2110.06864)           |         Two-stage association using high and low confidence detections.          |    60.1    |      73.0      |      84.0      |      53.3       |
+|           [OC-SORT](https://arxiv.org/abs/2203.14360)            |                  Observation-centric recovery for lost tracks.                   |    61.9    |      71.7      |      78.4      |      54.1       |
+|           [BoT-SORT](https://arxiv.org/abs/2206.14651)           |                           Camera motion compensation.                            |    63.7    |      73.8      |      84.5      |      57.8       |
+|            [C-BIoU](https://arxiv.org/abs/2211.14317)            |           Cascaded buffered IoU matching for fast or irregular motion.           |    63.0    |      73.1      |      82.6      |      56.7       |
+| [McByte](https://trackers.roboflow.com/develop/trackers/mcbyte/) | Mask-conditioned tracking — adds propagated SAM/Cutie masks as a matching cue.\* |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
+
+\*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the [McByte docs](https://trackers.roboflow.com/develop/trackers/mcbyte/) for setup.
 
 All scores use default parameters on the standard split. See the [tracker comparison](https://trackers.roboflow.com/develop/evaluations/results/) for tuned numbers and methodology.
-
-`trackers` also ships [McByte](https://trackers.roboflow.com/develop/trackers/mcbyte/), a mask-conditioned tracker that extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an extra matching cue. It requires optional heavyweight dependencies (`torch`, SAM, Cutie) not installed by default — see the [McByte docs](https://trackers.roboflow.com/develop/trackers/mcbyte/) for setup and benchmark numbers.
 
 ## Evaluate
 
