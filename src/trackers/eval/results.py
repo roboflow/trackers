@@ -14,11 +14,41 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
+
+from trackers.eval.errors import AggregationIncompatibleError
+
+AggregationMode = Literal["tp_weighted", "scene_mean"]
+
+# Official AI City 2024 scene-mean fields. All other HOTA summary fields are
+# undefined under an unweighted scene mean and serialize as JSON null.
+_SCENE_MEAN_DEFINED_HOTA_FIELDS = frozenset({"HOTA", "DetA", "AssA", "LocA"})
+
+
+def _reject_nonfinite_json_constant(value: str) -> float:
+    """Reject NaN/Infinity so ``json.loads(..., parse_constant=...)`` stays strict."""
+    raise ValueError(f"Non-finite JSON constant is not allowed: {value!r}")
+
+
+def _optional_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    number = float(value)
+    if math.isnan(number) or math.isinf(number):
+        return None
+    return number
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    return int(value)
+
 
 # TrackEval summary field order for CLEAR metrics
 CLEAR_FLOAT_FIELDS = [
@@ -208,15 +238,15 @@ class HOTAMetrics:
     HOTA: float
     DetA: float
     AssA: float
-    DetRe: float
-    DetPr: float
-    AssRe: float
-    AssPr: float
+    DetRe: float | None
+    DetPr: float | None
+    AssRe: float | None
+    AssPr: float | None
     LocA: float
-    OWTA: float
-    HOTA_TP: int
-    HOTA_FN: int
-    HOTA_FP: int
+    OWTA: float | None
+    HOTA_TP: int | None
+    HOTA_FN: int | None
+    HOTA_FP: int | None
     # Per-alpha arrays for aggregation (not serialized to JSON by default)
     _arrays: dict[str, Any] = field(default_factory=dict, repr=False)
 
@@ -225,7 +255,8 @@ class HOTAMetrics:
         """Create `HOTAMetrics` from a dictionary.
 
         Args:
-            data: Dictionary with metric values.
+            data: Dictionary with metric values. Undefined scene-mean fields may
+                be JSON ``null`` / ``None``.
 
         Returns:
             `HOTAMetrics` instance.
@@ -248,15 +279,15 @@ class HOTAMetrics:
             HOTA=float(data["HOTA"]),
             DetA=float(data["DetA"]),
             AssA=float(data["AssA"]),
-            DetRe=float(data["DetRe"]),
-            DetPr=float(data["DetPr"]),
-            AssRe=float(data["AssRe"]),
-            AssPr=float(data["AssPr"]),
+            DetRe=_optional_float(data.get("DetRe")),
+            DetPr=_optional_float(data.get("DetPr")),
+            AssRe=_optional_float(data.get("AssRe")),
+            AssPr=_optional_float(data.get("AssPr")),
             LocA=float(data["LocA"]),
-            OWTA=float(data["OWTA"]),
-            HOTA_TP=int(data["HOTA_TP"]),
-            HOTA_FN=int(data["HOTA_FN"]),
-            HOTA_FP=int(data["HOTA_FP"]),
+            OWTA=_optional_float(data.get("OWTA")),
+            HOTA_TP=_optional_int(data.get("HOTA_TP")),
+            HOTA_FN=_optional_int(data.get("HOTA_FN")),
+            HOTA_FP=_optional_int(data.get("HOTA_FP")),
             _arrays=arrays,
         )
 
@@ -269,18 +300,27 @@ class HOTAMetrics:
                 Defaults to `True`. Set to `False` to keep numpy arrays.
 
         Returns:
-            Dictionary with all metric values.
+            Dictionary with all metric values. Undefined optional fields are
+            ``None`` (JSON ``null``); NaN is never emitted.
         """
+
+        def _finite_or_none(value: float | None) -> float | None:
+            if value is None:
+                return None
+            if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+                return None
+            return value
+
         result = {
-            "HOTA": self.HOTA,
-            "DetA": self.DetA,
-            "AssA": self.AssA,
-            "DetRe": self.DetRe,
-            "DetPr": self.DetPr,
-            "AssRe": self.AssRe,
-            "AssPr": self.AssPr,
-            "LocA": self.LocA,
-            "OWTA": self.OWTA,
+            "HOTA": float(self.HOTA),
+            "DetA": float(self.DetA),
+            "AssA": float(self.AssA),
+            "DetRe": _finite_or_none(self.DetRe),
+            "DetPr": _finite_or_none(self.DetPr),
+            "AssRe": _finite_or_none(self.AssRe),
+            "AssPr": _finite_or_none(self.AssPr),
+            "LocA": float(self.LocA),
+            "OWTA": _finite_or_none(self.OWTA),
             "HOTA_TP": self.HOTA_TP,
             "HOTA_FN": self.HOTA_FN,
             "HOTA_FP": self.HOTA_FP,
@@ -421,9 +461,10 @@ class SequenceResult:
             indent: Indentation level for formatting. Defaults to `2`.
 
         Returns:
-            JSON string representation.
+            JSON string representation. Uses ``allow_nan=False`` so non-finite
+            floats cannot sneak into the payload.
         """
-        return json.dumps(self.to_dict(), indent=indent)
+        return json.dumps(self.to_dict(), indent=indent, allow_nan=False)
 
     def table(self, columns: list[str] | None = None) -> str:
         """Format as a table string.
@@ -446,16 +487,110 @@ class SequenceResult:
 
 
 @dataclass
+class BenchmarkCoverage:
+    """Serialized identity and completeness of a benchmark run.
+
+    Examples:
+        >>> coverage = BenchmarkCoverage(
+        ...     benchmark="AI City Challenge 2024",
+        ...     split="test",
+        ...     protocol="MTMC_Tracking_2024",
+        ...     file_format="aicity-2024",
+        ...     canonical_scene_camera_map_sha256="abc",
+        ...     scene_camera_map_sha256="abc",
+        ...     expected_scenes=["scene_061"],
+        ...     evaluated_scenes=["scene_061"],
+        ...     missing_scenes=[],
+        ...     complete=True,
+        ... )
+        >>> coverage.complete
+        True
+    """
+
+    benchmark: str
+    split: str
+    protocol: str
+    file_format: str
+    canonical_scene_camera_map_sha256: str
+    scene_camera_map_sha256: str
+    expected_scenes: list[str]
+    evaluated_scenes: list[str]
+    missing_scenes: list[str]
+    complete: bool
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> BenchmarkCoverage:
+        """Create benchmark coverage from serialized data."""
+        string_fields = (
+            "benchmark",
+            "split",
+            "protocol",
+            "file_format",
+            "canonical_scene_camera_map_sha256",
+        )
+        if any(not isinstance(data.get(field), str) for field in string_fields):
+            raise ValueError("Benchmark coverage identity fields must be strings.")
+        for scene_field in ("expected_scenes", "evaluated_scenes", "missing_scenes"):
+            value = data.get(scene_field)
+            if not isinstance(value, list) or not all(isinstance(scene, str) for scene in value):
+                raise ValueError(f"Benchmark coverage {scene_field} must be a list of strings.")
+            if len(value) != len(set(value)):
+                raise ValueError(f"Benchmark coverage {scene_field} must not contain duplicates.")
+        if type(data.get("complete")) is not bool:
+            raise ValueError("Benchmark coverage complete must be a boolean.")
+        canonical_hash = data["canonical_scene_camera_map_sha256"]
+        scene_hash = data.get("scene_camera_map_sha256", canonical_hash)
+        if not isinstance(scene_hash, str):
+            raise ValueError("Benchmark coverage scene_camera_map_sha256 must be a string.")
+
+        expected = list(data["expected_scenes"])
+        evaluated = list(data["evaluated_scenes"])
+        missing = list(data["missing_scenes"])
+        expected_set = set(expected)
+        if missing != [scene for scene in expected if scene not in set(evaluated)]:
+            raise ValueError("Benchmark coverage missing_scenes is inconsistent with evaluated_scenes.")
+        complete = data["complete"]
+        hashes_match = scene_hash == canonical_hash
+        if complete != (not missing and set(evaluated) == expected_set and hashes_match):
+            raise ValueError("Benchmark coverage complete is inconsistent with scene coverage.")
+        return cls(
+            benchmark=data["benchmark"],
+            split=data["split"],
+            protocol=data["protocol"],
+            file_format=data["file_format"],
+            canonical_scene_camera_map_sha256=canonical_hash,
+            scene_camera_map_sha256=scene_hash,
+            expected_scenes=expected,
+            evaluated_scenes=evaluated,
+            missing_scenes=missing,
+            complete=complete,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert benchmark coverage to a JSON-compatible dictionary."""
+        return dataclasses.asdict(self)
+
+
+@dataclass
 class BenchmarkResult:
     """Result for multi-sequence evaluation.
 
     Attributes:
         sequences: Dictionary mapping sequence names to their results.
         aggregate: Combined metrics across all sequences.
+        aggregation: How ``aggregate`` was produced. ``\"tp_weighted\"`` is the
+            MOT TrackEval path (`aggregate_hota_metrics`). ``\"scene_mean\"`` is
+            the AI City 2024 unweighted mean of per-scene HOTA/DetA/AssA/LocA.
+            Defaults to ``\"tp_weighted\"`` so existing serialized JSON loads
+            unchanged.
+        coverage: Benchmark and scene coverage identity. Legacy payloads omit
+            this field and load with ``None``.
     """
 
     sequences: dict[str, SequenceResult]
     aggregate: SequenceResult
+    aggregation: AggregationMode = "tp_weighted"
+    coverage: BenchmarkCoverage | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BenchmarkResult:
@@ -469,7 +604,14 @@ class BenchmarkResult:
         """
         sequences = {name: SequenceResult.from_dict(seq_data) for name, seq_data in data["sequences"].items()}
         aggregate = SequenceResult.from_dict(data["aggregate"])
-        return cls(sequences=sequences, aggregate=aggregate)
+        aggregation = data.get("aggregation", "tp_weighted")
+        if aggregation not in ("tp_weighted", "scene_mean"):
+            raise ValueError(f"Unknown aggregation mode: {aggregation!r}")
+        coverage_data = data.get("coverage")
+        coverage = BenchmarkCoverage.from_dict(coverage_data) if coverage_data is not None else None
+        if coverage is not None and set(sequences) != set(coverage.evaluated_scenes):
+            raise ValueError("Benchmark coverage evaluated_scenes must match serialized sequence results.")
+        return cls(sequences=sequences, aggregate=aggregate, aggregation=aggregation, coverage=coverage)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation.
@@ -477,10 +619,14 @@ class BenchmarkResult:
         Returns:
             Dictionary with all metric values.
         """
-        return {
+        result: dict[str, Any] = {
             "sequences": {name: seq.to_dict() for name, seq in self.sequences.items()},
             "aggregate": self.aggregate.to_dict(),
+            "aggregation": self.aggregation,
         }
+        if self.coverage is not None:
+            result["coverage"] = self.coverage.to_dict()
+        return result
 
     def json(self, indent: int = 2) -> str:
         """Serialize to JSON string.
@@ -489,26 +635,63 @@ class BenchmarkResult:
             indent: Indentation level for formatting. Defaults to `2`.
 
         Returns:
-            JSON string representation.
+            JSON string representation. Uses ``allow_nan=False`` so non-finite
+            floats cannot sneak into the payload.
         """
-        return json.dumps(self.to_dict(), indent=indent)
+        return json.dumps(self.to_dict(), indent=indent, allow_nan=False)
+
+    def tp_weighted_hota(self) -> HOTAMetrics:
+        """Recompute a TP-weighted HOTA aggregate from per-sequence results.
+
+        This is the public re-aggregation entry point. Scene-mean multicamera
+        results cannot be re-aggregated this way and raise a typed error rather
+        than a bare ``KeyError`` from missing per-alpha arrays.
+
+        Returns:
+            TP-weighted `HOTAMetrics` across ``self.sequences``.
+
+        Raises:
+            AggregationIncompatibleError: If ``aggregation == \"scene_mean\"`` or
+                any sequence lacks the per-alpha arrays required by
+                `aggregate_hota_metrics`.
+        """
+        if self.aggregation == "scene_mean":
+            raise AggregationIncompatibleError(
+                "Cannot TP-weight a scene_mean BenchmarkResult. "
+                "Per-scene HOTA/DetA/AssA/LocA were already averaged unweighted; "
+                "re-aggregation via aggregate_hota_metrics is undefined."
+            )
+        from trackers.eval.hota import aggregate_hota_metrics
+
+        sequence_metrics = [
+            sequence.HOTA.to_dict(include_arrays=True, arrays_as_list=False)
+            for sequence in self.sequences.values()
+            if sequence.HOTA is not None
+        ]
+        if not sequence_metrics:
+            raise ValueError("No HOTA results available to aggregate.")
+        return HOTAMetrics.from_dict(aggregate_hota_metrics(sequence_metrics))
 
     def table(self, columns: list[str] | None = None) -> str:
         """Format as a table string.
 
         Args:
             columns: Metric columns to include. If `None`, includes all available
-                metrics.
+                metrics. For ``aggregation=\"scene_mean\"``, defaults to the four
+                official fields only.
 
         Returns:
             Formatted table string.
         """
         if columns is None:
-            columns = _get_available_columns(
-                has_clear=self.aggregate.CLEAR is not None,
-                has_hota=self.aggregate.HOTA is not None,
-                has_identity=self.aggregate.Identity is not None,
-            )
+            if self.aggregation == "scene_mean":
+                columns = ["HOTA", "DetA", "AssA", "LocA"]
+            else:
+                columns = _get_available_columns(
+                    has_clear=self.aggregate.CLEAR is not None,
+                    has_hota=self.aggregate.HOTA is not None,
+                    has_identity=self.aggregate.Identity is not None,
+                )
 
         return _format_benchmark_table(self.sequences, self.aggregate, columns)
 
@@ -538,8 +721,37 @@ class BenchmarkResult:
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"Results file not found: {path}")
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(), parse_constant=_reject_nonfinite_json_constant)
+        _reject_nonfinite_numeric_strings(data)
         return cls.from_dict(data)
+
+
+def _reject_nonfinite_numeric_strings(value: Any, *, field_name: str | None = None) -> None:
+    """Reject string spellings that numeric result fields would coerce to non-finite floats."""
+    _reject_nonfinite_result_scalar(value, field_name=field_name)
+    if isinstance(value, dict):
+        for key, child in value.items():
+            _reject_nonfinite_numeric_strings(child, field_name=str(key))
+    elif isinstance(value, list):
+        for child in value:
+            _reject_nonfinite_numeric_strings(child, field_name=field_name)
+
+
+def _reject_nonfinite_result_scalar(value: Any, *, field_name: str | None) -> None:
+    """Reject one decoded scalar when its field is numeric."""
+    numeric_fields = set(CLEAR_SUMMARY_FIELDS + HOTA_SUMMARY_FIELDS + IDENTITY_SUMMARY_FIELDS)
+    if field_name is None or (field_name not in numeric_fields and not field_name.endswith("_array")):
+        return
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError(f"Non-finite numeric value is not allowed for {field_name}: {value!r}")
+    if not isinstance(value, str):
+        return
+    try:
+        number = float(value)
+    except ValueError:
+        return
+    if not math.isfinite(number):
+        raise ValueError(f"Non-finite numeric string is not allowed for {field_name}: {value!r}")
 
 
 def _get_available_columns(has_clear: bool = False, has_hota: bool = False, has_identity: bool = False) -> list[str]:
@@ -565,7 +777,7 @@ def _get_available_columns(has_clear: bool = False, has_hota: bool = False, has_
     return columns
 
 
-def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
+def _get_metrics_dict(result: SequenceResult, col: str) -> float | int | None:
     """Get metric value from a SequenceResult.
 
     Args:
@@ -573,7 +785,7 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
         col: Column name.
 
     Returns:
-        The metric value.
+        The metric value, or ``None`` when the field is undefined.
     """
     # Check CLEAR metrics
     if result.CLEAR is not None:
@@ -596,12 +808,13 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
     return 0
 
 
-def _format_value(value: float | int, is_float: bool) -> str:
+def _format_value(value: float | int | None, is_float: bool) -> str:
     """Format a metric value for display.
 
     Float metrics are displayed as percentages with 3 decimal places
     (e.g., 99.353 for MOTA=0.99353), matching TrackEval output.
-    Integer metrics are displayed as-is.
+    Integer metrics are displayed as-is. Undefined (``None``) fields render
+    as ``-``.
 
     Args:
         value: The metric value.
@@ -610,6 +823,8 @@ def _format_value(value: float | int, is_float: bool) -> str:
     Returns:
         Formatted string.
     """
+    if value is None:
+        return "-"
     if is_float:
         # Display as percentage with 3 decimal places (TrackEval format)
         return f"{value * 100:.3f}"
@@ -702,6 +917,6 @@ def _format_benchmark_table(
         is_float = col in ALL_FLOAT_FIELDS
         formatted = _format_value(value, is_float)
         agg_values.append(formatted.rjust(col_widths[col]))
-    lines.append("COMBINED".ljust(30) + "  ".join(agg_values))
+    lines.append(aggregate.sequence.ljust(30) + "  ".join(agg_values))
 
     return "\n".join(lines)

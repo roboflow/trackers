@@ -15,6 +15,8 @@ from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
 from trackers.eval.results import (
+    AggregationIncompatibleError,
+    BenchmarkCoverage,
     BenchmarkResult,
     CLEARMetrics,
     HOTAMetrics,
@@ -23,12 +25,22 @@ from trackers.eval.results import (
 )
 
 if TYPE_CHECKING:
-    from trackers.eval.evaluate import evaluate_mot_sequence, evaluate_mot_sequences
+    from trackers.eval.evaluate import (
+        evaluate_mot_sequence,
+        evaluate_mot_sequences,
+        evaluate_multicamera_scene,
+        evaluate_multicamera_scenes,
+    )
 
 
 def __getattr__(name: str) -> object:
     """Lazy imports for evaluate functions to avoid circular imports."""
-    if name in ("evaluate_mot_sequence", "evaluate_mot_sequences"):
+    if name in (
+        "evaluate_mot_sequence",
+        "evaluate_mot_sequences",
+        "evaluate_multicamera_scene",
+        "evaluate_multicamera_scenes",
+    ):
         from trackers.eval import evaluate as _evaluate
 
         return getattr(_evaluate, name)
@@ -36,6 +48,8 @@ def __getattr__(name: str) -> object:
 
 
 __all__ = [
+    "AggregationIncompatibleError",
+    "BenchmarkCoverage",
     "BenchmarkResult",
     "CLEARMetrics",
     "HOTAMetrics",
@@ -51,4 +65,6 @@ __all__ = [
     "compute_identity_metrics",
     "evaluate_mot_sequence",
     "evaluate_mot_sequences",
+    "evaluate_multicamera_scene",
+    "evaluate_multicamera_scenes",
 ]

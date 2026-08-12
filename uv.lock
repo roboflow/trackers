@@ -4332,6 +4332,7 @@ build = [
     { name = "wheel" },
 ]
 dev = [
+    { name = "huggingface-hub" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "torch" },
@@ -4379,6 +4380,7 @@ build = [
     { name = "wheel", specifier = ">=0.40" },
 ]
 dev = [
+    { name = "huggingface-hub" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.3" },
     { name = "torch" },

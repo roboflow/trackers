@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import urllib.request
 import zipfile
@@ -44,6 +45,69 @@ DATASETS: dict[str, tuple[str, str]] = {
 
 CACHE_DIR = Path.home() / ".cache" / "trackers-test"
 
+# Pinned NVIDIA PhysicalAI-SmartSpaces dataset revision for multicamera fixtures.
+MULTICAMERA_HF_REPO_ID = "nvidia/PhysicalAI-SmartSpaces"
+MULTICAMERA_HF_REVISION = "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8"
+
+
+def _require_test_data() -> bool:
+    """Return True when missing external fixtures must fail instead of skip."""
+    return os.environ.get("TRACKERS_REQUIRE_TEST_DATA", "").strip() in {"1", "true", "True"}
+
+
+def _unavailable(message: str) -> None:
+    if _require_test_data():
+        raise RuntimeError(message)
+    pytest.skip(message)
+
+
+def hf_fixture_file(
+    filename: str,
+    *,
+    repo_id: str = MULTICAMERA_HF_REPO_ID,
+    revision: str = MULTICAMERA_HF_REVISION,
+) -> Path:
+    """Download a single Hugging Face dataset file for tests.
+
+    Mirrors the ``reid`` package's ``hf_hub_download`` error wrapping, with
+    ``repo_type=\"dataset\"`` because multicamera fixtures live in a dataset
+    repo rather than a model repo.
+
+    Args:
+        filename: Path within the dataset repository.
+        repo_id: Hugging Face dataset repository id.
+        revision: Immutable git revision SHA.
+
+    Returns:
+        Local path to the cached file.
+
+    Raises:
+        RuntimeError: When ``TRACKERS_REQUIRE_TEST_DATA`` is set and the
+            download fails; otherwise the failure becomes ``pytest.skip``.
+    """
+    try:
+        from huggingface_hub import hf_hub_download
+        from huggingface_hub.utils import EntryNotFoundError, HfHubHTTPError
+    except ImportError as exc:
+        _unavailable(
+            "huggingface_hub is required for multicamera integration fixtures. Install the dev dependency group."
+        )
+        raise AssertionError("unreachable") from exc
+
+    try:
+        path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            repo_type="dataset",
+            revision=revision,
+        )
+    except (HfHubHTTPError, EntryNotFoundError, OSError) as exc:
+        _unavailable(
+            f"Failed to download Hugging Face fixture {filename!r} (repo_id={repo_id!r}, revision={revision!r}): {exc}"
+        )
+        raise AssertionError("unreachable") from exc
+    return Path(path)
+
 
 @pytest.fixture(autouse=True)
 def reset_random_seeds() -> None:
@@ -71,9 +135,10 @@ def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:
 
     Raises:
         pytest.skip: If download fails or data is unavailable.
+        RuntimeError: If download fails and ``TRACKERS_REQUIRE_TEST_DATA`` is set.
     """
     if dataset_key not in DATASETS:
-        pytest.skip(f"Unknown dataset: {dataset_key}")
+        _unavailable(f"Unknown dataset: {dataset_key}")
 
     url, folder_name = DATASETS[dataset_key]
 
@@ -90,7 +155,7 @@ def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:
     try:
         urllib.request.urlretrieve(url, zip_path)  # noqa: S310
     except Exception as e:
-        pytest.skip(f"Failed to download {dataset_key} test data: {e}")
+        _unavailable(f"Failed to download {dataset_key} test data: {e}")
 
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
@@ -98,7 +163,7 @@ def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:
     except Exception as e:
         if zip_path.exists():
             zip_path.unlink()
-        pytest.skip(f"Failed to extract {dataset_key} test data: {e}")
+        _unavailable(f"Failed to extract {dataset_key} test data: {e}")
 
     if zip_path.exists():
         zip_path.unlink()
@@ -110,7 +175,7 @@ def _download_test_data(dataset_key: str) -> tuple[Path, dict[str, Any]]:
             break
         else:
             shutil.rmtree(cache_path, ignore_errors=True)
-            pytest.skip(f"{dataset_key} extraction failed: expected_results.json not found")
+            _unavailable(f"{dataset_key} extraction failed: expected_results.json not found")
 
     with open(expected_path) as f:
         return cache_path, json.load(f)

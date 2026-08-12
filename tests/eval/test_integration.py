@@ -12,15 +12,105 @@ results to TrackEval. Numerical parity is the key requirement.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from trackers.eval import evaluate_mot_sequences
+from trackers.eval import evaluate_mot_sequences, evaluate_multicamera_scene
 
 if TYPE_CHECKING:
     pass
+
+
+def _build_tier2_prediction_rows(
+    gt_rows: list[list[str]],
+    *,
+    drop_every_k: int,
+    id_swap_frame_start: int,
+    id_swap_frame_end: int,
+    dedup_dup_rows: int,
+) -> list[list[str]]:
+    """Integer-only prediction recipe committed alongside tier-2 goldens."""
+    pred_rows: list[list[str]] = []
+    for index, parts in enumerate(gt_rows):
+        if index % drop_every_k == 0:
+            continue
+        frame = int(parts[2])
+        obj = int(parts[1])
+        if id_swap_frame_start <= frame < id_swap_frame_end:
+            obj = obj + 1000
+        new_parts = parts.copy()
+        new_parts[1] = str(obj)
+        pred_rows.append(new_parts)
+
+    for parts in pred_rows[:dedup_dup_rows]:
+        duplicate = parts.copy()
+        duplicate[7] = str(float(duplicate[7]) + 10.0)
+        pred_rows.append(duplicate)
+    return pred_rows
+
+
+def _load_tier2_recipe() -> tuple[dict[str, Any], dict[str, Any]]:
+    expected_path = Path(__file__).resolve().parents[1] / "data" / "multicamera" / "tier2_expected.json"
+    expected = json.loads(expected_path.read_text())
+    recipe = expected["recipe"]
+    if "revision" not in recipe:
+        raise AssertionError("tier2_expected.json recipe must pin an explicit HF revision")
+    return expected, recipe
+
+
+@pytest.mark.integration
+def test_multicamera_scene_061_tier2_parity(tmp_path: Path) -> None:
+    """Parity against NVIDIA goldens on a truncated real scene_061 slice."""
+    from tests.conftest import hf_fixture_file
+    from trackers.io.multicamera import _truncate_multicamera_rows
+
+    expected, recipe = _load_tier2_recipe()
+
+    gt_source = hf_fixture_file(recipe["source"], revision=recipe["revision"])
+    gt_rows = _truncate_multicamera_rows(gt_source, max_frame=recipe["max_frame"])
+
+    pred_rows = _build_tier2_prediction_rows(
+        gt_rows,
+        drop_every_k=recipe["drop_every_k"],
+        id_swap_frame_start=recipe["id_swap_frame_start"],
+        id_swap_frame_end=recipe["id_swap_frame_end"],
+        dedup_dup_rows=recipe["dedup_dup_rows"],
+    )
+
+    gt_path = tmp_path / "ground_truth.txt"
+    pred_path = tmp_path / "scene_061.txt"
+    gt_path.write_text("\n".join(" ".join(row) for row in gt_rows) + "\n")
+    pred_path.write_text("\n".join(" ".join(row) for row in pred_rows) + "\n")
+
+    result = evaluate_multicamera_scene(
+        scene="scene_061",
+        gt_path=gt_path,
+        tracker_path=pred_path,
+        camera_ids=tuple(recipe["camera_ids"]),
+    )
+    assert result.HOTA is not None
+    for field, value in expected["scene_061"].items():
+        assert getattr(result.HOTA, field) == pytest.approx(value, rel=1e-4, abs=1e-4), field
+
+
+def test_multicamera_tier2_recipe_pins_explicit_revision() -> None:
+    """Committed tier-2 goldens must not rely on the helper's default revision."""
+    from tests.conftest import MULTICAMERA_HF_REVISION
+
+    _, recipe = _load_tier2_recipe()
+    assert recipe["revision"] == MULTICAMERA_HF_REVISION
+    assert len(recipe["revision"]) == 40
+
+
+def test_multicamera_tier2_loader_rejects_missing_revision() -> None:
+    with pytest.raises(AssertionError, match="explicit HF revision"):
+        expected = {"recipe": {"source": "x", "max_frame": 1}}
+        recipe = expected["recipe"]
+        if "revision" not in recipe:
+            raise AssertionError("tier2_expected.json recipe must pin an explicit HF revision")
 
 
 @pytest.mark.integration

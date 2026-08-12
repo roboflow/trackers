@@ -11,6 +11,9 @@ on:
       - 'uv.lock'
       - '.github/workflows/ci-integrations.yml'
 
+permissions:
+  contents: read
+
 jobs:
   integration-tests:
     name: Integration Validation
@@ -32,6 +35,8 @@ jobs:
 
 
       - name: 🧪 Run Integration Tests
+        env:
+          TRACKERS_REQUIRE_TEST_DATA: "1"
         run: uv run pytest -m integration -v --tb=short
 
   mask-pipeline:

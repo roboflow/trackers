@@ -8,9 +8,15 @@ description: Python API reference for evaluation metrics in Roboflow Trackers â€
 
 ::: trackers.eval.evaluate.evaluate_mot_sequences
 
+::: trackers.eval.evaluate.evaluate_multicamera_scene
+
+::: trackers.eval.evaluate.evaluate_multicamera_scenes
+
 ::: trackers.eval.results.SequenceResult
 
 ::: trackers.eval.results.BenchmarkResult
+
+::: trackers.eval.results.BenchmarkCoverage
 
 ::: trackers.eval.results.CLEARMetrics
 

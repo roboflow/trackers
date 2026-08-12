@@ -1,0 +1,4 @@
+[
+  {"scene_name": "scene_a", "camera_ids": [1, 2]},
+  {"scene_name": "scene_b", "camera_ids": [3, 4]}
+]
