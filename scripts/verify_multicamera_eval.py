@@ -49,6 +49,9 @@ HF_REPO_ID = "nvidia/PhysicalAI-SmartSpaces"
 HF_REVISION = "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8"
 CANONICAL_EVALUATOR_TREE_SHA256 = "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c"
 HEADLINE_FIELDS = ("HOTA", "DetA", "AssA", "LocA")
+TIER3_COMPARISON_ARTIFACT = "tier3_comparison.jsonl"
+TIER3_REL_TOLERANCE = 1e-4
+TIER3_ABS_TOLERANCE = 1e-4
 _SCENE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 # Published AI City 2024 README headline numbers (percentages).
@@ -244,7 +247,6 @@ def _evaluator_identity(
     tree_sha256 = _sha256_evaluator_tree(eval_dir)
     verified = tree_sha256 == canonical_tree_sha256
     return {
-        "path": str(eval_dir.resolve()),
         "tree_sha256": tree_sha256,
         "canonical_tree_sha256": canonical_tree_sha256,
         "revision": HF_REVISION if verified else None,
@@ -263,17 +265,19 @@ def _require_verified_evaluator_for_goldens(identity: Mapping[str, Any], *, writ
 
 def _comparison_receipt_sha256(receipt: Mapping[str, Any]) -> str:
     """Digest the retained Tier-3 comparison evidence deterministically."""
-    if "scene_comparison" not in receipt and "validation_artifact_sha256" not in receipt:
+    if "scene_comparison" not in receipt and "comparison_artifact_sha256" not in receipt:
         raise ValueError("Tier-3 receipt requires per-scene comparisons or a hashed independent validation artifact.")
     evidence = {
         key: receipt[key]
         for key in (
-            "scene_parity",
+            "scene_count",
+            "scene_range",
             "scene_comparison",
+            "comparison_tolerance",
             "headline_percent",
             "input_sha256",
-            "validation_artifact",
-            "validation_artifact_sha256",
+            "comparison_artifact",
+            "comparison_artifact_sha256",
         )
         if key in receipt
     }
@@ -281,22 +285,24 @@ def _comparison_receipt_sha256(receipt: Mapping[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _write_tier3_comparison_artifact(path: Path, comparisons: Mapping[str, Any]) -> None:
+    """Write deterministic one-record-per-scene Tier-3 comparison evidence."""
+    lines = (
+        json.dumps({"scene": scene_name, **comparisons[scene_name]}, sort_keys=True, separators=(",", ":"))
+        for scene_name in sorted(comparisons)
+    )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def _validate_tier3_receipt(receipt: Mapping[str, Any]) -> None:
     """Authenticate retained Tier-3 evidence before carrying it forward."""
-    scene_parity = receipt.get("scene_parity")
-    if not isinstance(scene_parity, Mapping) or not scene_parity:
-        raise ValueError("Retained Tier-3 receipt lacks per-scene parity evidence.")
-    scene_comparison = receipt.get("scene_comparison")
-    artifact_path = receipt.get("validation_artifact")
-    artifact_sha256 = receipt.get("validation_artifact_sha256")
-    if scene_comparison is not None:
-        if not isinstance(scene_comparison, Mapping) or set(scene_comparison) != set(scene_parity):
-            raise ValueError("Retained Tier-3 scene comparisons do not match scene parity coverage.")
-    elif isinstance(artifact_path, str) and isinstance(artifact_sha256, str):
-        if _sha256_file(REPO_ROOT / artifact_path) != artifact_sha256:
-            raise ValueError("Retained Tier-3 validation artifact hash does not match provenance.")
-    else:
-        raise ValueError("Retained Tier-3 receipt has neither scene comparisons nor a hashed validation artifact.")
+    if "scene_comparison" not in receipt:
+        artifact = receipt.get("comparison_artifact")
+        artifact_sha256 = receipt.get("comparison_artifact_sha256")
+        if not isinstance(artifact, str) or not isinstance(artifact_sha256, str):
+            raise ValueError("Retained Tier-3 receipt lacks a hashed comparison artifact.")
+        if _sha256_file(FIXTURE_DIR / artifact) != artifact_sha256:
+            raise ValueError("Retained Tier-3 comparison artifact hash does not match provenance.")
     if receipt.get("comparison_receipt_sha256") != _comparison_receipt_sha256(receipt):
         raise ValueError("Retained Tier-3 comparison receipt digest does not match provenance.")
 
@@ -687,7 +693,6 @@ def _run_tier3(eval_dir: Path, *, sample_dir: Path | None, num_cores: int) -> di
     return {
         "SCENE_MEAN": ours_mean,
         "nvidia_FINAL": nvidia["FINAL"],
-        "scene_parity": {scene: "passed" for scene in camera_map},
         "scene_comparison": scene_comparison,
         "input_sha256": {
             "ground_truth_test_full.txt": _sha256_file(gt),
@@ -748,11 +753,17 @@ def main() -> None:
         started = time.perf_counter()
         tier3_result = _run_tier3(eval_dir, sample_dir=args.tier3_sample_dir, num_cores=args.num_cores)
         runtime_seconds = time.perf_counter() - started
+        receipt_argv = ["python", *sys.argv]
+        for option in ("--nvidia-eval-dir", "--tier3-sample-dir"):
+            if option in receipt_argv:
+                receipt_argv[receipt_argv.index(option) + 1] = option[2:].replace("-", "_").upper()
         tier3_receipt = {
-            "command": shlex.join(["python", *sys.argv]),
+            "command": shlex.join(receipt_argv),
             "revision": evaluator_identity["revision"],
             "runtime_seconds": round(runtime_seconds, 3),
-            "scene_parity": tier3_result["scene_parity"],
+            "scene_count": len(tier3_result["scene_comparison"]),
+            "scene_range": [min(tier3_result["scene_comparison"]), max(tier3_result["scene_comparison"])],
+            "comparison_tolerance": {"rel": TIER3_REL_TOLERANCE, "abs": TIER3_ABS_TOLERANCE},
             "scene_comparison": tier3_result["scene_comparison"],
             "headline_percent": {
                 field: round(float(tier3_result["SCENE_MEAN"][field]) * 100, 4) for field in HEADLINE_FIELDS
@@ -760,6 +771,12 @@ def main() -> None:
             "environment": _dependency_versions(),
             "input_sha256": tier3_result["input_sha256"],
         }
+        if args.write_goldens:
+            artifact_path = FIXTURE_DIR / TIER3_COMPARISON_ARTIFACT
+            _write_tier3_comparison_artifact(artifact_path, tier3_receipt.pop("scene_comparison"))
+            tier3_receipt["comparison_artifact"] = TIER3_COMPARISON_ARTIFACT
+            tier3_receipt["comparison_artifact_sha256"] = _sha256_file(artifact_path)
+            print("Wrote", artifact_path)
         tier3_receipt["comparison_receipt_sha256"] = _comparison_receipt_sha256(tier3_receipt)
         tiers_run.append("tier3")
     else:

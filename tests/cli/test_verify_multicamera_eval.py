@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import math
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, TextIO
@@ -18,7 +19,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "verify_multicamera_eval.py"
-OFFICIAL_SCENE_PARITY = {f"scene_{index:03d}": "passed" for index in range(61, 91)}
+OFFICIAL_SCENES = tuple(f"scene_{index:03d}" for index in range(61, 91))
 CANONICAL_EVALUATOR_TREE_SHA256 = "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c"
 TIER3_INPUT_SHA256 = {
     "ground_truth_test_full.txt": "76fc83dae03807622ef62246ba7ebdf43f8109f5a99a2447e681fd8c94955c14",
@@ -292,25 +293,57 @@ def test_tier2_goldens_persist_nvidia_oracle_values(
     assert persisted["scene_061"] == oracle_fields
 
 
-def test_provenance_contains_exact_recovered_tier3_receipt() -> None:
-    """Durable provenance preserves the recovered full 30-scene oracle run."""
+def test_provenance_contains_auditable_tier3_receipt() -> None:
+    """Durable provenance authenticates exact values from both evaluators."""
+    module = _load_verify_module()
     provenance = json.loads((REPO_ROOT / "tests" / "data" / "multicamera" / "provenance.json").read_text())
     receipt = provenance["tier3"]
+    artifact_path = REPO_ROOT / "tests" / "data" / "multicamera" / receipt["comparison_artifact"]
 
     assert receipt["command"] == (
-        "python scripts/verify_multicamera_eval.py --tier3 "
-        "--tier3-sample-dir /tmp/aic24eval_full/MTMC_Tracking_2024/eval/sample_file --num-cores 1"
+        "python scripts/verify_multicamera_eval.py --tier1 --tier2 --tier3 "
+        "--tier3-sample-dir TIER3_SAMPLE_DIR "
+        "--num-cores 1 --write-goldens"
     )
     assert receipt["revision"] == "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8"
-    assert receipt["runtime_seconds"] == 1081.750
-    assert receipt["scene_parity"] == OFFICIAL_SCENE_PARITY
+    assert receipt["runtime_seconds"] == 716.133
+    assert receipt["scene_count"] == 30
+    assert receipt["scene_range"] == ["scene_061", "scene_090"]
+    assert receipt["comparison_tolerance"] == {"rel": 1e-4, "abs": 1e-4}
     assert receipt["headline_percent"] == {
-        "HOTA": 49.2826,
+        "HOTA": 49.2825,
         "DetA": 49.1998,
         "AssA": 49.3655,
-        "LocA": 77.0546,
+        "LocA": 77.0547,
     }
+    assert receipt["comparison_artifact"] == "tier3_comparison.jsonl"
+    assert module._sha256_file(artifact_path) == receipt["comparison_artifact_sha256"]
+    records = [json.loads(line) for line in artifact_path.read_text().splitlines()]
+    assert [record["scene"] for record in records] == list(OFFICIAL_SCENES)
+    assert len({record["scene"] for record in records}) == receipt["scene_count"]
+    assert all(set(record) == {"scene", "ours", "nvidia"} for record in records)
+    assert all(
+        set(record[system]) == set(module.HEADLINE_FIELDS) for record in records for system in ("ours", "nvidia")
+    )
+    assert all(
+        isinstance(record[system][field], (int, float)) and math.isfinite(record[system][field])
+        for record in records
+        for system in ("ours", "nvidia")
+        for field in module.HEADLINE_FIELDS
+    )
+    tolerance = receipt["comparison_tolerance"]
+    assert all(
+        module._approx_equal(
+            record["ours"][field],
+            record["nvidia"][field],
+            rel=tolerance["rel"],
+            abs_=tolerance["abs"],
+        )
+        for record in records
+        for field in module.HEADLINE_FIELDS
+    )
     assert set(receipt["environment"]) >= {"python", "numpy", "scipy", "pandas"}
+    module._validate_tier3_receipt(receipt)
 
 
 def test_provenance_records_actual_evaluator_and_input_hashes() -> None:
@@ -318,13 +351,45 @@ def test_provenance_records_actual_evaluator_and_input_hashes() -> None:
     module = _load_verify_module()
     provenance = json.loads((REPO_ROOT / "tests" / "data" / "multicamera" / "provenance.json").read_text())
     receipt = provenance["tier3"]
-    artifact = REPO_ROOT / receipt["validation_artifact"]
 
     assert provenance["evaluator"]["tree_sha256"] == CANONICAL_EVALUATOR_TREE_SHA256
+    assert "path" not in provenance["evaluator"]
     assert "tier3" in provenance["tiers_validated"]
     assert receipt["input_sha256"] == TIER3_INPUT_SHA256
-    assert module._sha256_file(artifact) == receipt["validation_artifact_sha256"]
     assert module._comparison_receipt_sha256(receipt) == receipt["comparison_receipt_sha256"]
+
+
+def test_tier3_artifact_writing_is_deterministic(tmp_path: Path) -> None:
+    """Artifact writing sorts scenes and emits canonical compact JSONL."""
+    module = _load_verify_module()
+    metrics = {"HOTA": 0.1, "DetA": 0.2, "AssA": 0.3, "LocA": 0.4}
+    comparisons = {
+        "scene_062": {"ours": metrics, "nvidia": metrics},
+        "scene_061": {"ours": metrics, "nvidia": metrics},
+    }
+    artifact = tmp_path / "comparison.jsonl"
+
+    module._write_tier3_comparison_artifact(artifact, comparisons)
+    lines = artifact.read_text().splitlines()
+
+    assert [json.loads(line)["scene"] for line in lines] == ["scene_061", "scene_062"]
+    assert lines == [json.dumps(json.loads(line), sort_keys=True, separators=(",", ":")) for line in lines]
+
+
+def test_tier3_receipt_rejects_artifact_hash_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Receipt validation authenticates artifact bytes before parsing them."""
+    module = _load_verify_module()
+    monkeypatch.setattr(module, "FIXTURE_DIR", tmp_path)
+    artifact = tmp_path / "tier3.jsonl"
+    artifact.write_text("{}\n")
+    receipt = {
+        "comparison_artifact": artifact.name,
+        "comparison_artifact_sha256": "0" * 64,
+    }
+    receipt["comparison_receipt_sha256"] = module._comparison_receipt_sha256(receipt)
+
+    with pytest.raises(ValueError, match="hash"):
+        module._validate_tier3_receipt(receipt)
 
 
 @pytest.mark.parametrize(
@@ -370,11 +435,13 @@ def test_provenance_rewrite_preserves_validated_tier3(
     module = _load_verify_module()
     fixture_dir = tmp_path / "fixtures"
     fixture_dir.mkdir()
+    metrics = {"HOTA": 0.1, "DetA": 0.1, "AssA": 0.1, "LocA": 0.1}
+    comparisons = {"scene_061": {"ours": metrics, "nvidia": metrics}}
+    artifact = fixture_dir / "tier3.jsonl"
+    module._write_tier3_comparison_artifact(artifact, comparisons)
     receipt = {
-        "scene_parity": {"scene_061": "passed"},
-        "scene_comparison": {"scene_061": {"ours": {}, "nvidia": {}}},
-        "headline_percent": {},
-        "input_sha256": {},
+        "comparison_artifact": artifact.name,
+        "comparison_artifact_sha256": module._sha256_file(artifact),
     }
     receipt["comparison_receipt_sha256"] = module._comparison_receipt_sha256(receipt)
     (fixture_dir / "provenance.json").write_text(
@@ -410,8 +477,7 @@ def test_provenance_rewrite_rejects_corrupted_tier3(
             {
                 "tiers_validated": ["tier3"],
                 "tier3": {
-                    "scene_parity": {"scene_061": "passed"},
-                    "scene_comparison": {"scene_061": {"ours": {}, "nvidia": {}}},
+                    "scene_comparison": {},
                     "comparison_receipt_sha256": "0" * 64,
                 },
             }

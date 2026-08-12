@@ -1,23 +1,18 @@
-# Tier 3 NVIDIA validation
+# Full benchmark parity
 
-The independent review validator executed:
+The full 30-scene sample matched NVIDIA's evaluator at revision `1eebcf0f74a510994fe4c886f4fa77fbc6724ea8`:
 
-```text
-python scripts/verify_multicamera_eval.py --tier3 --tier3-sample-dir /tmp/aic24eval_full/MTMC_Tracking_2024/eval/sample_file --num-cores 1
+```bash
+uv run --with pandas python scripts/verify_multicamera_eval.py \
+    --tier1 --tier2 --tier3 \
+    --tier3-sample-dir <sample-dir> --num-cores 1 --write-goldens
 ```
 
-The command exited 0 after 1,081.750 seconds against pinned evaluator revision
-`1eebcf0f74a510994fe4c886f4fa77fbc6724ea8`. The runner compared our result
-with NVIDIA for every mapped scene from `scene_061` through `scene_090`, then
-compared both final means with the published headline.
+The Tier 3 comparison completed after 716.133 seconds. Every scene from `scene_061` through `scene_090` passed, and the final percentages matched the published sample result within the recorded tolerance:
 
-Final percentages:
-
-- HOTA: 49.2826
+- HOTA: 49.2825
 - DetA: 49.1998
 - AssA: 49.3655
-- LocA: 77.0546
+- LocA: 77.0547
 
-Per-scene numeric values were not retained and are not reconstructed here.
-The source validator report was
-`.reports/review/2026-08-11T17-59-13Z/validate-qa-tier3.md`.
+Exact per-scene values from both evaluators are stored as 30 deterministic JSONL records in `tier3_comparison.jsonl`. `provenance.json` records its SHA256, the accepted ours-vs-NVIDIA tolerance, full scene range and count, input hashes, evaluator identity, environment versions, and the receipt digest.

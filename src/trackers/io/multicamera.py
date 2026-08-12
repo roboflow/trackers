@@ -4,24 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""AI City Challenge multi-camera tracking file I/O and sequence preparation.
-
-Implements the AI City 2024 world-plane protocol used by NVIDIA's
-``MTMC_Tracking_2024`` evaluator: 9-column space-delimited rows, camera
-filtering, half-to-even world-coordinate rounding, ``(frame_id, obj_id)``
-deduplication, and Euclidean similarity with a 2 m zero-distance.
-
-Parsing is streaming and chunked into numeric buffers so the 36 MB-1.5 GB
-AI City text files stay within a single-digit multiple of their on-disk size
-rather than materialising Python ``list``/``float`` objects for every token.
-
-Manual dataset download (until the public download API ships)::
-
-    hf download nvidia/PhysicalAI-SmartSpaces \\
-        --repo-type dataset \\
-        --revision 1eebcf0f74a510994fe4c886f4fa77fbc6724ea8 \\
-        --include "MTMC_Tracking_2024/test/scene_061/**"
-"""
+"""AI City 2024 multi-camera file I/O and world-plane HOTA preparation."""
 
 from __future__ import annotations
 
@@ -33,8 +16,6 @@ from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
-
-__all__ = ["load_multicamera_file", "load_scene_camera_map"]
 
 # Column layout for AI City 2024 9-column text files.
 _COL_CAMERA = 0
@@ -57,14 +38,14 @@ _SUPPORTED_FILE_FORMATS = ("aicity-2024",)
 # 8x the observed identities per frame on each side (64x pairs), and 16x the
 # observed identities globally on each side (256x pairs). At the global limit,
 # HOTA's 19-plane float64 tensor is about 56 MiB.
-MAX_SEQUENCE_LENGTH = 23_994
+_MAX_SEQUENCE_LENGTH = 23_994
 _OBSERVED_MAX_IDENTITIES = 39
 _OBSERVED_MAX_SCENE_DETECTIONS = 2_116_406
-MAX_FRAME_PAIR_COUNT = (_OBSERVED_MAX_IDENTITIES * 8) ** 2
-MAX_IDENTITY_PAIR_COUNT = (_OBSERVED_MAX_IDENTITIES * 16) ** 2
+_MAX_FRAME_PAIR_COUNT = (_OBSERVED_MAX_IDENTITIES * 8) ** 2
+_MAX_IDENTITY_PAIR_COUNT = (_OBSERVED_MAX_IDENTITIES * 16) ** 2
 # Twice the measured largest official scene (scene_080 GT) permits imperfect
 # submissions while stopping duplicate-heavy inputs before chunk concatenation.
-MAX_DETECTIONS_PER_SEQUENCE = _OBSERVED_MAX_SCENE_DETECTIONS * 2
+_MAX_DETECTIONS_PER_SEQUENCE = _OBSERVED_MAX_SCENE_DETECTIONS * 2
 _MAX_SAFE_INTEGER = 2**53 - 1
 
 # Grow the numeric buffer in fixed-size chunks so peak RAM tracks kept rows,
@@ -147,14 +128,6 @@ def load_multicamera_file(
         ValueError: If ``file_format`` is unsupported, the file is empty /
             malformed, identifiers are negative or not exactly representable,
             camera filters are ambiguous, or filtering removes all rows.
-
-    Examples:
-        >>> from pathlib import Path
-        >>> from trackers.io.multicamera import load_multicamera_file
-        >>> path = Path("scene.txt")  # doctest: +SKIP
-        >>> data = load_multicamera_file(path, camera_ids=[535, 536])  # doctest: +SKIP
-        >>> data.shape[1]  # doctest: +SKIP
-        9
     """
     return _load_multicamera_columns(
         path,
@@ -206,12 +179,6 @@ def load_scene_camera_map(path: str | Path) -> dict[str, list[int]]:
     Raises:
         FileNotFoundError: If ``path`` does not exist.
         ValueError: If the JSON schema is invalid.
-
-    Examples:
-        >>> from trackers.io.multicamera import load_scene_camera_map
-        >>> mapping = load_scene_camera_map("scene_name_2_cam_id.json")  # doctest: +SKIP
-        >>> mapping["scene_061"][:2]  # doctest: +SKIP
-        [535, 536]
     """
     path = Path(path)
     if not path.exists():
@@ -370,9 +337,9 @@ def _stream_parse_aicity_2024(
             if camera_ids is not None and int(values[_COL_CAMERA]) not in camera_ids:
                 continue
             retained_rows += 1
-            if retained_rows > MAX_DETECTIONS_PER_SEQUENCE:
+            if retained_rows > _MAX_DETECTIONS_PER_SEQUENCE:
                 raise ValueError(
-                    f"Retained rows exceed MAX_DETECTIONS_PER_SEQUENCE={MAX_DETECTIONS_PER_SEQUENCE}; "
+                    f"Retained rows exceed MAX_DETECTIONS_PER_SEQUENCE={_MAX_DETECTIONS_PER_SEQUENCE}; "
                     "the largest official AI City 2024 scene contains 2,116,406 detections."
                 )
             buffer[fill] = values if columns is None else tuple(values[column] for column in columns)
@@ -425,7 +392,7 @@ def _euclidean_similarity(
         raise ValueError(f"zero_distance must be > 0, got {zero_distance}")
     if len(points1) == 0 or len(points2) == 0:
         return np.empty((len(points1), len(points2)), dtype=np.float64)
-    _validate_pair_allocation(len(points1), len(points2), MAX_FRAME_PAIR_COUNT)
+    _validate_pair_allocation(len(points1), len(points2), _MAX_FRAME_PAIR_COUNT)
     squared_distances = points1 @ points2.T
     squared_distances *= -2.0
     squared_distances += np.sum(points1 * points1, axis=1)[:, np.newaxis]
@@ -444,9 +411,9 @@ def _validate_pair_allocation(left: int, right: int, limit: int) -> None:
     if left < 0 or right < 0 or limit < 0:
         raise ValueError("Pair-allocation dimensions and limit must be nonnegative.")
     if left and right > limit // left:
-        if limit == MAX_FRAME_PAIR_COUNT:
+        if limit == _MAX_FRAME_PAIR_COUNT:
             limit_name = "MAX_FRAME_PAIR_COUNT"
-        elif limit == MAX_IDENTITY_PAIR_COUNT:
+        elif limit == _MAX_IDENTITY_PAIR_COUNT:
             limit_name = "MAX_IDENTITY_PAIR_COUNT"
         else:
             limit_name = "pair limit"
@@ -497,9 +464,9 @@ def _dedup_sort_prepared(
     points = points[first_indices]
 
     max_frame = int(frame_ids.max())
-    if max_frame > MAX_SEQUENCE_LENGTH:
+    if max_frame > _MAX_SEQUENCE_LENGTH:
         raise ValueError(
-            f"Sequence length {max_frame} exceeds MAX_SEQUENCE_LENGTH={MAX_SEQUENCE_LENGTH}; "
+            f"Sequence length {max_frame} exceeds MAX_SEQUENCE_LENGTH={_MAX_SEQUENCE_LENGTH}; "
             "the official AI City 2024 test scenes contain 23,994 frames."
         )
     order = np.argsort(frame_ids, kind="stable")
@@ -622,7 +589,6 @@ def _assemble_multicamera_sequence(
     zero_distance: float,
 ) -> _MultiCameraSequenceData:
     """Build dense sequence semantics from compact prepared rows."""
-
     gt_grouped = _group_by_frame(gt_prepared)
     pred_grouped = _group_by_frame(pred_prepared)
 
@@ -635,7 +601,7 @@ def _assemble_multicamera_sequence(
 
     gt_id_map = _build_id_mapping(gt_prepared)
     tracker_id_map = _build_id_mapping(pred_prepared)
-    _validate_pair_allocation(len(gt_id_map), len(tracker_id_map), MAX_IDENTITY_PAIR_COUNT)
+    _validate_pair_allocation(len(gt_id_map), len(tracker_id_map), _MAX_IDENTITY_PAIR_COUNT)
 
     empty_ids = np.empty(0, dtype=np.intp)
     empty_similarity = np.empty((0, 0), dtype=np.float64)

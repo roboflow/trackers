@@ -1,10 +1,14 @@
 ---
-description: Python API reference for I/O utilities in Roboflow Trackers — video frame reading, MOT-format file reading and writing, and webcam/RTSP stream support.
+description: Python API reference for video sources and AI City multicamera tracking files in Roboflow Trackers.
 ---
 
 # I/O API
 
+## Video
+
 ::: trackers.io.video.frames_from_source
+
+## Multicamera
 
 ::: trackers.io.multicamera.load_multicamera_file
 

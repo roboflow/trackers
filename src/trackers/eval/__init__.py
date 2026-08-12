@@ -16,7 +16,6 @@ from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
 from trackers.eval.results import (
     AggregationIncompatibleError,
-    BenchmarkCoverage,
     BenchmarkResult,
     CLEARMetrics,
     HOTAMetrics,
@@ -49,7 +48,6 @@ def __getattr__(name: str) -> object:
 
 __all__ = [
     "AggregationIncompatibleError",
-    "BenchmarkCoverage",
     "BenchmarkResult",
     "CLEARMetrics",
     "HOTAMetrics",

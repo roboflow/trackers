@@ -25,7 +25,6 @@ from trackers.io.multicamera import _euclidean_similarity
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "data" / "multicamera"
 OFFICIAL_SCENES = tuple(f"scene_{index:03d}" for index in range(61, 91))
-OFFICIAL_SCENE_MAP_SHA256 = "f1f1c873d40a50e075d85a364554d902968b2c6717f16ebd5e63d43300f50bac"
 
 
 def _write_multicamera_benchmark_files(
@@ -186,10 +185,6 @@ class TestEvaluateMulticamera:
     def test_alpha_thresholds_match_hota_module(self) -> None:
         assert len(ALPHA_THRESHOLDS) == 19
         assert ALPHA_THRESHOLDS == pytest.approx(np.arange(0.05, 0.99, 0.05))
-
-    def test_official_scene_map_digest_is_pinned(self) -> None:
-        """Complete benchmark identity pins the canonical NVIDIA map bytes."""
-        assert evaluate_module._OFFICIAL_SCENE_CAMERA_MAP_SHA256 == OFFICIAL_SCENE_MAP_SHA256
 
     def test_euclidean_similarity_contract(self) -> None:
         origin = np.array([[0.0, 0.0]])
@@ -366,20 +361,20 @@ class TestEvaluateMulticamera:
         ("limit_name", "gt_rows", "pred_rows"),
         [
             pytest.param(
-                "MAX_FRAME_PAIR_COUNT",
+                "_MAX_FRAME_PAIR_COUNT",
                 [(0, 1), (0, 2), (0, 3)],
                 [(0, 11), (0, 12)],
                 id="frame-pair-limit-plus-one",
             ),
             pytest.param(
-                "MAX_IDENTITY_PAIR_COUNT",
+                "_MAX_IDENTITY_PAIR_COUNT",
                 [(0, 1), (1, 2), (2, 3)],
                 [(0, 11), (1, 12)],
                 id="identity-pair-limit-plus-one",
             ),
         ],
     )
-    def test_public_allocation_guards_reject_limit_plus_one(
+    def test_allocation_guards_reject_limit_plus_one(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -393,11 +388,11 @@ class TestEvaluateMulticamera:
         gt.write_text("".join(f"1 {object_id} {frame} 0 0 1 1 0 0\n" for frame, object_id in gt_rows))
         pred.write_text("".join(f"1 {object_id} {frame} 0 0 1 1 0 0\n" for frame, object_id in pred_rows))
 
-        with pytest.raises(ValueError, match=limit_name):
+        with pytest.raises(ValueError, match=limit_name.lstrip("_")):
             evaluate_multicamera_scene("bounded", gt, pred, camera_ids=[1])
 
-    @pytest.mark.parametrize("limit_name", ["MAX_FRAME_PAIR_COUNT", "MAX_IDENTITY_PAIR_COUNT"])
-    def test_public_allocation_guards_accept_exact_limit(
+    @pytest.mark.parametrize("limit_name", ["_MAX_FRAME_PAIR_COUNT", "_MAX_IDENTITY_PAIR_COUNT"])
+    def test_allocation_guards_accept_exact_limit(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,

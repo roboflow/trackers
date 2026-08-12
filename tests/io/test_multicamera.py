@@ -75,7 +75,7 @@ class TestLoadMulticameraFile:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(multicamera, "MAX_DETECTIONS_PER_SEQUENCE", 1)
+        monkeypatch.setattr(multicamera, "_MAX_DETECTIONS_PER_SEQUENCE", 1)
         path = _write(
             tmp_path / "too-many.txt",
             "1 1 0 0 0 1 1 0 0\n1 2 0 0 0 1 1 1 0\n",
@@ -354,8 +354,8 @@ class TestPrepareSemantics:
     @pytest.mark.parametrize(
         "limit_name",
         [
-            pytest.param("MAX_FRAME_PAIR_COUNT", id="frame-pairs"),
-            pytest.param("MAX_IDENTITY_PAIR_COUNT", id="identity-pairs"),
+            pytest.param("_MAX_FRAME_PAIR_COUNT", id="frame-pairs"),
+            pytest.param("_MAX_IDENTITY_PAIR_COUNT", id="identity-pairs"),
         ],
     )
     def test_pair_allocation_guard_accepts_exact_limit(self, limit_name: str) -> None:
@@ -368,8 +368,8 @@ class TestPrepareSemantics:
     @pytest.mark.parametrize(
         "limit_name",
         [
-            pytest.param("MAX_FRAME_PAIR_COUNT", id="frame-pairs"),
-            pytest.param("MAX_IDENTITY_PAIR_COUNT", id="identity-pairs"),
+            pytest.param("_MAX_FRAME_PAIR_COUNT", id="frame-pairs"),
+            pytest.param("_MAX_IDENTITY_PAIR_COUNT", id="identity-pairs"),
         ],
     )
     def test_pair_allocation_guard_rejects_limit_plus_one(self, limit_name: str) -> None:
@@ -377,7 +377,7 @@ class TestPrepareSemantics:
         limit = getattr(multicamera, limit_name)
         validate = getattr(multicamera, "_validate_pair_allocation")
 
-        with pytest.raises(ValueError, match=limit_name):
+        with pytest.raises(ValueError, match=limit_name.lstrip("_")):
             validate(limit + 1, 1, limit)
 
 
@@ -424,9 +424,10 @@ class TestSceneCameraMap:
 
 
 def test_multicamera_public_surface_is_narrow() -> None:
-    """Only supported loaders are exported; verification helpers stay private."""
-    assert multicamera.__all__ == ["load_multicamera_file", "load_scene_camera_map"]
-    assert "truncate_multicamera_rows" not in multicamera.__all__
+    """Supported loaders are public while verification helpers stay private."""
+    assert multicamera.load_multicamera_file is load_multicamera_file
+    assert multicamera.load_scene_camera_map is load_scene_camera_map
+    assert not hasattr(multicamera, "truncate_multicamera_rows")
 
 
 class TestTruncateAndStreamingBounds:

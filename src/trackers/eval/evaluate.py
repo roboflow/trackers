@@ -41,7 +41,6 @@ SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
 # an unweighted scene mean and serialize as JSON null on the aggregate row.
 _SCENE_MEAN_HOTA_FIELDS = ("HOTA", "DetA", "AssA", "LocA")
 _OFFICIAL_MULTICAMERA_SCENES = tuple(f"scene_{index:03d}" for index in range(61, 91))
-_OFFICIAL_SCENE_CAMERA_MAP_SHA256 = "f1f1c873d40a50e075d85a364554d902968b2c6717f16ebd5e63d43300f50bac"
 _OFFICIAL_SCENE_CAMERA_MAP_SEMANTIC_SHA256 = "a3b7e28d5a5181cb7525c11bc06c828b66846c5a51ebef118ae1c4dc73e3ed00"
 _SCENE_NAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 
@@ -382,19 +381,6 @@ def evaluate_multicamera_scene(
         ValueError: If inputs are malformed, empty after filtering, exceed
             protocol allocation bounds, or ``zero_distance`` is not finite and
             positive.
-
-    Examples:
-        >>> from trackers.eval import evaluate_multicamera_scene  # doctest: +SKIP
-        >>> result = evaluate_multicamera_scene(  # doctest: +SKIP
-        ...     scene="scene_061",
-        ...     gt_path="scene_061/ground_truth.txt",
-        ...     tracker_path="predictions/scene_061.txt",
-        ...     camera_ids=[535, 536, 537],
-        ... )
-        >>> result.sequence  # doctest: +SKIP
-        'scene_061'
-        >>> result.HOTA.HOTA  # doctest: +SKIP
-        0.49
     """
     if not np.isfinite(zero_distance) or zero_distance <= 0:
         raise ValueError(f"zero_distance must be finite and > 0, got {zero_distance}")
@@ -461,8 +447,7 @@ def evaluate_multicamera_scenes(
 
     Ground truth is read from ``{gt_dir}/{scene}/ground_truth.txt`` and
     predictions from ``{tracker_dir}/{scene}.txt``. A missing prediction file
-    raises — under an unweighted mean, silently skipping a scene would inflate
-    the headline score.
+    raises because silently skipping a scene would inflate the unweighted mean.
 
     The aggregate row is the arithmetic mean of per-scene HOTA, DetA, AssA, and
     LocA (``aggregation=\"scene_mean\"``). DetRe/DetPr/AssRe/AssPr/OWTA and the
@@ -494,18 +479,6 @@ def evaluate_multicamera_scenes(
             missing.
         ValueError: If no scenes remain, or coverage is partial/noncanonical
             without ``allow_partial=True``.
-
-    Examples:
-        >>> from trackers.eval import evaluate_multicamera_scenes  # doctest: +SKIP
-        >>> result = evaluate_multicamera_scenes(  # doctest: +SKIP
-        ...     gt_dir="MTMC_Tracking_2024/test",
-        ...     tracker_dir="predictions",
-        ...     scene_camera_map="scene_name_2_cam_id.json",
-        ... )
-        >>> result.aggregation  # doctest: +SKIP
-        'scene_mean'
-        >>> result.aggregate.HOTA.HOTA  # doctest: +SKIP
-        0.492825
     """
     if not np.isfinite(zero_distance) or zero_distance <= 0:
         raise ValueError(f"zero_distance must be finite and > 0, got {zero_distance}")
