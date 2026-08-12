@@ -101,6 +101,21 @@ def directory_with_non_image_files(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def directory_with_unpadded_numeric_names(tmp_path: Path) -> Path:
+    """Directory of unpadded numeric image names whose lexicographic order differs from numeric order.
+
+    Names run `1.png` to `11.png`, which sort lexicographically as 1, 10, 11, 2, 3, ... Each frame is filled with a
+    distinct multiple of 20 so no two frames share a pixel value.
+    """
+    directory = tmp_path / "unpadded"
+    directory.mkdir()
+    for index in range(1, 12):
+        frame = np.full((FRAME_HEIGHT, FRAME_WIDTH, 3), index * 20, dtype=np.uint8)
+        cv2.imwrite(str(directory / f"{index}.png"), frame)
+    return directory
+
+
+@pytest.fixture
 def directory_with_corrupted_image(tmp_path: Path) -> Path:
     """Directory with valid images followed by one corrupted image file."""
     directory = tmp_path / "with_corrupt"
@@ -149,7 +164,28 @@ class TestFramesFromSourceVideo:
 
 
 class TestFramesFromSourceImageDirectory:
-    def test_reads_images_in_alphabetical_order(self, image_directory_factory) -> None:
+    def test_reads_unpadded_numeric_names_in_numeric_order(self, directory_with_unpadded_numeric_names) -> None:
+        """Unpadded numeric names are ordered numerically, so `2.png` precedes `10.png`."""
+        frames = list(frames_from_source(directory_with_unpadded_numeric_names))
+
+        assert len(frames) == 11
+        for frame_id, frame in frames:
+            assert np.all(frame == frame_id * 20), f"Frame {frame_id} is out of order"
+
+    def test_reads_non_numeric_names_alphabetically(self, tmp_path: Path) -> None:
+        """Names without digits keep plain alphabetical order."""
+        directory = tmp_path / "alphabetic"
+        directory.mkdir()
+        for index, stem in enumerate(("alpha", "beta", "gamma")):
+            cv2.imwrite(str(directory / f"{stem}.png"), create_frame(index))
+
+        frames = list(frames_from_source(directory))
+
+        assert len(frames) == 3
+        for frame_id, frame in frames:
+            assert np.all(frame == expected_frame_value(frame_id - 1))
+
+    def test_reads_zero_padded_images_in_order(self, image_directory_factory) -> None:
         num_frames = 7
         directory = image_directory_factory(n_frames=num_frames, filename_pattern="{:04d}.png")
         frames = list(frames_from_source(directory))
