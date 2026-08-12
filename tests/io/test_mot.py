@@ -6,10 +6,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
-from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence
+from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence, load_mot_file
 
 
 def _frame(
@@ -25,6 +27,55 @@ def _frame(
         confidences=np.array(confidences, dtype=np.float64),
         classes=np.array(classes, dtype=np.intp),
     )
+
+
+def _write_mot_file(path: Path, *rows: str) -> Path:
+    """Write raw MOT rows to `path` and return it."""
+    path.write_text("\n".join(rows) + "\n")
+    return path
+
+
+class TestLoadMotFileFrameValidation:
+    """Frame numbers must be 1-based whole numbers.
+
+    Every consumer walks frames with `range(1, num_frames + 1)`, so a row on frame 0 or a negative frame is loaded and
+    then never evaluated. Truncating a fractional frame silently moves a detection to a different frame. Both are
+    rejected rather than accepted and quietly dropped.
+    """
+
+    @pytest.mark.parametrize(
+        "frame",
+        [
+            pytest.param("0", id="zero"),
+            pytest.param("-3", id="negative"),
+        ],
+    )
+    def test_rejects_nonpositive_frame(self, tmp_path: Path, frame: str) -> None:
+        """A frame below 1 is rejected instead of being loaded and never evaluated."""
+        path = _write_mot_file(tmp_path / "gt.txt", f"{frame},1,10,10,20,20,1,1")
+
+        with pytest.raises(ValueError, match="1-based"):
+            load_mot_file(path)
+
+    def test_rejects_fractional_frame(self, tmp_path: Path) -> None:
+        """A fractional frame is rejected instead of being truncated onto another frame."""
+        path = _write_mot_file(tmp_path / "gt.txt", "1.7,1,10,10,20,20,1,1")
+
+        with pytest.raises(ValueError, match="whole number"):
+            load_mot_file(path)
+
+    def test_accepts_integral_float_frame(self, tmp_path: Path) -> None:
+        """A frame written as a float with no fractional part is still valid."""
+        path = _write_mot_file(tmp_path / "gt.txt", "1.0,1,10,10,20,20,1,1")
+
+        assert list(load_mot_file(path)) == [1]
+
+    def test_reports_offending_row(self, tmp_path: Path) -> None:
+        """The error names the file and the offending row so the bad line can be found."""
+        path = _write_mot_file(tmp_path / "gt.txt", "1,1,10,10,20,20,1,1", "0,2,30,30,20,20,1,1")
+
+        with pytest.raises(ValueError, match=r"gt\.txt"):
+            load_mot_file(path)
 
 
 class TestMotDistractorPreprocessing:

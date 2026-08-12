@@ -58,7 +58,9 @@ def evaluate_mot_sequence(
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
-        ValueError: If an unsupported metric family is requested.
+        ValueError: If an unsupported metric family is requested, or if the
+            ground-truth file contains no scored rows once ignored and
+            non-pedestrian rows are filtered out.
 
     Examples:
         >>> from trackers.eval import evaluate_mot_sequence  # doctest: +SKIP
@@ -94,6 +96,14 @@ def evaluate_mot_sequence(
 
     # Prepare sequence (compute IoU, remap IDs)
     seq_data = _prepare_mot_sequence(gt_data, tracker_data)
+
+    if gt_data and seq_data.num_gt_dets == 0:
+        raise ValueError(
+            f"Ground truth file has no scored ground-truth rows: {gt_path}. Only pedestrian-class (1) rows "
+            "marked for consideration are scored, mirroring TrackEval, and every row was dropped by that "
+            "filter. Note that tracker files written by this library record class -1, so tracker output "
+            "cannot be reused as ground truth."
+        )
 
     # Compute metrics
     clear_metrics: CLEARMetrics | None = None
