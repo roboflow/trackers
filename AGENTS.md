@@ -26,11 +26,11 @@ uv sync --frozen --group docs && uv run mkdocs build --verbose  # build docs
 
 ## Code Conventions
 
-Configured in `pyproject.toml`, enforced by the hooks in `.pre-commit-config.yaml`. The GitHub Actions workflows run only tests, build, and docs — style and typing are gated by `pre-commit.ci`, which auto-fixes PRs. So a clean local hook run is what keeps a PR quiet:
+Configured in `pyproject.toml`, enforced by the hooks in `.pre-commit-config.yaml`. The GitHub Actions validation workflows cover tests, package builds, and docs, while style and typing are gated by `pre-commit.ci`, which auto-fixes PRs. So a clean local hook run is what keeps a PR quiet:
 
 - **License header** — every `.py` file needs the Apache 2.0 header from `.github/LICENSE_HEADER.txt`. The `insert-license` pre-commit hook adds it; don't hand-write it.
 - **Docstrings** — Google style (`Args:`, `Returns:`, `Raises:`, `Example:`). `Example:` blocks are executed as doctests (`--doctest-modules` is in `addopts`), so they must actually run.
-- **Ruff** — line length 120, double quotes, max cyclomatic complexity 10, max 5 function args. Active rule sets: `E`, `F`, `I`, `A`, `Q`, `W`, `RUF`, `S`, `UP`.
+- **Ruff** — line length 120, double quotes, target max cyclomatic complexity 10, and target max 5 function args. Active rule sets: `E`, `F`, `I`, `A`, `Q`, `W`, `RUF`, `S`, `UP`. (`C90` and `PLR` are not currently selected, so the two maxima are guidance rather than enforced checks.)
 - **No bare `assert`** outside `tests/` (ruff `S101`; `tests/**` is the only exemption).
 - **Typing** — mypy runs over `src`, `tests`, and `demo`. Project is typed (`py.typed` shipped).
 - **Public API** — anything exported from `src/trackers/__init__.py` is the stable surface; adding to it is an API change, not an implementation detail.
@@ -42,7 +42,7 @@ Src-layout package — code lives under `src/trackers/`, not at repo root:
 ```
 src/trackers/
 ├── core/          # Tracker implementations
-│   ├── base.py    # BaseTracker ABC — defines update(detections, image) interface
+│   ├── base.py    # BaseTracker ABC — defines update(detections, frame, timestamp) interface
 │   ├── sort/      # SORT
 │   ├── bytetrack/ # ByteTrack
 │   ├── botsort/   # BoT-SORT
@@ -71,7 +71,7 @@ tracked = tracker.update(detections)  # detections: supervision.Detections
 # tracked.tracker_id contains assigned track IDs
 ```
 
-Detection format: input is `supervision.Detections` with `.xyxy` bounding boxes; output is the same object with `.tracker_id` populated. Internal Kalman state uses `xcycsr` (center-x, center-y, area, aspect ratio).
+Detection format: input is `supervision.Detections` with `.xyxy` bounding boxes; output is a fresh, potentially filtered `supervision.Detections` result with `.tracker_id` populated. The internal Kalman representation is selected by each tracker's `state_estimator_class` (defaults include `XYXY`, `XCYCSR`, and `XCYCWH`).
 
 ## Tracker Parameters
 
