@@ -1,28 +1,28 @@
 {
-  "source": "NVIDIA MTMC_Tracking_2024/eval/main.py",
-  "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
-  "tolerance": {
-    "rel": 0.0001,
-    "abs": 0.0001
-  },
-  "scenes": {
-    "scene_a": {
-      "HOTA": 0.5773502691896258,
-      "DetA": 0.42857142857142855,
-      "AssA": 0.7777777777777778,
-      "LocA": 1.0
+    "source": "NVIDIA MTMC_Tracking_2024/eval/main.py",
+    "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
+    "tolerance": {
+        "rel": 0.0001,
+        "abs": 0.0001
     },
-    "scene_b": {
-      "HOTA": 1.0,
-      "DetA": 1.0,
-      "AssA": 1.0,
-      "LocA": 1.0
+    "scenes": {
+        "scene_a": {
+            "HOTA": 0.5773502691896258,
+            "DetA": 0.42857142857142855,
+            "AssA": 0.7777777777777778,
+            "LocA": 1.0
+        },
+        "scene_b": {
+            "HOTA": 1.0,
+            "DetA": 1.0,
+            "AssA": 1.0,
+            "LocA": 1.0
+        }
+    },
+    "SCENE_MEAN": {
+        "HOTA": 0.7886751345948129,
+        "DetA": 0.7142857142857143,
+        "AssA": 0.8888888888888888,
+        "LocA": 1.0
     }
-  },
-  "SCENE_MEAN": {
-    "HOTA": 0.7886751345948129,
-    "DetA": 0.7142857142857143,
-    "AssA": 0.8888888888888888,
-    "LocA": 1.0
-  }
 }

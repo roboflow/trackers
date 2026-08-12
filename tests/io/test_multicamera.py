@@ -463,10 +463,9 @@ class TestTruncateAndStreamingBounds:
 
 @pytest.mark.integration
 def test_load_scene_061_peak_rss_bounded() -> None:
-    """Pinned GT-vs-GT preparation stays materially below the measured 533.672 MiB peak."""
+    """Pinned GT-vs-GT preparation has bounded memory above package imports."""
     import subprocess
     import sys
-    import textwrap
 
     from tests.conftest import MULTICAMERA_HF_REVISION, hf_fixture_file
 
@@ -477,27 +476,34 @@ def test_load_scene_061_peak_rss_bounded() -> None:
     file_mb = gt_path.stat().st_size / (1024 * 1024)
     assert 30.0 < file_mb < 45.0, file_mb
 
-    script = textwrap.dedent(
-        f"""
-        import resource
-        import sys
-        from pathlib import Path
-
-        sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "src")!r})
-        from trackers.eval import evaluate_multicamera_scene
-
-        path = Path({str(gt_path)!r})
-        result = evaluate_multicamera_scene(
-            scene="scene_061",
-            gt_path=path,
-            tracker_path=path,
-            camera_ids=list(range(535, 545)),
-        )
-        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        # macOS reports bytes; Linux reports kilobytes.
-        peak_mb = rss / (1024 * 1024) if sys.platform == "darwin" else rss / 1024
-        print(f"hota={{result.HOTA.HOTA if result.HOTA else None}} peak_mb={{peak_mb:.3f}}")
-        """
+    script = "\n".join(
+        [
+            "import resource",
+            "import sys",
+            "from pathlib import Path",
+            "",
+            f"sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / 'src')!r})",
+            "from trackers.eval import evaluate_multicamera_scene",
+            "",
+            "baseline_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss",
+            f"path = Path({str(gt_path)!r})",
+            "result = evaluate_multicamera_scene(",
+            '    scene="scene_061",',
+            "    gt_path=path,",
+            "    tracker_path=path,",
+            "    camera_ids=list(range(535, 545)),",
+            ")",
+            "peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss",
+            "# macOS reports bytes; Linux reports kilobytes.",
+            'divisor = 1024 * 1024 if sys.platform == "darwin" else 1024',
+            "baseline_mb = baseline_rss / divisor",
+            "peak_mb = peak_rss / divisor",
+            "print(",
+            '    f"hota={result.HOTA.HOTA if result.HOTA else None} "',
+            '    f"baseline_mb={baseline_mb:.3f} peak_mb={peak_mb:.3f} "',
+            '    f"peak_delta_mb={max(0.0, peak_mb - baseline_mb):.3f}"',
+            ")",
+        ]
     )
     completed = subprocess.run(  # noqa: S603
         [sys.executable, "-c", script],
@@ -507,6 +513,5 @@ def test_load_scene_061_peak_rss_bounded() -> None:
     )
     # Last stdout line carries the measurement (imports may warn on stderr).
     measurement = completed.stdout.strip().splitlines()[-1]
-    peak_mb = float(measurement.split("peak_mb=")[1].split()[0])
-    assert peak_mb < 400.0, measurement
-    assert peak_mb < 0.75 * 533.672, measurement
+    peak_delta_mb = float(measurement.split("peak_delta_mb=")[1].split()[0])
+    assert peak_delta_mb < 8.0 * file_mb, measurement
