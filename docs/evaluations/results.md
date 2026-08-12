@@ -49,7 +49,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
          OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
          BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table), docs/trackers/mcbyte.md (BoT-SORT row, "MOT17" tab)
          C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table)
-         McByte row    -> docs/trackers/mcbyte.md (McByte row, "MOT17" tab), docs/index.md FAQ "leads every benchmark" claim
+         McByte row    -> docs/trackers/mcbyte.md (McByte row, "MOT17" tab), README.md (Algorithms table), docs/index.md FAQ "leads every benchmark" claim
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
 === "Tuned"
@@ -143,7 +143,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
          OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
          BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table), docs/trackers/mcbyte.md (BoT-SORT row, "SportsMOT" tab)
          C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table only)
-         McByte row    -> docs/trackers/mcbyte.md (McByte row, "SportsMOT" tab), docs/index.md FAQ "leads every benchmark" claim
+         McByte row    -> docs/trackers/mcbyte.md (McByte row, "SportsMOT" tab), README.md (Algorithms table), docs/index.md FAQ "leads every benchmark" claim
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
 === "Tuned"
@@ -237,7 +237,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
          OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table)
          BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), .github/copilot-instructions.md (Benchmark Results table), docs/trackers/mcbyte.md (BoT-SORT row, "SoccerNet" tab)
          C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table only)
-         McByte row    -> docs/trackers/mcbyte.md (McByte row, "SoccerNet" tab), docs/index.md FAQ "leads every benchmark" claim
+         McByte row    -> docs/trackers/mcbyte.md (McByte row, "SoccerNet" tab), README.md (Algorithms table), docs/index.md FAQ "leads every benchmark" claim
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
 === "Tuned"
@@ -334,7 +334,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
          Note: docs/trackers/{sort,bytetrack,ocsort,botsort}.md intentionally have NO DanceTrack row — don't add one, that's existing scope not a gap.
          BoT-SORT row also -> docs/trackers/mcbyte.md (BoT-SORT row, "DanceTrack" tab)
          C-BIoU row    -> docs/trackers/cbiou.md (table, DanceTrack row), README.md (Algorithms table)
-         McByte row    -> docs/trackers/mcbyte.md (McByte row, "DanceTrack" tab), docs/index.md FAQ "leads every benchmark" claim
+         McByte row    -> docs/trackers/mcbyte.md (McByte row, "DanceTrack" tab), README.md (Algorithms table), docs/index.md FAQ "leads every benchmark" claim
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
 === "Tuned"
