@@ -240,6 +240,27 @@ class TestXCYCSRConversion:
         assert result.shape == (1, 4)
         np.testing.assert_array_almost_equal(result[0], np.array([0.0, 0.0, 1.0, 1.0]), decimal=5)
 
+    @pytest.mark.parametrize(
+        "dtype",
+        [
+            pytest.param(np.int32, id="int32"),
+            pytest.param(np.int64, id="int64"),
+        ],
+    )
+    def test_xcycsr_to_xyxy_batch_integer_input(self, dtype: type[np.integer]) -> None:
+        """An integer batch decodes at float precision rather than truncating to the input dtype."""
+        xcycsr = np.array([[10, 20, 25, 1]], dtype=dtype)
+        result = xcycsr_to_xyxy(xcycsr)
+        assert result.dtype == np.float64
+        np.testing.assert_array_almost_equal(result, [[7.5, 17.5, 12.5, 22.5]], decimal=5)
+
+    def test_xcycsr_to_xyxy_batch_matches_single_box_for_integer_input(self) -> None:
+        """The batch path agrees with the 1-D path, which has always decoded integers as floats."""
+        xcycsr = np.array([10, 20, 25, 1], dtype=np.int64)
+        batch_result = xcycsr_to_xyxy(xcycsr[None, :])
+        single_result = xcycsr_to_xyxy(xcycsr)
+        np.testing.assert_array_almost_equal(batch_result[0], single_result, decimal=5)
+
     def test_xcycsr_to_xyxy_empty(self) -> None:
         """An empty (0, 4) xcycsr batch returns an empty (0, 4) xyxy batch."""
         xcycsr = np.zeros((0, 4))

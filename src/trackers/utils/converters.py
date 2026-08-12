@@ -182,7 +182,7 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
     # Inner np.where substitutes 1.0 for zero denominators to suppress the
     # eager-evaluation divide-by-zero warning; outer np.where replaces those results with 0.0.
     h = np.where(w != 0, xcycsr[:, 2] / np.where(w != 0, w, 1.0), 0.0)
-    result = np.empty((xcycsr.shape[0], 4), dtype=xcycsr.dtype)
+    result = np.empty((xcycsr.shape[0], 4), dtype=np.float64)
     result[:, 0] = xcycsr[:, 0] - w * 0.5
     result[:, 1] = xcycsr[:, 1] - h * 0.5
     result[:, 2] = xcycsr[:, 0] + w * 0.5
