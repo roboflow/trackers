@@ -6,10 +6,7 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
-import re
 from pathlib import Path
 from typing import Literal
 
@@ -19,8 +16,6 @@ from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
 from trackers.eval.results import (
-    AggregationIncompatibleError,
-    BenchmarkCoverage,
     BenchmarkResult,
     CLEARMetrics,
     HOTAMetrics,
@@ -40,39 +35,6 @@ SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
 # Official AI City 2024 headline fields; other HOTA components are undefined under
 # an unweighted scene mean and serialize as JSON null on the aggregate row.
 _SCENE_MEAN_HOTA_FIELDS = ("HOTA", "DetA", "AssA", "LocA")
-_OFFICIAL_MULTICAMERA_SCENES = tuple(f"scene_{index:03d}" for index in range(61, 91))
-_OFFICIAL_SCENE_CAMERA_MAP_SEMANTIC_SHA256 = "a3b7e28d5a5181cb7525c11bc06c828b66846c5a51ebef118ae1c4dc73e3ed00"
-_SCENE_NAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
-
-
-def _require_tp_weighted_hota_arrays(sequence_metrics: list[dict[str, object]]) -> None:
-    """Raise a typed error when per-alpha arrays needed for TP-weighted HOTA are missing."""
-    for index, metrics in enumerate(sequence_metrics):
-        if "HOTA_TP_array" not in metrics:
-            raise AggregationIncompatibleError(
-                "TP-weighted HOTA aggregation requires per-alpha arrays "
-                f"(missing HOTA_TP_array in sequence_metrics[{index}]). "
-                "Use BenchmarkResult.tp_weighted_hota() on a tp_weighted result, "
-                "or keep aggregation='scene_mean' aggregates as-is."
-            )
-
-
-def _aggregate_hota_from_sequences(
-    sequence_results: dict[str, SequenceResult] | list[SequenceResult],
-) -> HOTAMetrics:
-    """Internal TP-weighted HOTA aggregate used by MOT combine and `tp_weighted_hota`."""
-    if isinstance(sequence_results, dict):
-        sequences = list(sequence_results.values())
-    else:
-        sequences = list(sequence_results)
-
-    hota_seq_metrics = [
-        seq.HOTA.to_dict(include_arrays=True, arrays_as_list=False) for seq in sequences if seq.HOTA is not None
-    ]
-    if not hota_seq_metrics:
-        raise ValueError("No HOTA results available to aggregate.")
-    _require_tp_weighted_hota_arrays(hota_seq_metrics)
-    return HOTAMetrics.from_dict(aggregate_hota_metrics(hota_seq_metrics))
 
 
 def evaluate_mot_sequence(
@@ -339,7 +301,6 @@ def evaluate_mot_sequences(
     return BenchmarkResult(
         sequences=sequence_results,
         aggregate=aggregate,
-        aggregation="tp_weighted",
     )
 
 
@@ -378,20 +339,9 @@ def evaluate_multicamera_scene(
 
     Raises:
         FileNotFoundError: If ``gt_path`` or ``tracker_path`` does not exist.
-        ValueError: If inputs are malformed, empty after filtering, exceed
-            protocol allocation bounds, or ``zero_distance`` is not finite and
-            positive.
+        ValueError: If inputs are malformed, empty after filtering, or
+            ``zero_distance`` is not finite and positive.
     """
-    if not np.isfinite(zero_distance) or zero_distance <= 0:
-        raise ValueError(f"zero_distance must be finite and > 0, got {zero_distance}")
-    _validate_scene_name(scene)
-    gt_path = Path(gt_path)
-    tracker_path = Path(tracker_path)
-    if not gt_path.exists():
-        raise FileNotFoundError(f"Ground truth file not found: {gt_path}")
-    if not tracker_path.exists():
-        raise FileNotFoundError(f"Tracker file not found: {tracker_path}")
-
     seq_data = _prepare_multicamera_files(
         gt_path,
         tracker_path,
@@ -412,27 +362,6 @@ def evaluate_multicamera_scene(
     )
 
 
-def _scene_camera_map_sha256(camera_map: dict[str, list[int]]) -> str:
-    """Hash normalized map semantics independently of JSON formatting."""
-    encoded = json.dumps(camera_map, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(encoded).hexdigest()
-
-
-def _validate_scene_name(scene_name: str) -> None:
-    """Reject names that could escape benchmark input roots."""
-    if not isinstance(scene_name, str) or not _SCENE_NAME_PATTERN.fullmatch(scene_name):
-        raise ValueError(f"Invalid scene name {scene_name!r}; path separators and traversal are forbidden.")
-
-
-def _resolve_scene_path(root: Path, relative_path: Path) -> Path:
-    """Resolve a scene path and enforce containment within its supplied root."""
-    resolved_root = root.resolve()
-    resolved_path = (root / relative_path).resolve()
-    if not resolved_path.is_relative_to(resolved_root):
-        raise ValueError(f"Scene path escapes supplied root: {relative_path}")
-    return resolved_path
-
-
 def evaluate_multicamera_scenes(
     gt_dir: str | Path,
     tracker_dir: str | Path,
@@ -441,7 +370,6 @@ def evaluate_multicamera_scenes(
     file_format: Literal["aicity-2024"] = "aicity-2024",
     zero_distance: float = 2.0,
     scenes: list[str] | None = None,
-    allow_partial: bool = False,
 ) -> BenchmarkResult:
     """Evaluate multiple multi-camera scenes and average HOTA unweighted.
 
@@ -452,9 +380,7 @@ def evaluate_multicamera_scenes(
     The aggregate row is the arithmetic mean of per-scene HOTA, DetA, AssA, and
     LocA (``aggregation=\"scene_mean\"``). DetRe/DetPr/AssRe/AssPr/OWTA and the
     TP/FN/FP counts are ``None`` (JSON ``null``) because they are undefined at
-    scene-mean level by the protocol. `aggregate_hota_metrics` is not used;
-    calling `BenchmarkResult.tp_weighted_hota` on the result raises
-    `AggregationIncompatibleError`.
+    scene-mean level by the protocol.
 
     Args:
         gt_dir: Parent directory of per-scene folders containing
@@ -467,9 +393,6 @@ def evaluate_multicamera_scenes(
         zero_distance: Metres at which similarity reaches zero.
         scenes: Optional subset of scene names. Defaults to every scene in the
             camera map.
-        allow_partial: Permit exploratory subsets or noncanonical camera maps.
-            Partial results are labeled ``PARTIAL_SCENE_MEAN`` and serialize
-            explicit expected/evaluated/missing coverage.
 
     Returns:
         `BenchmarkResult` with ``aggregation=\"scene_mean\"``.
@@ -477,8 +400,8 @@ def evaluate_multicamera_scenes(
     Raises:
         FileNotFoundError: If a required ground-truth or prediction file is
             missing.
-        ValueError: If no scenes remain, or coverage is partial/noncanonical
-            without ``allow_partial=True``.
+        ValueError: If no scenes remain or a selected scene is absent from the
+            camera map.
     """
     if not np.isfinite(zero_distance) or zero_distance <= 0:
         raise ValueError(f"zero_distance must be finite and > 0, got {zero_distance}")
@@ -490,72 +413,30 @@ def evaluate_multicamera_scenes(
     else:
         camera_map = {name: list(ids) for name, ids in scene_camera_map.items()}
 
-    map_sha256 = _scene_camera_map_sha256(camera_map)
-    canonical_map = map_sha256 == _OFFICIAL_SCENE_CAMERA_MAP_SEMANTIC_SHA256
-    scene_names = (
-        list(scenes)
-        if scenes is not None
-        else list(_OFFICIAL_MULTICAMERA_SCENES)
-        if canonical_map
-        else list(camera_map.keys())
-    )
+    scene_names = list(scenes) if scenes is not None else list(camera_map)
     if not scene_names:
         raise ValueError("No scenes to evaluate.")
     if len(scene_names) != len(set(scene_names)):
         raise ValueError("Scene selection must not contain duplicates.")
-    complete = (
-        canonical_map
-        and set(camera_map) == set(_OFFICIAL_MULTICAMERA_SCENES)
-        and set(scene_names) == set(_OFFICIAL_MULTICAMERA_SCENES)
-    )
-    if not complete and not allow_partial:
-        raise ValueError(
-            "Official AI City Challenge 2024 results require the complete canonical scene-camera map and all "
-            "scene_061..scene_090 scenes. Pass allow_partial=True for an explicitly labeled exploratory result."
-        )
 
     sequence_results: dict[str, SequenceResult] = {}
     for scene_name in scene_names:
-        _validate_scene_name(scene_name)
         if scene_name not in camera_map:
             raise ValueError(f"Scene {scene_name!r} is not present in the camera map.")
 
-        gt_path = _resolve_scene_path(gt_dir, Path(scene_name) / "ground_truth.txt")
-        tracker_path = _resolve_scene_path(tracker_dir, Path(f"{scene_name}.txt"))
-        if not gt_path.exists():
-            raise FileNotFoundError(f"Ground truth file not found: {gt_path}")
-        if not tracker_path.exists():
-            raise FileNotFoundError(f"Tracker file not found: {tracker_path}")
-
         sequence_results[scene_name] = evaluate_multicamera_scene(
             scene=scene_name,
-            gt_path=gt_path,
-            tracker_path=tracker_path,
+            gt_path=gt_dir / scene_name / "ground_truth.txt",
+            tracker_path=tracker_dir / f"{scene_name}.txt",
             camera_ids=tuple(camera_map[scene_name]),
             file_format=file_format,
             zero_distance=zero_distance,
         )
 
-    aggregate_label = "SCENE_MEAN" if complete else "PARTIAL_SCENE_MEAN"
-    aggregate = _aggregate_scene_mean_hota(sequence_results, sequence=aggregate_label)
-    evaluated_scenes = list(sequence_results)
-    coverage = BenchmarkCoverage(
-        benchmark="AI City Challenge 2024",
-        split="test",
-        protocol="MTMC_Tracking_2024",
-        file_format=file_format,
-        canonical_scene_camera_map_sha256=_OFFICIAL_SCENE_CAMERA_MAP_SEMANTIC_SHA256,
-        scene_camera_map_sha256=map_sha256,
-        expected_scenes=list(_OFFICIAL_MULTICAMERA_SCENES),
-        evaluated_scenes=evaluated_scenes,
-        missing_scenes=[scene for scene in _OFFICIAL_MULTICAMERA_SCENES if scene not in sequence_results],
-        complete=complete,
-    )
     return BenchmarkResult(
         sequences=sequence_results,
-        aggregate=aggregate,
+        aggregate=_aggregate_scene_mean_hota(sequence_results, sequence="SCENE_MEAN"),
         aggregation="scene_mean",
-        coverage=coverage,
     )
 
 
@@ -699,9 +580,13 @@ def _aggregate_metrics(
             clear_agg = CLEARMetrics.from_dict(aggregate_clear_metrics(clear_seq_metrics))
 
     if "HOTA" in metrics:
-        hota_present = any(seq.HOTA is not None for seq in sequence_results.values())
-        if hota_present:
-            hota_agg = _aggregate_hota_from_sequences(sequence_results)
+        hota_seq_metrics = [
+            seq.HOTA.to_dict(include_arrays=True, arrays_as_list=False)
+            for seq in sequence_results.values()
+            if seq.HOTA is not None
+        ]
+        if hota_seq_metrics:
+            hota_agg = HOTAMetrics.from_dict(aggregate_hota_metrics(hota_seq_metrics))
 
     if "Identity" in metrics:
         identity_seq_metrics = [seq.Identity.to_dict() for seq in sequence_results.values() if seq.Identity is not None]

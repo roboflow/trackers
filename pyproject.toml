@@ -65,7 +65,6 @@ dev = [
     "pre-commit>=4.2.0",
     "torch",
     "torchvision",
-    "huggingface_hub",
 ]
 docs = [
     "mkdocs>=1.6.1",

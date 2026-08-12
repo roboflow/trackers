@@ -18,7 +18,6 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 from trackers.eval.constants import EPS
-from trackers.eval.errors import AggregationIncompatibleError
 
 # Alpha thresholds for HOTA evaluation (IoU thresholds)
 # TrackEval uses np.arange(0.05, 0.99, 0.05) which gives 19 values
@@ -330,45 +329,14 @@ def aggregate_hota_metrics(
             np.ones(len(ALPHA_THRESHOLDS)),
         )
 
-    required_arrays = (
-        "HOTA_TP_array",
-        "HOTA_FN_array",
-        "HOTA_FP_array",
-        "AssA_array",
-        "AssRe_array",
-        "AssPr_array",
-        "LocA_array",
-    )
-    validated_metrics: list[dict[str, Any]] = []
-    for index, metrics in enumerate(sequence_metrics):
-        validated = dict(metrics)
-        for field in required_arrays:
-            if field not in metrics:
-                raise AggregationIncompatibleError(
-                    f"Sequence metric {index} lacks {field}; TP-weighted HOTA aggregation requires per-alpha arrays."
-                )
-            values = np.asarray(metrics[field])
-            if values.shape != ALPHA_THRESHOLDS.shape:
-                raise AggregationIncompatibleError(
-                    f"Sequence metric {index} has invalid {field} shape {values.shape}; "
-                    f"expected {ALPHA_THRESHOLDS.shape}."
-                )
-            if not np.issubdtype(values.dtype, np.number) or not np.all(np.isfinite(values)):
-                raise AggregationIncompatibleError(
-                    f"Sequence metric {index} has non-numeric or non-finite {field}; "
-                    "TP-weighted HOTA aggregation requires finite numeric arrays."
-                )
-            validated[field] = values
-        validated_metrics.append(validated)
-
     # Sum integer arrays (ref: hota.py:122-123)
-    hota_tp = np.sum([m["HOTA_TP_array"] for m in validated_metrics], axis=0)
-    hota_fn = np.sum([m["HOTA_FN_array"] for m in validated_metrics], axis=0)
-    hota_fp = np.sum([m["HOTA_FP_array"] for m in validated_metrics], axis=0)
+    hota_tp = np.sum([m["HOTA_TP_array"] for m in sequence_metrics], axis=0)
+    hota_fn = np.sum([m["HOTA_FN_array"] for m in sequence_metrics], axis=0)
+    hota_fp = np.sum([m["HOTA_FP_array"] for m in sequence_metrics], axis=0)
 
     # Weighted average for association metrics (ref: hota.py:124-125)
     def weighted_avg(field: str) -> np.ndarray:
-        weighted_sum = np.sum([m[field] * m["HOTA_TP_array"] for m in validated_metrics], axis=0)
+        weighted_sum = np.sum([m[field] * m["HOTA_TP_array"] for m in sequence_metrics], axis=0)
         return weighted_sum / np.maximum(1e-10, hota_tp)
 
     ass_a = weighted_avg("AssA_array")
@@ -376,7 +344,7 @@ def aggregate_hota_metrics(
     ass_pr = weighted_avg("AssPr_array")
 
     # Weighted average for LocA (ref: hota.py:126-127)
-    loc_a_weighted = np.sum([m["LocA_array"] * m["HOTA_TP_array"] for m in validated_metrics], axis=0)
+    loc_a_weighted = np.sum([m["LocA_array"] * m["HOTA_TP_array"] for m in sequence_metrics], axis=0)
     loc_a = np.maximum(1e-10, loc_a_weighted) / np.maximum(1e-10, hota_tp)
 
     return _build_result(hota_tp, hota_fn, hota_fp, ass_a, ass_re, ass_pr, loc_a)

@@ -1,56 +1,19 @@
 {
-    "oracle": "NVIDIA MTMC_Tracking_2024/eval/main.py from nvidia/PhysicalAI-SmartSpaces",
-    "dataset_revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
-    "evaluator": {
-        "tree_sha256": "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c",
-        "canonical_tree_sha256": "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c",
-        "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
-        "verified": true
+    "oracle": "NVIDIA MTMC_Tracking_2024/eval/main.py",
+    "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
+    "tolerance": {
+        "rel": 0.0001,
+        "abs": 0.0001
     },
-    "download": "hf_hub_download(repo_id='nvidia/PhysicalAI-SmartSpaces', repo_type='dataset', revision='1eebcf0f74a510994fe4c886f4fa77fbc6724ea8') - no GCS mirror",
-    "command": "python scripts/verify_multicamera_eval.py --tier1 --tier2 [--tier3] [--write-goldens]",
-    "numpy": "2.2.6",
-    "scipy": "1.15.3",
-    "pandas": "3.0.5",
-    "python": "3.12.2",
-    "tiers_validated": [
-        "tier1",
-        "tier2",
-        "tier3"
-    ],
-    "notes": "Goldens are fractions in [0, 1]. NVIDIA prints percentages.",
-    "tier3": {
-        "command": "python scripts/verify_multicamera_eval.py --tier1 --tier2 --tier3 --tier3-sample-dir TIER3_SAMPLE_DIR --num-cores 1 --write-goldens",
-        "revision": "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8",
-        "runtime_seconds": 716.133,
+    "fixture_goldens": "expected_results.json",
+    "full_benchmark": {
+        "scenes": "scene_061..scene_090",
+        "comparison": "tier3_comparison.jsonl",
         "headline_percent": {
             "HOTA": 49.2825,
             "DetA": 49.1998,
             "AssA": 49.3655,
             "LocA": 77.0547
-        },
-        "environment": {
-            "python": "3.12.2",
-            "numpy": "2.2.6",
-            "scipy": "1.15.3",
-            "pandas": "3.0.5"
-        },
-        "input_sha256": {
-            "ground_truth_test_full.txt": "76fc83dae03807622ef62246ba7ebdf43f8109f5a99a2447e681fd8c94955c14",
-            "pred.txt": "a51d3f9ff529cfcc1ed7c7e5dbe65307f05ce1e634b369cfedb4d23f5c83fcc3",
-            "scene_name_2_cam_id_full.json": "f1f1c873d40a50e075d85a364554d902968b2c6717f16ebd5e63d43300f50bac"
-        },
-        "comparison_receipt_sha256": "a4242f8469d1bf265887d3ccd3eab7b73e56d1c429a8bccd28155a068526207b",
-        "scene_count": 30,
-        "scene_range": [
-            "scene_061",
-            "scene_090"
-        ],
-        "comparison_tolerance": {
-            "rel": 0.0001,
-            "abs": 0.0001
-        },
-        "comparison_artifact": "tier3_comparison.jsonl",
-        "comparison_artifact_sha256": "3dfa0490e0449a0ebfa627866f049de02a26cae81e4335552d8f56d6b2cadd10"
+        }
     }
 }

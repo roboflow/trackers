@@ -5,338 +5,75 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Regenerate multicamera evaluation goldens and run NVIDIA oracle parity.
+"""Check multicamera parity against NVIDIA's evaluator.
 
-Executable tiers:
+Supply ``MTMC_Tracking_2024/eval`` from PhysicalAI-SmartSpaces revision ``1eebcf0f74a510994fe4c886f4fa77fbc6724ea8``.
+The fixture always runs; ``--sample-dir`` also checks NVIDIA's full sample.
 
-* ``--tier1`` — hermetic fixtures vs NVIDIA ``main.py`` + committed goldens
-* ``--tier2`` — truncated ``scene_061`` recipe vs NVIDIA + committed goldens
-* ``--tier3`` — stream-split full bundled sample files, compare per-scene and
-  headline HOTA/DetA/AssA/LocA (downloads ~2.8 GB if not cached)
+Run with NVIDIA's pandas dependency available::
 
-Downloads the pinned NVIDIA evaluator from Hugging Face revision
-``1eebcf0f74a510994fe4c886f4fa77fbc6724ea8`` (no GCS mirror). Records exact
-evaluator revision and numpy/scipy versions in ``provenance.json`` when
-``--write-goldens`` is set.
-
-Examples::
-
-    python scripts/verify_multicamera_eval.py --tier1 --tier2
-    python scripts/verify_multicamera_eval.py --tier1 --tier2 --write-goldens
-    python scripts/verify_multicamera_eval.py --tier3
+    uv run --with pandas python scripts/verify_multicamera_eval.py \
+        --nvidia-eval-dir /path/to/MTMC_Tracking_2024/eval
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
-import importlib.metadata
 import importlib.util
-import json
-import re
-import shlex
-import shutil
 import sys
 import tempfile
-import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, TextIO
 
+import numpy as np
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "src"))
 FIXTURE_DIR = REPO_ROOT / "tests" / "data" / "multicamera"
-HF_REPO_ID = "nvidia/PhysicalAI-SmartSpaces"
-HF_REVISION = "1eebcf0f74a510994fe4c886f4fa77fbc6724ea8"
-CANONICAL_EVALUATOR_TREE_SHA256 = "5a715f92f089a640da3a325d9648e4437cd3dedf8d9edcf22b63d86594e4676c"
 HEADLINE_FIELDS = ("HOTA", "DetA", "AssA", "LocA")
-TIER3_COMPARISON_ARTIFACT = "tier3_comparison.jsonl"
-TIER3_REL_TOLERANCE = 1e-4
-TIER3_ABS_TOLERANCE = 1e-4
-_SCENE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
-
-# Published AI City 2024 README headline numbers (percentages).
-PUBLISHED_HEADLINE_PCT = {
-    "HOTA": 49.2825,
-    "DetA": 49.1998,
-    "AssA": 49.3655,
-    "LocA": 77.0546,
-}
-
-# Evaluator source files only — never the multi-GB sample payloads by default.
-_EVALUATOR_FILES = (
-    "MTMC_Tracking_2024/eval/main.py",
-    "MTMC_Tracking_2024/eval/README.md",
-    "MTMC_Tracking_2024/eval/3rdParty_Licenses.md",
-    "MTMC_Tracking_2024/eval/utils/__init__.py",
-    "MTMC_Tracking_2024/eval/utils/io_utils.py",
-    "MTMC_Tracking_2024/eval/trackeval/__init__.py",
-    "MTMC_Tracking_2024/eval/trackeval/_timing.py",
-    "MTMC_Tracking_2024/eval/trackeval/eval.py",
-    "MTMC_Tracking_2024/eval/trackeval/utils.py",
-    "MTMC_Tracking_2024/eval/trackeval/plotting.py",
-    "MTMC_Tracking_2024/eval/trackeval/datasets/__init__.py",
-    "MTMC_Tracking_2024/eval/trackeval/datasets/_base_dataset.py",
-    "MTMC_Tracking_2024/eval/trackeval/datasets/mot_challenge_2d_box.py",
-    "MTMC_Tracking_2024/eval/trackeval/datasets/mot_challenge_3d_location.py",
-    "MTMC_Tracking_2024/eval/trackeval/datasets/test_mot.py",
-    "MTMC_Tracking_2024/eval/trackeval/metrics/__init__.py",
-    "MTMC_Tracking_2024/eval/trackeval/metrics/_base_metric.py",
-    "MTMC_Tracking_2024/eval/trackeval/metrics/clear.py",
-    "MTMC_Tracking_2024/eval/trackeval/metrics/count.py",
-    "MTMC_Tracking_2024/eval/trackeval/metrics/hota.py",
-    "MTMC_Tracking_2024/eval/trackeval/metrics/identity.py",
-    "MTMC_Tracking_2024/eval/sample_file/scene_name_2_cam_id_full.json",
-)
-
-_TIER3_SAMPLE_FILES = (
-    "MTMC_Tracking_2024/eval/sample_file/ground_truth_test_full.txt",
-    "MTMC_Tracking_2024/eval/sample_file/pred.txt",
-    "MTMC_Tracking_2024/eval/sample_file/scene_name_2_cam_id_full.json",
-)
-
-
-def _ensure_repo_src_on_path() -> None:
-    src = str(REPO_ROOT / "src")
-    if src not in sys.path:
-        sys.path.insert(0, src)
-
-
-def _build_scene_routes(
-    scene_camera_map: Mapping[str, Sequence[int]],
-    output_dir: Path,
-    *,
-    ground_truth_layout: bool,
-) -> tuple[dict[int, list[str]], dict[str, Path]]:
-    """Validate scene paths and map each camera to destination scenes."""
-    resolved_output = output_dir.resolve()
-    camera_to_scenes: dict[int, list[str]] = {}
-    destinations: dict[str, Path] = {}
-    for scene_name, camera_ids in scene_camera_map.items():
-        if not _SCENE_NAME_PATTERN.fullmatch(scene_name):
-            raise ValueError(f"Invalid scene name {scene_name!r}; absolute and traversal paths are forbidden.")
-        relative_path = Path(scene_name) / "ground_truth.txt" if ground_truth_layout else Path(f"{scene_name}.txt")
-        destination = (output_dir / relative_path).resolve()
-        if not destination.is_relative_to(resolved_output):
-            raise ValueError(f"Scene output path escapes destination: {scene_name!r}")
-        destinations[scene_name] = destination
-        for camera_id in camera_ids:
-            camera_to_scenes.setdefault(int(camera_id), []).append(scene_name)
-    return camera_to_scenes, destinations
-
-
-def _parse_split_row(
-    raw_line: str,
-    *,
-    path: Path,
-    line_number: int,
-    parse_row: Callable[..., tuple[float, ...]] | None,
-) -> tuple[int, str]:
-    """Validate one splitter row and return its camera and normalized text."""
-    line_body = raw_line.rstrip("\r\n")
-    line = line_body.strip()
-    if not line:
-        raise ValueError(f"Blank line at {path}:{line_number} is not allowed in AI City 2024 files.")
-    if line.startswith("#") or line.lower().startswith("camera"):
-        raise ValueError(f"Header or comment line at {path}:{line_number} is not allowed: {line_body!r}")
-    tokens = line.split()
-    if parse_row is not None:
-        return int(parse_row(tokens, path=path, line_number=line_number)[0]), line_body
-    if len(tokens) != 9 or not tokens[0].isdecimal() or int(tokens[0]) > 2**53 - 1:
-        raise ValueError(f"Malformed camera identifier or column count at {path}:{line_number}.")
-    return int(tokens[0]), line_body
+REL_TOLERANCE = 1e-4
+ABS_TOLERANCE = 1e-4
+AICITY_COLUMNS = 9
+ParityPaths = tuple[Path, Path, Path, Path, Path]
 
 
 def split_multicamera_file_by_scene(
-    path: str | Path,
+    path: Path,
     scene_camera_map: Mapping[str, Sequence[int]],
-    output_dir: str | Path,
+    output_dir: Path,
     *,
     ground_truth_layout: bool = False,
-    validate_rows: bool = True,
-) -> dict[str, Path]:
-    """Stream a monolithic AI City file into per-scene text files.
-
-    Verification-only helper (not part of the public ``trackers`` API). Routes each row to the scene that owns its
-    ``camera_id``, preserving file order within each scene. Cameras shared by multiple scenes are written to every
-    matching scene file. Unknown cameras are dropped silently.
-    """
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(f"Multi-camera file not found: {path}")
-
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    _ensure_repo_src_on_path()
-    from trackers.io.multicamera import _parse_row_tokens
-
-    camera_to_scenes, destinations = _build_scene_routes(
-        scene_camera_map,
-        output_dir,
-        ground_truth_layout=ground_truth_layout,
-    )
-
+) -> None:
+    """Split a monolithic sample by camera while preserving file order."""
+    camera_to_scenes: dict[int, list[str]] = {}
     handles: dict[str, TextIO] = {}
-    written: dict[str, Path] = {}
-    saw_row = False
     try:
+        for scene_name, camera_ids in scene_camera_map.items():
+            if not scene_name or Path(scene_name).name != scene_name:
+                raise ValueError(f"Invalid scene name: {scene_name!r}")
+            destination = (
+                output_dir / scene_name / "ground_truth.txt"
+                if ground_truth_layout
+                else output_dir / f"{scene_name}.txt"
+            )
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            handles[scene_name] = destination.open("w", encoding="utf-8")
+            for camera_id in camera_ids:
+                camera_to_scenes.setdefault(camera_id, []).append(scene_name)
+
         with path.open("r", encoding="utf-8", newline="") as source:
             for line_number, raw_line in enumerate(source, start=1):
-                camera_id, line_body = _parse_split_row(
-                    raw_line,
-                    path=path,
-                    line_number=line_number,
-                    parse_row=_parse_row_tokens if validate_rows else None,
-                )
-                saw_row = True
+                line = raw_line.rstrip("\r\n")
+                columns = line.split()
+                if len(columns) != AICITY_COLUMNS or not columns[0].isdecimal():
+                    raise ValueError(f"Malformed AI City row at {path}:{line_number}")
+                camera_id = int(columns[0])
                 for scene_name in camera_to_scenes.get(camera_id, ()):
-                    if scene_name not in handles:
-                        out_path = destinations[scene_name]
-                        out_path.parent.mkdir(parents=True, exist_ok=True)
-                        handles[scene_name] = out_path.open("w", encoding="utf-8")
-                        written[scene_name] = out_path
-                    handles[scene_name].write(line_body + "\n")
+                    handles[scene_name].write(line + "\n")
     finally:
         for handle in handles.values():
             handle.close()
-
-    if not saw_row:
-        raise ValueError(f"Multi-camera file is empty: {path}")
-    return written
-
-
-def _dependency_versions() -> dict[str, str]:
-    versions = {"python": sys.version.split()[0]}
-    for distribution in ("numpy", "scipy", "pandas"):
-        try:
-            versions[distribution] = importlib.metadata.version(distribution)
-        except importlib.metadata.PackageNotFoundError:
-            versions[distribution] = "not-installed"
-    return versions
-
-
-def _sha256_file(path: Path) -> str:
-    """Hash a file without loading it wholly into memory."""
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _sha256_evaluator_tree(eval_dir: Path) -> str:
-    """Hash evaluator relative paths and bytes deterministically."""
-    digest = hashlib.sha256()
-    files = sorted(path for path in eval_dir.rglob("*") if path.is_file() and "__pycache__" not in path.parts)
-    for path in files:
-        relative = path.relative_to(eval_dir).as_posix().encode()
-        data = path.read_bytes()
-        digest.update(len(relative).to_bytes(8, "big"))
-        digest.update(relative)
-        digest.update(len(data).to_bytes(8, "big"))
-        digest.update(data)
-    return digest.hexdigest()
-
-
-def _evaluator_identity(
-    eval_dir: Path,
-    *,
-    canonical_tree_sha256: str = CANONICAL_EVALUATOR_TREE_SHA256,
-) -> dict[str, Any]:
-    """Identify actual evaluator bytes and verify whether they match the pin."""
-    tree_sha256 = _sha256_evaluator_tree(eval_dir)
-    verified = tree_sha256 == canonical_tree_sha256
-    return {
-        "tree_sha256": tree_sha256,
-        "canonical_tree_sha256": canonical_tree_sha256,
-        "revision": HF_REVISION if verified else None,
-        "verified": verified,
-    }
-
-
-def _require_verified_evaluator_for_goldens(identity: Mapping[str, Any], *, write_goldens: bool) -> None:
-    """Prevent modified evaluator bytes from producing NVIDIA-labeled fixtures."""
-    if write_goldens and identity.get("verified") is not True:
-        raise ValueError(
-            "Refusing to write NVIDIA goldens with an unverified evaluator "
-            f"(tree_sha256={identity.get('tree_sha256')!r})."
-        )
-
-
-def _comparison_receipt_sha256(receipt: Mapping[str, Any]) -> str:
-    """Digest the retained Tier-3 comparison evidence deterministically."""
-    if "scene_comparison" not in receipt and "comparison_artifact_sha256" not in receipt:
-        raise ValueError("Tier-3 receipt requires per-scene comparisons or a hashed independent validation artifact.")
-    evidence = {
-        key: receipt[key]
-        for key in (
-            "scene_count",
-            "scene_range",
-            "scene_comparison",
-            "comparison_tolerance",
-            "headline_percent",
-            "input_sha256",
-            "comparison_artifact",
-            "comparison_artifact_sha256",
-        )
-        if key in receipt
-    }
-    encoded = json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(encoded).hexdigest()
-
-
-def _write_tier3_comparison_artifact(path: Path, comparisons: Mapping[str, Any]) -> None:
-    """Write deterministic one-record-per-scene Tier-3 comparison evidence."""
-    lines = (
-        json.dumps({"scene": scene_name, **comparisons[scene_name]}, sort_keys=True, separators=(",", ":"))
-        for scene_name in sorted(comparisons)
-    )
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def _validate_tier3_receipt(receipt: Mapping[str, Any]) -> None:
-    """Authenticate retained Tier-3 evidence before carrying it forward."""
-    if "scene_comparison" not in receipt:
-        artifact = receipt.get("comparison_artifact")
-        artifact_sha256 = receipt.get("comparison_artifact_sha256")
-        if not isinstance(artifact, str) or not isinstance(artifact_sha256, str):
-            raise ValueError("Retained Tier-3 receipt lacks a hashed comparison artifact.")
-        if _sha256_file(FIXTURE_DIR / artifact) != artifact_sha256:
-            raise ValueError("Retained Tier-3 comparison artifact hash does not match provenance.")
-    if receipt.get("comparison_receipt_sha256") != _comparison_receipt_sha256(receipt):
-        raise ValueError("Retained Tier-3 comparison receipt digest does not match provenance.")
-
-
-def _hf_download(filename: str) -> Path:
-    from huggingface_hub import hf_hub_download
-
-    return Path(
-        hf_hub_download(
-            repo_id=HF_REPO_ID,
-            filename=filename,
-            repo_type="dataset",
-            revision=HF_REVISION,
-        )
-    )
-
-
-def ensure_nvidia_eval_dir(cache_dir: Path | None = None) -> Path:
-    """Download pinned NVIDIA evaluator sources into a local cache directory."""
-    if cache_dir is None:
-        cache_dir = Path.home() / ".cache" / "trackers-nvidia-eval" / HF_REVISION
-    eval_dir = cache_dir / "MTMC_Tracking_2024" / "eval"
-    marker = cache_dir / ".revision"
-    if eval_dir.joinpath("main.py").exists() and marker.exists() and marker.read_text().strip() == HF_REVISION:
-        return eval_dir
-
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    for filename in _EVALUATOR_FILES:
-        local = _hf_download(filename)
-        destination = cache_dir / filename
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        if not destination.exists() or destination.resolve() != local.resolve():
-            shutil.copy2(local, destination)
-    marker.write_text(HF_REVISION + "\n", encoding="utf-8")
-    return eval_dir
 
 
 def _load_nvidia_module(eval_dir: Path) -> Any:
@@ -344,9 +81,7 @@ def _load_nvidia_module(eval_dir: Path) -> Any:
     if not main_path.exists():
         raise SystemExit(f"NVIDIA evaluator missing: {main_path}")
     # NVIDIA imports ``trackeval`` and ``utils`` relative to the eval directory.
-    eval_str = str(eval_dir)
-    if eval_str not in sys.path:
-        sys.path.insert(0, eval_str)
+    sys.path.insert(0, str(eval_dir))
     spec = importlib.util.spec_from_file_location("nvidia_mtmc_main", main_path)
     if spec is None or spec.loader is None:
         raise SystemExit(f"Unable to import NVIDIA evaluator from {main_path}")
@@ -363,430 +98,145 @@ def run_nvidia_oracle(
     scene_map_file: Path,
     num_cores: int = 1,
 ) -> dict[str, dict[str, float]]:
-    """Run NVIDIA ``computes_mot_metrics`` and return per-scene + FINAL fractions."""
+    """Run NVIDIA's evaluator and return per-scene and scene-mean scores."""
     module = _load_nvidia_module(eval_dir)
     with tempfile.TemporaryDirectory(prefix="nvidia-mtmc-") as tmp:
-        sequence_result = module.computes_mot_metrics(
+        result = module.computes_mot_metrics(
             str(prediction_file),
             str(ground_truth_file),
             tmp,
             num_cores,
             str(scene_map_file),
         )
-    data = sequence_result[0]["MotChallenge3DLocation"]["data"]
-    import numpy as np
 
     scores: dict[str, dict[str, float]] = {}
-    headline_accum: dict[str, list[float]] = {field: [] for field in HEADLINE_FIELDS}
-    for scene_name, payload in data.items():
+    data = result[0]["MotChallenge3DLocation"]["data"]
+    for scene_name, scene_result in data.items():
         if scene_name == "COMBINED_SEQ":
             continue
-        hota = payload["pedestrian"]["HOTA"]
-        scene_scores = {
-            "HOTA": float(np.mean(hota["HOTA"])),
-            "DetA": float(np.mean(hota["DetA"])),
-            "AssA": float(np.mean(hota["AssA"])),
-            "LocA": float(np.mean(hota["LocA"])),
-        }
-        scores[scene_name] = scene_scores
-        for field in HEADLINE_FIELDS:
-            headline_accum[field].append(scene_scores[field])
-    scores["FINAL"] = {field: float(np.mean(headline_accum[field])) for field in HEADLINE_FIELDS}
+        hota = scene_result["pedestrian"]["HOTA"]
+        scores[scene_name] = {metric: float(np.mean(hota[metric])) for metric in HEADLINE_FIELDS}
+    scores["SCENE_MEAN"] = {
+        metric: float(np.mean([scene[metric] for scene in scores.values()])) for metric in HEADLINE_FIELDS
+    }
     return scores
 
 
-def _approx_equal(got: float, expected: float, *, rel: float = 1e-4, abs_: float = 1e-4) -> bool:
-    return abs(got - expected) <= max(abs_, rel * abs(expected))
-
-
-def _compare_headline(
+def _compare_results(
     label: str,
-    got: dict[str, float],
-    expected: dict[str, float],
-    *,
-    rel: float = 1e-4,
-    abs_: float = 1e-4,
+    result: Any,
+    nvidia_scores: dict[str, dict[str, float]],
 ) -> None:
-    for field in HEADLINE_FIELDS:
-        if field not in got or field not in expected:
-            raise SystemExit(f"{label}: missing field {field}")
-        if not _approx_equal(got[field], expected[field], rel=rel, abs_=abs_):
-            raise SystemExit(f"{label}.{field}: got {got[field]!r}, expected {expected[field]!r}")
+    scores: dict[str, dict[str, float]] = {}
+    for scene_name, sequence in result.sequences.items():
+        if sequence.HOTA is None:
+            raise SystemExit(f"{label}: trackers returned no HOTA result for {scene_name}")
+        scores[scene_name] = {metric: float(getattr(sequence.HOTA, metric)) for metric in HEADLINE_FIELDS}
+    if result.aggregate.HOTA is None:
+        raise SystemExit(f"{label}: trackers returned no scene-mean HOTA result")
+    scores["SCENE_MEAN"] = {metric: float(getattr(result.aggregate.HOTA, metric)) for metric in HEADLINE_FIELDS}
+    if scores.keys() != nvidia_scores.keys():
+        raise SystemExit(f"{label}: scene mismatch; trackers={sorted(scores)}, NVIDIA={sorted(nvidia_scores)}")
+    for scene_name in sorted(scores):
+        for metric in HEADLINE_FIELDS:
+            got, expected = scores[scene_name][metric], nvidia_scores[scene_name][metric]
+            if abs(got - expected) > max(ABS_TOLERANCE, REL_TOLERANCE * abs(expected)):
+                raise SystemExit(f"{label} {scene_name}.{metric}: trackers={got!r}, NVIDIA={expected!r}")
+        summary = ", ".join(f"{metric}={scores[scene_name][metric]:.6f}" for metric in HEADLINE_FIELDS)
+        print(f"  {scene_name}: {summary}")
+    print(f"{label}: parity OK")
 
 
-def _write_provenance(
-    *,
+def _run_parity(
+    label: str,
     eval_dir: Path,
-    tiers_run: list[str],
-    tier3_receipt: dict[str, Any] | None,
-    write_goldens: bool,
+    paths: ParityPaths,
+    num_cores: int,
 ) -> None:
-    versions = _dependency_versions()
-    previous: dict[str, Any] = {}
-    provenance_path = FIXTURE_DIR / "provenance.json"
-    if provenance_path.exists():
-        previous = json.loads(provenance_path.read_text(encoding="utf-8"))
-    if tier3_receipt is not None:
-        _validate_tier3_receipt(tier3_receipt)
-    elif "tier3" in previous and "tier3" in previous.get("tiers_validated", []):
-        _validate_tier3_receipt(previous["tier3"])
-    validated_tiers = list(tiers_run)
-    if tier3_receipt is not None or ("tier3" in previous.get("tiers_validated", []) and "tier3" in previous):
-        if "tier3" not in validated_tiers:
-            validated_tiers.append("tier3")
-    payload = {
-        "oracle": "NVIDIA MTMC_Tracking_2024/eval/main.py from nvidia/PhysicalAI-SmartSpaces",
-        "dataset_revision": HF_REVISION,
-        "evaluator": _evaluator_identity(eval_dir),
-        "download": (
-            f"hf_hub_download(repo_id={HF_REPO_ID!r}, repo_type='dataset', revision={HF_REVISION!r}) - no GCS mirror"
-        ),
-        "command": ("python scripts/verify_multicamera_eval.py --tier1 --tier2 [--tier3] [--write-goldens]"),
-        "numpy": versions["numpy"],
-        "scipy": versions["scipy"],
-        "pandas": versions["pandas"],
-        "python": versions["python"],
-        "tiers_validated": validated_tiers,
-        "notes": "Goldens are fractions in [0, 1]. NVIDIA prints percentages.",
-    }
-    if tier3_receipt is not None:
-        payload["tier3"] = tier3_receipt
-    elif "tier3" in previous:
-        payload["tier3"] = previous["tier3"]
-    if write_goldens:
-        provenance_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        print("Wrote", provenance_path)
-    else:
-        print("Provenance (not written; pass --write-goldens to persist):")
-        print(json.dumps(payload, indent=2))
-
-
-def _run_tier1(eval_dir: Path, *, write_goldens: bool) -> dict[str, dict[str, float]]:
-    _ensure_repo_src_on_path()
     from trackers.eval import evaluate_multicamera_scenes
 
-    ours = evaluate_multicamera_scenes(
-        gt_dir=FIXTURE_DIR / "gt",
-        tracker_dir=FIXTURE_DIR / "pred",
-        scene_camera_map=FIXTURE_DIR / "scene_camera_map.json",
-        allow_partial=True,
+    gt_dir, tracker_dir, ground_truth_file, prediction_file, scene_map_file = paths
+    trackers_result = evaluate_multicamera_scenes(
+        gt_dir=gt_dir,
+        tracker_dir=tracker_dir,
+        scene_camera_map=scene_map_file,
     )
-    nvidia = run_nvidia_oracle(
+    nvidia_result = run_nvidia_oracle(
         eval_dir,
-        prediction_file=FIXTURE_DIR / "combined_pred.txt",
-        ground_truth_file=FIXTURE_DIR / "combined_gt.txt",
-        scene_map_file=FIXTURE_DIR / "scene_camera_map.json",
+        prediction_file=prediction_file,
+        ground_truth_file=ground_truth_file,
+        scene_map_file=scene_map_file,
+        num_cores=num_cores,
+    )
+    _compare_results(label, trackers_result, nvidia_result)
+
+
+def _run_fixture(eval_dir: Path, *, num_cores: int) -> None:
+    _run_parity(
+        "fixture",
+        eval_dir,
+        (
+            FIXTURE_DIR / "gt",
+            FIXTURE_DIR / "pred",
+            FIXTURE_DIR / "combined_gt.txt",
+            FIXTURE_DIR / "combined_pred.txt",
+            FIXTURE_DIR / "scene_camera_map.json",
+        ),
+        num_cores,
     )
 
-    ours_scenes: dict[str, dict[str, float]] = {}
-    for scene_name, seq in ours.sequences.items():
-        if seq.HOTA is None:
-            raise SystemExit(f"tier1: missing HOTA for {scene_name}")
-        ours_scenes[scene_name] = {field: float(getattr(seq.HOTA, field)) for field in HEADLINE_FIELDS}
-        _compare_headline(f"tier1 ours vs NVIDIA {scene_name}", ours_scenes[scene_name], nvidia[scene_name])
 
-    if ours.aggregate.HOTA is None:
-        raise SystemExit("tier1: missing SCENE_MEAN HOTA")
-    ours_mean = {field: float(getattr(ours.aggregate.HOTA, field)) for field in HEADLINE_FIELDS}
-    _compare_headline("tier1 ours vs NVIDIA FINAL", ours_mean, nvidia["FINAL"])
-
-    expected_path = FIXTURE_DIR / "expected_results.json"
-    if write_goldens:
-        payload = {
-            "source": "NVIDIA MTMC_Tracking_2024/eval/main.py",
-            "revision": HF_REVISION,
-            "tolerance": {"rel": 1e-4, "abs": 1e-4},
-            "scenes": {name: {field: nvidia[name][field] for field in HEADLINE_FIELDS} for name in sorted(ours_scenes)},
-            "SCENE_MEAN": {field: nvidia["FINAL"][field] for field in HEADLINE_FIELDS},
-        }
-        expected_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        print("Wrote", expected_path)
-    else:
-        expected = json.loads(expected_path.read_text(encoding="utf-8"))
-        for scene_name, values in expected["scenes"].items():
-            _compare_headline(f"tier1 vs golden {scene_name}", ours_scenes[scene_name], values)
-        _compare_headline("tier1 vs golden SCENE_MEAN", ours_mean, expected["SCENE_MEAN"])
-
-    print("tier1 OK (ours == NVIDIA" + (" / goldens rewritten)" if write_goldens else " == goldens)"))
-    return {"SCENE_MEAN": ours_mean, **ours_scenes}
-
-
-def _build_tier2_prediction_rows(
-    gt_rows: list[list[str]],
-    *,
-    drop_every_k: int,
-    id_swap_frame_start: int,
-    id_swap_frame_end: int,
-    dedup_dup_rows: int,
-) -> list[list[str]]:
-    pred_rows: list[list[str]] = []
-    for index, parts in enumerate(gt_rows):
-        if index % drop_every_k == 0:
-            continue
-        frame = int(parts[2])
-        obj = int(parts[1])
-        if id_swap_frame_start <= frame < id_swap_frame_end:
-            obj = obj + 1000
-        new_parts = list(parts)
-        new_parts[1] = str(obj)
-        pred_rows.append(new_parts)
-    for parts in pred_rows[:dedup_dup_rows]:
-        duplicate = list(parts)
-        duplicate[7] = str(float(duplicate[7]) + 10.0)
-        pred_rows.append(duplicate)
-    return pred_rows
-
-
-def _run_tier2(eval_dir: Path, *, write_goldens: bool) -> dict[str, dict[str, float]]:
-    _ensure_repo_src_on_path()
-    from trackers.eval import evaluate_multicamera_scene
-    from trackers.io.multicamera import _truncate_multicamera_rows
-
-    expected_path = FIXTURE_DIR / "tier2_expected.json"
-    expected = json.loads(expected_path.read_text(encoding="utf-8"))
-    recipe = expected["recipe"]
-    if "revision" not in recipe:
-        raise SystemExit("tier2_expected.json recipe must pin an explicit HF revision")
-    if recipe["revision"] != HF_REVISION:
-        raise SystemExit(f"tier2 recipe revision {recipe['revision']!r} != script pin {HF_REVISION!r}")
-
-    gt_source = _hf_download(recipe["source"])
-    gt_rows = _truncate_multicamera_rows(gt_source, max_frame=recipe["max_frame"])
-    pred_rows = _build_tier2_prediction_rows(
-        gt_rows,
-        drop_every_k=recipe["drop_every_k"],
-        id_swap_frame_start=recipe["id_swap_frame_start"],
-        id_swap_frame_end=recipe["id_swap_frame_end"],
-        dedup_dup_rows=recipe["dedup_dup_rows"],
-    )
-
-    with tempfile.TemporaryDirectory(prefix="tier2-mtmc-") as tmp_name:
-        tmp = Path(tmp_name)
-        gt_path = tmp / "ground_truth.txt"
-        pred_path = tmp / "pred.txt"
-        scene_map_path = tmp / "scene_map.json"
-        gt_path.write_text("\n".join(" ".join(row) for row in gt_rows) + "\n", encoding="utf-8")
-        pred_path.write_text("\n".join(" ".join(row) for row in pred_rows) + "\n", encoding="utf-8")
-        scene_map_path.write_text(
-            json.dumps([{"scene_name": "scene_061", "camera_ids": recipe["camera_ids"]}], indent=2) + "\n",
-            encoding="utf-8",
-        )
-
-        ours = evaluate_multicamera_scene(
-            scene="scene_061",
-            gt_path=gt_path,
-            tracker_path=pred_path,
-            camera_ids=tuple(recipe["camera_ids"]),
-        )
-        if ours.HOTA is None:
-            raise SystemExit("tier2: missing HOTA")
-        ours_scores = {field: float(getattr(ours.HOTA, field)) for field in HEADLINE_FIELDS}
-
-        nvidia = run_nvidia_oracle(
-            eval_dir,
-            prediction_file=pred_path,
-            ground_truth_file=gt_path,
-            scene_map_file=scene_map_path,
-        )
-        _compare_headline("tier2 ours vs NVIDIA scene_061", ours_scores, nvidia["scene_061"])
-        if write_goldens:
-            payload = {
-                "recipe": recipe,
-                "scene_061": {field: nvidia["scene_061"][field] for field in HEADLINE_FIELDS},
-            }
-            expected_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-            print("Wrote", expected_path)
-        else:
-            _compare_headline("tier2 vs golden scene_061", ours_scores, expected["scene_061"])
-
-    print("tier2 OK (ours == NVIDIA" + (" / goldens rewritten)" if write_goldens else " == goldens)"))
-    return {"scene_061": ours_scores}
-
-
-def _resolve_tier3_sample_dir(sample_dir: Path | None) -> Path:
-    if sample_dir is not None:
-        return sample_dir
-    # Prefer already-downloaded Hugging Face cache / local mirrors.
-    candidates = [
-        Path.home()
-        / ".cache"
-        / "huggingface"
-        / "hub"
-        / "datasets--nvidia--PhysicalAI-SmartSpaces"
-        / "snapshots"
-        / HF_REVISION
-        / "MTMC_Tracking_2024"
-        / "eval"
-        / "sample_file",
-        Path("/tmp/aic24eval_full/MTMC_Tracking_2024/eval/sample_file"),  # noqa: S108
-    ]
-    for candidate in candidates:
-        if (candidate / "pred.txt").exists() and (candidate / "ground_truth_test_full.txt").exists():
-            return candidate
-
-    print("Downloading tier-3 sample files from Hugging Face (≈2.8 GB)...")
-    paths = {name: _hf_download(name) for name in _TIER3_SAMPLE_FILES}
-    return paths["MTMC_Tracking_2024/eval/sample_file/pred.txt"].parent
-
-
-def _run_tier3(eval_dir: Path, *, sample_dir: Path | None, num_cores: int) -> dict[str, Any]:
-    _ensure_repo_src_on_path()
-    from trackers.eval import evaluate_multicamera_scenes
+def _run_full_sample(eval_dir: Path, sample_dir: Path, *, num_cores: int) -> None:
     from trackers.io.multicamera import load_scene_camera_map
 
-    sample = _resolve_tier3_sample_dir(sample_dir)
-    pred = sample / "pred.txt"
-    gt = sample / "ground_truth_test_full.txt"
-    scene_map_path = sample / "scene_name_2_cam_id_full.json"
-    for path in (pred, gt, scene_map_path):
-        if not path.exists():
-            raise SystemExit(f"tier3 missing sample file: {path}")
+    prediction_file = sample_dir / "pred.txt"
+    ground_truth_file = sample_dir / "ground_truth_test_full.txt"
+    scene_map_file = sample_dir / "scene_name_2_cam_id_full.json"
+    for path in (prediction_file, ground_truth_file, scene_map_file):
+        if not path.is_file():
+            raise SystemExit(f"Full sample input missing: {path}")
 
-    camera_map = load_scene_camera_map(scene_map_path)
-    with tempfile.TemporaryDirectory(prefix="tier3-mtmc-") as tmp_name:
-        tmp = Path(tmp_name)
-        gt_dir = tmp / "gt"
-        tracker_dir = tmp / "pred"
-        split_multicamera_file_by_scene(
-            gt,
-            camera_map,
-            gt_dir,
-            ground_truth_layout=True,
-            validate_rows=False,
-        )
-        split_multicamera_file_by_scene(pred, camera_map, tracker_dir, validate_rows=False)
-
-        ours = evaluate_multicamera_scenes(
-            gt_dir=gt_dir,
-            tracker_dir=tracker_dir,
-            scene_camera_map=camera_map,
-        )
-        nvidia = run_nvidia_oracle(
+    scene_camera_map = load_scene_camera_map(scene_map_file)
+    with tempfile.TemporaryDirectory(prefix="multicamera-parity-") as temporary_dir:
+        temporary_root = Path(temporary_dir)
+        gt_dir = temporary_root / "gt"
+        tracker_dir = temporary_root / "pred"
+        split_multicamera_file_by_scene(ground_truth_file, scene_camera_map, gt_dir, ground_truth_layout=True)
+        split_multicamera_file_by_scene(prediction_file, scene_camera_map, tracker_dir)
+        _run_parity(
+            "full sample",
             eval_dir,
-            prediction_file=pred,
-            ground_truth_file=gt,
-            scene_map_file=scene_map_path,
-            num_cores=num_cores,
+            (gt_dir, tracker_dir, ground_truth_file, prediction_file, scene_map_file),
+            num_cores,
         )
-
-        scene_comparison: dict[str, dict[str, dict[str, float]]] = {}
-        for scene_name, seq in ours.sequences.items():
-            if seq.HOTA is None:
-                raise SystemExit(f"tier3: missing HOTA for {scene_name}")
-            ours_scores = {field: float(getattr(seq.HOTA, field)) for field in HEADLINE_FIELDS}
-            _compare_headline(f"tier3 ours vs NVIDIA {scene_name}", ours_scores, nvidia[scene_name])
-            scene_comparison[scene_name] = {
-                "ours": ours_scores,
-                "nvidia": nvidia[scene_name],
-            }
-
-        if ours.aggregate.HOTA is None:
-            raise SystemExit("tier3: missing SCENE_MEAN")
-        ours_mean = {field: float(getattr(ours.aggregate.HOTA, field)) for field in HEADLINE_FIELDS}
-        _compare_headline("tier3 ours vs NVIDIA FINAL", ours_mean, nvidia["FINAL"])
-        published = {field: value / 100.0 for field, value in PUBLISHED_HEADLINE_PCT.items()}
-        _compare_headline("tier3 NVIDIA vs published README", nvidia["FINAL"], published, rel=1e-3, abs_=1e-4)
-        _compare_headline("tier3 ours vs published README", ours_mean, published, rel=1e-3, abs_=1e-4)
-
-    print("tier3 OK — SCENE_MEAN %: " + ", ".join(f"{field}={ours_mean[field] * 100:.4f}" for field in HEADLINE_FIELDS))
-    return {
-        "SCENE_MEAN": ours_mean,
-        "nvidia_FINAL": nvidia["FINAL"],
-        "scene_comparison": scene_comparison,
-        "input_sha256": {
-            "ground_truth_test_full.txt": _sha256_file(gt),
-            "pred.txt": _sha256_file(pred),
-            "scene_name_2_cam_id_full.json": _sha256_file(scene_map_path),
-        },
-    }
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tier1", action="store_true", help="Hermetic fixtures vs NVIDIA + goldens.")
-    parser.add_argument("--tier2", action="store_true", help="Truncated scene_061 vs NVIDIA + goldens.")
-    parser.add_argument(
-        "--tier3",
-        action="store_true",
-        help="Full ~2.8 GB sample files: stream-split, compare ours/NVIDIA/README.",
-    )
-    parser.add_argument(
-        "--write-goldens",
-        action="store_true",
-        help="Rewrite expected_results.json / tier2_expected.json / provenance.json.",
+    parser = argparse.ArgumentParser(
+        description="Compare trackers with NVIDIA's pinned evaluator; always checks the committed fixture."
     )
     parser.add_argument(
         "--nvidia-eval-dir",
         type=Path,
-        default=None,
-        help="Existing MTMC_Tracking_2024/eval directory (skips HF evaluator download).",
+        required=True,
+        help="Path to NVIDIA's MTMC_Tracking_2024/eval directory at the pinned revision.",
     )
     parser.add_argument(
-        "--tier3-sample-dir",
+        "--sample-dir",
         type=Path,
-        default=None,
-        help="Directory containing pred.txt / ground_truth_test_full.txt / scene map.",
+        help="Also check pred.txt, ground_truth_test_full.txt, and scene_name_2_cam_id_full.json in this directory.",
     )
-    parser.add_argument("--num-cores", type=int, default=1, help="NVIDIA TrackEval worker count.")
+    parser.add_argument("--num-cores", type=int, default=1, help="NVIDIA TrackEval worker count (default: 1).")
     args = parser.parse_args()
+    if args.num_cores < 1:
+        parser.error("--num-cores must be at least 1")
+    if not (args.nvidia_eval_dir / "main.py").is_file():
+        parser.error(f"--nvidia-eval-dir does not contain main.py: {args.nvidia_eval_dir}")
 
-    if not (args.tier1 or args.tier2 or args.tier3):
-        parser.error("Specify at least one of --tier1 / --tier2 / --tier3")
-
-    eval_dir = Path(args.nvidia_eval_dir) if args.nvidia_eval_dir else ensure_nvidia_eval_dir()
-    evaluator_identity = _evaluator_identity(eval_dir)
-    _require_verified_evaluator_for_goldens(evaluator_identity, write_goldens=args.write_goldens)
-    print(f"NVIDIA evaluator: {eval_dir}")
-    print(f"Evaluator revision: {evaluator_identity['revision'] or 'unverified override'}")
-    print("Dependency versions:", json.dumps(_dependency_versions(), sort_keys=True))
-
-    tiers_run: list[str] = []
-    tier3_receipt: dict[str, Any] | None = None
-    if args.tier1:
-        _run_tier1(eval_dir, write_goldens=args.write_goldens)
-        tiers_run.append("tier1")
-    if args.tier2:
-        _run_tier2(eval_dir, write_goldens=args.write_goldens)
-        tiers_run.append("tier2")
-    if args.tier3:
-        started = time.perf_counter()
-        tier3_result = _run_tier3(eval_dir, sample_dir=args.tier3_sample_dir, num_cores=args.num_cores)
-        runtime_seconds = time.perf_counter() - started
-        receipt_argv = ["python", *sys.argv]
-        for option in ("--nvidia-eval-dir", "--tier3-sample-dir"):
-            if option in receipt_argv:
-                receipt_argv[receipt_argv.index(option) + 1] = option[2:].replace("-", "_").upper()
-        tier3_receipt = {
-            "command": shlex.join(receipt_argv),
-            "revision": evaluator_identity["revision"],
-            "runtime_seconds": round(runtime_seconds, 3),
-            "scene_count": len(tier3_result["scene_comparison"]),
-            "scene_range": [min(tier3_result["scene_comparison"]), max(tier3_result["scene_comparison"])],
-            "comparison_tolerance": {"rel": TIER3_REL_TOLERANCE, "abs": TIER3_ABS_TOLERANCE},
-            "scene_comparison": tier3_result["scene_comparison"],
-            "headline_percent": {
-                field: round(float(tier3_result["SCENE_MEAN"][field]) * 100, 4) for field in HEADLINE_FIELDS
-            },
-            "environment": _dependency_versions(),
-            "input_sha256": tier3_result["input_sha256"],
-        }
-        if args.write_goldens:
-            artifact_path = FIXTURE_DIR / TIER3_COMPARISON_ARTIFACT
-            _write_tier3_comparison_artifact(artifact_path, tier3_receipt.pop("scene_comparison"))
-            tier3_receipt["comparison_artifact"] = TIER3_COMPARISON_ARTIFACT
-            tier3_receipt["comparison_artifact_sha256"] = _sha256_file(artifact_path)
-            print("Wrote", artifact_path)
-        tier3_receipt["comparison_receipt_sha256"] = _comparison_receipt_sha256(tier3_receipt)
-        tiers_run.append("tier3")
-    else:
-        print("tier3: not run")
-
-    _write_provenance(
-        eval_dir=eval_dir,
-        tiers_run=tiers_run,
-        tier3_receipt=tier3_receipt,
-        write_goldens=args.write_goldens,
-    )
+    print(f"NVIDIA evaluator: {args.nvidia_eval_dir}")
+    _run_fixture(args.nvidia_eval_dir, num_cores=args.num_cores)
+    if args.sample_dir is not None:
+        _run_full_sample(args.nvidia_eval_dir, args.sample_dir, num_cores=args.num_cores)
 
 
 if __name__ == "__main__":
