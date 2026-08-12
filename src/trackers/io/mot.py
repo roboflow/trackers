@@ -377,6 +377,31 @@ def _remap_ids(
     return np.array([id_map[int(original_id)] for original_id in ids], dtype=np.intp)
 
 
+def _ensure_unique_ids(ids: NDArray[np.intp], frame: int, source: str) -> None:
+    """Reject a track id that appears more than once within a single frame.
+
+    Metrics accumulate per-id counts with fancy-indexed `+=`, which NumPy buffers rather than adds: a repeated index is
+    written once, so duplicate ids quietly deflate the totals that every metric divides by. TrackEval raises on this
+    input as well, so the sequence is rejected instead of scored.
+
+    Args:
+        ids: Track ids for one frame, after ignored and unconfirmed rows are dropped.
+        frame: 1-based frame number, used in the error message.
+        source: Human-readable origin of the ids, used in the error message.
+
+    Raises:
+        ValueError: If any id occurs more than once.
+    """
+    unique_ids, counts = np.unique(ids, return_counts=True)
+    duplicated_ids = unique_ids[counts > 1]
+    if duplicated_ids.size > 0:
+        raise ValueError(
+            f"{source} has duplicate track ids in frame {frame}: {duplicated_ids.tolist()}. "
+            "Each track id may appear at most once per frame; metrics index accumulators by id, "
+            "so repeated ids would be undercounted."
+        )
+
+
 def _prepare_mot_sequence(
     ground_truth_data: dict[int, _MOTFrameData],
     tracker_data: dict[int, _MOTFrameData],
@@ -396,6 +421,10 @@ def _prepare_mot_sequence(
 
     Returns:
         `_MOTSequenceData` containing prepared data ready for metric evaluation.
+
+    Raises:
+        ValueError: If a scored ground-truth id or a confirmed tracker id appears
+            more than once within a single frame.
     """
     num_frames = _resolve_num_frames(ground_truth_data, tracker_data, num_frames)
     ground_truth_id_map, tracker_id_map = _build_id_mappings(ground_truth_data, tracker_data, num_frames)
@@ -411,6 +440,8 @@ def _prepare_mot_sequence(
             ground_truth_data, frame
         )
         tracker_boxes, tracker_ids = _extract_tracker_frame(tracker_data, frame)
+        _ensure_unique_ids(ground_truth_ids, frame, "Ground truth")
+        _ensure_unique_ids(tracker_ids, frame, "Tracker")
         tracker_boxes, tracker_ids = _remove_distractor_matches(all_boxes, distractor_mask, tracker_boxes, tracker_ids)
 
         remapped_ground_truth_ids = _remap_ids(ground_truth_ids, ground_truth_id_map)
