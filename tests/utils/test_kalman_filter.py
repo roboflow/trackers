@@ -37,3 +37,35 @@ def test_update_with_none_preserves_posterior_as_prior() -> None:
 
     np.testing.assert_allclose(kf.state, state_prior)
     np.testing.assert_allclose(kf.state_covariance, cov_prior)
+
+
+def test_update_survives_singular_innovation_covariance() -> None:
+    """Zero measurement noise with a collapsed state covariance degrades instead of raising."""
+    kf = KalmanFilter(dim_x=2, dim_z=1)
+    kf.state = np.array([[1.0], [0.0]])
+    kf.state_covariance = np.zeros((2, 2))
+    kf.observation_mtx = np.array([[1.0, 0.0]])
+    kf.measurement_noise = np.zeros((1, 1))
+
+    kf.update(np.array([[2.0]]))
+
+    assert np.isfinite(kf.state).all()
+    assert np.isfinite(kf.state_covariance).all()
+    assert np.isfinite(kf.kalman_gain).all()
+
+
+def test_update_gain_matches_textbook_inverse_when_invertible() -> None:
+    """For an invertible innovation covariance the gain still equals ``P @ H.T @ S^-1``."""
+    kf = KalmanFilter(dim_x=2, dim_z=1)
+    kf.state = np.array([[1.0], [0.0]])
+    kf.state_covariance = np.array([[2.0, 0.5], [0.5, 1.0]])
+    kf.observation_mtx = np.array([[1.0, 0.0]])
+    kf.measurement_noise = np.array([[0.3]])
+
+    projected_covariance = kf.state_covariance @ kf.observation_mtx.T
+    innovation_cov = kf.observation_mtx @ projected_covariance + kf.measurement_noise
+    expected_gain = projected_covariance @ np.linalg.inv(innovation_cov)
+
+    kf.update(np.array([[2.0]]))
+
+    np.testing.assert_allclose(kf.kalman_gain, expected_gain, rtol=1e-12, atol=1e-12)
