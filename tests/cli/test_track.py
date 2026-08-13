@@ -7,14 +7,18 @@
 from __future__ import annotations
 
 from dataclasses import fields
+from pathlib import Path
 from typing import ClassVar
 
+import cv2
 import numpy as np
 import pytest
 import supervision as sv
 
 from trackers.cli.track import (
     _EXCLUDED_TRACKER_PARAMETERS,
+    DetectionOptions,
+    OutputOptions,
     ShowOptions,
     TrackerOptions,
     _abbreviate_parameter_name,
@@ -27,6 +31,7 @@ from trackers.cli.track import (
     _resolve_track_id_filter,
     _resolve_tracker_kwargs,
     _tracker_options_as_dict,
+    track_command,
 )
 from trackers.core.base import BaseTracker
 
@@ -350,3 +355,143 @@ class TestTrackerParameterAbbreviations:
             tracker = _init_tracker(options)
 
         assert not hasattr(tracker, "minimum_mask_coverage")
+
+
+class TestInitTrackerDetectedFrameRate:
+    """``detected_frame_rate`` should seed ``frame_rate`` unless the CLI already overrode it.
+
+    Regression coverage for H-FRAME-RATE-NEVER-PROPAGATED: every tracker's ``frame_rate`` defaults to a hardcoded
+    30.0 (see e.g. ``BaseTracker._compute_maximum_frames_without_update``, ``trackers.utils.motion_models``), and
+    without this parameter ``_init_tracker`` had no way to fill it in from the source's real fps.
+    """
+
+    def test_detected_frame_rate_reaches_the_tracker(self) -> None:
+        """A source fps with no explicit ``--tracker.frame_rate`` override reaches the constructor."""
+        options = TrackerOptions(name="bytetrack")
+
+        tracker = _init_tracker(options, detected_frame_rate=24.0)
+
+        assert tracker._frame_rate == pytest.approx(24.0)
+
+    def test_explicit_override_wins_over_detected_frame_rate(self) -> None:
+        """``--tracker.frame_rate`` set explicitly must not be clobbered by the detected value."""
+        options = TrackerOptions(name="bytetrack", frame_rate=60.0)
+
+        tracker = _init_tracker(options, detected_frame_rate=24.0)
+
+        assert tracker._frame_rate == pytest.approx(60.0)
+
+    def test_no_detected_frame_rate_keeps_the_constructor_default(self) -> None:
+        """``detected_frame_rate=None`` (unknown source fps, e.g. a webcam) changes nothing."""
+        options = TrackerOptions(name="bytetrack")
+
+        tracker = _init_tracker(options, detected_frame_rate=None)
+
+        assert tracker._frame_rate == pytest.approx(30.0)
+
+    @pytest.mark.parametrize("bad_value", [0.0, -24.0, float("nan"), float("inf")])
+    def test_non_positive_or_non_finite_detected_frame_rate_is_ignored(self, bad_value: float) -> None:
+        """A degenerate probed fps (``<= 0``, non-finite, e.g. a corrupt container) falls back to the tracker default.
+
+        Without the ``math.isfinite`` guard, ``inf``/``nan`` pass the old ``> 0`` check (``inf > 0`` is ``True``) and
+        reach the tracker constructor, which raises ``ValueError`` inside
+        ``BaseTracker._compute_maximum_frames_without_update`` instead of falling back cleanly.
+        """
+        options = TrackerOptions(name="bytetrack")
+
+        tracker = _init_tracker(options, detected_frame_rate=bad_value)
+
+        assert tracker._frame_rate == pytest.approx(30.0)
+
+    def test_every_registered_tracker_accepts_frame_rate(self) -> None:
+        """Every tracker in the registry accepts ``frame_rate`` today.
+
+        Backs the ``"frame_rate" in accepted`` guard in ``_init_tracker``: that guard exists so a detected value is
+        silently skipped for a tracker that has no such parameter, but no registered tracker currently exercises that
+        branch — this pins the current registry shape so the guard's dead branch is visible rather than silently
+        unreachable forever.
+        """
+        for tracker_id in BaseTracker._registered_trackers():
+            info = BaseTracker._lookup_tracker(tracker_id)
+            assert info is not None
+            assert "frame_rate" in info.parameters
+
+
+class TestTrackCommandDetectsSourceFrameRate:
+    """``track_command`` must read the source's real fps before building the tracker.
+
+    ``_init_tracker`` used to be called before ``source_info`` (which holds the real fps) even
+    existed in this function's scope — the CLI entry point had no way to reach the fix in
+    ``TestInitTrackerDetectedFrameRate`` above without first reordering ``track_command`` itself.
+    This is the end-to-end wiring check for that reorder: a real (tiny) video written at a
+    non-default fps, replayed through ``--detection.mot_file`` so no detection model is needed.
+    """
+
+    @staticmethod
+    def _write_video(path: Path, fps: float, frame_count: int = 3) -> None:
+        writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (4, 4))
+        try:
+            for _ in range(frame_count):
+                writer.write(np.zeros((4, 4, 3), dtype=np.uint8))
+        finally:
+            writer.release()
+
+    def test_video_fps_reaches_the_tracker(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The video's real (non-30) fps is what the tracker is built with."""
+        video_path = tmp_path / "clip.mp4"
+        self._write_video(video_path, fps=24.0)
+
+        detection_file = tmp_path / "dets.txt"
+        detection_file.write_text("1,1,1,1,2,2,0.9,-1,-1,-1\n2,1,1,1,2,2,0.9,-1,-1,-1\n")
+
+        real_init_tracker = _init_tracker
+        captured: dict[str, float | None] = {}
+
+        def spy_init_tracker(
+            params: TrackerOptions | None,  # type: ignore[valid-type]
+            *,
+            detected_frame_rate: float | None = None,
+        ) -> BaseTracker:
+            captured["detected_frame_rate"] = detected_frame_rate
+            return real_init_tracker(params, detected_frame_rate=detected_frame_rate)
+
+        monkeypatch.setattr("trackers.cli.track._init_tracker", spy_init_tracker)
+
+        exit_code = track_command(
+            source=str(video_path),
+            detection=DetectionOptions(mot_file=detection_file),
+            tracker=TrackerOptions(name="bytetrack"),
+            output=OutputOptions(mot_results=tmp_path / "out.txt"),
+        )
+
+        assert exit_code == 0
+        assert captured["detected_frame_rate"] == pytest.approx(24.0)
+
+    def test_mot_file_only_run_has_no_detected_frame_rate(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No video source at all (pure ``--detection.mot_file`` replay): nothing to detect from."""
+        detection_file = tmp_path / "dets.txt"
+        detection_file.write_text("1,1,1,1,2,2,0.9,-1,-1,-1\n2,1,1,1,2,2,0.9,-1,-1,-1\n")
+
+        real_init_tracker = _init_tracker
+        captured: dict[str, float | None] = {}
+
+        def spy_init_tracker(
+            params: TrackerOptions | None,  # type: ignore[valid-type]
+            *,
+            detected_frame_rate: float | None = None,
+        ) -> BaseTracker:
+            captured["detected_frame_rate"] = detected_frame_rate
+            return real_init_tracker(params, detected_frame_rate=detected_frame_rate)
+
+        monkeypatch.setattr("trackers.cli.track._init_tracker", spy_init_tracker)
+
+        exit_code = track_command(
+            detection=DetectionOptions(mot_file=detection_file),
+            tracker=TrackerOptions(name="bytetrack"),
+            output=OutputOptions(mot_results=tmp_path / "out.txt"),
+        )
+
+        assert exit_code == 0
+        assert captured["detected_frame_rate"] is None

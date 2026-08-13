@@ -9,12 +9,13 @@
 
 from __future__ import annotations
 
+import math
 import sys
 import warnings
 from contextlib import nullcontext, suppress
 from dataclasses import dataclass, fields, make_dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, get_type_hints
+from typing import TYPE_CHECKING, Any, cast, get_type_hints
 
 import numpy as np
 import supervision as sv
@@ -369,10 +370,21 @@ def track_command(
     if output.mot_results:
         _validate_output_path(output.mot_results, overwrite=output.overwrite)
 
+    # Classified before the tracker so the source's real FPS (when known) can
+    # seed the tracker's ``frame_rate`` instead of leaving it on the
+    # constructor's hardcoded 30.0 default. `_classify_source` only reads
+    # container metadata (`cv2.VideoCapture(...).get(...)`) and never decodes
+    # a frame, so probing here costs nothing extra; `_run_with_source` reuses
+    # this same `_SourceInfo` rather than reclassifying.
+    source_info = _classify_source(source) if source is not None else None
+
     # Built before the detection model so an unknown tracker ID is rejected
     # without first paying for a model download and load.
     try:
-        tracker_obj = _init_tracker(tracker)
+        tracker_obj = _init_tracker(
+            tracker,
+            detected_frame_rate=source_info.fps if source_info is not None else None,
+        )
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -390,8 +402,11 @@ def track_command(
     track_id_filter = _resolve_track_id_filter(filters.track_ids)
 
     if source is not None:
+        # source_info was classified above precisely when source is not None,
+        # so this narrows what mypy cannot infer across the two variables.
         return _run_with_source(
             source=source,
+            source_info=cast(_SourceInfo, source_info),
             model=model_obj,
             confidence=detection.confidence,
             detections_data=detections_data,
@@ -459,6 +474,7 @@ def _run_frameless(
 def _run_with_source(
     *,
     source: str,
+    source_info: _SourceInfo,
     model: AnyModel | None,
     confidence: float,
     detections_data: dict | None,
@@ -471,9 +487,14 @@ def _run_with_source(
     display: bool,
     show: ShowOptions,
 ) -> int:
-    """Run tracking with a frame source (video, webcam, images)."""
+    """Run tracking with a frame source (video, webcam, images).
+
+    Args:
+        source_info: Metadata already classified by the caller (``track_command``),
+            which needs it before the tracker is built to seed ``frame_rate``.
+            Reused here instead of calling :func:`_classify_source` a second time.
+    """
     frame_gen = frames_from_source(source)
-    source_info = _classify_source(source)
 
     annotators, label_annotator = _init_annotators(show)
     trace_annotator = (
@@ -704,7 +725,7 @@ def _warn_dropped_tracker_overrides(tracker_id: str, dropped: list[str]) -> None
         )
 
 
-def _init_tracker(params: TrackerOptions | None) -> BaseTracker:  # type: ignore[valid-type]
+def _init_tracker(params: TrackerOptions | None, *, detected_frame_rate: float | None = None) -> BaseTracker:  # type: ignore[valid-type]
     """Create a tracker instance from the registry.
 
     ``params.name`` selects the algorithm; every other field is a parameter
@@ -715,6 +736,15 @@ def _init_tracker(params: TrackerOptions | None) -> BaseTracker:  # type: ignore
 
     Args:
         params: Tracker selection and parameter overrides.
+        detected_frame_rate: Real frame rate read from the source (e.g. via
+            ``cv2.VideoCapture(...).get(cv2.CAP_PROP_FPS)``), used to fill in
+            ``frame_rate`` for trackers that accept it, when the caller did
+            not explicitly override it with ``--tracker.frame_rate``. Every
+            tracker otherwise falls back to the constructor's hardcoded
+            ``30.0`` default regardless of the source's actual rate. Ignored
+            for a tracker whose registry parameters do not include
+            ``frame_rate``, and for ``None``, non-finite, or non-positive
+            values (a corrupt container can report ``inf``/``nan`` FPS).
 
     Returns:
         Initialised tracker instance.
@@ -733,6 +763,14 @@ def _init_tracker(params: TrackerOptions | None) -> BaseTracker:  # type: ignore
     accepted = set(info.parameters)
     kwargs, dropped = _resolve_tracker_kwargs(raw, accepted)
     _warn_dropped_tracker_overrides(tracker_id, dropped)
+    if (
+        "frame_rate" in accepted
+        and "frame_rate" not in kwargs
+        and detected_frame_rate is not None
+        and math.isfinite(detected_frame_rate)
+        and detected_frame_rate > 0
+    ):
+        kwargs["frame_rate"] = detected_frame_rate
     if iou_variant is not None:
         if "iou" in accepted:
             kwargs["iou"] = variant_from_name(iou_variant)

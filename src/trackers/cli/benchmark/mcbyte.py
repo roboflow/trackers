@@ -110,8 +110,10 @@ the remaining sequences.
 
 from __future__ import annotations
 
+import configparser
 import gc
 import logging
+import math
 import sys
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -384,6 +386,93 @@ def image_directory(sequence: str, config: DatasetConfig) -> Path:
     return config.image_root / directory_name / "img1"
 
 
+def _read_sequence_frame_rate(
+    image_dir: Path,
+    default: float,
+    *,
+    logger: logging.Logger | None = None,
+    sequence: str = "",
+) -> float:
+    """Read one sequence's real frame rate from its MOTChallenge ``seqinfo.ini``.
+
+    Every official MOTChallenge-format sequence download (MOT17, DanceTrack,
+    SportsMOT, and SoccerNet-tracking all share the convention) ships a
+    ``seqinfo.ini`` file as a sibling of the ``img1`` frame directory, with a
+    ``frameRate`` key under ``[Sequence]``. ``DatasetConfig.frame_rate`` is a
+    single fallback for the whole dataset (30.0 for every entry in
+    :data:`DATASETS`), but real sequences run at a different rate — verified
+    locally against cached sequence downloads: every SportsMOT-val sequence is
+    25 fps and every DanceTrack-val sequence is 20 fps, both consistently
+    ``!= 30``. Reading the real value keeps
+    ``BaseTracker._compute_maximum_frames_without_update``'s lost-track
+    buffer scaling correct for the sequence actually being processed,
+    instead of a rate no real sequence in these datasets uses. It does not
+    affect the Kalman motion model's process noise here: :func:`run_sequence`
+    never passes a timestamp to ``update()``, so the tracker stays in
+    fixed-rate mode and ``trackers.utils.motion_models.build_Q`` keeps using
+    its fixed frame-unit fallback regardless of this value.
+
+    Args:
+        image_dir: Sequence frame directory, as returned by
+            :func:`image_directory` (``.../{sequence}/img1``).
+        default: Value to fall back to when ``seqinfo.ini`` is missing, has no
+            ``[Sequence]`` section, has no ``frameRate`` key, or the key does
+            not parse as a finite positive float.
+        logger: When given (together with ``sequence``), used to warn when a
+            ``seqinfo.ini`` file exists but its ``frameRate`` is unusable —
+            distinct from the unremarkable case of no file at all, this means
+            the sequence shipped bad metadata that silently falls back to
+            ``default``.
+        sequence: Sequence name, used only in the warning message above.
+
+    Returns:
+        The sequence's real frame rate, or ``default``.
+
+    Examples:
+        >>> import tempfile
+        >>> with tempfile.TemporaryDirectory() as tmp:
+        ...     seq_dir = Path(tmp) / "seq"
+        ...     (seq_dir / "img1").mkdir(parents=True)
+        ...     _ = (seq_dir / "seqinfo.ini").write_text("[Sequence]\\nframeRate=25\\n")
+        ...     _read_sequence_frame_rate(seq_dir / "img1", default=30.0)
+        25.0
+        >>> with tempfile.TemporaryDirectory() as tmp:
+        ...     seq_dir = Path(tmp) / "seq"
+        ...     (seq_dir / "img1").mkdir(parents=True)
+        ...     _read_sequence_frame_rate(seq_dir / "img1", default=30.0)
+        30.0
+    """
+    seqinfo_path = image_dir.parent / "seqinfo.ini"
+    if not seqinfo_path.is_file():
+        return default
+
+    parser = configparser.ConfigParser()
+    try:
+        parser.read(seqinfo_path, encoding="utf-8")
+        frame_rate = parser.getfloat("Sequence", "frameRate")
+    except (configparser.Error, ValueError):
+        if logger is not None:
+            logger.warning(
+                "%s | %s has no usable [Sequence] frameRate; falling back to %.3g",
+                sequence,
+                seqinfo_path,
+                default,
+            )
+        return default
+
+    if not math.isfinite(frame_rate) or frame_rate <= 0:
+        if logger is not None:
+            logger.warning(
+                "%s | %s frameRate=%.3g is not finite/positive; falling back to %.3g",
+                sequence,
+                seqinfo_path,
+                frame_rate,
+                default,
+            )
+        return default
+    return frame_rate
+
+
 def create_tracker(
     *,
     device: str,
@@ -507,8 +596,11 @@ def run_sequence(
 ) -> int:
     """Run one benchmark sequence.
 
-    A fresh tracker is created for the sequence.
-    Results are first written to a temporary `.partial` file,
+    A fresh tracker is created for the sequence, with ``frame_rate`` read from
+    the sequence's own ``seqinfo.ini`` when present (see
+    :func:`_read_sequence_frame_rate`) rather than always using
+    ``config.frame_rate``, since that per-dataset default does not hold for
+    every sequence. Results are first written to a temporary `.partial` file,
     which is replaced by the final MOT result only after successful completion.
 
     Args:
@@ -516,11 +608,14 @@ def run_sequence(
             :func:`cleanup_tracker`.
         detection_file: Path to the sequence's detection ``.txt`` file.
         image_dir: Sequence frame directory, as returned by
-            :func:`image_directory`.
+            :func:`image_directory`. Also used to look up ``seqinfo.ini`` as
+            ``image_dir.parent / "seqinfo.ini"``.
         output_file: Final MOTChallenge-format result path. The frame loop
             writes to ``output_file.with_suffix(".txt.partial")`` first and
             only renames it to ``output_file`` on success.
-        config: Dataset configuration used to parse ``detection_file``.
+        config: Dataset configuration used to parse ``detection_file``; its
+            ``frame_rate`` is the fallback when the sequence has no
+            ``seqinfo.ini``.
         device: Forwarded to :func:`create_tracker`.
         enable_isolated_mask_matching: Forwarded to :func:`create_tracker`.
         enable_cmc: Forwarded to :func:`create_tracker`.
@@ -556,10 +651,19 @@ def run_sequence(
     partial_file.unlink(missing_ok=True)
     tracker: McByteTracker | None = None
 
+    frame_rate = _read_sequence_frame_rate(image_dir, config.frame_rate, logger=logger, sequence=sequence)
+    if frame_rate != config.frame_rate:
+        logger.info(
+            "%s | seqinfo.ini frame_rate=%.3g overrides dataset default %.3g",
+            sequence,
+            frame_rate,
+            config.frame_rate,
+        )
+
     try:
         tracker = create_tracker(
             device=device,
-            frame_rate=config.frame_rate,
+            frame_rate=frame_rate,
             enable_isolated_mask_matching=enable_isolated_mask_matching,
             enable_cmc=enable_cmc,
             cmc_method=cmc_method,
