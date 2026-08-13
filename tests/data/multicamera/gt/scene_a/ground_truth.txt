@@ -1,3 +1,4 @@
+# camera_id object_id frame_id bbox_x_px bbox_y_px bbox_width_px bbox_height_px world_x_m world_y_m
 1 10 0 0 0 10 10 0.000 0.000
 2 10 0 0 0 10 10 5.000 5.000
 1 11 0 0 0 10 10 1.000 0.000
