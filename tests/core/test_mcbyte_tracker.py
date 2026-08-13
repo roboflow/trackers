@@ -203,17 +203,17 @@ def test_mcbyte_mask_auto_disable_clears_removal_backlog_after_skip() -> None:
 
     tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
     assert tracker._consecutive_mask_failures == 2
-    assert tracker._previous_removed_tracklet_ids == [tracker_id]
+    assert tracker._previous_removed_tracklet_ids == {tracker_id}
 
     with pytest.warns(UserWarning, match="duplicate timestamp"):
         tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
     assert tracker._consecutive_mask_failures == 2
-    assert tracker._previous_removed_tracklet_ids == [tracker_id]
+    assert tracker._previous_removed_tracklet_ids == {tracker_id}
 
     tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
     assert tracker.mask_manager is None
     assert tracker._consecutive_mask_failures == 3
-    assert tracker._previous_removed_tracklet_ids == []
+    assert tracker._previous_removed_tracklet_ids == set()
 
 
 def test_mcbyte_does_not_advance_masks_on_duplicate_timestamp() -> None:
@@ -398,7 +398,15 @@ def test_mcbyte_delivers_removed_ids_delayed_by_frame_none_call() -> None:
     tracker.update(sv.Detections.empty(), frame=None, timestamp=100.0)
     assert tracker_id not in [t.tracker_id for t in tracker.tracks]
 
+    # The call right after frame=None cannot deliver either: this call's own
+    # previous_frame (set at the end of the frame=None call) is None, and
+    # MaskManager.get_updated_masks short-circuits without a previous_frame.
+    # Delivery needs one more real-frame call to rebuild that state.
     tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.2)
     assert propagator._mask_output is not None
     assert tracker_id not in propagator._mask_output.tracklet_mask_dict
 
@@ -467,6 +475,12 @@ def test_mcbyte_delivers_late_prune_removed_id_after_frame_none_call() -> None:
     tracker.update(sv.Detections.empty(), frame=None)
     assert tracker_id not in [track.tracker_id for track in tracker.tracks]
 
+    # Still not delivered here: this call's previous_frame (from the frame=None
+    # call above) is None, so MaskManager can't diff/remove yet.
+    tracker.update(sv.Detections.empty(), frame)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
     tracker.update(sv.Detections.empty(), frame)
     assert propagator._mask_output is not None
     assert tracker_id not in propagator._mask_output.tracklet_mask_dict
@@ -505,7 +519,13 @@ def test_mcbyte_delivers_removed_ids_after_mixed_duplicate_and_frame_none_skips(
     assert propagator._mask_output is not None
     assert tracker_id in propagator._mask_output.tracklet_mask_dict
 
+    # Still not delivered: this call's previous_frame (from the frame=None
+    # call above) is None, so MaskManager can't diff/remove yet.
     tracker.update(sv.Detections.empty(), frame, timestamp=0.06)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=0.07)
     assert propagator._mask_output is not None
     assert tracker_id not in propagator._mask_output.tracklet_mask_dict
 
@@ -625,7 +645,10 @@ def test_mcbyte_mask_lifecycle_keeps_missing_tracklet_until_explicit_removal() -
         removed_tracklet_ids=[],
     )
 
-    assert tracker._previous_new_tracklets == []
+    # _run_mask_manager never ran in this test (only _store_previous_mask_inputs
+    # was called directly), so nothing has delivered the pending "new" backlog
+    # yet -- it must be merged forward, not overwritten/dropped.
+    assert tracker._previous_new_tracklets[0].tracker_id == 7
     assert tracker._previous_removed_tracklet_ids == set()
     assert tracker._mask_tracklet_ids == {7}
 
@@ -635,7 +658,10 @@ def test_mcbyte_mask_lifecycle_keeps_missing_tracklet_until_explicit_removal() -
         removed_tracklet_ids=[7],
     )
 
-    assert tracker._previous_new_tracklets == []
+    # Still undelivered -- the removed-tracklet backlog and the new-tracklet
+    # backlog are independent, so an explicit removal of 7 does not itself
+    # drain the (still-undelivered) new-tracklet entry for 7.
+    assert tracker._previous_new_tracklets[0].tracker_id == 7
     assert tracker._previous_removed_tracklet_ids == {7}
     assert tracker._mask_tracklet_ids == set()
 
