@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import fields
 from pathlib import Path
 from typing import ClassVar
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -18,6 +19,7 @@ import supervision as sv
 
 from trackers.cli.track import (
     _EXCLUDED_TRACKER_PARAMETERS,
+    DetectionOptions,
     ReIDOptions,
     ShowOptions,
     TrackerOptions,
@@ -33,6 +35,7 @@ from trackers.cli.track import (
     _resolve_track_id_filter,
     _resolve_tracker_kwargs,
     _tracker_options_as_dict,
+    track_command,
 )
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracker import BoTSORTTracker
@@ -410,6 +413,56 @@ class TestReIDOptions:
     def test_absent_by_default(self) -> None:
         """Default options leave ReID off, so geometry-only tracking is unchanged."""
         assert not _reid_requested(ReIDOptions())
+
+    def test_track_command_rejects_reid_without_source(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """The command entry point rejects ReID when MOT input supplies no frames."""
+        exit_code = track_command(
+            detection=DetectionOptions(mot_file=Path("detections.txt")),
+            reid=ReIDOptions(enable=True),
+        )
+
+        assert exit_code == 1
+        assert capsys.readouterr().err == (
+            "Error: ReID requires --source (video/webcam/images) so appearance embeddings "
+            "can be extracted from frames.\n"
+        )
+
+    def test_missing_optional_extra_reports_install_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A missing ReID dependency is translated into actionable CLI guidance."""
+        import sys
+        from types import ModuleType
+
+        monkeypatch.setitem(sys.modules, "reid", ModuleType("reid"))
+
+        with pytest.raises(ValueError) as exc_info:
+            _load_reid_model(ReIDOptions(enable=True))
+
+        assert str(exc_info.value) == (
+            "ReID tracking requires the optional `trackers[reid]` extra.\nInstall with: pip install 'trackers[reid]'"
+        )
+        assert isinstance(exc_info.value.__cause__, ImportError)
+
+    @pytest.mark.parametrize(
+        "load_error",
+        [
+            pytest.param(OSError("checkpoint unavailable"), id="os_error"),
+            pytest.param(ValueError("checkpoint unavailable"), id="value_error"),
+            pytest.param(RuntimeError("checkpoint unavailable"), id="runtime_error"),
+        ],
+    )
+    def test_model_load_errors_include_reid_context(
+        self,
+        load_error: Exception,
+        fake_reid_module: type[_FakeReIDModel],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Expected loader failures identify the ReID checkpoint operation."""
+        monkeypatch.setattr(fake_reid_module, "from_pretrained", Mock(side_effect=load_error))
+
+        with pytest.raises(ValueError, match="Failed to load ReID model: checkpoint unavailable") as exc_info:
+            _load_reid_model(ReIDOptions(enable=True))
+
+        assert exc_info.value.__cause__ is load_error
 
     def test_encoder_reaches_the_tracker(self, fake_reid_module: type[_FakeReIDModel]) -> None:
         """A requested encoder is injected as the tracker's reid_model."""

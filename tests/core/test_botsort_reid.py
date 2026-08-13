@@ -148,6 +148,43 @@ class TestBoTSORTTrackerReID:
         bank = tracker.tracks[0].feature_bank
         assert bank is not None and bank.feature is not None
 
+    def test_unconfirmed_appearance_match_updates_feature_bank(self) -> None:
+        """An appearance-only unconfirmed match blends its detection feature."""
+        initial_feature = _norm(np.array([1.0, 0.0, 0.0, 0.0]))
+        matched_feature = _norm(np.array([0.8, 0.6, 0.0, 0.0]))
+        encoder = _KeyedReIDEncoder({(10, 10): initial_feature})
+        tracker = BoTSORTTracker(
+            enable_cmc=False,
+            instant_first_frame_activation=False,
+            reid_model=encoder,
+            reid_ema_alpha=0.5,
+            minimum_iou_threshold_unconfirmed_assoc=0.85,
+        )
+        detection = _detection((10.0, 10.0, 30.0, 30.0), conf=0.8)
+
+        tracker.update(detection, frame=_frame(2))
+        track = tracker.tracks[0]
+        assert track.tracker_id == -1
+        bank = track.feature_bank
+        assert bank is not None
+        feature_after_spawn = bank.feature
+        assert feature_after_spawn is not None
+        np.testing.assert_allclose(feature_after_spawn, initial_feature)
+
+        # Geometry fused with confidence is only 0.8, below the 0.85 gate;
+        # cosine appearance raises the fused similarity to 0.9 and permits the match.
+        encoder.table[(10, 10)] = matched_feature
+        result = tracker.update(detection, frame=_frame(3))
+
+        assert len(tracker.tracks) == 1
+        assert tracker.tracks[0] is track
+        assert result.tracker_id is not None
+        assert result.tracker_id.tolist() == [track.tracker_id]
+        expected_feature = _norm(0.5 * initial_feature + 0.5 * matched_feature)
+        feature_after_match = bank.feature
+        assert feature_after_match is not None
+        np.testing.assert_allclose(feature_after_match, expected_feature, rtol=1e-6, atol=1e-7)
+
     def test_appearance_changes_assignment_vs_geometry_only(self) -> None:
         identity = _norm(np.array([1.0, 0.0, 0.0, 0.0]))
         impostor = _norm(np.array([0.0, 1.0, 0.0, 0.0]))
