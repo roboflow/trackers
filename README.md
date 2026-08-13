@@ -84,7 +84,7 @@ For all CLI options, see the [tracking guide](https://trackers.roboflow.com/deve
 
 Each tracker below is a faithful implementation of its original paper's motion and association pipeline; appearance/ReID branches are not included where papers offer them — see each tracker's docs page for the exact scope. Pick the one that fits your scene, or run the benchmark to find out which performs best on your data.
 
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 6 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte). Also duplicated in [docs/index.md](docs/index.md)'s Algorithms table (all 6 rows) and [.github/copilot-instructions.md](.github/copilot-instructions.md)'s Benchmark Results table (still omits C-BIoU — not updated in this pass). Update results.md first, then mirror all three copies. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 6 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte). Also duplicated in [docs/index.md](docs/index.md)'s Algorithms table (all 6 rows). Update results.md first, then mirror both copies. -->
 
 |                   Algorithm                   |                                   Description                                    | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
 | :-------------------------------------------: | :------------------------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
