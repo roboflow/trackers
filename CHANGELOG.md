@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **McByte CMC now defaults to `cmc_downscale=6`** — this aggregate-performance default halves median CMC latency versus factor `2` on the complete 45-clip, 1280x720 SportsMOT validation split and passes the dataset-level mean/median quality criterion. The benchmark used ground-truth detections with masks disabled; 9/45 clips regressed under the previous strict per-clip gate. Pass `cmc_downscale=2` to preserve the previous conservative behavior. Generic `CMCConfig` and `BoTSORTTracker` remain at `2`.
 - **Mask stack moved from `trackers.core.mcbyte.masks` to `trackers.core.masks`** — SAM mask generation, Cutie propagation, and `MaskManager` reference no tracker and are not McByte-specific, so they now live beside the trackers rather than inside one. Import from `trackers.core.masks` instead ([#543](https://github.com/roboflow/trackers/pull/543)).
 
+### 🔧 Fixed
+
+- **OC-SORT now returns low-confidence detections with `tracker_id=-1`** — detections below `high_conf_det_threshold` were previously dropped silently instead of being emitted, unlike `SORTTracker`/`ByteTrackTracker`. `update()` now returns one row per input detection, matching the documented contract. Output-contract change: callers may now see additional `tracker_id == -1` rows ([#566](https://github.com/roboflow/trackers/pull/566)).
+
 ## [2.6.0] — 2026-08-03
 
 ### 🚀 Added
