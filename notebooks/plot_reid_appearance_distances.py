@@ -20,7 +20,8 @@ Examples:
   python notebooks/plot_reid_appearance_distances.py --dataset mot17
   python notebooks/plot_reid_appearance_distances.py --dataset soccernet \\
       --soccernet-root "/path/to/soccernet_data/tracking/test"
-  python notebooks/plot_reid_appearance_distances.py --dataset both
+  python notebooks/plot_reid_appearance_distances.py --dataset both \\
+      --soccernet-root "/path/to/soccernet_data/tracking/test"
 """
 
 from __future__ import annotations

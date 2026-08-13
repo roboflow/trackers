@@ -53,7 +53,30 @@ def extract_detection_embeddings(
     frame: np.ndarray,
     boxes: np.ndarray,
 ) -> np.ndarray:
-    """Extract appearance embeddings for detection boxes."""
+    """Extract appearance embeddings for detection boxes.
+
+    Args:
+        model: Encoder that returns one embedding per detection.
+        frame: BGR image with shape ``(H, W, C)``.
+        boxes: Detection boxes in ``xyxy`` format with shape ``(N, 4)``.
+
+    Returns:
+        Float32 embedding matrix with shape ``(N, D)``. Returns shape ``(0, 0)``
+        when ``boxes`` is empty without calling ``model``.
+
+    Raises:
+        ValueError: If the encoder output is not a finite 2-D matrix or its row
+            count does not match the number of boxes.
+
+    Example:
+        >>> class Encoder:
+        ...     def extract_features(self, detections, frame):
+        ...         return np.ones((len(detections), 2), dtype=np.float32)
+        >>> frame = np.zeros((8, 8, 3), dtype=np.uint8)
+        >>> boxes = np.array([[0.0, 0.0, 4.0, 4.0]], dtype=np.float32)
+        >>> extract_detection_embeddings(Encoder(), frame, boxes)
+        array([[1., 1.]], dtype=float32)
+    """
     if len(boxes) == 0:
         return np.empty((0, 0), dtype=np.float32)
     embeddings = _require_embedding_matrix(model.extract_features(sv.Detections(xyxy=boxes), frame))
@@ -68,18 +91,29 @@ def appearance_similarity(
     *,
     det_embeddings_normalized: bool = False,
 ) -> np.ndarray:
-    """Cosine similarity between track and detection embeddings.
+    """Compute cosine similarities between track and detection embeddings.
 
     Args:
-        track_features: Per-track embeddings, with ``None`` for tracks without an
-            appearance feature.
-        det_embeddings: Detection embedding matrix, shape ``(N, D)``.
+        track_features: Sequence of ``T`` track features, each with shape ``(D,)``.
+            Entries may be ``None`` when a track has no appearance feature.
+        det_embeddings: Detection embedding matrix with shape ``(N, D)``.
         det_embeddings_normalized: Whether detection rows are already validated
             unit embeddings from :func:`extract_detection_embeddings`.
 
     Returns:
-        Similarity matrix, shape ``(T, N)``, with zero rows for missing track
-        features.
+        Float32 similarity matrix with shape ``(T, N)``. A ``None`` track feature
+        produces an all-zero row.
+
+    Raises:
+        ValueError: If detection embeddings are not a finite 2-D matrix, or a
+            track feature is empty, non-finite, or has the wrong dimension.
+
+    Example:
+        >>> tracks = [np.array([1.0, 0.0], dtype=np.float32), None]
+        >>> detections = np.array([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32)
+        >>> appearance_similarity(tracks, detections)
+        array([[1., 0.],
+               [0., 0.]], dtype=float32)
     """
     n_tracks = len(track_features)
     if det_embeddings_normalized:

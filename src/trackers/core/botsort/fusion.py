@@ -34,6 +34,22 @@ def fuse_botsort_reid_association(
     ``proximity_iou_similarity`` is the standard-IoU gate (defaults to
     ``association_similarity``). Pass it separately when association uses
     GIoU/DIoU/CIoU so proximity still uses plain IoU.
+
+    Args:
+        association_similarity: Geometry-based track-detection similarities with
+            shape ``(T, N)``.
+        appearance_similarity: Cosine similarities for the same pairs with shape
+            ``(T, N)``.
+        proximity_threshold: Maximum standard-IoU distance at which appearance
+            may lower the association cost.
+        appearance_threshold: Maximum appearance cost allowed to contribute to
+            the fused association.
+        proximity_iou_similarity: Standard-IoU similarities with shape ``(T, N)``.
+            Defaults to ``association_similarity``.
+
+    Returns:
+        Fused track-detection similarities with shape ``(T, N)``, obtained from
+        ``1 - min(d_iou, d_app)`` after applying both gates.
     """
     if proximity_iou_similarity is None:
         proximity_iou_similarity = association_similarity
