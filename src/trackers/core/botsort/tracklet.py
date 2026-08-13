@@ -58,14 +58,14 @@ class BoTSORTTracklet(BaseTracklet):
         """Set initial P, Q, R based on the first detection's size."""
         measurement = xyxy_to_xywh(bbox)
         w, h = float(measurement[2]), float(measurement[3])
-        self._set_scale_aware_noise(w, h, initial=True)
+        self._set_scale_aware_noise(w, h)
 
-    def _set_scale_aware_noise(self, w: float, h: float, *, initial: bool = False) -> None:
-        sp, sv, sm = self._SIGMA_P, self._SIGMA_V, self._SIGMA_M
-
+    def _build_process_noise(self, w: float, h: float) -> np.ndarray:
+        """Build the scale-aware process-noise covariance (Q) for the given box size."""
+        sp, sv = self._SIGMA_P, self._SIGMA_V
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
             s = np.sqrt(max(w * h, 1e-6))
-            Q = np.diag(
+            return np.diag(
                 [
                     (sp * w) ** 2,
                     (sp * h) ** 2,
@@ -76,75 +76,85 @@ class BoTSORTTracklet(BaseTracklet):
                     (sv * s) ** 2,
                 ]
             )
-            R = np.diag(
+        return np.diag(
+            [
+                (sp * w) ** 2,
+                (sp * h) ** 2,
+                (sp * w) ** 2,
+                (sp * h) ** 2,
+                (sv * w) ** 2,
+                (sv * h) ** 2,
+                (sv * w) ** 2,
+                (sv * h) ** 2,
+            ]
+        )
+
+    def _build_measurement_noise(self, w: float, h: float) -> np.ndarray:
+        """Build the scale-aware measurement-noise covariance (R) for the given box size."""
+        sm = self._SIGMA_M
+        if isinstance(self.state_estimator, XCYCSRStateEstimator):
+            s = np.sqrt(max(w * h, 1e-6))
+            return np.diag([(sm * w) ** 2, (sm * h) ** 2, (sm * s) ** 2, (sm * 1.0) ** 2])
+        return np.diag([(sm * w) ** 2, (sm * h) ** 2, (sm * w) ** 2, (sm * h) ** 2])
+
+    def _set_scale_aware_noise(self, w: float, h: float) -> None:
+        """Set the initial Q, R and P from the first detection's size."""
+        sp, sv = self._SIGMA_P, self._SIGMA_V
+        Q = self._build_process_noise(w, h)
+        R = self._build_measurement_noise(w, h)
+
+        if isinstance(self.state_estimator, XCYCSRStateEstimator):
+            s = np.sqrt(max(w * h, 1e-6))
+            state_covariance = np.diag(
                 [
-                    (sm * w) ** 2,
-                    (sm * h) ** 2,
-                    (sm * s) ** 2,
-                    (sm * 1.0) ** 2,
+                    (2 * sp * w) ** 2,
+                    (2 * sp * h) ** 2,
+                    (2 * sp * s) ** 2,
+                    (2 * sp * 1.0) ** 2,
+                    (10 * sv * w) ** 2,
+                    (10 * sv * h) ** 2,
+                    (10 * sv * s) ** 2,
                 ]
             )
         else:
-            Q = np.diag(
+            state_covariance = np.diag(
                 [
-                    (sp * w) ** 2,
-                    (sp * h) ** 2,
-                    (sp * w) ** 2,
-                    (sp * h) ** 2,
-                    (sv * w) ** 2,
-                    (sv * h) ** 2,
-                    (sv * w) ** 2,
-                    (sv * h) ** 2,
+                    (2 * sp * w) ** 2,
+                    (2 * sp * h) ** 2,
+                    (2 * sp * w) ** 2,
+                    (2 * sp * h) ** 2,
+                    (10 * sv * w) ** 2,
+                    (10 * sv * h) ** 2,
+                    (10 * sv * w) ** 2,
+                    (10 * sv * h) ** 2,
                 ]
             )
-            R = np.diag(
-                [
-                    (sm * w) ** 2,
-                    (sm * h) ** 2,
-                    (sm * w) ** 2,
-                    (sm * h) ** 2,
-                ]
-            )
+        self.state_estimator.set_kf_covariances(measurement_noise=R, process_noise=Q, state_covariance=state_covariance)
 
-        if initial:
-            if isinstance(self.state_estimator, XCYCSRStateEstimator):
-                s = np.sqrt(max(w * h, 1e-6))
-                state_covariance = np.diag(
-                    [
-                        (2 * sp * w) ** 2,
-                        (2 * sp * h) ** 2,
-                        (2 * sp * s) ** 2,
-                        (2 * sp * 1.0) ** 2,
-                        (10 * sv * w) ** 2,
-                        (10 * sv * h) ** 2,
-                        (10 * sv * s) ** 2,
-                    ]
-                )
-            else:
-                state_covariance = np.diag(
-                    [
-                        (2 * sp * w) ** 2,
-                        (2 * sp * h) ** 2,
-                        (2 * sp * w) ** 2,
-                        (2 * sp * h) ** 2,
-                        (10 * sv * w) ** 2,
-                        (10 * sv * h) ** 2,
-                        (10 * sv * w) ** 2,
-                        (10 * sv * h) ** 2,
-                    ]
-                )
-            self.state_estimator.set_kf_covariances(
-                measurement_noise=R, process_noise=Q, state_covariance=state_covariance
-            )
-        else:
-            self.state_estimator.set_kf_covariances(measurement_noise=R, process_noise=Q)
-
-    def _refresh_noise_from_state(self) -> None:
-        """Recompute Q and R from the current bbox size."""
+    def _current_wh(self) -> tuple[float, float]:
+        """Return the current box width/height, clamped away from zero."""
         bbox = self.state_estimator.state_to_bbox()
         w = max(float(bbox[2] - bbox[0]), 1e-3)
         h = max(float(bbox[3] - bbox[1]), 1e-3)
-        self._set_scale_aware_noise(w, h)
+        return w, h
+
+    def _refresh_process_noise_from_state(self) -> None:
+        """Recompute Q (process noise) from the current bbox size.
+
+        Only ``predict()`` reads ``process_noise`` (see ``KalmanFilter.predict``), so this must not be called from
+        ``update()`` — it would be overwritten by the next ``predict()`` before ever being read.
+        """
+        w, h = self._current_wh()
+        self.state_estimator.set_kf_covariances(process_noise=self._build_process_noise(w, h))
+
+    def _refresh_measurement_noise_from_state(self) -> None:
+        """Recompute R (measurement noise) from the current bbox size.
+
+        Only ``update()`` reads ``measurement_noise`` (see ``KalmanFilter.update``), so this must not be called from
+        ``predict()`` — it would be overwritten by the next ``update()`` before ever being read.
+        """
+        w, h = self._current_wh()
+        self.state_estimator.set_kf_covariances(measurement_noise=self._build_measurement_noise(w, h))
 
     @staticmethod
     def _clamp_xyxy_state(kf_x: np.ndarray) -> None:
@@ -182,7 +192,7 @@ class BoTSORTTracklet(BaseTracklet):
         In the BoT-SORT flow **only matched tracks** call ``update(bbox)`` with an actual bounding box.  Unmatched
         tracks simply skip ``update`` (their ``time_since_update`` is incremented in ``predict`` instead).
         """
-        self._refresh_noise_from_state()
+        self._refresh_measurement_noise_from_state()
         self.state_estimator.update(bbox)
         self._clamp_state_bbox()
         self.time_since_update = 0
@@ -195,7 +205,7 @@ class BoTSORTTracklet(BaseTracklet):
         Increments ``time_since_update`` to track how many frames have elapsed since the last matched measurement — this
         replaces the ``update(None)`` call used in ByteTrack/SORT.
         """
-        self._refresh_noise_from_state()
+        self._refresh_process_noise_from_state()
         self.state_estimator.predict(timing.frame_step, timing.frame_rate)
         self._clamp_state_bbox()
         self._advance_miss_clocks(timing)

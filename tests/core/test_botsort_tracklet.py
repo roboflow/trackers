@@ -11,6 +11,8 @@ Generic predict/update contracts (time_since_update, age) are covered for all tr
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
@@ -87,6 +89,70 @@ def test_botsort_tracklet_larger_box_has_larger_measurement_noise() -> None:
     large_R = np.diag(large.state_estimator.kf.measurement_noise)
 
     assert np.all(large_R > small_R), "larger box must produce larger measurement noise diagonal"
+
+
+def test_botsort_tracklet_predict_only_refreshes_process_noise() -> None:
+    """Predict() must rebuild Q but leave R alone: KalmanFilter.predict never reads measurement_noise, so rebuilding it
+    there is wasted work that update() will overwrite anyway."""
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 20.0, 20.0]))
+
+    with patch.object(
+        tracklet.state_estimator, "set_kf_covariances", wraps=tracklet.state_estimator.set_kf_covariances
+    ) as mock_set:
+        tracklet.predict()
+
+    mock_set.assert_called_once()
+    kwargs = mock_set.call_args.kwargs
+    assert kwargs.get("process_noise") is not None, "predict() must refresh Q"
+    assert kwargs.get("measurement_noise") is None, "predict() must not rebuild R"
+
+
+def test_botsort_tracklet_update_only_refreshes_measurement_noise() -> None:
+    """Update() must rebuild R but leave Q alone: KalmanFilter.update never reads process_noise, so rebuilding it there
+    is wasted work that predict() will overwrite anyway."""
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 20.0, 20.0]))
+
+    with patch.object(
+        tracklet.state_estimator, "set_kf_covariances", wraps=tracklet.state_estimator.set_kf_covariances
+    ) as mock_set:
+        tracklet.update(np.array([5.0, 5.0, 205.0, 205.0]))
+
+    mock_set.assert_called_once()
+    kwargs = mock_set.call_args.kwargs
+    assert kwargs.get("measurement_noise") is not None, "update() must refresh R"
+    assert kwargs.get("process_noise") is None, "update() must not rebuild Q"
+
+
+def test_botsort_tracklet_predict_process_noise_matches_pre_predict_box(
+    tracklet: BoTSORTTracklet,
+) -> None:
+    """Q after predict() must equal _build_process_noise() for the box size the tracklet had *before* that predict()
+    call — the same size _refresh_process_noise_from_state() reads internally — across all three state
+    representations, not just the kwarg it was called with."""
+    bbox = tracklet.get_state_bbox()
+    w = max(float(bbox[2] - bbox[0]), 1e-3)
+    h = max(float(bbox[3] - bbox[1]), 1e-3)
+    expected_Q = tracklet._build_process_noise(w, h)
+
+    tracklet.predict()
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, expected_Q)
+
+
+def test_botsort_tracklet_update_measurement_noise_matches_pre_update_box(
+    tracklet: BoTSORTTracklet,
+) -> None:
+    """R after update() must equal _build_measurement_noise() for the box size the tracklet had *before* that
+    update() call (the predicted box, not the new observation) — across all three state representations, not just
+    the kwarg it was called with."""
+    bbox = tracklet.get_state_bbox()
+    w = max(float(bbox[2] - bbox[0]), 1e-3)
+    h = max(float(bbox[3] - bbox[1]), 1e-3)
+    expected_R = tracklet._build_measurement_noise(w, h)
+
+    tracklet.update(np.array([5.0, 5.0, 205.0, 205.0]))
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.measurement_noise, expected_R)
 
 
 # -------------------------------------------------------------------
