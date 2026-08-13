@@ -17,6 +17,8 @@ import numpy as np
 import pytest
 
 from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.core.mcbyte.tracklet import McByteTracklet
+from trackers.utils.predict_timing import PredictTiming
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
@@ -50,13 +52,25 @@ def test_botsort_tracklet_predict_keeps_valid_bbox(
     bbox: np.ndarray,
     estimator_class: type[BaseStateEstimator],
 ) -> None:
-    """BBox width/height stay positive even after many predictions."""
+    """BBox geometry and scale-aware Q stay valid through repeated predictions."""
     tracklet = BoTSORTTracklet(bbox, state_estimator_class=estimator_class)
+    tracklet.state_estimator.kf.state[6, 0] = 1.0
+    if estimator_class is not XCYCSRStateEstimator:
+        tracklet.state_estimator.kf.state[7, 0] = 1.0
+
+    initial_process_noise = tracklet.state_estimator.kf.process_noise.copy()
     for _ in range(50):
+        state_bbox = tracklet.get_state_bbox()
+        w = max(float(state_bbox[2] - state_bbox[0]), 1e-3)
+        h = max(float(state_bbox[3] - state_bbox[1]), 1e-3)
+        expected_Q = tracklet._build_process_noise(w, h)
         tracklet.predict()
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, expected_Q)
+
     state_bbox = tracklet.get_state_bbox()
     assert state_bbox[2] > state_bbox[0], "width must stay positive after predicts"
     assert state_bbox[3] > state_bbox[1], "height must stay positive after predicts"
+    assert not np.array_equal(tracklet.state_estimator.kf.process_noise, initial_process_noise)
 
 
 # -------------------------------------------------------------------
@@ -69,10 +83,13 @@ def test_botsort_tracklet_predict_keeps_valid_bbox(
 # -------------------------------------------------------------------
 
 
-def test_botsort_tracklet_larger_box_has_larger_process_noise() -> None:
+@pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+def test_botsort_tracklet_larger_box_has_larger_process_noise(
+    tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+) -> None:
     """A bigger bounding box must produce strictly larger Q diagonal values."""
-    small = BoTSORTTracklet(np.array([0.0, 0.0, 20.0, 20.0]))
-    large = BoTSORTTracklet(np.array([0.0, 0.0, 200.0, 200.0]))
+    small = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
+    large = tracklet_cls(np.array([0.0, 0.0, 200.0, 200.0]))
 
     small_Q = np.diag(small.state_estimator.kf.process_noise)
     large_Q = np.diag(large.state_estimator.kf.process_noise)
@@ -80,10 +97,13 @@ def test_botsort_tracklet_larger_box_has_larger_process_noise() -> None:
     assert np.all(large_Q > small_Q), "larger box must produce larger process noise diagonal"
 
 
-def test_botsort_tracklet_larger_box_has_larger_measurement_noise() -> None:
+@pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+def test_botsort_tracklet_larger_box_has_larger_measurement_noise(
+    tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+) -> None:
     """A bigger bounding box must produce strictly larger R diagonal values."""
-    small = BoTSORTTracklet(np.array([0.0, 0.0, 20.0, 20.0]))
-    large = BoTSORTTracklet(np.array([0.0, 0.0, 200.0, 200.0]))
+    small = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
+    large = tracklet_cls(np.array([0.0, 0.0, 200.0, 200.0]))
 
     small_R = np.diag(small.state_estimator.kf.measurement_noise)
     large_R = np.diag(large.state_estimator.kf.measurement_noise)
@@ -91,10 +111,13 @@ def test_botsort_tracklet_larger_box_has_larger_measurement_noise() -> None:
     assert np.all(large_R > small_R), "larger box must produce larger measurement noise diagonal"
 
 
-def test_botsort_tracklet_predict_only_refreshes_process_noise() -> None:
+@pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+def test_botsort_tracklet_predict_only_refreshes_process_noise(
+    tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+) -> None:
     """Predict() must rebuild Q but leave R alone: KalmanFilter.predict never reads measurement_noise, so rebuilding it
     there is wasted work that update() will overwrite anyway."""
-    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 20.0, 20.0]))
+    tracklet = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
 
     with patch.object(
         tracklet.state_estimator, "set_kf_covariances", wraps=tracklet.state_estimator.set_kf_covariances
@@ -107,10 +130,13 @@ def test_botsort_tracklet_predict_only_refreshes_process_noise() -> None:
     assert kwargs.get("measurement_noise") is None, "predict() must not rebuild R"
 
 
-def test_botsort_tracklet_update_only_refreshes_measurement_noise() -> None:
+@pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+def test_botsort_tracklet_update_only_refreshes_measurement_noise(
+    tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+) -> None:
     """Update() must rebuild R but leave Q alone: KalmanFilter.update never reads process_noise, so rebuilding it there
     is wasted work that predict() will overwrite anyway."""
-    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 20.0, 20.0]))
+    tracklet = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
 
     with patch.object(
         tracklet.state_estimator, "set_kf_covariances", wraps=tracklet.state_estimator.set_kf_covariances
@@ -123,36 +149,149 @@ def test_botsort_tracklet_update_only_refreshes_measurement_noise() -> None:
     assert kwargs.get("process_noise") is None, "update() must not rebuild Q"
 
 
+@pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+@pytest.mark.parametrize(
+    "estimator_class",
+    [XCYCWHStateEstimator, XYXYStateEstimator, XCYCSRStateEstimator],
+)
 def test_botsort_tracklet_predict_process_noise_matches_pre_predict_box(
-    tracklet: BoTSORTTracklet,
+    bbox: np.ndarray,
+    tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+    estimator_class: type[BaseStateEstimator],
 ) -> None:
     """Q after predict() must equal _build_process_noise() for the box size the tracklet had *before* that predict()
     call — the same size _refresh_process_noise_from_state() reads internally — across all three state representations,
     not just the kwarg it was called with."""
-    bbox = tracklet.get_state_bbox()
-    w = max(float(bbox[2] - bbox[0]), 1e-3)
-    h = max(float(bbox[3] - bbox[1]), 1e-3)
+    tracklet = tracklet_cls(bbox, state_estimator_class=estimator_class)
+    state_bbox = tracklet.get_state_bbox()
+    w = max(float(state_bbox[2] - state_bbox[0]), 1e-3)
+    h = max(float(state_bbox[3] - state_bbox[1]), 1e-3)
     expected_Q = tracklet._build_process_noise(w, h)
 
     tracklet.predict()
 
+    # Direct Q equality depends on the default frame_step=1.0 staying in the near-nominal band.
     np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, expected_Q)
 
 
+@pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+@pytest.mark.parametrize(
+    "estimator_class",
+    [XCYCWHStateEstimator, XYXYStateEstimator, XCYCSRStateEstimator],
+)
 def test_botsort_tracklet_update_measurement_noise_matches_pre_update_box(
-    tracklet: BoTSORTTracklet,
+    bbox: np.ndarray,
+    tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+    estimator_class: type[BaseStateEstimator],
 ) -> None:
     """R after update() must equal _build_measurement_noise() for the box size the tracklet had *before* that update()
     call (the predicted box, not the new observation) — across all three state representations, not just the kwarg it
     was called with."""
-    bbox = tracklet.get_state_bbox()
-    w = max(float(bbox[2] - bbox[0]), 1e-3)
-    h = max(float(bbox[3] - bbox[1]), 1e-3)
+    tracklet = tracklet_cls(bbox, state_estimator_class=estimator_class)
+    state_bbox = tracklet.get_state_bbox()
+    w = max(float(state_bbox[2] - state_bbox[0]), 1e-3)
+    h = max(float(state_bbox[3] - state_bbox[1]), 1e-3)
     expected_R = tracklet._build_measurement_noise(w, h)
 
     tracklet.update(np.array([5.0, 5.0, 205.0, 205.0]))
 
     np.testing.assert_array_equal(tracklet.state_estimator.kf.measurement_noise, expected_R)
+
+
+def test_botsort_tracklet_gap_predict_uses_refreshed_dwna_noise(
+    tracklet: BoTSORTTracklet,
+) -> None:
+    """A second gap predict must DWNA-scale Q from the post-update box size."""
+    gap_timing = PredictTiming(frame_step=2.0, elapsed_seconds=None)
+    tracklet.predict(gap_timing)
+    tracklet.update(np.array([5.0, 5.0, 205.0, 205.0]))
+
+    bbox = tracklet.get_state_bbox()
+    w = max(float(bbox[2] - bbox[0]), 1e-3)
+    h = max(float(bbox[3] - bbox[1]), 1e-3)
+    refreshed_baseline_Q = tracklet._build_process_noise(w, h)
+
+    tracklet.predict(gap_timing)
+
+    scalable_noise = tracklet.state_estimator.motion.process_noise
+    np.testing.assert_array_equal(scalable_noise.baseline_Q, refreshed_baseline_Q)
+    expected_Q = scalable_noise.build_Q(gap_timing.frame_step, gap_timing.frame_rate)
+    np.testing.assert_allclose(tracklet.state_estimator.kf.process_noise, expected_Q)
+    assert not np.array_equal(tracklet.state_estimator.kf.process_noise, refreshed_baseline_Q)
+
+
+def test_botsort_tracklet_interleaved_predict_update_predict_refreshes_split_noise(
+    tracklet: BoTSORTTracklet,
+) -> None:
+    """Interleaved calls must refresh only the noise matrix consumed by each operation."""
+    bbox = tracklet.get_state_bbox()
+    w = max(float(bbox[2] - bbox[0]), 1e-3)
+    h = max(float(bbox[3] - bbox[1]), 1e-3)
+    expected_first_Q = tracklet._build_process_noise(w, h)
+    initial_R = tracklet.state_estimator.kf.measurement_noise.copy()
+
+    tracklet.predict()
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, expected_first_Q)
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.measurement_noise, initial_R)
+
+    bbox = tracklet.get_state_bbox()
+    w = max(float(bbox[2] - bbox[0]), 1e-3)
+    h = max(float(bbox[3] - bbox[1]), 1e-3)
+    expected_R = tracklet._build_measurement_noise(w, h)
+    process_noise_after_first_predict = tracklet.state_estimator.kf.process_noise.copy()
+
+    tracklet.update(np.array([5.0, 5.0, 205.0, 205.0]))
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.measurement_noise, expected_R)
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, process_noise_after_first_predict)
+
+    bbox = tracklet.get_state_bbox()
+    w = max(float(bbox[2] - bbox[0]), 1e-3)
+    h = max(float(bbox[3] - bbox[1]), 1e-3)
+    expected_second_Q = tracklet._build_process_noise(w, h)
+    measurement_noise_after_update = tracklet.state_estimator.kf.measurement_noise.copy()
+
+    tracklet.predict()
+
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, expected_second_Q)
+    np.testing.assert_array_equal(tracklet.state_estimator.kf.measurement_noise, measurement_noise_after_update)
+    assert not np.array_equal(expected_first_Q, expected_second_Q)
+
+
+@pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+@pytest.mark.parametrize(
+    "estimator_class",
+    [XCYCWHStateEstimator, XYXYStateEstimator, XCYCSRStateEstimator],
+)
+def test_noise_state_round_trip_restores_filter_matrices(
+    bbox: np.ndarray,
+    tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+    estimator_class: type[BaseStateEstimator],
+) -> None:
+    """Kalman state restoration must preserve split Q/R after predict and update."""
+    source = tracklet_cls(bbox, state_estimator_class=estimator_class)
+    source.predict()
+    source.update(np.array([5.0, 5.0, 205.0, 205.0]))
+    snapshot = source.state_estimator.kf.get_state()
+
+    restored = tracklet_cls(np.array([0.0, 0.0, 10.0, 10.0]), state_estimator_class=estimator_class)
+    restored.state_estimator.kf.set_state(snapshot)
+
+    restored_kf = restored.state_estimator.kf
+    np.testing.assert_array_equal(restored_kf.process_noise, snapshot["process_noise"])
+    np.testing.assert_array_equal(restored_kf.measurement_noise, snapshot["measurement_noise"])
+    np.testing.assert_array_equal(restored_kf.state, snapshot["state"])
+    np.testing.assert_array_equal(restored_kf.state_covariance, snapshot["state_covariance"])
+
+
+def test_botsort_and_mcbyte_noise_constants_agree() -> None:
+    """Sibling tracklets must retain identical scale-aware noise constants."""
+    assert (BoTSORTTracklet._SIGMA_P, BoTSORTTracklet._SIGMA_V, BoTSORTTracklet._SIGMA_M) == (
+        McByteTracklet._SIGMA_P,
+        McByteTracklet._SIGMA_V,
+        McByteTracklet._SIGMA_M,
+    )
 
 
 # -------------------------------------------------------------------
