@@ -3807,7 +3807,9 @@ alignment between motion and association direction.</p>
             <td>
               <div class="doc-md-description">
                 <p><code>float</code> specifying threshold for high confidence
-detections. Lower confidence detections are excluded from association.</p>
+detections. Lower confidence detections are excluded from association
+and from spawning new tracks, but are still returned with
+<code>tracker_id</code> of <code>-1</code>.</p>
               </div>
             </td>
             <td>
@@ -3935,7 +3937,10 @@ for unmatched high-confidence detections.</p>
               <div class="doc-md-description">
                 <p><code>sv.Detections</code> containing bounding boxes with shape
 <code>(N, 4)</code> in <code>(x_min, y_min, x_max, y_max)</code> format and optional
-confidence scores.</p>
+confidence scores. When <code>detections.confidence is None</code>, all
+detections are treated as confidence <code>1.0</code> -- they bypass
+<code>high_conf_det_threshold</code> entirely and are eligible for
+association/spawning regardless of its value.</p>
               </div>
             </td>
             <td>
@@ -4005,7 +4010,37 @@ for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Unmatched or immature tracks have tracker_id of -1.</p>
+                <p>Unmatched or immature tracks, and detections below</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>high_conf_det_threshold</code> (which are never associated or used to</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>spawn a track), have tracker_id of -1. Detection order may differ</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="supervision.Detections">Detections</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>from input.</p>
               </div>
             </td>
           </tr>

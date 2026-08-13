@@ -1962,6 +1962,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2013,7 +2024,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed" class="md-nav__link">
+  <a href="#fixed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2096,7 +2107,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_1" class="md-nav__link">
+  <a href="#fixed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2157,7 +2168,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_2" class="md-nav__link">
+  <a href="#fixed_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2207,7 +2218,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_3" class="md-nav__link">
+  <a href="#fixed_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2296,7 +2307,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_4" class="md-nav__link">
+  <a href="#fixed_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2541,6 +2552,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2592,7 +2614,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed" class="md-nav__link">
+  <a href="#fixed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2675,7 +2697,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_1" class="md-nav__link">
+  <a href="#fixed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2736,7 +2758,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_2" class="md-nav__link">
+  <a href="#fixed_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2786,7 +2808,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_3" class="md-nav__link">
+  <a href="#fixed_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2875,7 +2897,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_4" class="md-nav__link">
+  <a href="#fixed_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2928,6 +2950,10 @@
 <li><strong>McByte CMC now defaults to <code>cmc_downscale=6</code></strong> — this aggregate-performance default halves median CMC latency versus factor <code>2</code> on the complete 45-clip, 1280x720 SportsMOT validation split and passes the dataset-level mean/median quality criterion. The benchmark used ground-truth detections with masks disabled; 9/45 clips regressed under the previous strict per-clip gate. Pass <code>cmc_downscale=2</code> to preserve the previous conservative behavior. Generic <code>CMCConfig</code> and <code>BoTSORTTracker</code> remain at <code>2</code>.</li>
 <li><strong>Mask stack moved from <code>trackers.core.mcbyte.masks</code> to <code>trackers.core.masks</code></strong> — SAM mask generation, Cutie propagation, and <code>MaskManager</code> reference no tracker and are not McByte-specific, so they now live beside the trackers rather than inside one. Import from <code>trackers.core.masks</code> instead (<a href="https://github.com/roboflow/trackers/pull/543">#543</a>).</li>
 </ul>
+<h3 id="fixed">🔧 Fixed</h3>
+<ul>
+<li><strong>OC-SORT now returns low-confidence detections with <code>tracker_id=-1</code></strong> — detections below <code>high_conf_det_threshold</code> were previously dropped silently instead of being emitted, unlike <code>SORTTracker</code>/<code>ByteTrackTracker</code>. <code>update()</code> now returns one row per input detection, matching the documented contract. Output-contract change: callers may now see additional <code>tracker_id == -1</code> rows (<a href="https://github.com/roboflow/trackers/pull/566">#566</a>).</li>
+</ul>
 <h2 id="260-2026-08-03"><a href="https://github.com/roboflow/trackers/compare/2.5.0...2.6.0">2.6.0</a> — 2026-08-03</h2>
 <h3 id="added_1">🚀 Added</h3>
 <ul>
@@ -2945,7 +2971,7 @@
 <li><strong>Improved tracker performance</strong> (bit-identical output) — CMC's sparse optical-flow status-mask filtering vectorized (~24x faster for that operation); <code>KalmanMotionModel</code> now caches its transition/noise matrices and defers DWNA calibration (~38% lower BoT-SORT/CBIoU predict cost); predicted boxes cached across association stages in BoT-SORT/CBIoU; Kalman-state-estimator copies trimmed and OC-SORT association hygiene improved (<a href="https://github.com/roboflow/trackers/pull/522">#522</a>, <a href="https://github.com/roboflow/trackers/pull/527">#527</a>, <a href="https://github.com/roboflow/trackers/pull/528">#528</a>).</li>
 <li>Direct dependency constraint <code>pydeprecate&gt;=0.7.0</code> raised to <code>&gt;=0.8.0</code>; build backend migrated from <code>hatchling</code> to <code>setuptools</code> (<code>src</code>-layout discovery + <code>py.typed</code> support) (<a href="https://github.com/roboflow/trackers/pull/492">#492</a>).</li>
 </ul>
-<h3 id="fixed">🔧 Fixed</h3>
+<h3 id="fixed_1">🔧 Fixed</h3>
 <ul>
 <li><strong>Positive low-FPS lost-track buffers no longer collapse to zero frames</strong> — all trackers now scale positive <code>lost_track_buffer</code> values with <code>ceil(...)</code> and keep confirmed tracks alive through exactly the scaled number of missed frames, matching OC-SORT's previous inclusive boundary semantics (<a href="https://github.com/roboflow/trackers/pull/420">#420</a>).</li>
 <li><strong>BoT-SORT / CBIoU: instant-activated first-frame tracks no longer dropped on a single miss</strong> — sticky maturity now triggers once a real <code>tracker_id</code> is assigned (<code>tracker_id != -1</code>), matching ByteTrack; fixes a default-config ID switch when a frame-1 object is missed once (<a href="https://github.com/roboflow/trackers/pull/478">#478</a> BoT-SORT, <a href="https://github.com/roboflow/trackers/pull/504">#504</a> CBIoU).</li>
@@ -2991,7 +3017,7 @@
 <li><strong><code>BoTSORTTracklet.apply_cmc</code> delegates to <code>CMC.apply_batch</code></strong> — per-track and batch paths now share identical code; behaviour is unchanged (<a href="https://github.com/roboflow/trackers/pull/414">#414</a>).</li>
 <li><strong><code>Tuner</code> gains <code>enqueue_defaults</code>, <code>fixed_params</code>, <code>images_dir</code>, <code>seed</code></strong> — <code>enqueue_defaults=True</code> (default) evaluates a baseline trial using each param's <code>__init__</code> default before Optuna samples; <code>fixed_params</code> holds selected params constant across all trials; <code>images_dir</code> enables frame loading for CMC-enabled trackers; <code>seed</code> makes TPE sampling reproducible (<a href="https://github.com/roboflow/trackers/pull/427">#427</a>).</li>
 </ul>
-<h3 id="fixed_1">🔧 Fixed</h3>
+<h3 id="fixed_2">🔧 Fixed</h3>
 <ul>
 <li>Clarified in docs that <code>SORTTracker</code> itself is not deprecated — only the <code>.trackers</code> alias is.</li>
 <li><strong>BoT-SORT score fusion with signed IoU</strong> — <code>_fuse_score</code> multiplied raw negative IoU values by confidence, inverting track ranking for GIoU/DIoU/CIoU; <code>normalize_for_fusion</code> now normalises similarity before fusion (<a href="https://github.com/roboflow/trackers/pull/403">#403</a>).</li>
@@ -3034,7 +3060,7 @@
 <li><strong>Eval submodule</strong> uses lazy <code>__getattr__</code> for <code>evaluate_mot_sequence</code> and <code>evaluate_mot_sequences</code> to avoid circular imports.</li>
 <li>Documentation: rewrote landing page, install guide, evaluate guide, ByteTrack page, comparison page; added DanceTrack default tuned numbers.</li>
 </ul>
-<h3 id="fixed_2">🔧 Fixed</h3>
+<h3 id="fixed_3">🔧 Fixed</h3>
 <ul>
 <li><strong>ByteTrack: prune unmatched tracks correctly</strong> after the Kalman refactor — <code>time_since_update</code> advances on unmatched tracks and <code>_get_alive_tracklets</code> expires them after <code>lost_track_buffer</code> empty frames (<a href="https://github.com/roboflow/trackers/pull/376">#376</a>).</li>
 <li><strong>Documentation index ByteTrack correction</strong> (<a href="https://github.com/roboflow/trackers/pull/371">#371</a>).</li>
@@ -3055,7 +3081,7 @@
 <li><strong>Documentation rewrite</strong> — landing page, install guide, and evaluate pages comprehensively rewritten; tracker comparison page expanded with dataset videos, paper links, and a DanceTrack section (<a href="https://github.com/roboflow/trackers/pull/322">#322</a>).</li>
 <li><strong>Release and stable branching strategy adopted</strong> — repository now follows a <code>release/stable</code> branching model (<a href="https://github.com/roboflow/trackers/pull/275">#275</a>).</li>
 </ul>
-<h3 id="fixed_3">🔧 Fixed</h3>
+<h3 id="fixed_4">🔧 Fixed</h3>
 <ul>
 <li><strong>Evaluation distractor filtering</strong> corrected on the comparison numbers (<a href="https://github.com/roboflow/trackers/pull/322">#322</a>).</li>
 <li><strong>PyPI publish action pinned to verified SHA</strong> — <code>pypa/gh-action-pypi-publish</code> corrected to the actual v1.13.0 commit SHA (<a href="https://github.com/roboflow/trackers/pull/294">#294</a>).</li>
@@ -3089,7 +3115,7 @@
 <li><strong>DeepSort removed</strong> — <code>DeepSortTracker</code> and all associated REID infrastructure removed from the package, docs, tests, and CI workflows. Projects using DeepSort must pin to <code>&lt;2.1.0</code>.</li>
 <li><strong>Python 3.9 dropped</strong> — minimum supported version is now Python 3.10; type annotations updated to use built-in generics (<code>list[...]</code>, <code>dict[...]</code>) throughout the public API (<a href="https://github.com/roboflow/trackers/pull/200">#200</a>).</li>
 </ul>
-<h3 id="fixed_4">🔧 Fixed</h3>
+<h3 id="fixed_5">🔧 Fixed</h3>
 <ul>
 <li><strong>Documentation build</strong> — pinned <code>mkdocstrings-python&lt;2.0.0</code> to resolve docs generation failure.</li>
 </ul>
