@@ -889,12 +889,16 @@ def test_ocsort_returns_low_confidence_detections() -> None:
     OC-SORT excludes low-confidence detections from association/spawning entirely (it has no ByteTrack-style low-
     confidence recovery stage), but the output must still include one row per input detection, matching the documented
     update() contract and the behaviour of SORT/ByteTrack. BoT-SORT/CBIoU/McByte are stricter -- they discard detections
-    with confidence <= 0.1 outright.
+    with confidence <= 0.1 outright. Per-detection metadata (`class_id`, custom `data` entries) must ride along on the
+    low-confidence rows too: the output is built by indexing back into the caller's `sv.Detections`, not rebuilt from
+    boxes alone.
     """
     tracker = OCSORTTracker(high_conf_det_threshold=0.6)
     detections = sv.Detections(
         xyxy=np.array([[10.0, 10.0, 50.0, 50.0], [100.0, 100.0, 140.0, 140.0], [200.0, 200.0, 240.0, 240.0]]),
         confidence=np.array([0.3, 0.5, 0.9]),  # 2 below threshold, 1 above
+        class_id=np.array([7, 8, 9]),
+        data={"source": np.array(["cam-a", "cam-b", "cam-c"])},
     )
 
     result = tracker.update(detections)
@@ -903,6 +907,13 @@ def test_ocsort_returns_low_confidence_detections() -> None:
     np.testing.assert_allclose(np.sort(result.confidence), [0.3, 0.5, 0.9], atol=1e-6)
     assert result.tracker_id is not None
     assert np.all(result.tracker_id == -1), "nothing matches a track yet on the first frame"
+
+    # Output rows may be reordered; input confidences are strictly ascending, so sorting by
+    # confidence restores input order and lets per-row metadata be compared position by position.
+    input_order = np.argsort(result.confidence)
+    assert result.class_id is not None
+    np.testing.assert_array_equal(result.class_id[input_order], [7, 8, 9])
+    np.testing.assert_array_equal(result.data["source"][input_order], ["cam-a", "cam-b", "cam-c"])
 
 
 def test_ocsort_low_confidence_detection_returned_across_frames() -> None:
@@ -930,13 +941,18 @@ def test_ocsort_low_confidence_detection_returned_across_frames() -> None:
 
 
 def test_ocsort_high_confidence_detection_unaffected_by_low_confidence_row() -> None:
-    """A high-confidence detection is tracked normally even with a low-confidence detection present every frame."""
+    """A high-confidence detection is tracked normally even with a low-confidence detection present every frame.
+
+    The low-confidence detection deliberately sits at input index 0, leaving the high-confidence one at index 1. Keep
+    that order: it makes ``high_indices == [1]``, so the association/spawn path must apply a real ``high_indices[col]``
+    remap instead of an identity no-op.
+    """
     tracker = OCSORTTracker(high_conf_det_threshold=0.6, minimum_consecutive_frames=2)
     high_box = (100.0, 100.0, 200.0, 200.0)
     low_box = (10.0, 10.0, 50.0, 50.0)
     detections = sv.Detections(
-        xyxy=np.array([high_box, low_box]),
-        confidence=np.array([0.9, 0.3]),
+        xyxy=np.array([low_box, high_box]),
+        confidence=np.array([0.3, 0.9]),
     )
 
     tracker.update(detections)
@@ -948,6 +964,8 @@ def test_ocsort_high_confidence_detection_unaffected_by_low_confidence_row() -> 
     low_row = int(np.argmin(result.confidence))
     assert result.tracker_id[high_row] >= 0, "high-confidence detection should be a confirmed track after 2 frames"
     assert result.tracker_id[low_row] == -1, "low-confidence detection is never associated or spawned"
+    np.testing.assert_allclose(result.xyxy[high_row], high_box)
+    np.testing.assert_allclose(result.xyxy[low_row], low_box)
 
 
 def test_ocsort_none_confidence_bypasses_threshold_entirely() -> None:
@@ -1006,3 +1024,38 @@ def test_ocsort_low_confidence_detection_never_recovered_via_overlap() -> None:
 
     assert result.tracker_id is not None
     assert result.tracker_id[0] == -1, "perfect IoU overlap must not recover a low-confidence detection"
+
+
+def test_ocsort_ocr_recovery_remaps_reordered_detection_index() -> None:
+    """A track recovered by the second-chance (OCR) pass must be reported on the *input* detection row.
+
+    OCR indexes into the high-confidence subset, so its output rows go through the ``high_indices[col]`` remap. Putting
+    the high-confidence detection at input index 1 -- behind a low-confidence row -- makes that remap non-trivial (every
+    other OC-SORT test leaves it an identity no-op at index 0), so a bug emitting the local subset index would attach
+    the recovered tracker_id to the wrong detection.
+    """
+    tracker = OCSORTTracker(high_conf_det_threshold=0.6, minimum_consecutive_frames=1, lost_track_buffer=30)
+    spawn_box = (100.0, 100.0, 200.0, 200.0)
+    last_seen_box = (140.0, 100.0, 240.0, 200.0)
+    low_conf_box = (500.0, 500.0, 560.0, 560.0)
+    tracker.update(sv.Detections(xyxy=np.array([spawn_box]), confidence=np.array([0.9])))
+    tracker.update(sv.Detections(xyxy=np.array([last_seen_box]), confidence=np.array([0.9])))
+    # Missed frame: the Kalman prediction keeps moving and overshoots `last_seen_box`, so next
+    # frame the primary (OCM) pass falls under the IoU threshold and only OCR can recover.
+    tracker.update(sv.Detections.empty())
+
+    # Object reappears exactly where it was last *observed*, but now at input index 1.
+    result = tracker.update(
+        sv.Detections(
+            xyxy=np.array([low_conf_box, last_seen_box]),
+            confidence=np.array([0.3, 0.9]),
+        )
+    )
+
+    assert len(result) == 2, "both input detections must be returned"
+    assert result.tracker_id is not None
+    recovered_row = int(np.argmax(result.tracker_id))
+    assert result.tracker_id[recovered_row] >= 0, "the drifted track must be recovered by the OCR pass"
+    np.testing.assert_allclose(result.xyxy[recovered_row], last_seen_box)
+    np.testing.assert_allclose(result.confidence[recovered_row], 0.9)
+    assert len(tracker.tracks) == 1, "the low-confidence row must not spawn a second track"
