@@ -77,7 +77,7 @@ for threshold in (0.10, 0.20, 0.25):
 plot_appearance_distances(distances, thresholds={0.20: "selected", 0.25: "default"})
 ```
 
-See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full signatures. The figures on this page come from [`notebooks/plot_reid_appearance_distances.py`](https://github.com/roboflow/trackers/blob/develop/notebooks/plot_reid_appearance_distances.py), which wraps the same helpers with MOT17 and SoccerNet ground-truth loading.
+See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full signatures. The figures on this page come from [`notebooks/plot_reid_appearance_distances.py`](https://github.com/roboflow/trackers/blob/develop/notebooks/plot_reid_appearance_distances.py), which wraps the same helpers with MOT17 and SoccerNet ground-truth loading. To run the whole thing yourself, from download to calibrated threshold, open the [ReID cookbook](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb) in Colab.
 
 **MOT17 val, `fastreid_mot17_sbs50`.** Same-ID distances peak near 0 and different-ID near 0.4. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 keeps 68% of same-ID pairs while passing 1.1% of different-ID pairs. Raising θ to the BoT-SORT default 0.25 recovers same-ID pairs (79%) but nearly triples the different-ID pairs it admits (2.9%), which is why 0.2 is the better operating point here ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8 uses the same threshold).
 
