@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **OC-SORT now returns low-confidence detections with `tracker_id=-1`** — detections below `high_conf_det_threshold` were previously dropped silently instead of being emitted, unlike `SORTTracker`/`ByteTrackTracker`. `update()` now returns one row per input detection, matching the documented contract. Output-contract change: callers may now see additional `tracker_id == -1` rows ([#566](https://github.com/roboflow/trackers/pull/566)).
+
 ## [2.6.0] — 2026-08-03
 
 ### 🚀 Added
