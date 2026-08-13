@@ -25,6 +25,7 @@ from trackers.cli.track import (
     DetectionOptions,
     FilterOptions,
     OutputOptions,
+    ReIDOptions,
     ShowOptions,
     TrackerOptions,
     track_command,
@@ -39,6 +40,7 @@ _TRACK_OPTION_GROUPS: tuple[tuple[type, str], ...] = (
     (DetectionOptions, "detection"),
     (FilterOptions, "filters"),
     (TrackerOptions, "tracker"),
+    (ReIDOptions, "reid"),
     (OutputOptions, "output"),
     (ShowOptions, "show"),
 )

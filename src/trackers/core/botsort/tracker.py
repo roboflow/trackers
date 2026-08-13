@@ -350,7 +350,6 @@ class BoTSORTTracker(BaseTracker):
                 unconfirmed_tracks, uh_boxes, predicted_state_boxes, uh_scores, uh_embeddings
             )
 
-
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 similarity_matrix, self.minimum_iou_threshold_unconfirmed_assoc
             )

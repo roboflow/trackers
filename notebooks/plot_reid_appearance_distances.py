@@ -172,9 +172,8 @@ def _d_app(a: np.ndarray, b: np.ndarray) -> float:
 class SequenceIndex:
     """Frame-sorted crop index for one sequence, with O(log n) frame-window lookup.
 
-    ``order`` holds global crop indexes sorted by frame; ``frames`` is the matching
-    frame array. ``positions_by_id`` maps a GT id to its slots inside ``order``,
-    which are themselves frame-sorted because the sort is stable.
+    ``order`` holds global crop indexes sorted by frame; ``frames`` is the matching frame array. ``positions_by_id``
+    maps a GT id to its slots inside ``order``, which are themselves frame-sorted because the sort is stable.
     """
 
     def __init__(self, global_indexes: np.ndarray, gt_ids: np.ndarray, frame_ids: np.ndarray) -> None:
@@ -228,11 +227,10 @@ def sample_association_local(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Sample same-ID and different-ID crop pairs inside the association horizon.
 
-    Pairs are drawn directly rather than enumerated into a pool, so no cap can bias
-    the result toward whichever sequence happens to be visited first. Each sequence
-    gets an equal quota. Within a sequence, same-ID pairs pick an identity uniformly
-    (so long tracks do not dominate) and different-ID pairs pick an anchor crop
-    uniformly, then a partner uniformly among the crops inside the gap band.
+    Pairs are drawn directly rather than enumerated into a pool, so no cap can bias the result toward whichever sequence
+    happens to be visited first. Each sequence gets an equal quota. Within a sequence, same-ID pairs pick an identity
+    uniformly (so long tracks do not dominate) and different-ID pairs pick an anchor crop uniformly, then a partner
+    uniformly among the crops inside the gap band.
     """
     # A zero gap would let a crop pair with itself, which is the artefact that puts a
     # spike at distance 0 in the original BoT-SORT figure.
@@ -317,9 +315,8 @@ def _draw_diff_id_pair(
 def roc_auc(intra: np.ndarray, inter: np.ndarray) -> float:
     """P(same-ID distance < different-ID distance), ties counted as half.
 
-    Threshold-free separability, so it needs no true-positive or false-positive
-    target. 1.0 means the two distributions are disjoint, 0.5 means appearance
-    carries no information.
+    Threshold-free separability, so it needs no true-positive or false-positive target. 1.0 means the two distributions
+    are disjoint, 0.5 means appearance carries no information.
     """
     inter_sorted = np.sort(inter)
     n_greater = len(inter) - np.searchsorted(inter_sorted, intra, side="right")

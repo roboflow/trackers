@@ -36,11 +36,7 @@ class ParameterInfo:
 
 
 class TrackerParameters(dict[str, ParameterInfo]):
-    """Tracker parameter mapping that hides non-flaggable constructor args from the CLI.
-
-    Omits IoU metric objects and injection-only parameters such as ``reid_model``
-    from CLI flag generation while keeping them available on the tracker itself.
-    """
+    """Tracker parameter mapping with CLI-only filtering for IoU metrics."""
 
     def items(self) -> Iterator[tuple[str, ParameterInfo]]:  # type: ignore[override]
         try:
@@ -50,8 +46,6 @@ class TrackerParameters(dict[str, ParameterInfo]):
             return
 
         for name, param_info in super().items():
-            if name == "reid_model":
-                continue
             param_type = param_info.param_type
             if isinstance(param_type, type) and issubclass(param_type, BaseIoU):
                 continue
