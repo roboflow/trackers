@@ -54,6 +54,10 @@ _SlotRanges = tuple[tuple[int, int], tuple[int, int]]
 _PairDrawer = Callable[[np.random.Generator, "_SequenceIndex", int, int], tuple[int, int] | None]
 
 
+class _NoPairsInBand(ValueError):
+    """Signal that valid inputs contain no sampleable pairs in one gap band."""
+
+
 @dataclass(frozen=True)
 class AppearanceDistances:
     """Sampled appearance distances for one frame-gap band.
@@ -321,6 +325,8 @@ def sample_appearance_distances(
     lengths = {len(embeddings), len(ids), len(frame_ids), len(sequence_ids)}
     if len(lengths) != 1:
         raise ValueError(f"embeddings, ids, frame_ids and sequence_ids must have equal length, got {sorted(lengths)}")
+    if len(embeddings) == 0:
+        raise ValueError("embeddings, ids, frame_ids and sequence_ids must contain at least one row")
 
     normalized = _l2_normalize_rows(embeddings)
     rng = np.random.default_rng(seed)
@@ -351,7 +357,7 @@ def sample_appearance_distances(
         maximum_attempts_per_pair=maximum_attempts_per_pair,
     )
     if len(same_id) == 0 or len(different_id) == 0:
-        raise ValueError(
+        raise _NoPairsInBand(
             f"no association-local pairs in frame gap band [{minimum_frame_gap}, {maximum_frame_gap}]; "
             "widen the band or check that ids, frame_ids and sequence_ids line up with the embeddings"
         )
@@ -391,6 +397,9 @@ def sweep_frame_gap(
 
     Returns:
         One entry per band that yielded pairs, in ``gap_bands`` order.
+
+    Raises:
+        ValueError: If the input arrays or a requested gap band are invalid.
     """
     sweep: list[AppearanceDistances] = []
     for minimum_frame_gap, maximum_frame_gap in gap_bands:
@@ -408,7 +417,7 @@ def sweep_frame_gap(
                     seed=seed,
                 )
             )
-        except ValueError:
+        except _NoPairsInBand:
             continue
     return sweep
 

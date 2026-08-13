@@ -71,6 +71,13 @@ class TestSampleAppearanceDistances:
         with pytest.raises(ValueError, match="invalid frame gap band"):
             sample_appearance_distances(*_DATASET, minimum_frame_gap=0)
 
+    def test_empty_dataset_is_rejected(self) -> None:
+        embeddings = np.empty((0, 2), dtype=np.float32)
+        empty_labels = np.array([], dtype=int)
+
+        with pytest.raises(ValueError, match="at least one row"):
+            sample_appearance_distances(embeddings, empty_labels, empty_labels, empty_labels)
+
     def test_every_sequence_gets_an_equal_quota(self) -> None:
         """The per-sequence split is what stops one crowded sequence deciding the answer.
 
@@ -126,6 +133,11 @@ def test_sweep_skips_bands_the_data_cannot_fill() -> None:
     sweep = sweep_frame_gap(*_DATASET, pairs_per_class=4)
 
     assert [band.label for band in sweep] == ["1", "2-5"]
+
+
+def test_sweep_rejects_mismatched_dataset_lengths() -> None:
+    with pytest.raises(ValueError, match="equal length"):
+        sweep_frame_gap(_EMBEDDINGS[:-1], _IDS, _FRAME_IDS, _SEQUENCE_IDS)
 
 
 def test_both_plots_build() -> None:

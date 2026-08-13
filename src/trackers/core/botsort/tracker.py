@@ -219,6 +219,9 @@ class BoTSORTTracker(BaseTracker):
               ``enable_cmc=True``, CMC is silently skipped for that step; ReID
               requires ``frame`` and raises when it is ``None``.
         """
+        if self.reid_model is not None and frame is None:
+            raise ValueError(f"{type(self).__name__}.update() requires frame when reid_model is set.")
+
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
@@ -288,9 +291,7 @@ class BoTSORTTracker(BaseTracker):
         predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
 
         det_embeddings: np.ndarray | None = None
-        if self.reid_model is not None:
-            if frame is None:
-                raise ValueError(f"{type(self).__name__}.update() requires frame when reid_model is set.")
+        if self.reid_model is not None and frame is not None:
             if len(high_boxes) > 0:
                 det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
 

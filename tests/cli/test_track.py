@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import builtins
+from collections.abc import Mapping, Sequence
 from dataclasses import fields
 from pathlib import Path
 from typing import ClassVar
@@ -25,6 +27,7 @@ from trackers.cli.track import (
     _format_labels,
     _init_annotators,
     _init_tracker,
+    _load_reid_model,
     _reid_requested,
     _resolve_class_filter,
     _resolve_track_id_filter,
@@ -390,6 +393,20 @@ class TestReIDOptions:
         """Naming a checkpoint is enough; --reid.enable is not also required."""
         assert _reid_requested(ReIDOptions(model="osnet_x1_0_msmt17_combineall"))
 
+    @pytest.mark.parametrize(
+        "options",
+        [
+            pytest.param(ReIDOptions(architecture="osnet_x1_0"), id="architecture"),
+            pytest.param(ReIDOptions(device="cpu"), id="device"),
+        ],
+    )
+    def test_non_default_options_imply_enable(self, options: ReIDOptions) -> None:
+        assert _reid_requested(options)
+
+    def test_explicit_disable_conflicts_with_model(self) -> None:
+        with pytest.raises(ValueError, match="cannot be combined"):
+            _reid_requested(ReIDOptions(enable=False, model="osnet_x1_0_msmt17_combineall"))
+
     def test_absent_by_default(self) -> None:
         """Default options leave ReID off, so geometry-only tracking is unchanged."""
         assert not _reid_requested(ReIDOptions())
@@ -425,6 +442,27 @@ class TestReIDOptions:
         """Requesting ReID on a geometry-only tracker fails loudly."""
         with pytest.raises(ValueError, match=r"--reid\.\* options apply only to a tracker that accepts an encoder"):
             _init_tracker(TrackerOptions(name="bytetrack"), ReIDOptions(enable=True))
+
+    def test_transitive_reid_import_error_is_preserved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        original_import = builtins.__import__
+
+        def fail_reid_import(
+            name: str,
+            global_vars: Mapping[str, object] | None = None,
+            local_vars: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] | None = None,
+            level: int = 0,
+        ) -> object:
+            if name == "reid":
+                raise ImportError("No module named 'broken_dependency'", name="broken_dependency")
+            return original_import(name, global_vars, local_vars, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", fail_reid_import)
+
+        with pytest.raises(ImportError, match="broken_dependency") as exc_info:
+            _load_reid_model(ReIDOptions(enable=True))
+
+        assert exc_info.value.name == "broken_dependency"
 
     def test_reid_model_is_not_a_cli_flag(self) -> None:
         """The encoder is built from ReIDOptions, so it must not become a --tracker flag."""

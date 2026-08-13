@@ -73,17 +73,19 @@ class ReIDOptions:
     the only tracker that accepts an encoder today.
 
     Attributes:
-        enable: Enable appearance association using the default encoder.
+        enable: Explicitly enable or disable appearance association. When
+            omitted, any non-default ReID option enables it.
         model: Checkpoint source: curated alias, ``hf://`` URL, local path, or
-            ``save_pretrained`` directory. Implies ``enable``. Default alias
-            when omitted: ``osnet_x1_0_msmt17_combineall``.
+            ``save_pretrained`` directory. Implies enable and cannot be combined
+            with an explicit disable. Default alias when omitted:
+            ``osnet_x1_0_msmt17_combineall``.
         device: ReID compute device: ``auto``, ``cpu``, ``cuda``, ``mps``.
         architecture: Backbone for bare ``.pth``/``.safetensors`` weights (e.g.
             ``osnet_x1_0``, ``fastreid_sbs_resnest50``). Required when ``model``
             points at a bare weights file.
     """
 
-    enable: bool = False
+    enable: bool | None = None
     model: str | None = None
     device: str = DEFAULT_DEVICE
     architecture: str | None = None
@@ -742,8 +744,16 @@ def _warn_dropped_tracker_overrides(tracker_id: str, dropped: list[str]) -> None
 
 
 def _reid_requested(reid: ReIDOptions) -> bool:
-    """Whether the command line asked for appearance association."""
-    return reid.enable or reid.model is not None
+    """Whether the command line asked for appearance association.
+
+    Raises:
+        ValueError: If a checkpoint is combined with an explicit disable.
+    """
+    if reid.enable is False and reid.model is not None:
+        raise ValueError("--reid.model cannot be combined with --reid.no_enable or --reid.enable false.")
+    if reid.enable is not None:
+        return reid.enable
+    return reid.model is not None or reid.architecture is not None or reid.device != DEFAULT_DEVICE
 
 
 def _load_reid_model(reid: ReIDOptions) -> Any:
@@ -756,12 +766,16 @@ def _load_reid_model(reid: ReIDOptions) -> Any:
         A ``reid.ReIDModel`` satisfying the ``ReIDEncoder`` protocol.
 
     Raises:
+        ImportError: If the ``reid`` package is present but one of its imports
+            fails.
         ValueError: If the ``reid`` extra is not installed, ``architecture`` was
             given without ``model``, or the checkpoint fails to load.
     """
     try:
         from reid import ReIDModel
     except ImportError as exc:
+        if exc.name != "reid":
+            raise
         raise ValueError(
             "ReID tracking requires the optional `trackers[reid]` extra.\nInstall with: pip install 'trackers[reid]'"
         ) from exc

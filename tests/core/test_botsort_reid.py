@@ -120,10 +120,27 @@ class TestBoTSORTTrackerReID:
         with pytest.raises(ValueError, match="reid_ema_alpha"):
             BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder(), reid_ema_alpha=1.5)
 
+    @pytest.mark.parametrize("parameter", ["appearance_threshold", "proximity_threshold"])
+    @pytest.mark.parametrize("value", [-0.01, 1.01])
+    def test_rejects_invalid_association_thresholds(self, parameter: str, value: float) -> None:
+        with pytest.raises(ValueError, match=parameter):
+            BoTSORTTracker(enable_cmc=False, **{parameter: value})
+
+    @pytest.mark.parametrize("parameter", ["appearance_threshold", "proximity_threshold"])
+    @pytest.mark.parametrize("value", [0.0, 1.0])
+    def test_accepts_association_threshold_boundaries(self, parameter: str, value: float) -> None:
+        tracker = BoTSORTTracker(enable_cmc=False, **{parameter: value})
+
+        assert getattr(tracker, parameter) == value
+
     def test_requires_frame_when_reid_enabled(self) -> None:
         tracker = BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder())
         with pytest.raises(ValueError, match="requires frame"):
             tracker.update(_detection((10.0, 10.0, 30.0, 30.0)))
+
+        assert tracker.frame_id == 0
+        tracked = tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame())
+        np.testing.assert_array_equal(tracked.tracker_id, [0])
 
     def test_feature_bank_initializes_on_spawn(self) -> None:
         tracker = BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder())
