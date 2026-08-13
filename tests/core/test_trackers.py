@@ -888,7 +888,8 @@ def test_ocsort_returns_low_confidence_detections() -> None:
 
     OC-SORT excludes low-confidence detections from association/spawning entirely (it has no ByteTrack-style low-
     confidence recovery stage), but the output must still include one row per input detection, matching the documented
-    update() contract and the behaviour of SORT/ByteTrack/BoT-SORT/CBIoU.
+    update() contract and the behaviour of SORT/ByteTrack. BoT-SORT/CBIoU/McByte are stricter -- they discard detections
+    with confidence <= 0.1 outright.
     """
     tracker = OCSORTTracker(high_conf_det_threshold=0.6)
     detections = sv.Detections(

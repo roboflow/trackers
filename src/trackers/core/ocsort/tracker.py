@@ -330,7 +330,9 @@ class OCSORTTracker(BaseTracker):
 
         # Low-confidence detections never entered association or spawning above, but
         # the output must still include one row per input detection (matching the
-        # documented update() contract and SORT/ByteTrack/BoT-SORT/CBIoU behaviour).
+        # documented update() contract and SORT/ByteTrack behaviour). BoT-SORT, CBIoU
+        # and McByte are stricter: they discard detections with confidence <= 0.1
+        # outright, so those rows never reach their output at all.
         for det_idx in low_indices:
             out_det_indices.append(int(det_idx))
             out_tracker_ids.append(-1)
