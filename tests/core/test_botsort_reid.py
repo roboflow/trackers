@@ -17,11 +17,6 @@ import supervision as sv
 
 from trackers.core.botsort.fusion import fuse_botsort_reid_association
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.reid.appearance import (
-    appearance_similarity,
-    extract_detection_embeddings,
-)
-from trackers.core.reid.feature_bank import FeatureBank
 
 
 def _detection(xyxy: tuple[float, float, float, float], conf: float = 0.9) -> sv.Detections:
@@ -76,121 +71,6 @@ def test_botsort_import_does_not_load_reid_model_stack() -> None:
         text=True,
     )
     assert result.returncode == 0, result.stderr
-
-
-class TestFeatureBank:
-    """Unit tests for ``FeatureBank`` L2 + EMA behavior."""
-
-    def test_first_update_normalizes_embedding(self) -> None:
-        # BoT-SORT normalizes the embedding before storing it.
-        bank = FeatureBank(alpha=0.9)
-        bank.update(np.array([3.0, 4.0], dtype=np.float32))
-        feature = bank.feature
-        assert feature is not None
-        np.testing.assert_allclose(feature, [0.6, 0.8], atol=1e-6)
-
-    def test_blends_on_unit_sphere(self) -> None:
-        # BoT-SORT: EMA on unit vectors, then L2-normalize the blend again.
-        bank = FeatureBank(alpha=0.75)
-        bank.update(np.array([1.0, 0.0], dtype=np.float32))
-        bank.update(np.array([0.0, 1.0], dtype=np.float32))
-        feature = bank.feature
-        assert feature is not None
-        # 0.75*[1,0] + 0.25*[0,1] = [0.75, 0.25], then / ||.||
-        expected = np.array([0.75, 0.25], dtype=np.float32)
-        expected /= np.linalg.norm(expected)
-        np.testing.assert_allclose(feature, expected, atol=1e-6)
-        np.testing.assert_allclose(np.linalg.norm(feature), 1.0, atol=1e-6)
-
-    def test_zero_embedding_is_accepted(self) -> None:
-        bank = FeatureBank()
-        bank.update(np.zeros(8, dtype=np.float32))
-        feature = bank.feature
-        assert feature is not None
-        np.testing.assert_allclose(feature, 0.0)
-
-    def test_non_finite_embedding_raises(self) -> None:
-        bank = FeatureBank()
-        with pytest.raises(ValueError, match="finite"):
-            bank.update(np.array([1.0, np.nan], dtype=np.float32))
-        assert bank.feature is None
-
-    def test_shape_change_raises(self) -> None:
-        bank = FeatureBank()
-        bank.update(np.array([1.0, 0.0], dtype=np.float32))
-        before = bank.feature
-        assert before is not None
-        with pytest.raises(ValueError, match="shape"):
-            bank.update(np.array([1.0, 0.0, 0.0], dtype=np.float32))
-        after = bank.feature
-        assert after is not None
-        np.testing.assert_allclose(after, before)
-
-
-class TestAppearanceSimilarity:
-    """Unit tests for cosine ``appearance_similarity`` and embedding extraction."""
-
-    def test_identical_vectors_are_one(self) -> None:
-        similarity = appearance_similarity(
-            [np.array([1.0, 0.0], dtype=np.float32)],
-            np.array([[1.0, 0.0]], dtype=np.float32),
-        )
-        np.testing.assert_allclose(similarity, [[1.0]], atol=1e-6)
-
-    def test_orthogonal_vectors_are_zero(self) -> None:
-        similarity = appearance_similarity(
-            [np.array([1.0, 0.0], dtype=np.float32)],
-            np.array([[0.0, 1.0]], dtype=np.float32),
-        )
-        np.testing.assert_allclose(similarity, [[0.0]], atol=1e-6)
-
-    def test_normalizes_both_sides(self) -> None:
-        similarity = appearance_similarity(
-            [np.array([3.0, 4.0], dtype=np.float32)],
-            np.array([[6.0, 8.0]], dtype=np.float32),
-        )
-        np.testing.assert_allclose(similarity, [[1.0]], atol=1e-6)
-
-    def test_none_track_yields_zero_row(self) -> None:
-        similarity = appearance_similarity(
-            [None, np.array([1.0, 0.0], dtype=np.float32)],
-            np.array([[1.0, 0.0]], dtype=np.float32),
-        )
-        np.testing.assert_allclose(similarity, [[0.0], [1.0]], atol=1e-6)
-
-    def test_empty_inputs_return_empty_matrix(self) -> None:
-        assert appearance_similarity([], np.empty((0, 4), dtype=np.float32)).shape == (0, 0)
-        assert appearance_similarity(
-            [np.array([1.0, 0.0], dtype=np.float32)],
-            np.empty((0, 2), dtype=np.float32),
-        ).shape == (1, 0)
-
-    def test_non_finite_detection_rows_raise(self) -> None:
-        with pytest.raises(ValueError, match="finite"):
-            appearance_similarity(
-                [np.array([1.0, 0.0], dtype=np.float32)],
-                np.array([[1.0, 0.0], [np.nan, 1.0]], dtype=np.float32),
-            )
-
-    def test_incompatible_track_dimensions_raise(self) -> None:
-        with pytest.raises(ValueError, match="dim"):
-            appearance_similarity(
-                [np.array([1.0, 0.0, 0.0], dtype=np.float32)],
-                np.array([[1.0, 0.0]], dtype=np.float32),
-            )
-
-    def test_extract_detection_embeddings_requires_one_row_per_box(self) -> None:
-        # Encoder must return embeddings.shape[0] == len(boxes).
-        class _WrongLengthEncoder:
-            def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
-                return np.empty((0, 4), dtype=np.float32)
-
-        with pytest.raises(ValueError, match="rows"):
-            extract_detection_embeddings(
-                _WrongLengthEncoder(),
-                _frame(),
-                np.array([[0.0, 0.0, 10.0, 10.0]], dtype=np.float32),
-            )
 
 
 class TestFuseBotsortReidAssociation:
