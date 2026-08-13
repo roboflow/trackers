@@ -12,15 +12,19 @@ description: Python API reference for MOT metrics and AI City multicamera world-
 
 ## Multicamera evaluation
 
-::: trackers.eval.evaluate.evaluate_multicamera_scene
+::: trackers.eval.multicamera.evaluate_multicamera_scene
 
-::: trackers.eval.evaluate.evaluate_multicamera_scenes
+::: trackers.eval.multicamera.evaluate_multicamera_scenes
 
 ## Results
 
 ::: trackers.eval.results.SequenceResult
 
 ::: trackers.eval.results.BenchmarkResult
+
+::: trackers.eval.multicamera.MulticameraBenchmarkResult
+
+::: trackers.eval.multicamera.SceneMeanHOTA
 
 ::: trackers.eval.results.CLEARMetrics
 

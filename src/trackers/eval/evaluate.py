@@ -10,8 +10,6 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-import numpy as np
-
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
@@ -23,18 +21,10 @@ from trackers.eval.results import (
     SequenceResult,
 )
 from trackers.io.mot import _prepare_mot_sequence, load_mot_file
-from trackers.io.multicamera import (
-    _prepare_multicamera_files,
-    load_scene_camera_map,
-)
 
 logger = logging.getLogger(__name__)
 
 SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
-
-# Official AI City 2024 headline fields; other HOTA components are undefined under
-# an unweighted scene mean and serialize as JSON null on the aggregate row.
-_SCENE_MEAN_HOTA_FIELDS = ("HOTA", "DetA", "AssA", "LocA")
 
 
 def evaluate_mot_sequence(
@@ -301,176 +291,6 @@ def evaluate_mot_sequences(
     return BenchmarkResult(
         sequences=sequence_results,
         aggregate=aggregate,
-    )
-
-
-def evaluate_multicamera_scene(
-    scene: str,
-    gt_path: str | Path,
-    tracker_path: str | Path,
-    camera_ids: list[int] | tuple[int, ...],
-    *,
-    file_format: Literal["aicity-2024"] = "aicity-2024",
-    zero_distance: float = 2.0,
-) -> SequenceResult:
-    """Evaluate one multi-camera scene with AI City 2024 world-plane HOTA.
-
-    Collapses all cameras in the scene into a single world-plane sequence:
-    rows are filtered to ``camera_ids``, world coordinates are rounded to 3
-    decimals (half-to-even), duplicate ``(frame_id, obj_id)`` rows keep the
-    first occurrence, and ``frame_id`` is shifted by ``+1``. Similarity is
-    ``max(0, 1 - euclidean_2d / zero_distance)``.
-
-    Args:
-        scene: Scene name used as `SequenceResult.sequence` (for example
-            ``\"scene_061\"``). Must be passed explicitly because every scene's
-            ground-truth file is named ``ground_truth.txt``.
-        gt_path: Path to the scene ground-truth file.
-        tracker_path: Path to the scene prediction file.
-        camera_ids: Camera IDs belonging to this scene. Applied to both ground
-            truth and predictions.
-        file_format: On-disk format edition. Only ``\"aicity-2024\"`` is
-            supported.
-        zero_distance: Metres at which similarity reaches zero. Defaults to
-            ``2.0``.
-
-    Returns:
-        `SequenceResult` with HOTA metrics for the scene.
-
-    Raises:
-        FileNotFoundError: If ``gt_path`` or ``tracker_path`` does not exist.
-        ValueError: If inputs are malformed, empty after filtering, or
-            ``zero_distance`` is not finite and positive.
-    """
-    seq_data = _prepare_multicamera_files(
-        gt_path,
-        tracker_path,
-        file_format=file_format,
-        camera_ids=camera_ids,
-        zero_distance=zero_distance,
-    )
-    hota_dict = compute_hota_metrics(
-        seq_data.gt_ids,
-        seq_data.tracker_ids,
-        seq_data.similarity_scores,
-    )
-    return SequenceResult(
-        sequence=scene,
-        CLEAR=None,
-        HOTA=HOTAMetrics.from_dict(hota_dict),
-        Identity=None,
-    )
-
-
-def evaluate_multicamera_scenes(
-    gt_dir: str | Path,
-    tracker_dir: str | Path,
-    scene_camera_map: str | Path | dict[str, list[int]],
-    *,
-    file_format: Literal["aicity-2024"] = "aicity-2024",
-    zero_distance: float = 2.0,
-    scenes: list[str] | None = None,
-) -> BenchmarkResult:
-    """Evaluate multiple multi-camera scenes and average HOTA unweighted.
-
-    Ground truth is read from ``{gt_dir}/{scene}/ground_truth.txt`` and
-    predictions from ``{tracker_dir}/{scene}.txt``. A missing prediction file
-    raises because silently skipping a scene would inflate the unweighted mean.
-
-    The aggregate row is the arithmetic mean of per-scene HOTA, DetA, AssA, and
-    LocA (``aggregation=\"scene_mean\"``). DetRe/DetPr/AssRe/AssPr/OWTA and the
-    TP/FN/FP counts are ``None`` (JSON ``null``) because they are undefined at
-    scene-mean level by the protocol.
-
-    Args:
-        gt_dir: Parent directory of per-scene folders containing
-            ``ground_truth.txt``.
-        tracker_dir: Directory of ``{scene}.txt`` prediction files.
-        scene_camera_map: Path to NVIDIA's ``scene_name_2_cam_id`` JSON, or an
-            in-memory ``{scene_name: [camera_ids...]}`` mapping.
-        file_format: On-disk format edition. Only ``\"aicity-2024\"`` is
-            supported.
-        zero_distance: Metres at which similarity reaches zero.
-        scenes: Optional subset of scene names. Defaults to every scene in the
-            camera map.
-
-    Returns:
-        `BenchmarkResult` with ``aggregation=\"scene_mean\"``.
-
-    Raises:
-        FileNotFoundError: If a required ground-truth or prediction file is
-            missing.
-        ValueError: If no scenes remain or a selected scene is absent from the
-            camera map.
-    """
-    if not np.isfinite(zero_distance) or zero_distance <= 0:
-        raise ValueError(f"zero_distance must be finite and > 0, got {zero_distance}")
-    gt_dir = Path(gt_dir)
-    tracker_dir = Path(tracker_dir)
-
-    if isinstance(scene_camera_map, (str, Path)):
-        camera_map = load_scene_camera_map(scene_camera_map)
-    else:
-        camera_map = {name: list(ids) for name, ids in scene_camera_map.items()}
-
-    scene_names = list(scenes) if scenes is not None else list(camera_map)
-    if not scene_names:
-        raise ValueError("No scenes to evaluate.")
-    if len(scene_names) != len(set(scene_names)):
-        raise ValueError("Scene selection must not contain duplicates.")
-
-    sequence_results: dict[str, SequenceResult] = {}
-    for scene_name in scene_names:
-        if scene_name not in camera_map:
-            raise ValueError(f"Scene {scene_name!r} is not present in the camera map.")
-
-        sequence_results[scene_name] = evaluate_multicamera_scene(
-            scene=scene_name,
-            gt_path=gt_dir / scene_name / "ground_truth.txt",
-            tracker_path=tracker_dir / f"{scene_name}.txt",
-            camera_ids=tuple(camera_map[scene_name]),
-            file_format=file_format,
-            zero_distance=zero_distance,
-        )
-
-    return BenchmarkResult(
-        sequences=sequence_results,
-        aggregate=_aggregate_scene_mean_hota(sequence_results, sequence="SCENE_MEAN"),
-        aggregation="scene_mean",
-    )
-
-
-def _aggregate_scene_mean_hota(
-    sequence_results: dict[str, SequenceResult],
-    *,
-    sequence: str,
-) -> SequenceResult:
-    """Unweighted mean of per-scene HOTA/DetA/AssA/LocA."""
-    hota_results = [seq.HOTA for seq in sequence_results.values() if seq.HOTA is not None]
-    if not hota_results:
-        raise ValueError("No HOTA results available to average.")
-
-    means = {
-        field: float(np.mean([getattr(hota, field) for hota in hota_results])) for field in _SCENE_MEAN_HOTA_FIELDS
-    }
-    return SequenceResult(
-        sequence=sequence,
-        CLEAR=None,
-        HOTA=HOTAMetrics(
-            HOTA=means["HOTA"],
-            DetA=means["DetA"],
-            AssA=means["AssA"],
-            DetRe=None,
-            DetPr=None,
-            AssRe=None,
-            AssPr=None,
-            LocA=means["LocA"],
-            OWTA=None,
-            HOTA_TP=None,
-            HOTA_FN=None,
-            HOTA_FP=None,
-        ),
-        Identity=None,
     )
 
 

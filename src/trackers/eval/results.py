@@ -14,26 +14,12 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
-
-AggregationMode = Literal["tp_weighted", "scene_mean"]
-
-
-def _optional_float(value: Any) -> float | None:
-    if value is None:
-        return None
-    return float(value)
-
-
-def _optional_int(value: Any) -> int | None:
-    if value is None:
-        return None
-    return int(value)
-
 
 # TrackEval summary field order for CLEAR metrics
 CLEAR_FLOAT_FIELDS = [
@@ -223,15 +209,15 @@ class HOTAMetrics:
     HOTA: float
     DetA: float
     AssA: float
-    DetRe: float | None
-    DetPr: float | None
-    AssRe: float | None
-    AssPr: float | None
+    DetRe: float
+    DetPr: float
+    AssRe: float
+    AssPr: float
     LocA: float
-    OWTA: float | None
-    HOTA_TP: int | None
-    HOTA_FN: int | None
-    HOTA_FP: int | None
+    OWTA: float
+    HOTA_TP: int
+    HOTA_FN: int
+    HOTA_FP: int
     # Per-alpha arrays for aggregation (not serialized to JSON by default)
     _arrays: dict[str, Any] = field(default_factory=dict, repr=False)
 
@@ -240,8 +226,7 @@ class HOTAMetrics:
         """Create `HOTAMetrics` from a dictionary.
 
         Args:
-            data: Dictionary with metric values. Undefined scene-mean fields may
-                be JSON ``null`` / ``None``.
+            data: Dictionary with metric values.
 
         Returns:
             `HOTAMetrics` instance.
@@ -264,15 +249,15 @@ class HOTAMetrics:
             HOTA=float(data["HOTA"]),
             DetA=float(data["DetA"]),
             AssA=float(data["AssA"]),
-            DetRe=_optional_float(data["DetRe"]),
-            DetPr=_optional_float(data["DetPr"]),
-            AssRe=_optional_float(data["AssRe"]),
-            AssPr=_optional_float(data["AssPr"]),
+            DetRe=float(data["DetRe"]),
+            DetPr=float(data["DetPr"]),
+            AssRe=float(data["AssRe"]),
+            AssPr=float(data["AssPr"]),
             LocA=float(data["LocA"]),
-            OWTA=_optional_float(data["OWTA"]),
-            HOTA_TP=_optional_int(data["HOTA_TP"]),
-            HOTA_FN=_optional_int(data["HOTA_FN"]),
-            HOTA_FP=_optional_int(data["HOTA_FP"]),
+            OWTA=float(data["OWTA"]),
+            HOTA_TP=int(data["HOTA_TP"]),
+            HOTA_FN=int(data["HOTA_FN"]),
+            HOTA_FP=int(data["HOTA_FP"]),
             _arrays=arrays,
         )
 
@@ -285,10 +270,9 @@ class HOTAMetrics:
                 Defaults to `True`. Set to `False` to keep numpy arrays.
 
         Returns:
-            Dictionary with all metric values. Undefined optional fields are
-                ``None`` (JSON ``null``).
+            Dictionary with all metric values.
         """
-        result: dict[str, Any] = {
+        result = {
             "HOTA": self.HOTA,
             "DetA": self.DetA,
             "AssA": self.AssA,
@@ -438,10 +422,9 @@ class SequenceResult:
             indent: Indentation level for formatting. Defaults to `2`.
 
         Returns:
-            JSON string representation. Uses ``allow_nan=False`` so non-finite
-            floats cannot sneak into the payload.
+            JSON string representation.
         """
-        return json.dumps(self.to_dict(), indent=indent, allow_nan=False)
+        return json.dumps(self.to_dict(), indent=indent)
 
     def table(self, columns: list[str] | None = None) -> str:
         """Format as a table string.
@@ -470,16 +453,10 @@ class BenchmarkResult:
     Attributes:
         sequences: Dictionary mapping sequence names to their results.
         aggregate: Combined metrics across all sequences.
-        aggregation: How ``aggregate`` was produced. ``\"tp_weighted\"`` is the
-            MOT TrackEval path (`aggregate_hota_metrics`). ``\"scene_mean\"`` is
-            the AI City 2024 unweighted mean of per-scene HOTA/DetA/AssA/LocA.
-            Defaults to ``\"tp_weighted\"`` so existing serialized JSON loads
-            unchanged.
     """
 
     sequences: dict[str, SequenceResult]
     aggregate: SequenceResult
-    aggregation: AggregationMode = "tp_weighted"
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BenchmarkResult:
@@ -493,10 +470,7 @@ class BenchmarkResult:
         """
         sequences = {name: SequenceResult.from_dict(seq_data) for name, seq_data in data["sequences"].items()}
         aggregate = SequenceResult.from_dict(data["aggregate"])
-        aggregation = data.get("aggregation", "tp_weighted")
-        if aggregation not in ("tp_weighted", "scene_mean"):
-            raise ValueError(f"Unknown aggregation mode: {aggregation!r}")
-        return cls(sequences=sequences, aggregate=aggregate, aggregation=aggregation)
+        return cls(sequences=sequences, aggregate=aggregate)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation.
@@ -504,13 +478,10 @@ class BenchmarkResult:
         Returns:
             Dictionary with all metric values.
         """
-        result: dict[str, Any] = {
+        return {
             "sequences": {name: seq.to_dict() for name, seq in self.sequences.items()},
             "aggregate": self.aggregate.to_dict(),
         }
-        if self.aggregation != "tp_weighted":
-            result["aggregation"] = self.aggregation
-        return result
 
     def json(self, indent: int = 2) -> str:
         """Serialize to JSON string.
@@ -528,21 +499,17 @@ class BenchmarkResult:
 
         Args:
             columns: Metric columns to include. If `None`, includes all available
-                metrics. For ``aggregation=\"scene_mean\"``, defaults to the four
-                official fields only.
+                metrics.
 
         Returns:
             Formatted table string.
         """
         if columns is None:
-            if self.aggregation == "scene_mean":
-                columns = ["HOTA", "DetA", "AssA", "LocA"]
-            else:
-                columns = _get_available_columns(
-                    has_clear=self.aggregate.CLEAR is not None,
-                    has_hota=self.aggregate.HOTA is not None,
-                    has_identity=self.aggregate.Identity is not None,
-                )
+            columns = _get_available_columns(
+                has_clear=self.aggregate.CLEAR is not None,
+                has_hota=self.aggregate.HOTA is not None,
+                has_identity=self.aggregate.Identity is not None,
+            )
 
         return _format_benchmark_table(self.sequences, self.aggregate, columns)
 
@@ -599,7 +566,7 @@ def _get_available_columns(has_clear: bool = False, has_hota: bool = False, has_
     return columns
 
 
-def _get_metrics_dict(result: SequenceResult, col: str) -> float | int | None:
+def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
     """Get metric value from a SequenceResult.
 
     Args:
@@ -607,7 +574,7 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int | None:
         col: Column name.
 
     Returns:
-        The metric value, or ``None`` when the field is undefined.
+        The metric value.
     """
     # Check CLEAR metrics
     if result.CLEAR is not None:
@@ -630,13 +597,12 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int | None:
     return 0
 
 
-def _format_value(value: float | int | None, is_float: bool) -> str:
+def _format_value(value: float | int, is_float: bool) -> str:
     """Format a metric value for display.
 
     Float metrics are displayed as percentages with 3 decimal places
     (e.g., 99.353 for MOTA=0.99353), matching TrackEval output.
-    Integer metrics are displayed as-is. Undefined (``None``) fields render
-    as ``-``.
+    Integer metrics are displayed as-is.
 
     Args:
         value: The metric value.
@@ -645,12 +611,47 @@ def _format_value(value: float | int | None, is_float: bool) -> str:
     Returns:
         Formatted string.
     """
-    if value is None:
-        return "-"
     if is_float:
         # Display as percentage with 3 decimal places (TrackEval format)
         return f"{value * 100:.3f}"
     return str(value)
+
+
+def _format_metric_rows(
+    rows: Sequence[tuple[str, dict[str, float | int]]],
+    columns: Sequence[str],
+    *,
+    rule_before_last: bool = False,
+) -> str:
+    """Render labelled metric rows as a fixed-width table.
+
+    Args:
+        rows: Row label paired with its column values.
+        columns: Columns to include, in display order.
+        rule_before_last: Whether to draw a separator above the final row.
+
+    Returns:
+        Formatted table string.
+    """
+    cells = [
+        (label, {col: _format_value(values[col], col in ALL_FLOAT_FIELDS) for col in columns}) for label, values in rows
+    ]
+    col_widths = {col: max([len(col), *(len(row[col]) for _, row in cells)]) for col in columns}
+
+    header = "Sequence".ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
+    separator = "-" * len(header)
+
+    lines = [header, separator]
+    for index, (label, row) in enumerate(cells):
+        if rule_before_last and index == len(cells) - 1:
+            lines.append(separator)
+        lines.append(label.ljust(30) + "  ".join(row[col].rjust(col_widths[col]) for col in columns))
+    return "\n".join(lines)
+
+
+def _sequence_row(result: SequenceResult, columns: Sequence[str]) -> dict[str, float | int]:
+    """Collect one row of column values from a sequence result."""
+    return {col: _get_metrics_dict(result, col) for col in columns}
 
 
 def _format_sequence_table(result: SequenceResult, columns: list[str]) -> str:
@@ -663,28 +664,7 @@ def _format_sequence_table(result: SequenceResult, columns: list[str]) -> str:
     Returns:
         Formatted table string.
     """
-    # Determine column widths
-    col_widths = {}
-    for col in columns:
-        value = _get_metrics_dict(result, col)
-        is_float = col in ALL_FLOAT_FIELDS
-        formatted = _format_value(value, is_float)
-        col_widths[col] = max(len(col), len(formatted))
-
-    # Build header
-    header = "Sequence".ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
-    separator = "-" * len(header)
-
-    # Build row
-    row_values = []
-    for col in columns:
-        value = _get_metrics_dict(result, col)
-        is_float = col in ALL_FLOAT_FIELDS
-        formatted = _format_value(value, is_float)
-        row_values.append(formatted.rjust(col_widths[col]))
-    row = result.sequence.ljust(30) + "  ".join(row_values)
-
-    return f"{header}\n{separator}\n{row}"
+    return _format_metric_rows([(result.sequence, _sequence_row(result, columns))], columns)
 
 
 def _format_benchmark_table(
@@ -702,43 +682,6 @@ def _format_benchmark_table(
     Returns:
         Formatted table string.
     """
-    # Collect all results for column width calculation
-    all_results = [*list(sequences.values()), aggregate]
-
-    col_widths = {}
-    for col in columns:
-        max_width = len(col)
-        for result in all_results:
-            value = _get_metrics_dict(result, col)
-            is_float = col in ALL_FLOAT_FIELDS
-            formatted = _format_value(value, is_float)
-            max_width = max(max_width, len(formatted))
-        col_widths[col] = max_width
-
-    # Build header
-    header = "Sequence".ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
-    separator = "-" * len(header)
-
-    # Build rows
-    lines = [header, separator]
-    for seq_name in sorted(sequences.keys()):
-        seq_result = sequences[seq_name]
-        row_values = []
-        for col in columns:
-            value = _get_metrics_dict(seq_result, col)
-            is_float = col in ALL_FLOAT_FIELDS
-            formatted = _format_value(value, is_float)
-            row_values.append(formatted.rjust(col_widths[col]))
-        lines.append(seq_name.ljust(30) + "  ".join(row_values))
-
-    # Add aggregate row
-    lines.append(separator)
-    agg_values = []
-    for col in columns:
-        value = _get_metrics_dict(aggregate, col)
-        is_float = col in ALL_FLOAT_FIELDS
-        formatted = _format_value(value, is_float)
-        agg_values.append(formatted.rjust(col_widths[col]))
-    lines.append(aggregate.sequence.ljust(30) + "  ".join(agg_values))
-
-    return "\n".join(lines)
+    rows = [(name, _sequence_row(sequences[name], columns)) for name in sorted(sequences)]
+    rows.append(("COMBINED", _sequence_row(aggregate, columns)))
+    return _format_metric_rows(rows, columns, rule_before_last=True)

@@ -128,13 +128,11 @@ def _compare_results(
     nvidia_scores: dict[str, dict[str, float]],
 ) -> None:
     scores: dict[str, dict[str, float]] = {}
-    for scene_name, sequence in result.sequences.items():
-        if sequence.HOTA is None:
+    for scene_name, scene in result.scenes.items():
+        if scene.HOTA is None:
             raise SystemExit(f"{label}: trackers returned no HOTA result for {scene_name}")
-        scores[scene_name] = {metric: float(getattr(sequence.HOTA, metric)) for metric in HEADLINE_FIELDS}
-    if result.aggregate.HOTA is None:
-        raise SystemExit(f"{label}: trackers returned no scene-mean HOTA result")
-    scores["SCENE_MEAN"] = {metric: float(getattr(result.aggregate.HOTA, metric)) for metric in HEADLINE_FIELDS}
+        scores[scene_name] = {metric: float(getattr(scene.HOTA, metric)) for metric in HEADLINE_FIELDS}
+    scores["SCENE_MEAN"] = {metric: float(getattr(result.aggregate, metric)) for metric in HEADLINE_FIELDS}
     if scores.keys() != nvidia_scores.keys():
         raise SystemExit(f"{label}: scene mismatch; trackers={sorted(scores)}, NVIDIA={sorted(nvidia_scores)}")
     for scene_name in sorted(scores):
@@ -171,19 +169,36 @@ def _run_parity(
     _compare_results(label, trackers_result, nvidia_result)
 
 
+def _merge_scenes(sources: Sequence[Path], destination: Path) -> Path:
+    """Concatenate per-scene files into the monolithic layout NVIDIA expects."""
+    rows = []
+    for source in sources:
+        rows.extend(line for line in source.read_text().splitlines() if line.strip() and not line.startswith("#"))
+    destination.write_text("\n".join(rows) + "\n")
+    return destination
+
+
 def _run_fixture(eval_dir: Path, *, num_cores: int) -> None:
-    _run_parity(
-        "fixture",
-        eval_dir,
-        (
-            FIXTURE_DIR / "gt",
-            FIXTURE_DIR / "pred",
-            FIXTURE_DIR / "combined_gt.txt",
-            FIXTURE_DIR / "combined_pred.txt",
-            FIXTURE_DIR / "scene_camera_map.json",
-        ),
-        num_cores,
-    )
+    from trackers.io.multicamera import load_scene_camera_map
+
+    scene_map_file = FIXTURE_DIR / "scene_camera_map.json"
+    scenes = load_scene_camera_map(scene_map_file)
+    with tempfile.TemporaryDirectory(prefix="multicamera-parity-") as temporary_dir:
+        temporary_root = Path(temporary_dir)
+        ground_truth_file = _merge_scenes(
+            [FIXTURE_DIR / "gt" / scene / "ground_truth.txt" for scene in scenes],
+            temporary_root / "ground_truth.txt",
+        )
+        prediction_file = _merge_scenes(
+            [FIXTURE_DIR / "pred" / f"{scene}.txt" for scene in scenes],
+            temporary_root / "pred.txt",
+        )
+        _run_parity(
+            "fixture",
+            eval_dir,
+            (FIXTURE_DIR / "gt", FIXTURE_DIR / "pred", ground_truth_file, prediction_file, scene_map_file),
+            num_cores,
+        )
 
 
 def _run_full_sample(eval_dir: Path, sample_dir: Path, *, num_cores: int) -> None:
