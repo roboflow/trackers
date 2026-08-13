@@ -886,10 +886,9 @@ def test_sort_trackers_property_emits_future_warning() -> None:
 def test_ocsort_returns_low_confidence_detections() -> None:
     """A detection below high_conf_det_threshold must still be returned (tracker_id=-1), not silently dropped.
 
-    OC-SORT excludes low-confidence detections from association/spawning entirely
-    (it has no ByteTrack-style low-confidence recovery stage), but the output must
-    still include one row per input detection, matching the documented update()
-    contract and the behaviour of SORT/ByteTrack/BoT-SORT/CBIoU.
+    OC-SORT excludes low-confidence detections from association/spawning entirely (it has no ByteTrack-style low-
+    confidence recovery stage), but the output must still include one row per input detection, matching the documented
+    update() contract and the behaviour of SORT/ByteTrack/BoT-SORT/CBIoU.
     """
     tracker = OCSORTTracker(high_conf_det_threshold=0.6)
     detections = sv.Detections(
@@ -908,8 +907,8 @@ def test_ocsort_returns_low_confidence_detections() -> None:
 def test_ocsort_low_confidence_detection_returned_across_frames() -> None:
     """Low-confidence detection (tracker_id=-1) keeps appearing in output on frame 2+, and never spawns a track.
 
-    A regression where a low-confidence detection stops being returned on subsequent
-    frames would not be caught by the single-frame test above.
+    A regression where a low-confidence detection stops being returned on subsequent frames would not be caught by the
+    single-frame test above.
     """
     tracker = OCSORTTracker(high_conf_det_threshold=0.6)
     low_conf_det = sv.Detections(
@@ -953,11 +952,10 @@ def test_ocsort_high_confidence_detection_unaffected_by_low_confidence_row() -> 
 def test_ocsort_none_confidence_bypasses_threshold_entirely() -> None:
     """With confidence=None, every detection is high-confidence regardless of high_conf_det_threshold's value.
 
-    A threshold above 1.0 is never satisfied by the fabricated 1.0 default, so a
-    naive `default_confidences(...) >= threshold` comparison would push every
-    detection into the never-associated low-confidence path. That would silently
-    change behaviour relative to develop HEAD, where the filter is skipped
-    entirely (not compared) when `detections.confidence is None`.
+    A threshold above 1.0 is never satisfied by the fabricated 1.0 default, so a naive `default_confidences(...) >=
+    threshold` comparison would push every detection into the never-associated low-confidence path. That would silently
+    change behaviour relative to develop HEAD, where the filter is skipped entirely (not compared) when
+    `detections.confidence is None`.
     """
     tracker = OCSORTTracker(high_conf_det_threshold=1.5, minimum_consecutive_frames=1)
     detections = sv.Detections(xyxy=np.array([[10.0, 10.0, 50.0, 50.0]]))
