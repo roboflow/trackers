@@ -82,7 +82,7 @@ class TestFeatureBank:
     """Unit tests for ``FeatureBank`` L2 + EMA behavior."""
 
     def test_first_update_normalizes_embedding(self) -> None:
-        # BoT-SORT STrack.update_features: L2-normalize before storage.
+        # BoT-SORT normalizes the embedding before storing it.
         bank = FeatureBank(alpha=0.9)
         bank.update(np.array([3.0, 4.0], dtype=np.float32))
         feature = bank.feature

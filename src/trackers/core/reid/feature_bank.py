@@ -16,7 +16,7 @@ from trackers.core.reid.appearance import _l2_normalize
 class FeatureBank:
     """Per-track EMA unit embedding (L2 before and after blend).
 
-    Follows BoT-SORT ``STrack.update_features``
+    Follows the per-track feature update in BoT-SORT
     (https://github.com/NirAharon/BoT-SORT/blob/main/tracker/bot_sort.py).
     """
 
