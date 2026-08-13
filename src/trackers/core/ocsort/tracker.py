@@ -24,15 +24,12 @@ from trackers.utils.state_representations import (
 
 
 class OCSORTTracker(BaseTracker):
-    """OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm,
-    using detections to correct Kalman filter errors accumulated during occlusions. It
-    introduces Observation-Centric Re-Update to generate virtual trajectories for
-    parameter refinement upon track reactivation. Association incorporates
-    Observation-Centric Momentum, blending IoU with direction consistency from
-    historical observations. Short-term recoveries are aided by heuristics linking
-    unmatched tracks to prior detections. This rethinking prioritizes real measurements
-    over estimations, making OC-SORT particularly adept at handling real-world tracking
-    challenges.
+    """OC-SORT enhances traditional SORT by shifting to an observation-centric paradigm, using detections to correct
+    Kalman filter errors accumulated during occlusions. It introduces Observation-Centric Re-Update to generate virtual
+    trajectories for parameter refinement upon track reactivation. Association incorporates Observation-Centric
+    Momentum, blending IoU with direction consistency from historical observations. Short-term recoveries are aided by
+    heuristics linking unmatched tracks to prior detections. This rethinking prioritizes real measurements over
+    estimations, making OC-SORT particularly adept at handling real-world tracking challenges.
 
     OC-SORT's primary strength is its robustness to non-linear motions and occlusions,
     outperforming baselines on datasets with erratic movements like DanceTrack. It
@@ -121,14 +118,15 @@ class OCSORTTracker(BaseTracker):
     def _get_associated_indices(
         self,
         iou_matrix: np.ndarray,
-        direction_consistency_matrix: np.ndarray,
+        direction_consistency_matrix: np.ndarray | None,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """
-        Associate detections to tracks based on IOU.
+        """Associate detections to tracks based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
-            direction_consistency_matrix: Direction of the tracklet consistency cost matrix.
+            direction_consistency_matrix: Direction of the tracklet consistency
+                cost matrix, or ``None`` when ``direction_consistency_weight`` is
+                0 (IoU-only association).
 
         Returns:
             matched: List of ``(track_index, detection_index)`` tuples for
@@ -137,6 +135,11 @@ class OCSORTTracker(BaseTracker):
                 detection.
             unmatched_detections: Sorted list of detection indices not matched
                 to any track.
+
+        Raises:
+            ValueError: If ``direction_consistency_matrix`` is ``None`` while
+                ``direction_consistency_weight`` is nonzero — ``None`` is only a
+                valid input when the weight is 0.
         """
         matched_indices = []
         n_tracks, n_detections = iou_matrix.shape
@@ -144,7 +147,21 @@ class OCSORTTracker(BaseTracker):
         unmatched_detections = set(range(n_detections))
         if n_tracks > 0 and n_detections > 0:
             # Find optimal assignment using scipy.optimize.linear_sum_assignment.
-            cost_matrix = iou_matrix + self.direction_consistency_weight * direction_consistency_matrix
+            # ``direction_consistency_matrix is None`` is the weight-0 sentinel passed
+            # by ``update()``: cost is IoU alone (bounded finite matrix ⇒
+            # ``iou + 0.0 * matrix == iou``). Guard the invariant so a caller that
+            # passes ``None`` while a nonzero weight is configured gets a loud error
+            # instead of a silently dropped direction term.
+            if direction_consistency_matrix is None:
+                if self.direction_consistency_weight != 0:
+                    raise ValueError(
+                        "direction_consistency_matrix is None but direction_consistency_weight is "
+                        f"{self.direction_consistency_weight}; None is only valid when the weight is 0 "
+                        "(IoU-only association)."
+                    )
+                cost_matrix = iou_matrix
+            else:
+                cost_matrix = iou_matrix + self.direction_consistency_weight * direction_consistency_matrix
             row_indices, col_indices = linear_sum_assignment(cost_matrix, maximize=True)
             for row, col in zip(row_indices, col_indices):
                 if iou_matrix[row, col] >= self.minimum_iou_threshold:
@@ -230,7 +247,14 @@ class OCSORTTracker(BaseTracker):
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
 
-        direction_consistency_matrix = self._compute_direction_consistency_matrix(detection_boxes, confidences)
+        # Skip the direction-consistency computation entirely when it carries no
+        # weight. Bit-identical: the matrix is finite and bounded, so the old
+        # ``iou_matrix + 0.0 * matrix`` reduces exactly to ``iou_matrix``.
+        direction_consistency_matrix = (
+            self._compute_direction_consistency_matrix(detection_boxes, confidences)
+            if self.direction_consistency_weight != 0
+            else None
+        )
 
         # 1st association (OCM)
         matched_indices, unmatched_tracks, unmatched_detections = self._get_associated_indices(
@@ -299,6 +323,7 @@ class OCSORTTracker(BaseTracker):
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
+
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
@@ -328,13 +353,15 @@ class OCSORTTracker(BaseTracker):
         ]
 
     def _compute_direction_consistency_matrix(self, detection_boxes: np.ndarray, confidences: np.ndarray) -> np.ndarray:
-        """Compute the direction consistency matrix for association,
-        including confidence scaling."""
+        """Compute the direction consistency matrix for association, including confidence scaling."""
         tracklet_velocities = np.array(
             [t.velocity if t.velocity is not None else np.array([0.0, 0.0]) for t in self.tracks]
         )
         reference_boxes = np.array(
-            [t.get_k_previous_obs() if t.get_k_previous_obs() is not None else t.last_observation for t in self.tracks]
+            [
+                previous_obs if (previous_obs := t.get_k_previous_obs()) is not None else t.last_observation
+                for t in self.tracks
+            ]
         )
         velocity_mask = np.array(
             [t.velocity is not None for t in self.tracks],

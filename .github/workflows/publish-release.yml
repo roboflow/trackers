@@ -40,7 +40,7 @@ jobs:
 
       - name: 🚀 Publish to PyPi
         # We only want to publish to PyPi if the event is a release and it's not a pre-release.
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           attestations: true
 
@@ -61,7 +61,7 @@ jobs:
         run: ls -lh dist/
 
       - name: 📦 Upload release assets
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2.2.1
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v2.2.1
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/*

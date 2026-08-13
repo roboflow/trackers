@@ -1,7 +1,7 @@
 ---
 title: Quickstart — Multi-Object Tracking in Python | Trackers
 comments: false
-description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, and BoT-SORT, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.
+description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.
 ---
 
 <div align="center">
@@ -10,7 +10,9 @@ description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-
 
 </div>
 
-Roboflow Trackers achieves 60.5 HOTA (ByteTrack) and 62.0 HOTA (OC-SORT) on MOT17, benchmarked across four standard datasets. Apache 2.0, Python 3.10+, 71K+ monthly PyPI installs.
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17-default table, ByteTrack HOTA + OC-SORT HOTA cells. Update results.md first, then mirror here. -->
+
+Roboflow Trackers achieves 60.1 HOTA (ByteTrack) and 61.9 HOTA (OC-SORT) on MOT17 with default parameters, benchmarked across four standard datasets. Apache 2.0, Python 3.10+, 71K+ monthly PyPI installs.
 
 <video width="100%" controls muted loop preload="none" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
@@ -27,7 +29,7 @@ Get started by installing the package.
 pip install trackers
 ```
 
-For more options, see the [install guide](learn/install.md).
+For more options, see the [install guide](guides/install.md).
 
 ---
 
@@ -42,14 +44,14 @@ Point at a video, webcam, RTSP stream, or image directory. Get tracked output.
 ```bash
 trackers track \
     --source video.mp4 \
-    --output output.mp4 \
-    --model rfdetr-medium \
+    --output.video output.mp4 \
+    --detection.model rfdetr-medium \
     --tracker bytetrack \
-    --show-labels \
-    --show-trajectories
+    --show.labels \
+    --show.trajectories
 ```
 
-For all CLI options, see the [tracking guide](learn/track.md).
+For all CLI options, see the [tracking guide](guides/track.md).
 
 ---
 
@@ -77,7 +79,7 @@ while cap.isOpened():
     tracked = tracker.update(detections)
 ```
 
-For more examples, see the [tracking guide](learn/track.md).
+For more examples, see the [tracking guide](guides/track.md).
 
 ---
 
@@ -87,10 +89,10 @@ Benchmark your tracker against ground truth with standard MOT metrics.
 
 ```text
 trackers eval \
-    --gt-dir ./data/mot17/val \
-    --tracker-dir results \
-    --metrics CLEAR HOTA Identity \
-    --columns MOTA HOTA IDF1
+    --gt_dir ./data/mot17/val \
+    --predictions_dir results \
+    --metrics '[CLEAR,HOTA,Identity]' \
+    --columns '[MOTA,HOTA,IDF1]'
 ```
 
 ```
@@ -107,7 +109,7 @@ MOT17-13-FRCNN                60.488  58.651  69.884
 COMBINED                      47.406  50.355  56.600
 ```
 
-For the full evaluation workflow, see the [evaluation guide](learn/evaluate.md).
+For the full evaluation workflow, see the [evaluation guide](evaluations/evaluate.md).
 
 ---
 
@@ -115,16 +117,19 @@ For the full evaluation workflow, see the [evaluation guide](learn/evaluate.md).
 
 Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
 
-|                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
-| :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      47.2       |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    59.4    |      72.8      |      83.9      |      53.3       |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |      54.1       |
-| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                   Camera motion compensation                    |  **63.7**  |    **73.8**    |    **84.5**    |    **57.8**     |
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT/McByte rows (no C-BIoU row here). Also duplicated in [README.md](../README.md)'s Algorithms table (which additionally has a C-BIoU row) and [.github/copilot-instructions.md](../.github/copilot-instructions.md)'s Benchmark Results table. Update results.md first, then mirror all three copies. -->
 
-For detailed benchmarks and tuned configurations, see the [tracker comparison](trackers/comparison.md).
+|                   Algorithm                   |                               Description                               | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :-------------------------------------------: | :---------------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |              Kalman filter + Hungarian matching baseline.               |    58.4    |      70.8      |      81.6      |      47.2       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) |     Two-stage association using high and low confidence detections.     |    60.1    |      73.0      |      84.0      |      53.3       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |              Observation-centric recovery for lost tracks.              |    61.9    |      71.7      |      78.4      |      54.1       |
+| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                       Camera motion compensation.                       |    63.7    |      73.8      |      84.5      |      57.8       |
+|         [McByte](trackers/mcbyte.md)          | Mask-conditioned tracking — adds propagated SAM/Cutie masks as a cue.\* |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
 
-Trackers also ships [McByte](trackers/mcbyte.md), a mask-conditioned tracker that extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an extra matching cue. It requires optional heavyweight dependencies (`torch`, SAM, Cutie) not installed by default — see the [McByte docs](trackers/mcbyte.md) for setup and benchmark numbers.
+\*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the [McByte docs](trackers/mcbyte.md) for setup.
+
+For detailed benchmarks and tuned configurations, see the [tracker comparison](evaluations/results.md).
 
 ---
 
@@ -133,7 +138,7 @@ Trackers also ships [McByte](trackers/mcbyte.md), a mask-conditioned tracker tha
 Pull benchmark datasets for evaluation with a single command.
 
 ```bash
-trackers download mot17 \
+trackers download --name mot17 \
     --split val \
     --asset annotations,detections
 ```
@@ -143,7 +148,7 @@ trackers download mot17 \
 |   `mot17`   |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
 | `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
 
-For more download options, see the [download guide](learn/download.md).
+For more download options, see the [download guide](evaluations/download.md).
 
 ---
 
@@ -191,7 +196,7 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     Optimize tracker settings with Optuna to maximize HOTA, MOTA, or IDF1 on your dataset.
 
-    [:material-tune-variant: Read Tuning Guide](learn/tune.md)
+    [:material-tune-variant: Read Tuning Guide](guides/tune.md)
 
 </div>
 
@@ -201,33 +206,22 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
 **What is multi-object tracking and how does it differ from object detection?**
 
-Object detection finds and classifies objects in a single image frame. Multi-object tracking
-assigns a persistent ID to each detected object across video frames, maintaining continuity
-through occlusions, re-entries, and camera motion. Trackers use a detect-then-track approach:
-a detector runs on each frame, and the tracker links detections across time using motion
-models and spatial matching.
+Object detection finds and classifies objects in a single image frame. Multi-object tracking assigns a persistent ID to each detected object across video frames, maintaining continuity through occlusions, re-entries, and camera motion. Trackers use a detect-then-track approach: a detector runs on each frame, and the tracker links detections across time using motion models and spatial matching.
 
 **Which tracker should I use?**
 
-Start with ByteTrack — out of the box, it performs best across two out of four benchmarks in our evaluation and
-handles variable-confidence detectors well, while providing real time latency. Use SORT if speed or device constraints require the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow
-non-linear paths. See the [tracker comparison](trackers/comparison.md) for benchmark scores.
+<!-- BENCH-XREF derived-claim: "McByte leads every benchmark in our evaluation" depends on McByte being the bolded best in ALL FOUR [docs/evaluations/results.md](evaluations/results.md) Default tables (mot17/sportsmot/soccernet/dancetrack). If any Default table's leader changes, re-verify this sentence. -->
+
+Start with ByteTrack — it's the default, has no extra dependencies, handles variable-confidence detectors well, and runs at real time latency. For the highest accuracy, McByte leads every benchmark in our evaluation but requires optional SAM/Cutie mask dependencies; BoT-SORT is the best lightweight option when camera motion is significant. Use SORT if speed or device constraints require the lightest possible tracker. See the [tracker comparison](evaluations/results.md) for benchmark scores.
 
 **Do I need a specific detector?**
 
-No. Roboflow Trackers works with any detector that outputs `supervision.Detections` objects.
-The library ships example pipelines using RF-DETR but is compatible with YOLO, Detectron2,
-and any custom model. The tracker never inspects the detection model directly.
+No. Roboflow Trackers works with any detector that outputs `supervision.Detections` objects. The library ships example pipelines using RF-DETR but is compatible with YOLO, Detectron2, and any custom model. The tracker never inspects the detection model directly.
 
 **What MOT datasets does the library support?**
 
-MOT17 and SportsMOT are supported for download and evaluation. Use
-`trackers download <dataset>` to pull frames, annotations, and pre-computed
-detections in one command. DanceTrack and SoccerNet-tracking support is coming soon.
-See the [download guide](learn/download.md) for asset options.
+MOT17 and SportsMOT are supported for download and evaluation. Use `trackers download --name <dataset>` to pull frames, annotations, and pre-computed detections in one command. DanceTrack and SoccerNet-tracking support is coming soon. See the [download guide](evaluations/download.md) for asset options.
 
 **How do I evaluate my tracker?**
 
-Run `trackers eval` against a directory of ground-truth MOT-format text files. The evaluation
-pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table.
-See the [evaluation guide](learn/evaluate.md) for the full workflow.
+Run `trackers eval` against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table. See the [evaluation guide](evaluations/evaluate.md) for the full workflow.

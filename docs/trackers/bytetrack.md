@@ -12,7 +12,9 @@ ByteTrack builds on the same Kalman filter plus Hungarian algorithm framework as
 
 ## How does ByteTrack compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../evaluations/results.md) page.
+
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) ByteTrack row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (L13 headline + Algorithms table), [README.md](../../README.md) (Algorithms table), and [.github/copilot-instructions.md](../../.github/copilot-instructions.md) (Benchmark Results table, including DanceTrack). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
@@ -30,7 +32,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as [SORT](sort.md) but changes how detections are associated to tracks. Instead of discarding low-confidence detections, ByteTrack uses a two-stage matching strategy that recovers valid objects the detector scored low due to occlusion, blur, or partial visibility.
 
-**Stage 1 -- high-confidence matching.** Detections with confidence above `high_conf_det_threshold` are matched to confirmed tracks using IoU-based Hungarian assignment, identical to SORT. Unmatched tracks and unmatched high-confidence detections pass to the next stage.
+**Stage 1 -- high-confidence matching.** Detections with confidence above `high_conf_det_threshold` are matched to all existing tracks (confirmed and unconfirmed alike) using IoU-based Hungarian assignment, identical to SORT. Unmatched tracks and unmatched high-confidence detections pass to the next stage.
 
 **Stage 2 -- low-confidence matching.** Detections with confidence below `high_conf_det_threshold` are matched to the remaining unmatched tracks using IoU. This second pass associates weak detections to already-established tracks, recovering objects that would otherwise be lost. Unmatched high-confidence detections whose confidence falls below `track_activation_threshold` are returned with `tracker_id` of `-1` and never start new tracks.
 
@@ -50,12 +52,22 @@ ByteTrack builds on the same Kalman filter and Hungarian algorithm framework as 
 
 !!! warning "Frame input is ignored by ByteTrack"
 
-    `ByteTrackTracker.update()` accepts `frame` for API consistency with other trackers, but ByteTrack does not use image/frame pixels.
-    If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+    `ByteTrackTracker.update()` accepts `frame` for API consistency with other trackers, but ByteTrack does not use image/frame pixels. If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
 
 ## Run on video, webcam, or RTSP stream
 
 These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.
+
+=== "CLI"
+
+    Run ByteTrack on a video without writing any Python. See the [CLI reference](../guides/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
+
+    ```bash
+    trackers track \
+        --source <SOURCE_VIDEO_PATH> \
+        --tracker bytetrack \
+        --output.video output.mp4
+    ```
 
 === "Video"
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from trackers.core.mcbyte.masks.base import MaskOutput
+from trackers.core.masks.base import MaskOutput
 
 MINIMUM_MASK_AVERAGE_CONFIDENCE = 0.6
 MINIMUM_MASK_COVERAGE = 0.9
@@ -55,6 +55,15 @@ def _validate_inputs(
     if similarity.ndim != 2:
         raise ValueError(f"similarity must be a two-dimensional matrix. Got shape {similarity.shape}.")
 
+    # Mask evidence is accumulated in place with ``+= mask_fill_ratio``. On an
+    # integer matrix numpy truncates the float right-hand side to 0, silently
+    # discarding the boost, so a floating-point dtype is required.
+    if not np.issubdtype(similarity.dtype, np.floating):
+        raise ValueError(
+            "similarity must have a floating-point dtype so mask evidence can be "
+            f"accumulated without truncation. Got dtype {similarity.dtype}."
+        )
+
     if raw_iou_similarity.shape != similarity.shape:
         raise ValueError(
             "raw_iou_similarity must have the same shape as similarity. "
@@ -79,9 +88,8 @@ def _get_clear_matches(
 ) -> list[tuple[int, int]]:
     """Return threshold-valid pairs that are unique in both row and column.
 
-    Eligibility is determined from the untouched similarity matrix. A pair is
-    clear when it is the only threshold-valid candidate for both its tracklet
-    row and its detection column.
+    Eligibility is determined from the untouched similarity matrix. A pair is clear when it is the only threshold-valid
+    candidate for both its tracklet row and its detection column.
     """
     eligible = similarity >= minimum_similarity
     row_candidate_counts = eligible.sum(axis=1)
@@ -126,9 +134,8 @@ def _get_ambiguous_candidate_matrix(
 ) -> np.ndarray:
     """Return eligible pairs belonging to an ambiguous row or column.
 
-    Ambiguity is always computed from the untouched base similarity matrix.
-    A pair is ambiguous when its tracklet has multiple eligible detections or
-    its detection has multiple eligible tracklets.
+    Ambiguity is always computed from the untouched base similarity matrix. A pair is ambiguous when its tracklet has
+    multiple eligible detections or its detection has multiple eligible tracklets.
     """
     eligible = similarity >= minimum_similarity
     ambiguous_rows = eligible.sum(axis=1) > 1
@@ -144,9 +151,8 @@ def _get_isolated_candidate_matrix(
 ) -> np.ndarray:
     """Return isolated positive-IoU pairs below the normal threshold.
 
-    A pair is isolated when it is the only positive-IoU edge in both its row
-    and its column. Isolation is based exclusively on raw IoU geometry, not on
-    score-fused similarity.
+    A pair is isolated when it is the only positive-IoU edge in both its row and its column. Isolation is based
+    exclusively on raw IoU geometry, not on score-fused similarity.
     """
     positive_iou = raw_iou_similarity > 0.0
     isolated_rows = positive_iou.sum(axis=1) == 1
@@ -408,7 +414,7 @@ def condition_similarity_with_masks(
 
     Examples:
         >>> import numpy as np
-        >>> from trackers.core.mcbyte.masks.base import MaskOutput
+        >>> from trackers.core.masks.base import MaskOutput
         >>> similarity = np.array([[0.7, 0.6]], dtype=np.float32)
         >>> masks = np.zeros((1, 10, 10), dtype=bool)
         >>> masks[0, 0:5, 0:5] = True

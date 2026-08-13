@@ -8,7 +8,7 @@ from typing import ClassVar
 
 import numpy as np
 import supervision as sv
-from deprecate import deprecated
+from deprecate import TargetMode, deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -23,14 +23,12 @@ from trackers.utils.state_representations import (
 
 
 class SORTTracker(BaseTracker):
-    """In SORT, object tracking begins with high-confidence detections fed into a
-    Kalman filter framework assuming uniform motion for state prediction across frames.
-    Association occurs via IoU-based costs in the Hungarian algorithm, enforcing a
-    threshold to filter weak matches and initialize new identities. Tracks persist only
-    with consistent associations, terminating quickly to avoid erroneous propagation.
-    This detection-driven approach underscores the importance of upstream detector
-    performance in achieving competitive multi-object tracking results. Over time, SORT
-    has become a cornerstone for evaluating motion-based improvements in the field.
+    """In SORT, object tracking begins with high-confidence detections fed into a Kalman filter framework assuming
+    uniform motion for state prediction across frames. Association occurs via IoU-based costs in the Hungarian
+    algorithm, enforcing a threshold to filter weak matches and initialize new identities. Tracks persist only with
+    consistent associations, terminating quickly to avoid erroneous propagation. This detection-driven approach
+    underscores the importance of upstream detector performance in achieving competitive multi-object tracking results.
+    Over time, SORT has become a cornerstone for evaluating motion-based improvements in the field.
 
     SORT's standout strength is its real-time capability, processing hundreds of frames
     per second while maintaining accuracy comparable to more complex offline methods. It
@@ -107,7 +105,7 @@ class SORTTracker(BaseTracker):
         self._reset_id_allocator()
 
     @property
-    @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
+    @deprecated(target=TargetMode.NOTIFY, deprecated_in="2.5", remove_in="3.0")
     def trackers(self) -> list[SORTTracklet]:
         """Deprecated alias for :attr:`tracks`.
 
@@ -119,8 +117,7 @@ class SORTTracker(BaseTracker):
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """
-        Associate detections to tracks based on IOU
+        """Associate detections to tracks based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
@@ -257,6 +254,7 @@ class SORTTracker(BaseTracker):
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
+
         Call this method when switching to a new video or scene.
         """
         self.tracks = []

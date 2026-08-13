@@ -6,21 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [2.6.0] — 2026-07-08
+### 🚀 Added
+
+- **`trackers benchmark mcbyte` subcommand** — runs McByte over complete MOT17, DanceTrack, SportsMOT, or SoccerNet-tracking benchmark test sets and writes MOTChallenge-format results, with flags for dataset selection (`--dataset`), per-dataset detection/image roots (`--dataset_roots`), device, output location, CMC method/downscale, isolated mask matching, skip-existing, and partial-result retention ([#541](https://github.com/roboflow/trackers/pull/541), [#543](https://github.com/roboflow/trackers/pull/543)).
+- **`trackers inspect` command group** — visual validation commands for the mask stack and the tracker that uses it: `inspect sam` (box-prompted mask generation), `inspect cutie` (mask propagation), `inspect mask-manager` (mask lifecycle over a frame range, driven either from command-line boxes or from a MOT ground-truth file), and `inspect mcbyte` (locked-IoU baseline against full mask-conditioned McByte). Each writes annotated per-frame images into a timestamped run directory ([#543](https://github.com/roboflow/trackers/pull/543)).
+
+### 🔄 Deprecated
+
+- **`trackers eval --tracker`/`--tracker_dir` renamed to `--predictions`/`--predictions_dir`** — old spellings still parse and emit `FutureWarning`, will be removed in v2.10.0. Use `--predictions`/`--predictions_dir` instead ([#541](https://github.com/roboflow/trackers/pull/541)).
+
+### 🌱 Changed
+
+- **McByte CMC now defaults to `cmc_downscale=6`** — this aggregate-performance default halves median CMC latency versus factor `2` on the complete 45-clip, 1280x720 SportsMOT validation split and passes the dataset-level mean/median quality criterion. The benchmark used ground-truth detections with masks disabled; 9/45 clips regressed under the previous strict per-clip gate. Pass `cmc_downscale=2` to preserve the previous conservative behavior. Generic `CMCConfig` and `BoTSORTTracker` remain at `2`.
+- **Mask stack moved from `trackers.core.mcbyte.masks` to `trackers.core.masks`** — SAM mask generation, Cutie propagation, and `MaskManager` reference no tracker and are not McByte-specific, so they now live beside the trackers rather than inside one. Import from `trackers.core.masks` instead ([#543](https://github.com/roboflow/trackers/pull/543)).
+
+## [2.6.0] — 2026-08-03
 
 ### 🚀 Added
 
-- **Optional `timestamp=` on `BaseTracker.update()`** — all five trackers convert elapsed wall-clock seconds into Kalman frame units and prune lost tracks on a seconds budget when timestamps are supplied; omitting `timestamp` preserves fixed-rate behaviour ([#446](https://github.com/roboflow/trackers/pull/446)).
+- **`McByteTracker`** — new mask-conditioned ByteTrack tracker combining mask-conditioned association with SAM box-mask generation and Cutie mask propagation; exported from `trackers` (`McByteMaskConfig` also exported) and CLI-discoverable. New `trackers[mask]` extra installs `torch`, `torchvision`, `rf-segment-anything`, and `rf-cutie[inference]` (`rf-cutie` now ships on PyPI instead of git). Device selection defaults to `"auto"` (CUDA → MPS → CPU); Cutie streaming behaviour is tunable via `cutie_max_internal_size` (480), `cutie_mem_every` (10), and `cutie_use_long_term` (`True`), with `cutie_channels_last` / `cutie_compile` and AMP left off by default; `minimum_mask_creation_frames` (3) defers SAM/Cutie encoding for short-lived tracklets. Frames are expected in **RGB** (`BaseTracker`'s other trackers expect BGR). Mask checkpoints load with `weights_only=True` (CWE-502 guard, never shipped unsafe) ([#388](https://github.com/roboflow/trackers/pull/388), [#418](https://github.com/roboflow/trackers/pull/418), [#441](https://github.com/roboflow/trackers/pull/441), [#452](https://github.com/roboflow/trackers/pull/452), [#459](https://github.com/roboflow/trackers/pull/459), [#481](https://github.com/roboflow/trackers/pull/481), [#491](https://github.com/roboflow/trackers/pull/491), [#508](https://github.com/roboflow/trackers/pull/508), [#513](https://github.com/roboflow/trackers/pull/513), [#519](https://github.com/roboflow/trackers/pull/519), [#520](https://github.com/roboflow/trackers/pull/520), [#521](https://github.com/roboflow/trackers/pull/521), [#522](https://github.com/roboflow/trackers/pull/522), [#523](https://github.com/roboflow/trackers/pull/523), [#524](https://github.com/roboflow/trackers/pull/524), [#525](https://github.com/roboflow/trackers/pull/525), [#526](https://github.com/roboflow/trackers/pull/526), [#529](https://github.com/roboflow/trackers/pull/529), [#532](https://github.com/roboflow/trackers/pull/532)).
+- **Optional `timestamp=` on `BaseTracker.update()`** — all six trackers convert elapsed wall-clock seconds into Kalman frame units and prune lost tracks on a seconds budget when timestamps are supplied; omitting `timestamp` preserves fixed-rate behaviour ([#446](https://github.com/roboflow/trackers/pull/446)).
 - **`KalmanMotionModel`** in `trackers.utils.motion_models` — supplies the Kalman `F` and `Q` for a given `frame_step`; `F` is a trivial constant-velocity matrix (`constant_velocity_F`) while `ScalableProcessNoise` holds the tuned `Q`, used at the nominal step and DWNA-scaled on timestamp gaps.
 
 ### ⚠️ Breaking Changes
 
-- **Invalid lost-track buffer settings now raise `ValueError`** — `lost_track_buffer` must be non-negative and `frame_rate` must be finite and positive for `SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, and `BoTSORTTracker`. Explicit `lost_track_buffer=0` remains valid and means no missed-frame grace period; negative buffers and invalid frame rates previously initialized but produced nonsensical lifecycle behavior ([#420](https://github.com/roboflow/trackers/pull/420)).
+- **Invalid lost-track buffer settings now raise `ValueError`** — `lost_track_buffer` must be non-negative and `frame_rate` must be finite and positive for `SORTTracker`, `ByteTrackTracker`, `OCSORTTracker`, `BoTSORTTracker`, and `CBIoUTracker` (which forwards its constructor args to `BoTSORTTracker`). Explicit `lost_track_buffer=0` remains valid and means no missed-frame grace period; negative buffers and invalid frame rates previously initialized but produced nonsensical lifecycle behavior ([#420](https://github.com/roboflow/trackers/pull/420)).
 - **Confirmed tracks now survive one additional missed frame** — all trackers changed from exclusive (`time_since_update < maximum_frames_without_update`) to inclusive (`<=`) boundary semantics to match OC-SORT's previous behavior. Users comparing metric results across this version should expect small IDSW/HOTA shifts ([#420](https://github.com/roboflow/trackers/pull/420)).
+
+### 🌱 Changed
+
+- **Improved tracker performance** (bit-identical output) — CMC's sparse optical-flow status-mask filtering vectorized (~24x faster for that operation); `KalmanMotionModel` now caches its transition/noise matrices and defers DWNA calibration (~38% lower BoT-SORT/CBIoU predict cost); predicted boxes cached across association stages in BoT-SORT/CBIoU; Kalman-state-estimator copies trimmed and OC-SORT association hygiene improved ([#522](https://github.com/roboflow/trackers/pull/522), [#527](https://github.com/roboflow/trackers/pull/527), [#528](https://github.com/roboflow/trackers/pull/528)).
+- Direct dependency constraint `pydeprecate>=0.7.0` raised to `>=0.8.0`; build backend migrated from `hatchling` to `setuptools` (`src`-layout discovery + `py.typed` support) ([#492](https://github.com/roboflow/trackers/pull/492)).
 
 ### 🔧 Fixed
 
 - **Positive low-FPS lost-track buffers no longer collapse to zero frames** — all trackers now scale positive `lost_track_buffer` values with `ceil(...)` and keep confirmed tracks alive through exactly the scaled number of missed frames, matching OC-SORT's previous inclusive boundary semantics ([#420](https://github.com/roboflow/trackers/pull/420)).
+- **BoT-SORT / CBIoU: instant-activated first-frame tracks no longer dropped on a single miss** — sticky maturity now triggers once a real `tracker_id` is assigned (`tracker_id != -1`), matching ByteTrack; fixes a default-config ID switch when a frame-1 object is missed once ([#478](https://github.com/roboflow/trackers/pull/478) BoT-SORT, [#504](https://github.com/roboflow/trackers/pull/504) CBIoU).
+- **ByteTrack / BoT-SORT / CBIoU now return unmatched detections between the two confidence thresholds** — detections below `track_activation_threshold` but above `high_conf_det_threshold` are now emitted with `tracker_id=-1` instead of silently dropped, matching the documented `update()` contract. Output-contract change: callers may now see additional `tracker_id == -1` rows ([#475](https://github.com/roboflow/trackers/pull/475)).
+- **Signed IoU variants clamped to `[0, 1]` before score fusion** — the CIoU floor (~-1.5 from the aspect penalty) no longer produces negative fused similarities; the clamp is a no-op for GIoU/DIoU ([#476](https://github.com/roboflow/trackers/pull/476)).
+- **OC-SORT: Kalman scale kept positive across frame-step gaps** — `clamp_velocity` no longer allows scale to collapse negative over long timestamp gaps ([#509](https://github.com/roboflow/trackers/pull/509)).
+- **CMC: handle mid-stream frame-resolution changes in optical-flow motion estimation** — adds a re-sync/resize path when the input resolution changes between frames ([#505](https://github.com/roboflow/trackers/pull/505)).
+- **CMC: fixed `cv2.resize` crash on tiny downscaled images** — dimensions are now clamped to `max(1, ...)`, covering 1x1, 1x3, and 3x1 edge cases ([#488](https://github.com/roboflow/trackers/pull/488)).
+- **`xcycsr_to_xyxy`: prevent zero-division on zero-aspect boxes** — an `r1 != 0` guard now yields height `0` instead of `inf` ([#485](https://github.com/roboflow/trackers/pull/485)).
+- **Video output resized on mid-stream resolution change** — `VideoOutput` now resizes frames to match the writer's configured size (`INTER_AREA` on downscale only) ([#514](https://github.com/roboflow/trackers/pull/514)).
+- **Package builds fixed for `src` layout** — corrected `setuptools` package discovery and typed-package (`py.typed`) support, plus release CI artifact handling and publish triggers ([#492](https://github.com/roboflow/trackers/pull/492)).
+
+### 🔒 Security
+
+- **Hardened ZIP extraction against Zip Slip / path traversal (CWE-22)** — archive members with absolute paths, traversal segments, empty names, or Windows-style backslash paths are now rejected; validated archives are contained so they cannot write outside the destination directory, including path-swap protection ([#495](https://github.com/roboflow/trackers/pull/495)).
 
 ## [2.5.0] — 2026-06-22
 
@@ -168,3 +201,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 [2.2.0]: https://github.com/roboflow/trackers/compare/2.1.0...2.2.0
 [2.3.0]: https://github.com/roboflow/trackers/compare/2.2.0...2.3.0
 [2.4.0]: https://github.com/roboflow/trackers/compare/2.3.0...2.4.0
+[2.5.0]: https://github.com/roboflow/trackers/compare/2.4.0...2.5.0
+[2.6.0]: https://github.com/roboflow/trackers/compare/2.5.0...2.6.0
+[unreleased]: https://github.com/roboflow/trackers/compare/2.6.0...HEAD

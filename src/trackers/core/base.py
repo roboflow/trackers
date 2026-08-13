@@ -27,8 +27,7 @@ from trackers.utils.predict_timing import PredictTiming
 class ParameterInfo:
     """Holds metadata for a single tracker parameter.
 
-    Stores the type, default value, and description extracted from the
-    tracker's __init__ signature and docstring.
+    Stores the type, default value, and description extracted from the tracker's __init__ signature and docstring.
     """
 
     param_type: type
@@ -63,8 +62,7 @@ class TrackerParameters(dict[str, ParameterInfo]):
 class TrackerInfo:
     """Holds a tracker class and its extracted parameter metadata.
 
-    Used by the CLI to discover available trackers and their configurable
-    options without instantiating them.
+    Used by the CLI to discover available trackers and their configurable options without instantiating them.
     """
 
     tracker_class: type[BaseTracker]
@@ -379,8 +377,8 @@ class BaseTracker(ABC):
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.
 
-        Extracts parameter metadata from __init__ at class definition time.
-        Validates search_space (if present) against __init__ parameters.
+        Extracts parameter metadata from __init__ at class definition time. Validates search_space (if present) against
+        __init__ parameters.
         """
         super().__init_subclass__(**kwargs)
 
@@ -486,6 +484,7 @@ class BaseTracker(ABC):
             return PredictTiming(
                 frame_step=elapsed * self._frame_rate,
                 elapsed_seconds=elapsed,
+                frame_rate=self._frame_rate,
             )
 
         if timestamp < last:
@@ -511,6 +510,7 @@ class BaseTracker(ABC):
         return PredictTiming(
             frame_step=elapsed * self._frame_rate,
             elapsed_seconds=elapsed,
+            frame_rate=self._frame_rate,
         )
 
     def _detections_for_skipped_update(self, detections: sv.Detections) -> sv.Detections:
@@ -541,14 +541,13 @@ class BaseTracker(ABC):
     def _prune_lost_tracks(self, timing: PredictTiming) -> None:
         """Remove tracks that exceed their lost-track budget (ghost-ID prevention).
 
-        Applies a budget-only filter so immature tracks stay alive for matching.
-        Call after ``_predict_tracklets`` and before association.
+        Applies a budget-only filter so immature tracks stay alive for matching. Call after ``_predict_tracklets`` and
+        before association.
 
-        At fixed frame rate (no timestamps) this is a no-op — the frame-count
-        budget is enforced post-association, preserving the last-frame re-association
-        opportunity that the original trackers relied on.  In variable-FPS mode the
-        time budget can differ from the frame budget, so expired-by-time tracks are
-        removed here before they can be matched and revived with a stale ID.
+        At fixed frame rate (no timestamps) this is a no-op — the frame-count budget is enforced post-association,
+        preserving the last-frame re-association opportunity that the original trackers relied on.  In variable-FPS mode
+        the time budget can differ from the frame budget, so expired-by-time tracks are removed here before they can be
+        matched and revived with a stale ID.
         """
         budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
         if budget is None:

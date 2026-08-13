@@ -188,9 +188,12 @@ wandb/
 releases/
 outputs/
 
-autotune/mot17/
-autotune/pretrained/
-autotune/*.zip
+mot17/
+pretrained/
+*.zip
 
 # Internal design notes (kept locally, not published)
 docs/design/dynamic-frame-rate.md
+
+# Datasets
+sportsmot/

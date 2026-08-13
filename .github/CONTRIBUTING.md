@@ -106,7 +106,7 @@ uv sync --group dev
 2. **Doctests**: Run only doctests from docstrings:
 
     ```bash
-    uv run pytest --doctest-modules trackers/ --ignore=tests/
+    uv run pytest --doctest-modules src/trackers/ --ignore=tests/
     ```
 
 3. **Integration Tests**: Validate eval parity and tracker correctness against TrackEval on real MOT datasets (~50MB download):
@@ -180,6 +180,6 @@ Bug reports are vital for continued improvement. When reporting an issue, please
 
 ## License
 
-By contributing to Trackers, you agree that your contributions will be licensed under the Apache 2.0 License as specified in our [LICENSE](/LICENSE) file.
+By contributing to Trackers, you agree that your contributions will be licensed under the Apache 2.0 License as specified in our [LICENSE](https://github.com/roboflow/trackers/blob/develop/LICENSE) file.
 
 Thank you for helping us build a reliable, open-source tracking library. We’re excited to collaborate with you!

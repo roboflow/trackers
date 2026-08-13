@@ -24,8 +24,7 @@ _DEFAULT_OUTPUT_FPS = 30.0
 def frames_from_source(
     source: str | Path | int,
 ) -> Iterator[tuple[int, np.ndarray]]:
-    """Yield numbered BGR frames from video files, webcams, network streams, or image
-    directories.
+    """Yield numbered BGR frames from video files, webcams, network streams, or image directories.
 
     Args:
         source: Video file path, RTSP/HTTP stream URL, webcam index, or path to a
@@ -99,17 +98,17 @@ class _VideoOutput:
         self._size_mismatch_logged = False
 
     def write(self, frame: np.ndarray) -> bool:
-        """Write a frame to the video file. Initializes writer on first call.
+        """Write a frame to the video file; initializes writer on first call.
 
         The writer is bound to the first frame's resolution, and a video file
         cannot hold frames of mixed sizes. A later frame of a different size
         (e.g. a mid-stream resolution change from an RTSP renegotiation) is
         resized to the writer's resolution so it is kept in the output stream
         rather than being silently dropped by the codec. This guarantee only
-        covers height/width mismatches: the writer is opened with
-        `isColor=True` and channel count is not reconciled, so a mid-stream
-        frame with a different number of channels (e.g. single-channel
-        grayscale) can still be silently dropped by the codec.
+        covers height/width mismatches: the writer is opened with `isColor=True`
+        and channel count is not reconciled, so a mid-stream frame with a
+        different number of channels (e.g. single-channel grayscale) can still
+        be silently dropped by the codec.
 
         Returns:
             True if write succeeded or path is None, False on failure.
@@ -144,16 +143,13 @@ class _VideoOutput:
     def _match_writer_size(self, frame: np.ndarray) -> np.ndarray:
         """Resize a frame to the writer's resolution, warning once on mismatch.
 
-        `cv2.VideoWriter.write` silently discards frames whose size differs from
-        the one the writer was opened with, so a resolution change mid-stream
-        would drop frames from the output without any error. Resizing keeps the
-        stream contiguous; the mismatch is logged once to avoid per-frame spam.
-        The resize stretches the frame to the writer's exact dimensions without
-        preserving the source aspect ratio (aspect ratio may be distorted).
-        `cv2.INTER_AREA` is used only when downscaling (both writer dimensions
-        are smaller than the source frame's), since it degrades toward
-        nearest-neighbor quality when upscaling; `cv2.INTER_LINEAR` is used for
-        upscaling or mixed-direction resizes.
+        `cv2.VideoWriter.write` silently discards frames whose size differs from the one the writer was opened with, so
+        a resolution change mid-stream would drop frames from the output without any error. Resizing keeps the stream
+        contiguous; the mismatch is logged once to avoid per-frame spam. The resize stretches the frame to the writer's
+        exact dimensions without preserving the source aspect ratio (aspect ratio may be distorted). `cv2.INTER_AREA` is
+        used only when downscaling (both writer dimensions are smaller than the source frame's), since it degrades
+        toward nearest-neighbor quality when upscaling; `cv2.INTER_LINEAR` is used for upscaling or mixed-direction
+        resizes.
         """
         height, width = frame.shape[:2]
         if self._frame_size is None or self._frame_size == (width, height):

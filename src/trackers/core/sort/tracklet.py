@@ -48,7 +48,7 @@ class SORTTracklet(BaseTracklet):
         Returns:
             Predicted bounding box `[x1, y1, x2, y2]`.
         """
-        self.state_estimator.predict(timing.frame_step)
+        self.state_estimator.predict(timing.frame_step, timing.frame_rate)
         self._advance_miss_clocks(timing)
         return self.state_estimator.state_to_bbox()
 
@@ -57,8 +57,7 @@ class SORTTracklet(BaseTracklet):
         return self.state_estimator.state_to_bbox()
 
     def _configure_noise(self) -> None:
-        """Configure Kalman filter noise matrices (OC-SORT paper behaviour) and SORT
-        behaviour for XYXY coordinates."""
+        """Configure Kalman filter noise matrices (OC-SORT paper behaviour) and SORT behaviour for XYXY coordinates."""
         kf = self.state_estimator.kf
         measurement_noise = kf.measurement_noise
         state_covariance = kf.state_covariance

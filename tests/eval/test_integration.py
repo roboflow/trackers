@@ -6,9 +6,8 @@
 
 """Integration tests comparing our metrics against TrackEval on real data.
 
-These tests download SportsMOT and DanceTrack test datasets and verify that our
-benchmark evaluation produces identical results to TrackEval.
-Numerical parity is the key requirement.
+These tests download SportsMOT and DanceTrack test datasets and verify that our benchmark evaluation produces identical
+results to TrackEval. Numerical parity is the key requirement.
 """
 
 from __future__ import annotations

@@ -1,8 +1,6 @@
 # GitHub Copilot Instructions — Roboflow Trackers
 
-Roboflow Trackers is a Python library for multi-object tracking (MOT). It provides clean-room
-implementations of SORT, ByteTrack, and OC-SORT that plug into any detection model via the
-`supervision` library.
+Roboflow Trackers is a Python library for multi-object tracking (MOT). It provides clean-room implementations of SORT, ByteTrack, and OC-SORT that plug into any detection model via the `supervision` library.
 
 ## Installation
 
@@ -59,8 +57,8 @@ trackers/
 
 ## Detection Format
 
-Input: `supervision.Detections` with `.xyxy` bounding boxes.
-Output: same `supervision.Detections` with `.tracker_id` populated.
+- Input: `supervision.Detections` with `.xyxy` bounding boxes.
+- Output: same `supervision.Detections` with `.tracker_id` populated.
 
 Internal state uses `xcycsr` (center-x, center-y, area, aspect ratio) for Kalman filter.
 
@@ -79,12 +77,17 @@ trackers download mot17 --split val --asset annotations,detections
 
 ## Benchmark Results (HOTA, default parameters)
 
-| Tracker   | MOT17 | SportsMOT | SoccerNet | DanceTrack |
-| --------- | ----- | --------- | --------- | ---------- |
-| SORT      | 58.4  | 70.9      | 81.6      | 47.2       |
-| ByteTrack | 60.1  | 73.0      | 84.0      | 53.3       |
-| OC-SORT   | 61.9  | 71.7      | 78.4      | 54.1       |
-| BoT-SORT  | 63.7  | 73.8      | 84.5      | 57.8       |
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT/McByte rows (no C-BIoU row here). Also duplicated in [docs/index.md](../docs/index.md) and [README.md](../README.md). Update results.md first, then mirror all three copies. -->
+
+| Tracker   | MOT17    | SportsMOT | SoccerNet | DanceTrack |
+| --------- | -------- | --------- | --------- | ---------- |
+| SORT      | 58.4     | 70.8      | 81.6      | 47.2       |
+| ByteTrack | 60.1     | 73.0      | 84.0      | 53.3       |
+| OC-SORT   | 61.9     | 71.7      | 78.4      | 54.1       |
+| BoT-SORT  | 63.7     | 73.8      | 84.5      | 57.8       |
+| McByte\*  | **64.1** | **76.5**  | **85.0**  | **67.2**   |
+
+\*McByte needs optional heavyweight deps (`torch`, SAM, Cutie), not installed by default. Tops HOTA on all four benchmarks above.
 
 ## Documentation
 

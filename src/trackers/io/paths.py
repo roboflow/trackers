@@ -14,8 +14,7 @@ from pathlib import Path
 def _resolve_video_output_path(path: Path) -> Path:
     """Resolve video output path, handling directories.
 
-    If path is an existing directory, generates 'output.mp4' inside it.
-    If path has no extension, adds '.mp4'.
+    If path is an existing directory, generates 'output.mp4' inside it. If path has no extension, adds '.mp4'.
     """
     if path.is_dir():
         return path / "output.mp4"
@@ -37,4 +36,4 @@ def _validate_output_path(path: Path, *, overwrite: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     if path.exists() and not overwrite:
-        raise FileExistsError(f"Output file '{path}' already exists. Use --overwrite to replace.")
+        raise FileExistsError(f"Output file '{path}' already exists. Use --output.overwrite to replace.")

@@ -8,7 +8,7 @@ from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
-from deprecate import deprecated
+from deprecate import TargetMode, deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -28,8 +28,7 @@ from trackers.utils.state_representations import (
 
 
 class BoTSORTTracker(BaseTracker):
-    """
-    BoT-SORT-style multi-object tracker (IoU association + optional CMC).
+    """BoT-SORT-style multi-object tracker (IoU association + optional CMC).
 
     The tracker maintains a list of active tracks (Kalman-filter-based) and, for each
     frame, performs:
@@ -60,9 +59,9 @@ class BoTSORTTracker(BaseTracker):
         minimum_iou_threshold_first_assoc: Minimum fused similarity (IoU x
             detection confidence) to accept a detection-track association during
             the first association step.
-        minimum_iou_threshold_second_assoc: Minimum fused similarity (IoU x
-            detection confidence) to accept a detection-track association during
-            the second association step.
+        minimum_iou_threshold_second_assoc: Minimum IoU to accept a
+            detection-track association during the second association step.
+            No score fusion is applied in this pass, so this is plain IoU.
         minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU x
             score) to accept a match between an unconfirmed track and a remaining
             high-confidence detection.  Corresponds to the original ByteTrack's
@@ -281,6 +280,13 @@ class BoTSORTTracker(BaseTracker):
             H = self.cmc.estimate(frame, mask_boxes)
             CMC.apply_batch(H, self.tracks)
 
+        # Cache each tracklet's predicted state bbox once per update. Track state
+        # is unchanged across the three association stages: a track matched in an
+        # earlier stage never re-enters a later one, and the CMC adjustment above
+        # is already applied. Recomputing get_state_bbox() per stage would be
+        # redundant, so all stages read boxes from this map keyed by ``id()``.
+        predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
+
         det_embeddings: np.ndarray | None = None
         if self.reid_model is not None:
             if frame is None:
@@ -292,8 +298,9 @@ class BoTSORTTracker(BaseTracker):
         # Lost tracks are included here (following the original ByteTrack), and
         # IoU is fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        similarity_matrix = self._association_similarity(strack_pool, high_boxes, high_scores, det_embeddings)
-
+        similarity_matrix = self._association_similarity(
+            strack_pool, high_boxes, predicted_state_boxes, high_scores, det_embeddings
+        )
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             similarity_matrix, self.minimum_iou_threshold_first_assoc
         )
@@ -311,7 +318,7 @@ class BoTSORTTracker(BaseTracker):
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks, following the original ByteTrack).
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
-        iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes)
+        iou_matrix = self._get_iou_matrix(remaining_tracked, low_boxes, predicted_state_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
@@ -339,7 +346,10 @@ class BoTSORTTracker(BaseTracker):
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
             uh_embeddings = det_embeddings[unmatched_high_list] if det_embeddings is not None else None
-            similarity_matrix = self._association_similarity(unconfirmed_tracks, uh_boxes, uh_scores, uh_embeddings)
+            similarity_matrix = self._association_similarity(
+                unconfirmed_tracks, uh_boxes, predicted_state_boxes, uh_scores, uh_embeddings
+            )
+
 
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 similarity_matrix, self.minimum_iou_threshold_unconfirmed_assoc
@@ -418,18 +428,21 @@ class BoTSORTTracker(BaseTracker):
         self,
         tracklets: list[BoTSORTTracklet],
         boxes: np.ndarray,
+        tracklet_boxes_by_id: dict[int, np.ndarray],
         scores: np.ndarray,
         embeddings: np.ndarray | None,
     ) -> np.ndarray:
         """Score-fused association similarity, with optional BoT-SORT ReID fusion."""
-        iou_sim_raw = self.iou.normalize_for_fusion(self._get_iou_matrix(tracklets, boxes))
+        iou_sim_raw = self.iou.normalize_for_fusion(self._get_iou_matrix(tracklets, boxes, tracklet_boxes_by_id))
         iou_sim_fused = _fuse_score(iou_sim_raw, scores)
         if embeddings is None or len(tracklets) == 0:
             return iou_sim_fused
 
         track_feats = [None if t.feature_bank is None else t.feature_bank.feature for t in tracklets]
         proximity_iou = (
-            iou_sim_raw if isinstance(self.iou, IoU) else self._get_iou_matrix(tracklets, boxes, metric=IoU())
+            iou_sim_raw
+            if isinstance(self.iou, IoU)
+            else self._get_iou_matrix(tracklets, boxes, tracklet_boxes_by_id, metric=IoU())
         )
         return fuse_botsort_reid_association(
             iou_sim_fused,
@@ -443,13 +456,38 @@ class BoTSORTTracker(BaseTracker):
         self,
         tracklets: list[BoTSORTTracklet],
         detections: np.ndarray,
+        tracklet_boxes_by_id: dict[int, np.ndarray],
         *,
         metric: BaseIoU | None = None,
     ) -> np.ndarray:
+        """Compute IoU similarity between tracklet states and detection boxes.
+
+        Args:
+            tracklets: Tracklets forming the rows of the returned matrix.
+            detections: Detection boxes in ``xyxy`` format forming the columns.
+            tracklet_boxes_by_id: Mapping from ``id(track)`` to the track's
+                predicted state bbox, computed once per ``update()`` and reused
+                across association stages to avoid recomputing ``get_state_bbox``.
+            metric: IoU variant to score with, defaulting to ``self.iou``. Passed
+                explicitly as plain ``IoU()`` for the ReID proximity gate, which
+                is defined on true IoU even when association uses GIoU/DIoU/CIoU.
+
+        Raises:
+            KeyError: If a tracklet passed in is absent from ``tracklet_boxes_by_id``
+                — an internal-invariant violation, since the map is built from
+                ``self.tracks`` and every tracklet here is drawn from it.
+        """
         if len(tracklets) == 0:
             tracklet_boxes = np.empty((0, 4))
         else:
-            tracklet_boxes = np.array([tracklet.get_state_bbox() for tracklet in tracklets])
+            try:
+                tracklet_boxes = np.array([tracklet_boxes_by_id[id(tracklet)] for tracklet in tracklets])
+            except KeyError as exc:
+                raise KeyError(
+                    f"tracklet id {exc.args[0]} missing from the per-frame decode-once box cache; "
+                    "tracklet_boxes_by_id must contain every tracklet passed to this helper "
+                    "(it is built from self.tracks once per update())"
+                ) from exc
         return (metric or self.iou).compute(tracklet_boxes, detections)
 
     def _get_associated_indices(
@@ -457,10 +495,8 @@ class BoTSORTTracker(BaseTracker):
         similarity_matrix: np.ndarray,
         min_similarity_thresh: float,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """
-        Associate detections to tracks based on Similarity (IoU) using the
-        Jonker-Volgenant algorithm approach with no initialization instead of the
-        Hungarian algorithm as mentioned in the SORT paper, but it solves the
+        """Associate detections to tracks based on Similarity (IoU) using the Jonker-Volgenant algorithm approach with
+        no initialization instead of the Hungarian algorithm as mentioned in the SORT paper, but it solves the
         assignment problem in an optimal way.
 
         Args:
@@ -532,6 +568,7 @@ class BoTSORTTracker(BaseTracker):
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
+
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
@@ -541,7 +578,7 @@ class BoTSORTTracker(BaseTracker):
         if self.cmc is not None:
             self.cmc.reset()
 
-    @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
+    @deprecated(target=TargetMode.NOTIFY, deprecated_in="2.5", remove_in="3.0")
     def apply_cmc_batch(self, H: np.ndarray | None) -> None:
         """Apply CMC to all active tracks.
 

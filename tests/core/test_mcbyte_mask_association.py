@@ -9,11 +9,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from trackers.core.masks.base import MaskOutput
 from trackers.core.mcbyte.mask_association import (
     _get_mask_metrics,
     condition_similarity_with_masks,
 )
-from trackers.core.mcbyte.masks.base import MaskOutput
 
 
 def _full_mask(
@@ -21,6 +21,22 @@ def _full_mask(
     width: int = 10,
 ) -> np.ndarray:
     return np.ones((height, width), dtype=bool)
+
+
+def test_condition_similarity_rejects_integer_similarity_dtype() -> None:
+    """An integer similarity matrix is rejected, since in-place mask boosts would truncate to zero."""
+    similarity = np.array([[1, 0], [0, 1]], dtype=np.int32)
+    detection_boxes = np.array([[0, 0, 5, 5], [5, 5, 10, 10]], dtype=np.float32)
+
+    with pytest.raises(ValueError, match="floating-point dtype"):
+        condition_similarity_with_masks(
+            similarity=similarity,
+            raw_iou_similarity=similarity,
+            tracklet_ids=[10, 20],
+            detection_boxes=detection_boxes,
+            mask_output=None,
+            minimum_similarity=0.5,
+        )
 
 
 def test_mask_metrics_compute_coverage_and_fill_ratio() -> None:

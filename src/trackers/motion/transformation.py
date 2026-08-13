@@ -14,8 +14,8 @@ import numpy as np
 class CoordinatesTransformation(ABC):
     """Abstract base class for coordinate transformations.
 
-    Subclasses implement specific transformation types that convert points between
-    absolute (world) and relative (frame) coordinates.
+    Subclasses implement specific transformation types that convert points between absolute (world) and relative (frame)
+    coordinates.
     """
 
     @abstractmethod
@@ -50,8 +50,7 @@ class CoordinatesTransformation(ABC):
 class IdentityTransformation(CoordinatesTransformation):
     """No-op transformation where absolute and relative coordinates are identical.
 
-    Used for the first frame (before any camera motion is detected) or when
-    motion estimation fails.
+    Used for the first frame (before any camera motion is detected) or when motion estimation fails.
     """
 
     def abs_to_rel(self, points: np.ndarray) -> np.ndarray:

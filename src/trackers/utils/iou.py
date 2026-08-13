@@ -169,7 +169,6 @@ class BIoU(BaseIoU):
         self.buffer_ratio = buffer_ratio
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
-
         if self.buffer_ratio == 0:
             return sv.box_iou_batch(boxes_1, boxes_2)
 
@@ -425,7 +424,41 @@ class CIoU(BaseIoU):
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
         """Shift and clamp CIoU scores into ``[0, 1]`` for BoT-SORT fusion.
 
-        CIoU can fall below ``-1`` (see class docstring), so the clamp inside
-        :func:`_shift_signed_to_unit_range` is non-trivial here.
+        CIoU can fall below ``-1`` (see class docstring), so the clamp inside :func:`_shift_signed_to_unit_range` is
+        non-trivial here.
         """
         return _shift_signed_to_unit_range(similarity_matrix)
+
+
+_VARIANTS: dict[str, type[BaseIoU]] = {
+    "iou": IoU,
+    "giou": GIoU,
+    "diou": DIoU,
+    "ciou": CIoU,
+    "biou": BIoU,
+}
+
+
+def variant_from_name(name: str) -> BaseIoU:
+    """Resolve a variant name (case-insensitive) to a default-constructed instance.
+
+    Args:
+        name: One of ``iou``, ``giou``, ``diou``, ``ciou``, ``biou``
+            (case-insensitive).
+
+    Returns:
+        A default-constructed instance of the matching :class:`BaseIoU` subclass.
+
+    Raises:
+        ValueError: If ``name`` does not match any known variant.
+
+    Examples:
+        >>> isinstance(variant_from_name("giou"), GIoU)
+        True
+        >>> isinstance(variant_from_name("BIOU"), BIoU)
+        True
+    """
+    try:
+        return _VARIANTS[name.lower()]()
+    except KeyError as exc:
+        raise ValueError(f"Unknown IoU variant {name!r}. Valid: {sorted(_VARIANTS)}") from exc

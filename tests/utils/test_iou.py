@@ -12,7 +12,7 @@ import pytest
 torch = pytest.importorskip("torch")
 torchvision = pytest.importorskip("torchvision")
 
-from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU  # noqa: E402
+from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU, variant_from_name  # noqa: E402
 
 
 def _torchvision_giou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
@@ -192,10 +192,9 @@ class TestIoUVariantsAgainstTorchvision:
     ) -> None:
         """Validate variant-vs-reference parity across shared geometric scenarios.
 
-        `upper_bound` is used only for cases where the original tests expected
-        negative scores for non-overlapping boxes (GIoU/DIoU/CIoU).
-        BIoU is intentionally excluded from this check because buffered IoU is
-        IoU-like (non-negative) and can be zero or positive for such cases.
+        `upper_bound` is used only for cases where the original tests expected negative scores for non-overlapping boxes
+        (GIoU/DIoU/CIoU). BIoU is intentionally excluded from this check because buffered IoU is IoU-like (non-negative)
+        and can be zero or positive for such cases.
         """
         result = ours.compute(boxes_1, boxes_2)
         expected = ref_or_baseline(boxes_1, boxes_2)
@@ -402,9 +401,8 @@ class TestNormalizeForFusion:
     def test_output_in_unit_range_over_random_batch(self, metric: BaseIoU) -> None:
         """normalize_for_fusion must map similarities into [0, 1] for score fusion.
 
-        CIoU's aspect-ratio penalty drives raw scores below -1, so the naive
-        ``(x + 1) / 2`` shift (without clamping) yields negatives that corrupt
-        ``_fuse_score``. The other variants already lie in [0, 1] post-shift.
+        CIoU's aspect-ratio penalty drives raw scores below -1, so the naive ``(x + 1) / 2`` shift (without clamping)
+        yields negatives that corrupt ``_fuse_score``. The other variants already lie in [0, 1] post-shift.
         """
         rng = np.random.default_rng(103)
         xy = rng.uniform(0, 500, size=(100, 2))
@@ -528,3 +526,34 @@ class TestDegenerateInputs:
         result = metric.compute(boxes_a, boxes_b)
         assert result.shape == (1, 1)
         assert np.isfinite(result).all(), "Inverted-coord box should not produce NaN/inf"
+
+
+class TestVariantFromName:
+    """Tests for variant_from_name() registry lookup."""
+
+    @pytest.mark.parametrize(
+        ("name", "expected_type"),
+        [
+            ("iou", IoU),
+            ("giou", GIoU),
+            ("diou", DIoU),
+            ("ciou", CIoU),
+            ("biou", BIoU),
+        ],
+    )
+    def test_valid_names_return_correct_instance(self, name: str, expected_type: type) -> None:
+        """Each lowercase variant name resolves to the right BaseIoU subclass."""
+        result = variant_from_name(name)
+        assert isinstance(result, expected_type)
+
+    @pytest.mark.parametrize("name", ["IOU", "GIoU", "BIOU", "DiOU", "CIou"])
+    def test_case_insensitive_lookup(self, name: str) -> None:
+        """Lookup is case-insensitive — any casing resolves without error."""
+        result = variant_from_name(name)
+        assert isinstance(result, BaseIoU)
+
+    @pytest.mark.parametrize("name", ["", "foo", "wiou", "iou2"])
+    def test_invalid_name_raises_value_error(self, name: str) -> None:
+        """Unknown names raise ValueError; repr(name) appears in the error message."""
+        with pytest.raises(ValueError, match=repr(name)):
+            variant_from_name(name)

@@ -1,0 +1,964 @@
+# ------------------------------------------------------------------------
+# Trackers
+# Copyright (c) 2026 Roboflow. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+
+from __future__ import annotations
+
+import logging
+from enum import Enum
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlparse
+
+import numpy as np
+import torch
+
+from trackers.core.masks.base import MaskOutput, MaskPropagator, _autocast_context, _resolve_auto_device
+from trackers.utils.downloader import _download_file
+
+logger = logging.getLogger(__name__)
+
+CUTIE_RELEASE_URL = "https://github.com/hkchengrex/Cutie/releases/download/v1.0"
+
+
+class CutieAsset(Enum):
+    """Known downloadable Cutie checkpoint assets.
+
+    Each member pairs a checkpoint filename with its expected MD5 checksum, used to locate, download, and validate the
+    default weights for a given Cutie ``model_type``.
+    """
+
+    BASE_MEGA = (
+        "cutie-base-mega.pth",
+        "a6071de6136982e396851903ab4c083a",
+    )
+
+    def __init__(self, filename: str, md5_hash: str) -> None:
+        self.filename = filename
+        self.md5_hash = md5_hash
+
+    @property
+    def url(self) -> str:
+        """Full download URL for this checkpoint on the Cutie GitHub release."""
+        return f"{CUTIE_RELEASE_URL}/{self.filename}"
+
+    @property
+    def default_path(self) -> Path:
+        """Default local cache path for this checkpoint, relative to the working directory."""
+        return Path("models/cutie") / self.filename
+
+
+CUTIE_ASSETS = {
+    "base-mega": CutieAsset.BASE_MEGA,
+}
+
+
+def _ensure_weights_exist(
+    weights_path: Path,
+    model_type: str,
+) -> None:
+    """Ensure default Cutie weights are available and pass checksum validation."""
+    asset = CUTIE_ASSETS.get(model_type)
+    if asset is None:
+        raise ValueError(
+            f"No default Cutie asset for model_type={model_type!r}. Supported types: {sorted(CUTIE_ASSETS)}"
+        )
+
+    parsed_url = urlparse(asset.url)
+    if parsed_url.scheme != "https":
+        raise ValueError(f"Unsupported checkpoint URL scheme: {parsed_url.scheme!r}")
+
+    weights_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Ensuring Cutie checkpoint exists at %s", weights_path)
+    _download_file(
+        asset.url,
+        weights_path,
+        md5=asset.md5_hash,
+    )
+
+
+def _get_cutie_package_dir(cutie_module: Any) -> Path:
+    """Return the root directory of the installed Cutie package."""
+    if getattr(cutie_module, "__file__", None) is not None:
+        return Path(cutie_module.__file__).resolve().parent
+
+    module_paths = list(getattr(cutie_module, "__path__", []))
+    if len(module_paths) == 0:
+        raise RuntimeError("Could not resolve Cutie package directory.")
+
+    return Path(module_paths[0]).resolve()
+
+
+def _apply_backend_perf_options(
+    model: Any,
+    *,
+    channels_last: bool,
+    compile_model: bool,
+) -> Any:
+    """Apply optional, opt-in backend performance transforms to the Cutie model.
+
+    Both transforms are off by default; when disabled the model is returned
+    unchanged so the default pipeline stays bit-identical. Neither transform is
+    guaranteed to preserve outputs bit-for-bit once enabled (channels_last and
+    ``torch.compile`` may select different kernels), so each must pass a
+    per-backend fp32-parity check before being recommended.
+
+    Args:
+        model: The Cutie ``CUTIE`` network, already moved to its device and
+            loaded with weights.
+        channels_last: When True, convert 4D convolution weights to the
+            ``channels_last`` memory format. 1D/non-4D parameters are left
+            untouched. Most beneficial for convolutional encoders on CUDA
+            tensor cores.
+        compile_model: When True, wrap the shape-stable per-frame encoder
+            entry points (``encode_image`` and ``transform_key``) with
+            ``torch.compile``. Cutie's ``InferenceCore`` calls these network
+            submethods directly rather than ``model(...)``, so a module-level
+            ``torch.compile`` would never run; ``segment`` and ``encode_mask``
+            are deliberately left eager because their object-count dimension
+            varies frame to frame and would trigger repeated recompilation.
+            Their input shape, by contrast, is fixed after Cutie's internal
+            resize and ``pad_divide_by(16)``, so compiling them is churn-free.
+
+    Returns:
+        The transformed model (the same object; transforms are applied in
+        place and the reference is returned for call-site clarity).
+    """
+    if channels_last:
+        model = model.to(memory_format=torch.channels_last)
+    if compile_model:
+        if not hasattr(torch, "compile"):
+            raise RuntimeError("compile_model=True requires torch.compile (PyTorch >= 2.0).")
+        for method_name in ("encode_image", "transform_key"):
+            method = getattr(model, method_name, None)
+            if method is not None:
+                setattr(model, method_name, torch.compile(method))
+    return model
+
+
+def _image_to_torch(
+    frame: np.ndarray,
+    device: torch.device,
+) -> torch.Tensor:
+    """Convert an RGB frame from ``(H, W, 3)`` NumPy format to ``(3, H, W)`` Cutie tensor format."""
+    # Normalize by dtype, not by pixel magnitude. A ``max() > 1`` heuristic
+    # mis-scales a near-black uint8 frame whose brightest pixel is 0 or 1
+    # (treated as already-normalized and left un-divided). An unsigned-integer
+    # frame is divided by its dtype maximum (uint8 -> 255, uint16 -> 65535) so
+    # wider integer types are not silently scaled as if they were 0-255. A
+    # floating frame is assumed to be already in [0, 1] per the RGB contract.
+    # Signed-integer frames have an ambiguous value range and are rejected.
+    if np.issubdtype(frame.dtype, np.signedinteger):
+        raise ValueError(
+            "Signed-integer frames are not supported: dtype "
+            f"{frame.dtype} has an ambiguous value range. Provide a uint8 or "
+            "uint16 frame, or a float frame already normalized to [0, 1]."
+        )
+
+    # Upload the compact source dtype (uint8 = 1 byte/pixel) and cast to float
+    # on the target device, rather than materializing a 4x-larger float32 tensor
+    # host-side and copying that across the bus. ``.contiguous()`` collapses the
+    # CHW transpose view so the host->device copy is a single contiguous block;
+    # ``non_blocking`` only helps with pinned memory but is harmless otherwise.
+    # The result is bit-identical to the previous ``.float().to(device)`` path:
+    # uint8 -> float32 -> divide equals float32(uint8) / max exactly.
+    frame_torch = torch.from_numpy(frame.transpose(2, 0, 1)).contiguous().to(device, non_blocking=True).float()
+
+    if np.issubdtype(frame.dtype, np.unsignedinteger):
+        frame_torch /= float(np.iinfo(frame.dtype).max)
+
+    return frame_torch
+
+
+def _binary_masks_to_indexed_mask(
+    masks: np.ndarray,
+    object_ids: list[int],
+) -> np.ndarray:
+    """Convert binary masks to one indexed mask using the given object IDs.
+
+    Args:
+        masks: Binary masks with shape ``(N, H, W)``, where ``N`` is the
+            number of masks and ``H``/``W`` are the frame height and width.
+        object_ids: Cutie object IDs with length ``N``. Each ID is written
+            into the output indexed mask where the corresponding binary mask
+            is active.
+
+    Returns:
+        Indexed mask with shape ``(H, W)`` and dtype ``int32``. Background
+        pixels are ``0``. Object pixels contain the corresponding Cutie object
+        ID.
+
+    Note:
+        Earlier masks keep priority in overlapping regions.
+    """
+    if masks.shape[0] != len(object_ids):
+        raise ValueError(
+            "Number of masks must match number of object IDs. "
+            f"Got {masks.shape[0]} masks and {len(object_ids)} object IDs."
+        )
+
+    # Coerce to bool: the ``mask & ~occupied`` combination below is a bitwise
+    # op that only behaves as set difference on boolean arrays. MaskOutput.masks
+    # is typed as a bare ndarray, so a float/int custom generator would
+    # otherwise crash or produce wrong regions.
+    masks = masks.astype(bool, copy=False)
+
+    indexed_mask = np.zeros(masks.shape[1:], dtype=np.int32)
+    occupied = np.zeros(masks.shape[1:], dtype=bool)
+
+    for mask, object_id in zip(masks, object_ids):
+        valid_mask = mask & ~occupied
+        indexed_mask[valid_mask] = object_id
+        occupied |= valid_mask
+
+    return indexed_mask
+
+
+def _output_prob_to_object_indexed_mask(
+    processor: Any,
+    prob: torch.Tensor,
+    max_indices: torch.Tensor | None = None,
+) -> np.ndarray:
+    """Convert Cutie probability output to an object-ID-indexed NumPy mask.
+
+    Equivalent to ``InferenceCore.output_prob_to_mask`` — channel argmax
+    followed by temporary-ID -> object-ID remapping — but implemented with
+    ``torch.max`` and a lookup-table gather. ``torch.argmax`` over the channel
+    dim runs a slow single-threaded CPU reduction (~260 ms at 1080p) while
+    ``torch.max`` uses a fused kernel returning the same first-occurrence
+    indices in ~4 ms; the original per-object ``new_mask[mask == tmp_id]``
+    boolean-assignment loop is likewise replaced by one integer gather.
+
+    Args:
+        processor: Cutie ``InferenceCore`` whose object manager provides the
+            temporary-ID -> object mapping.
+        prob: Cutie probability tensor with shape ``(num_objects + 1, H, W)``.
+        max_indices: Optional precomputed ``torch.max(prob, dim=0).indices``
+            so callers that already reduced ``prob`` avoid a second pass.
+    """
+    if max_indices is None:
+        max_indices = torch.max(prob, dim=0).indices
+    tmp_id_mask = max_indices.cpu().numpy()
+
+    # Background channel 0 and any tmp_id without a live object map to 0,
+    # matching the zeros-initialised output of the original remap loop.
+    lut = np.zeros(int(prob.shape[0]), dtype=np.int32)
+    for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items():
+        if 0 <= tmp_id < lut.size:
+            lut[tmp_id] = obj.id
+    return lut[tmp_id_mask]
+
+
+def _get_object_id_to_tmp_id(processor: Any) -> dict[int, int]:
+    """Return mapping from immutable Cutie object IDs to temporary tensor IDs.
+
+    # NOTE:
+    # Cutie distinguishes between:
+    #
+    #   - immutable object IDs
+    #   - temporary tensor IDs
+    #
+    # Object IDs are assigned when objects are added and remain stable for the
+    # lifetime of those objects. Temporary IDs are used internally for tensor
+    # channels and may change after object deletion because Cutie compacts its
+    # internal representation.
+    #
+    # Example:
+    #
+    #   object IDs: [1, 2, 3]
+    #
+    # After deleting object 2:
+    #
+    #   object IDs still present: [1, 3]
+    #   temporary IDs may become:
+    #       object 1 -> tmp 1
+    #       object 3 -> tmp 2
+    #
+    # Therefore:
+    #
+    #   prob[2]
+    #
+    # no longer means "object 2". It means "temporary channel 2", which may
+    # correspond to object 3.
+    #
+    # We therefore always use Cutie's ObjectManager mappings and
+    # output_prob_to_mask() helper instead of assuming:
+    #
+    #   object_id == temporary_id
+    #
+    # See Cutie's ObjectManager and InferenceCore implementation for details.
+    """
+    return {obj.id: tmp_id for tmp_id, obj in processor.object_manager.tmp_id_to_obj.items()}
+
+
+def _binary_masks_to_non_overlapping_torch(
+    masks: np.ndarray,
+    device: torch.device,
+) -> torch.Tensor:
+    """Convert binary masks to non-overlapping Cutie mask channels.
+
+    Input masks have shape ``(N, H, W)``. If masks overlap, earlier masks keep priority, matching the original McByte
+    initialization behavior. The returned tensor has shape ``(N, H, W)``, dtype ``float32``, and values ``0.0`` or
+    ``1.0``.
+    """
+    # Coerce to bool for the same reason as _binary_masks_to_indexed_mask:
+    # ``mask & ~occupied`` requires boolean arrays to act as set difference.
+    masks = masks.astype(bool, copy=False)
+
+    occupied = np.zeros(masks.shape[1:], dtype=bool)
+    non_overlapping_masks = np.zeros_like(masks, dtype=np.float32)
+
+    for mask_index, mask in enumerate(masks):
+        valid_mask = mask & ~occupied
+        non_overlapping_masks[mask_index] = valid_mask.astype(np.float32)
+        occupied |= valid_mask
+
+    return torch.from_numpy(non_overlapping_masks).to(device)
+
+
+def _indexed_mask_to_binary_masks(
+    indexed_mask: np.ndarray,
+    object_ids: list[int],
+) -> np.ndarray:
+    """Convert an indexed mask to one binary mask per Cutie object ID."""
+    if len(object_ids) == 0:
+        return np.zeros((0, *indexed_mask.shape), dtype=bool)
+
+    return np.stack(
+        [indexed_mask == object_id for object_id in object_ids],
+        axis=0,
+    )
+
+
+def _build_tracklet_object_dict(
+    tracklet_mask_dict: dict[int, int],
+) -> dict[int, int]:
+    """Map tracklet IDs to Cutie object IDs.
+
+    Mask generators return local mask array indices starting from 0. Cutie uses positive object IDs, with 0 reserved for
+    background.
+    """
+    return {tracklet_id: local_mask_index + 1 for tracklet_id, local_mask_index in tracklet_mask_dict.items()}
+
+
+def _compute_mask_avg_prob_dict(
+    prob: torch.Tensor,
+    object_ids: list[int],
+    object_id_to_tmp_id: dict[int, int],
+    max_result: torch.return_types.max | None = None,
+) -> dict[int, float]:
+    """Compute average Cutie confidence for each predicted object region.
+
+    The input probability tensor has shape ``(num_objects + 1, H, W)``, where channel 0 is background and channels
+    ``1..num_objects`` follow Cutie's current temporary object IDs. For each immutable object ID, confidence is averaged
+    over pixels where that object's current temporary ID wins the argmax prediction. ``max_result`` optionally supplies
+    a precomputed ``torch.max(prob, dim=0)`` so callers that already reduced ``prob`` (for the indexed mask) avoid a
+    second full-resolution pass.
+    """
+    num_channels = int(prob.shape[0])
+    if max_result is None:
+        max_result = torch.max(prob, dim=0)
+    # At each pixel the winning channel's probability equals the per-pixel maximum,
+    # so prob[tmp_id][mask_maxes == tmp_id] is exactly the set of maxima won by that
+    # channel. Cast to float32 so the summation below is stable for half-precision
+    # AMP outputs.
+    max_values = max_result.values.reshape(-1).float()
+    max_indices = max_result.indices.reshape(-1)
+
+    # Per-channel sum of winning-pixel probabilities and count of winning pixels.
+    # A channel's mean confidence over the pixels it wins is therefore sum / count.
+    # Both reductions stay on-device; stacking lets the host read them back with a
+    # single GPU->CPU synchronization for the whole frame instead of one per object.
+    winning_prob_sums = torch.bincount(max_indices, weights=max_values, minlength=num_channels)
+    winning_pixel_counts = torch.bincount(max_indices, minlength=num_channels).to(winning_prob_sums.dtype)
+    stats = torch.stack((winning_prob_sums, winning_pixel_counts)).cpu().numpy()
+    winning_prob_sums_cpu, winning_pixel_counts_cpu = stats[0], stats[1]
+
+    mask_avg_prob_dict: dict[int, float] = {}
+    for object_id in object_ids:
+        tmp_id = object_id_to_tmp_id.get(object_id)
+        if tmp_id is None:
+            continue
+
+        winning_pixel_count = winning_pixel_counts_cpu[tmp_id]
+        if winning_pixel_count == 0:
+            continue
+
+        avg_prob = winning_prob_sums_cpu[tmp_id] / winning_pixel_count
+        if not np.isnan(avg_prob):
+            mask_avg_prob_dict[object_id] = float(avg_prob)
+
+    return mask_avg_prob_dict
+
+
+class CutieMaskPropagator(MaskPropagator):
+    """Propagate McByte masks over time using Cutie.
+
+    This class wraps an externally installed Cutie package. It does not vendor
+    Cutie source code into Trackers.
+
+    The first version supports the core original McByte behavior:
+
+    1. initialize Cutie memory from masks on a reference frame,
+    2. propagate masks to the current frame.
+
+    Adding new masks, removing masks, overlap-aware mask creation, and color
+    preservation are intentionally left for later MaskManager-level integration.
+
+    Args:
+        weights_path: Optional path to Cutie checkpoint weights. When provided,
+            the file must already exist and is used as-is: a user-supplied
+            checkpoint is never validated against the default-asset checksum nor
+            overwritten, and a missing path raises ``FileNotFoundError``. When not
+            provided, the default checkpoint for ``model_type`` is downloaded and
+            checksum-validated if absent.
+        config_path: Optional path to Cutie's Hydra config directory. If not
+            provided, the path is inferred from the installed ``cutie`` package.
+        config_name: Hydra config name used by Cutie.
+        device: Device used by Cutie, for example ``"cpu"``, ``"cuda"``, or
+            ``"mps"``. The default ``"auto"`` resolves to CUDA when available,
+            otherwise CPU. MPS is never auto-selected (measured ~an order of
+            magnitude slower than CPU for this pipeline); pass ``"mps"``
+            explicitly to use it.
+        use_amp: Whether to use CUDA automatic mixed precision during Cutie
+            calls. Off by default so default runs stay fp32 on every backend;
+            opt in after validating quality parity on your hardware.
+        max_internal_size: Maximum shortest side of internally processed
+            frames. Larger frames are downscaled before Cutie's encoder and
+            the propagated masks are restored to the original resolution by
+            ``InferenceCore``, so returned masks always match the input frame
+            shape. ``-1`` disables internal resizing (full-resolution
+            propagation; substantially slower on high-resolution streams).
+        mem_every: How often, in frames, Cutie updates its working memory.
+            ``None`` keeps the value from the loaded Cutie configuration.
+        use_long_term: Whether Cutie uses bounded long-term memory,
+            recommended for videos longer than roughly one minute. ``None``
+            keeps the value from the loaded Cutie configuration.
+        channels_last: Opt-in ``channels_last`` memory format for the Cutie
+            model's convolution weights. Off by default (unchanged model);
+            may change kernel selection, so validate fp32 output parity on
+            your backend before enabling. Primarily helps CUDA.
+        compile_model: Opt-in ``torch.compile`` of Cutie's shape-stable
+            per-frame encoder methods (``encode_image``, ``transform_key``).
+            Off by default. Incurs first-call warmup and may alter numerics,
+            so validate fp32 output parity before enabling; ``torch.compile``
+            support on MPS is experimental.
+    """
+
+    def __init__(
+        self,
+        weights_path: str | Path | None = None,
+        model_type: str = "base-mega",
+        config_path: str | Path | None = None,
+        config_name: str = "eval_config",
+        device: str = "auto",
+        use_amp: bool = False,
+        max_internal_size: int = 480,
+        mem_every: int | None = 10,
+        use_long_term: bool | None = True,
+        channels_last: bool = False,
+        compile_model: bool = False,
+    ) -> None:
+        try:
+            import cutie
+            from cutie.inference.inference_core import InferenceCore
+            from cutie.inference.utils.args_utils import get_dataset_cfg
+            from cutie.model.cutie import CUTIE
+        except ImportError as exc:
+            # TODO: Update these installation instructions once Cutie dependency
+            # management is finalized in Trackers. (+ a related note in _load_config())
+            msg = (
+                "Cutie support requires Cutie to be installed. "
+                "Install Cutie separately, for example by cloning the Cutie "
+                "repository and running `pip install -e .` inside it."
+            )
+            raise ImportError(msg) from exc
+
+        if device == "auto":
+            device = _resolve_auto_device()
+        self.device = torch.device(device)
+
+        self.use_amp = use_amp and self.device.type == "cuda"
+
+        self.max_internal_size = max_internal_size
+        self.mem_every = mem_every
+        self.use_long_term = use_long_term
+        self.channels_last = channels_last
+        self.compile_model = compile_model
+
+        asset = CUTIE_ASSETS.get(model_type)
+        if asset is None:
+            raise ValueError(f"Unsupported model_type={model_type!r}. Supported types: {sorted(CUTIE_ASSETS)}")
+
+        if weights_path is not None:
+            # A user-supplied checkpoint (e.g. a fine-tuned Cutie model) is honored
+            # as-is. Running the default-asset MD5 check here would detect a
+            # mismatch, delete the user's file, and re-download the canonical
+            # default over it — silent data loss. Download-if-missing is also
+            # wrong for a custom path, so an absent file is reported explicitly.
+            self.weights_path = Path(weights_path)
+            if not self.weights_path.exists():
+                raise FileNotFoundError(f"Cutie checkpoint not found at the provided weights_path: {self.weights_path}")
+        else:
+            # No checkpoint provided: fetch and checksum-validate the default asset.
+            self.weights_path = asset.default_path
+            _ensure_weights_exist(
+                weights_path=self.weights_path,
+                model_type=model_type,
+            )
+
+        cfg = self._load_config(
+            cutie_module=cutie,
+            config_path=config_path,
+            config_name=config_name,
+        )
+
+        # Cutie mutates/augments the config through this helper in the original code.
+        _ = get_dataset_cfg(cfg)
+
+        self.cutie = CUTIE(cfg).to(self.device).eval()
+        # weights_only=True guards against arbitrary-code execution (CWE-502) when
+        # deserializing a checkpoint fetched from an external release URL. The Cutie
+        # checkpoint is a plain state_dict consumed by load_weights, so it loads cleanly.
+        model_weights = torch.load(self.weights_path, map_location=self.device, weights_only=True)
+        self.cutie.load_weights(model_weights)
+
+        # Opt-in backend transforms (both off by default -> unchanged model).
+        # Applied after weights load so channels_last converts the loaded
+        # parameters and torch.compile wraps the final methods. InferenceCore
+        # and ImageFeatureStore both hold this same object, so patching its
+        # submethods here propagates to Cutie's actual call sites.
+        self.cutie = _apply_backend_perf_options(
+            self.cutie,
+            channels_last=self.channels_last,
+            compile_model=self.compile_model,
+        )
+
+        self.processor = InferenceCore(self.cutie, cfg=cfg)
+        # This propagator manages the image-feature-store buffer lifecycle
+        # itself (see the feature-reuse cache below): propagate() keeps its
+        # features alive past the step and the following add_masks() consumes or
+        # drops them. Silence Cutie's built-in end-of-life leak warning because
+        # one retained entry after the final propagate is by design, not a bug.
+        self.processor.image_feature_store.no_warning = True
+        self._tracklet_object_dict: dict[int, int] = {}
+        self._object_ids: list[int] = []
+        self._initialized = False
+        # largest immutable Cutie object ID ever assigned
+        self._last_object_id = 0
+        # NOTE: Reserved for future add-mask behavior closer to the original McByte logic:
+        # inserting new masks into the previous-frame prediction before feeding Cutie
+        # again. It is updated during propagation and kept for upcoming lifecycle work.
+        self._last_indexed_mask: np.ndarray | None = None
+        # --- Cutie image-feature reuse cache (P3-2) ---
+        # InferenceCore.step encodes the frame's image features and, by default,
+        # drops them at the end of the step. When a new object appears on the
+        # next iteration, MaskManager calls add_masks() on that same (now
+        # "previous") frame, which would re-encode the identical pixels under a
+        # fresh internal time index. propagate() therefore keeps its features
+        # alive (delete_buffer=False) and records the store index plus the frame;
+        # the following add_masks() pre-seeds those features so its step skips one
+        # full image encode. Reuse is bit-identical: image features are a
+        # deterministic function of the (deterministically resized + padded)
+        # frame, so the result matches a fresh encode exactly.
+        self._cached_feature_ti: int | None = None
+        self._cached_feature_frame: np.ndarray | None = None
+
+    def _drop_cached_features(self) -> None:
+        """Delete the image-feature-store entry kept alive for add_masks reuse.
+
+        Called whenever the retained features become unusable: at reset, at
+        (re-)initialization, once an add_masks() has consumed them, and before a
+        new propagate() keeps its own. This is mandatory rather than cosmetic:
+        ``clear_memory`` restarts ``InferenceCore.curr_ti`` at ``-1``, so a stale
+        entry at an old time index would otherwise be silently re-read once the
+        counter cycles back to that index, corrupting a later frame's features.
+        """
+        if self._cached_feature_ti is not None:
+            self.processor.image_feature_store.delete(self._cached_feature_ti)
+            self._cached_feature_ti = None
+            self._cached_feature_frame = None
+
+    def reset(self) -> None:
+        """Reset Cutie temporal memory and object mappings."""
+        self.processor.clear_memory()
+        self._drop_cached_features()
+        self._tracklet_object_dict = {}
+        self._object_ids = []
+        self._last_object_id = 0
+        self._last_indexed_mask = None
+        self._initialized = False
+
+    @torch.inference_mode()
+    def initialize(
+        self,
+        frame: np.ndarray,
+        mask_output: MaskOutput,
+    ) -> None:
+        """Initialize Cutie memory from masks on the given frame."""
+        if mask_output.masks is None:
+            self.reset()
+            return
+
+        if mask_output.masks.ndim != 3:
+            raise ValueError(
+                f"CutieMaskPropagator expects masks with shape (N, H, W). Got shape {mask_output.masks.shape}."
+            )
+
+        num_masks = mask_output.masks.shape[0]
+        if len(mask_output.tracklet_mask_dict) != num_masks:
+            raise ValueError(
+                "Number of tracklet-mask mappings must match number of masks. "
+                f"Got {len(mask_output.tracklet_mask_dict)} mappings for {num_masks} masks."
+            )
+
+        if num_masks == 0:
+            self.reset()
+            return
+
+        expected_indices = list(range(num_masks))
+        actual_indices = sorted(mask_output.tracklet_mask_dict.values())
+        if actual_indices != expected_indices:
+            raise ValueError(
+                "MaskOutput tracklet_mask_dict must map tracklet IDs to local mask "
+                f"indices {expected_indices}. Got {actual_indices}."
+            )
+
+        # Start from a clean slate. Cutie's InferenceCore retains temporal and
+        # sensory memory across step() calls, and only reset() clears it. A
+        # mid-sequence re-initialization — MaskManager flips ``_initialized``
+        # back to False after a failed propagate(), or every tracked object is
+        # removed and new ones later enter — would otherwise step Cutie with a
+        # fresh set of object IDs against the previous segment's residual
+        # memory, silently contaminating the new masks and colliding on reused
+        # low object IDs. Clearing here makes initialize() correct regardless of
+        # caller ordering.
+        self.processor.clear_memory()
+        # clear_memory restarts curr_ti at -1; drop any feature entry held from a
+        # previous segment so the reused time index cannot collide (see
+        # _drop_cached_features). initialize() does not itself keep features —
+        # the frame it encodes is not the one add_masks runs on next.
+        self._drop_cached_features()
+
+        self._tracklet_object_dict = _build_tracklet_object_dict(mask_output.tracklet_mask_dict)
+
+        # For the first masks (initializing Cutie), these will be 1,2,...,N
+        # In case of adding new masks and removing the redundant ones, this list
+        # will be evolving
+        self._object_ids = [
+            object_id
+            for _, object_id in sorted(
+                self._tracklet_object_dict.items(),
+                key=lambda item: item[1],
+            )
+        ]
+        self._last_object_id = max(self._object_ids, default=0)
+        self._last_indexed_mask = _binary_masks_to_indexed_mask(
+            masks=mask_output.masks,
+            object_ids=self._object_ids,
+        )
+
+        frame_torch = _image_to_torch(frame, self.device)
+        masks_torch = _binary_masks_to_non_overlapping_torch(mask_output.masks, self.device)
+
+        with _autocast_context(self.use_amp, self.device):
+            _ = self.processor.step(
+                frame_torch,
+                masks_torch,
+                objects=self._object_ids,
+                idx_mask=False,
+            )
+
+        self._initialized = True
+
+    @torch.inference_mode()
+    def propagate(
+        self,
+        frame: np.ndarray,
+    ) -> MaskOutput | None:
+        """Propagate initialized masks to the given frame."""
+        if not self._initialized:
+            return None
+
+        frame_torch = _image_to_torch(frame, self.device)
+
+        # Drop any features kept by an earlier propagate that no add_masks
+        # consumed (a run of frames with no new objects), then keep this frame's
+        # features alive for a possible add_masks on the next iteration.
+        # delete_buffer=False changes only buffer retention, not the returned
+        # probabilities, so propagate output is unaffected.
+        self._drop_cached_features()
+        with _autocast_context(self.use_amp, self.device):
+            prob = self.processor.step(frame_torch, delete_buffer=False)
+        self._cached_feature_ti = self.processor.curr_ti
+        self._cached_feature_frame = frame
+
+        # One full-resolution channel reduction shared by the indexed mask and
+        # the per-object confidence stats below.
+        max_result = torch.max(prob, dim=0)
+
+        # Convert Cutie's temporary tensor IDs back to immutable object IDs.
+        # This is required because temporary IDs may change after object removal.
+        indexed_mask = _output_prob_to_object_indexed_mask(
+            processor=self.processor,
+            prob=prob,
+            max_indices=max_result.indices,
+        )
+        self._last_indexed_mask = indexed_mask.copy()
+
+        masks = _indexed_mask_to_binary_masks(
+            indexed_mask=indexed_mask,
+            object_ids=self._object_ids,
+        )
+
+        # --- Internal states: ---
+        # self._tracklet_object_dict : tracklet_id -> Cutie object_id
+        # self._object_ids : Cutie object IDs, in same order as returned masks
+        # --- MaskOutput format (a common contract): ---
+        # Do not change Cutie's internal IDs. Only convert them back
+        # at the returned MaskOutput to expose the common external contract:
+        # tracklet_mask_dict: tracklet_id -> local index in MaskOutput.masks
+        # mask_avg_prob_dict: tracklet_id -> confidence
+        object_avg_prob_dict = _compute_mask_avg_prob_dict(
+            prob=prob,
+            object_ids=self._object_ids,
+            object_id_to_tmp_id=_get_object_id_to_tmp_id(self.processor),
+            max_result=max_result,
+        )
+
+        object_id_to_mask_index = {object_id: mask_index for mask_index, object_id in enumerate(self._object_ids)}
+
+        tracklet_mask_dict = {
+            tracklet_id: object_id_to_mask_index[object_id]
+            for tracklet_id, object_id in self._tracklet_object_dict.items()
+            if object_id in object_id_to_mask_index
+        }
+
+        mask_avg_prob_dict = {
+            tracklet_id: object_avg_prob_dict[object_id]
+            for tracklet_id, object_id in self._tracklet_object_dict.items()
+            if object_id in object_avg_prob_dict
+        }
+
+        return MaskOutput(
+            masks=masks,
+            tracklet_mask_dict=tracklet_mask_dict,
+            mask_avg_prob_dict=mask_avg_prob_dict,
+        )
+
+    def _load_config(
+        self,
+        cutie_module: Any,
+        config_path: str | Path | None,
+        config_name: str,
+    ) -> Any:
+        """Load Cutie Hydra config and inject runtime overrides.
+
+        Besides the selected weights path, streaming-oriented runtime options (``max_internal_size``, ``mem_every``,
+        ``use_long_term``) are written into the top-level config. Non-``None`` top-level values survive Cutie's
+        ``get_dataset_cfg`` escalation and are read by ``InferenceCore`` and ``MemoryManager`` at construction time.
+        """
+        try:
+            from hydra import compose, initialize_config_dir
+            from omegaconf import open_dict
+        except ImportError as exc:
+            # TODO: Update these installation instructions once Cutie dependency
+            # management is finalized in Trackers. (+ a related note in __init__())
+            msg = (
+                "Cutie config loading requires Hydra and OmegaConf. "
+                "They should normally be installed with Cutie. "
+                "Please verify your Cutie installation."
+            )
+            raise ImportError(msg) from exc
+
+        if config_path is None:
+            cutie_package_dir = _get_cutie_package_dir(cutie_module)
+            self.config_path = cutie_package_dir / "config"
+        else:
+            self.config_path = Path(config_path)
+
+        if not self.config_path.exists():
+            raise FileNotFoundError(
+                f"Cutie config directory not found: {self.config_path}. "
+                "Pass config_path explicitly if Cutie is installed in a custom location."
+            )
+
+        with initialize_config_dir(
+            version_base="1.3.2",
+            config_dir=str(self.config_path.resolve()),
+            job_name="eval_config",
+        ):
+            cfg = compose(config_name=config_name)
+
+        with open_dict(cfg):
+            cfg["weights"] = self.weights_path
+            cfg["max_internal_size"] = self.max_internal_size
+            if self.mem_every is not None:
+                cfg["mem_every"] = self.mem_every
+            if self.use_long_term is not None:
+                cfg["use_long_term"] = self.use_long_term
+
+        return cfg
+
+    @torch.inference_mode()
+    def add_masks(
+        self,
+        frame: np.ndarray,
+        mask_output: MaskOutput,
+    ) -> None:
+        """Add externally generated masks to Cutie memory.
+
+        This method does not create masks itself. It receives masks through ``MaskOutput``, for example from
+        ``SAMBoxMaskGenerator``. The method assigns new immutable Cutie object IDs, feeds the masks into Cutie memory on
+        the given reference frame, and updates the propagator's tracklet/object state.
+        """
+        if not self._initialized:
+            raise RuntimeError(
+                "CutieMaskPropagator must be initialized before calling add_masks(). Call initialize() first."
+            )
+
+        if mask_output.masks is None:
+            return
+
+        if mask_output.masks.ndim != 3:
+            raise ValueError(
+                f"CutieMaskPropagator expects masks with shape (N, H, W). Got shape {mask_output.masks.shape}."
+            )
+
+        num_masks = mask_output.masks.shape[0]
+        if len(mask_output.tracklet_mask_dict) != num_masks:
+            raise ValueError(
+                "Number of tracklet-mask mappings must match number of masks. "
+                f"Got {len(mask_output.tracklet_mask_dict)} mappings for {num_masks} masks."
+            )
+
+        if num_masks == 0:
+            return
+
+        expected_indices = list(range(num_masks))
+        actual_indices = sorted(mask_output.tracklet_mask_dict.values())
+        if actual_indices != expected_indices:
+            raise ValueError(
+                "MaskOutput tracklet_mask_dict must map tracklet IDs to local mask "
+                f"indices {expected_indices}. Got {actual_indices}."
+            )
+
+        duplicate_tracklet_ids = set(mask_output.tracklet_mask_dict) & set(self._tracklet_object_dict)
+        if len(duplicate_tracklet_ids) > 0:
+            raise ValueError(
+                f"Cannot add masks for tracklets that already have Cutie objects: {sorted(duplicate_tracklet_ids)}."
+            )
+
+        sorted_tracklet_ids = [
+            tracklet_id
+            for tracklet_id, _ in sorted(
+                mask_output.tracklet_mask_dict.items(),
+                key=lambda item: item[1],
+            )
+        ]
+
+        new_object_ids = list(
+            range(
+                self._last_object_id + 1,
+                self._last_object_id + num_masks + 1,
+            )
+        )
+
+        indexed_mask = _binary_masks_to_indexed_mask(
+            masks=mask_output.masks,
+            object_ids=new_object_ids,
+        )
+
+        frame_torch = _image_to_torch(frame, self.device)
+        indexed_mask_torch = torch.from_numpy(indexed_mask).long().to(self.device)
+
+        # If this frame is the one the previous propagate already encoded, reuse
+        # those image features instead of re-encoding identical pixels. step()
+        # increments curr_ti before its get_features/get_key lookups, so seed the
+        # store under the next index; step() deletes that copy itself
+        # (delete_buffer defaults True) and _drop_cached_features drops the
+        # original below. The identity guard keeps this correct even if a caller
+        # feeds add_masks a different frame than was last propagated.
+        if (
+            self._cached_feature_ti is not None
+            and self._cached_feature_frame is not None
+            and (frame is self._cached_feature_frame or np.array_equal(frame, self._cached_feature_frame))
+        ):
+            store = self.processor.image_feature_store
+            store_dict = getattr(store, "_store", None)
+            if isinstance(store_dict, dict) and self._cached_feature_ti in store_dict:
+                store_dict[self._cached_feature_ti + 1] = store_dict[self._cached_feature_ti]
+
+        with _autocast_context(self.use_amp, self.device):
+            prob = self.processor.step(
+                frame_torch,
+                indexed_mask_torch,
+                objects=new_object_ids,
+                idx_mask=True,
+            )
+
+        # Kept features are now consumed (or were unusable); drop them so the
+        # store never accumulates entries across iterations.
+        self._drop_cached_features()
+
+        self._last_object_id = max(new_object_ids)
+        self._tracklet_object_dict.update(zip(sorted_tracklet_ids, new_object_ids))
+        self._object_ids.extend(new_object_ids)
+        self._last_indexed_mask = _output_prob_to_object_indexed_mask(
+            processor=self.processor,
+            prob=prob,
+        )
+
+    def remove_masks(
+        self,
+        tracklet_ids: list[int],
+    ) -> None:
+        """Remove masks associated with the given tracklet IDs from Cutie memory."""
+        if not self._initialized:
+            raise RuntimeError(
+                "CutieMaskPropagator must be initialized before calling remove_masks(). Call initialize() first."
+            )
+
+        if len(tracklet_ids) == 0:
+            return
+
+        object_ids_to_remove = [
+            self._tracklet_object_dict[tracklet_id]
+            for tracklet_id in tracklet_ids
+            if tracklet_id in self._tracklet_object_dict
+        ]
+
+        # If the requested tracklets never had a mask, simply ignore the request.
+        # This can happen when masks are not created instantly (e.g. when a bounding box
+        # is too covered by another one to get its own mask).
+        # NOTE: This delay will be introduced later.
+        if len(object_ids_to_remove) == 0:
+            return
+
+        self.processor.delete_objects(object_ids_to_remove)
+
+        for tracklet_id in tracklet_ids:
+            self._tracklet_object_dict.pop(tracklet_id, None)
+
+        # For efficient Python filtering
+        object_ids_to_remove_set = set(object_ids_to_remove)
+
+        self._object_ids = [object_id for object_id in self._object_ids if object_id not in object_ids_to_remove_set]
+
+        # If the previous indexed mask contains pixels belonging to removed objects,
+        # turn those pixels into background in this cached mask state.
+        if self._last_indexed_mask is not None:
+            self._last_indexed_mask[np.isin(self._last_indexed_mask, object_ids_to_remove)] = 0
+
+        # No active objects remain, so propagation has nothing valid to propagate.
+        # Clear Cutie's temporal memory now (not only object mappings) so no
+        # residual state survives into a later re-initialization; this mirrors
+        # reset() and complements the self-cleaning initialize().
+        if len(self._object_ids) == 0:
+            self.processor.clear_memory()
+            self._drop_cached_features()
+            self._last_indexed_mask = None
+            self._initialized = False

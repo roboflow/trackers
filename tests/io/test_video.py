@@ -27,17 +27,16 @@ VIDEO_COMPRESSION_TOLERANCE = 5
 def create_frame(index: int) -> np.ndarray:
     """Create a test frame with deterministic pixel values for verification.
 
-    Each frame has all pixels set to the same value derived from the index.
-    The value is calculated as index * VALUE_MULTIPLIER (clamped to 255).
+    Each frame has all pixels set to the same value derived from the index. The value is calculated as index *
+    VALUE_MULTIPLIER (clamped to 255).
 
-    We use VALUE_MULTIPLIER=40 to spread values apart (0, 40, 80, 120, ...)
-    because video codecs like mp4v use lossy compression that can alter
-    pixel values by small amounts. Adjacent values like 0, 1, 2, 3 would
-    become indistinguishable after compression, but 0, 40, 80, 120 remain
-    clearly distinguishable even with compression artifacts.
+    We use VALUE_MULTIPLIER=40 to spread values apart (0, 40, 80, 120, ...) because video codecs like mp4v use lossy
+    compression that can alter pixel values by small amounts. Adjacent values like 0, 1, 2, 3 would become
+    indistinguishable after compression, but 0, 40, 80, 120 remain clearly distinguishable even with compression
+    artifacts.
 
-    For lossless formats (PNG, JPG with quality=100), exact matching works.
-    For video files, use expected_frame_value() with a tolerance check.
+    For lossless formats (PNG, JPG with quality=100), exact matching works. For video files, use expected_frame_value()
+    with a tolerance check.
     """
     pixel_value = min(index * VALUE_MULTIPLIER, 255)
     return np.full((FRAME_HEIGHT, FRAME_WIDTH, 3), pixel_value, dtype=np.uint8)

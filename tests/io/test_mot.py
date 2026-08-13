@@ -30,15 +30,15 @@ def _frame(
 class TestMotDistractorPreprocessing:
     """GT preprocessing must follow TrackEval's class-based distractor handling.
 
-    TrackEval (`mot_challenge_2d_box.py`) scores only the pedestrian class (1)
-    and drops tracker detections that best-match a distractor-class region
-    `{2, 7, 8, 12}`. These cases never appear in the single-class SportsMOT /
-    DanceTrack integration fixtures, so they are covered here directly.
+    TrackEval (`mot_challenge_2d_box.py`) scores only the pedestrian class (1) and drops tracker detections that best-
+    match a distractor-class region `{2, 7, 8, 12}`. These cases never appear in the single-class SportsMOT / DanceTrack
+    integration fixtures, so they are covered here directly.
     """
 
     def test_distractor_class_excluded_and_matching_tracker_removed(self) -> None:
-        """A distractor-class GT (conf==1) must not be scored as GT, and a
-        tracker detection overlapping it must be removed rather than counted FP.
+        """A distractor-class GT (conf==1) must not be scored as GT, and a tracker detection overlapping it must be
+        removed rather than counted FP.
+
         A separate ignored pedestrian (conf==0) must also be dropped from GT.
         """
         ground_truth = {
@@ -91,9 +91,7 @@ class TestMotDistractorPreprocessing:
         ],
     )
     def test_all_distractor_classes_excluded(self, distractor_class: int) -> None:
-        """Every class in _DISTRACTOR_CLASSES must be excluded from GT and suppress
-        an overlapping tracker detection.
-        """
+        """Every class in _DISTRACTOR_CLASSES must be excluded from GT and suppress an overlapping tracker detection."""
         ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [distractor_class])}
         tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
 
@@ -105,9 +103,8 @@ class TestMotDistractorPreprocessing:
     def test_ignored_non_distractor_gt_does_not_suppress_tracker(self) -> None:
         """GT (conf=0, non-distractor class) is neither scored GT nor a distractor.
 
-        A tracker detection overlapping it must be kept, not suppressed.  Before
-        this PR the old `~valid_mask` would have included such rows in the
-        distractor mask; the new class-based mask must NOT.
+        A tracker detection overlapping it must be kept, not suppressed.  Before this PR the old `~valid_mask` would
+        have included such rows in the distractor mask; the new class-based mask must NOT.
         """
         ground_truth = {
             1: _frame([1], [[0, 0, 10, 10]], [0.0], [5])  # conf=0, class=5 (vehicle)
@@ -161,9 +158,8 @@ class TestMotDistractorPreprocessing:
         assert len(sequence.tracker_ids) == 2
 
     def test_single_class_sequence_unaffected(self) -> None:
-        """SportsMOT / DanceTrack-style data (all pedestrian, conf==1) must be
-        passed through unchanged, so existing parity is preserved.
-        """
+        """SportsMOT / DanceTrack-style data (all pedestrian, conf==1) must be passed through unchanged, so existing
+        parity is preserved."""
         ground_truth = {
             1: _frame([1, 2], [[0, 0, 10, 10], [50, 50, 10, 10]], [1.0, 1.0], [1, 1]),
         }
