@@ -34,7 +34,7 @@ class BoTSORTTracklet(BaseTracklet):
       never explicitly fed ``update(None)``.
     * ``number_of_successful_updates`` counts every successful measurement
       update (never reset on a miss).
-    * ``apply_cmc(H)`` applies a 2x3 affine camera-motion transform to the
+    * ``apply_cmc(affine_mtx)`` applies a 2x3 affine camera-motion transform to the
       internal Kalman state and covariance.
     """
 
