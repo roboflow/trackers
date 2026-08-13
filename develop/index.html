@@ -181,7 +181,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-12",
+  "dateModified": "2026-08-13",
   "datePublished": "2025-04-14"
 }
 </script>
@@ -937,6 +937,17 @@
     <span class="md-ellipsis">
       
         FAQ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to go next
       
     </span>
   </a>
@@ -2363,6 +2374,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#where-to-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to go next
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2391,9 +2413,10 @@
 
 </div>
 
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17-default table, ByteTrack HOTA + OC-SORT HOTA cells. Update results.md first, then mirror here. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17-default table, McByte HOTA cell. Update results.md first, then mirror here. -->
 
-<p>Roboflow Trackers achieves 60.1 HOTA (ByteTrack) and 61.9 HOTA (OC-SORT) on MOT17 with default parameters, benchmarked across four standard datasets. Apache 2.0, Python 3.10+, 71K+ monthly PyPI installs.</p>
+<p>Roboflow Trackers achieves 64.1 HOTA on MOT17 with McByte, benchmarked across four standard datasets, with ByteTrack and OC-SORT as zero-extra-dependency defaults. Apache 2.0, Python 3.10+.</p>
+<p>Current release: v2.6.0 — see the <a href="changelog/">changelog</a> for release history.</p>
 <video width="100%" controls muted loop preload="none" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
   <track src="assets/track-objects-page.vtt" kind="captions" srclang="en" label="English" default>
@@ -2402,7 +2425,7 @@
 <hr />
 <h2 id="install">Install</h2>
 <p>Get started by installing the package.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install trackers
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>trackers
 </span></code></pre></div>
 <p>For more options, see the <a href="guides/install/">install guide</a>.</p>
 <hr />
@@ -2422,6 +2445,7 @@
 <hr />
 <h2 id="track-from-python">Track from Python</h2>
 <p>Plug trackers into your existing detection pipeline. Works with any detector.</p>
+<p>This example uses the <code>inference</code> package for detection — install it separately with <code>pip install inference</code> (it is not part of the base <code>trackers</code> install or any of its extras).</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">supervision</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sv</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">inference</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_model</span>
@@ -2444,11 +2468,11 @@
 <hr />
 <h2 id="evaluate">Evaluate</h2>
 <p>Benchmark your tracker against ground truth with standard MOT metrics.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>trackers eval \
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    --gt_dir ./data/mot17/val \
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    --predictions_dir results \
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    --metrics &#39;[CLEAR,HOTA,Identity]&#39; \
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    --columns &#39;[MOTA,HOTA,IDF1]&#39;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>trackers<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span>--gt_dir<span class="w"> </span>./data/mot17/val<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span>--predictions_dir<span class="w"> </span>results<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span>--metrics<span class="w"> </span><span class="s1">&#39;[CLEAR,HOTA,Identity]&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span>--columns<span class="w"> </span><span class="s1">&#39;[MOTA,HOTA,IDF1]&#39;</span>
 </span></code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Sequence                        MOTA    HOTA    IDF1
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>----------------------------------------------------
@@ -2466,7 +2490,7 @@
 <hr />
 <h2 id="algorithms">Algorithms</h2>
 <p>Clean, modular implementations of leading trackers. All HOTA scores use default parameters.</p>
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT/McByte rows (no C-BIoU row here). Also duplicated in [README.md](../README.md)'s Algorithms table (which additionally has a C-BIoU row) and [.github/copilot-instructions.md](../.github/copilot-instructions.md)'s Benchmark Results table. Update results.md first, then mirror all three copies. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte rows. Also duplicated in [README.md](../README.md)'s Algorithms table and [.github/copilot-instructions.md](../.github/copilot-instructions.md)'s Benchmark Results table. Update results.md first, then mirror both copies. -->
 
 <table>
 <thead>
@@ -2513,6 +2537,14 @@
 <td style="text-align: center;">57.8</td>
 </tr>
 <tr>
+<td style="text-align: center;"><a href="https://arxiv.org/abs/2211.14317">C-BIoU</a></td>
+<td style="text-align: center;">Cascaded buffered IoU matching for fast or irregular motion.</td>
+<td style="text-align: center;">63.0</td>
+<td style="text-align: center;">73.1</td>
+<td style="text-align: center;">82.6</td>
+<td style="text-align: center;">56.7</td>
+</tr>
+<tr>
 <td style="text-align: center;"><a href="trackers/mcbyte/">McByte</a></td>
 <td style="text-align: center;">Mask-conditioned tracking — adds propagated SAM/Cutie masks as a cue.*</td>
 <td style="text-align: center;"><strong>64.1</strong></td>
@@ -2522,7 +2554,10 @@
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
 <p>*McByte needs optional heavyweight deps (<code>torch</code>, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the <a href="trackers/mcbyte/">McByte docs</a> for setup.</p>
+</div>
 <p>For detailed benchmarks and tuned configurations, see the <a href="evaluations/results/">tracker comparison</a>.</p>
 <hr />
 <h2 id="download-datasets">Download Datasets</h2>
@@ -2546,18 +2581,19 @@
 <td style="text-align: center;"><code>mot17</code></td>
 <td style="text-align: center;">Pedestrian tracking with crowded scenes and frequent occlusions.</td>
 <td style="text-align: center;"><code>train</code>, <code>val</code>, <code>test</code></td>
-<td style="text-align: center;"><code>frames</code>, <code>annotations</code>, <code>detections</code></td>
+<td style="text-align: center;"><code>frames</code>, <code>annotations</code>*, <code>detections</code></td>
 <td style="text-align: center;">CC BY-NC-SA 3.0</td>
 </tr>
 <tr>
 <td style="text-align: center;"><code>sportsmot</code></td>
 <td style="text-align: center;">Sports broadcast tracking with fast motion and similar-looking targets.</td>
 <td style="text-align: center;"><code>train</code>, <code>val</code>, <code>test</code></td>
-<td style="text-align: center;"><code>frames</code>, <code>annotations</code></td>
+<td style="text-align: center;"><code>frames</code>, <code>annotations</code>*</td>
 <td style="text-align: center;">CC BY 4.0</td>
 </tr>
 </tbody>
 </table>
+<p>*<code>test</code> splits withhold ground-truth annotations for held-out evaluation. <code>sportsmot</code> ships no pre-computed <code>detections</code> asset at any split.</p>
 <p>For more download options, see the <a href="evaluations/download/">download guide</a>.</p>
 <hr />
 <h2 id="try-it">Try It</h2>
@@ -2599,15 +2635,24 @@
 <p><strong>What is multi-object tracking and how does it differ from object detection?</strong></p>
 <p>Object detection finds and classifies objects in a single image frame. Multi-object tracking assigns a persistent ID to each detected object across video frames, maintaining continuity through occlusions, re-entries, and camera motion. Trackers use a detect-then-track approach: a detector runs on each frame, and the tracker links detections across time using motion models and spatial matching.</p>
 <p><strong>Which tracker should I use?</strong></p>
-<!-- BENCH-XREF derived-claim: "McByte leads every benchmark in our evaluation" depends on McByte being the bolded best in ALL FOUR [docs/evaluations/results.md](evaluations/results.md) Default tables (mot17/sportsmot/soccernet/dancetrack). If any Default table's leader changes, re-verify this sentence. -->
+<!-- BENCH-XREF derived-claim: "McByte leads HOTA on every benchmark at default parameters" depends on McByte being the bolded HOTA best in ALL FOUR [docs/evaluations/results.md](evaluations/results.md) Default tables (mot17/sportsmot/soccernet/dancetrack). If any Default table's HOTA leader changes, re-verify this sentence. -->
 
-<p>Start with ByteTrack — it's the default, has no extra dependencies, handles variable-confidence detectors well, and runs at real time latency. For the highest accuracy, McByte leads every benchmark in our evaluation but requires optional SAM/Cutie mask dependencies; BoT-SORT is the best lightweight option when camera motion is significant. Use SORT if speed or device constraints require the lightest possible tracker. See the <a href="evaluations/results/">tracker comparison</a> for benchmark scores.</p>
+<p>Start with ByteTrack — it's the default, has no extra dependencies, handles variable-confidence detectors well, and runs at real time latency. For the highest accuracy, McByte leads HOTA on every benchmark at default parameters but requires optional SAM/Cutie mask dependencies; BoT-SORT is the best lightweight option when camera motion is significant. Use SORT if speed or device constraints require the lightest possible tracker. See the <a href="evaluations/results/">tracker comparison</a> for benchmark scores.</p>
 <p><strong>Do I need a specific detector?</strong></p>
 <p>No. Roboflow Trackers works with any detector that outputs <code>supervision.Detections</code> objects. The library ships example pipelines using RF-DETR but is compatible with YOLO, Detectron2, and any custom model. The tracker never inspects the detection model directly.</p>
 <p><strong>What MOT datasets does the library support?</strong></p>
-<p>MOT17 and SportsMOT are supported for download and evaluation. Use <code>trackers download --name &lt;dataset&gt;</code> to pull frames, annotations, and pre-computed detections in one command. DanceTrack and SoccerNet-tracking support is coming soon. See the <a href="evaluations/download/">download guide</a> for asset options.</p>
+<p>MOT17 and SportsMOT are supported for download and evaluation. Use <code>trackers download --name &lt;dataset&gt;</code> to pull the assets available for that dataset and split: MOT17 ships frames, annotations, and pre-computed detections (test split has no annotations); SportsMOT ships frames and annotations only, with no pre-computed detections asset (test split has frames only). DanceTrack and SoccerNet-tracking support is coming soon. See the <a href="evaluations/download/">download guide</a> for asset options.</p>
 <p><strong>How do I evaluate my tracker?</strong></p>
 <p>Run <code>trackers eval</code> against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table. See the <a href="evaluations/evaluate/">evaluation guide</a> for the full workflow.</p>
+<hr />
+<h2 id="where-to-go-next">Where to go next</h2>
+<ul>
+<li><strong>New to tracking?</strong> Start with the <a href="guides/track/">tracking guide</a> — it walks through the Python API and CLI end to end.</li>
+<li><strong>Want benchmarks?</strong> The <a href="evaluations/results/">tracker comparison</a> covers all six algorithms across all four datasets, at default and tuned parameters.</li>
+<li><strong>Building a research pipeline?</strong> The <a href="evaluations/evaluate/">evaluation guide</a> covers the full offline benchmarking workflow.</li>
+<li><strong>Full API reference</strong> → <a href="api/trackers/">API reference</a></li>
+<li><strong>Questions?</strong> Find us on <a href="https://discord.gg/GbfgXGJ8Bk">Discord</a>.</li>
+</ul>
 
 
 
@@ -2630,7 +2675,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 12, 2026 13:18:13 UTC">2026-08-12</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 13, 2026 09:50:24 UTC">2026-08-13</span>
   </span>
 
     
