@@ -201,7 +201,10 @@ class OCSORTTracker(BaseTracker):
         Args:
             detections: `sv.Detections` containing bounding boxes with shape
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
-                confidence scores.
+                confidence scores. When `detections.confidence is None`, all
+                detections are treated as confidence `1.0` -- they bypass
+                `high_conf_det_threshold` entirely and are eligible for
+                association/spawning regardless of its value.
             frame: Ignored by OC-SORT. If provided (not `None`), a warning is
                 emitted.
             timestamp: Absolute time of the current frame in seconds, or ``None``
@@ -209,7 +212,10 @@ class OCSORTTracker(BaseTracker):
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
-            Unmatched or immature tracks have tracker_id of -1.
+            Unmatched or immature tracks, and detections below
+            `high_conf_det_threshold` (which are never associated or used to
+            spawn a track), have tracker_id of -1. Detection order may differ
+            from input.
 
         Warns:
             UserWarning: If ``frame`` is passed but OC-SORT does not perform
@@ -225,11 +231,27 @@ class OCSORTTracker(BaseTracker):
             result.tracker_id = np.array([], dtype=int)
             return result
 
-        if detections.confidence is not None:
-            detections = detections[detections.confidence >= self.high_conf_det_threshold]
+        detection_boxes_full = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
+        confidences_full = default_confidences(detections)
 
-        detection_boxes = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
-        confidences = default_confidences(detections)
+        # Only high-confidence detections enter association/spawning below (OC-SORT
+        # has no ByteTrack-style low-confidence recovery stage). Low-confidence
+        # detections still need one row in the output, so their indices are kept
+        # separately instead of dropping them from `detections` outright.
+        # When confidence is absent, every detection counts as high-confidence
+        # regardless of `high_conf_det_threshold` -- matching the historical
+        # behaviour of `if detections.confidence is not None: filter(...)`, which
+        # never compared the (fabricated) 1.0 default against the threshold.
+        high_mask: np.ndarray
+        if detections.confidence is None:
+            high_mask = np.ones(len(confidences_full), dtype=bool)
+        else:
+            high_mask = confidences_full >= self.high_conf_det_threshold
+        high_indices = np.where(high_mask)[0]
+        low_indices = np.where(~high_mask)[0]
+
+        detection_boxes = detection_boxes_full[high_indices]
+        confidences = confidences_full[high_indices]
 
         # Collect (detection_index, tracker_id) pairs; assembled into
         # the output sv.Detections once at the end.
@@ -268,7 +290,7 @@ class OCSORTTracker(BaseTracker):
                 self.frame_count,
                 self._allocate_tracker_id,
             )
-            out_det_indices.append(col)
+            out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(tid)
 
         # 2nd chance association (OCR)
@@ -292,24 +314,31 @@ class OCSORTTracker(BaseTracker):
                     self.frame_count,
                     self._allocate_tracker_id,
                 )
-                out_det_indices.append(det_idx)
+                out_det_indices.append(int(high_indices[det_idx]))
                 out_tracker_ids.append(tid)
 
             remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
             self._spawn_new_tracklets(detection_boxes[remaining_indices])
             for det_idx in remaining_indices:
-                out_det_indices.append(det_idx)
+                out_det_indices.append(int(high_indices[det_idx]))
                 out_tracker_ids.append(-1)
         else:
             self._spawn_new_tracklets(detection_boxes[unmatched_detections])
             for det_idx in unmatched_detections:
-                out_det_indices.append(det_idx)
+                out_det_indices.append(int(high_indices[det_idx]))
                 out_tracker_ids.append(-1)
+
+        # Low-confidence detections never entered association or spawning above, but
+        # the output must still include one row per input detection (matching the
+        # documented update() contract and SORT/ByteTrack/BoT-SORT/CBIoU behaviour).
+        for det_idx in low_indices:
+            out_det_indices.append(int(det_idx))
+            out_tracker_ids.append(-1)
 
         # Post-association budget prune: removes tracks that exceeded budget after predict
         self.tracks = self._prune_expired_tracklets(timing)
 
-        # Build output — single index into the filtered detections preserves
+        # Build output — single index into the original detections preserves
         # all metadata (confidence, class_id, mask, data dict).
         if out_det_indices:
             result = detections[out_det_indices]
