@@ -1,0 +1,31 @@
+name: ReID Pre-release Compatibility
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reid-integration-smoke:
+    name: ReID Integration Smoke
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: 🐍 Install uv and set Python version
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        with:
+          python-version: "3.12"
+          activate-environment: true
+
+      - name: 🚀 Install Packages with the latest allowed reid pre-release
+        run: uv sync --group dev --extra reid --upgrade-package reid
+
+      - name: 🧪 Smoke-test the trackers to reid boundary
+        run: uv run pytest tests/core/test_botsort_reid.py::TestBoTSORTTrackerReID::test_real_reid_model_runs_over_frames -v --tb=short
