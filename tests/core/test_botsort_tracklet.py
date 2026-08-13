@@ -127,8 +127,8 @@ def test_botsort_tracklet_predict_process_noise_matches_pre_predict_box(
     tracklet: BoTSORTTracklet,
 ) -> None:
     """Q after predict() must equal _build_process_noise() for the box size the tracklet had *before* that predict()
-    call — the same size _refresh_process_noise_from_state() reads internally — across all three state
-    representations, not just the kwarg it was called with."""
+    call — the same size _refresh_process_noise_from_state() reads internally — across all three state representations,
+    not just the kwarg it was called with."""
     bbox = tracklet.get_state_bbox()
     w = max(float(bbox[2] - bbox[0]), 1e-3)
     h = max(float(bbox[3] - bbox[1]), 1e-3)
@@ -142,9 +142,9 @@ def test_botsort_tracklet_predict_process_noise_matches_pre_predict_box(
 def test_botsort_tracklet_update_measurement_noise_matches_pre_update_box(
     tracklet: BoTSORTTracklet,
 ) -> None:
-    """R after update() must equal _build_measurement_noise() for the box size the tracklet had *before* that
-    update() call (the predicted box, not the new observation) — across all three state representations, not just
-    the kwarg it was called with."""
+    """R after update() must equal _build_measurement_noise() for the box size the tracklet had *before* that update()
+    call (the predicted box, not the new observation) — across all three state representations, not just the kwarg it
+    was called with."""
     bbox = tracklet.get_state_bbox()
     w = max(float(bbox[2] - bbox[0]), 1e-3)
     h = max(float(bbox[3] - bbox[1]), 1e-3)
