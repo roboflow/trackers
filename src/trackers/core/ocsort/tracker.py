@@ -252,8 +252,11 @@ class OCSORTTracker(BaseTracker):
         high_indices = np.where(high_mask)[0]
         low_indices = np.where(~high_mask)[0]
 
-        detection_boxes = detection_boxes_full[high_indices]
-        confidences = confidences_full[high_indices]
+        # Subset arrays are indexed *locally* (position within `high_indices`), unlike
+        # ByteTrack's same-named full-length arrays -- `high_indices[i]` maps back to
+        # the caller's detection index. Named `high_*` to match BoT-SORT/CBIoU.
+        high_boxes = detection_boxes_full[high_indices]
+        high_scores = confidences_full[high_indices]
 
         # Collect (detection_index, tracker_id) pairs; assembled into
         # the output sv.Detections once at the end.
@@ -269,13 +272,13 @@ class OCSORTTracker(BaseTracker):
             self.tracks = self._prune_expired_tracklets(timing)
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
-        iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
+        iou_matrix = self.iou.compute(predicted_boxes, high_boxes)
 
         # Skip the direction-consistency computation entirely when it carries no
         # weight. Bit-identical: the matrix is finite and bounded, so the old
         # ``iou_matrix + 0.0 * matrix`` reduces exactly to ``iou_matrix``.
         direction_consistency_matrix = (
-            self._compute_direction_consistency_matrix(detection_boxes, confidences)
+            self._compute_direction_consistency_matrix(high_boxes, high_scores)
             if self.direction_consistency_weight != 0
             else None
         )
@@ -286,7 +289,7 @@ class OCSORTTracker(BaseTracker):
         )
 
         for row, col in matched_indices:
-            self.tracks[row].update(detection_boxes[col], timing)
+            self.tracks[row].update(high_boxes[col], timing)
             tid = self.tracks[row].resolve_tracker_id(
                 self.minimum_consecutive_frames,
                 self.frame_count,
@@ -301,7 +304,7 @@ class OCSORTTracker(BaseTracker):
             # OCR uses standard IoU per the OC-SORT paper (configured variant applies to the primary OCM pass only).
             ocr_iou_matrix = IoU().compute(
                 last_observation_of_tracks,
-                detection_boxes[unmatched_detections],
+                high_boxes[unmatched_detections],
             )
             ocr_matched, _ocr_unmatched_tracks, ocr_unmatched_dets = self._get_associated_indices(
                 ocr_iou_matrix, np.zeros_like(ocr_iou_matrix)
@@ -310,7 +313,7 @@ class OCSORTTracker(BaseTracker):
             for ocr_row, ocr_col in ocr_matched:
                 track_idx = unmatched_tracks[ocr_row]
                 det_idx = unmatched_detections[ocr_col]
-                self.tracks[track_idx].update(detection_boxes[det_idx], timing)
+                self.tracks[track_idx].update(high_boxes[det_idx], timing)
                 tid = self.tracks[track_idx].resolve_tracker_id(
                     self.minimum_consecutive_frames,
                     self.frame_count,
@@ -320,12 +323,12 @@ class OCSORTTracker(BaseTracker):
                 out_tracker_ids.append(tid)
 
             remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
-            self._spawn_new_tracklets(detection_boxes[remaining_indices])
+            self._spawn_new_tracklets(high_boxes[remaining_indices])
             for det_idx in remaining_indices:
                 out_det_indices.append(int(high_indices[det_idx]))
                 out_tracker_ids.append(-1)
         else:
-            self._spawn_new_tracklets(detection_boxes[unmatched_detections])
+            self._spawn_new_tracklets(high_boxes[unmatched_detections])
             for det_idx in unmatched_detections:
                 out_det_indices.append(int(high_indices[det_idx]))
                 out_tracker_ids.append(-1)
