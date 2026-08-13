@@ -64,7 +64,20 @@ BoT-SORT fuses costs as `min(d_iou, d_app)` with `d_app = 0.5 * (1 - cos_sim)`, 
 2. Histogram `d_app` for association-local pairs: same video only, with frame gap bounded by the lost-track horizon (default 30 frames). Positives are same-ID; negatives are different-ID that could co-compete. Sample both classes with the same per-sequence quota, otherwise one crowded sequence decides the answer.
 3. Choose θ so most same-ID pairs fall below it and most different-ID pairs fall above it.
 
-Regenerate these figures with [`notebooks/plot_reid_appearance_distances.py`](https://github.com/roboflow/trackers/blob/develop/notebooks/plot_reid_appearance_distances.py).
+Steps 2 and 3 ship with Trackers, so you can run them on your own footage. Give it embeddings plus the identity, frame and sequence each one came from:
+
+```python
+from trackers.core.reid import plot_appearance_distances, sample_appearance_distances
+
+distances = sample_appearance_distances(embeddings, ids, frame_ids, sequence_ids)
+for threshold in (0.10, 0.20, 0.25):
+    same_id_rate, different_id_rate = distances.rates_at(threshold)
+    print(f"θ={threshold:.2f}: same-ID {same_id_rate:.1%}, different-ID {different_id_rate:.1%}")
+
+plot_appearance_distances(distances, thresholds={0.20: "selected", 0.25: "default"})
+```
+
+See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full signatures. The figures on this page come from [`notebooks/plot_reid_appearance_distances.py`](https://github.com/roboflow/trackers/blob/develop/notebooks/plot_reid_appearance_distances.py), which wraps the same helpers with MOT17 and SoccerNet ground-truth loading.
 
 **MOT17 val, `fastreid_mot17_sbs50`.** Same-ID distances peak near 0 and different-ID near 0.4. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 keeps 68% of same-ID pairs while passing 1.1% of different-ID pairs. Raising θ to the BoT-SORT default 0.25 recovers same-ID pairs (79%) but nearly triples the different-ID pairs it admits (2.9%), which is why 0.2 is the better operating point here ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8 uses the same threshold).
 
@@ -78,13 +91,20 @@ Regenerate these figures with [`notebooks/plot_reid_appearance_distances.py`](ht
 
 ## How far the threshold carries
 
-A histogram fixes one frame gap, so it only describes re-association over that horizon. Sweeping the gap shows how long a track can stay lost before appearance stops helping to re-find it.
+A histogram fixes one frame gap, so it only describes re-association over that horizon. Sweeping the gap shows how long a track can stay lost before appearance stops helping to re-find it. `sweep_frame_gap` repeats the sampling above across widening bands, and `plot_frame_gap_sweep` draws the result:
+
+```python
+from trackers.core.reid import plot_frame_gap_sweep, sweep_frame_gap
+
+sweep = sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids)
+plot_frame_gap_sweep(sweep, thresholds={0.20: "selected", 0.25: "default"})
+```
 
 On MOT17 val, different-ID distances barely move with the gap: the median stays near 0.41 and the 10th percentile near 0.31 from a 1-frame gap out to 240 frames. Same-ID distances spread steadily, from a median of 0.04 at a 1-frame gap to 0.20 across the 16 to 30 band and 0.28 beyond 120 frames.
 
 ROC AUC below is the chance that a random same-ID pair scores closer than a random different-ID pair: 1.0 means the two never cross, 0.5 means appearance carries no information, and its complement is how often a same-ID pair sits farther apart than a different-ID one. It is the area under the curve traced by sweeping θ from 0 to 1 and plotting the two rates next to it, so it summarises every threshold instead of the single one we ship.
 
-It is not the area where the shaded bands cross in the figure. That is two percentile ranges intersecting, which ignores where the mass sits and which side is closer; at a 1-frame gap the bands never touch yet the AUC is 0.998 rather than 1.0. The two rates beside it evaluate the thresholds Trackers actually ships rather than deriving a new one.
+It is not the area where the shaded bands cross in the figure. That is two percentile ranges intersecting, which ignores where the mass sits and which side is closer; at a 1-frame gap the bands never touch yet the AUC is 0.998 rather than 1.0. The two rates beside it evaluate the default 0.25 and the 0.2 this page argues for, rather than deriving a third.
 
 | Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
 | :--------- | :-----: | :---------------: | :--------------------: |

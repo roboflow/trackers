@@ -5,7 +5,12 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Regenerate docs appearance-distance histograms (association-local sampling).
+"""Regenerate the docs appearance-distance figures from MOT17 and SoccerNet GT.
+
+Sampling, separability and plotting all come from
+``trackers.core.reid.thresholds``; what lives here is the dataset-specific part,
+namely reading MOT-format ground truth, encoding the crops, and caching the
+result so the figures can be re-drawn without re-encoding.
 
 Writes:
   docs/assets/reid/mot17-fastreid-appearance-distances.png
@@ -29,7 +34,17 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import supervision as sv
+from matplotlib.figure import Figure
 from reid import FASTREID_MOT17_SBS50, ReIDModel
+
+from trackers.core.reid import (
+    DEFAULT_FRAME_GAP_BANDS,
+    AppearanceDistances,
+    plot_appearance_distances,
+    plot_frame_gap_sweep,
+    sample_appearance_distances,
+    sweep_frame_gap,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ASSETS = REPO_ROOT / "docs" / "assets" / "reid"
@@ -38,15 +53,11 @@ N_INTRA = 5000
 N_INTER = 10000
 MIN_FRAME_GAP = 1
 MAX_FRAME_GAP = 30
-BINS = np.linspace(0.0, 1.0, 51)
-
-# Gap bands for the sweep. The first four sit inside the default lost-track buffer
-# (30 frames); the rest probe re-association after longer occlusions.
-GAP_BUCKETS = [(1, 1), (2, 5), (6, 15), (16, 30), (31, 60), (61, 120), (121, 240)]
 N_SWEEP_PER_CLASS = 8000
-# Symmetric band so both classes are read the same way, wide enough to show the
-# tails that decide where the two distributions start to overlap.
-BAND_PERCENTILES = (10, 90)
+
+# 0.25 is the default, both ours and BoT-SORT's ``appearance_thresh``; 0.20 is what
+# these figures argue for on MOT17.
+REFERENCE_THRESHOLDS = {0.20: "selected", 0.25: "default"}
 
 MOT17_VAL_SEQS = [
     "MOT17-02-FRCNN",
@@ -165,329 +176,6 @@ def load_or_collect_embeddings(
     return emb, ids, frames, seqs
 
 
-def _d_app(a: np.ndarray, b: np.ndarray) -> float:
-    return 0.5 * (1.0 - float(a @ b))
-
-
-class SequenceIndex:
-    """Frame-sorted crop index for one sequence, with O(log n) frame-window lookup.
-
-    ``order`` holds global crop indexes sorted by frame; ``frames`` is the matching frame array. ``positions_by_id``
-    maps a GT id to its slots inside ``order``, which are themselves frame-sorted because the sort is stable.
-    """
-
-    def __init__(self, global_indexes: np.ndarray, gt_ids: np.ndarray, frame_ids: np.ndarray) -> None:
-        order = np.argsort(frame_ids[global_indexes], kind="stable")
-        self.order = global_indexes[order]
-        self.frames = frame_ids[self.order]
-        self.ids = gt_ids[self.order]
-        positions_by_id: dict[int, list[int]] = defaultdict(list)
-        for slot, pid in enumerate(self.ids):
-            positions_by_id[int(pid)].append(slot)
-        self.positions_by_id = {pid: np.asarray(slots) for pid, slots in positions_by_id.items()}
-        self.pairable_ids = [pid for pid, slots in self.positions_by_id.items() if len(slots) > 1]
-
-    def window(self, frames: np.ndarray, anchor_frame: int, lo: int, hi: int) -> tuple[int, int, int, int]:
-        """Half-open slot ranges of ``frames`` whose gap to ``anchor_frame`` is in ``[lo, hi]``."""
-        before = (
-            int(np.searchsorted(frames, anchor_frame - hi, side="left")),
-            int(np.searchsorted(frames, anchor_frame - lo, side="right")),
-        )
-        after = (
-            int(np.searchsorted(frames, anchor_frame + lo, side="left")),
-            int(np.searchsorted(frames, anchor_frame + hi, side="right")),
-        )
-        return before[0], before[1], after[0], after[1]
-
-
-def _pick_in_window(rng: np.random.Generator, window: tuple[int, int, int, int]) -> int | None:
-    """Uniformly pick one slot across the two half-open ranges, or ``None`` if empty."""
-    b_lo, b_hi, a_lo, a_hi = window
-    n_before = max(0, b_hi - b_lo)
-    n_after = max(0, a_hi - a_lo)
-    total = n_before + n_after
-    if total == 0:
-        return None
-    draw = int(rng.integers(total))
-    return b_lo + draw if draw < n_before else a_lo + (draw - n_before)
-
-
-def sample_association_local(
-    embeddings: np.ndarray,
-    gt_ids: np.ndarray,
-    frame_ids: np.ndarray,
-    seq_ids: np.ndarray,
-    *,
-    n_intra: int,
-    n_inter: int,
-    min_frame_gap: int,
-    max_frame_gap: int,
-    seed: int = 0,
-    max_tries_per_sample: int = 64,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Sample same-ID and different-ID crop pairs inside the association horizon.
-
-    Pairs are drawn directly rather than enumerated into a pool, so no cap can bias the result toward whichever sequence
-    happens to be visited first. Each sequence gets an equal quota. Within a sequence, same-ID pairs pick an identity
-    uniformly (so long tracks do not dominate) and different-ID pairs pick an anchor crop uniformly, then a partner
-    uniformly among the crops inside the gap band.
-    """
-    # A zero gap would let a crop pair with itself, which is the artefact that puts a
-    # spike at distance 0 in the original BoT-SORT figure.
-    if min_frame_gap < 1 or max_frame_gap < min_frame_gap:
-        raise ValueError(f"invalid gap band [{min_frame_gap}, {max_frame_gap}], expected 1 <= min <= max")
-    normed = embeddings / (np.linalg.norm(embeddings, axis=1, keepdims=True) + 1e-12)
-    rng = np.random.default_rng(seed)
-
-    unique_seqs = np.unique(seq_ids)
-    indexes = {int(sid): SequenceIndex(np.flatnonzero(seq_ids == sid), gt_ids, frame_ids) for sid in unique_seqs}
-
-    intra: list[float] = []
-    inter: list[float] = []
-    for quota, out, same_id in ((n_intra, intra, True), (n_inter, inter, False)):
-        per_seq = _split_quota(quota, len(unique_seqs))
-        for sid, n_wanted in zip(sorted(indexes), per_seq, strict=True):
-            index = indexes[sid]
-            drawn = 0
-            attempts = 0
-            budget = n_wanted * max_tries_per_sample
-            while drawn < n_wanted and attempts < budget:
-                attempts += 1
-                pair = (
-                    _draw_same_id_pair(rng, index, min_frame_gap, max_frame_gap)
-                    if same_id
-                    else _draw_diff_id_pair(rng, index, min_frame_gap, max_frame_gap)
-                )
-                if pair is None:
-                    continue
-                i, j = pair
-                out.append(_d_app(normed[i], normed[j]))
-                drawn += 1
-            if drawn < n_wanted:
-                label = "same-ID" if same_id else "different-ID"
-                print(
-                    f"  warning: sequence {sid} yielded {drawn}/{n_wanted} {label} pairs "
-                    f"in gap band [{min_frame_gap}, {max_frame_gap}]",
-                    flush=True,
-                )
-    if not intra or not inter:
-        raise ValueError(f"No association-local pairs in gap band [{min_frame_gap}, {max_frame_gap}].")
-    return np.asarray(intra), np.asarray(inter)
-
-
-def _split_quota(total: int, n_buckets: int) -> list[int]:
-    base, remainder = divmod(total, n_buckets)
-    return [base + (1 if k < remainder else 0) for k in range(n_buckets)]
-
-
-def _draw_same_id_pair(
-    rng: np.random.Generator,
-    index: SequenceIndex,
-    lo: int,
-    hi: int,
-) -> tuple[int, int] | None:
-    if not index.pairable_ids:
-        return None
-    slots = index.positions_by_id[index.pairable_ids[int(rng.integers(len(index.pairable_ids)))]]
-    anchor = int(slots[int(rng.integers(len(slots)))])
-    partner_slot = _pick_in_window(rng, index.window(index.frames[slots], int(index.frames[anchor]), lo, hi))
-    if partner_slot is None:
-        return None
-    partner = int(slots[partner_slot])
-    if partner == anchor:
-        return None
-    return int(index.order[anchor]), int(index.order[partner])
-
-
-def _draw_diff_id_pair(
-    rng: np.random.Generator,
-    index: SequenceIndex,
-    lo: int,
-    hi: int,
-) -> tuple[int, int] | None:
-    anchor = int(rng.integers(len(index.order)))
-    partner = _pick_in_window(rng, index.window(index.frames, int(index.frames[anchor]), lo, hi))
-    if partner is None or index.ids[partner] == index.ids[anchor]:
-        return None
-    return int(index.order[anchor]), int(index.order[partner])
-
-
-def roc_auc(intra: np.ndarray, inter: np.ndarray) -> float:
-    """P(same-ID distance < different-ID distance), ties counted as half.
-
-    Threshold-free separability, so it needs no true-positive or false-positive target. 1.0 means the two distributions
-    are disjoint, 0.5 means appearance carries no information.
-    """
-    inter_sorted = np.sort(inter)
-    n_greater = len(inter) - np.searchsorted(inter_sorted, intra, side="right")
-    n_equal = np.searchsorted(inter_sorted, intra, side="right") - np.searchsorted(inter_sorted, intra, side="left")
-    return float(np.mean((n_greater + 0.5 * n_equal) / len(inter)))
-
-
-def sweep_frame_gap(
-    embeddings: np.ndarray,
-    gt_ids: np.ndarray,
-    frame_ids: np.ndarray,
-    seq_ids: np.ndarray,
-    *,
-    buckets: list[tuple[int, int]],
-    n_per_class: int,
-    seed: int,
-) -> list[dict[str, object]]:
-    """Measure separability inside each frame-gap band."""
-    rows: list[dict[str, object]] = []
-    for lo, hi in buckets:
-        try:
-            intra, inter = sample_association_local(
-                embeddings,
-                gt_ids,
-                frame_ids,
-                seq_ids,
-                n_intra=n_per_class,
-                n_inter=n_per_class,
-                min_frame_gap=lo,
-                max_frame_gap=hi,
-                seed=seed,
-            )
-        except ValueError as exc:
-            print(f"  gap [{lo},{hi}]: skipped ({exc})", flush=True)
-            continue
-        rows.append(
-            {
-                "lo": lo,
-                "hi": hi,
-                "label": f"{lo}" if lo == hi else f"{lo}-{hi}",
-                "intra": intra,
-                "inter": inter,
-                "auc": roc_auc(intra, inter),
-            }
-        )
-    return rows
-
-
-def plot_gap_sweep(rows: list[dict[str, object]], *, title: str, out_path: Path) -> None:
-    """Plot how the same-ID and different-ID distance ranges move with the frame gap.
-
-    Deliberately threshold-free: the bands are distribution quantiles, and the only
-    thresholds drawn are the ones Trackers actually ships, as reference lines.
-    """
-    labels = [r["label"] for r in rows]
-    x = np.arange(len(rows))
-    lo_pct, hi_pct = BAND_PERCENTILES
-    intra_q = np.array([np.percentile(r["intra"], [lo_pct, 50, hi_pct]) for r in rows])
-    inter_q = np.array([np.percentile(r["inter"], [lo_pct, 50, hi_pct]) for r in rows])
-
-    fig, (ax_dist, ax_auc) = plt.subplots(
-        2, 1, figsize=(8, 6.5), sharex=True, gridspec_kw={"height_ratios": [2.2, 1.0]}
-    )
-
-    ax_dist.fill_between(x, intra_q[:, 0], intra_q[:, 2], color="#3366CC", alpha=0.22)
-    ax_dist.plot(x, intra_q[:, 1], color="#3366CC", marker="o", lw=2, label="same ID")
-    ax_dist.fill_between(x, inter_q[:, 0], inter_q[:, 2], color="#DC3912", alpha=0.22)
-    ax_dist.plot(x, inter_q[:, 1], color="#DC3912", marker="o", lw=2, label="different ID")
-    ax_dist.axhline(0.20, color="#111111", ls="--", lw=1.5, label="θ = 0.20 (Trackers)")
-    ax_dist.axhline(0.25, color="#666666", ls=":", lw=1.5, label="θ = 0.25 (BoT-SORT)")
-    ax_dist.set(ylabel="appearance distance")
-    ax_dist.set_title(
-        f"line = median, shaded = {lo_pct}th to {hi_pct}th percentile",
-        fontsize=8.5,
-        color="#333333",
-        pad=4,
-    )
-    fig.suptitle(title, y=0.995)
-    ax_dist.legend(loc="lower right", fontsize=9, ncol=2, framealpha=0.92, edgecolor="none")
-    ax_dist.grid(True, alpha=0.25)
-
-    aucs = [r["auc"] for r in rows]
-    ax_auc.plot(x, aucs, color="#111111", marker="s", lw=2)
-    for xi, auc in zip(x, aucs):
-        ax_auc.annotate(
-            f"{auc:.3f}",
-            (xi, auc),
-            textcoords="offset points",
-            xytext=(0, 7),
-            ha="center",
-            fontsize=7.5,
-            color="#111111",
-        )
-    ax_auc.axhline(0.5, color="#999999", ls=":", lw=1.2)
-    ax_auc.set(
-        xlabel="frames between the two crops",
-        ylabel="separability",
-        ylim=(0.42, 1.12),
-        xticks=x,
-        xticklabels=labels,
-    )
-    ax_auc.set_title(
-        "take one same-ID and one different-ID pair at random: how often is the same-ID one closer?"
-        "\n1.0 = always, 0.5 = coin flip. Counts every sampled pair, not the shaded overlap above.",
-        fontsize=8,
-        color="#333333",
-        pad=4,
-    )
-    ax_auc.grid(True, alpha=0.25)
-
-    fig.tight_layout()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Wrote {out_path}")
-    header = f"  {'gap':>8} {'AUC':>6} {'same p50':>9} {f'same p{hi_pct}':>9} {f'diff p{lo_pct}':>9}"
-    print(f"{header} {'T<0.20':>7} {'F<0.20':>7} {'T<0.25':>7} {'F<0.25':>7}")
-    for r in rows:
-        intra, inter = r["intra"], r["inter"]
-        print(
-            f"  {r['label']:>8} {r['auc']:6.3f} {np.median(intra):9.3f} {np.percentile(intra, hi_pct):9.3f} "
-            f"{np.percentile(inter, lo_pct):9.3f} {100 * np.mean(intra < 0.20):6.1f}% "
-            f"{100 * np.mean(inter < 0.20):6.1f}% "
-            f"{100 * np.mean(intra < 0.25):6.1f}% {100 * np.mean(inter < 0.25):6.1f}%"
-        )
-
-
-def plot_and_save(
-    intra: np.ndarray,
-    inter: np.ndarray,
-    *,
-    title: str,
-    theta: float,
-    out_path: Path,
-) -> None:
-    fig, ax = plt.subplots(figsize=(8, 4.5))
-    ax.hist(
-        intra,
-        bins=BINS,
-        weights=np.full(len(intra), 1.0 / len(intra)),
-        alpha=0.65,
-        label=f"same-ID (n={len(intra)})",
-        color="#3366CC",
-    )
-    ax.hist(
-        inter,
-        bins=BINS,
-        weights=np.full(len(inter), 1.0 / len(inter)),
-        alpha=0.65,
-        label=f"diff-ID (n={len(inter)})",
-        color="#DC3912",
-    )
-    ax.axvline(0.25, color="#666666", ls=":", lw=1.5, label="θ=0.25 (default)")
-    ax.axvline(theta, color="#111111", ls="--", lw=1.8, label=f"θ={theta:.2f} (selected)")
-    ax.set(
-        xlabel=r"$0.5\cdot$ cosine distance  ($0.5\cdot(1-\cos)$)",
-        ylabel="probability",
-        title=title,
-        xlim=(0.0, 0.6),
-    )
-    ax.legend(frameon=False, fontsize=9)
-    ax.grid(True, alpha=0.25)
-    fig.tight_layout()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Wrote {out_path}")
-    for t in (0.10, 0.20, 0.25):
-        print(f"  θ={t:.2f}: same-ID<{t}={100 * np.mean(intra < t):.1f}%  diff-ID<{t}={100 * np.mean(inter < t):.1f}%")
-
-
 def mot17_sequences(mot17_val: Path) -> list[tuple[str, Path, Path]]:
     out: list[tuple[str, Path, Path]] = []
     for seq in MOT17_VAL_SEQS:
@@ -522,6 +210,29 @@ def soccernet_sequences(
     return out
 
 
+def save(figure: Figure, out_path: Path) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(figure)
+    print(f"Wrote {out_path}", flush=True)
+
+
+def print_sweep_table(sweep: list[AppearanceDistances]) -> None:
+    """Print the numbers the docs tables quote, so figure and prose cannot drift."""
+    rate_columns = "".join(f"{f'same<{t:.2f}':>11}{f'diff<{t:.2f}':>11}" for t in REFERENCE_THRESHOLDS)
+    print(f"  {'gap':>8} {'AUC':>6} {'same p50':>9} {'same p90':>9} {'diff p10':>9}{rate_columns}")
+    for band in sweep:
+        rates = ""
+        for threshold in REFERENCE_THRESHOLDS:
+            same_rate, different_rate = band.rates_at(threshold)
+            rates += f"{100 * same_rate:10.1f}%{100 * different_rate:10.1f}%"
+        print(
+            f"  {band.label:>8} {band.roc_auc:6.3f} "
+            f"{np.median(band.same_id):9.3f} {np.percentile(band.same_id, 90):9.3f} "
+            f"{np.percentile(band.different_id, 10):9.3f}{rates}"
+        )
+
+
 def report(
     emb: np.ndarray,
     ids: np.ndarray,
@@ -534,40 +245,46 @@ def report(
 ) -> None:
     """Write the association-local histogram and, optionally, the frame-gap sweep."""
     print(f"pool={len(emb)} crops, {len(np.unique(ids))} ids", flush=True)
-    intra, inter = sample_association_local(
+    distances = sample_appearance_distances(
         emb,
         ids,
         frames,
         seqs,
-        n_intra=args.n_intra,
-        n_inter=args.n_inter,
-        min_frame_gap=MIN_FRAME_GAP,
-        max_frame_gap=args.max_frame_gap,
+        same_id_pairs=args.n_intra,
+        different_id_pairs=args.n_inter,
+        minimum_frame_gap=MIN_FRAME_GAP,
+        maximum_frame_gap=args.max_frame_gap,
         seed=args.seed,
     )
-    plot_and_save(
-        intra,
-        inter,
-        title=f"{title} (gap {MIN_FRAME_GAP}-{args.max_frame_gap})",
-        theta=0.2,
-        out_path=ASSETS / f"{slug}-appearance-distances.png",
+    save(
+        plot_appearance_distances(
+            distances,
+            thresholds=REFERENCE_THRESHOLDS,
+            title=f"{title} (gap {MIN_FRAME_GAP}-{args.max_frame_gap})",
+        ),
+        ASSETS / f"{slug}-appearance-distances.png",
     )
+    print_sweep_table([distances])
     if not args.gap_sweep:
         return
-    rows = sweep_frame_gap(
+    sweep = sweep_frame_gap(
         emb,
         ids,
         frames,
         seqs,
-        buckets=GAP_BUCKETS,
-        n_per_class=args.n_sweep,
+        gap_bands=DEFAULT_FRAME_GAP_BANDS,
+        pairs_per_class=args.n_sweep,
         seed=args.seed,
     )
-    plot_gap_sweep(
-        rows,
-        title=f"{title}: separability vs frame gap",
-        out_path=ASSETS / f"{slug}-appearance-distances-vs-gap.png",
+    save(
+        plot_frame_gap_sweep(
+            sweep,
+            thresholds=REFERENCE_THRESHOLDS,
+            title=f"{title}: separability vs frame gap",
+        ),
+        ASSETS / f"{slug}-appearance-distances-vs-gap.png",
     )
+    print_sweep_table(sweep)
 
 
 def main() -> None:
