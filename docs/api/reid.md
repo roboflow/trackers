@@ -26,23 +26,29 @@ This page covers the `ReIDEncoder` protocol, `FeatureBank`, appearance associati
 
 ## Choosing a threshold
 
-Measure your own encoder on your own footage instead of inheriting a threshold from a paper. These helpers sample the distances a tracker actually sees, plot them, and report separability. Plotting needs `matplotlib`, which ships with the `reid` extra.
+Measure your own encoder on your own footage instead of inheriting a threshold from a paper. These helpers embed a labeled dataset, sample the distances a tracker actually sees, plot them, and report separability. Plotting needs `matplotlib`, which ships with the `reid` extra.
 
 Both plot functions take their reference lines as `ThresholdLines`, either a sequence of values or a mapping from value to annotation.
 
 ```python
 from trackers.core.reid import (
+    extract_ground_truth_embeddings,
     plot_appearance_distances,
     plot_frame_gap_sweep,
     sample_appearance_distances,
     sweep_frame_gap,
 )
 
+embeddings, ids, frame_ids, sequence_ids = extract_ground_truth_embeddings(model, "mot17/val", keep_classes=(1,))
 distances = sample_appearance_distances(embeddings, ids, frame_ids, sequence_ids)
 same_id_rate, different_id_rate = distances.rates_at(0.25)
 plot_appearance_distances(distances, thresholds={0.20: "selected", 0.25: "default"})
 plot_frame_gap_sweep(sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids))
 ```
+
+### extract_ground_truth_embeddings
+
+::: trackers.core.reid.appearance.extract_ground_truth_embeddings
 
 ### AppearanceDistances
 

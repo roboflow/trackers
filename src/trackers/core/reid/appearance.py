@@ -9,11 +9,14 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 import numpy as np
 import supervision as sv
 
 from trackers.core.reid.encoder import ReIDEncoder
+from trackers.io.frames import load_mot_frame_image, resolve_mot_frame_path
+from trackers.io.mot import load_mot_file
 
 _NORM_EPS = 1e-12
 
@@ -60,6 +63,95 @@ def extract_detection_embeddings(
     if embeddings.shape[0] != len(boxes):
         raise ValueError(f"embedding rows ({embeddings.shape[0]}) must match detection boxes ({len(boxes)})")
     return embeddings
+
+
+def extract_ground_truth_embeddings(
+    model: ReIDEncoder,
+    dataset_root: str | Path,
+    *,
+    sequences: Sequence[str] | None = None,
+    keep_classes: Sequence[int] | None = None,
+    frame_stride: int = 1,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Embed every ground-truth crop in a MOT-format dataset.
+
+    Walks ``{dataset_root}/{sequence}/gt/gt.txt`` against the frames in
+    ``{dataset_root}/{sequence}/img1``. Rows flagged ignore (confidence ``0``)
+    are always dropped. Identities are renumbered across sequences, so the same
+    track number in two videos stays two identities.
+
+    The four returned arrays are what
+    :func:`trackers.core.reid.sample_appearance_distances` expects, which is how
+    an ``appearance_threshold`` gets calibrated on a new dataset.
+
+    Args:
+        model: Encoder to embed crops with.
+        dataset_root: Directory holding one folder per sequence.
+        sequences: Sequences to read. Defaults to every one found.
+        keep_classes: MOT class ids to keep, e.g. ``(1,)`` for MOT17
+            pedestrians. Defaults to every class, which suits single-class
+            datasets such as SoccerNet.
+        frame_stride: Embed every Nth frame. Raising it trims a dense dataset,
+            at the cost of the smallest frame gaps.
+
+    Returns:
+        ``(embeddings, ids, frame_ids, sequence_ids)``, aligned row-wise.
+
+    Raises:
+        FileNotFoundError: If no sequence under ``dataset_root`` has a
+            ``gt/gt.txt``, or a named sequence is missing one.
+        ValueError: If no crop survived the filters.
+
+    Examples:
+        >>> from trackers.core.reid import extract_ground_truth_embeddings  # doctest: +SKIP
+        >>>
+        >>> crops = extract_ground_truth_embeddings(  # doctest: +SKIP
+        ...     model, "mot17/val", keep_classes=(1,)
+        ... )
+    """
+    root = Path(dataset_root)
+    names = sorted(p.parent.parent.name for p in root.glob("*/gt/gt.txt")) if sequences is None else list(sequences)
+    if not names:
+        raise FileNotFoundError(f"no sequences with gt/gt.txt under {root}")
+
+    embeddings: list[np.ndarray] = []
+    ids: list[int] = []
+    frame_ids: list[int] = []
+    sequence_ids: list[int] = []
+    identity_by_key: dict[str, int] = {}
+
+    for sequence_id, name in enumerate(names):
+        ground_truth = load_mot_file(root / name / "gt" / "gt.txt")
+        frame_dir = root / name / "img1"
+        for frame_id in range(1, max(ground_truth) + 1, frame_stride):
+            rows = ground_truth.get(frame_id)
+            if rows is None:
+                continue
+            keep = rows.confidences > 0
+            if keep_classes is not None:
+                keep &= np.isin(rows.classes, list(keep_classes))
+            if not keep.any():
+                continue
+            frame_path = resolve_mot_frame_path(frame_dir, frame_id)
+            if frame_path is None:
+                continue
+            boxes = sv.xywh_to_xyxy(rows.boxes[keep]).astype(np.float32)
+            features = extract_detection_embeddings(model, load_mot_frame_image(frame_dir, frame_id), boxes)
+            for feature, track_id in zip(features, rows.ids[keep], strict=True):
+                key = f"{name}_{int(track_id)}"
+                embeddings.append(feature)
+                ids.append(identity_by_key.setdefault(key, len(identity_by_key)))
+                frame_ids.append(frame_id)
+                sequence_ids.append(sequence_id)
+
+    if not embeddings:
+        raise ValueError(f"no ground-truth crops under {root} survived the class and ignore-flag filters")
+    return (
+        np.stack(embeddings),
+        np.asarray(ids, dtype=np.int64),
+        np.asarray(frame_ids, dtype=np.int64),
+        np.asarray(sequence_ids, dtype=np.int64),
+    )
 
 
 def appearance_similarity(

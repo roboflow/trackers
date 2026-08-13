@@ -64,11 +64,16 @@ BoT-SORT fuses costs as `min(d_iou, d_app)` with `d_app = 0.5 * (1 - cos_sim)`, 
 2. Histogram `d_app` for association-local pairs: same video only, with frame gap bounded by the lost-track horizon (default 30 frames). Positives are same-ID; negatives are different-ID that could co-compete. Sample both classes with the same per-sequence quota, otherwise one crowded sequence decides the answer.
 3. Choose θ so most same-ID pairs fall below it and most different-ID pairs fall above it.
 
-Steps 2 and 3 ship with Trackers, so you can run them on your own footage. Give it embeddings plus the identity, frame and sequence each one came from:
+All three steps ship with Trackers, so you can run them on your own footage. `extract_ground_truth_embeddings` reads any MOT-format dataset, meaning a `gt/gt.txt` and an `img1` folder per sequence, and returns each crop's embedding alongside the identity, frame and sequence it came from:
 
 ```python
-from trackers.core.reid import plot_appearance_distances, sample_appearance_distances
+from trackers.core.reid import (
+    extract_ground_truth_embeddings,
+    plot_appearance_distances,
+    sample_appearance_distances,
+)
 
+embeddings, ids, frame_ids, sequence_ids = extract_ground_truth_embeddings(model, "mot17/val", keep_classes=(1,))
 distances = sample_appearance_distances(embeddings, ids, frame_ids, sequence_ids)
 for threshold in (0.10, 0.20, 0.25):
     same_id_rate, different_id_rate = distances.rates_at(threshold)
@@ -77,7 +82,7 @@ for threshold in (0.10, 0.20, 0.25):
 plot_appearance_distances(distances, thresholds={0.20: "selected", 0.25: "default"})
 ```
 
-See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full signatures. The figures on this page come from [`notebooks/plot_reid_appearance_distances.py`](https://github.com/roboflow/trackers/blob/develop/notebooks/plot_reid_appearance_distances.py), which wraps the same helpers with MOT17 and SoccerNet ground-truth loading. To run the whole thing yourself, from download to calibrated threshold, open the [ReID cookbook](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb) in Colab.
+See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full signatures. The figures on this page were produced with these helpers on MOT17 val and SoccerNet test ground truth. To reproduce them end to end, from download to calibrated threshold, open the [ReID cookbook](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb) in Colab.
 
 **MOT17 val, `fastreid_mot17_sbs50`.** Same-ID distances peak near 0 and different-ID near 0.4. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 keeps 68% of same-ID pairs while passing 1.1% of different-ID pairs. Raising θ to the BoT-SORT default 0.25 recovers same-ID pairs (79%) but nearly triples the different-ID pairs it admits (2.9%), which is why 0.2 is the better operating point here ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8 uses the same threshold).
 
@@ -109,18 +114,18 @@ It is not the area where the shaded bands cross in the figure. That is two perce
 | Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
 | :--------- | :-----: | :---------------: | :--------------------: |
 | 1          |  0.998  |       98.0%       |          1.7%          |
-| 2 to 5     |  0.987  |       87.6%       |          1.5%          |
+| 2 to 5     |  0.987  |       87.6%       |          1.6%          |
 | 6 to 15    |  0.957  |       67.4%       |          1.1%          |
 | 16 to 30   |  0.929  |       51.4%       |          1.1%          |
 | 31 to 60   |  0.899  |       39.8%       |          0.9%          |
-| 61 to 120  |  0.865  |       31.7%       |          0.8%          |
-| 121 to 240 |  0.854  |       28.6%       |          0.8%          |
+| 61 to 120  |  0.865  |       31.8%       |          0.8%          |
+| 121 to 240 |  0.854  |       28.7%       |          0.8%          |
 
 ![FastReID MOT17 SBS separability vs frame gap](../assets/reid/mot17-fastreid-appearance-distances-vs-gap.png)
 
 Two things follow. First, a threshold validated on adjacent frames says little about re-association: at θ=0.2 appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight θ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `appearance_threshold` with it and re-check the different-ID column.
 
-The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 is flat near 49% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, which is why θ has to come down to about 0.1 on this domain instead of being traded against the gap.
+The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, which is why θ has to come down to about 0.1 on this domain instead of being traded against the gap.
 
 ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
 
