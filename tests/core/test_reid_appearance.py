@@ -84,3 +84,16 @@ class TestAppearanceSimilarity:
                 _frame(),
                 np.array([[0.0, 0.0, 10.0, 10.0]], dtype=np.float32),
             )
+
+    def test_extract_detection_embeddings_normalizes_all_rows(self) -> None:
+        class _RawEncoder:
+            def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+                return np.array([[3.0, 4.0], [0.0, 0.0]], dtype=np.float32)
+
+        embeddings = extract_detection_embeddings(
+            _RawEncoder(),
+            _frame(),
+            np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 30.0, 30.0]], dtype=np.float32),
+        )
+
+        np.testing.assert_allclose(embeddings, [[0.6, 0.8], [0.0, 0.0]], atol=1e-6)

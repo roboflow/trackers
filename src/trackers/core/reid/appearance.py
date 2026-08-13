@@ -59,16 +59,33 @@ def extract_detection_embeddings(
     embeddings = _require_embedding_matrix(model.extract_features(sv.Detections(xyxy=boxes), frame))
     if embeddings.shape[0] != len(boxes):
         raise ValueError(f"embedding rows ({embeddings.shape[0]}) must match detection boxes ({len(boxes)})")
-    return embeddings
+    return _l2_normalize_rows(embeddings)
 
 
 def appearance_similarity(
     track_features: Sequence[np.ndarray | None],
     det_embeddings: np.ndarray,
+    *,
+    det_embeddings_normalized: bool = False,
 ) -> np.ndarray:
-    """Cosine similarity between track and detection embeddings."""
+    """Cosine similarity between track and detection embeddings.
+
+    Args:
+        track_features: Per-track embeddings, with ``None`` for tracks without an
+            appearance feature.
+        det_embeddings: Detection embedding matrix, shape ``(N, D)``.
+        det_embeddings_normalized: Whether detection rows are already validated
+            unit embeddings from :func:`extract_detection_embeddings`.
+
+    Returns:
+        Similarity matrix, shape ``(T, N)``, with zero rows for missing track
+        features.
+    """
     n_tracks = len(track_features)
-    det_embeddings = _l2_normalize_rows(_require_embedding_matrix(det_embeddings))
+    if det_embeddings_normalized:
+        det_embeddings = np.asarray(det_embeddings, dtype=np.float32)
+    else:
+        det_embeddings = _l2_normalize_rows(_require_embedding_matrix(det_embeddings))
     n_dets = det_embeddings.shape[0]
     similarity = np.zeros((n_tracks, n_dets), dtype=np.float32)
 
@@ -87,14 +104,14 @@ def appearance_similarity(
                 f"track feature dim {flat.shape[0]} does not match detection "
                 f"embedding dim {embed_dim} (track index {track_idx})"
             )
-        track_rows.append(_l2_normalize(flat))
+        track_rows.append(flat)
         kept_indices.append(track_idx)
 
     if not track_rows:
         return similarity
 
-    cosine_similarities = (np.stack(track_rows) @ det_embeddings.T).astype(np.float32)
-    for local_idx, track_idx in enumerate(kept_indices):
-        similarity[track_idx] = cosine_similarities[local_idx]
+    normalized_track_rows = _l2_normalize_rows(_require_embedding_matrix(np.stack(track_rows)))
+    cosine_similarities = (normalized_track_rows @ det_embeddings.T).astype(np.float32)
+    similarity[kept_indices] = cosine_similarities
 
     return similarity

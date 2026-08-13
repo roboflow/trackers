@@ -31,12 +31,26 @@ class FeatureBank:
         """Current stored unit embedding, or ``None`` if never updated."""
         return None if self._feature is None else self._feature.copy()
 
-    def update(self, embedding: np.ndarray) -> None:
-        """Blend an L2-normalized embedding into the stored unit feature."""
-        cleaned = _l2_normalize(embedding)
+    def update(self, embedding: np.ndarray, *, normalized: bool = False) -> None:
+        """Blend an embedding into the stored unit feature.
+
+        Args:
+            embedding: Raw embedding, or a unit embedding when ``normalized`` is
+                true.
+            normalized: Skip input normalization for validated output from
+                ``extract_detection_embeddings``.
+
+        Raises:
+            ValueError: If the embedding is empty, non-finite, or changes shape.
+        """
+        cleaned = np.asarray(embedding, dtype=np.float32).reshape(-1)
+        if cleaned.size == 0:
+            raise ValueError("embedding must be non-empty")
+        if not normalized:
+            cleaned = _l2_normalize(cleaned)
 
         if self._feature is None:
-            self._feature = cleaned
+            self._feature = cleaned.copy()
             return
 
         if self._feature.shape != cleaned.shape:

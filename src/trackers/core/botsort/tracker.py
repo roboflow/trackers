@@ -418,7 +418,7 @@ class BoTSORTTracker(BaseTracker):
         """Update a track from a matched detection and record output indices."""
         track.update(bbox)
         if track.feature_bank is not None and embedding is not None:
-            track.feature_bank.update(embedding)
+            track.feature_bank.update(embedding, normalized=True)
         if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
             track.tracker_id = self._allocate_tracker_id()
         out_det_indices.append(global_det_index)
@@ -446,7 +446,7 @@ class BoTSORTTracker(BaseTracker):
         )
         return fuse_botsort_reid_association(
             iou_sim_fused,
-            appearance_similarity(track_feats, embeddings),
+            appearance_similarity(track_feats, embeddings, det_embeddings_normalized=True),
             proximity_iou_similarity=proximity_iou,
             proximity_threshold=self.proximity_threshold,
             appearance_threshold=self.appearance_threshold,
@@ -558,7 +558,7 @@ class BoTSORTTracker(BaseTracker):
                 if self.reid_model is not None:
                     tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
                     if det_embeddings is not None:
-                        tracklet.feature_bank.update(det_embeddings[det_local_idx])
+                        tracklet.feature_bank.update(det_embeddings[det_local_idx], normalized=True)
                 if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = self._allocate_tracker_id()
                 self.tracks.append(tracklet)
