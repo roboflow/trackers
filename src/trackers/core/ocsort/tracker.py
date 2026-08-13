@@ -57,7 +57,9 @@ class OCSORTTracker(BaseTracker):
             consistency in the association cost. Higher values prioritize angle
             alignment between motion and association direction.
         high_conf_det_threshold: `float` specifying threshold for high confidence
-            detections. Lower confidence detections are excluded from association.
+            detections. Lower confidence detections are excluded from association
+            and from spawning new tracks, but are still returned with
+            `tracker_id` of `-1`.
         delta_t: `int` specifying number of past frames to use for velocity
             estimation. Higher values provide more stable direction estimates
             during occlusion.
