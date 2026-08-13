@@ -266,6 +266,7 @@ def test_bytetrack_returns_unmatched_detection_between_thresholds() -> None:
     result = tracker.update(detections)
 
     assert len(result) == 3, "every detection must be returned, including the mid-confidence one"
+    assert result.confidence is not None
     # compare with a tolerance: confidence may be stored as float32
     np.testing.assert_allclose(np.sort(result.confidence), [0.50, 0.65, 0.80], atol=1e-6)
     assert result.tracker_id is not None
@@ -783,6 +784,7 @@ def test_tracked_objects_exposes_mature_track(tracker_id: str) -> None:
 
     exposed = tracker.tracked_objects
     assert len(exposed) == 1
+    assert exposed.tracker_id is not None
     assert exposed.tracker_id[0] != -1
     pred = exposed.xyxy[0]
     assert np.allclose(pred, np.array(bbox), atol=10.0), f"predicted box {pred} drifted far from input {bbox}"
@@ -813,6 +815,7 @@ def test_tracked_objects_multiple_simultaneous_tracks(tracker_id: str) -> None:
     assert len(exposed) == 2
     assert exposed.xyxy.shape == (2, 4)
 
+    assert exposed.tracker_id is not None
     tracker_ids = exposed.tracker_id
     assert tracker_ids.shape == (2,)
     assert np.all(tracker_ids >= 0)
@@ -833,6 +836,7 @@ def test_tracked_objects_survives_occlusion(tracker_id: str) -> None:
 
     exposed = tracker.tracked_objects
     assert len(exposed) == 1, "tracked_objects must keep alive-but-occluded track"
+    assert exposed.tracker_id is not None
     assert exposed.tracker_id[0] != -1
     assert np.all(np.isfinite(exposed.xyxy)), "Kalman prediction must be finite"
 
@@ -904,6 +908,7 @@ def test_ocsort_returns_low_confidence_detections() -> None:
     result = tracker.update(detections)
 
     assert len(result) == 3, "every input detection must be returned, including low-confidence ones"
+    assert result.confidence is not None
     np.testing.assert_allclose(np.sort(result.confidence), [0.3, 0.5, 0.9], atol=1e-6)
     assert result.tracker_id is not None
     assert np.all(result.tracker_id == -1), "nothing matches a track yet on the first frame"
@@ -960,6 +965,7 @@ def test_ocsort_high_confidence_detection_unaffected_by_low_confidence_row() -> 
 
     assert len(result) == 2
     assert result.tracker_id is not None
+    assert result.confidence is not None
     high_row = int(np.argmax(result.confidence))
     low_row = int(np.argmin(result.confidence))
     assert result.tracker_id[high_row] >= 0, "high-confidence detection should be a confirmed track after 2 frames"
@@ -1054,6 +1060,7 @@ def test_ocsort_ocr_recovery_remaps_reordered_detection_index() -> None:
 
     assert len(result) == 2, "both input detections must be returned"
     assert result.tracker_id is not None
+    assert result.confidence is not None
     recovered_row = int(np.argmax(result.tracker_id))
     assert result.tracker_id[recovered_row] >= 0, "the drifted track must be recovered by the OCR pass"
     np.testing.assert_allclose(result.xyxy[recovered_row], last_seen_box)

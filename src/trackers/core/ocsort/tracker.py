@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
@@ -348,7 +348,7 @@ class OCSORTTracker(BaseTracker):
         # Build output — single index into the original detections preserves
         # all metadata (confidence, class_id, mask, data dict).
         if out_det_indices:
-            result = detections[out_det_indices]
+            result = cast(sv.Detections, detections[out_det_indices])
             result.tracker_id = np.array(out_tracker_ids, dtype=int)
         else:
             result = sv.Detections.empty()
