@@ -78,6 +78,38 @@ class TestSampleAppearanceDistances:
         with pytest.raises(ValueError, match="at least one row"):
             sample_appearance_distances(embeddings, empty_labels, empty_labels, empty_labels)
 
+    def test_string_sequence_and_identity_labels_are_supported(self) -> None:
+        embeddings = np.array([_FIRST_IDENTITY, _SECOND_IDENTITY] * 2, dtype=np.float32)
+
+        distances = sample_appearance_distances(
+            embeddings,
+            np.array(["person-a", "person-b"] * 2),
+            np.array([1, 1, 2, 2]),
+            np.array(["camera-a"] * 4),
+            same_id_pairs=4,
+            different_id_pairs=4,
+            maximum_frame_gap=1,
+        )
+
+        np.testing.assert_allclose(distances.same_id, 0.0, atol=1e-6)
+        np.testing.assert_allclose(distances.different_id, 0.5, atol=1e-6)
+
+    def test_distinct_non_integer_identity_labels_are_not_merged(self) -> None:
+        embeddings = np.array([_FIRST_IDENTITY, _SECOND_IDENTITY] * 2, dtype=np.float32)
+
+        distances = sample_appearance_distances(
+            embeddings,
+            np.array([1.2, 1.8] * 2),
+            np.array([1, 1, 2, 2]),
+            np.zeros(4),
+            same_id_pairs=32,
+            different_id_pairs=4,
+            maximum_frame_gap=1,
+        )
+
+        np.testing.assert_allclose(distances.same_id, 0.0, atol=1e-6)
+        np.testing.assert_allclose(distances.different_id, 0.5, atol=1e-6)
+
     def test_every_sequence_gets_an_equal_quota(self) -> None:
         """The per-sequence split is what stops one crowded sequence deciding the answer.
 
@@ -97,6 +129,50 @@ class TestSampleAppearanceDistances:
         )
 
         np.testing.assert_allclose(sorted(distances.different_id), [0.0, 0.5], atol=1e-6)
+
+    def test_pair_quotas_are_redistributed_over_sequences_valid_for_the_gap_band(self) -> None:
+        embeddings = np.array(
+            [_FIRST_IDENTITY, _SECOND_IDENTITY, _FIRST_IDENTITY, _SECOND_IDENTITY] * 2,
+            dtype=np.float32,
+        )
+
+        distances = sample_appearance_distances(
+            embeddings,
+            np.array([0, 1, 0, 1] * 2),
+            np.array([1, 1, 100, 100, 1, 1, 2, 2]),
+            np.array(["unpairable"] * 4 + ["pairable"] * 4),
+            same_id_pairs=8,
+            different_id_pairs=8,
+            maximum_frame_gap=1,
+        )
+
+        assert len(distances.same_id) == 8
+        assert len(distances.different_id) == 8
+
+    def test_same_id_sampling_is_uniform_over_identities_valid_for_the_gap_band(self) -> None:
+        isolated_frames = np.arange(100, 1100, 10)
+        embeddings = np.array(
+            [_FIRST_IDENTITY, _FIRST_IDENTITY, _SECOND_IDENTITY]
+            + [_FIRST_IDENTITY, _SECOND_IDENTITY]
+            + [_FIRST_IDENTITY] * len(isolated_frames),
+            dtype=np.float32,
+        )
+        ids = np.array(["dense", "dense", "single"] + ["sparse"] * (2 + len(isolated_frames)))
+        frame_ids = np.concatenate(([1, 2, 1, 10, 11], isolated_frames))
+
+        distances = sample_appearance_distances(
+            embeddings,
+            ids,
+            frame_ids,
+            np.zeros(len(ids)),
+            same_id_pairs=2000,
+            different_id_pairs=4,
+            maximum_frame_gap=1,
+            seed=7,
+        )
+
+        assert len(distances.same_id) == 2000
+        assert np.mean(distances.same_id) == pytest.approx(0.25, abs=0.03)
 
 
 class TestAppearanceDistances:
@@ -141,14 +217,20 @@ def test_sweep_rejects_mismatched_dataset_lengths() -> None:
 
 
 def test_both_plots_build() -> None:
-    """Smoke only.
-
-    The figures are for a human to read, so nothing here inspects them.
-    """
-    distances = sample_appearance_distances(*_DATASET, same_id_pairs=4, different_id_pairs=4)
+    """Both figures build, and the histogram displays its complete data range."""
+    distances = AppearanceDistances(
+        same_id=np.array([0.0, 0.2]),
+        different_id=np.array([0.5, 1.0]),
+        minimum_frame_gap=1,
+        maximum_frame_gap=1,
+    )
     sweep = sweep_frame_gap(*_DATASET, pairs_per_class=4)
 
-    assert plot_appearance_distances(distances, thresholds={0.2: "selected"}) is not None
+    histogram = plot_appearance_distances(distances, thresholds={0.2: "selected"})
+    lower_bound, upper_bound = histogram.axes[0].get_xlim()
+
+    assert lower_bound <= min(np.min(distances.same_id), np.min(distances.different_id))
+    assert upper_bound >= max(np.max(distances.same_id), np.max(distances.different_id))
     assert plot_frame_gap_sweep(sweep) is not None
 
 

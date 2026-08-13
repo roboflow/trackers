@@ -9,10 +9,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from types import ModuleType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
 
@@ -51,7 +51,16 @@ ThresholdLines = Sequence[float] | Mapping[float, str]
 
 # Half-open slot ranges before and after an anchor frame, each ``(start, stop)``.
 _SlotRanges = tuple[tuple[int, int], tuple[int, int]]
-_PairDrawer = Callable[[np.random.Generator, "_SequenceIndex", int, int], tuple[int, int] | None]
+_SameIdCandidates = list[tuple[np.ndarray, np.ndarray]]
+_CandidatesT = TypeVar("_CandidatesT")
+
+
+def _scalar_key(value: object) -> Hashable:
+    """Return a hashable Python scalar without changing the label's value."""
+    scalar = value.item() if isinstance(value, np.generic) else value
+    if not isinstance(scalar, Hashable):
+        raise TypeError(f"labels must be hashable scalars, got {type(scalar).__name__}")
+    return scalar
 
 
 class _NoPairsInBand(ValueError):
@@ -152,7 +161,6 @@ class _SequenceIndex:
         frames: Frame number per slot.
         ids: Identity per slot.
         slots_by_id: Slots per identity, frame-sorted because the sort is stable.
-        pairable_ids: Identities holding more than one crop.
     """
 
     def __init__(self, crop_indexes: np.ndarray, ids: np.ndarray, frame_ids: np.ndarray) -> None:
@@ -160,11 +168,10 @@ class _SequenceIndex:
         self.order = crop_indexes[order]
         self.frames = frame_ids[self.order]
         self.ids = ids[self.order]
-        slots_by_id: dict[int, list[int]] = defaultdict(list)
+        slots_by_id: dict[Hashable, list[int]] = defaultdict(list)
         for slot, identity in enumerate(self.ids):
-            slots_by_id[int(identity)].append(slot)
+            slots_by_id[_scalar_key(identity)].append(slot)
         self.slots_by_id = {identity: np.asarray(slots) for identity, slots in slots_by_id.items()}
-        self.pairable_ids = [identity for identity, slots in self.slots_by_id.items() if len(slots) > 1]
 
     def window(
         self,
@@ -197,39 +204,90 @@ def _pick_in_window(rng: np.random.Generator, window: _SlotRanges) -> int | None
     return before_start + draw if draw < before_count else after_start + (draw - before_count)
 
 
-def _draw_same_id_pair(
-    rng: np.random.Generator,
+def _window_size(window: _SlotRanges) -> int:
+    """Return the total number of slots in both halves of a gap window."""
+    return sum(max(0, stop - start) for start, stop in window)
+
+
+def _same_id_candidates(
     index: _SequenceIndex,
     minimum_frame_gap: int,
     maximum_frame_gap: int,
-) -> tuple[int, int] | None:
-    """Pick an identity uniformly, then two of its crops inside the gap band."""
-    if not index.pairable_ids:
-        return None
-    slots = index.slots_by_id[index.pairable_ids[int(rng.integers(len(index.pairable_ids)))]]
-    anchor = int(slots[int(rng.integers(len(slots)))])
+) -> _SameIdCandidates | None:
+    """Collect identities and anchors that have a same-ID partner in the active gap band."""
+    candidates: _SameIdCandidates = []
+    for slots in index.slots_by_id.values():
+        frames = index.frames[slots]
+        anchors = [
+            int(slot)
+            for slot in slots
+            if _window_size(index.window(frames, int(index.frames[slot]), minimum_frame_gap, maximum_frame_gap)) > 0
+        ]
+        if anchors:
+            candidates.append((slots, np.asarray(anchors)))
+    return candidates or None
+
+
+def _draw_same_id_pair(
+    rng: np.random.Generator,
+    index: _SequenceIndex,
+    candidates: _SameIdCandidates,
+    minimum_frame_gap: int,
+    maximum_frame_gap: int,
+) -> tuple[int, int]:
+    """Pick a valid identity uniformly, then a valid anchor and in-band partner."""
+    slots, anchors = candidates[int(rng.integers(len(candidates)))]
+    anchor = int(anchors[int(rng.integers(len(anchors)))])
     window = index.window(index.frames[slots], int(index.frames[anchor]), minimum_frame_gap, maximum_frame_gap)
     partner_slot = _pick_in_window(rng, window)
     if partner_slot is None:
-        return None
+        raise RuntimeError("same-ID candidate has no partner in the active gap band")
     partner = int(slots[partner_slot])
-    if partner == anchor:
-        return None
     return int(index.order[anchor]), int(index.order[partner])
+
+
+def _slots_in_window(window: _SlotRanges) -> np.ndarray:
+    """Return every slot contained in a two-part gap window."""
+    return np.concatenate([np.arange(start, stop) for start, stop in window])
+
+
+def _different_id_partners(
+    index: _SequenceIndex,
+    anchor: int,
+    minimum_frame_gap: int,
+    maximum_frame_gap: int,
+) -> np.ndarray:
+    """Return in-band partner slots whose identity differs from the anchor."""
+    window = index.window(index.frames, int(index.frames[anchor]), minimum_frame_gap, maximum_frame_gap)
+    partners = _slots_in_window(window)
+    return partners[index.ids[partners] != index.ids[anchor]]
+
+
+def _different_id_candidates(
+    index: _SequenceIndex,
+    minimum_frame_gap: int,
+    maximum_frame_gap: int,
+) -> list[int] | None:
+    """Collect anchors that have a different-ID partner in the active gap band."""
+    anchors = [
+        anchor
+        for anchor in range(len(index.order))
+        if len(_different_id_partners(index, anchor, minimum_frame_gap, maximum_frame_gap)) > 0
+    ]
+    return anchors or None
 
 
 def _draw_different_id_pair(
     rng: np.random.Generator,
     index: _SequenceIndex,
+    candidates: list[int],
     minimum_frame_gap: int,
     maximum_frame_gap: int,
-) -> tuple[int, int] | None:
-    """Pick an anchor crop uniformly, then a differently-identified crop in the band."""
-    anchor = int(rng.integers(len(index.order)))
-    window = index.window(index.frames, int(index.frames[anchor]), minimum_frame_gap, maximum_frame_gap)
-    partner = _pick_in_window(rng, window)
-    if partner is None or index.ids[partner] == index.ids[anchor]:
-        return None
+) -> tuple[int, int]:
+    """Pick a valid anchor uniformly, then a different-ID in-band partner."""
+    anchor = candidates[int(rng.integers(len(candidates)))]
+    partners = _different_id_partners(index, anchor, minimum_frame_gap, maximum_frame_gap)
+    partner = int(partners[int(rng.integers(len(partners)))])
     return int(index.order[anchor]), int(index.order[partner])
 
 
@@ -241,29 +299,31 @@ def _split_quota(total: int, bucket_count: int) -> list[int]:
 
 def _draw_distances(
     rng: np.random.Generator,
-    indexes: Mapping[int, _SequenceIndex],
+    indexes: Mapping[Hashable, _SequenceIndex],
     embeddings: np.ndarray,
-    draw_pair: _PairDrawer,
+    build_candidates: Callable[[_SequenceIndex, int, int], _CandidatesT | None],
+    draw_pair: Callable[[np.random.Generator, _SequenceIndex, _CandidatesT, int, int], tuple[int, int]],
     *,
     total_pairs: int,
     minimum_frame_gap: int,
     maximum_frame_gap: int,
-    maximum_attempts_per_pair: int,
 ) -> np.ndarray:
-    """Draw one class of pairs, giving every sequence an equal share of ``total_pairs``."""
+    """Draw pairs after splitting the quota equally over active sequences."""
+    active_indexes = [
+        (index, candidates)
+        for index in indexes.values()
+        if (candidates := build_candidates(index, minimum_frame_gap, maximum_frame_gap)) is not None
+    ]
+    if not active_indexes:
+        return np.asarray([], dtype=np.float64)
+
     distances: list[float] = []
-    for sequence, quota in zip(sorted(indexes), _split_quota(total_pairs, len(indexes)), strict=True):
-        index = indexes[sequence]
-        drawn = 0
-        for _ in range(quota * maximum_attempts_per_pair):
-            if drawn >= quota:
-                break
-            pair = draw_pair(rng, index, minimum_frame_gap, maximum_frame_gap)
-            if pair is None:
-                continue
+    quotas = _split_quota(total_pairs, len(active_indexes))
+    for (index, candidates), quota in zip(active_indexes, quotas, strict=True):
+        for _ in range(quota):
+            pair = draw_pair(rng, index, candidates, minimum_frame_gap, maximum_frame_gap)
             first, second = pair
             distances.append(0.5 * (1.0 - float(embeddings[first] @ embeddings[second])))
-            drawn += 1
     return np.asarray(distances, dtype=np.float64)
 
 
@@ -282,19 +342,18 @@ def sample_appearance_distances(
 ) -> AppearanceDistances:
     """Sample same-ID and different-ID crop pairs inside one frame-gap band.
 
-    Pairs are drawn directly rather than enumerated into a pool, so no cap can
-    bias the result toward whichever sequence happens to be visited first. Every
-    sequence gets an equal quota. Within a sequence, same-ID pairs pick an
-    identity uniformly so that long tracks cannot dominate, and different-ID
-    pairs pick an anchor crop uniformly, then a partner uniformly among the crops
-    inside the band.
+    Candidate identities and anchors are filtered to those with a partner in the
+    active gap band before sampling. Every sequence with valid candidates gets an
+    equal quota. Within a sequence, same-ID pairs pick a valid identity uniformly
+    so that long tracks cannot dominate, and different-ID pairs pick a valid
+    anchor crop uniformly, then a valid partner uniformly inside the band.
 
     Args:
         embeddings: Appearance embeddings, shape ``(N, D)``. Normalised here, so
             either raw or unit-length input works.
-        ids: Identity label per embedding, shape ``(N,)``.
+        ids: Hashable scalar identity label per embedding, shape ``(N,)``.
         frame_ids: Frame number per embedding, shape ``(N,)``.
-        sequence_ids: Sequence or video label per embedding, shape ``(N,)``.
+        sequence_ids: Hashable scalar sequence or video label per embedding, shape ``(N,)``.
         same_id_pairs: Same-ID pairs to draw across all sequences.
         different_id_pairs: Different-ID pairs to draw across all sequences.
         minimum_frame_gap: Smallest allowed frame gap. Must be at least 1: a gap
@@ -303,14 +362,14 @@ def sample_appearance_distances(
         maximum_frame_gap: Largest allowed frame gap, i.e. the association
             horizon being measured.
         seed: Seed for the pair-drawing generator.
-        maximum_attempts_per_pair: Draw attempts allowed per requested pair
-            before a sequence gives up, since a band may hold fewer pairs than
-            asked for.
+        maximum_attempts_per_pair: Retained for compatibility. Candidate
+            prefiltering makes retries unnecessary, so this value has no effect.
 
     Returns:
         The sampled distances for this band.
 
     Raises:
+        TypeError: If identity or sequence labels are not hashable scalars.
         ValueError: If the arrays disagree in length, the gap band is invalid, or
             either class yielded no pairs at all.
     """
@@ -330,31 +389,33 @@ def sample_appearance_distances(
 
     normalized = _l2_normalize_rows(embeddings)
     rng = np.random.default_rng(seed)
-    unique_sequences = np.unique(sequence_ids)
+    crop_indexes_by_sequence: dict[Hashable, list[int]] = defaultdict(list)
+    for crop_index, sequence in enumerate(sequence_ids):
+        crop_indexes_by_sequence[_scalar_key(sequence)].append(crop_index)
     indexes = {
-        int(sequence): _SequenceIndex(np.flatnonzero(sequence_ids == sequence), ids, frame_ids)
-        for sequence in unique_sequences
+        sequence: _SequenceIndex(np.asarray(crop_indexes), ids, frame_ids)
+        for sequence, crop_indexes in crop_indexes_by_sequence.items()
     }
 
     same_id = _draw_distances(
         rng,
         indexes,
         normalized,
+        _same_id_candidates,
         _draw_same_id_pair,
         total_pairs=same_id_pairs,
         minimum_frame_gap=minimum_frame_gap,
         maximum_frame_gap=maximum_frame_gap,
-        maximum_attempts_per_pair=maximum_attempts_per_pair,
     )
     different_id = _draw_distances(
         rng,
         indexes,
         normalized,
+        _different_id_candidates,
         _draw_different_id_pair,
         total_pairs=different_id_pairs,
         minimum_frame_gap=minimum_frame_gap,
         maximum_frame_gap=maximum_frame_gap,
-        maximum_attempts_per_pair=maximum_attempts_per_pair,
     )
     if len(same_id) == 0 or len(different_id) == 0:
         raise _NoPairsInBand(
@@ -488,7 +549,7 @@ def plot_appearance_distances(
         xlabel="appearance distance  (0.5 * (1 - cosine similarity))",
         ylabel="probability",
         title=title if title is not None else f"appearance distances, {gap}",
-        xlim=(0.0, 0.6),
+        xlim=(0.0, 1.0),
     )
     ax.legend(frameon=False, fontsize=9)
     ax.grid(True, alpha=0.25)
