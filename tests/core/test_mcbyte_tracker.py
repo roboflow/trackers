@@ -475,7 +475,7 @@ def test_mcbyte_mask_lifecycle_keeps_missing_tracklet_until_explicit_removal() -
     )
 
     assert tracker._previous_new_tracklets == []
-    assert tracker._previous_removed_tracklet_ids == []
+    assert tracker._previous_removed_tracklet_ids == set()
     assert tracker._mask_tracklet_ids == {7}
 
     tracker._store_previous_mask_inputs(
@@ -485,7 +485,7 @@ def test_mcbyte_mask_lifecycle_keeps_missing_tracklet_until_explicit_removal() -
     )
 
     assert tracker._previous_new_tracklets == []
-    assert tracker._previous_removed_tracklet_ids == [7]
+    assert tracker._previous_removed_tracklet_ids == {7}
     assert tracker._mask_tracklet_ids == set()
 
 
