@@ -12,12 +12,21 @@ import numpy as np
 import pytest
 import supervision as sv
 
+import trackers
+from trackers.core import reid
 from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
 
 
 def _frame(seed: int = 0) -> np.ndarray:
     rng = np.random.default_rng(seed)
     return rng.integers(0, 255, (128, 128, 3), dtype=np.uint8)
+
+
+def test_reid_public_api_is_exported_from_package_root() -> None:
+    """Every ReID subpackage export is available from the stable root API."""
+    assert set(reid.__all__) <= set(trackers.__all__)
+    for name in reid.__all__:
+        assert getattr(trackers, name) is getattr(reid, name)
 
 
 class TestAppearanceSimilarity:

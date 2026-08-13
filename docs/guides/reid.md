@@ -11,7 +11,7 @@ BoT-SORT can fuse appearance embeddings with IoU during association. Embeddings 
 
 - How to enable appearance association on BoT-SORT
 - Which parameters control the appearance gate
-- How to pick `appearance_threshold` for your encoder and domain
+- How to pick `reid_appearance_threshold` for your encoder and domain
 - What ReID changes on MOT17 and SoccerNet
 
 ---
@@ -34,7 +34,7 @@ from reid import ReIDModel
 from trackers import BoTSORTTracker
 
 reid_model = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
-tracker = BoTSORTTracker(reid_model=reid_model, appearance_threshold=0.2)
+tracker = BoTSORTTracker(reid_model=reid_model, reid_appearance_threshold=0.2)
 ```
 
 !!! warning "A frame is required when ReID is enabled"
@@ -47,18 +47,18 @@ For the model catalog and fine-tuning, see the [`reid` training guide](https://g
 
 ## Key Parameters
 
-| Parameter              | Purpose                                                                                                       | Tuning guidance                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `reid_model`           | Appearance encoder queried during association.                                                                | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                |
-| `reid_ema_alpha`       | EMA momentum for a track's appearance feature.                                                                | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more. |
-| `appearance_threshold` | Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                           | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                        |
-| `proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU. | Default 0.5. Lower restricts how far apart a pair may be before appearance stops contributing.                   |
+| Parameter                   | Purpose                                                                                                            | Tuning guidance                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `reid_model`                | Appearance encoder queried during association.                                                                     | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                |
+| `reid_ema_alpha`            | EMA momentum for a track's appearance feature.                                                                     | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more. |
+| `reid_appearance_threshold` | Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                        |
+| `reid_proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - reid_proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU. | Default 0.5. Lower restricts how far apart a pair may be before appearance stops contributing.                   |
 
 ---
 
 ## Choosing an appearance threshold
 
-BoT-SORT fuses costs as `min(d_iou, d_app)` with `d_app = 0.5 * (1 - cos_sim)`, and discards the appearance term when `d_app` exceeds `appearance_threshold` (paper default 0.25) or when the pair fails the `proximity_threshold` IoU gate. Appearance can therefore only lower a pair's cost, never veto a geometric match. Pick θ on a labeled split with the encoder you will track with:
+BoT-SORT fuses costs as `min(d_iou, d_app)` with `d_app = 0.5 * (1 - cos_sim)`, and discards the appearance term when `d_app` exceeds `reid_appearance_threshold` (paper default 0.25) or when the pair fails the `reid_proximity_threshold` IoU gate. Appearance can therefore only lower a pair's cost, never veto a geometric match. Pick θ on a labeled split with the encoder you will track with:
 
 1. Embed GT crops.
 2. Histogram `d_app` for association-local pairs: same video only, with frame gap bounded by the lost-track horizon (default 30 frames). Positives are same-ID; negatives are different-ID that could co-compete. Sample both classes with the same per-sequence quota, otherwise one crowded sequence decides the answer.
@@ -118,7 +118,7 @@ It is not the area where the shaded bands cross in the figure. That is two perce
 
 ![FastReID MOT17 SBS separability vs frame gap](../assets/reid/mot17-fastreid-appearance-distances-vs-gap.png)
 
-Two things follow. First, a threshold validated on adjacent frames says little about re-association: at θ=0.2 appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight θ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `appearance_threshold` with it and re-check the different-ID column.
+Two things follow. First, a threshold validated on adjacent frames says little about re-association: at θ=0.2 appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight θ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `reid_appearance_threshold` with it and re-check the different-ID column.
 
 The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 is flat near 49% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, which is why θ has to come down to about 0.1 on this domain instead of being traded against the gap.
 
@@ -130,7 +130,7 @@ The cross-domain encoder fails differently. On SoccerNet the different-ID rate a
 
 ### MOT17 test
 
-YOLOX detections, CMC on, Codabench MOT17 test (same protocol as the [benchmark results](../evaluations/results.md) default table). ReID: `fastreid_mot17_sbs50`, `appearance_threshold=0.2` ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8).
+YOLOX detections, CMC on, Codabench MOT17 test (same protocol as the [benchmark results](../evaluations/results.md) default table). ReID: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.2` ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8).
 
 | Config          |   HOTA   |   IDF1   |   MOTA   |
 | :-------------- | :------: | :------: | :------: |
@@ -146,7 +146,7 @@ YOLOX detections, CMC on, MOT17 val-half split, same encoder and threshold, scor
 | BoT-SORT        |   68.9   |   81.2   |   78.3   |
 | BoT-SORT + ReID | **69.1** | **81.9** | **78.4** |
 
-The MOT17 re-ID study reports 68.43 HOTA / 80.92 IDF1 without ReID and 68.95 / 81.98 with, on the same split at `appearance_threshold=0.2` (Table 8 and Table 13; MOTA is not reported for that YOLOX setup).
+The MOT17 re-ID study reports 68.43 HOTA / 80.92 IDF1 without ReID and 68.95 / 81.98 with, on the same split at `reid_appearance_threshold=0.2` (Table 8 and Table 13; MOTA is not reported for that YOLOX setup).
 
 ### SoccerNet test (OSNet MSMT17)
 

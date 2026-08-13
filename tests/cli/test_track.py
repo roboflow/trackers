@@ -525,4 +525,9 @@ class TestReIDOptions:
     def test_appearance_parameters_stay_cli_reachable(self) -> None:
         """The three scalar ReID knobs are still generated from the registry."""
         option_fields = {field.name for field in fields(TrackerOptions)}
-        assert {"reid_ema_alpha", "appearance_threshold", "proximity_threshold"} <= option_fields
+        assert {
+            "reid_appearance_threshold",
+            "reid_ema_alpha",
+            "reid_proximity_threshold",
+        } <= option_fields
+        assert {"appearance_threshold", "proximity_threshold"}.isdisjoint(option_fields)

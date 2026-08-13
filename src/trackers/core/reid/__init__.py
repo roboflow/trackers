@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Appearance-ReID association helpers used by BoT-SORT (and other trackers)."""
+"""Appearance-ReID association plus offline threshold selection and plotting tools."""
 
 from __future__ import annotations
 

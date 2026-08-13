@@ -21,8 +21,8 @@ def fuse_botsort_reid_association(
     association_similarity: np.ndarray,
     appearance_similarity: np.ndarray,
     *,
-    proximity_threshold: float,
-    appearance_threshold: float,
+    reid_proximity_threshold: float,
+    reid_appearance_threshold: float,
     proximity_iou_similarity: np.ndarray | None = None,
 ) -> np.ndarray:
     """Fuse IoU and appearance the way BoT-SORT ``bot_sort.py`` does.
@@ -40,9 +40,9 @@ def fuse_botsort_reid_association(
             shape ``(T, N)``.
         appearance_similarity: Cosine similarities for the same pairs with shape
             ``(T, N)``.
-        proximity_threshold: Maximum standard-IoU distance at which appearance
+        reid_proximity_threshold: Maximum standard-IoU distance at which appearance
             may lower the association cost.
-        appearance_threshold: Maximum appearance cost allowed to contribute to
+        reid_appearance_threshold: Maximum appearance cost allowed to contribute to
             the fused association.
         proximity_iou_similarity: Standard-IoU similarities with shape ``(T, N)``.
             Defaults to ``association_similarity``.
@@ -57,7 +57,7 @@ def fuse_botsort_reid_association(
     d_iou = 1.0 - association_similarity
     d_iou_proximity = 1.0 - proximity_iou_similarity
     d_app = 0.5 * (1.0 - appearance_similarity)
-    d_app = np.where(d_app > appearance_threshold, 1.0, d_app)
-    d_app = np.where(d_iou_proximity > proximity_threshold, 1.0, d_app)
+    d_app = np.where(d_app > reid_appearance_threshold, 1.0, d_app)
+    d_app = np.where(d_iou_proximity > reid_proximity_threshold, 1.0, d_app)
     fused_cost = np.minimum(d_iou, d_app)
     return 1.0 - fused_cost

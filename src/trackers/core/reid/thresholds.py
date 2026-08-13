@@ -72,7 +72,7 @@ class AppearanceDistances:
     """Sampled appearance distances for one frame-gap band.
 
     Distances are ``0.5 * (1 - cosine_similarity)``, the term BoT-SORT gates on
-    with ``appearance_threshold``.
+    with ``reid_appearance_threshold``.
 
     Attributes:
         same_id: Distances between two crops of the same identity.
@@ -106,10 +106,10 @@ class AppearanceDistances:
 
         A pair counts as accepted at or below the threshold, matching the gate in
         ``fuse_botsort_reid_association``, which discards appearance only once the
-        distance *exceeds* ``appearance_threshold``.
+        distance *exceeds* ``reid_appearance_threshold``.
 
         Args:
-            threshold: Candidate ``appearance_threshold``.
+            threshold: Candidate ``reid_appearance_threshold``.
 
         Returns:
             ``(same_id_rate, different_id_rate)``: the fraction of same-ID pairs

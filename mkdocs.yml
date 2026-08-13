@@ -170,6 +170,8 @@ nav:
     - ReID Appearance: guides/reid.md
   - Developer:
     - Inspect Mask Pipeline: guides/inspect.md
+    - Architecture Decisions:
+      - "Model-backend externalization": adr/0001-model-backend-externalization.md
   - Evaluations:
     - Download Datasets: evaluations/download.md
     - Benchmark Trackers: evaluations/evaluate.md

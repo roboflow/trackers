@@ -82,8 +82,8 @@ class TestFuseBotsortReidAssociation:
         fused = fuse_botsort_reid_association(
             np.array([[0.63]], dtype=np.float32),
             np.array([[0.8]], dtype=np.float32),
-            proximity_threshold=0.5,
-            appearance_threshold=0.25,
+            reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.25,
         )
         assert fused[0, 0] == pytest.approx(0.9)
 
@@ -94,8 +94,8 @@ class TestFuseBotsortReidAssociation:
         fused = fuse_botsort_reid_association(
             iou_only,
             np.array([[0.9]], dtype=np.float32),
-            proximity_threshold=0.5,
-            appearance_threshold=0.25,
+            reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.25,
         )
         assert fused[0, 0] == pytest.approx(float(iou_only[0, 0]))
 
@@ -106,8 +106,8 @@ class TestFuseBotsortReidAssociation:
         fused = fuse_botsort_reid_association(
             association_iou,
             np.array([[0.95]], dtype=np.float32),
-            proximity_threshold=0.5,
-            appearance_threshold=0.25,
+            reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.25,
             proximity_iou_similarity=np.array([[0.35]], dtype=np.float32),
         )
         assert fused[0, 0] == pytest.approx(float(association_iou[0, 0]))
@@ -120,16 +120,18 @@ class TestBoTSORTTrackerReID:
         with pytest.raises(ValueError, match="reid_ema_alpha"):
             BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder(), reid_ema_alpha=1.5)
 
-    @pytest.mark.parametrize("parameter", ["appearance_threshold", "proximity_threshold"])
+    @pytest.mark.parametrize("parameter", ["reid_appearance_threshold", "reid_proximity_threshold"])
     @pytest.mark.parametrize("value", [-0.01, 1.01])
     def test_rejects_invalid_association_thresholds(self, parameter: str, value: float) -> None:
         with pytest.raises(ValueError, match=parameter):
-            BoTSORTTracker(enable_cmc=False, **{parameter: value})
+            # mypy cannot narrow a dynamic dict against typed kwargs.
+            BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
 
-    @pytest.mark.parametrize("parameter", ["appearance_threshold", "proximity_threshold"])
+    @pytest.mark.parametrize("parameter", ["reid_appearance_threshold", "reid_proximity_threshold"])
     @pytest.mark.parametrize("value", [0.0, 1.0])
     def test_accepts_association_threshold_boundaries(self, parameter: str, value: float) -> None:
-        tracker = BoTSORTTracker(enable_cmc=False, **{parameter: value})
+        # mypy cannot narrow a dynamic dict against typed kwargs.
+        tracker = BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
 
         assert getattr(tracker, parameter) == value
 
@@ -209,16 +211,16 @@ class TestBoTSORTTrackerReID:
         geo = BoTSORTTracker(
             enable_cmc=False,
             minimum_iou_threshold_first_assoc=0.01,
-            appearance_threshold=0.6,
-            proximity_threshold=0.99,
+            reid_appearance_threshold=0.6,
+            reid_proximity_threshold=0.99,
         )
         geo.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=frame)
 
         reid = BoTSORTTracker(
             enable_cmc=False,
             minimum_iou_threshold_first_assoc=0.01,
-            appearance_threshold=0.6,
-            proximity_threshold=0.99,
+            reid_appearance_threshold=0.6,
+            reid_proximity_threshold=0.99,
             reid_model=encoder,
         )
         reid.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=frame)
