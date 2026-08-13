@@ -492,8 +492,17 @@ class McByteTracker(BaseTracker):
 
         # Ghost-ID prevention: budget-only filter before association.
         # Keeps immature tracks alive for matching; full lifecycle prune runs after.
+        # Snapshot the IDs before this early prune too: at fixed frame rate
+        # `_prune_lost_tracks` is a no-op, but in timestamp mode it can already
+        # remove tracks here, before the "before" snapshot the late prune below
+        # takes — anything it removes would otherwise never reach
+        # `terminated_tracklet_ids`, so the mask pipeline would never be told
+        # about it and would keep propagating a Cutie mask for a dead track.
         _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        tracklet_ids_before_early_prune = {int(track.tracker_id) for track in self.tracks if track.tracker_id >= 0}
         self._prune_lost_tracks(timing)
+        tracklet_ids_after_early_prune = {int(track.tracker_id) for track in self.tracks if track.tracker_id >= 0}
+        early_pruned_tracklet_ids = tracklet_ids_before_early_prune - tracklet_ids_after_early_prune
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -671,7 +680,11 @@ class McByteTracker(BaseTracker):
             maximum_time_without_update=_budget,
         )
         tracklet_ids_after_pruning = {int(track.tracker_id) for track in self.tracks if track.tracker_id >= 0}
-        terminated_tracklet_ids = sorted(tracklet_ids_before_pruning - tracklet_ids_after_pruning)
+        # Union with whatever the early ghost-ID prune above already removed, so those
+        # tracks are reported too instead of silently vanishing from mask cleanup.
+        terminated_tracklet_ids = sorted(
+            early_pruned_tracklet_ids | (tracklet_ids_before_pruning - tracklet_ids_after_pruning)
+        )
 
         # Build final detections
         if not out_det_indices:
@@ -750,6 +763,14 @@ class McByteTracker(BaseTracker):
             return None
 
         self._consecutive_mask_failures = 0
+        # removed_tracklet_ids above was just handed to the mask pipeline
+        # (MaskManager applies it via _remove_pending_tracklets/remove_masks
+        # before any OOM-prone step, so reaching here means it was actually
+        # consumed) -- clear the backlog so _store_previous_mask_inputs below
+        # doesn't re-deliver it. On the OOM path above the backlog is left
+        # untouched so the pending removals are retried next frame instead of
+        # silently dropped.
+        self._previous_removed_tracklet_ids = []
         return mask_output
 
     def _detections_to_tracklet_snapshots(
@@ -789,7 +810,6 @@ class McByteTracker(BaseTracker):
             self._previous_frame = None
             self._previous_tracklets = []
             self._previous_new_tracklets = []
-            self._previous_removed_tracklet_ids = []
             # Preserve the already-masked tracklet-ID set across an occasional
             # frame=None call (e.g. a dropped/corrupt frame while the manager is
             # still active). Clearing it would make the next real frame treat
@@ -797,7 +817,19 @@ class McByteTracker(BaseTracker):
             # Cutie's add_masks would raise on tracklets that already own an
             # object. Only a fully absent mask manager warrants a full clear.
             if self.mask_manager is None:
+                self._previous_removed_tracklet_ids = []
                 self._mask_tracklet_ids = set()
+            else:
+                # A frame=None call still runs the tracker's own prune/lifecycle
+                # logic, so removed_tracklet_ids can be non-empty here even
+                # though the mask manager isn't invoked this call (no frame to
+                # give it). Merge into the backlog instead of overwriting it,
+                # so a real death isn't lost before the mask pipeline ever
+                # gets a frame to consume it on.
+                self._previous_removed_tracklet_ids = sorted(
+                    set(self._previous_removed_tracklet_ids) | set(removed_tracklet_ids)
+                )
+                self._mask_tracklet_ids -= set(removed_tracklet_ids)
             return
 
         # Convert current output detections into TrackletSnapshots.
@@ -821,7 +853,15 @@ class McByteTracker(BaseTracker):
         # Store lifecycle events from this frame. At the next update(),
         # MaskManager receives these and calls add_masks() / remove_masks().
         self._previous_new_tracklets = new_tracklets
-        self._previous_removed_tracklet_ids = removed_tracklet_ids
+        # Merge rather than overwrite: this call runs whenever mask_manager is
+        # set and a frame was given, regardless of whether the mask manager
+        # was actually invoked for THIS update() (e.g. skip_predict on a
+        # duplicate timestamp -- see update()). If the previous backlog wasn't
+        # delivered yet (_run_mask_manager only clears it on a successful,
+        # non-OOM call), overwriting here would silently drop it.
+        self._previous_removed_tracklet_ids = sorted(
+            set(self._previous_removed_tracklet_ids) | set(removed_tracklet_ids)
+        )
 
         # Stores the current frame and current visible tracklets as “previous”
         # inputs for the next frame. Only mask-eligible tracklets (already masked

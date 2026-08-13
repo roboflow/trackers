@@ -9,6 +9,7 @@ from __future__ import annotations
 import sys
 import warnings
 from types import ModuleType
+from typing import cast
 
 import numpy as np
 import pytest
@@ -242,6 +243,120 @@ def test_mcbyte_does_not_warn_for_mask_manager_without_timestamps() -> None:
         warnings.simplefilter("always")
         tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
     assert not any("dynamic-rate" in str(w.message) for w in caught)
+
+
+def test_mcbyte_reports_early_ghost_id_prune_to_mask_cleanup() -> None:
+    """A track killed by the early time-budget prune must have its mask actually dropped by the propagator.
+
+    `_prune_lost_tracks` (ghost-ID prevention, timestamp mode only) can remove a track before association even runs,
+    ahead of the late `_get_alive_tracklets` prune that `terminated_tracklet_ids` is built from. Without reporting that
+    early removal too, the mask manager (and Cutie underneath it) never learns the track died and keeps propagating its
+    mask indefinitely. Uses a real ``MaskManager`` + ``DummyIdentityMaskPropagator`` (not a call-recording spy) and
+    ``minimum_mask_creation_frames=1`` so the track is actually masked before it dies -- otherwise there would be
+    nothing orphaned in the propagator to begin with, and the test would only be exercising bookkeeping.
+    """
+    propagator = DummyIdentityMaskPropagator()
+    mask_manager = MaskManager(mask_generator=DummyBoxMaskGenerator(), mask_propagator=propagator)
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,  # maximum_time_without_update = 1 / 30 seconds
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+    assert tracker_id >= 0, "track must be confirmed on frame 1"
+
+    # Elapsed time blows way past the ~0.033s time budget: the early prune kills the track before the late
+    # lifecycle prune even runs. This call's mask-manager invocation (at the top of update(), using frame 1's
+    # stored tracklets) also initializes the propagator, so the track is genuinely masked when it dies.
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
+    assert tracker_id not in [t.tracker_id for t in tracker.tracks]
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict, "track must be masked before it dies"
+
+    # The removed_tracklet_ids from the frame above are only handed to the mask manager on the
+    # NEXT call (masks are updated using events stored from the previous frame).
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
+    assert propagator._mask_output is not None
+    assert tracker_id not in propagator._mask_output.tracklet_mask_dict, (
+        "dead track's mask must be dropped from the propagator, not orphaned"
+    )
+
+
+def test_mcbyte_delivers_removed_ids_delayed_by_duplicate_timestamp() -> None:
+    """A duplicate timestamp between a track's death and the next mask-manager call must not lose the removal.
+
+    On a duplicate timestamp, `update()`'s `if timing.skip_predict: pass` branch skips the mask-manager invocation for
+    that call entirely (see `update()`'s docstring "Warns" section). A death reported at the end of the prior frame must
+    survive that skipped call and still reach the mask manager on the next real frame, rather than being silently
+    overwritten by the skipped frame's own (empty) `removed_tracklet_ids` in `_store_previous_mask_inputs`.
+    """
+    mask_manager = SpyMaskManager()
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,  # type: ignore[arg-type]
+        minimum_consecutive_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,  # maximum_time_without_update = 1 / 30 seconds
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+
+    # Kill the track via the early time-budget prune.
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
+    assert tracker_id not in [t.tracker_id for t in tracker.tracks]
+
+    # Duplicate timestamp: mask-manager invocation is skipped for this call.
+    with pytest.warns(UserWarning, match="duplicate timestamp"):
+        tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
+
+    # The death must still reach the mask manager on the next non-duplicate call.
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
+    reported = cast(list, mask_manager.calls[-1]["removed_tracklet_ids"])
+    assert tracker_id in reported
+
+
+def test_mcbyte_delivers_removed_ids_delayed_by_frame_none_call() -> None:
+    """A frame=None call must not drop a real removal that happened during that same call.
+
+    Pruning doesn't need a frame, so a track can still die on a `frame=None` update(); the mask manager just can't be
+    invoked that call (no frame to give it). The death must survive and reach the mask manager once a real frame is
+    available again, not be dropped by `_store_previous_mask_inputs`'s `frame is None` branch.
+    """
+    mask_manager = SpyMaskManager()
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,  # type: ignore[arg-type]
+        minimum_consecutive_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,  # maximum_time_without_update = 1 / 30 seconds
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+
+    # frame=None: the track still dies via the early time-budget prune, but there is no frame to hand
+    # the mask manager, so the removal can't be delivered on this call.
+    tracker.update(sv.Detections.empty(), frame=None, timestamp=100.0)
+    assert tracker_id not in [t.tracker_id for t in tracker.tracks]
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
+    reported = cast(list, mask_manager.calls[-1]["removed_tracklet_ids"])
+    assert tracker_id in reported
 
 
 def test_mcbyte_rejects_high_conf_threshold_at_or_below_discard_floor() -> None:
