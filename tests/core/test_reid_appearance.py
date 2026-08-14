@@ -8,13 +8,21 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
+import cv2
 import numpy as np
 import pytest
 import supervision as sv
 
 import trackers
 from trackers.core import reid
-from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.core.reid.appearance import (
+    appearance_similarity,
+    extract_detection_embeddings,
+    extract_ground_truth_embeddings,
+)
 
 
 def _frame(seed: int = 0) -> np.ndarray:
@@ -27,6 +35,25 @@ def test_reid_public_api_is_exported_from_package_root() -> None:
     assert set(reid.__all__) <= set(trackers.__all__)
     for name in reid.__all__:
         assert getattr(trackers, name) is getattr(reid, name)
+
+
+class _MeanIntensityEncoder:
+    """Encoder returning one row per box, tagged with the frame's mean intensity."""
+
+    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+        return np.full((len(detections), 2), float(frame.mean()), dtype=np.float32)
+
+
+def _write_sequence(root: Path, name: str, rows: list[tuple[int, int, int, int]], frames: int = 3) -> None:
+    """Write a MOT sequence where each row is ``(frame, track_id, confidence, class)``."""
+    (root / name / "gt").mkdir(parents=True)
+    (root / name / "img1").mkdir(parents=True)
+    lines = [
+        f"{frame},{track_id},0,0,10,10,{confidence},{class_id},1" for frame, track_id, confidence, class_id in rows
+    ]
+    (root / name / "gt" / "gt.txt").write_text("\n".join(lines))
+    for frame_id in range(1, frames + 1):
+        cv2.imwrite(str(root / name / "img1" / f"{frame_id:06d}.jpg"), _frame(frame_id))
 
 
 class TestAppearanceSimilarity:
@@ -106,3 +133,46 @@ class TestAppearanceSimilarity:
         )
 
         np.testing.assert_allclose(embeddings, [[0.6, 0.8], [0.0, 0.0]], atol=1e-6)
+
+
+class TestExtractGroundTruthEmbeddings:
+    """Unit tests for reading a MOT-format dataset into labeled crop embeddings."""
+
+    def test_identities_are_renumbered_across_sequences(self, tmp_path: Path) -> None:
+        # Track 1 in two sequences is two people, so the ids must not collapse.
+        rows = [(1, 1, 1, 1), (1, 2, 1, 1), (2, 1, 1, 1), (2, 2, 1, 1)]
+        _write_sequence(tmp_path, "seq_a", rows)
+        _write_sequence(tmp_path, "seq_b", rows)
+
+        embeddings, ids, frame_ids, sequence_ids = extract_ground_truth_embeddings(_MeanIntensityEncoder(), tmp_path)
+
+        assert embeddings.shape == (8, 2)
+        assert set(zip(sequence_ids.tolist(), ids.tolist())) == {(0, 0), (0, 1), (1, 2), (1, 3)}
+        np.testing.assert_array_equal(np.unique(frame_ids), [1, 2])
+
+    def test_ignored_rows_and_unwanted_classes_are_dropped(self, tmp_path: Path) -> None:
+        _write_sequence(tmp_path, "seq_a", [(1, 1, 1, 1), (1, 2, 0, 1), (1, 3, 1, 7)])
+
+        _, every_class, _, _ = extract_ground_truth_embeddings(_MeanIntensityEncoder(), tmp_path)
+        _, pedestrians, _, _ = extract_ground_truth_embeddings(_MeanIntensityEncoder(), tmp_path, keep_classes=(1,))
+
+        assert len(every_class) == 2
+        assert len(pedestrians) == 1
+
+    def test_frame_stride_subsamples_frames(self, tmp_path: Path) -> None:
+        _write_sequence(tmp_path, "seq_a", [(frame, 1, 1, 1) for frame in (1, 2, 3)])
+
+        _, _, frame_ids, _ = extract_ground_truth_embeddings(_MeanIntensityEncoder(), tmp_path, frame_stride=2)
+
+        np.testing.assert_array_equal(frame_ids, [1, 3])
+
+    def test_frames_without_images_are_skipped(self, tmp_path: Path) -> None:
+        _write_sequence(tmp_path, "seq_a", [(frame, 1, 1, 1) for frame in (1, 2, 3)], frames=2)
+
+        _, _, frame_ids, _ = extract_ground_truth_embeddings(_MeanIntensityEncoder(), tmp_path)
+
+        np.testing.assert_array_equal(frame_ids, [1, 2])
+
+    def test_dataset_without_annotations_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError, match=re.escape("gt/gt.txt")):
+            extract_ground_truth_embeddings(_MeanIntensityEncoder(), tmp_path)
