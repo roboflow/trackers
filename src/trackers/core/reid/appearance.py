@@ -75,7 +75,7 @@ def extract_detection_embeddings(
         >>> frame = np.zeros((8, 8, 3), dtype=np.uint8)
         >>> boxes = np.array([[0.0, 0.0, 4.0, 4.0]], dtype=np.float32)
         >>> extract_detection_embeddings(Encoder(), frame, boxes)
-        array([[1., 1.]], dtype=float32)
+        array([[0.70710677, 0.70710677]], dtype=float32)
     """
     if len(boxes) == 0:
         return np.empty((0, 0), dtype=np.float32)
