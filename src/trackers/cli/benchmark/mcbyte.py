@@ -450,7 +450,7 @@ def _read_sequence_frame_rate(
     try:
         parser.read(seqinfo_path, encoding="utf-8")
         frame_rate = parser.getfloat("Sequence", "frameRate")
-    except (configparser.Error, ValueError):
+    except (configparser.Error, UnicodeError, ValueError):
         if logger is not None:
             logger.warning(
                 "%s | %s has no usable [Sequence] frameRate; falling back to %.3g",
