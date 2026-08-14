@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-10",
+  "dateModified": "2026-08-14",
   "datePublished": "2026-02-10"
 }
 </script>
@@ -2695,8 +2695,8 @@
     </tr>
     <tr>
       <td><code>--tracker.frame_rate</code></td>
-      <td>Video frame rate used to scale the lost track buffer to time-like behavior. Must be positive.</td>
-      <td><code>null</code> (tracker default)</td>
+      <td>Video frame rate used to scale the lost track buffer to time-like behavior. Must be positive. When unset and the source is a video with a readable FPS, that FPS is used instead of the tracker's own default; sources with no FPS to read (webcam, stream, image directory, or a <code>--detection.mot_file</code>-only run) still fall back to the tracker default.</td>
+      <td><code>null</code> (source FPS if readable, else tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.lost_track_buffer</code></td>
@@ -2847,7 +2847,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 10, 2026 23:10:50 UTC">2026-08-10</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 14, 2026 06:54:55 UTC">2026-08-14</span>
   </span>
 
     
