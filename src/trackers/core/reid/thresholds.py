@@ -9,10 +9,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Hashable, Iterator, Mapping, Sequence
+from collections.abc import Hashable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from types import ModuleType
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -21,9 +20,6 @@ from trackers.core.reid.appearance import _l2_normalize_rows, _require_embedding
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
-# Frame gaps to sweep by default, in frames. The first band is the consecutive-frame
-# case the original BoT-SORT figure measured; the later ones cover re-finding a track
-# after an occlusion, which is where a single threshold is most likely to break down.
 DEFAULT_FRAME_GAP_BANDS: tuple[tuple[int, int], ...] = (
     (1, 1),
     (2, 5),
@@ -34,33 +30,12 @@ DEFAULT_FRAME_GAP_BANDS: tuple[tuple[int, int], ...] = (
     (121, 240),
 )
 
-# Percentile band drawn around the median in the sweep plot. Symmetric so both
-# classes are read the same way.
-_BAND_PERCENTILES = (10, 90)
 _SAME_ID_COLOR = "#3366CC"
 _DIFFERENT_ID_COLOR = "#DC3912"
-_MATPLOTLIB_HINT = "Plotting appearance distances requires matplotlib.\nInstall with: pip install 'trackers[reid]'"
 
-# Reference lines: the first threshold is the one under consideration, the rest are
-# there for comparison, so they are drawn to recede.
 _THRESHOLD_STYLES = (("#111111", "--", 1.6), ("#666666", ":", 1.5))
 
-# Thresholds to draw, optionally annotated: ``(0.20, 0.25)`` or
-# ``{0.20: "selected", 0.25: "default"}``.
 ThresholdLines = Sequence[float] | Mapping[float, str]
-
-# Half-open slot ranges before and after an anchor frame, each ``(start, stop)``.
-_SlotRanges = tuple[tuple[int, int], tuple[int, int]]
-_SameIdCandidates = list[tuple[np.ndarray, np.ndarray]]
-_CandidatesT = TypeVar("_CandidatesT")
-
-
-def _scalar_key(value: object) -> Hashable:
-    """Return a hashable Python scalar without changing the label's value."""
-    scalar = value.item() if isinstance(value, np.generic) else value
-    if not isinstance(scalar, Hashable):
-        raise TypeError(f"labels must be hashable scalars, got {type(scalar).__name__}")
-    return scalar
 
 
 class _NoPairsInBand(ValueError):
@@ -105,8 +80,8 @@ class AppearanceDistances:
         """Return the match rate of both classes at one candidate threshold.
 
         A pair counts as accepted at or below the threshold, matching the gate in
-        ``fuse_botsort_reid_association``, which discards appearance only once the
-        distance *exceeds* ``reid_appearance_threshold``.
+        :func:`trackers.core.reid.fusion.fuse_botsort_reid_association`, which discards
+        appearance only once the distance *exceeds* ``reid_appearance_threshold``.
 
         Args:
             threshold: Candidate ``reid_appearance_threshold``.
@@ -135,20 +110,32 @@ def roc_auc(same_id: np.ndarray, different_id: np.ndarray) -> float:
         different_id: Distances between crops of different identities.
 
     Returns:
-        ``1.0`` when the two distributions never cross, ``0.5`` when appearance
-        carries no information.
+        ``1.0`` when every same-ID pair is closer than every different-ID pair,
+        ``0.5`` when appearance carries no information, and ``0.0`` when the two
+        classes are ordered the wrong way round.
 
     Raises:
         ValueError: If either distance array is empty.
     """
     if len(same_id) == 0 or len(different_id) == 0:
         raise ValueError("both distance arrays must be non-empty")
-    ordered = np.sort(different_id)
-    right = np.searchsorted(ordered, same_id, side="right")
-    left = np.searchsorted(ordered, same_id, side="left")
-    greater_count = len(ordered) - right
-    equal_count = right - left
-    return float(np.mean((greater_count + 0.5 * equal_count) / len(ordered)))
+    # Compares every pair, so O(n*m); a rank-based form would scale better if pair counts ever grow.
+    same = same_id[:, None]
+    different = different_id[None, :]
+    return float(np.mean(same < different) + 0.5 * np.mean(same == different))
+
+
+def _window(frames: np.ndarray, anchor_frame: int, minimum_frame_gap: int, maximum_frame_gap: int) -> np.ndarray:
+    """Positions into sorted ``frames`` lying in the gap band before or after ``anchor_frame``."""
+    before = np.arange(
+        np.searchsorted(frames, anchor_frame - maximum_frame_gap, side="left"),
+        np.searchsorted(frames, anchor_frame - minimum_frame_gap, side="right"),
+    )
+    after = np.arange(
+        np.searchsorted(frames, anchor_frame + minimum_frame_gap, side="left"),
+        np.searchsorted(frames, anchor_frame + maximum_frame_gap, side="right"),
+    )
+    return np.concatenate((before, after))
 
 
 class _SequenceIndex:
@@ -160,7 +147,8 @@ class _SequenceIndex:
         order: Crop indexes sorted by frame.
         frames: Frame number per slot.
         ids: Identity per slot.
-        slots_by_id: Slots per identity, frame-sorted because the sort is stable.
+        tracks: Slots per identity, frame-sorted because the sort is stable.
+        track_of: Index into ``tracks`` per slot, so drawing never re-hashes a label.
     """
 
     def __init__(self, crop_indexes: np.ndarray, ids: np.ndarray, frame_ids: np.ndarray) -> None:
@@ -168,127 +156,46 @@ class _SequenceIndex:
         self.order = crop_indexes[order]
         self.frames = frame_ids[self.order]
         self.ids = ids[self.order]
-        slots_by_id: dict[Hashable, list[int]] = defaultdict(list)
+        tracks: list[list[int]] = []
+        track_by_id: dict[Hashable, int] = {}
+        self.track_of = np.empty(len(self.ids), dtype=np.intp)
         for slot, identity in enumerate(self.ids):
-            slots_by_id[_scalar_key(identity)].append(slot)
-        self.slots_by_id = {identity: np.asarray(slots) for identity, slots in slots_by_id.items()}
+            track = track_by_id.setdefault(identity, len(tracks))
+            if track == len(tracks):
+                tracks.append([])
+            tracks[track].append(slot)
+            self.track_of[slot] = track
+        self.tracks = [np.asarray(slots) for slots in tracks]
 
-    def window(
-        self,
-        frames: np.ndarray,
-        anchor_frame: int,
-        minimum_frame_gap: int,
-        maximum_frame_gap: int,
-    ) -> _SlotRanges:
-        """Half-open slot ranges of ``frames`` lying that far before and after ``anchor_frame``."""
-        return (
-            (
-                int(np.searchsorted(frames, anchor_frame - maximum_frame_gap, side="left")),
-                int(np.searchsorted(frames, anchor_frame - minimum_frame_gap, side="right")),
-            ),
-            (
-                int(np.searchsorted(frames, anchor_frame + minimum_frame_gap, side="left")),
-                int(np.searchsorted(frames, anchor_frame + maximum_frame_gap, side="right")),
-            ),
+    def get_candidates(
+        self, anchor: int, minimum_frame_gap: int, maximum_frame_gap: int, *, same_id: bool
+    ) -> np.ndarray:
+        """Slots inside the gap band around ``anchor`` that may pair with it."""
+        anchor_frame = int(self.frames[anchor])
+        if same_id:
+            slots = self.tracks[self.track_of[anchor]]
+            return slots[_window(self.frames[slots], anchor_frame, minimum_frame_gap, maximum_frame_gap)]
+        candidates = _window(self.frames, anchor_frame, minimum_frame_gap, maximum_frame_gap)
+        return candidates[self.ids[candidates] != self.ids[anchor]]
+
+    def get_anchor_groups(self, minimum_frame_gap: int, maximum_frame_gap: int, *, same_id: bool) -> list[np.ndarray]:
+        """Anchors that have a candidate in the band, grouped so that every group is drawn equally often.
+
+        Same-ID anchors group by identity, so a long track cannot dominate the sample. Different-ID anchors form a
+        single group, i.e. uniform over crops.
+        """
+        grouped = self.tracks if same_id else [np.arange(len(self.order))]
+        eligible = (
+            np.asarray(
+                [
+                    s
+                    for s in map(int, slots)
+                    if len(self.get_candidates(s, minimum_frame_gap, maximum_frame_gap, same_id=same_id))
+                ]
+            )
+            for slots in grouped
         )
-
-
-def _pick_in_window(rng: np.random.Generator, window: _SlotRanges) -> int | None:
-    """Uniformly pick one slot across both ranges, or ``None`` if both are empty."""
-    (before_start, before_stop), (after_start, after_stop) = window
-    before_count = max(0, before_stop - before_start)
-    after_count = max(0, after_stop - after_start)
-    if before_count + after_count == 0:
-        return None
-    draw = int(rng.integers(before_count + after_count))
-    return before_start + draw if draw < before_count else after_start + (draw - before_count)
-
-
-def _window_size(window: _SlotRanges) -> int:
-    """Return the total number of slots in both halves of a gap window."""
-    return sum(max(0, stop - start) for start, stop in window)
-
-
-def _same_id_candidates(
-    index: _SequenceIndex,
-    minimum_frame_gap: int,
-    maximum_frame_gap: int,
-) -> _SameIdCandidates | None:
-    """Collect identities and anchors that have a same-ID partner in the active gap band."""
-    candidates: _SameIdCandidates = []
-    for slots in index.slots_by_id.values():
-        frames = index.frames[slots]
-        anchors = [
-            int(slot)
-            for slot in slots
-            if _window_size(index.window(frames, int(index.frames[slot]), minimum_frame_gap, maximum_frame_gap)) > 0
-        ]
-        if anchors:
-            candidates.append((slots, np.asarray(anchors)))
-    return candidates or None
-
-
-def _draw_same_id_pair(
-    rng: np.random.Generator,
-    index: _SequenceIndex,
-    candidates: _SameIdCandidates,
-    minimum_frame_gap: int,
-    maximum_frame_gap: int,
-) -> tuple[int, int]:
-    """Pick a valid identity uniformly, then a valid anchor and in-band partner."""
-    slots, anchors = candidates[int(rng.integers(len(candidates)))]
-    anchor = int(anchors[int(rng.integers(len(anchors)))])
-    window = index.window(index.frames[slots], int(index.frames[anchor]), minimum_frame_gap, maximum_frame_gap)
-    partner_slot = _pick_in_window(rng, window)
-    if partner_slot is None:
-        raise RuntimeError("same-ID candidate has no partner in the active gap band")
-    partner = int(slots[partner_slot])
-    return int(index.order[anchor]), int(index.order[partner])
-
-
-def _slots_in_window(window: _SlotRanges) -> np.ndarray:
-    """Return every slot contained in a two-part gap window."""
-    return np.concatenate([np.arange(start, stop) for start, stop in window])
-
-
-def _different_id_partners(
-    index: _SequenceIndex,
-    anchor: int,
-    minimum_frame_gap: int,
-    maximum_frame_gap: int,
-) -> np.ndarray:
-    """Return in-band partner slots whose identity differs from the anchor."""
-    window = index.window(index.frames, int(index.frames[anchor]), minimum_frame_gap, maximum_frame_gap)
-    partners = _slots_in_window(window)
-    return partners[index.ids[partners] != index.ids[anchor]]
-
-
-def _different_id_candidates(
-    index: _SequenceIndex,
-    minimum_frame_gap: int,
-    maximum_frame_gap: int,
-) -> list[int] | None:
-    """Collect anchors that have a different-ID partner in the active gap band."""
-    anchors = [
-        anchor
-        for anchor in range(len(index.order))
-        if len(_different_id_partners(index, anchor, minimum_frame_gap, maximum_frame_gap)) > 0
-    ]
-    return anchors or None
-
-
-def _draw_different_id_pair(
-    rng: np.random.Generator,
-    index: _SequenceIndex,
-    candidates: list[int],
-    minimum_frame_gap: int,
-    maximum_frame_gap: int,
-) -> tuple[int, int]:
-    """Pick a valid anchor uniformly, then a different-ID in-band partner."""
-    anchor = candidates[int(rng.integers(len(candidates)))]
-    partners = _different_id_partners(index, anchor, minimum_frame_gap, maximum_frame_gap)
-    partner = int(partners[int(rng.integers(len(partners)))])
-    return int(index.order[anchor]), int(index.order[partner])
+        return [group for group in eligible if len(group)]
 
 
 def _split_quota(total: int, bucket_count: int) -> list[int]:
@@ -301,28 +208,29 @@ def _draw_distances(
     rng: np.random.Generator,
     indexes: Mapping[Hashable, _SequenceIndex],
     embeddings: np.ndarray,
-    build_candidates: Callable[[_SequenceIndex, int, int], _CandidatesT | None],
-    draw_pair: Callable[[np.random.Generator, _SequenceIndex, _CandidatesT, int, int], tuple[int, int]],
     *,
+    same_id: bool,
     total_pairs: int,
     minimum_frame_gap: int,
     maximum_frame_gap: int,
 ) -> np.ndarray:
-    """Draw pairs after splitting the quota equally over active sequences."""
-    active_indexes = [
-        (index, candidates)
+    """Draw pairs of one class, splitting the quota equally over the sequences that hold any."""
+    active = [
+        (index, groups)
         for index in indexes.values()
-        if (candidates := build_candidates(index, minimum_frame_gap, maximum_frame_gap)) is not None
+        if (groups := index.get_anchor_groups(minimum_frame_gap, maximum_frame_gap, same_id=same_id))
     ]
-    if not active_indexes:
+    if not active:
         return np.asarray([], dtype=np.float64)
 
     distances: list[float] = []
-    quotas = _split_quota(total_pairs, len(active_indexes))
-    for (index, candidates), quota in zip(active_indexes, quotas, strict=True):
+    for (index, groups), quota in zip(active, _split_quota(total_pairs, len(active)), strict=True):
         for _ in range(quota):
-            pair = draw_pair(rng, index, candidates, minimum_frame_gap, maximum_frame_gap)
-            first, second = pair
+            group = groups[int(rng.integers(len(groups)))]
+            anchor = int(group[int(rng.integers(len(group)))])
+            candidates = index.get_candidates(anchor, minimum_frame_gap, maximum_frame_gap, same_id=same_id)
+            candidate = int(candidates[int(rng.integers(len(candidates)))])
+            first, second = index.order[anchor], index.order[candidate]
             distances.append(0.5 * (1.0 - float(embeddings[first] @ embeddings[second])))
     return np.asarray(distances, dtype=np.float64)
 
@@ -338,15 +246,14 @@ def sample_appearance_distances(
     minimum_frame_gap: int = 1,
     maximum_frame_gap: int = 30,
     seed: int = 0,
-    maximum_attempts_per_pair: int = 64,
 ) -> AppearanceDistances:
     """Sample same-ID and different-ID crop pairs inside one frame-gap band.
 
-    Candidate identities and anchors are filtered to those with a partner in the
-    active gap band before sampling. Every sequence with valid candidates gets an
-    equal quota. Within a sequence, same-ID pairs pick a valid identity uniformly
-    so that long tracks cannot dominate, and different-ID pairs pick a valid
-    anchor crop uniformly, then a valid partner uniformly inside the band.
+    Anchors are filtered to those that have a candidate in the active gap band
+    before sampling, and every sequence holding any gets an equal quota. Within a
+    sequence, same-ID pairs pick an identity uniformly so that long tracks cannot
+    dominate, different-ID pairs pick an anchor crop uniformly, and both then pick
+    a candidate uniformly inside the band.
 
     Args:
         embeddings: Appearance embeddings, shape ``(N, D)``. Normalised here, so
@@ -362,14 +269,12 @@ def sample_appearance_distances(
         maximum_frame_gap: Largest allowed frame gap, i.e. the association
             horizon being measured.
         seed: Seed for the pair-drawing generator.
-        maximum_attempts_per_pair: Retained for compatibility. Candidate
-            prefiltering makes retries unnecessary, so this value has no effect.
 
     Returns:
         The sampled distances for this band.
 
     Raises:
-        TypeError: If identity or sequence labels are not hashable scalars.
+        TypeError: If identity or sequence labels are not hashable.
         ValueError: If the arrays disagree in length, the gap band is invalid, or
             either class yielded no pairs at all.
     """
@@ -391,7 +296,7 @@ def sample_appearance_distances(
     rng = np.random.default_rng(seed)
     crop_indexes_by_sequence: dict[Hashable, list[int]] = defaultdict(list)
     for crop_index, sequence in enumerate(sequence_ids):
-        crop_indexes_by_sequence[_scalar_key(sequence)].append(crop_index)
+        crop_indexes_by_sequence[sequence].append(crop_index)
     indexes = {
         sequence: _SequenceIndex(np.asarray(crop_indexes), ids, frame_ids)
         for sequence, crop_indexes in crop_indexes_by_sequence.items()
@@ -401,8 +306,7 @@ def sample_appearance_distances(
         rng,
         indexes,
         normalized,
-        _same_id_candidates,
-        _draw_same_id_pair,
+        same_id=True,
         total_pairs=same_id_pairs,
         minimum_frame_gap=minimum_frame_gap,
         maximum_frame_gap=maximum_frame_gap,
@@ -411,8 +315,7 @@ def sample_appearance_distances(
         rng,
         indexes,
         normalized,
-        _different_id_candidates,
-        _draw_different_id_pair,
+        same_id=False,
         total_pairs=different_id_pairs,
         minimum_frame_gap=minimum_frame_gap,
         maximum_frame_gap=maximum_frame_gap,
@@ -483,23 +386,14 @@ def sweep_frame_gap(
     return sweep
 
 
-def _threshold_lines(thresholds: ThresholdLines) -> Iterator[tuple[float, str, str, str, float]]:
-    """Yield ``(value, label, color, linestyle, linewidth)`` for each reference line."""
+def _threshold_lines(thresholds: ThresholdLines) -> Iterator[tuple[float, dict[str, Any]]]:
+    """Yield ``(value, line keyword arguments)`` for each reference line."""
     notes = thresholds if isinstance(thresholds, Mapping) else {}
     for index, value in enumerate(thresholds):
         note = notes.get(value)
-        label = f"θ = {value:.2f}" + (f" ({note})" if note else "")
         color, linestyle, linewidth = _THRESHOLD_STYLES[min(index, len(_THRESHOLD_STYLES) - 1)]
-        yield value, label, color, linestyle, linewidth
-
-
-def _pyplot() -> ModuleType:
-    """Import ``matplotlib.pyplot``, or explain how to install it."""
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as exc:
-        raise ImportError(_MATPLOTLIB_HINT) from exc
-    return plt
+        label = f"θ = {value:.2f}" + (f" ({note})" if note else "")
+        yield value, {"label": label, "color": color, "ls": linestyle, "lw": linewidth}
 
 
 def plot_appearance_distances(
@@ -521,11 +415,9 @@ def plot_appearance_distances(
 
     Returns:
         The figure the distances were drawn on.
-
-    Raises:
-        ImportError: If matplotlib is not installed.
     """
-    plt = _pyplot()
+    import matplotlib.pyplot as plt
+
     figure, ax = plt.subplots(figsize=(8, 4.5))
     bins = np.linspace(0.0, 1.0, 51).tolist()
 
@@ -541,8 +433,8 @@ def plot_appearance_distances(
             color=color,
             label=f"{name} (n={len(values)})",
         )
-    for value, label, color, linestyle, linewidth in _threshold_lines(thresholds):
-        ax.axvline(value, color=color, ls=linestyle, lw=linewidth, label=label)
+    for value, style in _threshold_lines(thresholds):
+        ax.axvline(value, **style)
 
     gap = f"{distances.label} frame gap"
     ax.set(
@@ -561,6 +453,7 @@ def plot_frame_gap_sweep(
     sweep: Sequence[AppearanceDistances],
     *,
     thresholds: ThresholdLines = (0.25,),
+    percentiles: tuple[int, int] = (10, 90),
     title: str | None = None,
 ) -> Figure:
     """Plot how separability degrades as the frame gap widens.
@@ -575,35 +468,35 @@ def plot_frame_gap_sweep(
         sweep: Output of :func:`sweep_frame_gap`.
         thresholds: Candidate thresholds to draw as horizontal reference lines. Pass a
             mapping to annotate them, e.g. ``{0.20: "selected", 0.25: "default"}``.
+        percentiles: ``(low, high)`` bounds of the band shaded around each class's
+            median. Keep it symmetric so both classes are read the same way.
         title: Figure title.
 
     Returns:
         The figure the sweep was drawn on.
 
     Raises:
-        ImportError: If matplotlib is not installed.
         ValueError: If ``sweep`` is empty.
     """
     if len(sweep) == 0:
         raise ValueError("sweep is empty; nothing to plot")
-    plt = _pyplot()
-    low_percentile, high_percentile = _BAND_PERCENTILES
+    import matplotlib.pyplot as plt
+
+    low_percentile, high_percentile = percentiles
     positions = np.arange(len(sweep))
 
     figure, (ax_distance, ax_auc) = plt.subplots(
         2, 1, figsize=(8, 6.5), sharex=True, gridspec_kw={"height_ratios": [2.2, 1.0]}
     )
-    for attribute, color, name in (
-        ("same_id", _SAME_ID_COLOR, "same ID"),
-        ("different_id", _DIFFERENT_ID_COLOR, "different ID"),
+    for values, color, name in (
+        ([band.same_id for band in sweep], _SAME_ID_COLOR, "same ID"),
+        ([band.different_id for band in sweep], _DIFFERENT_ID_COLOR, "different ID"),
     ):
-        quantiles = np.array(
-            [np.percentile(getattr(band, attribute), [low_percentile, 50, high_percentile]) for band in sweep]
-        )
+        quantiles = np.array([np.percentile(band, [low_percentile, 50, high_percentile]) for band in values])
         ax_distance.fill_between(positions, quantiles[:, 0], quantiles[:, 2], color=color, alpha=0.22)
         ax_distance.plot(positions, quantiles[:, 1], color=color, marker="o", lw=2, label=name)
-    for value, label, color, linestyle, linewidth in _threshold_lines(thresholds):
-        ax_distance.axhline(value, color=color, ls=linestyle, lw=linewidth, label=label)
+    for value, style in _threshold_lines(thresholds):
+        ax_distance.axhline(value, **style)
 
     ax_distance.set(ylabel="appearance distance")
     ax_distance.set_title(

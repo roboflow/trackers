@@ -110,6 +110,23 @@ class TestSampleAppearanceDistances:
         np.testing.assert_allclose(distances.same_id, 0.0, atol=1e-6)
         np.testing.assert_allclose(distances.different_id, 0.5, atol=1e-6)
 
+    def test_labels_that_never_equal_themselves_are_still_sampleable(self) -> None:
+        """A NaN label is its own identity, so sampling must not look a track up by its label."""
+        embeddings = np.array([_FIRST_IDENTITY, _SECOND_IDENTITY] * 2, dtype=np.float32)
+
+        distances = sample_appearance_distances(
+            embeddings,
+            np.array([np.nan, 1.0] * 2),
+            np.array([1, 1, 2, 2]),
+            np.zeros(4),
+            same_id_pairs=4,
+            different_id_pairs=4,
+            maximum_frame_gap=1,
+        )
+
+        # Only the 1.0 track pairs with itself; the two NaN crops are distinct identities.
+        np.testing.assert_allclose(distances.same_id, 0.0, atol=1e-6)
+
     def test_every_sequence_gets_an_equal_quota(self) -> None:
         """The per-sequence split is what stops one crowded sequence deciding the answer.
 
