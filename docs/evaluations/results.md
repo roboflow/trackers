@@ -28,7 +28,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
 !!! info
 
-    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model.
+    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model. BoT-SORT rows are CMC without appearance; for CMC + FastReID on MOT17 and OSNet MSMT17 on SoccerNet see [BoT-SORT with and without ReID](../guides/reid.md#bot-sort-with-and-without-reid).
 
 === "Default"
 
@@ -216,7 +216,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections.
+    Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections. The BoT-SORT row is CMC without appearance; for OSNet MSMT17 appearance on this split see [BoT-SORT with and without ReID](../guides/reid.md#bot-sort-with-and-without-reid).
 
 === "Default"
 

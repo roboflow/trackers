@@ -770,6 +770,25 @@ class TestBooleanOptionSyntax:
     @pytest.mark.parametrize(
         ("arguments", "expected"),
         [
+            pytest.param([], None, id="omitted"),
+            pytest.param(["--reid.enable"], True, id="positive"),
+            pytest.param(["--reid.no_enable"], False, id="negative"),
+            pytest.param(["--reid.enable", "false"], False, id="explicit_false"),
+        ],
+    )
+    def test_reid_enable_preserves_tristate(
+        self,
+        parser: _CLIParser,
+        arguments: list[str],
+        expected: bool | None,
+    ) -> None:
+        parsed = parser.instantiate_classes(parser.parse_args(arguments))
+
+        assert parsed.reid.enable is expected
+
+    @pytest.mark.parametrize(
+        ("arguments", "expected"),
+        [
             pytest.param([], True, id="default"),
             pytest.param(["--show.ids"], True, id="bare_positive"),
             pytest.param(["--show.no_ids"], False, id="bare_negative"),

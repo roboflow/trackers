@@ -12,6 +12,21 @@ from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
+from trackers.core.reid import (
+    DEFAULT_FRAME_GAP_BANDS,
+    AppearanceDistances,
+    FeatureBank,
+    ReIDEncoder,
+    ThresholdLines,
+    appearance_similarity,
+    extract_detection_embeddings,
+    extract_ground_truth_embeddings,
+    plot_appearance_distances,
+    plot_frame_gap_sweep,
+    roc_auc,
+    sample_appearance_distances,
+    sweep_frame_gap,
+)
 from trackers.core.sort.tracker import SORTTracker
 from trackers.datasets.download import download_dataset
 from trackers.datasets.manifest import Dataset, DatasetAsset, DatasetSplit
@@ -29,6 +44,8 @@ from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU
 
 __all__ = [
     "CMC",
+    "DEFAULT_FRAME_GAP_BANDS",
+    "AppearanceDistances",
     "BIoU",
     "BaseIoU",
     "BoTSORTTracker",
@@ -43,6 +60,7 @@ __all__ = [
     "Dataset",
     "DatasetAsset",
     "DatasetSplit",
+    "FeatureBank",
     "GIoU",
     "HomographyTransformation",
     "IdentityTransformation",
@@ -52,10 +70,20 @@ __all__ = [
     "MotionAwareTraceAnnotator",
     "MotionEstimator",
     "OCSORTTracker",
+    "ReIDEncoder",
     "SORTTracker",
+    "ThresholdLines",
+    "appearance_similarity",
     "download_dataset",
+    "extract_detection_embeddings",
+    "extract_ground_truth_embeddings",
     "frames_from_source",
     "load_mot_file",
+    "plot_appearance_distances",
+    "plot_frame_gap_sweep",
+    "roc_auc",
+    "sample_appearance_distances",
+    "sweep_frame_gap",
     "xcycsr_to_xyxy",
     "xyxy_to_xcycsr",
 ]

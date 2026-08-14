@@ -25,6 +25,7 @@ from trackers.cli.track import (
     DetectionOptions,
     FilterOptions,
     OutputOptions,
+    ReIDOptions,
     ShowOptions,
     TrackerOptions,
     track_command,
@@ -39,6 +40,7 @@ _TRACK_OPTION_GROUPS: tuple[tuple[type, str], ...] = (
     (DetectionOptions, "detection"),
     (FilterOptions, "filters"),
     (TrackerOptions, "tracker"),
+    (ReIDOptions, "reid"),
     (OutputOptions, "output"),
     (ShowOptions, "show"),
 )
@@ -212,6 +214,19 @@ def _add_track_arguments(parser: ArgumentParser) -> list[str]:
     )
     added_args = ["source"]
     for option_class, nested_key in _TRACK_OPTION_GROUPS:
+        if option_class is ReIDOptions:
+            added_args.extend(parser.add_class_arguments(option_class, nested_key, skip={"enable"}))
+            # jsonargparse handles ``bool | None`` as a value-taking type hint.
+            # Registering the field as ``bool`` preserves the paired bare flags
+            # while its explicit default retains the omitted state.
+            parser.add_argument(
+                "--reid.enable",
+                type=bool,
+                default=None,
+                help="Explicitly enable or disable appearance association.",
+            )
+            added_args.append("reid.enable")
+            continue
         added_args.extend(parser.add_class_arguments(option_class, nested_key))
     # Registered as a plain boolean rather than a bare ``store_true`` so it gains
     # the same ``--no_display`` half every other boolean option has.

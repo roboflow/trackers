@@ -134,6 +134,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths: [src]
           options:
             # Controls whether to show symbol types in the table of contents
             show_symbol_type_toc: true
@@ -166,8 +167,11 @@ nav:
     - Tune Trackers: guides/tune.md
     - IoU Variants: guides/iou.md
     - State Estimators: guides/state-estimators.md
+    - ReID Appearance: guides/reid.md
   - Developer:
     - Inspect Mask Pipeline: guides/inspect.md
+    - Architecture Decisions:
+      - "Model-backend externalization": adr/0001-model-backend-externalization.md
   - Evaluations:
     - Download Datasets: evaluations/download.md
     - Benchmark Trackers: evaluations/evaluate.md
@@ -184,6 +188,7 @@ nav:
   - API Reference:
     - Trackers: api/trackers.md
     - Motion: api/motion.md
+    - ReID: api/reid.md
     - Datasets: api/datasets.md
     - Evals: api/evals.md
     - I/O: api/io.md

@@ -52,6 +52,10 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 | `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.                                                                    | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                                                                                                                                 |
 | `enable_cmc`                              | Enables camera motion compensation before association.                                                                      | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                         |
 
+## ReID appearance (optional)
+
+BoT-SORT can fuse appearance embeddings with IoU during association via an optional `reid_model`. Install, usage, parameters, and MOT17 with/without ReID scores are on the [ReID appearance](../guides/reid.md) page.
+
 ## Run on video, webcam, or RTSP stream
 
 These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VIDEO_PATH>`, `<WEBCAM_INDEX>`, and `<RTSP_STREAM_URL>` with your inputs. `<WEBCAM_INDEX>` is usually 0 for the default camera.

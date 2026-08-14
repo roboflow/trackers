@@ -6,8 +6,12 @@
 
 from __future__ import annotations
 
+import builtins
+from collections.abc import Mapping, Sequence
 from dataclasses import fields
+from pathlib import Path
 from typing import ClassVar
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -15,6 +19,8 @@ import supervision as sv
 
 from trackers.cli.track import (
     _EXCLUDED_TRACKER_PARAMETERS,
+    DetectionOptions,
+    ReIDOptions,
     ShowOptions,
     TrackerOptions,
     _abbreviate_parameter_name,
@@ -23,12 +29,16 @@ from trackers.cli.track import (
     _format_labels,
     _init_annotators,
     _init_tracker,
+    _load_reid_model,
+    _reid_requested,
     _resolve_class_filter,
     _resolve_track_id_filter,
     _resolve_tracker_kwargs,
     _tracker_options_as_dict,
+    track_command,
 )
 from trackers.core.base import BaseTracker
+from trackers.core.botsort.tracker import BoTSORTTracker
 
 
 class TestInitAnnotators:
@@ -350,3 +360,174 @@ class TestTrackerParameterAbbreviations:
             tracker = _init_tracker(options)
 
         assert not hasattr(tracker, "minimum_mask_coverage")
+
+
+class _FakeReIDModel:
+    """Stand-in for ``reid.ReIDModel`` that records its loading kwargs."""
+
+    last_kwargs: ClassVar[dict | None] = None
+
+    @classmethod
+    def from_pretrained(cls, **kwargs: object) -> _FakeReIDModel:
+        cls.last_kwargs = dict(kwargs)
+        return cls()
+
+    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+        return np.zeros((len(detections), 8), dtype=np.float32)
+
+
+@pytest.fixture
+def fake_reid_module(monkeypatch: pytest.MonkeyPatch) -> type[_FakeReIDModel]:
+    """Install a fake ``reid`` module so loading needs no checkpoint download."""
+    import sys
+    from types import ModuleType
+
+    module = ModuleType("reid")
+    module.ReIDModel = _FakeReIDModel  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "reid", module)
+    _FakeReIDModel.last_kwargs = None
+    return _FakeReIDModel
+
+
+class TestReIDOptions:
+    """CLI wiring for optional appearance-encoder loading."""
+
+    def test_model_source_implies_enable(self) -> None:
+        """Naming a checkpoint is enough; --reid.enable is not also required."""
+        assert _reid_requested(ReIDOptions(model="osnet_x1_0_msmt17_combineall"))
+
+    @pytest.mark.parametrize(
+        "options",
+        [
+            pytest.param(ReIDOptions(architecture="osnet_x1_0"), id="architecture"),
+            pytest.param(ReIDOptions(device="cpu"), id="device"),
+        ],
+    )
+    def test_non_default_options_imply_enable(self, options: ReIDOptions) -> None:
+        assert _reid_requested(options)
+
+    def test_explicit_disable_conflicts_with_model(self) -> None:
+        with pytest.raises(ValueError, match="cannot be combined"):
+            _reid_requested(ReIDOptions(enable=False, model="osnet_x1_0_msmt17_combineall"))
+
+    def test_absent_by_default(self) -> None:
+        """Default options leave ReID off, so geometry-only tracking is unchanged."""
+        assert not _reid_requested(ReIDOptions())
+
+    def test_track_command_rejects_reid_without_source(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """The command entry point rejects ReID when MOT input supplies no frames."""
+        exit_code = track_command(
+            detection=DetectionOptions(mot_file=Path("detections.txt")),
+            reid=ReIDOptions(enable=True),
+        )
+
+        assert exit_code == 1
+        assert capsys.readouterr().err == (
+            "Error: ReID requires --source (video/webcam/images) so appearance embeddings "
+            "can be extracted from frames.\n"
+        )
+
+    def test_missing_optional_extra_reports_install_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A missing ReID dependency is translated into actionable CLI guidance."""
+        import sys
+        from types import ModuleType
+
+        monkeypatch.setitem(sys.modules, "reid", ModuleType("reid"))
+
+        with pytest.raises(ValueError) as exc_info:
+            _load_reid_model(ReIDOptions(enable=True))
+
+        assert str(exc_info.value) == (
+            "ReID tracking requires the optional `trackers[reid]` extra.\nInstall with: pip install 'trackers[reid]'"
+        )
+        assert isinstance(exc_info.value.__cause__, ImportError)
+
+    @pytest.mark.parametrize(
+        "load_error",
+        [
+            pytest.param(OSError("checkpoint unavailable"), id="os_error"),
+            pytest.param(ValueError("checkpoint unavailable"), id="value_error"),
+            pytest.param(RuntimeError("checkpoint unavailable"), id="runtime_error"),
+        ],
+    )
+    def test_model_load_errors_include_reid_context(
+        self,
+        load_error: Exception,
+        fake_reid_module: type[_FakeReIDModel],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Expected loader failures identify the ReID checkpoint operation."""
+        monkeypatch.setattr(fake_reid_module, "from_pretrained", Mock(side_effect=load_error))
+
+        with pytest.raises(ValueError, match="Failed to load ReID model: checkpoint unavailable") as exc_info:
+            _load_reid_model(ReIDOptions(enable=True))
+
+        assert exc_info.value.__cause__ is load_error
+
+    def test_encoder_reaches_the_tracker(self, fake_reid_module: type[_FakeReIDModel]) -> None:
+        """A requested encoder is injected as the tracker's reid_model."""
+        tracker = _init_tracker(TrackerOptions(name="botsort"), ReIDOptions(enable=True, device="cpu"))
+
+        assert isinstance(tracker, BoTSORTTracker)
+        assert isinstance(tracker.reid_model, _FakeReIDModel)
+        assert fake_reid_module.last_kwargs == {"device": "cpu"}
+
+    def test_architecture_is_forwarded(self, fake_reid_module: type[_FakeReIDModel], tmp_path: Path) -> None:
+        """Bare weights pass both source and architecture through to the loader."""
+        weights = tmp_path / "weights.pth"
+        weights.touch()
+
+        _init_tracker(
+            TrackerOptions(name="botsort"),
+            ReIDOptions(model=str(weights), device="cpu", architecture="osnet_x1_0"),
+        )
+
+        assert fake_reid_module.last_kwargs is not None
+        assert fake_reid_module.last_kwargs["architecture"] == "osnet_x1_0"
+        assert fake_reid_module.last_kwargs["source"] == str(weights)
+
+    def test_architecture_requires_model(self, fake_reid_module: type[_FakeReIDModel]) -> None:
+        """An architecture with no checkpoint to apply it to is rejected."""
+        with pytest.raises(ValueError, match=r"--reid\.architecture requires --reid\.model"):
+            _init_tracker(TrackerOptions(name="botsort"), ReIDOptions(enable=True, architecture="osnet_x0_25"))
+
+    def test_tracker_without_encoder_support_is_rejected(self, fake_reid_module: type[_FakeReIDModel]) -> None:
+        """Requesting ReID on a geometry-only tracker fails loudly."""
+        with pytest.raises(ValueError, match=r"--reid\.\* options apply only to a tracker that accepts an encoder"):
+            _init_tracker(TrackerOptions(name="bytetrack"), ReIDOptions(enable=True))
+
+    def test_transitive_reid_import_error_is_preserved(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        original_import = builtins.__import__
+
+        def fail_reid_import(
+            name: str,
+            global_vars: Mapping[str, object] | None = None,
+            local_vars: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] | None = None,
+            level: int = 0,
+        ) -> object:
+            if name == "reid":
+                raise ImportError("No module named 'broken_dependency'", name="broken_dependency")
+            return original_import(name, global_vars, local_vars, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", fail_reid_import)
+
+        with pytest.raises(ImportError, match="broken_dependency") as exc_info:
+            _load_reid_model(ReIDOptions(enable=True))
+
+        assert exc_info.value.name == "broken_dependency"
+
+    def test_reid_model_is_not_a_cli_flag(self) -> None:
+        """The encoder is built from ReIDOptions, so it must not become a --tracker flag."""
+        assert "reid_model" in _EXCLUDED_TRACKER_PARAMETERS
+        assert "reid_model" not in {field.name for field in fields(TrackerOptions)}
+
+    def test_appearance_parameters_stay_cli_reachable(self) -> None:
+        """The three scalar ReID knobs are still generated from the registry."""
+        option_fields = {field.name for field in fields(TrackerOptions)}
+        assert {
+            "reid_appearance_threshold",
+            "reid_ema_alpha",
+            "reid_proximity_threshold",
+        } <= option_fields
+        assert {"appearance_threshold", "proximity_threshold"}.isdisjoint(option_fields)
