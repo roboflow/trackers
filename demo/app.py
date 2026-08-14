@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import sys
 import tempfile
@@ -324,17 +325,17 @@ VIDEO_EXAMPLES = [
 ]
 
 
-def _get_video_info(path: str) -> tuple[float, int]:
-    """Return video duration in seconds and frame count using OpenCV."""
+def _get_video_info(path: str) -> tuple[float, int, float]:
+    """Return video duration in seconds, frame count, and FPS using OpenCV."""
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
         raise gr.Error("Could not open the uploaded video.")
     fps = cap.get(cv2.CAP_PROP_FPS)
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.release()
-    if fps <= 0:
+    if not math.isfinite(fps) or fps <= 0:
         raise gr.Error("Could not determine video frame rate.")
-    return frame_count / fps, frame_count
+    return frame_count / fps, frame_count, fps
 
 
 def _resolve_class_filter(
@@ -403,7 +404,7 @@ def track(
     if video_path is None:
         raise gr.Error("Please upload a video.")
 
-    duration, total_frames = _get_video_info(video_path)
+    duration, total_frames, frame_rate = _get_video_info(video_path)
     if duration > MAX_DURATION_SECONDS:
         raise gr.Error(
             f"Video is {duration:.1f}s long. "
@@ -426,6 +427,7 @@ def track(
             minimum_consecutive_frames=minimum_consecutive_frames,
             minimum_iou_threshold=minimum_iou_threshold,
             high_conf_det_threshold=high_conf_det_threshold,
+            frame_rate=frame_rate,
         )
     else:
         tracker = SORTTracker(
@@ -433,6 +435,7 @@ def track(
             track_activation_threshold=track_activation_threshold,
             minimum_consecutive_frames=minimum_consecutive_frames,
             minimum_iou_threshold=minimum_iou_threshold,
+            frame_rate=frame_rate,
         )
     tracker.reset()
 

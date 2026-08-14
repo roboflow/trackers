@@ -410,8 +410,8 @@ Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset m
     </tr>
     <tr>
       <td><code>--tracker.frame_rate</code></td>
-      <td>Video frame rate used to scale the lost track buffer to time-like behavior. Must be positive.</td>
-      <td><code>null</code> (tracker default)</td>
+      <td>Video frame rate used to scale the lost track buffer to time-like behavior. Must be positive. When unset and the source is a video with a readable FPS, that FPS is used instead of the tracker's own default; sources with no FPS to read (webcam, stream, image directory, or a <code>--detection.mot_file</code>-only run) still fall back to the tracker default.</td>
+      <td><code>null</code> (source FPS if readable, else tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.lost_track_buffer</code></td>
