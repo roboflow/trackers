@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 import supervision as sv
 
-from trackers.core.botsort.fusion import fuse_botsort_reid_association
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.reid.fusion import fuse_botsort_reid_association
 
 
 def _detection(xyxy: tuple[float, float, float, float], conf: float = 0.9) -> sv.Detections:

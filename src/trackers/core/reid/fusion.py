@@ -10,7 +10,11 @@
 # Reference: tracker/bot_sort.py (ReID appearance-IoU cost fusion)
 # ------------------------------------------------------------------------
 
-"""Appearance-IoU fusion for BoT-SORT ReID association."""
+"""Appearance-IoU fusion methods for ReID association.
+
+Fusion methods are numpy-only and take track-detection similarity matrices, so they are reusable across trackers rather
+than tied to any single one.
+"""
 
 from __future__ import annotations
 
