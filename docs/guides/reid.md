@@ -28,14 +28,29 @@ For extra contents and other options, see the [install guide](install.md).
 
 ## Quickstart
 
-```python
-from reid import ReIDModel
+=== "Python"
 
-from trackers import BoTSORTTracker
+    ```python
+    from reid import ReIDModel
 
-reid_model = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
-tracker = BoTSORTTracker(reid_model=reid_model, reid_appearance_threshold=0.2)
-```
+    from trackers import BoTSORTTracker
+
+    reid_model = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
+    tracker = BoTSORTTracker(reid_model=reid_model, reid_appearance_threshold=0.2)
+    ```
+
+=== "CLI"
+
+    `--reid.model` takes a curated alias, an `hf://` URL, or a local path, and enables appearance association on its own. Tracker parameters keep their Python names, so the appearance gate is `--tracker.reid_appearance_threshold`. See the [CLI reference](cli.md) for every argument.
+
+    ```bash
+    trackers track \
+        --source <SOURCE_VIDEO_PATH> \
+        --tracker botsort \
+        --reid.model fastreid_mot17_sbs50 \
+        --tracker.reid_appearance_threshold 0.2 \
+        --output.video output.mp4
+    ```
 
 !!! warning "A frame is required when ReID is enabled"
 
