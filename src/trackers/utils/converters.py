@@ -131,6 +131,9 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
 
     Returns:
         Bounding boxes `[x_min, y_min, x_max, y_max]` with same shape as input.
+        Decoding is always performed in floating point: integer input is promoted
+        (``int32``/``int64`` decode to ``float64``), and float input keeps its own
+        precision (``float32`` decodes to ``float32``).
 
     Note:
         When ``scale`` or ``aspect_ratio`` is zero, ``w`` collapses to ``0.0``
@@ -182,7 +185,8 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
     # Inner np.where substitutes 1.0 for zero denominators to suppress the
     # eager-evaluation divide-by-zero warning; outer np.where replaces those results with 0.0.
     h = np.where(w != 0, xcycsr[:, 2] / np.where(w != 0, w, 1.0), 0.0)
-    result = np.empty((xcycsr.shape[0], 4), dtype=np.float64)
+    # Decoded values are floats, so promote integers rather than truncate them; float input keeps its precision.
+    result = np.empty((xcycsr.shape[0], 4), dtype=np.result_type(xcycsr.dtype, np.float32))
     result[:, 0] = xcycsr[:, 0] - w * 0.5
     result[:, 1] = xcycsr[:, 1] - h * 0.5
     result[:, 2] = xcycsr[:, 0] + w * 0.5
