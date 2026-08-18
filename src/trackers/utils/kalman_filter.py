@@ -100,9 +100,9 @@ class KalmanFilter:
 
         If z is None, the state is not updated (prediction only).
 
-        If the innovation covariance is singular — zero measurement noise, or a state covariance that has collapsed
-        after repeated updates — the gain falls back to a pseudo-inverse least-squares solution so the track survives
-        instead of raising.
+        If the innovation covariance is singular — zero measurement noise together with a state covariance that has
+        collapsed after repeated updates — the gain falls back to a pseudo-inverse least-squares solution so the track
+        survives instead of raising.
 
         Args:
             z: Measurement vector (dim_z, 1) or None for no observation.
@@ -127,7 +127,7 @@ class KalmanFilter:
         # Kalman gain: kalman_gain = state_covariance @ observation_mtx.T @ innovation_cov^-1
         # Solved as innovation_cov.T @ kalman_gain.T = PHT.T to avoid forming the explicit inverse.
         try:
-            self.kalman_gain = np.linalg.solve(self.innovation_cov.T, PHT.T).T.astype(np.float64, copy=False)
+            self.kalman_gain = np.linalg.solve(self.innovation_cov.T, PHT.T).T
         except np.linalg.LinAlgError:
             # A singular innovation covariance has no exact solution, so fall back to the
             # least-squares gain instead of killing the track mid-sequence.
