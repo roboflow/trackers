@@ -240,6 +240,21 @@ class TestXCYCSRConversion:
         assert result.shape == (1, 4)
         np.testing.assert_array_almost_equal(result[0], np.array([0.0, 0.0, 1.0, 1.0]), decimal=5)
 
+    @pytest.mark.parametrize(
+        ("dtype", "expected_dtype"),
+        [
+            pytest.param(np.int64, np.float64, id="integer-promotes"),
+            pytest.param(np.float32, np.float32, id="float32-preserved"),
+        ],
+    )
+    def test_xcycsr_to_xyxy_batch_decodes_in_floating_point(
+        self, dtype: type[np.number], expected_dtype: type[np.floating]
+    ) -> None:
+        """Integer input promotes instead of truncating; float input keeps its own precision."""
+        result = xcycsr_to_xyxy(np.array([[10, 20, 25, 1]], dtype=dtype))
+        assert result.dtype == expected_dtype
+        np.testing.assert_array_almost_equal(result, [[7.5, 17.5, 12.5, 22.5]], decimal=5)
+
     def test_xcycsr_to_xyxy_empty(self) -> None:
         """An empty (0, 4) xcycsr batch returns an empty (0, 4) xyxy batch."""
         xcycsr = np.zeros((0, 4))
