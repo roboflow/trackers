@@ -132,7 +132,23 @@ class BoTSORTTracklet(BaseTracklet):
         self.state_estimator.set_kf_covariances(measurement_noise=R, process_noise=Q, state_covariance=state_covariance)
 
     def _current_wh(self) -> tuple[float, float]:
-        """Return the current box width/height, clamped away from zero."""
+        """Return the current box width/height, clamped away from zero.
+
+        The ``XCYCWHStateEstimator`` path reconstructs each pair of corners before subtracting them.  Reading the stored
+        width and height directly would skip the center-dependent rounding performed by ``state_to_bbox()``. The fast
+        path only applies to the exact base class: a subclass may override ``state_to_bbox()``, and reproducing the
+        arithmetic here instead of calling it would silently skip that override.
+        """
+        if type(self.state_estimator) is XCYCWHStateEstimator:
+            state = self.state_estimator.kf.state
+            x_center = state[0, 0]
+            y_center = state[1, 0]
+            half_w = state[2, 0] * 0.5
+            half_h = state[3, 0] * 0.5
+            w = max(float((x_center + half_w) - (x_center - half_w)), 1e-3)
+            h = max(float((y_center + half_h) - (y_center - half_h)), 1e-3)
+            return w, h
+
         bbox = self.state_estimator.state_to_bbox()
         w = max(float(bbox[2] - bbox[0]), 1e-3)
         h = max(float(bbox[3] - bbox[1]), 1e-3)
