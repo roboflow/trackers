@@ -47,12 +47,15 @@ For the model catalog and fine-tuning, see the [`reid` training guide](https://g
 
 ## Key Parameters
 
-| Parameter                   | Purpose                                                                                                            | Tuning guidance                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `reid_model`                | Appearance encoder queried during association.                                                                     | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                |
-| `reid_ema_alpha`            | EMA momentum for a track's appearance feature.                                                                     | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more. |
-| `reid_appearance_threshold` | Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                        |
-| `reid_proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - reid_proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU. | Default 0.5. Lower restricts how far apart a pair may be before appearance stops contributing.                   |
+| Parameter                   | Purpose                                                                                                                              | Tuning guidance                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `reid_model`                | Appearance encoder queried during association.                                                                                       | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                 |
+| `reid_ema_alpha`            | EMA momentum for a track's appearance feature.                                                                                       | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more.  |
+| `reid_appearance_threshold` | Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                                  | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                         |
+| `reid_proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - reid_proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.                   | Default 0.5. Raise to 1.0 where targets leave the frame and return, see [below](#choosing-a-proximity-threshold). |
+| `reid_fusion`               | How appearance combines with geometry: `"botsort"` takes the minimum of the two costs, `"adaptive"` adds a weighted appearance term. | Default `"botsort"`. See [choosing a fusion method](#choosing-a-fusion-method) before switching.                  |
+| `reid_appearance_weight`    | Base appearance weight when `reid_fusion="adaptive"`. Ignored otherwise.                                                             | Default 0.75. Raise where geometry is unreliable, see below.                                                      |
+| `reid_adaptive_weight_cap`  | Ceiling on the adaptive bonus when `reid_fusion="adaptive"`. Ignored otherwise.                                                      | Default 0.5. Raise together with `reid_appearance_weight`.                                                        |
 
 ---
 
@@ -130,6 +133,69 @@ The cross-domain encoder fails differently. On SoccerNet the different-ID rate a
 ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
 
 ---
+
+## Choosing a proximity threshold
+
+`reid_proximity_threshold` decides which track-detection pairs appearance is allowed to score. A pair is dropped before appearance is consulted whenever `1 - IoU` exceeds the threshold, so the 0.5 default limits appearance to pairs that already overlap at `IoU >= 0.5`, and 0.99 still requires `IoU >= 0.01`. Only 1.0 disables the gate.
+
+**Why it matters.** Lost tracks are represented by their Kalman prediction. After an occlusion the prediction has drifted and overlaps the re-emerging detection weakly; after a target leaves the frame the prediction has been extrapolated out of it and the overlap with the returning detection is exactly zero. The default excludes both cases, 0.99 admits the first, and only 1.0 admits the second. The reference Deep OC-SORT tracker recovers the second case with a geometry-only pass against the last observed box (OCR); BoT-SORT has no such stage, so appearance at an open gate is the only route.
+
+On SoccerNet test (oracle detections, `osnet_x1_0` fine-tuned on SoccerNet train, library-default geometry):
+
+| `reid_proximity_threshold` | appearance consulted when | HOTA  | ID switches |
+| :------------------------- | :------------------------ | :---: | :---------: |
+| none (no ReID)             |                           | 84.56 |    2939     |
+| 0.5 (default)              | `IoU >= 0.50`             | 84.52 |    3012     |
+| 0.8                        | `IoU >= 0.20`             | 85.02 |    3268     |
+| 0.95                       | `IoU >= 0.05`             | 85.69 |    2565     |
+| 0.99                       | `IoU >= 0.01`             | 85.82 |    2431     |
+
+On the [published tuned BoT-SORT geometry](../evaluations/results.md#soccernet-tracking) for SoccerNet, `adaptive` at 0.99 scores 85.87 HOTA with 2433 switches and at 1.0 scores **86.23** with **1692**, against 85.00 and 2523 without appearance. The identity gain is almost entirely the last step: 1.0 is what lets a player who walked out of frame come back with the same id. `botsort` at 1.0 reaches 87.29 HOTA but 4564 switches, see [choosing a fusion method](#choosing-a-fusion-method).
+
+Half-opening is the worst setting for identity: 0.8 has more ID switches than either the closed gate or no appearance at all, because it admits enough distant candidates to create false matches without admitting the ones that enable recoveries. Either keep the gate or disable it.
+
+The right value depends on the footage. DanceTrack val targets stay in frame, and there opening the gate only adds false matches: `adaptive` at its best weights falls from 57.39 HOTA at 0.5 to 56.56 at 1.0, and `botsort` falls from 56.11 to 46.20 with seven times the ID switches, because `min(d_iou, d_app)` with no geometric check flips between dancers that look alike every frame. Use 1.0 where identity is lost to camera motion or targets leaving the frame, and prefer `adaptive` there; keep 0.5 where targets stay in view.
+
+## Choosing a fusion method
+
+`reid_fusion` selects how the appearance score reaches the cost matrix.
+
+`"botsort"` (default) takes `min(d_iou, d_app)`. Appearance competes with geometry and wins only when it is strictly cheaper, so a pair is accepted when either cue is confident. Both gates are hard: a pair either clears `reid_appearance_threshold` and `reid_proximity_threshold` or contributes nothing.
+
+`"adaptive"` adds a weighted appearance term to the geometric similarity, with the weight growing when the best appearance match stands clear of the runner-up and falling back to `reid_appearance_weight` when the top candidates are hard to tell apart. This is the weighting from Deep OC-SORT, ported on its own onto BoT-SORT; the velocity term, the confidence-gated feature update and the OCR pass are not included. `reid_appearance_threshold` has no effect under this method.
+
+Two consequences are worth knowing before switching:
+
+- **The similarity range changes.** `"botsort"` returns values in `[0, 1]`; `"adaptive"` returns `[0, 1 + reid_appearance_weight + reid_adaptive_weight_cap]`, which is `[0, 2.25]` at the defaults. `minimum_iou_threshold_first_assoc` is applied to that fused value, so a threshold tuned for one method is a different gate under the other. Retune it when you switch, or the comparison measures the gate rather than the fusion.
+- **The weights are domain-dependent.** Deep OC-SORT reports `reid_appearance_weight=0.75` with `reid_adaptive_weight_cap=0.5` for MOT17 and MOT20, and `1.25` with `1.0` for DanceTrack, where dancers occlude constantly and geometry carries less. The defaults here follow the MOT17/MOT20 pair.
+
+### Measured comparison
+
+HOTA, best configuration found for each method. Detections, CMC, encoder and geometry are shared within a row; only appearance handling differs. SoccerNet and MOT17 use the published tuned BoT-SORT geometry from the [tracker comparison](../evaluations/results.md); DanceTrack's tuned set coincides with the library defaults.
+
+| Dataset        | Encoder                           | no ReID   | `botsort` | `adaptive` | `botsort` parameters                                              | `adaptive` parameters                                                                         |
+| -------------- | --------------------------------- | --------- | --------- | ---------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| SoccerNet test | `osnet_x1_0` fine-tuned SoccerNet | 85.00     | **87.29** | 86.23      | `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0` | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=1.0` |
+| DanceTrack val | `osnet_x1_0_msmt17_combineall`    | 53.89     | 56.11     | **57.39**  | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  | `reid_appearance_weight=2.4`, `reid_adaptive_weight_cap=0`, `reid_proximity_threshold=0.5`    |
+| MOT17 val-half | `osnet_x1_0` fine-tuned MOT17     | **69.05** | 69.00     | 68.72      | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.5` |
+
+HOTA. Each cell is the best configuration found for that method (on SoccerNet the threshold and weight come from closed-gate sweeps with only the gate changed to 1.0, so they are good settings rather than necessarily the best); the parameter columns give the full ReID settings it ran with, defaults included. MOT17 moves by less than 0.35 HOTA in any direction on 7 sequences, inside single-sequence variance.
+
+**The two rules trade HOTA against identity stability.** On DanceTrack `adaptive` leads on both, cutting ID switches from 1905 to 1683 where `botsort` raises them to 2276 while still gaining HOTA. On SoccerNet with the gate disabled `botsort` has the higher HOTA and IDF1 (87.29 and 83.13 against 86.23 and 82.52) but 4564 ID switches against 1692, 81% more than running no appearance at all; two thirds of its identity changes revert within ten frames, because `min(d_iou, d_app)` takes whichever candidate is cheapest in the current frame and flips between players in the same kit. `adaptive` commits to a re-association and keeps it, so its errors are fewer and longer. Prefer `adaptive` when stable ids matter, which is the usual reason to enable appearance. The adaptive bonus itself contributes little: with `reid_adaptive_weight_cap=0` HOTA changes by 0.12 on SoccerNet and 0.13 on DanceTrack. Leave the cap at its default and tune `reid_appearance_weight` and `reid_proximity_threshold` instead.
+
+### Choosing the adaptive weight
+
+Deep OC-SORT reports `reid_appearance_weight=0.75` for MOT17 and MOT20 and `1.25` for DanceTrack. On SoccerNet test and MOT17 val-half a sweep from 0.75 to 2.5 moves HOTA by less than 0.15, so the default transfers. DanceTrack val needs more than the reported value:
+
+| `reid_appearance_weight` | HOTA      | ID switches |
+| ------------------------ | --------- | ----------- |
+| 1.25 (reported)          | 55.97     | 1736        |
+| 1.6                      | 57.23     | 1696        |
+| 2.4                      | **57.26** | **1686**    |
+
+The step sits between 1.25 and 1.6 and everything above it is a plateau. Where appearance barely separates identities the adaptive bonus collapses and only the base weight does any work, which is DanceTrack's situation and why the weight matters there.
+
+`"botsort"` remains the default because it is the more conservative of the two: bounded output, a hard appearance gate, and no threshold changes when you enable it.
 
 ## BoT-SORT with and without ReID
 
