@@ -108,9 +108,8 @@ def compute_identity_metrics(
     num_gt_ids = len(unique_gt_ids)
     num_tracker_ids = len(unique_tracker_ids)
 
-    # Create ID mappings for array indexing
-    gt_id_to_idx = {int(id_): idx for idx, id_ in enumerate(unique_gt_ids)}
-    tracker_id_to_idx = {int(id_): idx for idx, id_ in enumerate(unique_tracker_ids)}
+    # `np.unique` sorts the IDs, and every per-frame ID is included in those
+    # arrays, so searchsorted maps all IDs directly to their global indices.
 
     # Variables for global association (ref: identity.py:48-50)
     potential_matches_count = np.zeros((num_gt_ids, num_tracker_ids))
@@ -122,15 +121,15 @@ def compute_identity_metrics(
         if len(gt_ids_t) == 0 or len(tracker_ids_t) == 0:
             # Still count IDs even if no matches possible
             if len(gt_ids_t) > 0:
-                gt_indices = np.array([gt_id_to_idx[int(id_)] for id_ in gt_ids_t])
+                gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
                 gt_id_count[gt_indices] += 1
             if len(tracker_ids_t) > 0:
-                tr_indices = np.array([tracker_id_to_idx[int(id_)] for id_ in tracker_ids_t])
+                tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
                 tracker_id_count[tr_indices] += 1
             continue
 
-        gt_indices = np.array([gt_id_to_idx[int(id_)] for id_ in gt_ids_t])
-        tr_indices = np.array([tracker_id_to_idx[int(id_)] for id_ in tracker_ids_t])
+        gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
+        tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
 
         similarity = similarity_scores[t]
 
