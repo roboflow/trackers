@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🌱 Changed
 
+- **McByte skips mask-only association work when mask evidence is unavailable** — clear-match locking and reduced assignment are preserved, while ambiguity and isolated-candidate matrices are no longer built for the default mask-disabled path.
 - **McByte CMC now defaults to `cmc_downscale=6`** — this aggregate-performance default halves median CMC latency versus factor `2` on the complete 45-clip, 1280x720 SportsMOT validation split and passes the dataset-level mean/median quality criterion. The benchmark used ground-truth detections with masks disabled; 9/45 clips regressed under the previous strict per-clip gate. Pass `cmc_downscale=2` to preserve the previous conservative behavior. Generic `CMCConfig` and `BoTSORTTracker` remain at `2`.
 - **Mask stack moved from `trackers.core.mcbyte.masks` to `trackers.core.masks`** — SAM mask generation, Cutie propagation, and `MaskManager` reference no tracker and are not McByte-specific, so they now live beside the trackers rather than inside one. Import from `trackers.core.masks` instead ([#543](https://github.com/roboflow/trackers/pull/543)).
 
