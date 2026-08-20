@@ -187,6 +187,7 @@ wandb/
 .python-version
 releases/
 outputs/
+benchmarks/
 
 mot17/
 pretrained/
