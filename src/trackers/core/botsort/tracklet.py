@@ -134,13 +134,14 @@ class BoTSORTTracklet(BaseTracklet):
     def _current_wh(self) -> tuple[float, float]:
         """Return the current box width/height, clamped away from zero.
 
-        The ``XCYCWHStateEstimator`` path reconstructs each pair of corners before subtracting them.  Reading the stored
+        The ``XCYCWHStateEstimator`` path reconstructs each pair of corners before subtracting them. Reading the stored
         width and height directly would skip the center-dependent rounding performed by ``state_to_bbox()``. The fast
-        path only applies to the exact base class: a subclass may override ``state_to_bbox()``, and reproducing the
-        arithmetic here instead of calling it would silently skip that override.
+        path applies only when the estimator is exactly ``XCYCWHStateEstimator`` and its state has dtype ``float64``.
+        Subclasses and states with other dtypes fall back to ``state_to_bbox()`` so overridden conversion behavior and
+        the decoder's float64 corner arithmetic is preserved.
         """
-        if type(self.state_estimator) is XCYCWHStateEstimator:
-            state = self.state_estimator.kf.state
+        state = self.state_estimator.kf.state
+        if type(self.state_estimator) is XCYCWHStateEstimator and state.dtype == np.float64:
             x_center = state[0, 0]
             y_center = state[1, 0]
             half_w = state[2, 0] * 0.5

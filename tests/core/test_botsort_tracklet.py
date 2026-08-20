@@ -117,6 +117,54 @@ class TestBotsortTracklet:
         np.testing.assert_array_equal(actual.view(np.uint64), expected.view(np.uint64))
 
     @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+    def test_current_wh_matches_decoder_for_float32_restored_state(
+        self,
+        tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+    ) -> None:
+        """Restored float32 state must retain the decoder's float64 corner arithmetic."""
+        tracklet = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
+        restored_state = tracklet.state_estimator.get_state()
+        restored_state["state"] = restored_state["state"].astype(np.float32)
+        restored_state["state"][:4, 0] = np.array([1e12, -1e12, 0.1, 0.2], dtype=np.float32)
+        tracklet.state_estimator.set_state(restored_state)
+        assert tracklet.state_estimator.kf.state.dtype == np.float32
+
+        decoded_bbox = tracklet.state_estimator.state_to_bbox()
+        expected = (
+            max(float(decoded_bbox[2] - decoded_bbox[0]), 1e-3),
+            max(float(decoded_bbox[3] - decoded_bbox[1]), 1e-3),
+        )
+
+        assert tracklet._current_wh() == expected
+
+    @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+    @pytest.mark.parametrize(
+        ("width", "height"),
+        [
+            pytest.param(0.0, 0.0, id="zero"),
+            pytest.param(-4.0, -6.0, id="negative"),
+        ],
+    )
+    def test_current_wh_clamps_nonpositive_dimensions_to_minimum(
+        self,
+        tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+        width: float,
+        height: float,
+    ) -> None:
+        """Zero and negative default-estimator dimensions must match the decoder's 1e-3 clamp."""
+        tracklet = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
+        tracklet.state_estimator.kf.state[:4, 0] = np.array([100.0, -100.0, width, height])
+
+        decoded_bbox = tracklet.state_estimator.state_to_bbox()
+        expected = (
+            max(float(decoded_bbox[2] - decoded_bbox[0]), 1e-3),
+            max(float(decoded_bbox[3] - decoded_bbox[1]), 1e-3),
+        )
+
+        assert expected == (1e-3, 1e-3)
+        assert tracklet._current_wh() == expected
+
+    @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
     @pytest.mark.parametrize("estimator_class", [XYXYStateEstimator, XCYCSRStateEstimator])
     def test_current_wh_keeps_bbox_decode_for_other_state_representations(
         self,
@@ -126,13 +174,19 @@ class TestBotsortTracklet:
     ) -> None:
         """Non-XCYCWH representations retain the state estimator's bbox decoder."""
         tracklet = tracklet_cls(bbox, state_estimator_class=estimator_class)
+        decoded_bbox = tracklet.state_estimator.state_to_bbox()
+        expected = (
+            max(float(decoded_bbox[2] - decoded_bbox[0]), 1e-3),
+            max(float(decoded_bbox[3] - decoded_bbox[1]), 1e-3),
+        )
 
         with patch.object(
             tracklet.state_estimator, "state_to_bbox", wraps=tracklet.state_estimator.state_to_bbox
         ) as mock_decode:
-            tracklet._current_wh()
+            actual = tracklet._current_wh()
 
         mock_decode.assert_called_once_with()
+        assert actual == expected
 
     @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
     def test_current_wh_keeps_bbox_decode_for_xcycwh_subclass(
