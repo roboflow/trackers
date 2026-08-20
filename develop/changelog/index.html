@@ -2949,6 +2949,7 @@
 <ul>
 <li><strong>McByte CMC now defaults to <code>cmc_downscale=6</code></strong> — this aggregate-performance default halves median CMC latency versus factor <code>2</code> on the complete 45-clip, 1280x720 SportsMOT validation split and passes the dataset-level mean/median quality criterion. The benchmark used ground-truth detections with masks disabled; 9/45 clips regressed under the previous strict per-clip gate. Pass <code>cmc_downscale=2</code> to preserve the previous conservative behavior. Generic <code>CMCConfig</code> and <code>BoTSORTTracker</code> remain at <code>2</code>.</li>
 <li><strong>Mask stack moved from <code>trackers.core.mcbyte.masks</code> to <code>trackers.core.masks</code></strong> — SAM mask generation, Cutie propagation, and <code>MaskManager</code> reference no tracker and are not McByte-specific, so they now live beside the trackers rather than inside one. Import from <code>trackers.core.masks</code> instead (<a href="https://github.com/roboflow/trackers/pull/543">#543</a>).</li>
+<li><strong>BoT-SORT / C-BIoU / McByte scale-aware noise refresh avoids full bbox decoding</strong> — the default center-width-height state now reconstructs only the corner pairs needed for width and height while preserving the previous floating-point operation order and output bits.</li>
 </ul>
 <h3 id="fixed">🔧 Fixed</h3>
 <ul>
