@@ -163,6 +163,32 @@ class TestComputeIdentityMetrics:
         assert result["IDFP"] == 0
         assert result["IDF1"] == pytest.approx(1.0)
 
+    def test_metrics_invariant_to_id_relabeling(self) -> None:
+        """Identity metrics depend on associations, not integer ID values."""
+        gt_ids = [
+            np.array([0, 1, 2]),
+            np.array([2, 0]),
+            np.array([1, 2]),
+        ]
+        tracker_ids = [
+            np.array([10, 11, 12]),
+            np.array([12, 10]),
+            np.array([11, 12]),
+        ]
+        similarity_scores = [
+            np.array([[0.9, 0.1, 0.0], [0.1, 0.8, 0.1], [0.0, 0.1, 0.7]]),
+            np.array([[0.85, 0.0], [0.0, 0.75]]),
+            np.array([[0.8, 0.1], [0.1, 0.7]]),
+        ]
+        baseline = compute_identity_metrics(gt_ids, tracker_ids, similarity_scores)
+
+        gt_remap = {0: 1007, 1: 1003, 2: 1009}
+        tracker_remap = {10: 5002, 11: 5008, 12: 5001}
+        relabeled_gt = [np.array([gt_remap[id_] for id_ in frame], dtype=np.int32) for frame in gt_ids]
+        relabeled_tracker = [np.array([tracker_remap[id_] for id_ in frame], dtype=np.int64) for frame in tracker_ids]
+
+        assert compute_identity_metrics(relabeled_gt, relabeled_tracker, similarity_scores) == baseline
+
 
 class TestAggregateIdentityMetrics:
     """Multi-sequence aggregation of Identity metrics."""
