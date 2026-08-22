@@ -83,7 +83,13 @@ def _distractor_ground_truth_mask(frame_data: _MOTFrameData) -> NDArray[np.bool_
     Returns:
         Boolean array of shape `(N,)`, `True` for distractor-class rows.
     """
-    return np.isin(frame_data.classes, _DISTRACTOR_CLASSES)
+    classes = frame_data.classes
+    return (
+        (classes == _DISTRACTOR_CLASSES[0])
+        | (classes == _DISTRACTOR_CLASSES[1])
+        | (classes == _DISTRACTOR_CLASSES[2])
+        | (classes == _DISTRACTOR_CLASSES[3])
+    )
 
 
 def _mot_frame_to_detections(frame_data: _MOTFrameData) -> sv.Detections:
