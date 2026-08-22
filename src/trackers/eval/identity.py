@@ -109,7 +109,15 @@ def compute_identity_metrics(
     num_tracker_ids = len(unique_tracker_ids)
 
     # `np.unique` sorts the IDs, and every per-frame ID is included in those
-    # arrays, so searchsorted maps all IDs directly to their global indices.
+    # arrays. Prepared zero-based integer IDs can be used as indices directly.
+    # Other ID layouts retain searchsorted, preserving the public-call fallback.
+    # The check is performed once before entering the frame loop.
+    gt_contiguous = unique_gt_ids.dtype.kind in "iu" and unique_gt_ids[0] == 0 and unique_gt_ids[-1] == num_gt_ids - 1
+    tracker_contiguous = (
+        unique_tracker_ids.dtype.kind in "iu"
+        and unique_tracker_ids[0] == 0
+        and unique_tracker_ids[-1] == num_tracker_ids - 1
+    )
 
     # Variables for global association (ref: identity.py:48-50)
     potential_matches_count = np.zeros((num_gt_ids, num_tracker_ids))
@@ -121,15 +129,15 @@ def compute_identity_metrics(
         if len(gt_ids_t) == 0 or len(tracker_ids_t) == 0:
             # Still count IDs even if no matches possible
             if len(gt_ids_t) > 0:
-                gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
+                gt_indices = gt_ids_t if gt_contiguous else np.searchsorted(unique_gt_ids, gt_ids_t)
                 gt_id_count[gt_indices] += 1
             if len(tracker_ids_t) > 0:
-                tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
+                tr_indices = tracker_ids_t if tracker_contiguous else np.searchsorted(unique_tracker_ids, tracker_ids_t)
                 tracker_id_count[tr_indices] += 1
             continue
 
-        gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
-        tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
+        gt_indices = gt_ids_t if gt_contiguous else np.searchsorted(unique_gt_ids, gt_ids_t)
+        tr_indices = tracker_ids_t if tracker_contiguous else np.searchsorted(unique_tracker_ids, tracker_ids_t)
 
         similarity = similarity_scores[t]
 
