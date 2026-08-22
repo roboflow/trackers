@@ -517,12 +517,21 @@ class BaseTracker(ABC):
         result.tracker_id = np.full(len(result), -1, dtype=int)
         return result
 
-    def _predict_tracklets(self, tracklets: list[Any], timing: PredictTiming) -> None:
-        """Predict all tracklets unless the timestamp did not advance."""
+    def _predict_tracklets(
+        self,
+        tracklets: list[Any],
+        timing: PredictTiming,
+        *,
+        return_predictions: bool = False,
+    ) -> dict[int, np.ndarray]:
+        """Predict all tracklets and optionally return states keyed by object identity."""
         if timing.skip_predict:
-            return
+            return {}
+        if return_predictions:
+            return {id(tracklet): tracklet.predict(timing) for tracklet in tracklets}
         for tracklet in tracklets:
             tracklet.predict(timing)
+        return {}
 
     def _lost_track_time_budget(
         self,
