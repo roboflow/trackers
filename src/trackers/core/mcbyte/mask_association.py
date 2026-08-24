@@ -231,9 +231,7 @@ def _apply_mask_similarity_boosts(
     remaining_detection_indices: list[int],
     tracklet_ids: list[int],
     detection_boxes: np.ndarray,
-    masks: np.ndarray,
-    tracklet_mask_dict: dict[int, int],
-    mask_avg_prob_dict: dict[int, float],
+    mask_output: MaskOutput,
     minimum_mask_average_confidence: float,
     minimum_mask_coverage: float,
     minimum_mask_fill_ratio: float,
@@ -253,7 +251,7 @@ def _apply_mask_similarity_boosts(
     For every candidate pair, the function:
 
         1. resolves the stable tracklet ID associated with the original row;
-        2. finds the corresponding local mask index in ``tracklet_mask_dict``;
+        2. finds the corresponding local mask index in ``mask_output``;
         3. verifies that the mask index and average mask confidence are valid;
         4. computes mask coverage and mask fill ratio for the original
            detection box;
@@ -284,10 +282,11 @@ def _apply_mask_similarity_boosts(
         detection_boxes: Detection boxes in ``xyxy`` format, ordered according
             to the columns of the original full association matrix. Expected
             shape is ``(num_detections, 4)``.
-        masks: Current propagated masks with shape ``(N, H, W)``.
-        tracklet_mask_dict: Mapping from stable tracklet IDs to local mask-array
-            indices.
-        mask_avg_prob_dict: Average mask confidence keyed by stable tracklet ID.
+        mask_output: Current propagated mask output. Its
+            ``tracklet_mask_dict`` maps stable tracklet IDs to local mask-array
+            indices, while ``mask_avg_prob_dict`` stores average mask confidence
+            keyed by stable tracklet ID. Callers must have already established
+            that masks and confidences are present.
         minimum_mask_average_confidence: Minimum average propagated-mask
             confidence required before mask evidence may be used.
         minimum_mask_coverage: Minimum fraction of the complete visible mask
@@ -298,6 +297,9 @@ def _apply_mask_similarity_boosts(
     Returns:
         None. ``conditioned_similarity`` is updated in place.
     """
+    if mask_output.masks is None or mask_output.mask_avg_prob_dict is None:
+        return
+
     # Local indices in the reduced matrix.
     candidate_rows, candidate_columns = np.where(candidate_matrix)
 
@@ -305,12 +307,12 @@ def _apply_mask_similarity_boosts(
     mask_areas: dict[int, int] = {}
     for local_track_index in np.unique(candidate_rows):
         tracklet_id = tracklet_ids[remaining_track_indices[local_track_index]]
-        mask_index = tracklet_mask_dict.get(tracklet_id)
-        if mask_index is None or not 0 <= mask_index < masks.shape[0]:
+        mask_index = mask_output.tracklet_mask_dict.get(tracklet_id)
+        if mask_index is None or not 0 <= mask_index < mask_output.masks.shape[0]:
             continue
 
         if mask_index not in mask_areas:
-            mask_areas[mask_index] = int(masks[mask_index].astype(bool, copy=False).sum())
+            mask_areas[mask_index] = int(mask_output.masks[mask_index].astype(bool, copy=False).sum())
 
     for local_track_index, local_detection_index in zip(
         candidate_rows,
@@ -321,19 +323,19 @@ def _apply_mask_similarity_boosts(
 
         # Resolve stable tracklet ID
         tracklet_id = tracklet_ids[original_track_index]
-        mask_index = tracklet_mask_dict.get(tracklet_id)
+        mask_index = mask_output.tracklet_mask_dict.get(tracklet_id)
         if mask_index is None:
             continue
 
-        if not 0 <= mask_index < masks.shape[0]:
+        if not 0 <= mask_index < mask_output.masks.shape[0]:
             continue
 
-        average_confidence = mask_avg_prob_dict.get(tracklet_id)
+        average_confidence = mask_output.mask_avg_prob_dict.get(tracklet_id)
         if average_confidence is None or average_confidence < minimum_mask_average_confidence:
             continue
 
         metrics = _get_mask_metrics_with_visible_area(
-            mask_bool=masks[mask_index].astype(bool, copy=False),
+            mask_bool=mask_output.masks[mask_index].astype(bool, copy=False),
             detection_xyxy=detection_boxes[original_detection_index],
             visible_mask_area=mask_areas[mask_index],
         )
@@ -475,13 +477,6 @@ def condition_similarity_with_masks(
         )
     ].copy()
 
-    conditioned_association = MaskConditionedAssociation(
-        conditioned_similarity=reduced_similarity,
-        locked_matches=locked_matches,
-        remaining_track_indices=remaining_track_indices,
-        remaining_detection_indices=remaining_detection_indices,
-    )
-
     if (
         mask_output is None
         or mask_output.masks is None
@@ -489,7 +484,13 @@ def condition_similarity_with_masks(
         or not mask_output.tracklet_mask_dict
         or not mask_output.mask_avg_prob_dict
     ):
-        return conditioned_association
+        # No tracklet can receive mask evidence, so the reduced problem is final.
+        return MaskConditionedAssociation(
+            conditioned_similarity=reduced_similarity,
+            locked_matches=locked_matches,
+            remaining_track_indices=remaining_track_indices,
+            remaining_detection_indices=remaining_detection_indices,
+        )
 
     # Ambiguity is a property of the original association situation before any
     # modifications, hence computed from base_similarity.
@@ -527,12 +528,15 @@ def condition_similarity_with_masks(
         remaining_detection_indices=remaining_detection_indices,
         tracklet_ids=tracklet_ids,
         detection_boxes=detection_boxes,
-        masks=mask_output.masks,
-        tracklet_mask_dict=mask_output.tracklet_mask_dict,
-        mask_avg_prob_dict=mask_output.mask_avg_prob_dict,
+        mask_output=mask_output,
         minimum_mask_average_confidence=minimum_mask_average_confidence,
         minimum_mask_coverage=minimum_mask_coverage,
         minimum_mask_fill_ratio=minimum_mask_fill_ratio,
     )
 
-    return conditioned_association
+    return MaskConditionedAssociation(
+        conditioned_similarity=reduced_similarity,
+        locked_matches=locked_matches,
+        remaining_track_indices=remaining_track_indices,
+        remaining_detection_indices=remaining_detection_indices,
+    )
