@@ -1,5 +1,5 @@
 site_name: Trackers
-site_url: !ENV [SITE_URL, "https://trackers.roboflow.com/latest/"]
+site_url: !ENV [SITE_URL, "https://trackers.roboflow.com/"]
 site_author: Roboflow
 site_description: A unified library for object tracking featuring clean room re-implementations of leading multi-object tracking algorithms.
 repo_name: roboflow/trackers
@@ -100,6 +100,8 @@ markdown_extensions:
 
 plugins:
   - search
+  - mike:
+      canonical_version: latest
   - redirects:
       redirect_maps:
         learn/install.md: guides/install.md
