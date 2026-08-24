@@ -1,5 +1,5 @@
 ---
-title: Tracker Comparison — MOT Benchmark Results | Trackers
+title: Tracker Comparison — MOT Benchmark Results
 description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
 ---
 

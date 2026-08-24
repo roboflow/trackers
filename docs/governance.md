@@ -1,5 +1,5 @@
 ---
-title: Governance — Roboflow Trackers | Trackers
+title: Governance — Roboflow Trackers
 description: Who reviews and merges changes to Roboflow Trackers, the branching model, release process, and versioning policy.
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: CLI Command Reference — trackers track, eval, tune, inspect | Trackers
+title: CLI Command Reference — trackers track, eval, tune, inspect
 description: One-page reference for every trackers CLI command and subcommand, including the full flag tables for trackers inspect and a link to each command's detailed guide.
 ---
 
