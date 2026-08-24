@@ -1,5 +1,5 @@
 ---
-title: Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet | Trackers
+title: Benchmark Runner — MOT17, SportsMOT, DanceTrack, SoccerNet
 description: Run a tracker over complete MOT benchmark test sets and write MOTChallenge-format results per sequence with the trackers benchmark command.
 ---
 
