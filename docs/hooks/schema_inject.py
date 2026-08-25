@@ -75,9 +75,12 @@ _HOMEPAGE_FAQ = [
         "question": "What MOT datasets does the library support?",
         "answer": (
             "MOT17 and SportsMOT are supported for download and evaluation. "
-            "Use trackers download <dataset> to pull frames, annotations, and "
-            "pre-computed detections. DanceTrack and SoccerNet-tracking support "
-            "is coming soon."
+            "Use trackers download --name <dataset> to pull the assets available "
+            "for that dataset and split: MOT17 ships frames, annotations, and "
+            "pre-computed detections (test split has no annotations); SportsMOT "
+            "ships frames and annotations only, with no pre-computed detections "
+            "asset (test split has frames only). DanceTrack and SoccerNet-tracking "
+            "support is coming soon."
         ),
     },
 ]
