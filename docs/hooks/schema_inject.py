@@ -18,6 +18,8 @@ Also injects:
 """
 
 import json
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 # Canonical Roboflow organization @id — shared across all Roboflow properties.
 # Must match the Organization @id in docs/overrides/main.html.
@@ -28,13 +30,19 @@ ORG_ID = "https://roboflow.com/#organization"
 # Currently only MOT17 and SportsMOT are downloadable; DanceTrack and SoccerNet
 # are "coming soon" (see docs/learn/download.md).
 _HOMEPAGE_FAQ = [
+    # BENCH-XREF derived-claim: mirrors the "Which tracker should I use?" answer in
+    # [docs/index.md](../index.md). Google requires FAQPage markup to match the visible
+    # answer, so update both together — and re-verify against the Default HOTA tables in
+    # [docs/evaluations/results.md](../evaluations/results.md) if a leader changes.
     {
         "question": "Which tracker should I use?",
         "answer": (
-            "Start with ByteTrack — it performs best across two out of four benchmarks "
-            "and handles variable-confidence detectors well. Use SORT if speed or device "
-            "constraints require the lightest possible tracker. Use OC-SORT when camera "
-            "motion is significant or objects follow non-linear paths."
+            "Start with ByteTrack — it's the default, has no extra dependencies, handles "
+            "variable-confidence detectors well, and runs at real time latency. For the "
+            "highest accuracy, McByte leads HOTA on every benchmark at default parameters "
+            "but requires optional SAM/Cutie mask dependencies; BoT-SORT is the best "
+            "lightweight option when camera motion is significant. Use SORT if speed or "
+            "device constraints require the lightest possible tracker."
         ),
     },
     {
@@ -151,28 +159,16 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
         """Recursively search nav for the page, building the path of sections."""
         for item in items:
             if hasattr(item, "children") and item.children:
-                section_url = _resolve_nav_item_url(item)
-                appended = False
-                if section_url:
-                    path.append({"name": item.title, "url": section_url})
-                    appended = True
+                path.append({"name": item.title, "url": _resolve_nav_item_url(item)})
                 if _find_in_nav(item.children, path):
                     return True
-                if appended:
-                    path.pop()
-            elif (
-                hasattr(item, "file")
-                and item.file
-                and item.file.src_path == page.file.src_path
-            ):
+                path.pop()
+            elif hasattr(item, "file") and item.file and item.file.src_path == page.file.src_path:
                 return True
         return False
 
     section_path: list[dict[str, str]] = []
     _find_in_nav(nav.items, section_path)
-
-    if not section_path:
-        return None
 
     crumbs.extend(section_path)
     crumbs.append({"name": page.title or "", "url": page.canonical_url or ""})
@@ -193,6 +189,15 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
         "@type": "BreadcrumbList",
         "itemListElement": items,
     }
+
+
+def on_config(config):  # type: ignore[no-untyped-def]
+    """Expose the installed trackers version to templates as extra.trackers_version."""
+    try:
+        config["extra"]["trackers_version"] = _pkg_version("trackers")
+    except PackageNotFoundError:
+        pass
+    return config
 
 
 def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
@@ -219,10 +224,6 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
             "mainEntityOfPage": {
                 "@type": "WebPage",
                 "@id": canonical,
-            },
-            "image": {
-                "@type": "ImageObject",
-                "url": f"{site_url}/assets/logo-trackers-violet.svg",
             },
             "author": {
                 "@type": "Organization",
@@ -273,9 +274,7 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
                 "author": {"@type": "Person", "name": cite["author"]},
             }
 
-        page.meta["json_ld_article"] = json.dumps(
-            article, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_article"] = json.dumps(article, ensure_ascii=False, indent=2)
 
     # ── FAQPage JSON-LD (homepage only) ──
     if page.file.src_path == "index.md":
@@ -294,16 +293,12 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
                 for entry in _HOMEPAGE_FAQ
             ],
         }
-        page.meta["json_ld_faq"] = json.dumps(
-            faq_schema, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_faq"] = json.dumps(faq_schema, ensure_ascii=False, indent=2)
 
     # ── BreadcrumbList JSON-LD ──
     breadcrumbs = _build_breadcrumbs(page, config, nav)
     if breadcrumbs:
-        page.meta["json_ld_breadcrumbs"] = json.dumps(
-            breadcrumbs, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_breadcrumbs"] = json.dumps(breadcrumbs, ensure_ascii=False, indent=2)
 
     # ── Dataset JSON-LD (evaluations results page only) ──
     if page.file.src_path == "evaluations/results.md":
