@@ -129,7 +129,7 @@ tracker = OCSORTTracker(iou=GIoU(), minimum_iou_threshold=-0.3)
 
 Left: IoU. Right: GIoU. Camera movements can introduce unexpected displacement, producing ID switches with IoU-based association. GIoU still provides a signal when there is no overlap by considering enclosing-box geometry, which helps preserve tracks that IoU would otherwise confuse or lose due to direction changes and non-linear motion (for example, tracks `5`, `12` on the left vs `13` on the right).
 
-<video width="100%" controls muted loop>
+<video width="100%" style="aspect-ratio: 32/9;" controls muted loop preload="none" poster="../../assets/giou-comparison-poster.webp" aria-label="IoU versus GIoU tracking comparison">
   <source src="https://github.com/user-attachments/assets/dd38120d-ebbe-4705-8140-fcf24bc8ce99" type="video/mp4">
 </video>
 
@@ -165,7 +165,7 @@ tracker = OCSORTTracker(iou=DIoU(), minimum_iou_threshold=-0.3)
 
 Left: IoU. Right: DIoU. Highly non-linear motion can make IoU drop to zero, causing the Kalman prediction to attach to another object and produce an ID switch. The centre-distance term keeps the score smoother and preserves IDs more often (for example, tracks `3–5`).
 
-<video width="100%" controls muted loop>
+<video width="100%" style="aspect-ratio: 32/9;" controls muted loop preload="none" poster="../../assets/diou-comparison-poster.webp" aria-label="IoU versus DIoU tracking comparison">
   <source src="https://github.com/user-attachments/assets/011f6cfa-a2be-4109-8326-a98bcae4ed93" type="video/mp4">
 </video>
 
@@ -206,7 +206,7 @@ tracker = OCSORTTracker(iou=CIoU(), minimum_iou_threshold=-0.3)
 
 Left: IoU. Right: CIoU. In this example, CIoU is capable of perfectly keeping the track of the ball, which is explained by the fact that the ball is a small and fast moving object, with roughly constant aspect ratio, where CIoU’s distance + aspect terms help more than overlap alone.
 
-<video width="100%" controls muted loop>
+<video width="100%" style="aspect-ratio: 32/9;" controls muted loop preload="none" poster="../../assets/ciou-comparison-poster.webp" aria-label="IoU versus CIoU tracking comparison">
   <source src="https://github.com/user-attachments/assets/48cb3d28-7cbf-4551-96da-4a8f9b43306c" type="video/mp4">
 </video>
 
@@ -246,7 +246,7 @@ tracker = SORTTracker(iou=BIoU(buffer_ratio=0.15), minimum_iou_threshold=0.3)
 
 Left: IoU. Right: BIoU. Notice how ID switches happen when fast players temporarily produce non-overlapping boxes between frames. The buffer closes that gap and keeps the same ID. (e.g. tracks 7 and 8).
 
-<video width="100%" controls muted loop>
+<video width="100%" style="aspect-ratio: 32/9;" controls muted loop preload="none" poster="../../assets/biou-comparison-poster.webp" aria-label="IoU versus BIoU tracking comparison">
   <source src="https://github.com/user-attachments/assets/9a74a27b-0470-4cd8-b545-0507a0d2b053" type="video/mp4">
 </video>
 

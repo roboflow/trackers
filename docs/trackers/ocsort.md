@@ -24,7 +24,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ## Watch It in Action
 
-<video title="OC-SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls>
+<video title="OC-SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls preload="none" poster="../../assets/ocsort-demo-poster.webp">
   <source src="https://github.com/user-attachments/assets/9ccae3a0-9dc2-4c9c-b9cf-ff6e3982b147" type="video/mp4">
 </video>
 

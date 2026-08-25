@@ -14,7 +14,7 @@ Combine object detection with multi-object tracking to follow objects through vi
 - Visualize results with bounding boxes, IDs, and trajectories
 - Build custom tracking pipelines in Python
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/track-objects-page-poster.webp" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
 </video>
 

@@ -12,7 +12,7 @@ Download benchmark multi-object tracking datasets for evaluation and development
 - Select specific splits and asset types
 - Use the download cache to avoid re-downloading
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/sportsmot-ground-truth-poster.webp" aria-label="SportsMOT ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SportsMOT_v_-6Os86HzwCs_c001-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
