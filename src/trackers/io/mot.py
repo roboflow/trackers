@@ -156,7 +156,8 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file is empty or has invalid format.
+        ValueError: If the file is empty, has invalid format, or contains a
+            frame number that is not a whole number greater than zero.
 
     Examples:
         >>> from trackers import load_mot_file  # doctest: +SKIP
@@ -207,9 +208,17 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
                 )
 
             try:
-                frame = int(float(row[0]))
+                frame_number = float(row[0])
             except ValueError as e:
                 raise ValueError(f"Invalid frame number in {path}: {row[0]}") from e
+
+            # Consumers walk frames with `range(1, num_frames + 1)`, so anything outside that
+            # domain would be loaded here and then silently never evaluated.
+            if not frame_number.is_integer():
+                raise ValueError(f"Frame numbers must be whole numbers in {path}, got {row[0]} in row: {row}")
+            frame = int(frame_number)
+            if frame < 1:
+                raise ValueError(f"MOT frame numbers are 1-based, got {frame} in {path} in row: {row}")
 
             if frame not in frame_data:
                 frame_data[frame] = []
