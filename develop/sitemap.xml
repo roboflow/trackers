@@ -2,130 +2,130 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://trackers.roboflow.com/latest/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/changelog/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/code-of-conduct/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/contributing/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/details/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/governance/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/api/datasets/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/api/evals/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/api/io/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/api/motion/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/api/trackers/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/evaluations/benchmark-runner/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/evaluations/download/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/evaluations/evaluate/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/evaluations/methodology/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/evaluations/results/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/cli/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/detection-quality/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/dynamic-frame-rate/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/inspect/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/install/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/iou/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/migration_cli/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/state-estimators/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/track/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/guides/tune/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/trackers/botsort/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/trackers/bytetrack/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/trackers/cbiou/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/trackers/mcbyte/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/trackers/ocsort/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
     <url>
          <loc>https://trackers.roboflow.com/latest/trackers/sort/</loc>
-         <lastmod>2026-08-24</lastmod>
+         <lastmod>2026-09-02</lastmod>
     </url>
 </urlset>
