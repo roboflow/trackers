@@ -118,6 +118,12 @@ class BoTSORTTracker(BaseTracker):
         reid_adaptive_weight_cap: Upper bound on the adaptive appearance bonus for
             ``reid_fusion="adaptive"``. Ignored otherwise. Default ``0.5``, the value
             Deep OC-SORT reports for MOT17 and MOT20; they use ``1.0`` for DanceTrack.
+        reid_appearance_floor: Minimum cosine similarity for appearance to contribute
+            when ``reid_fusion="adaptive"``. Ignored otherwise. Below the floor a pair
+            is scored on geometry alone, so a lost track cannot capture a detection on
+            a weak appearance match. Default ``0.0`` (disabled, the Deep OC-SORT
+            reference behaviour; see
+            :func:`~trackers.core.reid.fusion.fuse_adaptive_reid_association`).
 
     Notes:
         - Positive `maximum_frames_without_update` values are scaled by
@@ -165,6 +171,7 @@ class BoTSORTTracker(BaseTracker):
         reid_fusion: ReidFusionMethod = "botsort",
         reid_appearance_weight: float = 0.75,
         reid_adaptive_weight_cap: float = 0.5,
+        reid_appearance_floor: float = 0.0,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
             lost_track_buffer=lost_track_buffer,
@@ -203,9 +210,12 @@ class BoTSORTTracker(BaseTracker):
             raise ValueError(f"reid_appearance_weight must be non-negative, got {reid_appearance_weight}")
         if reid_adaptive_weight_cap < 0.0:
             raise ValueError(f"reid_adaptive_weight_cap must be non-negative, got {reid_adaptive_weight_cap}")
+        if not 0.0 <= reid_appearance_floor <= 1.0:
+            raise ValueError(f"reid_appearance_floor must be in [0, 1], got {reid_appearance_floor}")
         self.reid_fusion = reid_fusion
         self.reid_appearance_weight = reid_appearance_weight
         self.reid_adaptive_weight_cap = reid_adaptive_weight_cap
+        self.reid_appearance_floor = reid_appearance_floor
 
         self._init_timestamp_state(frame_rate)
 
@@ -483,6 +493,7 @@ class BoTSORTTracker(BaseTracker):
                 reid_proximity_threshold=self.reid_proximity_threshold,
                 reid_appearance_weight=self.reid_appearance_weight,
                 reid_adaptive_weight_cap=self.reid_adaptive_weight_cap,
+                reid_appearance_floor=self.reid_appearance_floor,
             )
         return fuse_botsort_reid_association(
             iou_sim_fused,
