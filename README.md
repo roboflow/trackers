@@ -1,7 +1,7 @@
 <div align="center">
     <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/release/stable/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
     <h1>trackers</h1>
-    <p>Plug-and-play object tracking in Python, for any detection model.</p>
+    <p>Plug-and-play object tracking in Python (multi-object) for any detection model.</p>
 
 [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers) [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers) [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE) [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers) [![try it](https://img.shields.io/badge/try_it-Hugging%20Face%20Playground-yellow)](https://huggingface.co/spaces/roboflow/trackers) [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
 
