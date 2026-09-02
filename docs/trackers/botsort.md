@@ -23,7 +23,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ## Watch It in Action
 
-<video title="BoT-SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls>
+<video title="BoT-SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls preload="none" poster="../../assets/botsort-demo-poster.webp">
   <source src="https://github.com/user-attachments/assets/c8fdc1df-7e3b-4d44-bad0-d08208ddc6a0" type="video/mp4">
 </video>
 
