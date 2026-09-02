@@ -8,7 +8,7 @@
     "fixture_goldens": "expected_results.json",
     "full_benchmark": {
         "scenes": "scene_061..scene_090",
-        "comparison": "tier3_comparison.jsonl",
+        "comparison": "nvidia_scene_comparison.jsonl",
         "headline_percent": {
             "HOTA": 49.2825,
             "DetA": 49.1998,

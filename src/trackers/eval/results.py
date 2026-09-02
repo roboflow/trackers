@@ -621,6 +621,7 @@ def _format_metric_rows(
     rows: Sequence[tuple[str, dict[str, float | int]]],
     columns: Sequence[str],
     *,
+    label_header: str = "Sequence",
     rule_before_last: bool = False,
 ) -> str:
     """Render labelled metric rows as a fixed-width table.
@@ -628,6 +629,7 @@ def _format_metric_rows(
     Args:
         rows: Row label paired with its column values.
         columns: Columns to include, in display order.
+        label_header: Header text above the row labels.
         rule_before_last: Whether to draw a separator above the final row.
 
     Returns:
@@ -638,7 +640,7 @@ def _format_metric_rows(
     ]
     col_widths = {col: max([len(col), *(len(row[col]) for _, row in cells)]) for col in columns}
 
-    header = "Sequence".ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
+    header = label_header.ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
     separator = "-" * len(header)
 
     lines = [header, separator]

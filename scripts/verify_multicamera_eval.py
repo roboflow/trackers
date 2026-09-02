@@ -14,12 +14,17 @@ Run with NVIDIA's pandas dependency available::
 
     uv run --with pandas python scripts/verify_multicamera_eval.py \
         --nvidia-eval-dir /path/to/MTMC_Tracking_2024/eval
+
+``tests/data/multicamera/nvidia_scene_comparison.jsonl`` and the headline in
+``nvidia_verification.json`` were recorded from the ``--sample-dir`` run with
+``--comparison-out`` pointing at that file.
 """
 
 from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import sys
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -30,8 +35,9 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
+from trackers.eval.multicamera import _SCENE_MEAN_FIELDS as HEADLINE_FIELDS  # noqa: E402
+
 FIXTURE_DIR = REPO_ROOT / "tests" / "data" / "multicamera"
-HEADLINE_FIELDS = ("HOTA", "DetA", "AssA", "LocA")
 REL_TOLERANCE = 1e-4
 ABS_TOLERANCE = 1e-4
 AICITY_COLUMNS = 9
@@ -126,6 +132,7 @@ def _compare_results(
     label: str,
     result: Any,
     nvidia_scores: dict[str, dict[str, float]],
+    comparison_out: Path | None = None,
 ) -> None:
     scores: dict[str, dict[str, float]] = {}
     for scene_name, scene in result.scenes.items():
@@ -143,6 +150,12 @@ def _compare_results(
         summary = ", ".join(f"{metric}={scores[scene_name][metric]:.6f}" for metric in HEADLINE_FIELDS)
         print(f"  {scene_name}: {summary}")
     print(f"{label}: parity OK")
+    if comparison_out is not None:
+        with comparison_out.open("w", encoding="utf-8") as handle:
+            for scene_name in sorted(scores):
+                if scene_name != "SCENE_MEAN":
+                    record = {"scene": scene_name, "ours": scores[scene_name], "nvidia": nvidia_scores[scene_name]}
+                    handle.write(json.dumps(record, sort_keys=True) + "\n")
 
 
 def _run_parity(
@@ -150,6 +163,7 @@ def _run_parity(
     eval_dir: Path,
     paths: ParityPaths,
     num_cores: int,
+    comparison_out: Path | None = None,
 ) -> None:
     from trackers.eval import evaluate_multicamera_scenes
 
@@ -166,12 +180,12 @@ def _run_parity(
         scene_map_file=scene_map_file,
         num_cores=num_cores,
     )
-    _compare_results(label, trackers_result, nvidia_result)
+    _compare_results(label, trackers_result, nvidia_result, comparison_out)
 
 
 def _merge_scenes(sources: Sequence[Path], destination: Path) -> Path:
     """Concatenate per-scene files into the monolithic layout NVIDIA expects."""
-    rows = []
+    rows: list[str] = []
     for source in sources:
         rows.extend(line for line in source.read_text().splitlines() if line.strip() and not line.startswith("#"))
     destination.write_text("\n".join(rows) + "\n")
@@ -201,7 +215,7 @@ def _run_fixture(eval_dir: Path, *, num_cores: int) -> None:
         )
 
 
-def _run_full_sample(eval_dir: Path, sample_dir: Path, *, num_cores: int) -> None:
+def _run_full_sample(eval_dir: Path, sample_dir: Path, *, num_cores: int, comparison_out: Path | None) -> None:
     from trackers.io.multicamera import load_scene_camera_map
 
     prediction_file = sample_dir / "pred.txt"
@@ -223,6 +237,7 @@ def _run_full_sample(eval_dir: Path, sample_dir: Path, *, num_cores: int) -> Non
             eval_dir,
             (gt_dir, tracker_dir, ground_truth_file, prediction_file, scene_map_file),
             num_cores,
+            comparison_out,
         )
 
 
@@ -242,6 +257,11 @@ def main() -> None:
         help="Also check pred.txt, ground_truth_test_full.txt, and scene_name_2_cam_id_full.json in this directory.",
     )
     parser.add_argument("--num-cores", type=int, default=1, help="NVIDIA TrackEval worker count (default: 1).")
+    parser.add_argument(
+        "--comparison-out",
+        type=Path,
+        help="Write per-scene trackers/NVIDIA scores of the --sample-dir run as JSON lines.",
+    )
     args = parser.parse_args()
     if args.num_cores < 1:
         parser.error("--num-cores must be at least 1")
@@ -251,7 +271,9 @@ def main() -> None:
     print(f"NVIDIA evaluator: {args.nvidia_eval_dir}")
     _run_fixture(args.nvidia_eval_dir, num_cores=args.num_cores)
     if args.sample_dir is not None:
-        _run_full_sample(args.nvidia_eval_dir, args.sample_dir, num_cores=args.num_cores)
+        _run_full_sample(
+            args.nvidia_eval_dir, args.sample_dir, num_cores=args.num_cores, comparison_out=args.comparison_out
+        )
 
 
 if __name__ == "__main__":

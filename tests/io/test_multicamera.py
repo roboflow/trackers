@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Unit tests for AI City 2024 multi-camera file preparation semantics."""
+"""Unit tests for AI City 2024 multicamera file preparation semantics."""
 
 from __future__ import annotations
 
@@ -13,12 +13,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from trackers.io.multicamera import (
-    _euclidean_similarity,
-    _prepare_multicamera_files,
-    load_multicamera_file,
-    load_scene_camera_map,
-)
+from trackers.io import load_multicamera_file, load_scene_camera_map
+from trackers.io.multicamera import _euclidean_similarity, _prepare_multicamera_files
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "data" / "multicamera"
 
@@ -59,7 +55,7 @@ class TestLoadMulticameraFile:
 
 
 class TestPrepareSemantics:
-    """Numbered AI City 2024 preparation semantics."""
+    """AI City 2024 preparation rules that carry NVIDIA parity."""
 
     def test_camera_filter_precedes_keep_first_dedup(self, tmp_path: Path) -> None:
         gt = _write(
@@ -78,9 +74,26 @@ class TestPrepareSemantics:
         assert len(seq.gt_ids[0]) == 1
         assert seq.similarity_scores[0][0, 0] == pytest.approx(1.0)
 
-    def test_half_to_even_rounding_reaches_similarity(self, tmp_path: Path) -> None:
+    def test_camera_filter_applies_to_predictions(self, tmp_path: Path) -> None:
         gt = _write(tmp_path / "gt.txt", "1 1 0 0 0 1 1 0.0 0.0\n")
-        pred = _write(tmp_path / "pred.txt", "1 1 0 0 0 1 1 0.1235 0.0\n")
+        pred = _write(
+            tmp_path / "pred.txt",
+            "1 1 0 0 0 1 1 0.0 0.0\n99 2 0 0 0 1 1 5.0 5.0\n",
+        )
+        seq = _prepare_multicamera_files(
+            gt,
+            pred,
+            file_format="aicity-2024",
+            camera_ids=[1],
+            zero_distance=2.0,
+        )
+
+        assert len(seq.tracker_ids[0]) == 1
+
+    def test_half_to_even_rounding_reaches_similarity(self, tmp_path: Path) -> None:
+        # 0.1245 rounds to 0.124 half-to-even but to 0.125 half-up.
+        gt = _write(tmp_path / "gt.txt", "1 1 0 0 0 1 1 0.0 0.0\n")
+        pred = _write(tmp_path / "pred.txt", "1 1 0 0 0 1 1 0.1245 0.0\n")
         seq = _prepare_multicamera_files(
             gt,
             pred,
@@ -110,6 +123,8 @@ class TestPrepareSemantics:
 
 
 class TestEuclideanSimilarity:
+    """World-plane similarity ``max(0, 1 - dist / zero_distance)``."""
+
     @pytest.mark.parametrize(
         ("distance", "expected"),
         [
@@ -127,8 +142,17 @@ class TestEuclideanSimilarity:
 
         assert similarity[0, 0] == pytest.approx(expected)
 
+    def test_alpha_boundary_is_exact_at_world_plane_magnitude(self) -> None:
+        # A Gram-matrix expansion returns 0.49999999997 here and fails the 0.5 alpha threshold.
+        gt = np.array([[373.553, -494.735]])
+        pred = np.array([[374.553, -494.735]])
+
+        assert _euclidean_similarity(gt, pred, zero_distance=2.0)[0, 0] == 0.5
+
 
 class TestSceneCameraMap:
+    """NVIDIA ``scene_name_2_cam_id`` JSON loader."""
+
     def test_load_scene_camera_map(self) -> None:
         mapping = load_scene_camera_map(FIXTURE_DIR / "scene_camera_map.json")
         assert mapping["scene_a"] == [1, 2]

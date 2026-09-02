@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""AI City 2024 multi-camera file I/O and world-plane HOTA preparation."""
+"""AI City 2024 multicamera file I/O and world-plane HOTA preparation."""
 
 from __future__ import annotations
 
@@ -14,9 +14,13 @@ import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.spatial.distance import cdist
+
+from trackers.io.mot import _remap_ids
 
 # Column layout for AI City 2024 9-column text files.
 _COL_CAMERA = 0
@@ -43,30 +47,30 @@ class _MultiCameraSequenceData:
 class _PreparedRows:
     """Compact rows after filter, stable deduplication, rounding, and sorting."""
 
-    frame_ids: NDArray[np.int64]
-    object_ids: NDArray[np.int64]
+    frame_ids: NDArray[np.intp]
+    object_ids: NDArray[np.intp]
     points: NDArray[np.float64]
 
 
 def load_multicamera_file(
     path: str | Path,
     *,
-    file_format: str = "aicity-2024",
+    file_format: Literal["aicity-2024"] = "aicity-2024",
     camera_ids: Sequence[int] | None = None,
 ) -> NDArray[np.float64]:
-    """Load an AI City multi-camera tracking file into an ``(N, 9)`` array.
+    """Load an AI City multicamera tracking file into an ``(N, 9)`` array.
 
     Each row is ``camera_id obj_id frame_id x y w h xworld yworld``
-    (space-delimited). Negative ``camera_id``, ``obj_id``, or ``frame_id``
-    values raise for the whole file. Identifiers use unsigned decimal syntax
-    and must not exceed ``2**53 - 1``, the largest integer stored exactly in
-    the returned float64 array. World coordinates may be negative.
+    (space-delimited). ``camera_id``, ``obj_id``, and ``frame_id`` must be
+    non-negative integral values no larger than ``2**53 - 1``, the largest
+    integer stored exactly in the returned float64 array. World coordinates
+    may be negative. Negative identifiers raise for the whole file, whereas
+    NVIDIA's evaluator silently drops rows with a negative ``frame_id``.
 
     Args:
         path: Path to the text file.
-        file_format: Edition of the on-disk format. Only ``\"aicity-2024\"`` is
-            supported in this release. Future editions (JSON / 3-D box HOTA)
-            will be additive values of this parameter.
+        file_format: Edition of the on-disk format. Only ``"aicity-2024"`` is
+            supported.
         camera_ids: If provided, keep only rows whose camera ID is in this set.
             Applied identically to ground truth and predictions. An empty result
             after filtering raises ``ValueError``.
@@ -78,8 +82,19 @@ def load_multicamera_file(
 
     Raises:
         FileNotFoundError: If ``path`` does not exist.
+        TypeError: If ``camera_ids`` contains a non-integer.
         ValueError: If ``file_format`` is unsupported, the file is empty /
             malformed, identifiers are invalid, or filtering removes all rows.
+
+    Examples:
+        >>> from trackers.io.multicamera import load_multicamera_file  # doctest: +SKIP
+        >>>
+        >>> rows = load_multicamera_file(  # doctest: +SKIP
+        ...     "tests/data/multicamera/gt/scene_a/ground_truth.txt",
+        ...     camera_ids=[1],
+        ... )
+        >>> rows.shape  # doctest: +SKIP
+        (5, 9)
     """
     return _load_multicamera_columns(
         path,
@@ -107,10 +122,11 @@ def _load_multicamera_columns(
 
     path = Path(path)
     if not path.exists():
-        raise FileNotFoundError(f"Multi-camera file not found: {path}")
+        raise FileNotFoundError(f"Multicamera file not found: {path}")
 
+    # An empty prediction file is a valid zero-score input; loadtxt warns on it.
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", UserWarning)
+        warnings.filterwarnings("ignore", message="loadtxt: input contained no data", category=UserWarning)
         try:
             data = np.loadtxt(path, dtype=np.float64, ndmin=2)
         except ValueError as exc:
@@ -120,11 +136,11 @@ def _load_multicamera_columns(
     if data.size == 0 and allow_empty:
         return np.empty((0, output_columns), dtype=np.float64)
     if data.size == 0:
-        raise ValueError(f"Multi-camera file is empty: {path}")
+        raise ValueError(f"Multicamera file is empty: {path}")
     if data.shape[1] != _NUM_COLUMNS:
         raise ValueError(f"Expected {_NUM_COLUMNS} columns in {path}, got {data.shape[1]}.")
     if not np.all(np.isfinite(data)):
-        raise ValueError(f"Multi-camera file contains non-finite values: {path}")
+        raise ValueError(f"Multicamera file contains non-finite values: {path}")
 
     identifiers = data[:, [_COL_CAMERA, _COL_ID, _COL_FRAME]]
     if np.any(identifiers < 0) or np.any(identifiers != np.floor(identifiers)):
@@ -139,17 +155,20 @@ def _load_multicamera_columns(
         return np.empty((0, output_columns), dtype=np.float64)
     if len(data) == 0:
         if camera_set is not None:
-            raise ValueError(f"Multi-camera file is empty after camera filtering ({sorted(camera_set)}): {path}")
-        raise ValueError(f"Multi-camera file is empty: {path}")
+            raise ValueError(f"Multicamera file is empty after camera filtering ({sorted(camera_set)}): {path}")
+        raise ValueError(f"Multicamera file is empty: {path}")
     return data if columns is None else data[:, columns]
 
 
 def load_scene_camera_map(path: str | Path) -> dict[str, list[int]]:
     """Load NVIDIA's ``scene_name_2_cam_id`` JSON mapping.
 
+    A scene name that appears in more than one entry has its camera lists
+    concatenated, matching NVIDIA's evaluator.
+
     Args:
         path: Path to a JSON list of
-            ``{\"scene_name\": \"scene_061\", \"camera_ids\": [535, ...]}``
+            ``{"scene_name": "scene_061", "camera_ids": [535, ...]}``
             objects.
 
     Returns:
@@ -158,13 +177,22 @@ def load_scene_camera_map(path: str | Path) -> dict[str, list[int]]:
     Raises:
         FileNotFoundError: If ``path`` does not exist.
         ValueError: If the JSON schema is invalid.
+
+    Examples:
+        >>> from trackers.io.multicamera import load_scene_camera_map  # doctest: +SKIP
+        >>>
+        >>> load_scene_camera_map("tests/data/multicamera/scene_camera_map.json")  # doctest: +SKIP
+        {'scene_a': [1, 2], 'scene_b': [3, 4]}
     """
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Scene camera map not found: {path}")
 
     with path.open("r", encoding="utf-8") as handle:
-        payload = json.load(handle)
+        try:
+            payload = json.load(handle)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Scene camera map is not valid JSON: {path}") from exc
     if not isinstance(payload, list):
         raise ValueError(f"Scene camera map must be a JSON list: {path}")
 
@@ -183,10 +211,7 @@ def load_scene_camera_map(path: str | Path) -> dict[str, list[int]]:
             for camera_id in camera_ids
         ):
             raise ValueError(f"camera_ids must be a list of ints at entry {index}: {path}")
-        if scene_name in mapping:
-            mapping[scene_name].extend(camera_ids)
-        else:
-            mapping[scene_name] = list(camera_ids)
+        mapping.setdefault(scene_name, []).extend(camera_ids)
     return mapping
 
 
@@ -203,6 +228,11 @@ def _validate_camera_ids(camera_ids: Sequence[int]) -> set[int]:
     return validated
 
 
+def _validate_zero_distance(zero_distance: float) -> None:
+    if not np.isfinite(zero_distance) or zero_distance <= 0:
+        raise ValueError(f"zero_distance must be finite and > 0, got {zero_distance}")
+
+
 def _euclidean_similarity(
     points1: NDArray[np.float64],
     points2: NDArray[np.float64],
@@ -211,28 +241,23 @@ def _euclidean_similarity(
     """Convert pairwise Euclidean distances into similarities in ``[0, 1]``.
 
     ``sim = max(0, 1 - dist / zero_distance)``. Matches TrackEval's
-    ``_calculate_euclidean_similarity`` (MOT15_3D / AI City 2024).
+    ``_calculate_euclidean_similarity`` (MOT15_3D / AI City 2024), which
+    subtracts coordinates directly; a Gram-matrix expansion loses precision at
+    world-plane magnitudes and flips matches sitting on an alpha threshold.
     """
-    if not np.isfinite(zero_distance) or zero_distance <= 0:
-        raise ValueError(f"zero_distance must be > 0, got {zero_distance}")
     if len(points1) == 0 or len(points2) == 0:
         return np.empty((len(points1), len(points2)), dtype=np.float64)
-    squared_distances = points1 @ points2.T
-    squared_distances *= -2.0
-    squared_distances += np.sum(points1 * points1, axis=1)[:, np.newaxis]
-    squared_distances += np.sum(points2 * points2, axis=1)[np.newaxis, :]
-    np.maximum(squared_distances, 0.0, out=squared_distances)
-    np.sqrt(squared_distances, out=squared_distances)
-    squared_distances /= zero_distance
-    squared_distances *= -1.0
-    squared_distances += 1.0
-    np.maximum(squared_distances, 0.0, out=squared_distances)
-    return squared_distances
+    similarity = cdist(points1, points2)
+    similarity /= zero_distance
+    similarity *= -1.0
+    similarity += 1.0
+    np.maximum(similarity, 0.0, out=similarity)
+    return similarity
 
 
 def _dedup_sort_prepared(
-    frame_ids: NDArray[np.int64],
-    object_ids: NDArray[np.int64],
+    frame_ids: NDArray[np.intp],
+    object_ids: NDArray[np.intp],
     points: NDArray[np.float64],
 ) -> _PreparedRows:
     """Keep first frame/ID rows and return frame-sorted compact arrays."""
@@ -265,7 +290,7 @@ def _load_prepared_multicamera_file(
     camera_ids: Sequence[int],
     allow_empty: bool = False,
 ) -> _PreparedRows:
-    """Stream only preparation columns, then compact and deduplicate them."""
+    """Load a file, keep only the preparation columns, then compact and deduplicate them."""
     compact = _load_multicamera_columns(
         path,
         file_format=file_format,
@@ -273,22 +298,22 @@ def _load_prepared_multicamera_file(
         columns=(_COL_FRAME, _COL_ID, _COL_XWORLD, _COL_YWORLD),
         allow_empty=allow_empty,
     )
-    frame_ids = compact[:, 0].astype(np.int64)
-    object_ids = compact[:, 1].astype(np.int64)
+    frame_ids = compact[:, 0].astype(np.intp)
+    object_ids = compact[:, 1].astype(np.intp)
     points = np.round(compact[:, 2:4], 3)
     return _dedup_sort_prepared(frame_ids, object_ids, points)
 
 
 def _group_by_frame(
     data: _PreparedRows,
-) -> dict[int, tuple[NDArray[np.int64], NDArray[np.float64]]]:
+) -> dict[int, tuple[NDArray[np.intp], NDArray[np.float64]]]:
     """Group compact, frame-sorted rows into slice views."""
     if len(data.frame_ids) == 0:
         return {}
 
     unique_frames, start_indices = np.unique(data.frame_ids, return_index=True)
     boundaries = np.append(start_indices, len(data.frame_ids))
-    grouped: dict[int, tuple[NDArray[np.int64], NDArray[np.float64]]] = {}
+    grouped: dict[int, tuple[NDArray[np.intp], NDArray[np.float64]]] = {}
     for frame_index, frame in enumerate(unique_frames.tolist()):
         start = boundaries[frame_index]
         stop = boundaries[frame_index + 1]
@@ -297,14 +322,9 @@ def _group_by_frame(
 
 
 def _build_id_mapping(data: _PreparedRows) -> dict[int, int]:
+    """Map original object IDs to contiguous 0-indexed values."""
     unique_ids = np.unique(data.object_ids)
     return {int(original): index for index, original in enumerate(unique_ids)}
-
-
-def _remap_ids(ids: NDArray[np.intp], id_map: dict[int, int]) -> NDArray[np.intp]:
-    if len(ids) == 0:
-        return np.array([], dtype=np.intp)
-    return np.array([id_map[int(original)] for original in ids], dtype=np.intp)
 
 
 def _prepare_multicamera_files(
@@ -327,8 +347,6 @@ def _prepare_multicamera_files(
         camera_ids=camera_ids,
         allow_empty=True,
     )
-    if not np.isfinite(zero_distance) or zero_distance <= 0:
-        raise ValueError(f"zero_distance must be > 0, got {zero_distance}")
     return _assemble_multicamera_sequence(gt_prepared, pred_prepared, zero_distance=zero_distance)
 
 
@@ -338,7 +356,11 @@ def _assemble_multicamera_sequence(
     *,
     zero_distance: float,
 ) -> _MultiCameraSequenceData:
-    """Build dense sequence semantics from compact prepared rows."""
+    """Build dense sequence semantics from compact prepared rows.
+
+    The sequence spans up to the last frame on either side, as in NVIDIA's evaluator, so prediction frames past the
+    ground truth count as false positives rather than being rejected.
+    """
     gt_grouped = _group_by_frame(gt_prepared)
     pred_grouped = _group_by_frame(pred_prepared)
 
@@ -346,28 +368,22 @@ def _assemble_multicamera_sequence(
         max(gt_grouped.keys(), default=0),
         max(pred_grouped.keys(), default=0),
     )
-    if num_frames <= 0:
-        raise ValueError("Prepared multi-camera sequence has no frames.")
 
     gt_id_map = _build_id_mapping(gt_prepared)
     tracker_id_map = _build_id_mapping(pred_prepared)
 
     empty_ids = np.empty(0, dtype=np.intp)
+    empty_points = np.empty((0, 2), dtype=np.float64)
     empty_similarity = np.empty((0, 0), dtype=np.float64)
     per_frame_gt_ids: list[NDArray[np.intp]] = [empty_ids] * num_frames
     per_frame_tracker_ids: list[NDArray[np.intp]] = [empty_ids] * num_frames
     per_frame_similarity: list[NDArray[np.float64]] = [empty_similarity] * num_frames
     for frame in sorted(gt_grouped.keys() | pred_grouped.keys()):
-        gt_rows = gt_grouped.get(frame)
-        pred_rows = pred_grouped.get(frame)
-        gt_original_ids, gt_points = gt_rows if gt_rows is not None else (empty_ids, np.empty((0, 2)))
-        pred_original_ids, pred_points = pred_rows if pred_rows is not None else (empty_ids, np.empty((0, 2)))
-        gt_ids = _remap_ids(np.asarray(gt_original_ids, dtype=np.intp), gt_id_map)
-        tracker_ids = _remap_ids(np.asarray(pred_original_ids, dtype=np.intp), tracker_id_map)
-        similarity = _euclidean_similarity(gt_points, pred_points, zero_distance)
-        per_frame_gt_ids[frame - 1] = gt_ids
-        per_frame_tracker_ids[frame - 1] = tracker_ids
-        per_frame_similarity[frame - 1] = similarity
+        gt_original_ids, gt_points = gt_grouped.get(frame, (empty_ids, empty_points))
+        pred_original_ids, pred_points = pred_grouped.get(frame, (empty_ids, empty_points))
+        per_frame_gt_ids[frame - 1] = _remap_ids(gt_original_ids, gt_id_map)
+        per_frame_tracker_ids[frame - 1] = _remap_ids(pred_original_ids, tracker_id_map)
+        per_frame_similarity[frame - 1] = _euclidean_similarity(gt_points, pred_points, zero_distance)
 
     return _MultiCameraSequenceData(
         gt_ids=per_frame_gt_ids,

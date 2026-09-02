@@ -43,11 +43,15 @@ _LAZY_MODULES = {
 
 
 def __getattr__(name: str) -> object:
-    """Lazy imports for evaluate functions to avoid circular imports."""
+    """Lazy imports for modules that read MOT files, to avoid circular imports."""
     module_name = _LAZY_MODULES.get(name)
     if module_name is not None:
         return getattr(importlib.import_module(module_name), name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_LAZY_MODULES))
 
 
 __all__ = [

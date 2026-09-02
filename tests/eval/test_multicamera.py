@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Tests for AI City 2024 multi-camera evaluation."""
+"""Tests for AI City 2024 multicamera evaluation."""
 
 from __future__ import annotations
 
@@ -19,9 +19,9 @@ from trackers.eval import (
     evaluate_multicamera_scene,
     evaluate_multicamera_scenes,
 )
+from trackers.eval.multicamera import _SCENE_MEAN_FIELDS
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "data" / "multicamera"
-SCENE_MEAN_FIELDS = ("HOTA", "DetA", "AssA", "LocA")
 
 
 @pytest.fixture(scope="module")
@@ -42,23 +42,24 @@ class TestEvaluateMulticameraScene:
         gt.write_text("1 1 0 0 0 1 1 0 0\n1 2 0 0 0 1 1 1 0\n1 1 1 0 0 1 1 0 0\n1 2 1 0 0 1 1 1 0\n")
         pred.write_text("1 1 0 0 0 1 1 0 0\n1 2 0 0 0 1 1 1 0\n1 2 1 0 0 1 1 0 0\n1 1 1 0 0 1 1 1 0\n")
 
-        perfect = evaluate_multicamera_scene("perfect", gt, gt, camera_ids=[1])
-        swapped = evaluate_multicamera_scene("swapped", gt, pred, camera_ids=[1])
+        perfect = evaluate_multicamera_scene(gt, gt, camera_ids=[1], scene="perfect")
+        swapped = evaluate_multicamera_scene(gt, pred, camera_ids=[1], scene="swapped")
 
         assert perfect.HOTA is not None and swapped.HOTA is not None
         assert perfect.HOTA.HOTA == pytest.approx(1.0)
         assert swapped.HOTA.AssA < perfect.HOTA.AssA
 
-    def test_empty_prediction_file_scores_zero(self, tmp_path: Path) -> None:
+    def test_empty_prediction_file_scores_zero_except_loca(self, tmp_path: Path) -> None:
         gt = tmp_path / "gt.txt"
         pred = tmp_path / "pred.txt"
         gt.write_text("1 1 0 0 0 1 1 0 0\n")
         pred.write_text("")
 
-        result = evaluate_multicamera_scene("empty", gt, pred, camera_ids=[1])
+        result = evaluate_multicamera_scene(gt, pred, camera_ids=[1], scene="empty")
 
         assert result.HOTA is not None
-        assert result.HOTA.HOTA == 0.0
+        assert (result.HOTA.HOTA, result.HOTA.DetA, result.HOTA.AssA) == (0.0, 0.0, 0.0)
+        assert result.HOTA.LocA == 1.0
         assert result.HOTA.HOTA_TP == 0
         assert result.HOTA.HOTA_FN == 19
 
@@ -73,7 +74,7 @@ class TestEvaluateMulticameraScenes:
             f"{name}.{field}": getattr(scene.HOTA, field)
             for name, scene in fixture_result.scenes.items()
             if scene.HOTA is not None
-            for field in SCENE_MEAN_FIELDS
+            for field in _SCENE_MEAN_FIELDS
         }
         frozen = {
             f"{name}.{field}": value for name, values in expected["scenes"].items() for field, value in values.items()
@@ -97,7 +98,7 @@ class TestEvaluateMulticameraScenes:
         tracker_dir = tmp_path / "pred"
         tracker_dir.mkdir()
 
-        with pytest.raises(FileNotFoundError, match=r"Multi-camera file not found: .*scene_a\.txt"):
+        with pytest.raises(FileNotFoundError, match=r"Multicamera file not found: .*scene_a\.txt"):
             evaluate_multicamera_scenes(
                 gt_dir=gt_dir,
                 tracker_dir=tracker_dir,
@@ -106,7 +107,7 @@ class TestEvaluateMulticameraScenes:
 
 
 class TestMulticameraBenchmarkResult:
-    """Serialization and rendering of the multi-camera result type."""
+    """Serialization and rendering of the multicamera result type."""
 
     def test_round_trip(self, fixture_result: MulticameraBenchmarkResult, tmp_path: Path) -> None:
         path = tmp_path / "results.json"
@@ -119,12 +120,19 @@ class TestMulticameraBenchmarkResult:
     def test_aggregate_holds_only_official_fields(self, fixture_result: MulticameraBenchmarkResult) -> None:
         payload = json.loads(fixture_result.json())
 
-        assert tuple(payload["aggregate"]) == SCENE_MEAN_FIELDS
+        assert tuple(payload["aggregate"]) == _SCENE_MEAN_FIELDS
         assert "HOTA_TP" in payload["scenes"]["scene_a"]["HOTA"]
 
-    def test_table_lists_scenes_and_scene_mean(self, fixture_result: MulticameraBenchmarkResult) -> None:
-        table = fixture_result.table()
+    def test_table_matches_golden(self, fixture_result: MulticameraBenchmarkResult) -> None:
+        expected = "\n".join(
+            [
+                "Scene                            HOTA     DetA     AssA     LocA",
+                "----------------------------------------------------------------",
+                "scene_a                        57.735   42.857   77.778  100.000",
+                "scene_b                       100.000  100.000  100.000  100.000",
+                "----------------------------------------------------------------",
+                "SCENE_MEAN                     78.868   71.429   88.889  100.000",
+            ]
+        )
 
-        assert "SCENE_MEAN" in table
-        assert "COMBINED" not in table
-        assert table.splitlines()[0].split() == ["Sequence", *SCENE_MEAN_FIELDS]
+        assert fixture_result.table() == expected
