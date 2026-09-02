@@ -176,14 +176,15 @@ class TestFramesFromSourceImageDirectory:
         """Names without digits keep plain alphabetical order."""
         directory = tmp_path / "alphabetic"
         directory.mkdir()
-        for index, stem in enumerate(("alpha", "beta", "gamma")):
+        for index, stem in enumerate(("gamma", "alpha", "beta")):
             cv2.imwrite(str(directory / f"{stem}.png"), create_frame(index))
 
         frames = list(frames_from_source(directory))
 
         assert len(frames) == 3
+        expected_indexes = (1, 2, 0)
         for frame_id, frame in frames:
-            assert np.all(frame == expected_frame_value(frame_id - 1))
+            assert np.all(frame == expected_frame_value(expected_indexes[frame_id - 1]))
 
     def test_reads_zero_padded_images_in_order(self, image_directory_factory) -> None:
         num_frames = 7
