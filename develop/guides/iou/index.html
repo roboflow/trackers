@@ -3370,9 +3370,21 @@ matrix) and delegates to subclass <code>_compute</code> method for the actual ma
 
 <details class="note" open>
   <summary>Note</summary>
-  <p>Input boxes are assumed well-formed (<code>x1 &lt;= x2</code> and
-<code>y1 &lt;= y2</code>). No validation is performed; malformed boxes
-produce undefined output.</p>
+  <p>Input boxes are expected to be well-formed (<code>x1 &lt;= x2</code> and
+<code>y1 &lt;= y2</code>). Shape and ordering are not validated, and malformed
+input is still only partially defended. Box extents are clamped at
+zero when computing area, which affects :class:<code>GIoU</code> alone: it no
+longer returns a score above <code>0</code> for a malformed box, where it
+previously ran far outside its documented <code>[-1, 1]</code> range.
+:class:<code>IoU</code> and :class:<code>BIoU</code> are unaffected because they do not
+use this helper; :class:<code>DIoU</code> and :class:<code>CIoU</code> are unaffected
+because a malformed axis already forces the intersection to zero,
+and both remain unbounded below on such input -- the enclosing box
+is built from <code>min</code>/<code>max</code> of the corners, so an inverted box
+makes it stop enclosing the pair and the distance normaliser
+collapses. A malformed box may also still rank above a well-formed
+but distant pair. Callers should reject malformed boxes rather than
+rely on any of this.</p>
 </details>
 
     </div>
@@ -3394,9 +3406,11 @@ produce undefined output.</p>
 <p>By default returns the matrix unchanged. Signed variants (GIoU, DIoU,
 CIoU) override this to shift their scores into <code>[0, 1]</code> via
 <code>(matrix + 1) / 2</code> (clamped) so that scores are monotonically mapped
-within <code>[-1, 1]</code> and saturated to <code>0</code> below <code>-1</code>. The clamp is a
-no-op for GIoU and DIoU (floor exactly <code>-1</code>) but active for CIoU,
-whose aspect-ratio penalty can push raw scores below <code>-1</code>.</p>
+within <code>[-1, 1]</code> and saturated to <code>0</code> below <code>-1</code>. For well-formed
+boxes the clamp is a no-op for GIoU and DIoU (floor exactly <code>-1</code>) and
+active for CIoU, whose aspect-ratio penalty can push raw scores below
+<code>-1</code>. On malformed boxes the clamp is load-bearing for DIoU and CIoU
+too; see :meth:<code>BaseIoU.compute</code>.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -3739,9 +3753,11 @@ matching :func:<code>torchvision.ops.complete_box_iou</code>.</p>
 <code>alpha = v / (1 - IoU + v + epsilon)</code>.</p>
 <p>So <strong>CIoU ≤ DIoU ≤ IoU</strong> when widths and heights are positive. Raw scores
 match :func:<code>torchvision.ops.complete_box_iou</code> exactly, with an upper bound
-of <code>1</code>; unlike GIoU and DIoU (which bottom out at <code>-1</code>), the aspect-ratio
-penalty can drive CIoU below <code>-1</code> (down to roughly <code>-1.5</code>). See
-:meth:<code>normalize_for_fusion</code>, which clamps after shifting into <code>[0, 1]</code>.</p>
+of <code>1</code>; for well-formed boxes GIoU and DIoU bottom out at <code>-1</code> while the
+aspect-ratio penalty can drive CIoU below it (down to roughly <code>-1.5</code>).
+Malformed boxes break the DIoU and CIoU floors as well; see
+:meth:<code>BaseIoU.compute</code>. See :meth:<code>normalize_for_fusion</code>, which clamps
+after shifting into <code>[0, 1]</code>.</p>
 <p>Reference: https://arxiv.org/abs/1911.08287</p>
 
 
