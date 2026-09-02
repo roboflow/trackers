@@ -157,6 +157,8 @@ def compute_clear_metrics(
             "CLR_Frames": num_frames,
         }
 
+    gt_contiguous = unique_gt_ids.dtype.kind in "iu" and unique_gt_ids[0] == 0 and unique_gt_ids[-1] == num_gt_ids - 1
+
     # Initialize counters
     clr_tp = 0
     clr_fn = 0
@@ -176,8 +178,8 @@ def compute_clear_metrics(
 
     # Process each timestep
     for t, (gt_ids_t, tracker_ids_t) in enumerate(zip(gt_ids, tracker_ids)):
-        # Map GT IDs to indices using searchsorted (vectorized)
-        gt_indices_t = np.atleast_1d(np.searchsorted(unique_gt_ids, gt_ids_t))
+        # Map GT IDs directly or use the searchsorted fallback.
+        gt_indices_t = np.atleast_1d(gt_ids_t if gt_contiguous else np.searchsorted(unique_gt_ids, gt_ids_t))
 
         # Handle empty frames
         if len(gt_ids_t) == 0:
