@@ -161,14 +161,19 @@ def _calculate_box_ious(
     boxes1 = np.asarray(boxes1, dtype=np.float64)
     boxes2 = np.asarray(boxes2, dtype=np.float64)
 
-    # Calculate intersection coordinates
-    # boxes1: (N, 4), boxes2: (M, 4) -> broadcasting to (N, M, 4)
-    min_ = np.minimum(boxes1[:, np.newaxis, :], boxes2[np.newaxis, :, :])
-    max_ = np.maximum(boxes1[:, np.newaxis, :], boxes2[np.newaxis, :, :])
-
-    # Intersection: max of left edges to min of right edges
-    # min_[..., 2] is min of x1 values, max_[..., 0] is max of x0 values
-    intersection = np.maximum(min_[..., 2] - max_[..., 0], 0) * np.maximum(min_[..., 3] - max_[..., 1], 0)
+    # Calculate intersection dimensions by broadcasting each coordinate plane
+    # directly, without full (N, M, 4) arrays
+    intersection_width = np.maximum(
+        np.minimum(boxes1[:, np.newaxis, 2], boxes2[np.newaxis, :, 2])
+        - np.maximum(boxes1[:, np.newaxis, 0], boxes2[np.newaxis, :, 0]),
+        0,
+    )
+    intersection_height = np.maximum(
+        np.minimum(boxes1[:, np.newaxis, 3], boxes2[np.newaxis, :, 3])
+        - np.maximum(boxes1[:, np.newaxis, 1], boxes2[np.newaxis, :, 1]),
+        0,
+    )
+    intersection = intersection_width * intersection_height
 
     # Area of boxes1
     area1 = (boxes1[..., 2] - boxes1[..., 0]) * (boxes1[..., 3] - boxes1[..., 1])
