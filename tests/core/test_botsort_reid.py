@@ -332,6 +332,36 @@ class TestFuseAdaptiveReidAssociation:
         )
         assert fused[0, 0] == pytest.approx(0.36)
 
+    def test_appearance_floor_drops_weak_matches(self) -> None:
+        # Cosine 0.6 is below the 0.65 floor, so the pair falls back to geometry alone;
+        # cosine 0.8 is above it and contributes as usual: 0.3 + 0.75 * 0.8.
+        fused = fuse_adaptive_reid_association(
+            np.array([[0.3, 0.3]], dtype=np.float32),
+            np.array([[0.6, 0.8]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.0,
+            reid_proximity_threshold=1.0,
+            reid_appearance_floor=0.65,
+        )
+        assert fused[0, 0] == pytest.approx(0.3)
+        assert fused[0, 1] == pytest.approx(0.9)
+
+    def test_floored_competitor_does_not_inflate_the_bonus(self) -> None:
+        # Both detections look identical (0.9), so no bonus is owed. Flooring plays no
+        # role here (both pass), but the margin must be measured over raw appearance:
+        # a floored candidate reading as similarity 0 would fabricate a 0.9 gap.
+        fused = fuse_adaptive_reid_association(
+            np.array([[0.6, 0.6]], dtype=np.float32),
+            np.array([[0.9, 0.9]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+            reid_appearance_floor=0.95,
+        )
+        # Floor drops appearance for both pairs: geometry only.
+        assert fused[0, 0] == pytest.approx(0.6)
+        assert fused[0, 1] == pytest.approx(0.6)
+
     def test_gated_competitor_does_not_inflate_the_bonus(self) -> None:
         # Both detections look identical (0.9), so appearance cannot tell them apart and
         # no bonus is owed. Gating one out on proximity must not change that: the bonus
@@ -448,6 +478,7 @@ class TestReidFusionSelection:
             reid_appearance_weight=0.5,
             reid_adaptive_weight_cap=0.4,
             reid_proximity_threshold=0.9,
+            reid_appearance_floor=0.3,
         )
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(5))
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(6))
@@ -455,6 +486,7 @@ class TestReidFusionSelection:
         assert received["reid_appearance_weight"] == 0.5
         assert received["reid_adaptive_weight_cap"] == 0.4
         assert received["reid_proximity_threshold"] == 0.9
+        assert received["reid_appearance_floor"] == 0.3
 
     def test_adaptive_fusion_changes_association(self) -> None:
         # Non-default weights: at 0.75 with the cap binding the effective weight is exactly
