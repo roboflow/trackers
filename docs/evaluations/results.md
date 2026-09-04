@@ -5,7 +5,7 @@ description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, 
 
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row.
+This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the catalog-default encoder throughout; its Tuned rows use an encoder fine-tuned on the dataset's train split where one exists (MOT17, SoccerNet, DanceTrack) and the catalog default otherwise (SportsMOT).
 
 !!! info "Benchmark version"
 
@@ -235,16 +235,17 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 === "Default"
 
-    Results using default tracker parameters.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the catalog-default `osnet_x1_0_msmt17_combineall` encoder.
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   81.6   |   76.2   |   95.1   |
-    | ByteTrack |   84.0   |   78.1   | **97.8** |
-    |  OC-SORT  |   78.4   |   72.6   |   94.1   |
-    | BoT-SORT  |   84.5   |   79.3   |   96.6   |
-    |  C-BIoU   |   82.6   |   76.6   |   97.0   |
-    |  McByte   | **85.0** | **79.9** |   97.0   |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   81.6   |   76.2   |   95.1   |
+    |    ByteTrack    |   84.0   |   78.1   | **97.8** |
+    |     OC-SORT     |   78.4   |   72.6   |   94.1   |
+    |    BoT-SORT     |   84.5   |   79.3   |   96.6   |
+    |     C-BIoU      |   82.6   |   76.6   |   97.0   |
+    |     McByte      | **85.0** | **79.9** |   97.0   |
+    | BoT-SORT + ReID |   82.9   |   77.7   |   96.5   |
 
     <!-- BENCH-XREF canonical:this-table id=soccernet-default
          SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
@@ -342,16 +343,17 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 === "Default"
 
-    Results using default tracker parameters.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the catalog-default `osnet_x1_0_msmt17_combineall` encoder.
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   47.2   |   41.0   |   86.5   |
-    | ByteTrack |   53.3   |   53.6   |   90.3   |
-    |  OC-SORT  |   54.1   |   53.3   |   89.3   |
-    | BoT-SORT  |   57.8   |   57.9   |   92.2   |
-    |  C-BIoU   |   56.7   |   56.7   |   92.2   |
-    |  McByte   | **67.2** | **68.6** | **92.5** |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   47.2   |   41.0   |   86.5   |
+    |    ByteTrack    |   53.3   |   53.6   |   90.3   |
+    |     OC-SORT     |   54.1   |   53.3   |   89.3   |
+    |    BoT-SORT     |   57.8   |   57.9   |   92.2   |
+    |     C-BIoU      |   56.7   |   56.7   |   92.2   |
+    |     McByte      | **67.2** | **68.6** | **92.5** |
+    | BoT-SORT + ReID |   56.0   |   56.1   |   91.8   |
 
     <!-- BENCH-XREF canonical:this-table id=dancetrack-default
          SORT/ByteTrack/OC-SORT/BoT-SORT rows -> docs/index.md (Algorithms table, HOTA col only), README.md (Algorithms table, HOTA col only).
