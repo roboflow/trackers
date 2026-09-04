@@ -92,7 +92,7 @@ See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full s
 
 ![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.png)
 
-**SoccerNet test, `osnet_x1_0_msmt17_combineall`.** A pedestrian encoder on soccer footage squeezes every distance into a narrow range: same-ID pairs peak near 0.05 and different-ID pairs near 0.20 (similar kits). The two shapes still separate, but the scale no longer matches the thresholds BoT-SORT was tuned with. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 admits 96% of same-ID pairs but also 49% of different-ID pairs, and tracking stays flat against CMC-only. θ=0.1 holds different-ID pairs to 9%, yet appearance still assists a mix of correct and same-kit pairs and costs HOTA and IDF1 (see the SoccerNet table below). Calibrate θ on your own domain rather than carrying 0.2 or 0.25 across.
+**SoccerNet test, `osnet_x1_0_msmt17_combineall`.** A pedestrian encoder on soccer footage squeezes every distance into a narrow range: same-ID pairs peak near 0.05 and different-ID pairs near 0.20 (similar kits). The two shapes still separate, but the scale no longer matches the thresholds BoT-SORT was tuned with. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 admits 96% of same-ID pairs but also 49% of different-ID pairs, and θ=0.1 holds different-ID pairs to 9%. Neither rescues tracking: every threshold from 0.1 up costs about 1.6 HOTA against CMC-only (see the SoccerNet table below), because with oracle boxes the pairs the gate removes are not the ones deciding an assignment under the minimum fusion. On this domain the encoder is what has to change, not θ; calibrate θ once you have an encoder that separates your targets.
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
 
@@ -129,7 +129,7 @@ It is not the area where the shaded bands cross in the figure. That is two perce
 
 Two things follow. First, a threshold validated on adjacent frames says little about re-association: at θ=0.2 appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight θ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `reid_appearance_threshold` with it and re-check the different-ID column.
 
-The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, which is why θ has to come down to about 0.1 on this domain instead of being traded against the gap.
+The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, so no threshold makes the generic encoder useful here. The SoccerNet rows in the tables above use an encoder fine-tuned on the dataset's own train split for that reason.
 
 ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
 
@@ -274,10 +274,10 @@ The generic pedestrian encoder on dancers, run on library-default geometry, YOLO
 
 #### SoccerNet, `osnet_x1_0_msmt17_combineall`
 
-A generic pedestrian encoder on soccer footage, run on library-default geometry. Compare with the fine-tuned rows above.
+A generic pedestrian encoder on soccer footage, run on library-default geometry with `reid_fusion="botsort"`, gate 0.5, oracle detections, SoccerNet-tracking test. The appearance threshold makes no practical difference here: every value from 0.1 up gives the same result, and all of them sit below geometry alone. Compare with the fine-tuned rows above, which is where the SoccerNet gain comes from.
 
-| Config                          |   HOTA   |   IDF1   |   MOTA   |
-| :------------------------------ | :------: | :------: | :------: |
-| BoT-SORT                        |   84.5   |   79.3   | **96.6** |
-| BoT-SORT + OSNet MSMT17 (θ=0.2) | **84.6** | **79.4** | **96.6** |
-| BoT-SORT + OSNet MSMT17 (θ=0.1) |   82.9   |   77.7   |   96.5   |
+| Config                                    |   HOTA   |   IDF1   |   MOTA   |
+| :---------------------------------------- | :------: | :------: | :------: |
+| BoT-SORT                                  | **84.5** | **79.3** | **96.6** |
+| BoT-SORT + OSNet MSMT17 (θ=0.1)           |   82.9   |   77.7   |   96.5   |
+| BoT-SORT + OSNet MSMT17 (θ=0.25, default) |   82.9   |   77.7   |   96.5   |
