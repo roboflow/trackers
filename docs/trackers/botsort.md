@@ -54,7 +54,7 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 
 ## ReID appearance (optional)
 
-BoT-SORT can fuse appearance embeddings with IoU during association via an optional `reid_model`. Install, usage, parameters, and MOT17 with/without ReID scores are on the [ReID appearance](../guides/reid.md) page.
+BoT-SORT can fuse appearance embeddings with IoU during association via an optional `reid_model`. For ReID numbers go to the [ReID guide](../guides/reid.md#bot-sort-with-and-without-reid), which holds the tables for both fusion rules and best configuration per dataset. Aslo learn how to install, use and choose parameters on the same page.
 
 ## Run on video, webcam, or RTSP stream
 

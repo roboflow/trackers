@@ -83,7 +83,7 @@ For all CLI options, see the [tracking guide](https://trackers.roboflow.com/deve
 
 ## Algorithms
 
-Each tracker below is a faithful implementation of its original paper's motion and association pipeline; appearance/ReID branches are not included where papers offer them — see each tracker's docs page for the exact scope. Pick the one that fits your scene, or run the benchmark to find out which performs best on your data.
+Each tracker below is a faithful implementation of its original paper's motion and association pipeline; appearance/ReID branches are off by default, though BoT-SORT accepts one through `reid_model` (see the [ReID guide](https://trackers.roboflow.com/latest/guides/reid/)). Each tracker's docs page states the exact scope. Pick the one that fits your scene, or run the benchmark to find out which performs best on your data.
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 6 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte). Also duplicated in [docs/index.md](docs/index.md)'s Algorithms table (all 6 rows). Update results.md first, then mirror both copies. -->
 

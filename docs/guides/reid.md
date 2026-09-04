@@ -47,16 +47,16 @@ For the model catalog and fine-tuning, see the [`reid` training guide](https://g
 
 ## Key Parameters
 
-| Parameter                   | Purpose                                                                                                                                               | Tuning guidance                                                                                                                                                                                                                                                                   |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `reid_model`                | Appearance encoder queried during association.                                                                                                        | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                                                                                                                                                                                 |
-| `reid_ema_alpha`            | EMA momentum for a track's appearance feature.                                                                                                        | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more.                                                                                                                                                                  |
-| `reid_appearance_threshold` | Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                                                   | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                                                                                                                                                                                         |
-| `reid_proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - reid_proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.                                    | Default 0.5. Raise to 1.0 where targets leave the frame and return, see [below](#choosing-a-proximity-threshold).                                                                                                                                                                 |
-| `reid_fusion`               | How appearance combines with geometry: `"botsort"` takes the minimum of the two costs, `"adaptive"` adds a weighted appearance term.                  | Default `"botsort"`. See [choosing a fusion method](#choosing-a-fusion-method) before switching.                                                                                                                                                                                  |
-| `reid_appearance_weight`    | Base appearance weight when `reid_fusion="adaptive"`. Ignored otherwise.                                                                              | Default 0.75. Raise where geometry is unreliable, see below.                                                                                                                                                                                                                      |
-| `reid_adaptive_weight_cap`  | Ceiling on the adaptive bonus when `reid_fusion="adaptive"`. Ignored otherwise.                                                                       | Default 0.5. Raise together with `reid_appearance_weight`.                                                                                                                                                                                                                        |
-| `reid_appearance_floor`     | Minimum cosine similarity for appearance to contribute when `reid_fusion="adaptive"`; below it a pair is scored on geometry alone. Ignored otherwise. | Default 0.0 (off, the Deep OC-SORT behaviour). Calibrate per encoder: 0.7 with `reid_proximity_threshold=1.0` is the value for `osnet_x1_0` fine-tuned on SoccerNet and loses HOTA with the MOT17 and MSMT17 encoders, see [choosing a fusion method](#choosing-a-fusion-method). |
+|          Parameter          |                                                                        Purpose                                                                        |                                                                                                                                  Tuning guidance                                                                                                                                  |
+| :-------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|        `reid_model`         |                                                    Appearance encoder queried during association.                                                     |                                                                                         Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                                                                                         |
+|      `reid_ema_alpha`       |                                                    EMA momentum for a track's appearance feature.                                                     |                                                                                 Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more.                                                                                  |
+| `reid_appearance_threshold` |                                  Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                  |                                                                                                     BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                                                                                     |
+| `reid_proximity_threshold`  |                  IoU gate applied before appearance (`IoU ≥ 1 - reid_proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.                   |                                                                                 Default 0.5. Raise to 1.0 where targets leave the frame and return, see [below](#choosing-a-proximity-threshold).                                                                                 |
+|        `reid_fusion`        |         How appearance combines with geometry: `"botsort"` takes the minimum of the two costs, `"adaptive"` adds a weighted appearance term.          |                                                                                         Default `"botsort"`. See [choosing a fusion method](#choosing-a-fusion-method) before switching.                                                                                          |
+|  `reid_appearance_weight`   |                                       Base appearance weight when `reid_fusion="adaptive"`. Ignored otherwise.                                        |                                                                                                           Default 0.75. Raise where geometry is unreliable, see below.                                                                                                            |
+| `reid_adaptive_weight_cap`  |                                    Ceiling on the adaptive bonus when `reid_fusion="adaptive"`. Ignored otherwise.                                    |                                                                                                            Default 0.5. Raise together with `reid_appearance_weight`.                                                                                                             |
+|   `reid_appearance_floor`   | Minimum cosine similarity for appearance to contribute when `reid_fusion="adaptive"`; below it a pair is scored on geometry alone. Ignored otherwise. | Default 0.0 (off, the Deep OC-SORT behaviour). Calibrate per encoder: 0.7 with `reid_proximity_threshold=1.0` is the value for `osnet_x1_0` fine-tuned on SoccerNet and loses HOTA with the MOT17 and MSMT17 encoders, see [choosing a fusion method](#choosing-a-fusion-method). |
 
 ---
 
@@ -174,11 +174,11 @@ Two consequences are worth knowing before switching:
 
 HOTA, best configuration found for each method. Detections, CMC, encoder and geometry are shared within a row; only appearance handling differs. SoccerNet and MOT17 use the published tuned BoT-SORT geometry from the [tracker comparison](../evaluations/results.md): `lost_track_buffer=60`, `minimum_iou_threshold_first_assoc=0.1`, `minimum_iou_threshold_second_assoc=0.6`, `minimum_iou_threshold_unconfirmed_assoc=0.2` for SoccerNet, and `track_activation_threshold=0.6`, `high_conf_det_threshold=0.5`, `minimum_iou_threshold_unconfirmed_assoc=0.2` for MOT17. DanceTrack's tuned set coincides with the library defaults. All other parameters are library defaults.
 
-| Dataset        | Encoder                           | no ReID   | `botsort` | `adaptive` | `botsort` parameters                                              | `adaptive` parameters                                                                                                      |
-| -------------- | --------------------------------- | --------- | --------- | ---------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| SoccerNet test | `osnet_x1_0` fine-tuned SoccerNet | 85.00     | 87.29     | **87.82**  | `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0` | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=1.0`, `reid_appearance_floor=0.7` |
-| DanceTrack val | `osnet_x1_0_msmt17_combineall`    | 53.89     | 56.11     | **57.39**  | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  | `reid_appearance_weight=2.4`, `reid_adaptive_weight_cap=0`, `reid_proximity_threshold=0.5`                                 |
-| MOT17 val-half | `osnet_x1_0` fine-tuned MOT17     | **69.05** | 69.00     | 68.72      | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.5`                              |
+|    Dataset     |              Encoder              |  no ReID  | `botsort` | `adaptive` |                       `botsort` parameters                        |                                                   `adaptive` parameters                                                    |
+| :------------: | :-------------------------------: | :-------: | :-------: | :--------: | :---------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------: |
+| SoccerNet test | `osnet_x1_0` fine-tuned SoccerNet |   85.00   |   87.29   | **87.82**  | `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0` | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=1.0`, `reid_appearance_floor=0.7` |
+| DanceTrack val |  `osnet_x1_0_msmt17_combineall`   |   53.89   |   56.11   | **57.39**  | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  |                 `reid_appearance_weight=2.4`, `reid_adaptive_weight_cap=0`, `reid_proximity_threshold=0.5`                 |
+| MOT17 val-half |   `osnet_x1_0` fine-tuned MOT17   | **69.05** |   69.00   |   68.72    | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  |               `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.5`                |
 
 HOTA. Each cell is the best configuration found for that method (on SoccerNet the threshold and weight come from closed-gate sweeps with only the gate changed to 1.0, so they are good settings rather than necessarily the best); the parameter columns give the full ReID settings it ran with, defaults included. MOT17 moves by less than 0.35 HOTA in any direction on 7 sequences, inside single-sequence variance.
 
@@ -188,11 +188,11 @@ HOTA. Each cell is the best configuration found for that method (on SoccerNet th
 
 Deep OC-SORT reports `reid_appearance_weight=0.75` for MOT17 and MOT20 and `1.25` for DanceTrack. On SoccerNet test and MOT17 val-half a sweep from 0.75 to 2.5 moves HOTA by less than 0.15, so the default transfers. DanceTrack val needs more than the reported value:
 
-| `reid_appearance_weight` | HOTA      | ID switches |
-| ------------------------ | --------- | ----------- |
-| 1.25 (reported)          | 55.97     | 1736        |
-| 1.6                      | 57.23     | 1696        |
-| 2.4                      | **57.26** | **1686**    |
+| `reid_appearance_weight` |   HOTA    | ID switches |
+| :----------------------: | :-------: | :---------: |
+|     1.25 (reported)      |   55.97   |    1736     |
+|           1.6            |   57.23   |    1696     |
+|           2.4            | **57.26** |  **1686**   |
 
 The step sits between 1.25 and 1.6 and everything above it is a plateau. Where appearance barely separates identities the adaptive bonus collapses and only the base weight does any work, which is DanceTrack's situation and why the weight matters there.
 
@@ -200,18 +200,60 @@ The step sits between 1.25 and 1.6 and everything above it is a plateau. Where a
 
 ## BoT-SORT with and without ReID
 
-### MOT17 test
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) BoT-SORT + ReID row in the mot17/sportsmot/soccernet/dancetrack Tuned tables (HOTA / IDF1 / MOTA of the best row per dataset). The encoder, parameter and IDSW columns exist only here; DanceTrack's adaptive row is pending a run with the fine-tuned encoder. Update results.md first, then mirror here. -->
 
-YOLOX detections, CMC on, Codabench MOT17 test (same protocol as the [benchmark results](../evaluations/results.md) default table). ReID: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.2` ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8).
+Evaluations are on test splits and one table per fusion method. Each ReID row shares its detections and geometry with the BoT-SORT row above it, so only the appearance branch differs, and both come from the [tracker comparison](../evaluations/results.md), where the full configuration for each is listed. Detection sources and split usage are covered in [Methodology](../evaluations/methodology.md). Bold marks the best cell per dataset across both tables.
+
+The encoder is part of the configuration. SoccerNet, MOT17 and DanceTrack use an `osnet_x1_0` fine-tuned on the dataset's own train split, SportsMOT the generic `osnet_x1_0_msmt17_combineall`, so absolute numbers do not compare across datasets and only the with and without deltas do. Within a dataset both fusion rules run the same encoder, which is what makes the two tables comparable; DanceTrack's `adaptive` row is pending a run with the fine-tuned encoder. With the generic encoder DanceTrack loses to plain BoT-SORT under both rules, see [Other encoders](#other-encoders).
+
+### `reid_fusion="botsort"`
+
+`min(d_iou, d_app)`, gated by `reid_appearance_threshold` and `reid_proximity_threshold`.
+
+| Dataset         | Config          |   HOTA    |   IDF1    |   MOTA   | IDSW | Encoder                            | ReID parameters                                                   |
+| :-------------- | :-------------- | :-------: | :-------: | :------: | :--: | :--------------------------------- | :---------------------------------------------------------------- |
+| SoccerNet test  | BoT-SORT        |   85.00   |   79.68   |  97.25   | 2523 | —                                  | —                                                                 |
+| SoccerNet test  | BoT-SORT + ReID |   87.29   |   83.13   |  98.73   | 4564 | `osnet_x1_0` fine-tuned SoccerNet  | `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0` |
+| MOT17 test      | BoT-SORT        |   63.8    |   78.7    |   79.4   |  —   | —                                  | —                                                                 |
+| MOT17 test      | BoT-SORT + ReID | **64.12** | **79.16** |  79.36   | 1617 | `osnet_x1_0` fine-tuned MOT17      | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  |
+| SportsMOT test  | BoT-SORT        |   73.8    |   73.4    |   96.9   |  —   | —                                  | —                                                                 |
+| SportsMOT test  | BoT-SORT + ReID |   73.48   |   73.10   |  96.88   | 2863 | `osnet_x1_0_msmt17_combineall`     | `reid_appearance_threshold=0.15`, `reid_proximity_threshold=0.5`  |
+| DanceTrack test | BoT-SORT        |   57.8    |   57.9    | **92.2** |  —   | —                                  | —                                                                 |
+| DanceTrack test | BoT-SORT + ReID | **58.5**  | **58.9**  |   92.1   |  —   | `osnet_x1_0` fine-tuned DanceTrack | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  |
+
+### `reid_fusion="adaptive"`
+
+`IoU + w·cos` with the Deep OC-SORT bonus, gated by `reid_proximity_threshold` and, where set, `reid_appearance_floor`.
+
+| Dataset         | Config          |   HOTA    |   IDF1    |   MOTA    |   IDSW   | Encoder                            | ReID parameters                                                                                                            |
+| :-------------- | :-------------- | :-------: | :-------: | :-------: | :------: | :--------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| SoccerNet test  | BoT-SORT        |   85.00   |   79.68   |   97.25   |   2523   | —                                  | —                                                                                                                          |
+| SoccerNet test  | BoT-SORT + ReID | **87.82** | **83.92** | **99.43** |   2111   | `osnet_x1_0` fine-tuned SoccerNet  | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=1.0`, `reid_appearance_floor=0.7` |
+| MOT17 test      | BoT-SORT        |   63.8    |   78.7    |   79.4    |    —     | —                                  | —                                                                                                                          |
+| MOT17 test      | BoT-SORT + ReID |   63.8    |   78.86   | **79.49** | **1416** | `osnet_x1_0` fine-tuned MOT17      | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.5`                              |
+| SportsMOT test  | BoT-SORT        |   73.8    |   73.4    |   96.9    |    —     | —                                  | —                                                                                                                          |
+| SportsMOT test  | BoT-SORT + ReID | **74.98** | **75.09** | **96.99** | **2306** | `osnet_x1_0_msmt17_combineall`     | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.99`                             |
+| DanceTrack test | BoT-SORT        |   57.8    |   57.9    | **92.2**  |    —     | —                                  | —                                                                                                                          |
+| DanceTrack test | BoT-SORT + ReID |     —     |     —     |     —     |    —     | `osnet_x1_0` fine-tuned DanceTrack | not yet run with this encoder                                                                                              |
+
+Anything not listed in the ReID parameters column is a library default, and the DanceTrack leaderboard does not return ID switches. Each rule is shown at its own best gate. On SportsMOT both were swept across 0.5, 0.99 and 1.0 on the val split: `botsort` is strongest at the default 0.5 (79.38 HOTA), scoring 77.82 at 0.99 and 64.80 at 1.0, while `adaptive` peaks at 0.99. The wider gate suits the additive rule and not the minimum, which is consistent with how the two combine appearance, so the comparison holds with both rules given the same range. On SoccerNet both rules were run at 1.0, and on DanceTrack with the generic encoder (see Other encoders). On SoccerNet neither was re-tuned there, so both carry thresholds chosen at the closed gate. On MOT17 only `adaptive` has been run past the default gate, where it scores below its closed-gate result.
+
+### Other encoders
+
+The rows above use the best encoder found for each dataset. These measurements used other encoders and are kept because they show how much that choice decides.
+
+#### MOT17, `fastreid_mot17_sbs50`
+
+The MOT17-trained FastReID checkpoint BoT-SORT itself uses, run on library-default geometry at `reid_appearance_threshold=0.2` ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8).
+
+Codabench MOT17 test:
 
 | Config          |   HOTA   |   IDF1   |   MOTA   |
 | :-------------- | :------: | :------: | :------: |
 | BoT-SORT        |   63.7   |   78.7   | **79.2** |
 | BoT-SORT + ReID | **63.9** | **79.2** | **79.2** |
 
-### MOT17 val-half
-
-YOLOX detections, CMC on, MOT17 val-half split, same encoder and threshold, scored with `trackers eval`.
+MOT17 val-half, scored with `trackers eval`:
 
 | Config          |   HOTA   |   IDF1   |   MOTA   |
 | :-------------- | :------: | :------: | :------: |
@@ -220,9 +262,19 @@ YOLOX detections, CMC on, MOT17 val-half split, same encoder and threshold, scor
 
 The MOT17 re-ID study reports 68.43 HOTA / 80.92 IDF1 without ReID and 68.95 / 81.98 with, on the same split at `reid_appearance_threshold=0.2` (Table 8 and Table 13; MOTA is not reported for that YOLOX setup).
 
-### SoccerNet test (OSNet MSMT17)
+#### DanceTrack, `osnet_x1_0_msmt17_combineall`
 
-Oracle detections, CMC on, SoccerNet-tracking test (same protocol as the [benchmark results](../evaluations/results.md) default table). ReID: `osnet_x1_0_msmt17_combineall` (MSMT17 pretrained), so this is a cross-domain encoder on soccer footage.
+The generic pedestrian encoder on dancers, run on library-default geometry, YOLOX detections, Codabench DanceTrack test. Both rules land below geometry alone; the fine-tuned encoder in the tables above is what turns DanceTrack around.
+
+| Config                                               |   HOTA   |   IDF1   |   MOTA   |
+| :--------------------------------------------------- | :------: | :------: | :------: |
+| BoT-SORT                                             | **57.8** | **57.9** |   92.2   |
+| BoT-SORT + ReID, `botsort` (θ=0.25, gate=0.5)        |   56.0   |   56.1   |   91.8   |
+| BoT-SORT + ReID, `adaptive` (w=2.4, cap=0, gate=0.5) |   57.2   |   56.5   | **92.3** |
+
+#### SoccerNet, `osnet_x1_0_msmt17_combineall`
+
+A generic pedestrian encoder on soccer footage, run on library-default geometry. Compare with the fine-tuned rows above.
 
 | Config                          |   HOTA   |   IDF1   |   MOTA   |
 | :------------------------------ | :------: | :------: | :------: |
