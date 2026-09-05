@@ -92,7 +92,7 @@ See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full s
 
 ![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.png)
 
-**SoccerNet test, `osnet_x1_0_msmt17_combineall`.** A pedestrian encoder on soccer footage squeezes every distance into a narrow range: same-ID pairs peak near 0.05 and different-ID pairs near 0.20 (similar kits). The two shapes still separate, but the scale no longer matches the thresholds BoT-SORT was tuned with. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 admits 96% of same-ID pairs but also 49% of different-ID pairs, and θ=0.1 holds different-ID pairs to 9%. Neither rescues tracking: every threshold from 0.1 up costs about 1.6 HOTA against CMC-only (see the SoccerNet table below), because with oracle boxes the pairs the gate removes are not the ones deciding an assignment under the minimum fusion. On this domain the encoder is what has to change, not θ; calibrate θ once you have an encoder that separates your targets.
+**SoccerNet test, `osnet_x1_0_msmt17_combineall`.** A pedestrian encoder on soccer footage squeezes every distance into a narrow range: same-ID pairs peak near 0.05 and different-ID pairs near 0.20 (similar kits). The two shapes still separate, but the scale no longer matches the thresholds BoT-SORT was tuned with. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 admits 96% of same-ID pairs but also 49% of different-ID pairs, and θ=0.1 holds different-ID pairs to 9%. Neither rescues tracking under the default `botsort` rule: every threshold from 0.1 up costs about 1.6 HOTA against CMC-only (see the SoccerNet table below), because with oracle boxes the pairs the gate removes are not the ones deciding an assignment under the minimum fusion. What does rescue it is the fusion rule and the gate: `adaptive` at `reid_proximity_threshold=0.99` turns the same encoder into a gain of about 1.1 HOTA, and the fine-tuned encoder adds on top of that.
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
 
@@ -129,7 +129,7 @@ It is not the area where the shaded bands cross in the figure. That is two perce
 
 Two things follow. First, a threshold validated on adjacent frames says little about re-association: at θ=0.2 appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight θ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `reid_appearance_threshold` with it and re-check the different-ID column.
 
-The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, so no threshold makes the generic encoder useful here. The SoccerNet rows in the tables above use an encoder fine-tuned on the dataset's own train split for that reason.
+The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, so no threshold makes the generic encoder useful here under the minimum fusion; the additive rule with an open gate is what does, see the SoccerNet table under Other encoders. The SoccerNet rows in the tables above go further with an encoder fine-tuned on the dataset's own train split.
 
 ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
 
@@ -274,10 +274,12 @@ The generic pedestrian encoder on dancers, run on library-default geometry, YOLO
 
 #### SoccerNet, `osnet_x1_0_msmt17_combineall`
 
-A generic pedestrian encoder on soccer footage, run on library-default geometry with `reid_fusion="botsort"`, gate 0.5, oracle detections, SoccerNet-tracking test. The appearance threshold makes no practical difference here: every value from 0.1 up gives the same result, and all of them sit below geometry alone. Compare with the fine-tuned rows above, which is where the SoccerNet gain comes from.
+A generic pedestrian encoder on soccer footage, run on library-default geometry with `reid_fusion="botsort"`, gate 0.5, oracle detections, SoccerNet-tracking test. Under the default `botsort` rule the appearance threshold makes no practical difference: every value from 0.1 up gives the same result, and all of them sit below geometry alone, while opening the gate to 1.0 under that rule collapses to 65.9 HOTA with over 24,000 ID switches, as it does on SportsMOT and DanceTrack. Switching to `adaptive` fusion with the gate at 0.99 turns the same encoder into a gain; at its own default gate the adaptive rule is merely neutral. The fine-tuned rows above go further still.
 
-| Config                                    |   HOTA   |   IDF1   |   MOTA   |
-| :---------------------------------------- | :------: | :------: | :------: |
-| BoT-SORT                                  | **84.5** | **79.3** | **96.6** |
-| BoT-SORT + OSNet MSMT17 (θ=0.1)           |   82.9   |   77.7   |   96.5   |
-| BoT-SORT + OSNet MSMT17 (θ=0.25, default) |   82.9   |   77.7   |   96.5   |
+| Config                                         |   HOTA   |   IDF1   |   MOTA   |
+| :--------------------------------------------- | :------: | :------: | :------: |
+| BoT-SORT                                       |   84.5   |   79.3   |   96.6   |
+| BoT-SORT + OSNet MSMT17 (θ=0.1)                |   82.9   |   77.7   |   96.5   |
+| BoT-SORT + OSNet MSMT17 (θ=0.25, default)      |   82.9   |   77.7   |   96.5   |
+| BoT-SORT + OSNet MSMT17, `adaptive`, defaults  |   84.5   |   79.2   |   96.5   |
+| BoT-SORT + OSNet MSMT17, `adaptive`, gate 0.99 | **85.7** | **80.1** | **98.1** |
