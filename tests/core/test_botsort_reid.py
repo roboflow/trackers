@@ -16,7 +16,11 @@ import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.reid.fusion import fuse_botsort_reid_association
+from trackers.core.reid.fusion import (
+    ReidFusionMethod,
+    fuse_adaptive_reid_association,
+    fuse_botsort_reid_association,
+)
 
 
 def _detection(xyxy: tuple[float, float, float, float], conf: float = 0.9) -> sv.Detections:
@@ -286,3 +290,225 @@ class TestBoTSORTTrackerReID:
         assert len(tracker.tracks) == 1
         bank = tracker.tracks[0].feature_bank
         assert bank is not None and bank.feature is not None
+
+
+class TestFuseAdaptiveReidAssociation:
+    """Unit tests for Deep OC-SORT adaptive appearance weighting."""
+
+    def test_dominant_match_outweighs_tied_match(self) -> None:
+        # Same top appearance (0.9) and same IoU (0.6) in both cases. When the runner-up
+        # is far behind, the adaptive bonus lifts the appearance weight above the base
+        # 0.75; when the two candidates tie, no bonus is granted.
+        iou = np.array([[0.6, 0.6]], dtype=np.float32)
+        dominant = fuse_adaptive_reid_association(
+            iou,
+            np.array([[0.9, 0.1]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+        )
+        tied = fuse_adaptive_reid_association(
+            iou,
+            np.array([[0.9, 0.9]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+        )
+        # Gap 0.8 is capped at 0.5, halved to a 0.25 bonus: 0.6 + (0.75 + 0.25) * 0.9.
+        assert dominant[0, 0] == pytest.approx(1.5)
+        # No gap, so the base weight alone applies: 0.6 + 0.75 * 0.9.
+        assert tied[0, 0] == pytest.approx(1.275)
+        assert dominant[0, 0] > tied[0, 0]
+
+    def test_low_proximity_ignores_appearance(self) -> None:
+        # IoU 0.36 fails the proximity gate (needs IoU > 1 - 0.5), so the score stays
+        # IoU-only despite a strong appearance match.
+        fused = fuse_adaptive_reid_association(
+            np.array([[0.36]], dtype=np.float32),
+            np.array([[0.9]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+        )
+        assert fused[0, 0] == pytest.approx(0.36)
+
+    def test_appearance_floor_drops_weak_matches(self) -> None:
+        # Cosine 0.6 is below the 0.65 floor, so the pair falls back to geometry alone;
+        # cosine 0.8 is above it and contributes as usual: 0.3 + 0.75 * 0.8.
+        fused = fuse_adaptive_reid_association(
+            np.array([[0.3, 0.3]], dtype=np.float32),
+            np.array([[0.6, 0.8]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.0,
+            reid_proximity_threshold=1.0,
+            reid_appearance_floor=0.65,
+        )
+        assert fused[0, 0] == pytest.approx(0.3)
+        assert fused[0, 1] == pytest.approx(0.9)
+
+    def test_floored_competitor_does_not_inflate_the_bonus(self) -> None:
+        # Both detections look identical (0.9), so no bonus is owed. Flooring plays no
+        # role here (both pass), but the margin must be measured over raw appearance:
+        # a floored candidate reading as similarity 0 would fabricate a 0.9 gap.
+        fused = fuse_adaptive_reid_association(
+            np.array([[0.6, 0.6]], dtype=np.float32),
+            np.array([[0.9, 0.9]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+            reid_appearance_floor=0.95,
+        )
+        # Floor drops appearance for both pairs: geometry only.
+        assert fused[0, 0] == pytest.approx(0.6)
+        assert fused[0, 1] == pytest.approx(0.6)
+
+    def test_gated_competitor_does_not_inflate_the_bonus(self) -> None:
+        # Both detections look identical (0.9), so appearance cannot tell them apart and
+        # no bonus is owed. Gating one out on proximity must not change that: the bonus
+        # measures appearance discriminativeness, not geometric isolation.
+        appearance = np.array([[0.9, 0.9]], dtype=np.float32)
+        both_close = fuse_adaptive_reid_association(
+            np.array([[0.6, 0.6]], dtype=np.float32),
+            appearance,
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+        )
+        one_gated = fuse_adaptive_reid_association(
+            np.array([[0.6, 0.4]], dtype=np.float32),
+            appearance,
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+        )
+
+        # Base weight only in both cases: 0.6 + 0.75 * 0.9.
+        assert both_close[0, 0] == pytest.approx(1.275)
+        assert one_gated[0, 0] == pytest.approx(1.275)
+        # The gated pair keeps its geometry and gains nothing from appearance.
+        assert one_gated[0, 1] == pytest.approx(0.4)
+
+    def test_bonus_combines_track_and_detection_gaps(self) -> None:
+        # A non-square matrix so the per-track (axis 1) and per-detection (axis 0) gaps
+        # differ and both contribute. Track 0 leads its row by 0.6 and column 0 leads by
+        # 0.5, each capped at 0.4, giving a bonus of (0.4 + 0.4) / 2 = 0.4.
+        fused = fuse_adaptive_reid_association(
+            np.full((2, 3), 0.6, dtype=np.float32),
+            np.array([[0.9, 0.3, 0.2], [0.4, 0.3, 0.2]], dtype=np.float32),
+            reid_appearance_weight=0.5,
+            reid_adaptive_weight_cap=0.4,
+            reid_proximity_threshold=0.5,
+        )
+        assert fused[0, 0] == pytest.approx(0.6 + (0.5 + 0.4) * 0.9)
+        # Track 1 leads its own row by only 0.1, so its bonus is smaller.
+        assert fused[1, 0] == pytest.approx(0.6 + (0.5 + (0.1 + 0.4) / 2) * 0.4)
+
+    def test_negative_appearance_never_lowers_similarity(self) -> None:
+        # A negative cosine similarity is clamped to zero so appearance can only ever
+        # raise a score, never push a geometrically sound pair below the threshold.
+        fused = fuse_adaptive_reid_association(
+            np.array([[0.8]], dtype=np.float32),
+            np.array([[-0.5]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+        )
+        assert fused[0, 0] == pytest.approx(0.8)
+
+    def test_single_candidate_gets_no_adaptive_bonus(self) -> None:
+        # With one track and one detection there is no runner-up to compare against,
+        # so only the base weight applies: 0.7 + 0.75 * 0.8.
+        fused = fuse_adaptive_reid_association(
+            np.array([[0.7]], dtype=np.float32),
+            np.array([[0.8]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+        )
+        assert fused[0, 0] == pytest.approx(1.3)
+
+    def test_proximity_uses_standard_iou_not_giou(self) -> None:
+        # The tracker always passes two different matrices: association similarity is
+        # IoU fused with detection confidence, while the gate is raw IoU. A version
+        # that ignores the caller's gate matrix would keep the appearance term here.
+        association_iou = np.array([[0.80]], dtype=np.float32)
+        fused = fuse_adaptive_reid_association(
+            association_iou,
+            np.array([[0.95]], dtype=np.float32),
+            reid_appearance_weight=0.75,
+            reid_adaptive_weight_cap=0.5,
+            reid_proximity_threshold=0.5,
+            proximity_iou_similarity=np.array([[0.35]], dtype=np.float32),
+        )
+        assert fused[0, 0] == pytest.approx(float(association_iou[0, 0]))
+
+
+class TestReidFusionSelection:
+    """The fusion selector on the tracker."""
+
+    def test_botsort_fusion_is_the_default(self) -> None:
+        assert BoTSORTTracker().reid_fusion == "botsort"
+
+    def test_unknown_fusion_raises(self) -> None:
+        with pytest.raises(ValueError, match="Unknown reid_fusion"):
+            BoTSORTTracker(reid_fusion="deepocsort")  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("parameter", ["reid_appearance_weight", "reid_adaptive_weight_cap"])
+    def test_rejects_negative_adaptive_weights(self, parameter: str) -> None:
+        with pytest.raises(ValueError, match=parameter):
+            # mypy cannot narrow a dynamic dict against typed kwargs.
+            BoTSORTTracker(enable_cmc=False, **{parameter: -0.1})  # type: ignore[arg-type]
+
+    def test_adaptive_parameters_reach_fusion(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import trackers.core.botsort.tracker as tracker_module
+
+        received: dict[str, float] = {}
+
+        def spy(association, appearance, **kwargs):
+            received.update(kwargs)
+            return tracker_module.fuse_botsort_reid_association(
+                association, appearance, reid_proximity_threshold=0.5, reid_appearance_threshold=0.25
+            )
+
+        monkeypatch.setattr(tracker_module, "fuse_adaptive_reid_association", spy)
+        tracker = BoTSORTTracker(
+            enable_cmc=False,
+            reid_model=_KeyedReIDEncoder({(10, 10): _norm(np.array([1.0, 0.0, 0.0, 0.0]))}),
+            reid_fusion="adaptive",
+            reid_appearance_weight=0.5,
+            reid_adaptive_weight_cap=0.4,
+            reid_proximity_threshold=0.9,
+            reid_appearance_floor=0.3,
+        )
+        tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(5))
+        tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(6))
+
+        assert received["reid_appearance_weight"] == 0.5
+        assert received["reid_adaptive_weight_cap"] == 0.4
+        assert received["reid_proximity_threshold"] == 0.9
+        assert received["reid_appearance_floor"] == 0.3
+
+    def test_adaptive_fusion_changes_association(self) -> None:
+        # Non-default weights: at 0.75 with the cap binding the effective weight is exactly
+        # 1.0, which makes the fusion symmetric in its inputs and would hide wiring mistakes.
+        far = (10.0, 10.0, 30.0, 30.0)
+        near = (11.0, 11.0, 31.0, 31.0)
+        feature = _norm(np.array([1.0, 0.0, 0.0, 0.0]))
+
+        def run(fusion: ReidFusionMethod) -> np.ndarray:
+            tracker = BoTSORTTracker(
+                enable_cmc=False,
+                reid_model=_KeyedReIDEncoder({(10, 10): feature, (11, 11): feature}),
+                reid_fusion=fusion,
+                reid_appearance_weight=0.3,
+                reid_adaptive_weight_cap=0.1,
+                minimum_iou_threshold_first_assoc=1.02,
+            )
+            tracker.update(_detection(far), frame=_frame(5))
+            return tracker.update(_detection(near), frame=_frame(6)).tracker_id
+
+        # The gate sits in the window that separates the two fusions. Taking a minimum
+        # of costs can never exceed a similarity of 1, while adding a weighted
+        # appearance term reaches 0.74 + 0.3 * 1.0, so only the latter clears 1.02.
+        np.testing.assert_array_equal(run("botsort"), [-1])
+        np.testing.assert_array_equal(run("adaptive"), [0])

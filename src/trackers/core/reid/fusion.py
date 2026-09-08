@@ -8,6 +8,12 @@
 # Copyright (c) 2022 Nir Aharon
 # Source: https://github.com/NirAharon/BoT-SORT
 # Reference: tracker/bot_sort.py (ReID appearance-IoU cost fusion)
+#
+# Adapted from GerardMaggiolino/Deep-OC-SORT (MIT)
+# Copyright (c) 2023 Gerard Maggiolino
+# Source: https://github.com/GerardMaggiolino/Deep-OC-SORT
+# Reference: trackers/integrated_ocsort_embedding/association.py
+#            (compute_aw_new_metric, adaptive appearance weighting)
 # ------------------------------------------------------------------------
 
 """Appearance-IoU fusion methods for ReID association.
@@ -18,7 +24,11 @@ than tied to any single one.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
+
+ReidFusionMethod = Literal["botsort", "adaptive"]
 
 
 def fuse_botsort_reid_association(
@@ -65,3 +75,113 @@ def fuse_botsort_reid_association(
     d_app = np.where(d_iou_proximity > reid_proximity_threshold, 1.0, d_app)
     fused_cost = np.minimum(d_iou, d_app)
     return 1.0 - fused_cost
+
+
+def _top_two_margin(similarity: np.ndarray, axis: int, cap: float) -> np.ndarray:
+    """Margin between the best and second-best similarity along ``axis``, capped.
+
+    A large margin means the best candidate stands clear of the rest, so appearance is discriminative for that row or
+    column. Zero when there are fewer than two candidates to compare.
+    """
+    if similarity.shape[axis] < 2:
+        return np.zeros(similarity.shape[1 - axis], dtype=float)
+    partitioned = np.partition(similarity, -2, axis=axis)
+    best = np.take(partitioned, -1, axis=axis)
+    runner_up = np.take(partitioned, -2, axis=axis)
+    return np.minimum(best - runner_up, cap)
+
+
+def fuse_adaptive_reid_association(
+    association_similarity: np.ndarray,
+    appearance_similarity: np.ndarray,
+    *,
+    reid_appearance_weight: float,
+    reid_adaptive_weight_cap: float,
+    reid_proximity_threshold: float,
+    reid_appearance_floor: float = 0.0,
+    proximity_iou_similarity: np.ndarray | None = None,
+) -> np.ndarray:
+    """Fuse IoU and appearance with Deep OC-SORT's adaptive weighting.
+
+    Adds a weighted appearance term to the geometric similarity instead of
+    taking a minimum. The weight grows when the best appearance match stands
+    clear of the runner-up and falls back to ``reid_appearance_weight`` when
+    the top candidates are hard to tell apart.
+
+    Implements equations (4)-(6) of the Deep OC-SORT paper, matching
+    ``compute_aw_new_metric`` in the authors' ``integrated_ocsort_embedding``
+    tracker, the variant behind their published results.
+
+    ``proximity_iou_similarity`` is the standard-IoU gate (defaults to
+    ``association_similarity``). Pass it separately when association uses
+    GIoU/DIoU/CIoU so proximity still uses plain IoU.
+
+    Args:
+        association_similarity: Geometry-based track-detection similarities with
+            shape ``(T, N)``.
+        appearance_similarity: Cosine similarities for the same pairs with shape
+            ``(T, N)``.
+        reid_appearance_weight: Base appearance weight, ``a_w`` in the paper.
+            The authors report ``0.75`` for MOT17 and MOT20 and ``1.25`` for
+            DanceTrack.
+        reid_adaptive_weight_cap: Upper bound on the adaptive bonus, ``epsilon``
+            in the paper. The authors report ``0.5`` for MOT17 and MOT20 and
+            ``1.0`` for DanceTrack.
+        reid_proximity_threshold: Maximum standard-IoU distance at which
+            appearance may contribute.
+        reid_appearance_floor: Minimum cosine similarity for appearance to
+            contribute; below it the pair is scored on geometry alone. Default
+            ``0.0`` (disabled, the reference behaviour).
+        proximity_iou_similarity: Standard-IoU similarities with shape ``(T, N)``.
+            Defaults to ``association_similarity``.
+
+    Returns:
+        Fused track-detection similarities with shape ``(T, N)``, spanning
+        ``[0, 1 + reid_appearance_weight + reid_adaptive_weight_cap]``.
+        Association thresholds tuned against the BoT-SORT fusion do not carry
+        over and need retuning.
+
+    Notes:
+        Negative cosine similarities are clamped to zero, so appearance can
+        only ever raise a similarity.
+
+        Geometric plausibility is enforced before fusion rather than after
+        matching. The reference fuses appearance ungated, runs the assignment,
+        then discards any matched pair whose raw IoU is below its IoU
+        threshold. BoT-SORT has no such post-match check: its association
+        threshold is applied to the fused similarity, which a zero-IoU pair
+        can clear on appearance alone. ``reid_proximity_threshold`` is where
+        that check lives here; ``1.0`` disables it, which is what lets a
+        track be recovered after leaving the frame, since its prediction no
+        longer overlaps the returning detection. The gate applies only to the
+        appearance term: the margin is measured over all candidates, as in
+        the reference, so a candidate excluded on geometry cannot read as
+        similarity ``0`` and widen the margin.
+
+        The velocity-direction term of the full Deep OC-SORT cost is not
+        included; it belongs to OC-SORT's motion model.
+
+        ``reid_appearance_floor`` is an extension over the reference, which has
+        no appearance gate at all. Because the fusion is additive, any positive
+        cosine similarity raises the fused score above the association
+        threshold once geometry contributes nothing, so with the proximity gate
+        disabled a lost track can capture an unrelated detection on a weak
+        appearance match instead of letting it start a new track. The floor
+        zeroes the appearance term for such pairs, leaving them scored on
+        geometry alone. Like the proximity gate, it applies only to the
+        appearance term: margins are still measured over all candidates.
+    """
+    if proximity_iou_similarity is None:
+        proximity_iou_similarity = association_similarity
+
+    appearance = np.clip(appearance_similarity, 0.0, None)
+
+    track_margin = _top_two_margin(appearance, axis=1, cap=reid_adaptive_weight_cap)
+    detection_margin = _top_two_margin(appearance, axis=0, cap=reid_adaptive_weight_cap)
+    adaptive_bonus = (track_margin[:, np.newaxis] + detection_margin[np.newaxis, :]) / 2.0
+
+    out_of_range = (1.0 - proximity_iou_similarity) > reid_proximity_threshold
+    gated_appearance = np.where(out_of_range, 0.0, appearance)
+    gated_appearance = np.where(appearance < reid_appearance_floor, 0.0, gated_appearance)
+
+    return association_similarity + (reid_appearance_weight + adaptive_bonus) * gated_appearance
