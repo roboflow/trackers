@@ -200,26 +200,26 @@ The step sits between 1.25 and 1.6 and everything above it is a plateau. Where a
 
 ## BoT-SORT with and without ReID
 
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) BoT-SORT + ReID row in the mot17/sportsmot/soccernet/dancetrack Tuned tables (HOTA / IDF1 / MOTA of the best row per dataset). The encoder, parameter and IDSW columns exist only here; DanceTrack's adaptive row is pending a run with the fine-tuned encoder. Update results.md first, then mirror here. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) BoT-SORT + ReID row in the mot17/sportsmot/soccernet/dancetrack Tuned tables (HOTA / IDF1 / MOTA of the best row per dataset). The encoder, parameter and IDSW columns exist only here. Update results.md first, then mirror here. -->
 
 Evaluations are on test splits and one table per fusion method. Each ReID row shares its detections and geometry with the BoT-SORT row above it, so only the appearance branch differs, and both come from the [tracker comparison](../evaluations/results.md), where the full configuration for each is listed. Detection sources and split usage are covered in [Methodology](../evaluations/methodology.md). Bold marks the best cell per dataset across both tables.
 
-The encoder is part of the configuration. SoccerNet, MOT17 and DanceTrack use an `osnet_x1_0` fine-tuned on the dataset's own train split, SportsMOT the generic `osnet_x1_0_msmt17_combineall`, so absolute numbers do not compare across datasets and only the with and without deltas do. Within a dataset both fusion rules run the same encoder, which is what makes the two tables comparable; DanceTrack's `adaptive` row is pending a run with the fine-tuned encoder. With the generic encoder DanceTrack loses to plain BoT-SORT under both rules, see [Other encoders](#other-encoders).
+The encoder is part of the configuration. SoccerNet, MOT17 and DanceTrack use an `osnet_x1_0` fine-tuned on the dataset's own train split, SportsMOT the generic `osnet_x1_0_msmt17_combineall`, so absolute numbers do not compare across datasets and only the with and without deltas do. Within a dataset both fusion rules run the same encoder, which is what makes the two tables comparable. The DanceTrack encoder is trained at `crops_per_identity=8`; at the smaller budget of 4 it scores 57.5 under the minimum rule and loses to plain BoT-SORT, so the crop budget matters more on this dataset than either fusion parameter. With the generic encoder DanceTrack loses to plain BoT-SORT under both rules, see [Other encoders](#other-encoders).
 
 ### `reid_fusion="botsort"`
 
 `min(d_iou, d_app)`, gated by `reid_appearance_threshold` and `reid_proximity_threshold`.
 
-| Dataset         | Config          |   HOTA    |   IDF1    |   MOTA   | IDSW | Encoder                            | ReID parameters                                                   |
-| :-------------- | :-------------- | :-------: | :-------: | :------: | :--: | :--------------------------------- | :---------------------------------------------------------------- |
-| SoccerNet test  | BoT-SORT        |   85.00   |   79.68   |  97.25   | 2523 | —                                  | —                                                                 |
-| SoccerNet test  | BoT-SORT + ReID |   87.29   |   83.13   |  98.73   | 4564 | `osnet_x1_0` fine-tuned SoccerNet  | `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0` |
-| MOT17 test      | BoT-SORT        |   63.8    |   78.7    |   79.4   |  —   | —                                  | —                                                                 |
-| MOT17 test      | BoT-SORT + ReID | **64.12** | **79.16** |  79.36   | 1617 | `osnet_x1_0` fine-tuned MOT17      | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  |
-| SportsMOT test  | BoT-SORT        |   73.8    |   73.4    |   96.9   |  —   | —                                  | —                                                                 |
-| SportsMOT test  | BoT-SORT + ReID |   73.48   |   73.10   |  96.88   | 2863 | `osnet_x1_0_msmt17_combineall`     | `reid_appearance_threshold=0.15`, `reid_proximity_threshold=0.5`  |
-| DanceTrack test | BoT-SORT        |   57.8    |   57.9    | **92.2** |  —   | —                                  | —                                                                 |
-| DanceTrack test | BoT-SORT + ReID | **58.5**  | **58.9**  |   92.1   |  —   | `osnet_x1_0` fine-tuned DanceTrack | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  |
+| Dataset         | Config          |   HOTA    |   IDF1    | MOTA  | IDSW | Encoder                            | ReID parameters                                                   |
+| :-------------- | :-------------- | :-------: | :-------: | :---: | :--: | :--------------------------------- | :---------------------------------------------------------------- |
+| SoccerNet test  | BoT-SORT        |   85.00   |   79.68   | 97.25 | 2523 | —                                  | —                                                                 |
+| SoccerNet test  | BoT-SORT + ReID |   87.29   |   83.13   | 98.73 | 4564 | `osnet_x1_0` fine-tuned SoccerNet  | `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0` |
+| MOT17 test      | BoT-SORT        |   63.8    |   78.7    | 79.4  |  —   | —                                  | —                                                                 |
+| MOT17 test      | BoT-SORT + ReID | **64.12** | **79.16** | 79.36 | 1617 | `osnet_x1_0` fine-tuned MOT17      | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  |
+| SportsMOT test  | BoT-SORT        |   73.8    |   73.4    | 96.9  |  —   | —                                  | —                                                                 |
+| SportsMOT test  | BoT-SORT + ReID |   73.48   |   73.10   | 96.88 | 2863 | `osnet_x1_0_msmt17_combineall`     | `reid_appearance_threshold=0.15`, `reid_proximity_threshold=0.5`  |
+| DanceTrack test | BoT-SORT        |   57.8    |   57.9    | 92.2  |  —   | —                                  | —                                                                 |
+| DanceTrack test | BoT-SORT + ReID | **58.8**  | **59.1**  | 92.2  |  —   | `osnet_x1_0` fine-tuned DanceTrack | `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`  |
 
 ### `reid_fusion="adaptive"`
 
@@ -233,8 +233,8 @@ The encoder is part of the configuration. SoccerNet, MOT17 and DanceTrack use an
 | MOT17 test      | BoT-SORT + ReID |   63.8    |   78.86   | **79.49** | **1416** | `osnet_x1_0` fine-tuned MOT17      | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.5`                              |
 | SportsMOT test  | BoT-SORT        |   73.8    |   73.4    |   96.9    |    —     | —                                  | —                                                                                                                          |
 | SportsMOT test  | BoT-SORT + ReID | **74.98** | **75.09** | **96.99** | **2306** | `osnet_x1_0_msmt17_combineall`     | `reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.99`                             |
-| DanceTrack test | BoT-SORT        |   57.8    |   57.9    | **92.2**  |    —     | —                                  | —                                                                                                                          |
-| DanceTrack test | BoT-SORT + ReID |     —     |     —     |     —     |    —     | `osnet_x1_0` fine-tuned DanceTrack | not yet run with this encoder                                                                                              |
+| DanceTrack test | BoT-SORT        |   57.8    |   57.9    |   92.2    |    —     | —                                  | —                                                                                                                          |
+| DanceTrack test | BoT-SORT + ReID |   58.1    |   58.2    | **92.3**  |    —     | `osnet_x1_0` fine-tuned DanceTrack | `reid_appearance_weight=2.4`, `reid_adaptive_weight_cap=0.0`                                                               |
 
 Anything not listed in the ReID parameters column is a library default, and the DanceTrack leaderboard does not return ID switches. Each rule is shown at its own best gate. On SportsMOT both were swept across 0.5, 0.99 and 1.0 on the val split: `botsort` is strongest at the default 0.5 (79.38 HOTA), scoring 77.82 at 0.99 and 64.80 at 1.0, while `adaptive` peaks at 0.99. The wider gate suits the additive rule and not the minimum, which is consistent with how the two combine appearance, so the comparison holds with both rules given the same range. On SoccerNet both rules were run at 1.0, and on DanceTrack with the generic encoder (see Other encoders). On SoccerNet neither was re-tuned there, so both carry thresholds chosen at the closed gate. On MOT17 only `adaptive` has been run past the default gate, where it scores below its closed-gate result.
 
