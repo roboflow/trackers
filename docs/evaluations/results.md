@@ -376,7 +376,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |     OC-SORT     |   54.1   |   53.3   |   89.3   |
     |    BoT-SORT     |   57.8   |   57.9   |   92.2   |
     |     C-BIoU      |   57.7   |   58.7   | **92.4** |
-    | BoT-SORT + ReID | **58.5** | **58.9** |   92.1   |
+    | BoT-SORT + ReID | **58.8** | **59.1** |   92.2   |
 
     Best configuration for each tracker. The ReID row uses an `osnet_x1_0` fine-tuned on DanceTrack train.
 
