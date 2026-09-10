@@ -263,7 +263,11 @@ class OCSORTTracker(BaseTracker):
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
 
-        self._predict_tracklets(self.tracks, timing)
+        # Predicted boxes may alias live Kalman state (see state_to_bbox's Note in
+        # state_representations.py) rather than being fresh copies. Nothing below
+        # may mutate tracklet/Kalman state between this call and the decode step
+        # further down, or the cached values could silently change underneath it.
+        predicted_boxes_by_tracklet = self._predict_tracklets(self.tracks, timing, return_predictions=True)
 
         # Ghost-ID prevention: only prune before association in variable-FPS mode.
         # At fixed frame rate the same frame-count check runs post-association, so
@@ -271,7 +275,14 @@ class OCSORTTracker(BaseTracker):
         if self._lost_track_time_budget(timing, self.maximum_time_without_update) is not None:
             self.tracks = self._prune_expired_tracklets(timing)
 
-        predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
+        # The cache is empty either because predict was skipped (duplicate
+        # timestamp) or because self.tracks was empty when predicted; in both
+        # cases decode the tracklets' unchanged current states instead.
+        predicted_boxes = np.array(
+            [predicted_boxes_by_tracklet[t] for t in self.tracks]
+            if not timing.skip_predict
+            else [t.get_state_bbox() for t in self.tracks]
+        )
         iou_matrix = self.iou.compute(predicted_boxes, high_boxes)
 
         # Skip the direction-consistency computation entirely when it carries no

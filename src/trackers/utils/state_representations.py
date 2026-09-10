@@ -125,6 +125,15 @@ class BaseStateEstimator(ABC):
     def state_to_bbox(self) -> np.ndarray:
         """Extract an `[x1, y1, x2, y2]` bbox from the current filter state.
 
+        Note:
+            The returned array may alias internal filter state rather than
+            being a fresh copy, depending on representation. `XYXYStateEstimator`
+            returns a live view onto `self.kf.state` (`state[:4].reshape((4,))`);
+            `XCYCSRStateEstimator` and `XCYCWHStateEstimator` decode through a
+            coordinate-conversion function and return a freshly allocated array.
+            Callers that hold onto the result across a subsequent `predict()`
+            or `update()` call must not assume the array stays unchanged.
+
         Returns:
             Bounding box `[x1, y1, x2, y2]`.
         """
