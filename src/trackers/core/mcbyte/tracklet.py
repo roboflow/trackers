@@ -20,6 +20,19 @@ from trackers.utils.state_representations import (
 )
 
 
+def _diagonal_matrix(values: list[float]) -> np.ndarray:
+    """Construct a diagonal matrix directly from known values.
+
+    Construct-only: always returns float64, regardless of the input
+    values' type. Unlike ``np.diag``, does not extract a diagonal from
+    a 2-D input.
+    """
+    size = len(values)
+    matrix = np.zeros((size, size), dtype=np.float64)
+    matrix.flat[:: size + 1] = values
+    return matrix
+
+
 class McByteTracklet(BaseTracklet):
     """Tracklet for the McByte tracker.
 
@@ -65,7 +78,7 @@ class McByteTracklet(BaseTracklet):
         sp, sv = self._SIGMA_P, self._SIGMA_V
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
             s = np.sqrt(max(w * h, 1e-6))
-            return np.diag(
+            return _diagonal_matrix(
                 [
                     (sp * w) ** 2,
                     (sp * h) ** 2,
@@ -76,7 +89,7 @@ class McByteTracklet(BaseTracklet):
                     (sv * s) ** 2,
                 ]
             )
-        return np.diag(
+        return _diagonal_matrix(
             [
                 (sp * w) ** 2,
                 (sp * h) ** 2,
@@ -94,8 +107,8 @@ class McByteTracklet(BaseTracklet):
         sm = self._SIGMA_M
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
             s = np.sqrt(max(w * h, 1e-6))
-            return np.diag([(sm * w) ** 2, (sm * h) ** 2, (sm * s) ** 2, (sm * 1.0) ** 2])
-        return np.diag([(sm * w) ** 2, (sm * h) ** 2, (sm * w) ** 2, (sm * h) ** 2])
+            return _diagonal_matrix([(sm * w) ** 2, (sm * h) ** 2, (sm * s) ** 2, (sm * 1.0) ** 2])
+        return _diagonal_matrix([(sm * w) ** 2, (sm * h) ** 2, (sm * w) ** 2, (sm * h) ** 2])
 
     def _set_scale_aware_noise(self, w: float, h: float) -> None:
         """Set the initial Q, R and P from the first detection's size."""
@@ -105,7 +118,7 @@ class McByteTracklet(BaseTracklet):
 
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
             s = np.sqrt(max(w * h, 1e-6))
-            state_covariance = np.diag(
+            state_covariance = _diagonal_matrix(
                 [
                     (2 * sp * w) ** 2,
                     (2 * sp * h) ** 2,
@@ -117,7 +130,7 @@ class McByteTracklet(BaseTracklet):
                 ]
             )
         else:
-            state_covariance = np.diag(
+            state_covariance = _diagonal_matrix(
                 [
                     (2 * sp * w) ** 2,
                     (2 * sp * h) ** 2,
