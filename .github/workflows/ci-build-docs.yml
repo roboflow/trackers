@@ -32,4 +32,8 @@ jobs:
         run: uv sync --frozen --group docs
 
       - name: 🧪 Test Docs Build
+        env:
+          # Match the version-prefixed site_url `mike` uses in production —
+          # the plain default root URL emits un-prefixed (404) asset URLs.
+          SITE_URL: https://trackers.roboflow.com/latest/
         run: uv run mkdocs build --verbose

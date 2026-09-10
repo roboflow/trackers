@@ -106,6 +106,16 @@ _CITATIONS = {
     },
 }
 
+# Per-page TechArticle.image (keyed by page.file.src_path). The brand SVG
+# represents no single page's content, so pages without a specific poster
+# get no image rather than a generic one.
+_ARTICLE_IMAGES = {
+    "trackers/sort.md": "assets/sort-demo-poster.webp",
+    "trackers/bytetrack.md": "assets/bytetrack-demo-poster.webp",
+    "trackers/ocsort.md": "assets/ocsort-demo-poster.webp",
+    "trackers/botsort.md": "assets/botsort-demo-poster.webp",
+}
+
 # Benchmark datasets shown on the comparison page.
 _BENCHMARK_DATASETS = [
     {
@@ -141,7 +151,7 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
     if page.file.src_path == "index.md":
         return None
 
-    site_url = config.get("site_url", "https://trackers.roboflow.com").rstrip("/")
+    site_url = (config.get("site_url") or "https://trackers.roboflow.com").rstrip("/")
 
     # Walk the nav tree to find the path of sections leading to this page.
     crumbs = [{"name": "Home", "url": site_url + "/"}]
@@ -235,7 +245,7 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
 
     # Derive base URL from mkdocs.yml site_url so this hook stays in sync with
     # deployment configuration and never drifts from the actual canonical base.
-    site_url = config.get("site_url", "https://trackers.roboflow.com").rstrip("/")
+    site_url = (config.get("site_url") or "https://trackers.roboflow.com").rstrip("/")
 
     # ── TechArticle JSON-LD (pages with description only) ──
     if description:
@@ -268,6 +278,13 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
                 "cssSelector": ["h1", ".md-content p:first-of-type"],
             },
         }
+
+        # Per-page poster image (recommended field) — omitted rather than
+        # pointed at the generic brand SVG, which represents no page's
+        # content and duplicates publisher.logo.
+        poster = _ARTICLE_IMAGES.get(page.file.src_path)
+        if poster:
+            article["image"] = f"{site_url}/{poster}"
 
         # datePublished / dateModified from git-revision-date-localized plugin.
         # Prefer the raw iso_date keys which are always YYYY-MM-DD regardless of
