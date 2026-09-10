@@ -7,6 +7,7 @@
 {% if page %}
 
 {# ── Organization + SoftwareApplication JSON-LD (site-wide) ── #}
+{% set schema_base = (config.site_url | default('https://trackers.roboflow.com/latest/', true)).rstrip('/') %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -18,7 +19,7 @@
       "url": "https://roboflow.com",
       "description": "Roboflow builds computer vision infrastructure and tools for training and deploying vision AI models.",
       "foundingDate": "2019",
-      "logo": "{{ 'assets/logo-trackers-violet.svg' | url }}",
+      "logo": "{{ schema_base }}/assets/logo-trackers-violet.svg",
       "sameAs": [
         "https://github.com/roboflow",
         "https://twitter.com/roboflow",
@@ -42,6 +43,10 @@
       "downloadUrl": "https://pypi.org/project/trackers/",
       "codeRepository": "https://github.com/roboflow/trackers",
       "programmingLanguage": "Python",
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+{%- if config.extra.trackers_version %}
+      "softwareVersion": "{{ config.extra.trackers_version }}",
+{%- endif %}
       "author": {
         "@id": "https://roboflow.com/#organization"
       },
