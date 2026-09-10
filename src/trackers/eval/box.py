@@ -56,7 +56,8 @@ def box_iou(
         `boxes1[i]` and `boxes2[j]`. Values are in range `[0, 1]`.
 
     Raises:
-        ValueError: If box_format is not `"xyxy"` or `"xywh"`.
+        ValueError: If box_format is not `"xyxy"` or `"xywh"`, or if the two box
+            arrays disagree on column count or have fewer than 4 columns.
 
     Examples:
         >>> import numpy as np
@@ -102,7 +103,8 @@ def box_ioa(
         `boxes1[i]` and `boxes2[j]`. Values are in range `[0, 1]`.
 
     Raises:
-        ValueError: If box_format is not `"xyxy"` or `"xywh"`.
+        ValueError: If box_format is not `"xyxy"` or `"xywh"`, or if the two box
+            arrays disagree on column count or have fewer than 4 columns.
 
     Examples:
         >>> import numpy as np
@@ -143,11 +145,22 @@ def _calculate_box_ious(
         IoU/IoA matrix of shape `(N, M)`.
 
     Raises:
-        ValueError: If box_format is not `"xyxy"` or `"xywh"`.
+        ValueError: If box_format is not `"xyxy"` or `"xywh"`, or if the two box
+            arrays disagree on column count or have fewer than 4 columns.
     """
     # Handle empty input arrays
     if len(boxes1) == 0 or len(boxes2) == 0:
         return np.zeros((len(boxes1), len(boxes2)), dtype=np.float64)
+
+    # Column counts must agree and cover at least xyxy: broadcasting all four
+    # coordinate planes enforced this implicitly, but indexing only columns 0-3
+    # would silently accept ragged input. Extra columns (e.g. a trailing score
+    # kept alongside the box) stay allowed, as they were before.
+    columns1, columns2 = boxes1.shape[-1], boxes2.shape[-1]
+    if columns1 != columns2 or columns1 < 4:
+        raise ValueError(
+            f"boxes1 and boxes2 must have matching trailing dimensions of at least 4, got {columns1} and {columns2}"
+        )
 
     # Convert xywh to xyxy if needed
     if box_format == "xywh":

@@ -357,3 +357,14 @@ def test_box_ioa_matches_naive_reference_implementation() -> None:
     assert np.allclose(result, expected, rtol=1e-6, atol=1e-9)
 
 
+def test_box_iou_raises_on_ragged_columns() -> None:
+    """box_iou rejects box arrays whose column counts disagree.
+
+    Broadcasting all four coordinate planes rejected a column mismatch implicitly. Reading only columns 0-3 hides it, so
+    pairing plain xyxy boxes with boxes that carry an extra score column would return a matrix instead of raising.
+    """
+    boxes1 = np.array([[0, 0, 10, 10], [5, 5, 15, 15], [1, 1, 2, 2]])
+    boxes2 = np.array([[0, 0, 10, 10, 0.9], [5, 5, 15, 15, 0.8]])
+
+    with pytest.raises(ValueError, match="matching trailing dimensions"):
+        box_iou(boxes1, boxes2)
