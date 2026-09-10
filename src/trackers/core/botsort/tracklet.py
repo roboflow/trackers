@@ -21,9 +21,14 @@ from trackers.utils.state_representations import (
 
 
 def _diagonal_matrix(values: list[float]) -> np.ndarray:
-    """Construct a diagonal matrix directly from known values."""
+    """Construct a diagonal matrix directly from known values.
+
+    Construct-only: always returns float64, regardless of the input
+    values' type. Unlike ``np.diag``, does not extract a diagonal from
+    a 2-D input.
+    """
     size = len(values)
-    matrix = np.zeros((size, size))
+    matrix = np.zeros((size, size), dtype=np.float64)
     matrix.flat[:: size + 1] = values
     return matrix
 
