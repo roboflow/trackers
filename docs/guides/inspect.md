@@ -1,5 +1,5 @@
 ---
-title: Inspect the Mask Pipeline — SAM, Cutie, MaskManager | Trackers
+title: Inspect the Mask Pipeline — SAM, Cutie, MaskManager
 description: Render what each stage of the mask pipeline produced, frame by frame, with the trackers inspect command.
 ---
 

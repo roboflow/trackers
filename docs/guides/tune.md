@@ -1,5 +1,5 @@
 ---
-title: Tune Tracker Hyperparameters — Optuna Guide | Trackers
+title: Tune Tracker Hyperparameters — Optuna Guide
 description: Optimize tracker hyperparameters with the Trackers Tuner class and CLI using Optuna, MOT-format detections, and evaluation metrics like HOTA, MOTA, and IDF1.
 ---
 
