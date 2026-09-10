@@ -161,6 +161,7 @@ def _calculate_box_ious(
     boxes1 = np.asarray(boxes1, dtype=np.float64)
     boxes2 = np.asarray(boxes2, dtype=np.float64)
 
+    # xyxy layout: columns 0, 1, 2, 3 = x0, y0, x1, y1
     # Calculate intersection dimensions by broadcasting each coordinate plane
     # directly, without full (N, M, 4) arrays
     intersection_width = np.maximum(
