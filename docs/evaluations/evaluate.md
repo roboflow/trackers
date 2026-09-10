@@ -13,7 +13,7 @@ Measure tracker quality with standard MOT metrics to get reproducible scores for
 - Run tracking on pre-computed detections
 - Evaluate tracking results against ground truth
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/mot17-ground-truth-poster.webp" aria-label="MOT17 ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/MOT17_MOT17-04-DPM-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>

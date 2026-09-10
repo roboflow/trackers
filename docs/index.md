@@ -16,7 +16,7 @@ Roboflow Trackers achieves 64.1 HOTA on MOT17 with McByte, benchmarked across fo
 
 Current release: v2.6.0 — see the [changelog](changelog.md) for release history.
 
-<video width="100%" controls muted loop preload="none" aria-label="Trackers object tracking demo">
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="assets/track-objects-page-poster.webp" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
   <track src="assets/track-objects-page.vtt" kind="captions" srclang="en" label="English" default>
 </video>

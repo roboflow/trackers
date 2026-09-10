@@ -21,7 +21,7 @@ This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, 
 
 Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests re-identification and identity stability.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/mot17-ground-truth-poster.webp" aria-label="MOT17 ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/MOT17_MOT17-04-DPM-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>
@@ -115,7 +115,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
 Sports broadcast tracking with fast motion, camera pans, and similar-looking targets. Tests association under speed and appearance ambiguity.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/sportsmot-ground-truth-poster.webp" aria-label="SportsMOT ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SportsMOT_v_-6Os86HzwCs_c001-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
@@ -209,7 +209,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 
 Long sequences with dense interactions and partial occlusions. Tests long-term ID consistency.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/soccernet-ground-truth-poster.webp" aria-label="SoccerNet ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SoccerNet-tracking_SNMOT-060-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SoccerNet.</small></p>
@@ -307,7 +307,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/dancetrack-ground-truth-poster.webp" aria-label="DanceTrack ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/DanceTrack_dancetrack0052-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for DanceTrack.</small></p>
