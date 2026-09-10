@@ -191,9 +191,7 @@ class TestBuildBreadcrumbs:
 class TestOnConfig:
     """`on_config` exposes the installed trackers version to templates."""
 
-    def test_sets_trackers_version_when_package_found(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_sets_trackers_version_when_package_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A resolvable `trackers` package version is stored in `extra`."""
         monkeypatch.setattr(schema_inject, "_pkg_version", lambda _name: "9.9.9")
         config = _FakeConfig(extra={})
@@ -202,9 +200,7 @@ class TestOnConfig:
 
         assert result.extra["trackers_version"] == "9.9.9"
 
-    def test_leaves_extra_untouched_when_package_not_found(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_leaves_extra_untouched_when_package_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A `PackageNotFoundError` is swallowed and `extra` is left as-is, instead of propagating and breaking the
         mkdocs build."""
 
@@ -225,9 +221,7 @@ class TestOnPageContext:
     def test_faq_questions_match_homepage_source_of_truth(self) -> None:
         """The FAQPage question strings come verbatim from `_HOMEPAGE_FAQ`, which must stay in sync with the visible FAQ
         heading text in `docs/index.md`."""
-        page = _FakePage(
-            "index.md", title="Home", canonical_url="https://trackers.roboflow.com/"
-        )
+        page = _FakePage("index.md", title="Home", canonical_url="https://trackers.roboflow.com/")
         page.meta = {}
         nav = _FakeNav(items=[_FakeNavPage("index.md")])
 
