@@ -163,11 +163,14 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
         for item in items:
             if hasattr(item, "children") and item.children:
                 item_url = _resolve_nav_item_url(item)
-                if item_url:
+                # The top-level "Home" grouping duplicates the seeded Home
+                # crumb; skip recording it but still recurse into its children.
+                record = bool(item_url) and item.title != "Home"
+                if record:
                     path.append({"name": item.title, "url": item_url})
                 if _find_in_nav(item.children, path):
                     return True
-                if item_url:
+                if record:
                     path.pop()
             elif (
                 hasattr(item, "file")
