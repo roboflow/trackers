@@ -1,5 +1,5 @@
 ---
-title: C-BIoU — Cascaded-Buffered IoU Tracker | Trackers
+title: C-BIoU — Cascaded-Buffered IoU Tracker
 comments: true
 description: C-BIoU improves association under fast or irregular motion by matching with Buffered IoU instead of plain IoU, using a ByteTrack-style pipeline.
 ---

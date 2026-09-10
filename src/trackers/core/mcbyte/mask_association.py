@@ -231,7 +231,7 @@ def _apply_mask_similarity_boosts(
     remaining_detection_indices: list[int],
     tracklet_ids: list[int],
     detection_boxes: np.ndarray,
-    mask_output: MaskOutput | None,
+    mask_output: MaskOutput,
     minimum_mask_average_confidence: float,
     minimum_mask_coverage: float,
     minimum_mask_fill_ratio: float,
@@ -285,8 +285,8 @@ def _apply_mask_similarity_boosts(
         mask_output: Current propagated mask output. Its
             ``tracklet_mask_dict`` maps stable tracklet IDs to local mask-array
             indices, while ``mask_avg_prob_dict`` stores average mask confidence
-            keyed by stable tracklet ID. If the output, masks, or confidence
-            mapping is unavailable, no scores are modified.
+            keyed by stable tracklet ID. Callers must have already established
+            that masks and confidences are present.
         minimum_mask_average_confidence: Minimum average propagated-mask
             confidence required before mask evidence may be used.
         minimum_mask_coverage: Minimum fraction of the complete visible mask
@@ -297,7 +297,7 @@ def _apply_mask_similarity_boosts(
     Returns:
         None. ``conditioned_similarity`` is updated in place.
     """
-    if mask_output is None or mask_output.masks is None or mask_output.mask_avg_prob_dict is None:
+    if mask_output.masks is None or mask_output.mask_avg_prob_dict is None:
         return
 
     # Local indices in the reduced matrix.
@@ -476,6 +476,21 @@ def condition_similarity_with_masks(
             remaining_detection_indices,
         )
     ].copy()
+
+    if (
+        mask_output is None
+        or mask_output.masks is None
+        or mask_output.masks.shape[0] == 0
+        or not mask_output.tracklet_mask_dict
+        or not mask_output.mask_avg_prob_dict
+    ):
+        # No tracklet can receive mask evidence, so the reduced problem is final.
+        return MaskConditionedAssociation(
+            conditioned_similarity=reduced_similarity,
+            locked_matches=locked_matches,
+            remaining_track_indices=remaining_track_indices,
+            remaining_detection_indices=remaining_detection_indices,
+        )
 
     # Ambiguity is a property of the original association situation before any
     # modifications, hence computed from base_similarity.
