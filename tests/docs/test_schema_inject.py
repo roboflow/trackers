@@ -218,9 +218,13 @@ class TestOnConfig:
 class TestOnPageContext:
     """`on_page_context` builds per-page JSON-LD and stores it in `page.meta`."""
 
-    def test_faq_questions_match_homepage_source_of_truth(self) -> None:
-        """The FAQPage question strings come verbatim from `_HOMEPAGE_FAQ`, which must stay in sync with the visible FAQ
-        heading text in `docs/index.md`."""
+    def test_faq_json_ld_questions_match_homepage_faq_constant(self) -> None:
+        """The FAQPage JSON-LD question strings come verbatim from the in-code `_HOMEPAGE_FAQ` list.
+
+        This checks internal consistency between `on_page_context`'s JSON-LD output and the `_HOMEPAGE_FAQ` constant it
+        reads from — it does not read or parse `docs/index.md`, so it can't detect `_HOMEPAGE_FAQ` drifting from the FAQ
+        text actually rendered on that page.
+        """
         page = _FakePage("index.md", title="Home", canonical_url="https://trackers.roboflow.com/")
         page.meta = {}
         nav = _FakeNav(items=[_FakeNavPage("index.md")])
