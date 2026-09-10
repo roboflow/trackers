@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -237,6 +238,18 @@ class TestBoxIoA:
                 "xywh",
                 np.array([[0.5]]),
             ),  # xywh format
+            (
+                np.array([[0, 0, 10, 10], [0, 0, 20, 20]]),
+                np.array([[5, 5, 15, 15], [0, 0, 10, 10]]),
+                "xyxy",
+                np.array([[0.25, 1.0], [0.25, 0.25]]),
+            ),  # square N=2, M=2 batch: row-wise division by each boxes1 area
+            (
+                np.array([[0, 0, 10, 10], [10, 10, 30, 30]]),
+                np.array([[0, 0, 5, 5], [5, 5, 15, 15], [100, 100, 110, 110]]),
+                "xyxy",
+                np.array([[0.25, 0.25, 0.0], [0.0, 0.0625, 0.0]]),
+            ),  # asymmetric N=2, M=3 batch (N != M)
         ],
     )
     def test_values(
@@ -261,3 +274,86 @@ class TestBoxIoA:
 def test_epsilon_matches_trackeval() -> None:
     """EPS constant equals numpy float epsilon, matching the TrackEval reference."""
     assert EPS == np.finfo("float").eps
+
+
+def _naive_pairwise_iou(box1: np.ndarray, box2: np.ndarray) -> float:
+    """Reference IoU for a single box pair, computed without any broadcasting."""
+    inter_x0 = max(box1[0], box2[0])
+    inter_y0 = max(box1[1], box2[1])
+    inter_x1 = min(box1[2], box2[2])
+    inter_y1 = min(box1[3], box2[3])
+    intersection = max(0.0, inter_x1 - inter_x0) * max(0.0, inter_y1 - inter_y0)
+    area1 = max(0.0, box1[2] - box1[0]) * max(0.0, box1[3] - box1[1])
+    area2 = max(0.0, box2[2] - box2[0]) * max(0.0, box2[3] - box2[1])
+    union = area1 + area2 - intersection
+    if union <= EPS:
+        return 0.0
+    return intersection / union
+
+
+def _naive_pairwise_ioa(box1: np.ndarray, box2: np.ndarray) -> float:
+    """Reference IoA for a single box pair, computed without any broadcasting."""
+    inter_x0 = max(box1[0], box2[0])
+    inter_y0 = max(box1[1], box2[1])
+    inter_x1 = min(box1[2], box2[2])
+    inter_y1 = min(box1[3], box2[3])
+    intersection = max(0.0, inter_x1 - inter_x0) * max(0.0, inter_y1 - inter_y0)
+    area1 = max(0.0, box1[2] - box1[0]) * max(0.0, box1[3] - box1[1])
+    if area1 <= EPS:
+        return 0.0
+    return intersection / area1
+
+
+def _naive_matrix(
+    boxes1: np.ndarray,
+    boxes2: np.ndarray,
+    pairwise_fn: Callable[[np.ndarray, np.ndarray], float],
+) -> np.ndarray:
+    """Build an (N, M) matrix by applying a single-pair reference fn to every pair."""
+    return np.array([[pairwise_fn(b1, b2) for b2 in boxes2] for b1 in boxes1])
+
+
+def _random_valid_boxes(rng: np.random.Generator, count: int) -> np.ndarray:
+    """Generate `count` random, valid xyxy boxes (x1 > x0, y1 > y0).
+
+    Mirrors the box-generation approach used in `TestBoxIoU.test_valid_range`.
+    """
+    boxes = rng.random((count, 4)) * 100
+    boxes[:, 2:] = boxes[:, :2] + np.abs(boxes[:, 2:])
+    return boxes
+
+
+def test_box_iou_matches_naive_reference_implementation() -> None:
+    """box_iou agrees with an independent, double-loop reference IoU implementation.
+
+    Every existing box_iou assertion compares against a hand-computed constant, so a broadcast-axis regression that
+    happens to still satisfy those specific constants would go undetected. This test instead checks agreement, over
+    randomized boxes, with a reference implementation computed without any array broadcasting.
+    """
+    rng = np.random.default_rng(1234)
+    boxes1 = _random_valid_boxes(rng, 6)
+    boxes2 = _random_valid_boxes(rng, 9)
+
+    result = box_iou(boxes1, boxes2, box_format="xyxy")
+
+    expected = _naive_matrix(boxes1, boxes2, _naive_pairwise_iou)
+    assert np.allclose(result, expected, rtol=1e-6, atol=1e-9)
+
+
+def test_box_ioa_matches_naive_reference_implementation() -> None:
+    """box_ioa agrees with an independent, double-loop reference IoA implementation.
+
+    Mirrors `test_box_iou_matches_naive_reference_implementation` for box_ioa, whose
+    row-wise division by area1 is a distinct code path with its own susceptibility to
+    broadcast-axis regressions that hand-computed constants alone would not catch.
+    """
+    rng = np.random.default_rng(5678)
+    boxes1 = _random_valid_boxes(rng, 6)
+    boxes2 = _random_valid_boxes(rng, 9)
+
+    result = box_ioa(boxes1, boxes2, box_format="xyxy")
+
+    expected = _naive_matrix(boxes1, boxes2, _naive_pairwise_ioa)
+    assert np.allclose(result, expected, rtol=1e-6, atol=1e-9)
+
+
