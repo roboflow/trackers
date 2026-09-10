@@ -162,10 +162,13 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
         """Recursively search nav for the page, building the path of sections."""
         for item in items:
             if hasattr(item, "children") and item.children:
-                path.append({"name": item.title, "url": _resolve_nav_item_url(item)})
+                item_url = _resolve_nav_item_url(item)
+                if item_url:
+                    path.append({"name": item.title, "url": item_url})
                 if _find_in_nav(item.children, path):
                     return True
-                path.pop()
+                if item_url:
+                    path.pop()
             elif (
                 hasattr(item, "file")
                 and item.file
