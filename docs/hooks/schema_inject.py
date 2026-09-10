@@ -44,7 +44,8 @@ _HOMEPAGE_FAQ = [
             "highest accuracy, McByte leads HOTA on every benchmark at default parameters "
             "but requires optional SAM/Cutie mask dependencies; OC-SORT is the best option "
             "when camera motion is significant. Use SORT if speed or device constraints "
-            "require the lightest possible tracker."
+            "require the lightest possible tracker. See the tracker comparison for "
+            "benchmark scores."
         ),
     },
     {
@@ -82,7 +83,7 @@ _HOMEPAGE_FAQ = [
             "pre-computed detections (test split has no annotations); SportsMOT "
             "ships frames and annotations only, with no pre-computed detections "
             "asset (test split has frames only). DanceTrack and SoccerNet-tracking "
-            "support is coming soon."
+            "support is coming soon. See the download guide for asset options."
         ),
     },
 ]
