@@ -17,6 +17,8 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+from trackers.eval.constants import is_zero_based_contiguous
+
 
 def compute_identity_metrics(
     gt_ids: list[np.ndarray],
@@ -33,8 +35,11 @@ def compute_identity_metrics(
     Args:
         gt_ids: List of ground truth ID arrays, one per frame. Each array has
             shape `(num_gt_t,)` containing integer IDs for GTs in that frame.
+            All frames must share a consistent integer dtype — mixing bool
+            and integer arrays across frames is unsupported and unchecked.
         tracker_ids: List of tracker ID arrays, one per frame. Each array has
             shape `(num_tracker_t,)` containing integer IDs for detections.
+            Same dtype-consistency requirement as `gt_ids`.
         similarity_scores: List of similarity matrices, one per frame. Each
             matrix has shape `(num_gt_t, num_tracker_t)` with IoU or similar
             similarity scores.
@@ -109,7 +114,13 @@ def compute_identity_metrics(
     num_tracker_ids = len(unique_tracker_ids)
 
     # `np.unique` sorts the IDs, and every per-frame ID is included in those
-    # arrays, so searchsorted maps all IDs directly to their global indices.
+    # arrays. Prepared zero-based integer IDs can be used as indices directly.
+    # Other ID layouts retain searchsorted, preserving the public-call fallback.
+    # The check is performed once before entering the frame loop.
+    # NOTE: when contiguous, gt_indices/tr_indices below ALIAS gt_ids_t/tracker_ids_t
+    # (not a fresh searchsorted copy) — read-only use only, never mutate in place.
+    gt_contiguous = is_zero_based_contiguous(unique_gt_ids)
+    tracker_contiguous = is_zero_based_contiguous(unique_tracker_ids)
 
     # Variables for global association (ref: identity.py:48-50)
     potential_matches_count = np.zeros((num_gt_ids, num_tracker_ids))
@@ -121,15 +132,15 @@ def compute_identity_metrics(
         if len(gt_ids_t) == 0 or len(tracker_ids_t) == 0:
             # Still count IDs even if no matches possible
             if len(gt_ids_t) > 0:
-                gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
+                gt_indices = gt_ids_t if gt_contiguous else np.searchsorted(unique_gt_ids, gt_ids_t)
                 gt_id_count[gt_indices] += 1
             if len(tracker_ids_t) > 0:
-                tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
+                tr_indices = tracker_ids_t if tracker_contiguous else np.searchsorted(unique_tracker_ids, tracker_ids_t)
                 tracker_id_count[tr_indices] += 1
             continue
 
-        gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
-        tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
+        gt_indices = gt_ids_t if gt_contiguous else np.searchsorted(unique_gt_ids, gt_ids_t)
+        tr_indices = tracker_ids_t if tracker_contiguous else np.searchsorted(unique_tracker_ids, tracker_ids_t)
 
         similarity = similarity_scores[t]
 

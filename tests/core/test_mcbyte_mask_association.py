@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
@@ -341,28 +343,87 @@ def test_mask_bonus_is_not_clamped_to_one() -> None:
     assert np.isclose(result.conditioned_similarity[0, 0], 1.8)
 
 
-def test_missing_mask_output_keeps_ambiguous_scores_unchanged() -> None:
-    similarity = np.array([[0.7, 0.6]], dtype=np.float32)
-
-    result = condition_similarity_with_masks(
-        similarity=similarity,
-        raw_iou_similarity=similarity,
-        tracklet_ids=[10],
-        detection_boxes=np.array(
-            [
-                [0, 0, 5, 5],
-                [5, 5, 10, 10],
-            ],
-            dtype=np.float32,
+@pytest.mark.parametrize(
+    "mask_output",
+    [
+        pytest.param(None, id="missing-output"),
+        pytest.param(
+            MaskOutput(masks=None, tracklet_mask_dict={}, mask_avg_prob_dict={}),
+            id="missing-masks",
         ),
-        mask_output=None,
-        minimum_similarity=0.5,
+        pytest.param(
+            MaskOutput(
+                masks=np.ones((1, 10, 10), dtype=bool),
+                tracklet_mask_dict={10: 0},
+                mask_avg_prob_dict=None,
+            ),
+            id="missing-confidence-map",
+        ),
+        pytest.param(
+            MaskOutput(
+                masks=np.zeros((0, 10, 10), dtype=bool),
+                tracklet_mask_dict={10: 0},
+                mask_avg_prob_dict={10: 0.9},
+            ),
+            id="zero-masks",
+        ),
+        pytest.param(
+            MaskOutput(
+                masks=np.ones((1, 10, 10), dtype=bool),
+                tracklet_mask_dict={},
+                mask_avg_prob_dict={10: 0.9},
+            ),
+            id="empty-tracklet-map",
+        ),
+        pytest.param(
+            MaskOutput(
+                masks=np.ones((1, 10, 10), dtype=bool),
+                tracklet_mask_dict={10: 0},
+                mask_avg_prob_dict={},
+            ),
+            id="empty-confidence-map",
+        ),
+    ],
+)
+def test_missing_mask_evidence_skips_candidate_matrix_work(mask_output: MaskOutput | None) -> None:
+    similarity = np.array(
+        [
+            [0.9, 0.1, 0.0],
+            [0.1, 0.7, 0.6],
+            [0.0, 0.6, 0.7],
+        ],
+        dtype=np.float32,
     )
+    original = similarity.copy()
 
-    np.testing.assert_array_equal(
-        result.conditioned_similarity,
-        similarity,
-    )
+    with (
+        patch("trackers.core.mcbyte.mask_association._get_ambiguous_candidate_matrix") as ambiguous_candidates,
+        patch("trackers.core.mcbyte.mask_association._get_isolated_candidate_matrix") as isolated_candidates,
+    ):
+        result = condition_similarity_with_masks(
+            similarity=similarity,
+            raw_iou_similarity=similarity,
+            tracklet_ids=[10, 20, 30],
+            detection_boxes=np.array(
+                [
+                    [0, 0, 5, 5],
+                    [5, 5, 10, 10],
+                    [10, 10, 15, 15],
+                ],
+                dtype=np.float32,
+            ),
+            mask_output=mask_output,
+            minimum_similarity=0.5,
+            enable_isolated_mask_matching=True,
+        )
+
+    ambiguous_candidates.assert_not_called()
+    isolated_candidates.assert_not_called()
+    assert result.locked_matches == [(0, 0)]
+    assert result.remaining_track_indices == [1, 2]
+    assert result.remaining_detection_indices == [1, 2]
+    np.testing.assert_array_equal(result.conditioned_similarity, original[1:, 1:])
+    np.testing.assert_array_equal(similarity, original)
 
 
 def test_missing_tracklet_mask_keeps_scores_unchanged() -> None:
