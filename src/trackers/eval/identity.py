@@ -17,6 +17,8 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+from trackers.eval.constants import is_zero_based_contiguous
+
 
 def compute_identity_metrics(
     gt_ids: list[np.ndarray],
@@ -33,8 +35,11 @@ def compute_identity_metrics(
     Args:
         gt_ids: List of ground truth ID arrays, one per frame. Each array has
             shape `(num_gt_t,)` containing integer IDs for GTs in that frame.
+            All frames must share a consistent integer dtype — mixing bool
+            and integer arrays across frames is unsupported and unchecked.
         tracker_ids: List of tracker ID arrays, one per frame. Each array has
             shape `(num_tracker_t,)` containing integer IDs for detections.
+            Same dtype-consistency requirement as `gt_ids`.
         similarity_scores: List of similarity matrices, one per frame. Each
             matrix has shape `(num_gt_t, num_tracker_t)` with IoU or similar
             similarity scores.
@@ -112,12 +117,10 @@ def compute_identity_metrics(
     # arrays. Prepared zero-based integer IDs can be used as indices directly.
     # Other ID layouts retain searchsorted, preserving the public-call fallback.
     # The check is performed once before entering the frame loop.
-    gt_contiguous = unique_gt_ids.dtype.kind in "iu" and unique_gt_ids[0] == 0 and unique_gt_ids[-1] == num_gt_ids - 1
-    tracker_contiguous = (
-        unique_tracker_ids.dtype.kind in "iu"
-        and unique_tracker_ids[0] == 0
-        and unique_tracker_ids[-1] == num_tracker_ids - 1
-    )
+    # NOTE: when contiguous, gt_indices/tr_indices below ALIAS gt_ids_t/tracker_ids_t
+    # (not a fresh searchsorted copy) — read-only use only, never mutate in place.
+    gt_contiguous = is_zero_based_contiguous(unique_gt_ids)
+    tracker_contiguous = is_zero_based_contiguous(unique_tracker_ids)
 
     # Variables for global association (ref: identity.py:48-50)
     potential_matches_count = np.zeros((num_gt_ids, num_tracker_ids))

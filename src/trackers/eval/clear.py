@@ -17,7 +17,7 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from trackers.eval.constants import EPS
+from trackers.eval.constants import EPS, is_zero_based_contiguous
 
 
 def compute_clear_metrics(
@@ -34,8 +34,11 @@ def compute_clear_metrics(
     Args:
         gt_ids: List of ground truth ID arrays, one per frame. Each array has
             shape `(num_gt_t,)` containing integer IDs for GTs in that frame.
+            All frames must share a consistent integer dtype — mixing bool
+            and integer arrays across frames is unsupported and unchecked.
         tracker_ids: List of tracker ID arrays, one per frame. Each array has
             shape `(num_tracker_t,)` containing integer IDs for detections.
+            Same dtype-consistency requirement as `gt_ids`.
         similarity_scores: List of similarity matrices, one per frame. Each
             matrix has shape `(num_gt_t, num_tracker_t)` with IoU or similar
             similarity scores.
@@ -157,7 +160,11 @@ def compute_clear_metrics(
             "CLR_Frames": num_frames,
         }
 
-    gt_contiguous = unique_gt_ids.dtype.kind in "iu" and unique_gt_ids[0] == 0 and unique_gt_ids[-1] == num_gt_ids - 1
+    # Fast path uses raw IDs as index arrays when already zero-based contiguous
+    # (see is_zero_based_contiguous). The resulting `gt_indices_t` then ALIASES
+    # `gt_ids_t` itself rather than owning fresh searchsorted output — read-only
+    # use only, never mutate an index array derived from the fast path in place.
+    gt_contiguous = is_zero_based_contiguous(unique_gt_ids)
 
     # Initialize counters
     clr_tp = 0

@@ -17,7 +17,7 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from trackers.eval.constants import EPS
+from trackers.eval.constants import EPS, is_zero_based_contiguous
 
 # Alpha thresholds for HOTA evaluation (IoU thresholds)
 # TrackEval uses np.arange(0.05, 0.99, 0.05) which gives 19 values
@@ -39,8 +39,11 @@ def compute_hota_metrics(
     Args:
         gt_ids: List of ground truth ID arrays, one per frame. Each array has
             shape `(num_gt_t,)` containing integer IDs for GTs in that frame.
+            All frames must share a consistent integer dtype — mixing bool
+            and integer arrays across frames is unsupported and unchecked.
         tracker_ids: List of tracker ID arrays, one per frame. Each array has
             shape `(num_tracker_t,)` containing integer IDs for detections.
+            Same dtype-consistency requirement as `gt_ids`.
         similarity_scores: List of similarity matrices, one per frame. Each
             matrix has shape `(num_gt_t, num_tracker_t)` with IoU or similar
             similarity scores.
@@ -135,12 +138,10 @@ def compute_hota_metrics(
     # The check is done once before both passes.
     # Precondition: all per-frame IDs are present in unique_*_ids (guaranteed —
     # unique arrays are built from concatenation of all frames).
-    gt_contiguous = unique_gt_ids.dtype.kind in "iu" and unique_gt_ids[0] == 0 and unique_gt_ids[-1] == num_gt_ids - 1
-    tracker_contiguous = (
-        unique_tracker_ids.dtype.kind in "iu"
-        and unique_tracker_ids[0] == 0
-        and unique_tracker_ids[-1] == num_tracker_ids - 1
-    )
+    # NOTE: when contiguous, gt_indices/tr_indices below ALIAS gt_ids_t/tracker_ids_t
+    # (not a fresh searchsorted copy) — read-only use only, never mutate in place.
+    gt_contiguous = is_zero_based_contiguous(unique_gt_ids)
+    tracker_contiguous = is_zero_based_contiguous(unique_tracker_ids)
 
     # Variables for global association (ref: hota.py:48-50)
     potential_matches_count: np.ndarray = np.zeros((num_gt_ids, num_tracker_ids), dtype=np.float64)
