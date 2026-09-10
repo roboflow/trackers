@@ -163,9 +163,13 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
         for item in items:
             if hasattr(item, "children") and item.children:
                 item_url = _resolve_nav_item_url(item)
+                # Nav sections (Home, Usage, Tuning, Trackers, ...) are pure
+                # groupings with no page behind them, so mkdocs gives them no
+                # URL — recording by name (not URL) is what schema.org's
+                # ListItem allows: a "name"-only entry with no "item" key.
                 # The top-level "Home" grouping duplicates the seeded Home
                 # crumb; skip recording it but still recurse into its children.
-                record = bool(item_url) and item.title != "Home"
+                record = item.title is not None and item.title != "Home"
                 if record:
                     path.append({"name": item.title, "url": item_url})
                 if _find_in_nav(item.children, path):
@@ -181,7 +185,12 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
         return False
 
     section_path: list[dict[str, str]] = []
-    _find_in_nav(nav.items, section_path)
+    found_in_nav = _find_in_nav(nav.items, section_path)
+    if not found_in_nav:
+        # Page isn't reachable from nav.items at all (excluded from `nav:` or
+        # generated outside it) — no breadcrumb, rather than one asserting a
+        # position the page doesn't actually hold.
+        return None
 
     crumbs.extend(section_path)
     crumbs.append({"name": page.title or "", "url": page.canonical_url or ""})
