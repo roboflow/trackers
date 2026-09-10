@@ -43,4 +43,4 @@ def is_zero_based_contiguous(unique_ids: np.ndarray) -> bool:
         >>> is_zero_based_contiguous(np.array([0.0, 1.0, 2.0]))
         False
     """
-    return unique_ids.dtype.kind in "iu" and unique_ids[0] == 0 and unique_ids[-1] == len(unique_ids) - 1
+    return bool(unique_ids.dtype.kind in "iu" and unique_ids[0] == 0 and unique_ids[-1] == len(unique_ids) - 1)
