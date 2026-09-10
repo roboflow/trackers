@@ -188,11 +188,7 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
                     return True
                 if record:
                     path.pop()
-            elif (
-                hasattr(item, "file")
-                and item.file
-                and item.file.src_path == page.file.src_path
-            ):
+            elif hasattr(item, "file") and item.file and item.file.src_path == page.file.src_path:
                 return True
         return False
 
@@ -228,7 +224,10 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
 def on_config(config):  # type: ignore[no-untyped-def]
     """Expose the installed trackers version to templates as extra.trackers_version."""
     try:
-        config["extra"]["trackers_version"] = _pkg_version("trackers")
+        # Attribute access matches how the template reads it back
+        # (config.extra.trackers_version in docs/overrides/main.html) —
+        # both resolve to the same mutable `extra` dict on MkDocs' Config.
+        config.extra["trackers_version"] = _pkg_version("trackers")
     except PackageNotFoundError:
         pass
     return config
@@ -315,9 +314,7 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
                 "author": {"@type": "Person", "name": cite["author"]},
             }
 
-        page.meta["json_ld_article"] = json.dumps(
-            article, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_article"] = json.dumps(article, ensure_ascii=False, indent=2)
 
     # ── FAQPage JSON-LD (homepage only) ──
     if page.file.src_path == "index.md":
@@ -336,16 +333,12 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
                 for entry in _HOMEPAGE_FAQ
             ],
         }
-        page.meta["json_ld_faq"] = json.dumps(
-            faq_schema, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_faq"] = json.dumps(faq_schema, ensure_ascii=False, indent=2)
 
     # ── BreadcrumbList JSON-LD ──
     breadcrumbs = _build_breadcrumbs(page, config, nav)
     if breadcrumbs:
-        page.meta["json_ld_breadcrumbs"] = json.dumps(
-            breadcrumbs, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_breadcrumbs"] = json.dumps(breadcrumbs, ensure_ascii=False, indent=2)
 
     # ── Dataset JSON-LD (evaluations results page only) ──
     if page.file.src_path == "evaluations/results.md":
