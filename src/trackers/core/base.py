@@ -524,7 +524,27 @@ class BaseTracker(ABC):
         *,
         return_predictions: bool = False,
     ) -> dict[BaseTracklet, np.ndarray]:
-        """Predict all tracklets and optionally return states keyed by object identity."""
+        """Predict all tracklets and optionally return states keyed by object identity.
+
+        Args:
+            tracklets: Tracklets to advance one predict step.
+            timing: Predict-step timing; ``timing.skip_predict`` short-circuits
+                to a no-op when the timestamp did not advance.
+            return_predictions: When ``True``, return each tracklet's predicted
+                bounding box keyed by the tracklet object itself. When
+                ``False``, predict in place and discard the results.
+
+        Returns:
+            A dict mapping each tracklet object to its predicted bounding box
+            when ``return_predictions`` is ``True`` and the predict step ran.
+            The dict holds a strong reference to every key, so entries stay
+            valid regardless of what the caller does with ``tracklets``
+            afterwards. Returns ``{}`` on three distinct paths — a skipped
+            predict step (``timing.skip_predict``), ``return_predictions=False``,
+            or an empty ``tracklets`` argument — so callers should not infer
+            "predict was skipped" from an empty dict alone; check
+            ``timing.skip_predict`` directly for that.
+        """
         if timing.skip_predict:
             return {}
         if return_predictions:
