@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
+from functools import reduce
+from operator import or_
 from pathlib import Path
 from typing import TextIO
 
@@ -84,12 +86,7 @@ def _distractor_ground_truth_mask(frame_data: _MOTFrameData) -> NDArray[np.bool_
         Boolean array of shape `(N,)`, `True` for distractor-class rows.
     """
     classes = frame_data.classes
-    return (
-        (classes == _DISTRACTOR_CLASSES[0])
-        | (classes == _DISTRACTOR_CLASSES[1])
-        | (classes == _DISTRACTOR_CLASSES[2])
-        | (classes == _DISTRACTOR_CLASSES[3])
-    )
+    return reduce(or_, (classes == class_id for class_id in _DISTRACTOR_CLASSES))
 
 
 def _mot_frame_to_detections(frame_data: _MOTFrameData) -> sv.Detections:
