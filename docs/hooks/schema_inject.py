@@ -29,24 +29,26 @@ ORG_ID = "https://roboflow.com/#organization"
 # NOTE: dataset list must stay in sync with trackers/datasets/manifest.py.
 # Currently only MOT17 and SportsMOT are downloadable; DanceTrack and SoccerNet
 # are "coming soon" (see docs/learn/download.md).
+# BENCH-XREF derived-claim: every "question" string below must match its FAQ
+# heading in [docs/index.md](../index.md) verbatim — Google requires FAQPage
+# markup to match the visible page content. The "Which tracker should I use?"
+# answer additionally mirrors that heading's *answer* text and must stay
+# synced with the Default HOTA tables in
+# [docs/evaluations/results.md](../evaluations/results.md) if a leader changes.
 _HOMEPAGE_FAQ = [
-    # BENCH-XREF derived-claim: mirrors the "Which tracker should I use?" answer in
-    # [docs/index.md](../index.md). Google requires FAQPage markup to match the visible
-    # answer, so update both together — and re-verify against the Default HOTA tables in
-    # [docs/evaluations/results.md](../evaluations/results.md) if a leader changes.
     {
         "question": "Which tracker should I use?",
         "answer": (
             "Start with ByteTrack — it's the default, has no extra dependencies, handles "
             "variable-confidence detectors well, and runs at real time latency. For the "
             "highest accuracy, McByte leads HOTA on every benchmark at default parameters "
-            "but requires optional SAM/Cutie mask dependencies; BoT-SORT is the best "
-            "lightweight option when camera motion is significant. Use SORT if speed or "
-            "device constraints require the lightest possible tracker."
+            "but requires optional SAM/Cutie mask dependencies; OC-SORT is the best option "
+            "when camera motion is significant. Use SORT if speed or device constraints "
+            "require the lightest possible tracker."
         ),
     },
     {
-        "question": "What is multi-object tracking?",
+        "question": "What is multi-object tracking and how does it differ from object detection?",
         "answer": (
             "Multi-object tracking assigns a persistent ID to each detected object across "
             "video frames, maintaining continuity through occlusions, re-entries, and "
