@@ -12,7 +12,7 @@ import re
 import types
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin
 
@@ -519,16 +519,16 @@ class BaseTracker(ABC):
 
     def _predict_tracklets(
         self,
-        tracklets: list[Any],
+        tracklets: Sequence[BaseTracklet],
         timing: PredictTiming,
         *,
         return_predictions: bool = False,
-    ) -> dict[int, np.ndarray]:
+    ) -> dict[BaseTracklet, np.ndarray]:
         """Predict all tracklets and optionally return states keyed by object identity."""
         if timing.skip_predict:
             return {}
         if return_predictions:
-            return {id(tracklet): tracklet.predict(timing) for tracklet in tracklets}
+            return {tracklet: tracklet.predict(timing) for tracklet in tracklets}
         for tracklet in tracklets:
             tracklet.predict(timing)
         return {}

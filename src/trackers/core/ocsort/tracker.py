@@ -273,8 +273,8 @@ class OCSORTTracker(BaseTracker):
 
         # Duplicate timestamps skip predict and leave the cache empty, so decode the unchanged current states.
         predicted_boxes = np.array(
-            [predicted_boxes_by_tracklet[id(t)] for t in self.tracks]
-            if predicted_boxes_by_tracklet
+            [predicted_boxes_by_tracklet[t] for t in self.tracks]
+            if not timing.skip_predict
             else [t.get_state_bbox() for t in self.tracks]
         )
         iou_matrix = self.iou.compute(predicted_boxes, high_boxes)
