@@ -30,7 +30,12 @@ class ScaleAwareNoiseTracklet(BaseTracklet):
     Shared by ``BoTSORTTracklet`` and ``McByteTracklet``, which differ only in their ``update`` / ``predict`` /
     ``apply_cmc`` surface — not in this machinery.
 
-    Subclasses still supply ``update``, ``predict`` and ``get_state_bbox`` (abstract on ``BaseTracklet``).
+    Subclasses still supply ``update``, ``predict`` and ``get_state_bbox`` (abstract on ``BaseTracklet``), and
+    must call ``_configure_initial_noise`` from their own ``__init__`` — this base does not call it for them.
+
+    ``BoTSORTTracklet`` and ``McByteTracklet`` subclass this directly; the C-BIoU tracker
+    (``trackers.core.cbiou.tracker``) reaches it transitively by instantiating ``BoTSORTTracklet``. All
+    three trackers share one ``_SIGMA_*`` definition below, so a change here retunes all three at once.
     """
 
     # Noise sigma constants (scale-aware noise).

@@ -20,10 +20,10 @@ class BoTSORTTracklet(ScaleAwareNoiseTracklet):
     Uses ``XCYCWHStateEstimator`` (center + width/height) by default,
     mirroring the original BoT-SORT Kalman filter model.
 
-    * **Scale-aware noise**: ``Q``, ``R`` and the initial ``P`` are computed
-      from the current width / height of the tracked object each frame, so
-      that uncertainty scales with object size (see
-      :class:`~trackers.utils.scale_aware_tracklet.ScaleAwareNoiseTracklet`).
+    * **Scale-aware noise**: ``Q`` and ``R`` are rebuilt from the current
+      width / height on every predict / update; the initial ``P`` is sized
+      once from the first detection. See
+      :class:`~trackers.utils.scale_aware_tracklet.ScaleAwareNoiseTracklet`.
     * **Width / height clamping** after every predict and update step.
     * ``predict()`` increments ``time_since_update``: unmatched tracks are
       never explicitly fed ``update(None)``.
