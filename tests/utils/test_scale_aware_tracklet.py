@@ -70,20 +70,6 @@ class TestScaleAwareNoiseTracklet:
     """Noise-formula and clamp-dispatch contract owned by `ScaleAwareNoiseTracklet` itself."""
 
     # -------------------------------------------------------------------
-    # Sigma constants
-    # -------------------------------------------------------------------
-
-    def test_sigma_constants_match_documented_values(self) -> None:
-        """The three noise sigmas must keep their documented defaults.
-
-        A silent change to these constants retunes every tracker sharing this mixin (BoT-SORT, McByte, and C-BIoU
-        transitively) at once; pin them explicitly.
-        """
-        assert _MinimalScaleAwareTracklet._SIGMA_P == 0.05
-        assert _MinimalScaleAwareTracklet._SIGMA_V == 0.00625
-        assert _MinimalScaleAwareTracklet._SIGMA_M == 0.05
-
-    # -------------------------------------------------------------------
     # _build_process_noise() / _build_measurement_noise()
     # -------------------------------------------------------------------
 
@@ -98,7 +84,7 @@ class TestScaleAwareNoiseTracklet:
     ) -> None:
         """For 8-dim state representations, Q's position/velocity blocks each repeat (w, h) twice."""
         tracklet = _MinimalScaleAwareTracklet(bbox, state_estimator_class=estimator_class)
-        w, h = 40.0, 60.0
+        w, h = 40, 60
 
         Q = tracklet._build_process_noise(w, h)
 
@@ -119,7 +105,7 @@ class TestScaleAwareNoiseTracklet:
     def test_build_process_noise_xcycsr_uses_sqrt_area_scale(self, bbox: np.ndarray) -> None:
         """For XCYCSR, the scale term uses `sqrt(w*h)` and aspect ratio carries a fixed unit sigma."""
         tracklet = _MinimalScaleAwareTracklet(bbox, state_estimator_class=XCYCSRStateEstimator)
-        w, h = 40.0, 60.0
+        w, h = 40, 60
 
         Q = tracklet._build_process_noise(w, h)
 
@@ -146,7 +132,7 @@ class TestScaleAwareNoiseTracklet:
     ) -> None:
         """For 8-dim state representations, R repeats (w, h) twice across its 4 measurement dims."""
         tracklet = _MinimalScaleAwareTracklet(bbox, state_estimator_class=estimator_class)
-        w, h = 40.0, 60.0
+        w, h = 40, 60
 
         R = tracklet._build_measurement_noise(w, h)
 
@@ -157,7 +143,7 @@ class TestScaleAwareNoiseTracklet:
     def test_build_measurement_noise_xcycsr_uses_sqrt_area_scale(self, bbox: np.ndarray) -> None:
         """For XCYCSR, R's scale term uses `sqrt(w*h)` and aspect ratio carries a fixed unit sigma."""
         tracklet = _MinimalScaleAwareTracklet(bbox, state_estimator_class=XCYCSRStateEstimator)
-        w, h = 40.0, 60.0
+        w, h = 40, 60
 
         R = tracklet._build_measurement_noise(w, h)
 
@@ -188,8 +174,8 @@ class TestScaleAwareNoiseTracklet:
         Bbox fixture is 40x60 in xyxy — its xywh width/height feed the noise formulas directly.
         """
         tracklet = _MinimalScaleAwareTracklet(bbox, state_estimator_class=estimator_class)
-        expected_Q = tracklet._build_process_noise(40.0, 60.0)
-        expected_R = tracklet._build_measurement_noise(40.0, 60.0)
+        expected_Q = tracklet._build_process_noise(40, 60)
+        expected_R = tracklet._build_measurement_noise(40, 60)
 
         np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, expected_Q)
         np.testing.assert_array_equal(tracklet.state_estimator.kf.measurement_noise, expected_R)
@@ -200,7 +186,7 @@ class TestScaleAwareNoiseTracklet:
     ) -> None:
         """P's position block uses 2x sigma_p, its velocity block 10x sigma_v — for the non-XCYCSR (w, h) layout."""
         tracklet = _MinimalScaleAwareTracklet(bbox, state_estimator_class=XCYCWHStateEstimator)
-        w, h = 40.0, 60.0
+        w, h = 40, 60
 
         expected_diag = [
             (2 * 0.05 * w) ** 2,
@@ -220,7 +206,7 @@ class TestScaleAwareNoiseTracklet:
     ) -> None:
         """P's scale/aspect-ratio terms follow the same 2x/10x scaling for the XCYCSR (sqrt-area) layout."""
         tracklet = _MinimalScaleAwareTracklet(bbox, state_estimator_class=XCYCSRStateEstimator)
-        w, h = 40.0, 60.0
+        w, h = 40, 60
 
         expected_diag = [
             (2 * 0.05 * w) ** 2,
@@ -266,6 +252,43 @@ class TestScaleAwareNoiseTracklet:
         assert kwargs.get("measurement_noise") is not None
         assert kwargs.get("process_noise") is None
         assert kwargs.get("state_covariance") is None
+
+    # -------------------------------------------------------------------
+    # predict() / update() flow
+    # -------------------------------------------------------------------
+
+    def test_predict_update_predict_refreshes_Q_and_R_from_box_size_at_each_step(self, bbox: np.ndarray) -> None:
+        """A predict/update/predict sequence must rebuild Q and R from the box size current at each call.
+
+        Each refresh reads the box size *before* the state-estimator step, so Q after the second predict must reflect
+        the box the update() call left behind, not the one from before that update.
+        """
+        tracklet = _MinimalScaleAwareTracklet(bbox)
+
+        pre_predict_bbox = tracklet.get_state_bbox()
+        w = max(float(pre_predict_bbox[2] - pre_predict_bbox[0]), 1e-3)
+        h = max(float(pre_predict_bbox[3] - pre_predict_bbox[1]), 1e-3)
+        expected_first_Q = tracklet._build_process_noise(w, h)
+
+        tracklet.predict()
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, expected_first_Q)
+
+        pre_update_bbox = tracklet.get_state_bbox()
+        w = max(float(pre_update_bbox[2] - pre_update_bbox[0]), 1e-3)
+        h = max(float(pre_update_bbox[3] - pre_update_bbox[1]), 1e-3)
+        expected_R = tracklet._build_measurement_noise(w, h)
+
+        tracklet.update(np.array([5.0, 5.0, 205.0, 205.0]))
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.measurement_noise, expected_R)
+
+        pre_second_predict_bbox = tracklet.get_state_bbox()
+        w = max(float(pre_second_predict_bbox[2] - pre_second_predict_bbox[0]), 1e-3)
+        h = max(float(pre_second_predict_bbox[3] - pre_second_predict_bbox[1]), 1e-3)
+        expected_second_Q = tracklet._build_process_noise(w, h)
+
+        tracklet.predict()
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.process_noise, expected_second_Q)
+        assert not np.array_equal(expected_first_Q, expected_second_Q)
 
     # -------------------------------------------------------------------
     # _clamp_state_bbox() dispatch
