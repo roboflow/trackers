@@ -21,9 +21,14 @@ from trackers.utils.state_representations import (
 class ScaleAwareNoiseTracklet(BaseTracklet):
     """Base tracklet whose Kalman noise scales with the tracked box size.
 
-    ``Q``, ``R`` and the initial ``P`` are rebuilt from the current width / height each frame, so filter uncertainty
-    tracks object scale. Shared by ``BoTSORTTracklet`` and ``McByteTracklet``, which differ only in their ``update`` /
-    ``predict`` / ``apply_cmc`` surface — not in this machinery.
+    Sizing happens at two different cadences, so filter uncertainty tracks object scale:
+
+    - ``P`` is sized **once**, from the first detection's width / height, via ``_configure_initial_noise``.
+    - ``Q`` is rebuilt from the current state's width / height on every ``predict``.
+    - ``R`` is rebuilt from the current state's width / height on every ``update``.
+
+    Shared by ``BoTSORTTracklet`` and ``McByteTracklet``, which differ only in their ``update`` / ``predict`` /
+    ``apply_cmc`` surface — not in this machinery.
 
     Subclasses still supply ``update``, ``predict`` and ``get_state_bbox`` (abstract on ``BaseTracklet``).
     """
