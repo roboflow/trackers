@@ -49,8 +49,9 @@ class TestDiagonalMatrix:
         """Off-diagonal positions stay zero at the default 8x8 process-noise size.
 
         The stride trick ``matrix.flat[::size + 1]`` is correctness-critical at
-        this width; a wrong stride would leave nonzero off-diagonal noise
-        undetected by the monotonicity-only checks elsewhere in this file.
+        this width; a wrong stride would leave nonzero off-diagonal noise that
+        ``test_matches_np_diag`` and ``test_diagonal_values_preserve_input_order``
+        would not catch, since both check only the diagonal's own values.
         """
         values = [float(i + 1) for i in range(8)]
 

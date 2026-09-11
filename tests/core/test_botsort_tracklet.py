@@ -19,6 +19,7 @@ import pytest
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.utils.predict_timing import PredictTiming
+from trackers.utils.scale_aware_tracklet import ScaleAwareNoiseTracklet
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
@@ -397,6 +398,17 @@ class TestBotsortTracklet:
         np.testing.assert_array_equal(restored_kf.measurement_noise, snapshot["measurement_noise"])
         np.testing.assert_array_equal(restored_kf.state, snapshot["state"])
         np.testing.assert_array_equal(restored_kf.state_covariance, snapshot["state_covariance"])
+
+    def test_botsort_and_mcbyte_share_scale_aware_noise_base(self) -> None:
+        """Both tracklets inherit their noise machinery from one shared base.
+
+        Pins the structural property this refactor establishes: a future change
+        that reintroduces a per-subclass noise implementation, rather than
+        overriding the shared base, would break this assertion even though the
+        constant-equality check below could still pass by coincidence.
+        """
+        assert issubclass(BoTSORTTracklet, ScaleAwareNoiseTracklet)
+        assert issubclass(McByteTracklet, ScaleAwareNoiseTracklet)
 
     def test_botsort_and_mcbyte_noise_constants_agree(self) -> None:
         """Sibling tracklets must retain identical scale-aware noise constants."""
