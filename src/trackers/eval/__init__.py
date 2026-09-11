@@ -14,6 +14,7 @@ from trackers.eval.box import box_ioa, box_iou
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
+from trackers.eval.mot_classes import MOT_CLASS_PRESETS, MOTClassConfig, MOTClassPreset, resolve_mot_class_config
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
@@ -36,10 +37,13 @@ def __getattr__(name: str) -> object:
 
 
 __all__ = [
+    "MOT_CLASS_PRESETS",
     "BenchmarkResult",
     "CLEARMetrics",
     "HOTAMetrics",
     "IdentityMetrics",
+    "MOTClassConfig",
+    "MOTClassPreset",
     "SequenceResult",
     "aggregate_clear_metrics",
     "aggregate_hota_metrics",
@@ -51,4 +55,5 @@ __all__ = [
     "compute_identity_metrics",
     "evaluate_mot_sequence",
     "evaluate_mot_sequences",
+    "resolve_mot_class_config",
 ]
