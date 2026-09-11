@@ -101,3 +101,20 @@ class TestEvaluateMOTSequence:
         json_str = result.json()
         assert "HOTA" in json_str
         assert "DetA" in json_str
+
+    def test_mot20_warning_with_default_config(self, tmp_path: Path) -> None:
+        """Warn when evaluating a sequence named MOT20-* with default mot17 config."""
+        import warnings
+
+        gt_file = tmp_path / "MOT20-01.txt"
+        tracker_file = tmp_path / "tracker.txt"
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_file.write_text("1,1,10,10,20,20,1,1\n")
+
+        with pytest.warns(UserWarning, match="Sequence 'MOT20-01' matches MOT20 pattern"):
+            evaluate_mot_sequence(gt_file, tracker_file, class_config="mot17")
+
+        # When class_config="mot20", no warning should be raised
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            evaluate_mot_sequence(gt_file, tracker_file, class_config="mot20")
