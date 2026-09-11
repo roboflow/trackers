@@ -402,13 +402,32 @@ class TestBotsortTracklet:
     def test_botsort_and_mcbyte_share_scale_aware_noise_base(self) -> None:
         """Both tracklets inherit their noise machinery from one shared base.
 
-        Pins the structural property this refactor establishes: a future change
-        that reintroduces a per-subclass noise implementation, rather than
-        overriding the shared base, would break this assertion even though the
-        constant-equality check below could still pass by coincidence.
+        Inheritance alone is too weak to pin the deduplication this refactor establishes: a subclass could subclass
+        the base and still carry its own ``_build_*`` / ``_clamp_*`` copy. So every shared callable the base owns is
+        required to resolve, on both subclasses, to the *same function object* the base defines — and to be absent
+        from each subclass's own ``__dict__``.
+
+        The shared surface is read off the base rather than hard-coded, so a method added there is covered here
+        without touching this test.
         """
         assert issubclass(BoTSORTTracklet, ScaleAwareNoiseTracklet)
         assert issubclass(McByteTracklet, ScaleAwareNoiseTracklet)
+
+        shared_names = {
+            name
+            for name, value in vars(ScaleAwareNoiseTracklet).items()
+            if not name.startswith("__") and (callable(value) or isinstance(value, staticmethod))
+        }
+        assert shared_names, "base class exposes no shared callables — the invariant below would be vacuous"
+
+        for subclass in (BoTSORTTracklet, McByteTracklet):
+            reintroduced = shared_names & set(vars(subclass))
+            assert not reintroduced, f"{subclass.__name__} redeclares shared noise machinery: {sorted(reintroduced)}"
+
+            for name in sorted(shared_names):
+                assert getattr(subclass, name) is getattr(ScaleAwareNoiseTracklet, name), (
+                    f"{subclass.__name__}.{name} does not resolve to ScaleAwareNoiseTracklet.{name}"
+                )
 
     def test_botsort_and_mcbyte_noise_constants_agree(self) -> None:
         """Sibling tracklets must retain identical scale-aware noise constants."""
