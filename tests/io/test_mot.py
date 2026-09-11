@@ -9,6 +9,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from trackers.eval.mot_classes import (
+    MOT_CLASS_PRESETS,
+    MOTClassConfig,
+    resolve_mot_class_config,
+)
 from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence
 
 
@@ -173,3 +178,79 @@ class TestMotDistractorPreprocessing:
         assert sequence.num_tracker_dets == 2
         assert sequence.num_gt_ids == 2
         assert sequence.num_tracker_ids == 2
+
+    def test_mot20_treats_non_mot_vehicle_as_distractor(self) -> None:
+        """Class 6 (non_mot_vehicle) is a distractor under MOT20 and suppresses overlapping detections."""
+        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
+        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+
+        # Under default / mot17: class 6 is not a distractor, so tracker det is NOT suppressed
+        seq_mot17 = _prepare_mot_sequence(ground_truth, tracker, class_config="mot17")
+        assert seq_mot17.num_gt_dets == 0  # not scored GT
+        assert seq_mot17.num_tracker_dets == 1  # kept, not suppressed
+
+        # Under mot20: class 6 is a distractor and suppresses the tracker detection
+        seq_mot20 = _prepare_mot_sequence(ground_truth, tracker, class_config="mot20")
+        assert seq_mot20.num_gt_dets == 0
+        assert seq_mot20.num_tracker_dets == 0  # suppressed
+
+    def test_caller_supplied_class_config_overrides_presets(self) -> None:
+        """A user-supplied MOTClassConfig overrides presets for scored and distractor classes."""
+        custom_config = MOTClassConfig(scored_classes=(3,), distractor_classes=(4,))
+
+        ground_truth = {
+            1: _frame(
+                ids=[1, 2, 3],
+                boxes=[[0, 0, 10, 10], [50, 50, 10, 10], [100, 100, 10, 10]],
+                confidences=[1.0, 1.0, 1.0],
+                classes=[3, 4, 1],  # scored, distractor, former pedestrian (now neither)
+            )
+        }
+        tracker = {
+            1: _frame(
+                ids=[10, 20, 30],
+                boxes=[[0, 0, 10, 10], [50, 50, 10, 10], [100, 100, 10, 10]],
+                confidences=[1.0, 1.0, 1.0],
+                classes=[1, 1, 1],
+            )
+        }
+
+        seq = _prepare_mot_sequence(ground_truth, tracker, class_config=custom_config)
+
+        # Only class 3 is scored
+        assert seq.num_gt_dets == 1
+        assert set(seq.gt_id_mapping) == {1}
+        # Tracker detection 20 overlaps distractor class 4 and is suppressed;
+        # det 10 (TP on class 3) and det 30 (FP on non-distractor class 1) survive.
+        assert seq.num_tracker_dets == 2
+        suppressed_mapped = seq.tracker_id_mapping[20]
+        surviving = set(seq.tracker_ids[0].tolist())
+        assert suppressed_mapped not in surviving
+        assert seq.tracker_id_mapping[10] in surviving
+        assert seq.tracker_id_mapping[30] in surviving
+
+
+class TestMOTClassConfigResolution:
+    """Validation and resolution of MOTClassConfig and presets."""
+
+    def test_resolve_presets(self) -> None:
+        assert resolve_mot_class_config("mot17") == MOT_CLASS_PRESETS["mot17"]
+        assert resolve_mot_class_config("mot20") == MOT_CLASS_PRESETS["mot20"]
+        assert resolve_mot_class_config(None) == MOT_CLASS_PRESETS["mot17"]
+
+    def test_resolve_instance(self) -> None:
+        cfg = MOTClassConfig(scored_classes=(1, 2), distractor_classes=(3,))
+        assert resolve_mot_class_config(cfg) is cfg
+
+    def test_resolve_dict(self) -> None:
+        cfg = resolve_mot_class_config({"scored_classes": [1], "distractor_classes": [2, 6]})
+        assert cfg.scored_classes == (1,)
+        assert cfg.distractor_classes == (2, 6)
+
+    def test_resolve_unknown_preset_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="Unknown MOT class preset: 'mot99'"):
+            resolve_mot_class_config("mot99")  # type: ignore[arg-type]
+
+    def test_resolve_invalid_type_raises_type_error(self) -> None:
+        with pytest.raises(TypeError, match="Expected MOTClassPreset or MOTClassConfig"):
+            resolve_mot_class_config(12345)  # type: ignore[arg-type]

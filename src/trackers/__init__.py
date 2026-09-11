@@ -15,6 +15,7 @@ from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
 from trackers.datasets.download import download_dataset
 from trackers.datasets.manifest import Dataset, DatasetAsset, DatasetSplit
+from trackers.eval.mot_classes import MOTClassConfig, MOTClassPreset
 from trackers.io.mot import load_mot_file
 from trackers.io.video import frames_from_source
 from trackers.motion.estimator import MotionEstimator
@@ -47,6 +48,8 @@ __all__ = [
     "HomographyTransformation",
     "IdentityTransformation",
     "IoU",
+    "MOTClassConfig",
+    "MOTClassPreset",
     "McByteMaskConfig",
     "McByteTracker",
     "MotionAwareTraceAnnotator",
