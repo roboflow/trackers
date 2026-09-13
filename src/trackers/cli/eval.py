@@ -12,6 +12,10 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from trackers.eval.mot_classes import MOTClassConfig, MOTClassPreset
 
 
 def eval_command(
@@ -24,6 +28,7 @@ def eval_command(
     threshold: float = 0.5,
     columns: list[str] | None = None,
     output: Path | None = None,
+    class_config: MOTClassPreset | MOTClassConfig = "mot17",
 ) -> int:
     """Evaluate tracker predictions against ground-truth MOT files.
 
@@ -52,6 +57,8 @@ def eval_command(
         columns: Metric columns to display. ``None`` auto-selects from
             available metrics.
         output: Output JSON file for results.
+        class_config: MOT class preset ("mot17", "mot20") or custom config.
+            Defaults to "mot17".
 
     Returns:
         Exit code: ``0`` on success, ``1`` on error.
@@ -85,6 +92,7 @@ def eval_command(
                 tracker_path=predictions,
                 metrics=metrics,
                 threshold=threshold,
+                class_config=class_config,
             )
             print(seq_result.table(columns=columns))
             if output:
@@ -99,6 +107,7 @@ def eval_command(
                 seqmap=seqmap,
                 metrics=metrics,
                 threshold=threshold,
+                class_config=class_config,
             )
             print(bench_result.table(columns=columns))
             if output:
