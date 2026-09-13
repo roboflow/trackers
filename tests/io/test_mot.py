@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from trackers.eval import MOTClassConfig, resolve_mot_class_config
 from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence
 
 
@@ -25,6 +26,12 @@ def _frame(
         confidences=np.array(confidences, dtype=np.float64),
         classes=np.array(classes, dtype=np.intp),
     )
+
+
+def test_mot_class_config_resolver_rejects_unknown_preset() -> None:
+    """Unknown preset names explain which preset names are supported."""
+    with pytest.raises(ValueError, match=r"mot17.*mot20"):
+        resolve_mot_class_config("mot21")  # type: ignore[arg-type]
 
 
 class TestMotDistractorPreprocessing:
@@ -91,7 +98,7 @@ class TestMotDistractorPreprocessing:
         ],
     )
     def test_all_distractor_classes_excluded(self, distractor_class: int) -> None:
-        """Every class in _DISTRACTOR_CLASSES must be excluded from GT and suppress an overlapping tracker detection."""
+        """Every default MOT17 distractor class is excluded from GT and suppresses an overlapping tracker detection."""
         ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [distractor_class])}
         tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
 
@@ -99,6 +106,37 @@ class TestMotDistractorPreprocessing:
 
         assert sequence.num_gt_dets == 0
         assert sequence.num_tracker_dets == 0
+
+    def test_mot20_class_is_not_distractor_by_default(self) -> None:
+        """Class 6 remains a false-positive-producing non-distractor under MOT17 defaults."""
+        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
+        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker)
+
+        assert sequence.num_gt_dets == 0
+        assert sequence.num_tracker_dets == 1
+
+    def test_mot20_class_suppresses_overlapping_tracker_detection(self) -> None:
+        """The MOT20 preset treats class 6 as a distractor."""
+        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
+        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config="mot20")
+
+        assert sequence.num_gt_dets == 0
+        assert sequence.num_tracker_dets == 0
+
+    def test_custom_class_config_overrides_presets(self) -> None:
+        """A caller-supplied configuration controls class-6 handling directly."""
+        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
+        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+        class_config = MOTClassConfig(distractor_classes=(), scored_classes=(6,))
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config=class_config)
+
+        assert sequence.num_gt_dets == 1
+        assert sequence.num_tracker_dets == 1
 
     def test_ignored_non_distractor_gt_does_not_suppress_tracker(self) -> None:
         """GT (conf=0, non-distractor class) is neither scored GT nor a distractor.
