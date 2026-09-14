@@ -18,6 +18,8 @@ Also injects:
 """
 
 import json
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 # Canonical Roboflow organization @id — shared across all Roboflow properties.
 # Must match the Organization @id in docs/overrides/main.html.
@@ -27,18 +29,27 @@ ORG_ID = "https://roboflow.com/#organization"
 # NOTE: dataset list must stay in sync with trackers/datasets/manifest.py.
 # Currently only MOT17 and SportsMOT are downloadable; DanceTrack and SoccerNet
 # are "coming soon" (see docs/learn/download.md).
+# BENCH-XREF derived-claim: every "question" string below must match its FAQ
+# heading in [docs/index.md](../index.md) verbatim — Google requires FAQPage
+# markup to match the visible page content. The "Which tracker should I use?"
+# answer additionally mirrors that heading's *answer* text and must stay
+# synced with the Default HOTA tables in
+# [docs/evaluations/results.md](../evaluations/results.md) if a leader changes.
 _HOMEPAGE_FAQ = [
     {
         "question": "Which tracker should I use?",
         "answer": (
-            "Start with ByteTrack — it performs best across two out of four benchmarks "
-            "and handles variable-confidence detectors well. Use SORT if speed or device "
-            "constraints require the lightest possible tracker. Use OC-SORT when camera "
-            "motion is significant or objects follow non-linear paths."
+            "Start with ByteTrack — it's the default, has no extra dependencies, handles "
+            "variable-confidence detectors well, and runs at real time latency. For the "
+            "highest accuracy, McByte leads HOTA on every benchmark at default parameters "
+            "but requires optional SAM/Cutie mask dependencies; OC-SORT is the best option "
+            "when camera motion is significant. Use SORT if speed or device constraints "
+            "require the lightest possible tracker. See the tracker comparison for "
+            "benchmark scores."
         ),
     },
     {
-        "question": "What is multi-object tracking?",
+        "question": "What is multi-object tracking and how does it differ from object detection?",
         "answer": (
             "Multi-object tracking assigns a persistent ID to each detected object across "
             "video frames, maintaining continuity through occlusions, re-entries, and "
@@ -67,9 +78,12 @@ _HOMEPAGE_FAQ = [
         "question": "What MOT datasets does the library support?",
         "answer": (
             "MOT17 and SportsMOT are supported for download and evaluation. "
-            "Use trackers download <dataset> to pull frames, annotations, and "
-            "pre-computed detections. DanceTrack and SoccerNet-tracking support "
-            "is coming soon."
+            "Use trackers download --name <dataset> to pull the assets available "
+            "for that dataset and split: MOT17 ships frames, annotations, and "
+            "pre-computed detections (test split has no annotations); SportsMOT "
+            "ships frames and annotations only, with no pre-computed detections "
+            "asset (test split has frames only). DanceTrack and SoccerNet-tracking "
+            "support is coming soon. See the download guide for asset options."
         ),
     },
 ]
@@ -91,6 +105,16 @@ _CITATIONS = {
         "url": "https://arxiv.org/abs/2203.14360",
         "author": "Cao et al.",
     },
+}
+
+# Per-page TechArticle.image (keyed by page.file.src_path). The brand SVG
+# represents no single page's content, so pages without a specific poster
+# get no image rather than a generic one.
+_ARTICLE_IMAGES = {
+    "trackers/sort.md": "assets/sort-demo-poster.webp",
+    "trackers/bytetrack.md": "assets/bytetrack-demo-poster.webp",
+    "trackers/ocsort.md": "assets/ocsort-demo-poster.webp",
+    "trackers/botsort.md": "assets/botsort-demo-poster.webp",
 }
 
 # Benchmark datasets shown on the comparison page.
@@ -121,14 +145,14 @@ _BENCHMARK_DATASETS = [
 def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
     """Build BreadcrumbList JSON-LD from navigation hierarchy.
 
-    Returns None if the page is at the root level (no meaningful breadcrumb) or if the page is the homepage (to avoid
-    "Home > Home > ..." duplication).
+    Returns None only for the homepage (to avoid "Home > Home > ..." duplication) or for pages absent from `nav.items`.
+    Every other page, including top-level pages with no section ancestor, gets at least a "Home > Page" breadcrumb.
     """
     # Skip breadcrumbs for the homepage to avoid "Home > Home > ..." duplication.
     if page.file.src_path == "index.md":
         return None
 
-    site_url = config.get("site_url", "https://trackers.roboflow.com").rstrip("/")
+    site_url = (config.get("site_url") or "https://trackers.roboflow.com").rstrip("/")
 
     # Walk the nav tree to find the path of sections leading to this page.
     crumbs = [{"name": "Home", "url": site_url + "/"}]
@@ -151,27 +175,30 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
         """Recursively search nav for the page, building the path of sections."""
         for item in items:
             if hasattr(item, "children") and item.children:
-                section_url = _resolve_nav_item_url(item)
-                appended = False
-                if section_url:
-                    path.append({"name": item.title, "url": section_url})
-                    appended = True
+                item_url = _resolve_nav_item_url(item)
+                # Nav sections (Home, Usage, Tuning, Trackers, ...) are pure
+                # groupings with no page behind them, so mkdocs gives them no
+                # URL — recording by name (not URL) is what schema.org's
+                # ListItem allows: a "name"-only entry with no "item" key.
+                # The top-level "Home" grouping duplicates the seeded Home
+                # crumb; skip recording it but still recurse into its children.
+                record = item.title is not None and item.title != "Home"
+                if record:
+                    path.append({"name": item.title, "url": item_url})
                 if _find_in_nav(item.children, path):
                     return True
-                if appended:
+                if record:
                     path.pop()
-            elif (
-                hasattr(item, "file")
-                and item.file
-                and item.file.src_path == page.file.src_path
-            ):
+            elif hasattr(item, "file") and item.file and item.file.src_path == page.file.src_path:
                 return True
         return False
 
     section_path: list[dict[str, str]] = []
-    _find_in_nav(nav.items, section_path)
-
-    if not section_path:
+    found_in_nav = _find_in_nav(nav.items, section_path)
+    if not found_in_nav:
+        # Page isn't reachable from nav.items at all (excluded from `nav:` or
+        # generated outside it) — no breadcrumb, rather than one asserting a
+        # position the page doesn't actually hold.
         return None
 
     crumbs.extend(section_path)
@@ -195,6 +222,18 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
     }
 
 
+def on_config(config):  # type: ignore[no-untyped-def]
+    """Expose the installed trackers version to templates as extra.trackers_version."""
+    try:
+        # Attribute access matches how the template reads it back
+        # (config.extra.trackers_version in docs/overrides/main.html) —
+        # both resolve to the same mutable `extra` dict on MkDocs' Config.
+        config.extra["trackers_version"] = _pkg_version("trackers")
+    except PackageNotFoundError:
+        pass
+    return config
+
+
 def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
     """Build TechArticle + speakable JSON-LD for the page and store in page.meta."""
     description = (page.meta or {}).get("description", "")
@@ -206,7 +245,7 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
 
     # Derive base URL from mkdocs.yml site_url so this hook stays in sync with
     # deployment configuration and never drifts from the actual canonical base.
-    site_url = config.get("site_url", "https://trackers.roboflow.com").rstrip("/")
+    site_url = (config.get("site_url") or "https://trackers.roboflow.com").rstrip("/")
 
     # ── TechArticle JSON-LD (pages with description only) ──
     if description:
@@ -219,10 +258,6 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
             "mainEntityOfPage": {
                 "@type": "WebPage",
                 "@id": canonical,
-            },
-            "image": {
-                "@type": "ImageObject",
-                "url": f"{site_url}/assets/logo-trackers-violet.svg",
             },
             "author": {
                 "@type": "Organization",
@@ -243,6 +278,13 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
                 "cssSelector": ["h1", ".md-content p:first-of-type"],
             },
         }
+
+        # Per-page poster image (recommended field) — omitted rather than
+        # pointed at the generic brand SVG, which represents no page's
+        # content and duplicates publisher.logo.
+        poster = _ARTICLE_IMAGES.get(page.file.src_path)
+        if poster:
+            article["image"] = f"{site_url}/{poster}"
 
         # datePublished / dateModified from git-revision-date-localized plugin.
         # Prefer the raw iso_date keys which are always YYYY-MM-DD regardless of
@@ -273,9 +315,7 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
                 "author": {"@type": "Person", "name": cite["author"]},
             }
 
-        page.meta["json_ld_article"] = json.dumps(
-            article, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_article"] = json.dumps(article, ensure_ascii=False, indent=2)
 
     # ── FAQPage JSON-LD (homepage only) ──
     if page.file.src_path == "index.md":
@@ -294,16 +334,12 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
                 for entry in _HOMEPAGE_FAQ
             ],
         }
-        page.meta["json_ld_faq"] = json.dumps(
-            faq_schema, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_faq"] = json.dumps(faq_schema, ensure_ascii=False, indent=2)
 
     # ── BreadcrumbList JSON-LD ──
     breadcrumbs = _build_breadcrumbs(page, config, nav)
     if breadcrumbs:
-        page.meta["json_ld_breadcrumbs"] = json.dumps(
-            breadcrumbs, ensure_ascii=False, indent=2
-        )
+        page.meta["json_ld_breadcrumbs"] = json.dumps(breadcrumbs, ensure_ascii=False, indent=2)
 
     # ── Dataset JSON-LD (evaluations results page only) ──
     if page.file.src_path == "evaluations/results.md":
