@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import inspect
 import tempfile
 from pathlib import Path
@@ -16,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import supervision as sv
 
-from trackers.core.base import BaseTracker
+from trackers.core.base import BaseTracker, _validate_search_space_entry
 from trackers.eval.evaluate import evaluate_mot_sequences
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
@@ -24,6 +25,8 @@ from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 
 if TYPE_CHECKING:
     import optuna
+
+    from trackers.core.reid.encoder import ReIDEncoder
 
 
 def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) -> np.ndarray:
@@ -37,6 +40,45 @@ def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) ->
         ) from exc
 
 
+class _CachedReIDEncoder:
+    """Embed each detection box once for a whole tuning study.
+
+    Every trial replays the same detections on the same frames, and an encoder embeds each crop on
+    its own, so an embedding keyed by the frame's content and the box stays valid for every later
+    trial, whatever parameters that trial samples. Memory grows to at most one embedding per
+    detection the encoder is asked about.
+
+    Args:
+        encoder: Encoder to wrap.
+    """
+
+    def __init__(self, encoder: ReIDEncoder) -> None:
+        self._encoder = encoder
+        self._embeddings: dict[tuple[bytes, bytes], np.ndarray] = {}
+
+    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+        """Return one embedding per box, running the encoder only on boxes not seen before.
+
+        Args:
+            detections: Boxes to embed (``xyxy``).
+            frame: BGR frame the detections were produced on.
+
+        Returns:
+            Embedding matrix with one row per box, in the order given.
+        """
+        frame_key = hashlib.blake2b(np.ascontiguousarray(frame).data, digest_size=16).digest()
+        boxes = np.ascontiguousarray(detections.xyxy, dtype=np.float32)
+        keys = [(frame_key, box.tobytes()) for box in boxes]
+        missing = [index for index, key in enumerate(keys) if key not in self._embeddings]
+        if missing:
+            embeddings = self._encoder.extract_features(sv.Detections(xyxy=boxes[missing]), frame)
+            for index, embedding in zip(missing, embeddings, strict=True):
+                self._embeddings[keys[index]] = embedding
+        if not keys:
+            return np.empty((0, 0), dtype=np.float32)
+        return np.stack([self._embeddings[key] for key in keys])
+
+
 class Tuner:
     """Wraps Optuna to tune hyperparameters of a registered MOT tracker.
 
@@ -45,6 +87,10 @@ class Tuner:
     sampled parameters, runs it frame-by-frame over every sequence using
     pre-computed detections from ``detections_dir``, and evaluates the
     predictions with ``evaluate_mot_sequences``.
+
+    When ``fixed_params`` passes a ``reid_model``, search-space entries that
+    require it (BoT-SORT's ReID thresholds) are tuned too, and each detection is
+    embedded once for the whole study rather than once per trial.
 
     Args:
         tracker_id: Registered tracker identifier (e.g. ``"bytetrack"``).
@@ -78,7 +124,7 @@ class Tuner:
             from ``{images_dir}/{sequence}/img1/`` using 6- or 8-digit MOT
             stems (and common image extensions) and passed to
             ``tracker.update(..., frame=)``. Required when ``fixed_params``
-            sets ``enable_cmc=True``.
+            sets ``enable_cmc=True`` or passes a ``reid_model``.
         seed: Random seed for Optuna's TPE sampler. When set, repeated runs with
             the same data and ``n_trials`` sample the same hyperparameters
             (excluding the deterministic baseline trial when
@@ -87,6 +133,11 @@ class Tuner:
             Defaults to ``0.5``.
         seqmap: Optional path to a sequence map file. When provided only the
             listed sequences are evaluated.
+        search_space: Entries that replace or add to the tracker's
+            ``search_space`` for this run, validated the same way. Use it to fit
+            a range to your data, e.g.
+            ``{"reid_appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}``
+            for an encoder whose useful distances are small.
 
     Examples:
         Tune ByteTrack hyperparameters on a local dataset::
@@ -109,6 +160,19 @@ class Tuner:
                 detections_dir="data/det/",
                 fixed_params={"enable_cmc": False},
             )
+
+        Tune BoTSORT together with its ReID thresholds for one encoder::
+
+            from reid import ReIDModel
+
+            tuner = Tuner(
+                tracker_id="botsort",
+                gt_dir="data/gt/",
+                detections_dir="data/det/",
+                images_dir="data/images/",
+                objective="HOTA",
+                fixed_params={"reid_model": ReIDModel.from_pretrained("fastreid_mot17_sbs50")},
+            )
     """
 
     def __init__(
@@ -125,6 +189,7 @@ class Tuner:
         seed: int | None = None,
         threshold: float = 0.5,
         seqmap: str | Path | None = None,
+        search_space: dict[str, dict] | None = None,
     ) -> None:
         try:
             import optuna as _optuna
@@ -141,8 +206,8 @@ class Tuner:
                 f"Tracker {tracker_id!r} is not registered. Available trackers: {BaseTracker._registered_trackers()}"
             )
 
-        search_space = tracker_info.tracker_class.search_space
-        if not search_space:
+        class_search_space = tracker_info.tracker_class.search_space
+        if not class_search_space:
             raise ValueError(
                 f"Tracker {tracker_id!r} does not define a search_space. Add a search_space ClassVar to enable tuning."
             )
@@ -152,9 +217,19 @@ class Tuner:
         self._fixed_params = dict(fixed_params) if fixed_params else {}
         _validate_tracker_init_params(self._tracker_info.tracker_class, self._fixed_params)
 
-        self._search_space: dict[str, dict] = search_space
+        merged_search_space = dict(class_search_space)
+        if search_space:
+            init_params = set(inspect.signature(tracker_info.tracker_class.__init__).parameters) - {"self"}
+            for name, spec in search_space.items():
+                _validate_search_space_entry(tracker_info.tracker_class.__name__, name, spec, init_params)
+            merged_search_space.update(search_space)
+        self._search_space: dict[str, dict] = {
+            name: spec
+            for name, spec in merged_search_space.items()
+            if spec.get("requires") is None or self._fixed_params.get(spec["requires"]) is not None
+        }
         self._tunable_search_space: dict[str, dict] = {
-            name: spec for name, spec in search_space.items() if name not in self._fixed_params
+            name: spec for name, spec in self._search_space.items() if name not in self._fixed_params
         }
         self._gt_dir = Path(gt_dir)
         self._detections_dir = Path(detections_dir)
@@ -177,6 +252,14 @@ class Tuner:
                 "Pass images_dir pointing at MOT sequence folders (…/{sequence}/img1/) "
                 "so CMC can read frames, or set enable_cmc=False."
             )
+        reid_model = self._fixed_params.get("reid_model")
+        if reid_model is not None and self._images_dir is None:
+            raise ValueError(
+                "fixed_params passes reid_model but images_dir was not provided. "
+                "Pass images_dir pointing at MOT sequence folders (…/{sequence}/img1/) "
+                "so the encoder can read frames."
+            )
+        self._cached_reid_model = _CachedReIDEncoder(reid_model) if reid_model is not None else None
 
         # Auto-add the metric family required by the chosen objective so
         # callers don't need to remember the mapping themselves.
@@ -223,7 +306,10 @@ class Tuner:
 
     def _build_tracker(self, trial_params: dict[str, Any]) -> BaseTracker:
         """Instantiate the tracker from sampled and fixed parameters."""
-        return self._tracker_info.tracker_class(**trial_params, **self._fixed_params)
+        params = {**trial_params, **self._fixed_params}
+        if self._cached_reid_model is not None:
+            params["reid_model"] = self._cached_reid_model
+        return self._tracker_info.tracker_class(**params)
 
     def _objective(self, trial: optuna.Trial) -> float:
         """Sample hyperparameters, run tracker over all sequences, return metric.

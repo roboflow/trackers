@@ -9,7 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
+import supervision as sv
 
 from trackers import ByteTrackTracker
 from trackers.eval.results import (
@@ -19,7 +21,13 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
-from trackers.tune.tuner import Tuner, _create_optuna_study, _default_trial_params, _extract_metric
+from trackers.tune.tuner import (
+    Tuner,
+    _CachedReIDEncoder,
+    _create_optuna_study,
+    _default_trial_params,
+    _extract_metric,
+)
 
 optuna = pytest.importorskip("optuna")
 
@@ -424,6 +432,114 @@ class TestTunerRun:
             tuner.run()
 
         assert len(reset_calls) == 2  # 1 trial * 2 sequences
+
+
+class _CountingEncoder:
+    """Encoder that counts the boxes it embeds and derives each row from its box."""
+
+    def __init__(self) -> None:
+        self.embedded = 0
+
+    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+        self.embedded += len(detections)
+        return np.asarray(detections.xyxy, dtype=np.float32)[:, :2] + 1.0
+
+
+def _reid_fixed_params(encoder: object) -> dict:
+    return {"enable_cmc": False, "reid_model": encoder}
+
+
+class TestTunerReIDSearchSpace:
+    """ReID thresholds join BoT-SORT's search only when an encoder is passed."""
+
+    def test_reid_thresholds_tuned_only_with_encoder(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        reid_keys = {"reid_appearance_threshold", "reid_proximity_threshold"}
+        without = Tuner("botsort", gt_dir, det_dir, fixed_params={"enable_cmc": False})
+        with_encoder = Tuner(
+            "botsort", gt_dir, det_dir, images_dir=tmp_path, fixed_params=_reid_fixed_params(_CountingEncoder())
+        )
+        assert not reid_keys & set(without._tunable_search_space)
+        assert reid_keys <= set(with_encoder._tunable_search_space)
+
+    def test_raises_when_encoder_passed_without_images(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        with pytest.raises(ValueError, match="reid_model but images_dir"):
+            Tuner("botsort", gt_dir, det_dir, fixed_params=_reid_fixed_params(_CountingEncoder()))
+
+    def test_search_space_override_replaces_entry(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        narrow = {"type": "uniform", "range": [0.02, 0.15], "requires": "reid_model"}
+        tuner = Tuner(
+            "botsort",
+            gt_dir,
+            det_dir,
+            images_dir=tmp_path,
+            fixed_params=_reid_fixed_params(_CountingEncoder()),
+            search_space={"reid_appearance_threshold": narrow},
+        )
+        assert tuner._tunable_search_space["reid_appearance_threshold"] == narrow
+
+    def test_search_space_override_rejects_unknown_key(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        with pytest.raises(ValueError, match="not a parameter of __init__"):
+            Tuner(
+                "botsort",
+                gt_dir,
+                det_dir,
+                fixed_params={"enable_cmc": False},
+                search_space={"no_such_parameter": {"type": "uniform", "range": [0, 1]}},
+            )
+
+    def test_later_trials_reuse_embeddings_and_return_the_encoder(self, tmp_path: Path) -> None:
+        import cv2
+
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        frame_dir = tmp_path / "images" / "seq1" / "img1"
+        frame_dir.mkdir(parents=True)
+        cv2.imwrite(str(frame_dir / "000001.jpg"), np.zeros((200, 200, 3), dtype=np.uint8))
+        encoder = _CountingEncoder()
+        with patch("trackers.tune.tuner.evaluate_mot_sequences", return_value=_make_benchmark_result(hota=0.6)):
+            tuner = Tuner(
+                "botsort",
+                gt_dir,
+                det_dir,
+                images_dir=tmp_path / "images",
+                objective="HOTA",
+                n_trials=3,
+                seed=0,
+                fixed_params=_reid_fixed_params(encoder),
+            )
+            best = tuner.run()
+        assert tuner.study is not None
+        assert len(tuner.study.trials) == 3
+        assert encoder.embedded == 1
+        assert best["reid_model"] is encoder
+
+
+class TestCachedReIDEncoder:
+    """Each box on a given frame reaches the encoder once."""
+
+    @staticmethod
+    def _detections(boxes: list[list[float]]) -> sv.Detections:
+        return sv.Detections(xyxy=np.asarray(boxes, dtype=np.float32))
+
+    def test_only_unseen_boxes_are_embedded(self) -> None:
+        encoder = _CountingEncoder()
+        cached = _CachedReIDEncoder(encoder)
+        frame = np.zeros((4, 4, 3), dtype=np.uint8)
+        cached.extract_features(self._detections([[0, 0, 2, 2]]), frame)
+        rows = cached.extract_features(self._detections([[1, 1, 3, 3], [0, 0, 2, 2]]), frame)
+        np.testing.assert_array_equal(rows, np.array([[2.0, 2.0], [1.0, 1.0]], dtype=np.float32))
+        assert encoder.embedded == 2
+
+    def test_same_box_on_another_frame_is_embedded_again(self) -> None:
+        encoder = _CountingEncoder()
+        cached = _CachedReIDEncoder(encoder)
+        detections = self._detections([[0, 0, 2, 2]])
+        cached.extract_features(detections, np.zeros((4, 4, 3), dtype=np.uint8))
+        cached.extract_features(detections, np.ones((4, 4, 3), dtype=np.uint8))
+        assert encoder.embedded == 2
 
 
 class TestLoadMotSequenceFrame:

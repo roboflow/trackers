@@ -254,6 +254,12 @@ def _validate_search_space_entry(cls_name: str, key: str, spec: Any, init_params
             f"{spec['type']!r} is not valid. "
             f"Valid types: {sorted(_VALID_SPACE_TYPES)}"
         )
+    requires = spec.get("requires")
+    if requires is not None and requires not in init_params:
+        raise ValueError(
+            f"{cls_name}: search_space[{key!r}]['requires'] = {requires!r} is not a parameter of __init__. "
+            f"Valid parameters: {sorted(init_params)}"
+        )
     space_type = spec["type"]
     if space_type == "choice":
         if "options" not in spec:
@@ -305,7 +311,10 @@ class BaseTracker(ABC):
             match an `__init__` parameter. Values are dicts with `type`
             ``"randint"`` or ``"uniform"`` and ``range`` ``[low, high]``, or
             `type` ``"choice"`` and ``options`` (non-empty sequence of
-            categorical values for Optuna).
+            categorical values for Optuna). An entry may also set
+            ``requires`` to the name of another `__init__` parameter; the
+            tuner then samples it only when that parameter is passed, as
+            BoT-SORT does for its ReID thresholds and ``reid_model``.
         tracks: List of alive tracklets after each `update()`. Each element
             must satisfy `TrackletProtocol` (exposes `.tracker_id: int` and
             `.get_state_bbox() -> np.ndarray`). Subclasses must initialise

@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from trackers.cli.track import ReIDOptions
 from trackers.cli.tune import TrackerSelection, tune_command
 
 
@@ -97,6 +98,41 @@ class TestTune:
         mock_tuner.run.side_effect = RuntimeError("optimization failed")
         with patch("trackers.tune.Tuner", return_value=mock_tuner):
             result = tune_command(TrackerSelection(name="bytetrack"), gt_dir, det_dir)
+        assert result == 1
+
+
+class TestTuneReID:
+    """``--reid`` options load one encoder and hand it to the tuner."""
+
+    def test_encoder_and_search_space_reach_the_tuner_and_encoder_is_left_out_of_output(self, tmp_path: Path) -> None:
+        encoder = object()
+        space = {"reid_appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}
+        output_path = tmp_path / "best.json"
+        mock_tuner = MagicMock()
+        mock_tuner.run.return_value = {"reid_appearance_threshold": 0.2, "reid_model": encoder}
+        mock_tuner.study = None
+        with (
+            patch("trackers.cli.tune._load_reid_model", return_value=encoder),
+            patch("trackers.tune.Tuner", return_value=mock_tuner) as tuner_class,
+        ):
+            result = tune_command(
+                TrackerSelection(name="botsort"),
+                tmp_path,
+                tmp_path,
+                reid=ReIDOptions(model="fastreid_mot17_sbs50"),
+                search_space=space,
+                output=output_path,
+            )
+        assert result == 0
+        assert tuner_class.call_args.kwargs["fixed_params"]["reid_model"] is encoder
+        assert tuner_class.call_args.kwargs["search_space"] == space
+        assert json.loads(output_path.read_text()) == {"reid_appearance_threshold": 0.2}
+
+    def test_returns_1_when_encoder_fails_to_load(self, tmp_path: Path) -> None:
+        with patch("trackers.cli.tune._load_reid_model", side_effect=ValueError("Failed to load ReID model: x")):
+            result = tune_command(
+                TrackerSelection(name="botsort"), tmp_path, tmp_path, reid=ReIDOptions(model="missing")
+            )
         assert result == 1
 
 

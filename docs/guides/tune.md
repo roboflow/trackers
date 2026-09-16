@@ -179,6 +179,56 @@ MOT17-09-FRCNN
 
 ---
 
+## Tune ReID Thresholds
+
+Pass an encoder to BoT-SORT and the search adds `reid_appearance_threshold` and `reid_proximity_threshold`. Tune the two together: a looser proximity gate usually needs a stricter appearance threshold. To keep tuned motion parameters and search only these two, fix everything else. `images_dir` is required, because the encoder reads the frames.
+
+=== "CLI"
+
+    ```text
+    trackers tune \
+        --tracker botsort \
+        --gt_dir ./data/gt \
+        --detections_dir ./data/detections \
+        --images_dir ./data/images \
+        --reid.model osnet_x1_0_msmt17_combineall \
+        --fixed_params '{"lost_track_buffer": 30, "minimum_consecutive_frames": 2, "minimum_iou_threshold_first_assoc": 0.2, "minimum_iou_threshold_second_assoc": 0.5, "minimum_iou_threshold_unconfirmed_assoc": 0.2, "high_conf_det_threshold": 0.5, "track_activation_threshold": 0.6, "cmc_downscale": 2}' \
+        --n_trials 20
+    ```
+
+=== "Python"
+
+    ```python
+    from reid import ReIDModel
+    from trackers.tune import Tuner
+
+    encoder = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall")
+    tuned_motion = {
+        "lost_track_buffer": 30,
+        "minimum_consecutive_frames": 2,
+        "minimum_iou_threshold_first_assoc": 0.2,
+        "minimum_iou_threshold_second_assoc": 0.5,
+        "minimum_iou_threshold_unconfirmed_assoc": 0.2,
+        "high_conf_det_threshold": 0.5,
+        "track_activation_threshold": 0.6,
+        "cmc_downscale": 2,
+    }
+
+    tuner = Tuner(
+        tracker_id="botsort",
+        gt_dir="./data/gt",
+        detections_dir="./data/detections",
+        images_dir="./data/images",
+        fixed_params={**tuned_motion, "reid_model": encoder},
+        n_trials=20,
+    )
+    best_params = tuner.run()
+    ```
+
+Each detection is embedded once and reused by later trials, so the first trial is the slow one.
+
+---
+
 ## Use Best Parameters
 
 Apply tuned values by unpacking the saved JSON dictionary into your tracker constructor.
@@ -245,6 +295,16 @@ All arguments accepted by `trackers tune`.
     <tr>
       <td><code>--images_dir</code></td>
       <td>MOT-style image root for frame-based features such as CMC. Frames are read from <code>{images_dir}/{sequence}/img1/</code>.</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td><code>--reid.model</code></td>
+      <td>ReID encoder for BoT-SORT: alias, <code>hf://</code> URL, or local path. Adds <code>reid_appearance_threshold</code> and <code>reid_proximity_threshold</code> to the search. Requires <code>--images_dir</code>. Also accepts <code>--reid.device</code> and <code>--reid.architecture</code>.</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td><code>--search_space</code></td>
+      <td>Search-space entries that replace or extend the tracker's own for this run (JSON object, same format as the tracker's <code>search_space</code>).</td>
       <td>None</td>
     </tr>
     <tr>

@@ -418,6 +418,10 @@ class TestSearchSpaceValidation:
                 {"x": {"type": "choice", "options": []}},  # empty options
                 r"non-empty",
             ),
+            (
+                {"x": {"type": "uniform", "range": [0, 1], "requires": "missing"}},
+                r"\['requires'\] = 'missing' is not a parameter",
+            ),
         ],
     )
     def test_invalid_search_space_value_schema_raises(self, bad_spec: dict, match: str) -> None:
