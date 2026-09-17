@@ -218,7 +218,7 @@ With the gate open, `adaptive` keeps IDs more stable than `"botsort"`, which swi
 
 ## Results
 
-BoT-SORT with and without ReID, using the same detections and motion parameters. The first table shows HOTA on the split where the ReID thresholds were tuned, the second shows test results. The better value in each pair is in bold. Motion parameters are the tuned values from the [tracker comparison](../evaluations/results.md).
+BoT-SORT with and without ReID, using the same detections and motion parameters. The first table shows HOTA on the split where the ReID thresholds were tuned, the second shows test results. The better value for each dataset is in bold. Motion parameters are the tuned values from the [tracker comparison](../evaluations/results.md).
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) BoT-SORT and BoT-SORT + ReID rows in the mot17/sportsmot/soccernet/dancetrack Tuned tables (test rows only). The encoder, split and parameter columns exist only here. Update results.md first, then mirror the test rows here. -->
 
@@ -228,254 +228,72 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
     Tuning split:
 
-    <table>
-      <colgroup>
-        <col style="width: 24%">
-        <col style="width: 46%">
-        <col style="width: 30%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Dataset</th>
-          <th>Config</th>
-          <th align="center">HOTA</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td rowspan="2">MOT17 <small>val-half</small></td>
-          <td>BoT-SORT</td>
-          <td align="center">69.05</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center"><strong>69.64</strong></td>
-        </tr>
-        <tr>
-          <td rowspan="2">SportsMOT <small>val</small></td>
-          <td>BoT-SORT</td>
-          <td align="center">82.00</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center"><strong>82.69</strong></td>
-        </tr>
-        <tr>
-          <td rowspan="2">DanceTrack <small>val</small></td>
-          <td>BoT-SORT</td>
-          <td align="center">53.89</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center"><strong>58.34</strong></td>
-        </tr>
-        <tr>
-          <td rowspan="2">SoccerNet <small>train¹</small></td>
-          <td>BoT-SORT</td>
-          <td align="center">86.95</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center"><strong>86.98</strong></td>
-        </tr>
-      </tbody>
-    </table>
+    | Dataset    | Split    | Config          |   HOTA    |
+    | :--------- | :------- | :-------------- | :-------: |
+    | MOT17      | val-half | BoT-SORT        |   69.05   |
+    |            |          | BoT-SORT + ReID | **69.64** |
+    | SportsMOT  | val      | BoT-SORT        |   82.00   |
+    |            |          | BoT-SORT + ReID | **82.69** |
+    | DanceTrack | val      | BoT-SORT        |   53.89   |
+    |            |          | BoT-SORT + ReID | **58.34** |
+    | SoccerNet  | train¹   | BoT-SORT        |   86.95   |
+    |            |          | BoT-SORT + ReID | **86.98** |
 
     Test split:
 
-    <table>
-      <colgroup>
-        <col style="width: 20%">
-        <col style="width: 32%">
-        <col style="width: 16%">
-        <col style="width: 16%">
-        <col style="width: 16%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Dataset</th>
-          <th>Config</th>
-          <th align="center">HOTA</th>
-          <th align="center">IDF1</th>
-          <th align="center">MOTA</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td rowspan="2">MOT17</td>
-          <td>BoT-SORT</td>
-          <td align="center"><strong>63.86</strong></td>
-          <td align="center">78.74</td>
-          <td align="center"><strong>79.42</strong></td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center">63.85</td>
-          <td align="center"><strong>78.82</strong></td>
-          <td align="center">79.41</td>
-        </tr>
-        <tr>
-          <td rowspan="2">SportsMOT</td>
-          <td>BoT-SORT</td>
-          <td align="center">74.15</td>
-          <td align="center">74.06</td>
-          <td align="center">96.89</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center"><strong>75.62</strong></td>
-          <td align="center"><strong>75.66</strong></td>
-          <td align="center"><strong>96.90</strong></td>
-        </tr>
-        <tr>
-          <td rowspan="2">DanceTrack</td>
-          <td>BoT-SORT</td>
-          <td align="center"><strong>57.8</strong></td>
-          <td align="center"><strong>57.9</strong></td>
-          <td align="center"><strong>92.2</strong></td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center">57.6</td>
-          <td align="center">57.6</td>
-          <td align="center">92.1</td>
-        </tr>
-        <tr>
-          <td rowspan="2">SoccerNet</td>
-          <td>BoT-SORT</td>
-          <td align="center"><strong>85.00</strong></td>
-          <td align="center"><strong>79.68</strong></td>
-          <td align="center">97.25</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center">84.96</td>
-          <td align="center">79.66</td>
-          <td align="center">97.25</td>
-        </tr>
-      </tbody>
-    </table>
+    | Dataset    | Config          |   HOTA    |   IDF1    |   MOTA    |
+    | :--------- | :-------------- | :-------: | :-------: | :-------: |
+    | MOT17      | BoT-SORT        | **63.86** |   78.74   | **79.42** |
+    |            | BoT-SORT + ReID |   63.85   | **78.82** |   79.41   |
+    | SportsMOT  | BoT-SORT        |   74.15   |   74.06   |   96.89   |
+    |            | BoT-SORT + ReID | **75.62** | **75.66** | **96.90** |
+    | DanceTrack | BoT-SORT        | **57.8**  | **57.9**  | **92.2**  |
+    |            | BoT-SORT + ReID |   57.6    |   57.6    |   92.1    |
+    | SoccerNet  | BoT-SORT        | **85.00** | **79.68** |   97.25   |
+    |            | BoT-SORT + ReID |   84.96   |   79.66   |   97.25   |
 
-```
-- **MOT17**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.10`, `reid_proximity_threshold=0.5`
-- **SportsMOT**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.30`, `reid_proximity_threshold=0.5`
-- **DanceTrack**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.48`, `reid_proximity_threshold=0.51`
-- **SoccerNet**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.05`, `reid_proximity_threshold=0.35`
+    - **MOT17**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.10`, `reid_proximity_threshold=0.5`
+    - **SportsMOT**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.30`, `reid_proximity_threshold=0.5`
+    - **DanceTrack**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.48`, `reid_proximity_threshold=0.51`
+    - **SoccerNet**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.05`, `reid_proximity_threshold=0.35`
 
-Both thresholds were tuned together on the tuning split, then each configuration was evaluated once on test.
+    For MOT17, DanceTrack and SoccerNet, both thresholds were tuned together with `trackers tune`. The SportsMOT threshold comes from a sweep at the default proximity threshold. Each configuration was then evaluated once on test.
 
-¹ SoccerNet-tracking has no validation split, so its tuning split is train.
+    ¹ SoccerNet-tracking has no validation split, so its tuning split is train.
 
-A generic encoder improves HOTA on every tuning split, but only SportsMOT keeps the gain on test. On the other datasets, test HOTA stays within 0.2 of BoT-SORT without ReID. On SoccerNet the tuned thresholds are strict enough that appearance rarely changes a match.
+    A generic encoder improves HOTA on every tuning split, but only SportsMOT keeps the gain on test. On the other datasets, test HOTA stays within 0.2 of BoT-SORT without ReID. On SoccerNet the tuned thresholds are strict enough that appearance rarely changes a match.
 
-SoccerNet uses ground-truth boxes as detections, so its numbers are not comparable to the YOLOX rows. On DanceTrack, validation HOTA without ReID is 3.9 lower than test HOTA, which explains most of the validation gain. `osnet_x1_0_msmt17_combineall` scores 56.21 on DanceTrack validation and 56.0 on test with thresholds 0.25 and 0.5.
-```
+    SoccerNet uses ground-truth boxes as detections, so its numbers are not comparable to the YOLOX rows. On DanceTrack, validation HOTA without ReID is 3.9 lower than test HOTA, which explains most of the validation gain. `osnet_x1_0_msmt17_combineall` scores 56.21 on DanceTrack validation and 56.0 on test with thresholds 0.25 and 0.5.
 
 === "Fine-tuned encoder"
 
-    `osnet_x1_0` fine-tuned on each dataset's train split, with `reid_fusion="botsort"`. Available for MOT17 and SoccerNet.
+    `osnet_x1_0` fine-tuned on each dataset's train split, with `reid_fusion="botsort"` and `reid_fusion="adaptive"`. Available for MOT17 and SoccerNet.
 
     Tuning split:
 
-    <table>
-      <colgroup>
-        <col style="width: 24%">
-        <col style="width: 46%">
-        <col style="width: 30%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Dataset</th>
-          <th>Config</th>
-          <th align="center">HOTA</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td rowspan="2">MOT17 <small>val-half</small></td>
-          <td>BoT-SORT</td>
-          <td align="center"><strong>69.05</strong></td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center">69.00</td>
-        </tr>
-        <tr>
-          <td rowspan="3">SoccerNet <small>held-out train²</small></td>
-          <td>BoT-SORT</td>
-          <td align="center">85.72</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center">88.97</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID, <code>adaptive</code></td>
-          <td align="center"><strong>89.91</strong></td>
-        </tr>
-      </tbody>
-    </table>
+    | Dataset   | Split           | Config                      |   HOTA    |
+    | :-------- | :-------------- | :-------------------------- | :-------: |
+    | MOT17     | val-half        | BoT-SORT                    | **69.05** |
+    |           |                 | BoT-SORT + ReID             |   69.00   |
+    |           |                 | BoT-SORT + ReID, `adaptive` |   68.72   |
+    | SoccerNet | held-out train² | BoT-SORT                    |   85.72   |
+    |           |                 | BoT-SORT + ReID             |   88.97   |
+    |           |                 | BoT-SORT + ReID, `adaptive` | **89.91** |
 
     Test split:
 
-    <table>
-      <colgroup>
-        <col style="width: 20%">
-        <col style="width: 32%">
-        <col style="width: 16%">
-        <col style="width: 16%">
-        <col style="width: 16%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Dataset</th>
-          <th>Config</th>
-          <th align="center">HOTA</th>
-          <th align="center">IDF1</th>
-          <th align="center">MOTA</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td rowspan="2">MOT17</td>
-          <td>BoT-SORT</td>
-          <td align="center">63.8</td>
-          <td align="center">78.7</td>
-          <td align="center"><strong>79.4</strong></td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center"><strong>64.12</strong></td>
-          <td align="center"><strong>79.16</strong></td>
-          <td align="center">79.36</td>
-        </tr>
-        <tr>
-          <td rowspan="3">SoccerNet</td>
-          <td>BoT-SORT</td>
-          <td align="center">85.00</td>
-          <td align="center">79.68</td>
-          <td align="center">97.25</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID</td>
-          <td align="center">87.30</td>
-          <td align="center">83.16</td>
-          <td align="center">98.73</td>
-        </tr>
-        <tr>
-          <td>BoT-SORT + ReID, <code>adaptive</code></td>
-          <td align="center"><strong>88.43</strong></td>
-          <td align="center"><strong>84.40</strong></td>
-          <td align="center"><strong>99.26</strong></td>
-        </tr>
-      </tbody>
-    </table>
+    | Dataset   | Config                      |   HOTA    |   IDF1    |   MOTA    |
+    | :-------- | :-------------------------- | :-------: | :-------: | :-------: |
+    | MOT17     | BoT-SORT                    |   63.8    |   78.7    |   79.4    |
+    |           | BoT-SORT + ReID             | **64.12** | **79.16** |   79.36   |
+    |           | BoT-SORT + ReID, `adaptive` |   63.8    |   78.86   | **79.49** |
+    | SoccerNet | BoT-SORT                    |   85.00   |   79.68   |   97.25   |
+    |           | BoT-SORT + ReID             |   87.30   |   83.16   |   98.73   |
+    |           | BoT-SORT + ReID, `adaptive` | **88.43** | **84.40** | **99.26** |
 
-```
-- **MOT17**: `osnet_x1_0` fine-tuned on MOT17 train, `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`
-- **SoccerNet**: `osnet_x1_0` fine-tuned on SoccerNet train, `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0`
+    - **MOT17**: `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`; `adaptive` with its defaults (`reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.5`)
+    - **SoccerNet**: `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0`; `adaptive` with `reid_proximity_threshold=1.0`, `reid_appearance_floor=0.8` and default weights
 
-² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170). That search picked 0.075 and 1.0 for `reid_fusion="botsort"`, and for `reid_fusion="adaptive"` a gate of 1.0 with `reid_appearance_floor=0.8`, both at their default weights.
+    ² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170).
 
-Fine-tuning makes the biggest difference on SoccerNet: the generic encoder leaves HOTA flat, while the fine-tuned one adds 2.30 on test, and 3.43 with `adaptive` fusion. DanceTrack is not listed because its fine-tuned encoder scores 57.5 on test, below BoT-SORT without ReID.
-```
+    Fine-tuning makes the biggest difference on SoccerNet: the generic encoder leaves HOTA flat, while the fine-tuned one adds 2.30 on test, and 3.43 with `adaptive`. The MOT17 encoder was trained on the first half of the same sequences that val-half evaluates, so its val-half rows are not a clean tuning split. DanceTrack is not listed because its fine-tuned encoder scores 57.5 on test, below BoT-SORT without ReID.
