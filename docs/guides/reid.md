@@ -267,33 +267,40 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
 === "Fine-tuned encoder"
 
-    `osnet_x1_0` fine-tuned on each dataset's train split, with `reid_fusion="botsort"` and `reid_fusion="adaptive"`. Available for MOT17 and SoccerNet.
+    `osnet_x1_0` fine-tuned on each dataset's train split, with `reid_fusion="botsort"` and `reid_fusion="adaptive"`. Available for MOT17, DanceTrack and SoccerNet.
 
     Tuning split:
 
-    | Dataset   | Split           | Config                      |   HOTA    |
-    | :-------- | :-------------- | :-------------------------- | :-------: |
-    | MOT17     | val-half        | BoT-SORT                    | **69.05** |
-    |           |                 | BoT-SORT + ReID             |   69.00   |
-    |           |                 | BoT-SORT + ReID, `adaptive` |   68.72   |
-    | SoccerNet | held-out train² | BoT-SORT                    |   85.72   |
-    |           |                 | BoT-SORT + ReID             |   88.97   |
-    |           |                 | BoT-SORT + ReID, `adaptive` | **89.91** |
+    | Dataset    | Split           | Config                      |   HOTA    |
+    | :--------- | :-------------- | :-------------------------- | :-------: |
+    | MOT17      | val-half        | BoT-SORT                    | **69.05** |
+    |            |                 | BoT-SORT + ReID             |   69.00   |
+    |            |                 | BoT-SORT + ReID, `adaptive` |   68.72   |
+    | DanceTrack | val             | BoT-SORT                    |   53.89   |
+    |            |                 | BoT-SORT + ReID             | **58.80** |
+    |            |                 | BoT-SORT + ReID, `adaptive` |   58.06   |
+    | SoccerNet  | held-out train² | BoT-SORT                    |   85.72   |
+    |            |                 | BoT-SORT + ReID             |   88.97   |
+    |            |                 | BoT-SORT + ReID, `adaptive` | **89.91** |
 
     Test split:
 
-    | Dataset   | Config                      |   HOTA    |   IDF1    |   MOTA    |
-    | :-------- | :-------------------------- | :-------: | :-------: | :-------: |
-    | MOT17     | BoT-SORT                    |   63.8    |   78.7    |   79.4    |
-    |           | BoT-SORT + ReID             | **64.12** | **79.16** |   79.36   |
-    |           | BoT-SORT + ReID, `adaptive` |   63.8    |   78.86   | **79.49** |
-    | SoccerNet | BoT-SORT                    |   85.00   |   79.68   |   97.25   |
-    |           | BoT-SORT + ReID             |   87.30   |   83.16   |   98.73   |
-    |           | BoT-SORT + ReID, `adaptive` | **88.43** | **84.40** | **99.26** |
+    | Dataset    | Config                      |   HOTA    |   IDF1    |   MOTA    |
+    | :--------- | :-------------------------- | :-------: | :-------: | :-------: |
+    | MOT17      | BoT-SORT                    |   63.8    |   78.7    |   79.4    |
+    |            | BoT-SORT + ReID             | **64.12** | **79.16** |   79.36   |
+    |            | BoT-SORT + ReID, `adaptive` |   63.8    |   78.86   | **79.49** |
+    | DanceTrack | BoT-SORT                    |   57.8    |   57.9    |   92.2    |
+    |            | BoT-SORT + ReID             | **58.8**  | **59.1**  |   92.2    |
+    |            | BoT-SORT + ReID, `adaptive` |   58.1    |   58.2    | **92.3**  |
+    | SoccerNet  | BoT-SORT                    |   85.00   |   79.68   |   97.25   |
+    |            | BoT-SORT + ReID             |   87.30   |   83.16   |   98.73   |
+    |            | BoT-SORT + ReID, `adaptive` | **88.43** | **84.40** | **99.26** |
 
     - **MOT17**: `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`; `adaptive` with its defaults (`reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.5`)
+    - **DanceTrack**: trained with 8 crops per identity, selected on val over 4 and 16; `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`; `adaptive` with `reid_appearance_weight=2.4`, `reid_adaptive_weight_cap=0`, `reid_proximity_threshold=0.5`
     - **SoccerNet**: `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0`; `adaptive` with `reid_proximity_threshold=1.0`, `reid_appearance_floor=0.8` and default weights
 
     ² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170).
 
-    Fine-tuning makes the biggest difference on SoccerNet: the generic encoder leaves HOTA flat, while the fine-tuned one adds 2.30 on test, and 3.43 with `adaptive`. The MOT17 encoder was trained on the first half of the same sequences that val-half evaluates, so its val-half rows are not a clean tuning split. DanceTrack is not listed because its fine-tuned encoder scores 57.5 on test, below BoT-SORT without ReID.
+    Fine-tuning makes the biggest difference on SoccerNet: the generic encoder leaves HOTA flat, while the fine-tuned one adds 2.30 on test, and 3.43 with `adaptive`. The MOT17 encoder was trained on the first half of the same sequences that val-half evaluates, so its val-half rows are not a clean tuning split. On DanceTrack the fine-tuned encoder adds 1.0 HOTA on test, where the generic one does not help.
