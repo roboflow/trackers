@@ -401,13 +401,17 @@ SoccerNet uses ground-truth boxes as detections, so its numbers are not comparab
           <td align="center">69.00</td>
         </tr>
         <tr>
-          <td rowspan="2">SoccerNet <small>held-out train²</small></td>
+          <td rowspan="3">SoccerNet <small>held-out train²</small></td>
           <td>BoT-SORT</td>
           <td align="center">85.72</td>
         </tr>
         <tr>
           <td>BoT-SORT + ReID</td>
-          <td align="center"><strong>88.97</strong></td>
+          <td align="center">88.97</td>
+        </tr>
+        <tr>
+          <td>BoT-SORT + ReID, <code>adaptive</code></td>
+          <td align="center"><strong>89.91</strong></td>
         </tr>
       </tbody>
     </table>
@@ -446,7 +450,7 @@ SoccerNet uses ground-truth boxes as detections, so its numbers are not comparab
           <td align="center">79.36</td>
         </tr>
         <tr>
-          <td rowspan="2">SoccerNet</td>
+          <td rowspan="3">SoccerNet</td>
           <td>BoT-SORT</td>
           <td align="center">85.00</td>
           <td align="center">79.68</td>
@@ -454,9 +458,15 @@ SoccerNet uses ground-truth boxes as detections, so its numbers are not comparab
         </tr>
         <tr>
           <td>BoT-SORT + ReID</td>
-          <td align="center"><strong>87.30</strong></td>
-          <td align="center"><strong>83.16</strong></td>
-          <td align="center"><strong>98.73</strong></td>
+          <td align="center">87.30</td>
+          <td align="center">83.16</td>
+          <td align="center">98.73</td>
+        </tr>
+        <tr>
+          <td>BoT-SORT + ReID, <code>adaptive</code></td>
+          <td align="center"><strong>88.43</strong></td>
+          <td align="center"><strong>84.40</strong></td>
+          <td align="center"><strong>99.26</strong></td>
         </tr>
       </tbody>
     </table>
@@ -465,7 +475,7 @@ SoccerNet uses ground-truth boxes as detections, so its numbers are not comparab
 - **MOT17**: `osnet_x1_0` fine-tuned on MOT17 train, `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`
 - **SoccerNet**: `osnet_x1_0` fine-tuned on SoccerNet train, `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0`
 
-² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170). That search picked the same values used on test, 0.075 and 1.0.
+² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170). That search picked 0.075 and 1.0 for `reid_fusion="botsort"`, and for `reid_fusion="adaptive"` a gate of 1.0 with `reid_appearance_floor=0.8`, both at their default weights.
 
-Fine-tuning makes the biggest difference on SoccerNet: the generic encoder leaves HOTA flat, while the fine-tuned one adds 2.30 on test and 3.25 on the held-out train sequences. DanceTrack is not listed because its fine-tuned encoder scores 57.5 on test, below BoT-SORT without ReID.
+Fine-tuning makes the biggest difference on SoccerNet: the generic encoder leaves HOTA flat, while the fine-tuned one adds 2.30 on test, and 3.43 with `adaptive` fusion. DanceTrack is not listed because its fine-tuned encoder scores 57.5 on test, below BoT-SORT without ReID.
 ```
