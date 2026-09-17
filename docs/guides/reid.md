@@ -56,7 +56,7 @@ For extra contents and other options, see the [install guide](install.md).
 
     Pass the current video frame as `tracker.update(detections, frame=frame_bgr)`. When `reid_model` is set, `update()` raises if `frame` is omitted.
 
-For the model catalog and fine-tuning, see the [`reid` training guide](https://github.com/roboflow/re-ID/blob/main/docs/learn/train.md).
+A guide to the model catalog and fine-tuning in `reid` is coming soon.
 
 ---
 
@@ -75,7 +75,53 @@ For the model catalog and fine-tuning, see the [`reid` training guide](https://g
 
 ---
 
+## Choosing an encoder
+
+The encoder decides how much appearance can help, and every threshold below depends on it. There are two kinds:
+
+- **A generic encoder**, trained on another dataset, such as `osnet_x1_0_msmt17_combineall` (the default) or `fastreid_mot17_sbs50`. It works out of the box, but on footage unlike its training data appearance helps little, see [results](#results).
+- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. A guide to fine-tuning is coming soon.
+
+Load either with `ReIDModel.from_pretrained`, as in the [quickstart](#quickstart). Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
+
+---
+
+## Choosing a fusion method
+
+On every frame, BoT-SORT gives each track and detection pair a score and then picks the best matching. With ReID enabled, that score combines two signals: how much the boxes overlap, and how alike the two crops look. `reid_fusion` sets how they are combined:
+
+```python
+tracker = BoTSORTTracker(
+    reid_model=reid_model,
+    reid_fusion="adaptive",  # default: "botsort"
+)
+```
+
+- `"botsort"`: a pair scores as well as the stronger of the two, `score = 1 - min(box distance, appearance distance)`.
+- `"adaptive"`: the two add up, `score = box overlap + weight * appearance similarity`.
+
+In more detail:
+
+**`"botsort"`.** Appearance is only used for a pair when its distance is below `reid_appearance_threshold` and the boxes pass the `reid_proximity_threshold` check. Otherwise the pair is scored on box overlap alone.
+
+**`"adaptive"`.** This is the appearance fusion from Deep OC-SORT. Each pair starts from its box overlap, and appearance is added on top: `score = box overlap + (reid_appearance_weight + bonus) * appearance similarity`. The bonus rewards a clear winner. For a track, it is how much more its most similar detection looks like it than the second most similar one; for a detection, the same against its two most similar tracks. A pair's bonus is the average of the two, capped at `reid_adaptive_weight_cap`. So appearance counts more when one candidate clearly stands out, and less when several look alike. Negative similarities count as zero, so appearance can only raise a score. `reid_appearance_floor`, added by this library, sets the lowest appearance similarity that counts: below it, a pair is scored on box overlap alone. With the proximity gate open, this stops a lost track from taking an unrelated detection that only looks vaguely similar.
+
+!!! note "What `adaptive` includes"
+
+    Only the appearance fusion is taken from Deep OC-SORT; the rest of that tracker is not added to BoT-SORT. `reid_appearance_threshold` has no effect with `reid_fusion="adaptive"`.
+
+Two consequences are worth knowing before switching:
+
+- **The similarity range changes.** `"botsort"` returns values in `[0, 1]`; `"adaptive"` returns `[0, 1 + reid_appearance_weight + reid_adaptive_weight_cap]`, which is `[0, 2.25]` at the defaults. `minimum_iou_threshold_first_assoc` is applied to that fused value, so a threshold tuned for one method is a different gate under the other. Retune it when you switch, or the comparison measures the gate rather than the fusion.
+- **The weights are domain-dependent.** The Deep OC-SORT paper uses `reid_appearance_weight=0.75` with `reid_adaptive_weight_cap=0.5` for MOT17 and MOT20, and `1.25` with `1.0` for DanceTrack, where dancers occlude constantly and geometry carries less. The defaults here follow the MOT17/MOT20 pair.
+
+With the gate open, `adaptive` keeps IDs more stable than `"botsort"`, which switches between look-alike candidates from one frame to the next. `"botsort"` stays the default because it is the safer choice: appearance is only used below `reid_appearance_threshold`, and turning it on does not require retuning the other thresholds.
+
+---
+
 ## Choosing an appearance threshold
+
+This threshold only applies to `reid_fusion="botsort"`; with `"adaptive"` it has no effect.
 
 When a track and a detection look alike, appearance can make their match cheaper. It never blocks a match that geometry already allows. `reid_appearance_threshold` sets how alike they must look, as a distance of `0.5 * (1 - cosine similarity)`: 0 means identical, and the BoT-SORT paper uses 0.25.
 
@@ -141,17 +187,22 @@ sweep = sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids)
 plot_frame_gap_sweep(sweep, thresholds={0.20: "selected", 0.25: "default"})
 ```
 
-On MOT17 val, different-ID distances barely move with the gap: the median stays near 0.41 and the 10th percentile near 0.31 from a 1-frame gap out to 240 frames. Same-ID distances spread steadily, from a median of 0.04 at a 1-frame gap to 0.20 across the 16 to 30 band and 0.28 beyond 120 frames.
+On MOT17 val, pairs of different people stay about as far apart at every gap. Pairs of the same person drift apart as the gap grows, because pose, lighting and occlusion change, so a threshold that catches them one frame apart misses more of them after a long absence.
 
 ![FastReID MOT17 SBS separability vs frame gap](../assets/reid/mot17-fastreid-appearance-distances-vs-gap.png)
 
-Two things follow. First, a threshold validated on adjacent frames says little about re-association: at θ=0.2 appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight θ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `reid_appearance_threshold` with it and re-check the different-ID column.
+From this we learn:
+
+- **Check the threshold at the gap you care about.** A threshold that works one frame apart can fail after a lost track: at 0.2 it matches 98% of same-person pairs one frame apart, but only 51% across the default 30-frame `lost_track_buffer`.
+- **Long gaps make people harder to tell apart.** The same person looks less like themselves after a long absence, so same-person and different-person distances overlap more: ROC AUC, explained below, falls from 0.998 at a 1-frame gap to 0.854 beyond 120 frames. With the threshold at 0.2, appearance stops recognizing most people after a long absence: only 29% of same-person pairs more than 120 frames apart are under 0.2, against 98% one frame apart. Raising the threshold to catch those also lets more different people through, so if you increase `lost_track_buffer`, check both rates at that gap before raising `reid_appearance_threshold`.
 
 ??? info "How to read ROC AUC, and the numbers per frame gap"
 
-    ROC AUC below is the chance that a random same-ID pair scores closer than a random different-ID pair: 1.0 means the two never cross, 0.5 means appearance carries no information, and its complement is how often a same-ID pair sits farther apart than a different-ID one. It is the area under the curve traced by sweeping θ from 0 to 1 and plotting the two rates next to it, so it summarises every threshold instead of the single one we ship.
+    ROC AUC answers one question: if you pick one pair of crops of the same person and one pair of different people at random, how often is the same-person pair closer? 1.0 means always, so some threshold separates the two groups perfectly. 0.5 means a coin flip, so appearance tells you nothing. Unlike the two rates in the table, it does not depend on a chosen threshold. It is also not where the shaded bands overlap in the figure: those bands only span the 10th to 90th percentiles, so at a 1-frame gap they never touch even though the AUC is 0.998.
 
-    It is not the area where the shaded bands cross in the figure. That is two percentile ranges intersecting, which ignores where the mass sits and which side is closer; at a 1-frame gap the bands never touch yet the AUC is 0.998 rather than 1.0. The two rates beside it evaluate the default 0.25 and the 0.2 this page argues for, rather than deriving a third.
+    How it is calculated: each frame-gap band gets its own sample of same-person and different-person pairs. For every threshold from 0 to 1, count the share of same-person pairs below it and the share of different-person pairs below it, and plot the first share against the second. That traces the ROC curve from (0, 0) to (1, 1), and ROC AUC is the area under it. `sweep_frame_gap` gets the same number without drawing the curve, by comparing every same-person distance with every different-person distance and counting how often the same-person one is smaller, with ties counting as half (`trackers.core.reid.roc_auc`). The result is the lower panel of the figure above.
+
+    The last two columns show the two rates at a threshold of 0.2.
 
     | Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
     | :--------- | :-----: | :---------------: | :--------------------: |
@@ -195,26 +246,13 @@ HOTA and IDF1 improve as the gate opens, but ID switches do not follow the same 
 
 The right value depends on the footage. Use 1.0 when targets leave the frame or the camera moves a lot. Keep 0.5 when targets stay in view, as in DanceTrack: there an open gate only adds wrong matches between people who look alike.
 
-## Choosing a fusion method
+---
 
-`reid_fusion` selects how the appearance score reaches the cost matrix.
+## Tuning the thresholds
 
-`"botsort"` (default) takes `min(d_iou, d_app)`. Appearance competes with geometry and wins only when it is strictly cheaper, so a pair is accepted when either cue is confident. Appearance is only used for a pair when its distance is below `reid_appearance_threshold` and the boxes pass the `reid_proximity_threshold` check. Otherwise the pair is matched on geometry alone.
+The steps above give a good starting point. `trackers tune` then searches `reid_appearance_threshold` and `reid_proximity_threshold` together, keeping the motion parameters you pass fixed, see [Tune ReID Thresholds](tune.md#tune-reid-thresholds). The command tunes the `"botsort"` thresholds; for `"adaptive"` it does not search the weights yet.
 
-`"adaptive"` adds a weighted appearance term to the geometric similarity, with the weight growing when the best appearance match stands clear of the runner-up and falling back to `reid_appearance_weight` when the top candidates are hard to tell apart. This is the appearance fusion from Deep OC-SORT.
-
-`reid_appearance_floor`, an addition of this library, sets a minimum cosine similarity below which a pair falls back to geometry alone: with the gate open it stops lost tracks from capturing unrelated detections on weak appearance matches, which otherwise clear the association threshold whenever geometry contributes nothing.
-
-!!! note "What `adaptive` includes"
-
-    Only the appearance fusion is taken from Deep OC-SORT; the rest of that tracker is not added to BoT-SORT. `reid_appearance_threshold` has no effect with `reid_fusion="adaptive"`.
-
-Two consequences are worth knowing before switching:
-
-- **The similarity range changes.** `"botsort"` returns values in `[0, 1]`; `"adaptive"` returns `[0, 1 + reid_appearance_weight + reid_adaptive_weight_cap]`, which is `[0, 2.25]` at the defaults. `minimum_iou_threshold_first_assoc` is applied to that fused value, so a threshold tuned for one method is a different gate under the other. Retune it when you switch, or the comparison measures the gate rather than the fusion.
-- **The weights are domain-dependent.** The Deep OC-SORT paper uses `reid_appearance_weight=0.75` with `reid_adaptive_weight_cap=0.5` for MOT17 and MOT20, and `1.25` with `1.0` for DanceTrack, where dancers occlude constantly and geometry carries less. The defaults here follow the MOT17/MOT20 pair.
-
-With the gate open, `adaptive` keeps IDs more stable than `"botsort"`, which switches between look-alike candidates from one frame to the next. The weights mainly matter where geometry is unreliable, as in DanceTrack; elsewhere the defaults work. `"botsort"` stays the default because it is the safer choice: appearance is only used below `reid_appearance_threshold`, and turning it on does not require retuning the other thresholds.
+---
 
 ## Results
 
@@ -224,20 +262,20 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
 === "Generic encoder"
 
-    Encoders that were not trained on the evaluated dataset, with `reid_fusion="botsort"`.
+    Encoders that were not trained on the evaluated dataset. Each dataset uses the fusion method that scored higher on the tuning split, `reid_fusion="botsort"` unless noted.
 
     Tuning split:
 
-    | Dataset    | Split    | Config          |   HOTA    |
-    | :--------- | :------- | :-------------- | :-------: |
-    | MOT17      | val-half | BoT-SORT        |   69.05   |
-    |            |          | BoT-SORT + ReID | **69.64** |
-    | SportsMOT  | val      | BoT-SORT        |   82.00   |
-    |            |          | BoT-SORT + ReID | **82.69** |
-    | DanceTrack | val      | BoT-SORT        |   53.89   |
-    |            |          | BoT-SORT + ReID | **58.34** |
-    | SoccerNet  | train¹   | BoT-SORT        |   86.95   |
-    |            |          | BoT-SORT + ReID | **86.98** |
+    | Dataset    | Config          |   HOTA    |
+    | :--------- | :-------------- | :-------: |
+    | MOT17      | BoT-SORT        |   69.05   |
+    |            | BoT-SORT + ReID | **69.64** |
+    | SportsMOT  | BoT-SORT        |   82.00   |
+    |            | BoT-SORT + ReID | **82.69** |
+    | DanceTrack | BoT-SORT        |   53.89   |
+    |            | BoT-SORT + ReID | **58.34** |
+    | SoccerNet¹ | BoT-SORT        |   86.95   |
+    |            | BoT-SORT + ReID | **86.98** |
 
     Test split:
 
@@ -252,14 +290,37 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
     | SoccerNet  | BoT-SORT        | **85.00** | **79.68** |   97.25   |
     |            | BoT-SORT + ReID |   84.96   |   79.66   |   97.25   |
 
-    - **MOT17**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.10`, `reid_proximity_threshold=0.5`
-    - **SportsMOT**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.30`, `reid_proximity_threshold=0.5`
-    - **DanceTrack**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.48`, `reid_proximity_threshold=0.51`
-    - **SoccerNet**: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.05`, `reid_proximity_threshold=0.35`
+    Tuned ReID configuration for each dataset. Motion parameters are the BoT-SORT values from the [tracker comparison](../evaluations/results.md).
+
+    ```yaml
+    MOT17:
+      reid_model: fastreid_mot17_sbs50
+      reid_fusion: botsort
+      reid_appearance_threshold: 0.10
+      reid_proximity_threshold: 0.5
+
+    SportsMOT:
+      reid_model: fastreid_mot17_sbs50
+      reid_fusion: botsort
+      reid_appearance_threshold: 0.30
+      reid_proximity_threshold: 0.5
+
+    DanceTrack:
+      reid_model: fastreid_mot17_sbs50
+      reid_fusion: botsort
+      reid_appearance_threshold: 0.4822
+      reid_proximity_threshold: 0.5068
+
+    SoccerNet:
+      reid_model: fastreid_mot17_sbs50
+      reid_fusion: botsort
+      reid_appearance_threshold: 0.0467
+      reid_proximity_threshold: 0.3511
+    ```
 
     For MOT17, DanceTrack and SoccerNet, both thresholds were tuned together with `trackers tune`. The SportsMOT threshold comes from a sweep at the default proximity threshold. Each configuration was then evaluated once on test.
 
-    ¹ SoccerNet-tracking has no validation split, so its tuning split is train.
+    ¹ SoccerNet-tracking has no validation split, so its tuning split is train. The other datasets tune on val, MOT17 on val-half.
 
     A generic encoder improves HOTA on every tuning split, but only SportsMOT keeps the gain on test. On the other datasets, test HOTA stays within 0.2 of BoT-SORT without ReID. On SoccerNet the tuned thresholds are strict enough that appearance rarely changes a match.
 
@@ -267,40 +328,56 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
 === "Fine-tuned encoder"
 
-    `osnet_x1_0` fine-tuned on each dataset's train split, with `reid_fusion="botsort"` and `reid_fusion="adaptive"`. Available for MOT17, DanceTrack and SoccerNet.
+    `osnet_x1_0` fine-tuned on each dataset's train split, with `reid_fusion="botsort"` and `reid_fusion="adaptive"`.
 
     Tuning split:
 
-    | Dataset    | Split           | Config                      |   HOTA    |
-    | :--------- | :-------------- | :-------------------------- | :-------: |
-    | MOT17      | val-half        | BoT-SORT                    | **69.05** |
-    |            |                 | BoT-SORT + ReID             |   69.00   |
-    |            |                 | BoT-SORT + ReID, `adaptive` |   68.72   |
-    | DanceTrack | val             | BoT-SORT                    |   53.89   |
-    |            |                 | BoT-SORT + ReID             | **58.80** |
-    |            |                 | BoT-SORT + ReID, `adaptive` |   58.06   |
-    | SoccerNet  | held-out train² | BoT-SORT                    |   85.72   |
-    |            |                 | BoT-SORT + ReID             |   88.97   |
-    |            |                 | BoT-SORT + ReID, `adaptive` | **89.91** |
+    | Dataset    | Config                      |   HOTA    |
+    | :--------- | :-------------------------- | :-------: |
+    | MOT17      | BoT-SORT                    | **69.05** |
+    |            | BoT-SORT + ReID             |   69.00   |
+    | SoccerNet² | BoT-SORT                    |   85.72   |
+    |            | BoT-SORT + ReID             |   88.97   |
+    |            | BoT-SORT + ReID, `adaptive` | **89.91** |
 
     Test split:
 
-    | Dataset    | Config                      |   HOTA    |   IDF1    |   MOTA    |
-    | :--------- | :-------------------------- | :-------: | :-------: | :-------: |
-    | MOT17      | BoT-SORT                    |   63.8    |   78.7    |   79.4    |
-    |            | BoT-SORT + ReID             | **64.12** | **79.16** |   79.36   |
-    |            | BoT-SORT + ReID, `adaptive` |   63.8    |   78.86   | **79.49** |
-    | DanceTrack | BoT-SORT                    |   57.8    |   57.9    |   92.2    |
-    |            | BoT-SORT + ReID             | **58.8**  | **59.1**  |   92.2    |
-    |            | BoT-SORT + ReID, `adaptive` |   58.1    |   58.2    | **92.3**  |
-    | SoccerNet  | BoT-SORT                    |   85.00   |   79.68   |   97.25   |
-    |            | BoT-SORT + ReID             |   87.30   |   83.16   |   98.73   |
-    |            | BoT-SORT + ReID, `adaptive` | **88.43** | **84.40** | **99.26** |
+    | Dataset   | Config                      |   HOTA    |   IDF1    |   MOTA    |
+    | :-------- | :-------------------------- | :-------: | :-------: | :-------: |
+    | MOT17     | BoT-SORT                    |   63.8    |   78.7    |   79.4    |
+    |           | BoT-SORT + ReID             | **64.12** | **79.16** |   79.36   |
+    | SoccerNet | BoT-SORT                    |   85.00   |   79.68   |   97.25   |
+    |           | BoT-SORT + ReID             |   87.30   |   83.16   |   98.73   |
+    |           | BoT-SORT + ReID, `adaptive` | **88.43** | **84.40** | **99.26** |
 
-    - **MOT17**: `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`; `adaptive` with its defaults (`reid_appearance_weight=0.75`, `reid_adaptive_weight_cap=0.5`, `reid_proximity_threshold=0.5`)
-    - **DanceTrack**: trained with 8 crops per identity, selected on val over 4 and 16; `reid_appearance_threshold=0.25`, `reid_proximity_threshold=0.5`; `adaptive` with `reid_appearance_weight=2.4`, `reid_adaptive_weight_cap=0`, `reid_proximity_threshold=0.5`
-    - **SoccerNet**: `reid_appearance_threshold=0.075`, `reid_proximity_threshold=1.0`; `adaptive` with `reid_proximity_threshold=1.0`, `reid_appearance_floor=0.8` and default weights
+    Tuned ReID configuration for each dataset and fusion method. Motion parameters are the BoT-SORT values from the [tracker comparison](../evaluations/results.md), except `minimum_iou_threshold_first_assoc` where listed.
 
-    ² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170).
+    ```yaml
+    MOT17:
+      botsort:
+        reid_model: osnet_x1_0 fine-tuned on MOT17 train
+        reid_appearance_threshold: 0.25
+        reid_proximity_threshold: 0.5
 
-    Fine-tuning makes the biggest difference on SoccerNet: the generic encoder leaves HOTA flat, while the fine-tuned one adds 2.30 on test, and 3.43 with `adaptive`. The MOT17 encoder was trained on the first half of the same sequences that val-half evaluates, so its val-half rows are not a clean tuning split. On DanceTrack the fine-tuned encoder adds 1.0 HOTA on test, where the generic one does not help.
+    SoccerNet:
+      botsort:
+        reid_model: osnet_x1_0 fine-tuned on SoccerNet train
+        reid_appearance_threshold: 0.075
+        reid_proximity_threshold: 1.0
+      adaptive:
+        reid_model: osnet_x1_0 fine-tuned on SoccerNet train
+        reid_appearance_weight: 0.75
+        reid_adaptive_weight_cap: 0.5
+        reid_proximity_threshold: 1.0
+        reid_appearance_floor: 0.8
+    ```
+
+    Each configuration was evaluated once on test.
+
+    !!! note "Being tuned"
+
+        The DanceTrack rows and MOT17's `adaptive` row are not here yet: they were never tuned, only run at a few hand-picked values. A `trackers tune` search is under way for all three datasets, and they will be added with what it finds.
+
+    ² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170). The other datasets tune on val, MOT17 on val-half.
+
+    Fine-tuning makes the biggest difference on SoccerNet: the generic encoder leaves HOTA flat, while the fine-tuned one adds 2.30 on test, and 3.43 with `adaptive`.
