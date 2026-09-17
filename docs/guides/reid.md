@@ -1,5 +1,5 @@
 ---
-title: ReID Appearance — BoT-SORT Appearance Association | Trackers
+title: ReID Appearance
 description: Use ReID appearance association with BoT-SORT in Roboflow Trackers, from model loading to appearance threshold selection, with MOT17 and SoccerNet results.
 ---
 
@@ -324,7 +324,7 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
     A generic encoder improves HOTA on every tuning split, but only SportsMOT keeps the gain on test. On the other datasets, test HOTA stays within 0.2 of BoT-SORT without ReID. On SoccerNet the tuned thresholds are strict enough that appearance rarely changes a match.
 
-    SoccerNet uses ground-truth boxes as detections, so its numbers are not comparable to the YOLOX rows. On DanceTrack, validation HOTA without ReID is 3.9 lower than test HOTA, which explains most of the validation gain. `osnet_x1_0_msmt17_combineall` scores 56.21 on DanceTrack validation and 56.0 on test with thresholds 0.25 and 0.5.
+    SoccerNet uses ground-truth boxes as detections, so its numbers are not comparable to the YOLOX rows.
 
 === "Fine-tuned encoder"
 
