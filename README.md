@@ -3,7 +3,7 @@
     <h1>trackers</h1>
     <p>Plug-and-play multi-object tracking for any detection model.</p>
 
-[![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers) [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers) [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE.md) [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers) [![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb) [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
+[![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers) [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers) [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE) [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers) [![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb) [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
 
 </div>
 
@@ -14,8 +14,8 @@ Keeping track of objects across video frames is one of those problems that sound
 - **Clean-room implementations.** Every algorithm is re-implemented from the original paper — not a thin wrapper around someone else's code. You can read it, understand it, and modify it.
 - **Detector-agnostic.** Works with YOLO, DETR, RT-DETR, or any model that produces bounding boxes. No inference library required or assumed.
 - **`supervision.Detections` native.** Plugs directly into the supervision ecosystem. Pass detections in, get tracked detections back — zero glue code.
-- **Benchmarked across four datasets.** MOT17, SportsMOT, SoccerNet, and DanceTrack — at default parameters and after hyperparameter tuning, so you know what to expect before you deploy.
-- **Tunable out of the box.** Built-in Optuna-based hyperparameter search via `trackers tune` so you can optimize for your specific scene and detector.
+- **Benchmarked across four datasets.** MOT17, SportsMOT, SoccerNet, and DanceTrack have default-parameter results, with tuned results where available. McByte has default results only.
+- **Tunable with one extra.** Install `trackers[tune]` with `pip install "trackers[tune]"` to use Optuna-based hyperparameter search via `trackers tune`.
 - **Camera motion compensation.** BoT-SORT handles moving cameras natively, keeping track IDs stable even when the whole frame shifts.
 
 ## Install
@@ -39,7 +39,7 @@ For more options, see the [install guide](https://trackers.roboflow.com/develop/
 
 ## Quick Start
 
-Add tracking to your existing detection pipeline in a few lines. Every tracker shares the same `update(detections, frame=None)` interface, so switching algorithms later is a one-line change. The example below uses `inference` as the detector — swap it for any detector that returns `supervision.Detections`.
+Add tracking to your existing detection pipeline in a few lines. Every tracker shares the same `update(detections, frame=None)` interface, so switching algorithms later is a one-line change. The example below uses the separate `inference` package for detection (`pip install inference`); it is not included with `trackers`. You can use any detector that returns `supervision.Detections`.
 
 ```python
 import cv2
@@ -92,7 +92,7 @@ Each tracker below is a faithful implementation of its original paper. Pick the 
 | [C-BIoU](https://openaccess.thecvf.com/content/WACV2023/papers/Yang_Hard_To_Track_Objects_With_Irregular_Motions_and_Similar_Appearances_WACV_2023_paper.pdf) |  Cascaded buffered IoU matching for fast or irregular motion.   |    63.0    |      73.1      |      82.6      |      56.7       |
 |                                               [McByte](https://trackers.roboflow.com/develop/trackers/mcbyte/)                                                |   Mask-conditioned tracking with propagated SAM/Cutie masks.    |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
 
-All scores use default parameters on the standard split. See the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) for tuned numbers and methodology.
+All scores use default parameters on the standard split. The benchmarks use YOLOX detections for MOT17, SportsMOT, and DanceTrack, and ground-truth boxes for SoccerNet, so results can vary with detector quality. See the [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) for tuned numbers and methodology.
 
 `trackers` also ships [McByte](https://trackers.roboflow.com/develop/trackers/mcbyte/), a mask-conditioned tracker that extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an extra matching cue. It requires optional heavyweight dependencies (`torch`, SAM, Cutie) not installed by default — see the [McByte docs](https://trackers.roboflow.com/develop/trackers/mcbyte/) for setup and benchmark numbers.
 
@@ -107,6 +107,8 @@ trackers eval \
     --metrics CLEAR HOTA Identity \
     --columns MOTA HOTA IDF1
 ```
+
+Example output: scores depend on the detections used and are not directly comparable with the YOLOX-based benchmark table above.
 
 ```
 Sequence                        MOTA    HOTA    IDF1
@@ -126,7 +128,7 @@ For the full evaluation workflow, see the [evaluation guide](https://trackers.ro
 
 ## Download Datasets
 
-Need benchmark data to evaluate against? `trackers download` pulls MOT17, SportsMOT, and other supported datasets with a single command, handling splits and assets selectively so you only download what you need.
+Need benchmark data to evaluate against? `trackers download` pulls MOT17 and SportsMOT with a single command, handling splits and assets selectively so you only download what you need.
 
 ```bash
 trackers download mot17 \
@@ -139,6 +141,8 @@ trackers download mot17 \
 |   `mot17`   |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
 | `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
 
+The table lists assets across splits, not assets available in every split. MOT17 test has no annotations; SportsMOT has no pre-computed detections, and its test split contains frames only.
+
 For more download options, see the [download guide](https://trackers.roboflow.com/develop/learn/download/).
 
 ## Try It
@@ -148,7 +152,7 @@ Want to see it in action before writing any code? Try trackers in your browser w
 ## Where to go next
 
 - **New to tracking?** Start with the [tracking guide](https://trackers.roboflow.com/develop/learn/track/) — it walks through the Python API and CLI end to end.
-- **Want benchmarks?** The [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) covers all four algorithms across all four datasets, at default and tuned parameters, with guidance on which to pick for your scene.
+- **Want benchmarks?** The [tracker comparison](https://trackers.roboflow.com/develop/trackers/comparison/) covers all six algorithms across four datasets, with default results and tuned results where available.
 - **Building a research pipeline?** The [evaluation guide](https://trackers.roboflow.com/develop/learn/evaluate/) and [download guide](https://trackers.roboflow.com/develop/learn/download/) cover the full offline benchmarking workflow.
 - **Full API reference** → [trackers.roboflow.com](https://trackers.roboflow.com)
 - **Try without installing** → [Hugging Face Playground](https://huggingface.co/spaces/roboflow/trackers)
