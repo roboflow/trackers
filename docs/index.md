@@ -117,14 +117,15 @@ Clean, modular implementations of leading trackers. All HOTA scores use default 
 
 |                   Algorithm                   |                           Description                           | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
 | :-------------------------------------------: | :-------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.9      |      81.6      |      47.2       |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    59.4    |      72.8      |      83.9      |      53.3       |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |          Kalman filter + Hungarian matching baseline.           |    58.4    |      70.8      |      81.6      |      47.2       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    60.1    |      73.0      |      84.0      |      53.3       |
 |  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |      54.1       |
-| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                   Camera motion compensation                    |  **63.7**  |    **73.8**    |    **84.5**    |    **57.8**     |
+| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                   Camera motion compensation.                   |    63.7    |      73.8      |      84.5      |      57.8       |
+|         [McByte](trackers/mcbyte.md)          |   Mask-conditioned tracking with propagated SAM/Cutie masks.    |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
+
+McByte needs optional heavyweight dependencies (`torch`, SAM, Cutie) that are not installed by default. It has the highest HOTA of the trackers listed above on all four benchmarks; see the [McByte docs](trackers/mcbyte.md) for setup.
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](trackers/comparison.md).
-
-Trackers also ships [McByte](trackers/mcbyte.md), a mask-conditioned tracker that extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an extra matching cue. It requires optional heavyweight dependencies (`torch`, SAM, Cutie) not installed by default — see the [McByte docs](trackers/mcbyte.md) for setup and benchmark numbers.
 
 ---
 
