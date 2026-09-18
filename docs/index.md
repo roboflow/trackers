@@ -10,7 +10,7 @@ description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-
 
 </div>
 
-Roboflow Trackers achieves 60.5 HOTA (ByteTrack) and 62.0 HOTA (OC-SORT) on MOT17, benchmarked across four standard datasets. Apache 2.0, Python 3.10+, 71K+ monthly PyPI installs.
+Roboflow Trackers achieves 64.1 HOTA (McByte) on MOT17 with default parameters, benchmarked across four standard datasets. Apache 2.0, Python 3.10+.
 
 <video width="100%" controls muted loop preload="none" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
@@ -56,6 +56,8 @@ For all CLI options, see the [tracking guide](learn/track.md).
 ## Track from Python
 
 Plug trackers into your existing detection pipeline. Works with any detector.
+
+This example uses the separate `inference` package for detection. Install it with `pip install inference`; it is not included with `trackers`.
 
 ```python hl_lines="4 7 17"
 import cv2
@@ -121,6 +123,7 @@ Clean, modular implementations of leading trackers. All HOTA scores use default 
 | [ByteTrack](https://arxiv.org/abs/2110.06864) | Two-stage association using high and low confidence detections. |    60.1    |      73.0      |      84.0      |      53.3       |
 |  [OC-SORT](https://arxiv.org/abs/2203.14360)  |          Observation-centric recovery for lost tracks.          |    61.9    |      71.7      |      78.4      |      54.1       |
 | [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                   Camera motion compensation.                   |    63.7    |      73.8      |      84.5      |      57.8       |
+|  [C-BIoU](https://arxiv.org/abs/2211.14317)   |  Cascaded buffered IoU matching for fast or irregular motion.   |    63.0    |      73.1      |      82.6      |      56.7       |
 |         [McByte](trackers/mcbyte.md)          |   Mask-conditioned tracking with propagated SAM/Cutie masks.    |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
 
 McByte needs optional heavyweight dependencies (`torch`, SAM, Cutie) that are not installed by default. It has the highest HOTA of the trackers listed above on all four benchmarks; see the [McByte docs](trackers/mcbyte.md) for setup.
@@ -143,6 +146,8 @@ trackers download mot17 \
 | :---------: | :---------------------------------------------------------------------: | :--------------------: | :-----------------------------------: | :-------------: |
 |   `mot17`   |    Pedestrian tracking with crowded scenes and frequent occlusions.     | `train`, `val`, `test` | `frames`, `annotations`, `detections` | CC BY-NC-SA 3.0 |
 | `sportsmot` | Sports broadcast tracking with fast motion and similar-looking targets. | `train`, `val`, `test` |        `frames`, `annotations`        |    CC BY 4.0    |
+
+Asset availability varies by split: MOT17 test has no annotations; SportsMOT has no pre-computed detections, and its test split contains frames only.
 
 For more download options, see the [download guide](learn/download.md).
 
@@ -206,7 +211,7 @@ Object detection finds and classifies objects in a single image frame. Multi-obj
 
 **Which tracker should I use?**
 
-Start with ByteTrack — out of the box, it performs best across two out of four benchmarks in our evaluation and handles variable-confidence detectors well, while providing real time latency. Use SORT if speed or device constraints require the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow non-linear paths. See the [tracker comparison](trackers/comparison.md) for benchmark scores.
+Start with ByteTrack — it handles variable-confidence detections well while providing real-time latency. McByte has the highest HOTA of the trackers shown above on all four datasets at default parameters but requires optional SAM/Cutie mask dependencies. Use SORT if speed or device constraints require the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow non-linear paths. See the [tracker comparison](trackers/comparison.md) for benchmark scores.
 
 **Do I need a specific detector?**
 
@@ -214,7 +219,7 @@ No. Roboflow Trackers works with any detector that outputs `supervision.Detectio
 
 **What MOT datasets does the library support?**
 
-MOT17 and SportsMOT are supported for download and evaluation. Use `trackers download <dataset>` to pull frames, annotations, and pre-computed detections in one command. DanceTrack and SoccerNet-tracking support is coming soon. See the [download guide](learn/download.md) for asset options.
+MOT17 and SportsMOT are supported for download and evaluation. Use `trackers download <dataset>` to fetch the assets available for that dataset and split: MOT17 provides frames and pre-computed detections for all splits, plus annotations for train and val; SportsMOT provides frames for all splits and annotations for train and val, but no pre-computed detections. DanceTrack and SoccerNet-tracking support is coming soon. See the [download guide](learn/download.md) for asset options.
 
 **How do I evaluate my tracker?**
 
