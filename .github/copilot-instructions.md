@@ -77,12 +77,15 @@ trackers download mot17 --split val --asset annotations,detections
 
 ## Benchmark Results (HOTA, default parameters)
 
-| Tracker   | MOT17 | SportsMOT | SoccerNet | DanceTrack |
-| --------- | ----- | --------- | --------- | ---------- |
-| SORT      | 58.4  | 70.9      | 81.6      | 47.2       |
-| ByteTrack | 60.1  | 73.0      | 84.0      | 53.3       |
-| OC-SORT   | 61.9  | 71.7      | 78.4      | 54.1       |
-| BoT-SORT  | 63.7  | 73.8      | 84.5      | 57.8       |
+| Tracker   | MOT17    | SportsMOT | SoccerNet | DanceTrack |
+| --------- | -------- | --------- | --------- | ---------- |
+| SORT      | 58.4     | 70.8      | 81.6      | 47.2       |
+| ByteTrack | 60.1     | 73.0      | 84.0      | 53.3       |
+| OC-SORT   | 61.9     | 71.7      | 78.4      | 54.1       |
+| BoT-SORT  | 63.7     | 73.8      | 84.5      | 57.8       |
+| McByte    | **64.1** | **76.5**  | **85.0**  | **67.2**   |
+
+McByte needs optional heavyweight dependencies (`torch`, SAM, Cutie) that are not installed by default.
 
 ## Documentation
 
