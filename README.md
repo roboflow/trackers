@@ -1,13 +1,13 @@
 <div align="center">
     <img width="200" src="https://raw.githubusercontent.com/roboflow/trackers/refs/heads/release/stable/docs/assets/logo-trackers-violet.svg" alt="trackers logo">
     <h1>trackers</h1>
-    <p>Plug-and-play multi-object tracking for any detection model.</p>
+    <p>Plug-and-play object tracking in Python (multi-object) for any detection model.</p>
 
 [![version](https://badge.fury.io/py/trackers.svg)](https://badge.fury.io/py/trackers) [![downloads](https://img.shields.io/pypi/dm/trackers)](https://pypistats.org/packages/trackers) [![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://github.com/roboflow/trackers/blob/release/stable/LICENSE) [![python-version](https://img.shields.io/pypi/pyversions/trackers)](https://badge.fury.io/py/trackers) [![colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-bytetrack-tracker.ipynb) [![discord](https://img.shields.io/discord/1159501506232451173?logo=discord&label=discord&labelColor=fff&color=5865f2&link=https%3A%2F%2Fdiscord.gg%2FGbfgXGJ8Bk)](https://discord.gg/GbfgXGJ8Bk)
 
 </div>
 
-Keeping track of objects across video frames is one of those problems that sounds simple until you try it — occlusions, fast motion, similar-looking targets, and moving cameras all conspire against you. `trackers` gives you clean, benchmarked implementations of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte so you can skip the plumbing and focus on your application. It speaks `supervision.Detections` natively, which means it slots into any detector you already use — YOLO, DETR, RT-DETR, or anything else — without glue code. Whether you are a researcher comparing algorithms, an engineer shipping a production pipeline, or a hobbyist building something cool, `trackers` gives you a single consistent interface for all of them. Requires Python ≥ 3.10.
+`trackers` is an object tracking library for Python. Keeping track of objects across video frames is one of those problems that sounds simple until you try it — occlusions, fast motion, similar-looking targets, and moving cameras all conspire against you. `trackers` gives you clean, benchmarked implementations of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte so you can skip the plumbing and focus on your application. It speaks `supervision.Detections` natively, which means it slots into any detector you already use — YOLO, DETR, RT-DETR, or anything else — without glue code. Whether you are a researcher comparing algorithms, an engineer shipping a production pipeline, or a hobbyist building something cool, `trackers` gives you a single consistent interface for all of them. Requires Python ≥ 3.10.
 
 ## Why trackers?
 
