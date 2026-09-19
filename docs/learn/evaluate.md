@@ -1,5 +1,5 @@
 ---
-title: Evaluate Tracker Performance — HOTA, IDF1, MOTA Metrics | Trackers
+title: Evaluate Tracker Performance — HOTA, IDF1, MOTA Metrics
 description: Measure tracker accuracy with standard MOT metrics — HOTA, IDF1, and MOTA — using Roboflow Trackers built-in evaluation pipeline on MOT benchmark datasets.
 ---
 
