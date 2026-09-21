@@ -6,10 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.6.1]
+
+### 🌱 Changed
+
+- **The optional detection stack now requires `inference-models>=0.36.0`** (up from `>=0.19.0`); the 2.6.1 lock resolves `inference-models` to `0.37.0`. Environments using `trackers[detection]` with an older `inference-models` installation must update that extra when upgrading ([#592](https://github.com/roboflow/trackers/pull/592)).
+- **Dependency lock and release tooling refreshed through #599** — the final lock resolves `cryptography` to `50.0.0`, `hydra-core` to `1.3.4`, `optuna` to `5.0.0`, `transformers` to `5.15.1`, and `uv` to `0.12.13`; the GitHub Actions, Ruff, mypy, and pre-commit pins were also updated. These are dependency/tooling updates, with no claimed security fix ([#537](https://github.com/roboflow/trackers/pull/537), [#542](https://github.com/roboflow/trackers/pull/542), [#544](https://github.com/roboflow/trackers/pull/544), [#546](https://github.com/roboflow/trackers/pull/546), [#550](https://github.com/roboflow/trackers/pull/550), [#570](https://github.com/roboflow/trackers/pull/570), [#575](https://github.com/roboflow/trackers/pull/575), [#581](https://github.com/roboflow/trackers/pull/581), [#588](https://github.com/roboflow/trackers/pull/588), [#590](https://github.com/roboflow/trackers/pull/590), [#591](https://github.com/roboflow/trackers/pull/591), [#593](https://github.com/roboflow/trackers/pull/593), [#599](https://github.com/roboflow/trackers/pull/599)).
+
 ### 🔧 Fixed
 
 - **`GIoU` no longer scores a malformed box above `0`** — `_compute_iou_and_enclosing` computed box area as `(x2 - x1) * (y2 - y1)` without clamping, so a box inverted on both axes contributed a spuriously positive area: two negative extents multiply to a positive product. That inflated the union past the enclosing area and flipped GIoU's `(enclosing - union) / enclosing` penalty into a bonus, driving scores far outside GIoU's documented `[-1, 1]` range (over `+29` on random malformed input) so that a degenerate box could outrank a genuine match. Box extents are now clamped at zero exactly as the intersection already was. Affects `GIoU` only: `IoU`/`BIoU` do not use this helper, and `DIoU`/`CIoU` are byte-identical because a malformed axis already forces the intersection to zero. Reachable when a tracker is constructed with `iou=GIoU()` — `SORTTracker`'s default `XYXYStateEstimator` has an unconstrained velocity and no downstream box clamp, though every tracker exposing an `iou` parameter defaults to plain `IoU()`, and `CBIoUTracker` exposes none. Results for well-formed boxes are bit-identical.
 - **OC-SORT now returns low-confidence detections with `tracker_id=-1`** — detections below `high_conf_det_threshold` were previously dropped silently instead of being emitted, unlike `SORTTracker`/`ByteTrackTracker`. `update()` now returns one row per input detection, matching the documented contract. Output-contract change: callers may now see additional `tracker_id == -1` rows ([#566](https://github.com/roboflow/trackers/pull/566)).
+- **McByte mask cleanup survives deferred delivery** — removed tracklet IDs stay queued until the mask pipeline receives them, including across skipped frames, duplicate timestamps, and recoverable CUDA out-of-memory failures; tracks pruned early during timestamp updates are included ([#568](https://github.com/roboflow/trackers/pull/568)).
+- **BoT-SORT and McByte refresh only the Kalman noise matrix used by the current step** — prediction refreshes process noise (`Q`) and measurement updates refresh measurement noise (`R`), avoiding stale or unnecessary recalculation ([#567](https://github.com/roboflow/trackers/pull/567)).
+- **Batched `xcycsr_to_xyxy` preserves fractional coordinates from integer input** — integer arrays now decode to `float64`; `float32` input remains `float32`. Code depending on the old truncated integer dtype should convert explicitly after decoding ([#557](https://github.com/roboflow/trackers/pull/557)).
+- **Image-directory frames use natural filename order** — `2.jpg` is read before `10.jpg`; zero-padded and non-numeric names retain their prior order ([#558](https://github.com/roboflow/trackers/pull/558)).
+- **Mike-deployed documentation URLs point at the `/latest/` alias** — canonical, Open Graph, structured-data, and sitemap URLs no longer nest the numbered version beneath `/latest/` ([#582](https://github.com/roboflow/trackers/pull/582)).
+
+### 📖 Documentation
+
+- Updated McByte benchmark and comparison tables, tracker defaults, quickstart and evaluation guidance, dataset details, README terminology, search-result titles, and video poster frames to match this release branch ([#539](https://github.com/roboflow/trackers/pull/539), [#547](https://github.com/roboflow/trackers/pull/547), [#555](https://github.com/roboflow/trackers/pull/555), [#564](https://github.com/roboflow/trackers/pull/564), [#583](https://github.com/roboflow/trackers/pull/583), [#585](https://github.com/roboflow/trackers/pull/585), [#587](https://github.com/roboflow/trackers/pull/587)).
 
 ## [2.6.0] — 2026-08-03
 
@@ -192,3 +208,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 [2.2.0]: https://github.com/roboflow/trackers/compare/2.1.0...2.2.0
 [2.3.0]: https://github.com/roboflow/trackers/compare/2.2.0...2.3.0
 [2.4.0]: https://github.com/roboflow/trackers/compare/2.3.0...2.4.0
+[2.6.1]: https://github.com/roboflow/trackers/compare/2.6.0...d930dcd108d01f4c36eb789bb5057b0ff2ade4d1
