@@ -338,6 +338,27 @@ def _discover_sequences(
         return sorted(p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.name.startswith("."))
 
 
+def _ground_truth_path(
+    gt_dir: Path,
+    seq_name: str,
+    data_format: Literal["flat", "mot"],
+) -> Path:
+    """Get the ground truth file path for a sequence.
+
+    Args:
+        gt_dir: Ground truth directory (direct parent of sequences).
+        seq_name: Sequence name.
+        data_format: Directory format.
+
+    Returns:
+        Path to the sequence's ground truth file, which is not guaranteed to exist.
+    """
+    if data_format == "flat":
+        return gt_dir / f"{seq_name}.txt"
+    # MOT format: gt_dir/{seq}/gt/gt.txt
+    return gt_dir / seq_name / "gt" / "gt.txt"
+
+
 def _get_paths(
     gt_dir: Path,
     tracker_dir: Path,
@@ -355,16 +376,8 @@ def _get_paths(
     Returns:
         Tuple of (gt_path, tracker_path).
     """
-    if data_format == "flat":
-        gt_path = gt_dir / f"{seq_name}.txt"
-    else:
-        # MOT format: gt_dir/{seq}/gt/gt.txt
-        gt_path = gt_dir / seq_name / "gt" / "gt.txt"
-
     # Tracker files are always flat: tracker_dir/{seq}.txt
-    tracker_path = tracker_dir / f"{seq_name}.txt"
-
-    return gt_path, tracker_path
+    return _ground_truth_path(gt_dir, seq_name, data_format), tracker_dir / f"{seq_name}.txt"
 
 
 def _parse_seqmap(seqmap_path: str | Path) -> list[str]:
