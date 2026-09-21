@@ -509,12 +509,35 @@ class TestTunerReIDSearchSpace:
                 n_trials=3,
                 seed=0,
                 fixed_params=_reid_fixed_params(encoder),
+                cache_embeddings=True,
             )
             best = tuner.run()
         assert tuner.study is not None
         assert len(tuner.study.trials) == 3
         assert encoder.embedded == 1
         assert best["reid_model"] is encoder
+
+    def test_embeds_every_trial_without_the_cache(self, tmp_path: Path) -> None:
+        import cv2
+
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        frame_dir = tmp_path / "images" / "seq1" / "img1"
+        frame_dir.mkdir(parents=True)
+        cv2.imwrite(str(frame_dir / "000001.jpg"), np.zeros((200, 200, 3), dtype=np.uint8))
+        encoder = _CountingEncoder()
+        with patch("trackers.tune.tuner.evaluate_mot_sequences", return_value=_make_benchmark_result(hota=0.6)):
+            tuner = Tuner(
+                "botsort",
+                gt_dir,
+                det_dir,
+                images_dir=tmp_path / "images",
+                objective="HOTA",
+                n_trials=3,
+                seed=0,
+                fixed_params=_reid_fixed_params(encoder),
+            )
+            tuner.run()
+        assert encoder.embedded == 3
 
 
 class TestCachedReIDEncoder:

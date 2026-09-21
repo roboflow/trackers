@@ -183,6 +183,8 @@ MOT17-09-FRCNN
 
 Pass an encoder to BoT-SORT and the search adds `reid_appearance_threshold` and `reid_proximity_threshold`. Tune the two together: a looser proximity gate usually needs a stricter appearance threshold. To keep tuned motion parameters and search only these two, fix everything else. `images_dir` is required, because the encoder reads the frames.
 
+Every trial replays the same detections, so `cache_embeddings=True` embeds each one once and reuses it, which saves most of a study's time. The embeddings then stay in memory for the whole study, about 1 GB per 500k detections, which is why it is off by default.
+
 === "CLI"
 
     ```text
