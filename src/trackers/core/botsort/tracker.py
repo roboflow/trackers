@@ -109,9 +109,14 @@ class BoTSORTTracker(BaseTracker):
             (default) takes the minimum of the geometry and appearance costs.
             ``"adaptive"`` adds an adaptively weighted appearance term, which
             weighs appearance more heavily when the best match stands clear of
-            the runner-up. The two produce different similarity ranges, so
-            ``minimum_iou_threshold_first_assoc`` needs retuning when switching
-            (see :func:`~trackers.core.reid.fusion.fuse_adaptive_reid_association`).
+            the runner-up (see
+            :func:`~trackers.core.reid.fusion.fuse_adaptive_reid_association`).
+            The two produce different similarity ranges, so the thresholds applied
+            to a fused similarity need retuning when switching:
+            ``minimum_iou_threshold_first_assoc`` and
+            ``minimum_iou_threshold_unconfirmed_assoc``.
+            ``minimum_iou_threshold_second_assoc`` is unaffected, since that step
+            matches on IoU alone.
         reid_appearance_weight: Base appearance weight for ``reid_fusion="adaptive"``.
             Ignored otherwise. Default ``0.75``, the value Deep OC-SORT reports
             for MOT17 and MOT20; they use ``1.25`` for DanceTrack.
