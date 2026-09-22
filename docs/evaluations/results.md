@@ -5,7 +5,7 @@ description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, 
 
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the catalog-default encoder throughout; its Tuned rows use an encoder fine-tuned on the dataset's train split where one exists (MOT17, SoccerNet, DanceTrack) and the catalog default otherwise (SportsMOT).
+This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the catalog-default encoder throughout; its Tuned rows use an encoder fine-tuned on the dataset's own train split for MOT17, SoccerNet and DanceTrack, and the generic `fastreid_mot17_sbs50` for SportsMOT, which has no fine-tuned encoder yet.
 
 !!! info "Benchmark version"
 
@@ -28,7 +28,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
 !!! info
 
-    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model. BoT-SORT rows are CMC without appearance; for CMC + FastReID on MOT17 and OSNet MSMT17 on SoccerNet see [BoT-SORT with and without ReID](../guides/reid.md#results).
+    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model. The BoT-SORT row is geometry and CMC only; BoT-SORT + ReID adds the encoder named under the table. The [ReID guide](../guides/reid.md#results) carries both fusion methods and the generic and fine-tuned encoders side by side.
 
 === "Default"
 
@@ -63,8 +63,8 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |    ByteTrack    |   60.5   |   72.7   |   76.1   |
     |     OC-SORT     |   62.0   |   76.5   |   77.3   |
     |    BoT-SORT     |   63.8   |   78.7   | **79.4** |
-    |     C-BIoU      |   63.0   |   79.1   |   77.4   |
-    | BoT-SORT + ReID | **64.1** | **79.2** | **79.4** |
+    |     C-BIoU      |   63.0   | **79.1** |   77.4   |
+    | BoT-SORT + ReID | **64.0** |   78.9   | **79.4** |
 
     Tuned configuration for each tracker. The ReID row uses an `osnet_x1_0` fine-tuned on MOT17 train.
 
@@ -115,8 +115,8 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     BoT-SORT + ReID:
       reid_model: osnet_x1_0 fine-tuned on MOT17 train
       reid_fusion: botsort
-      reid_appearance_threshold: 0.25
-      reid_proximity_threshold: 0.5
+      reid_appearance_threshold: 0.0448
+      reid_proximity_threshold: 0.2697
     ```
 
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
@@ -163,12 +163,12 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     | :-------------: | :------: | :------: | :------: |
     |      SORT       |   72.9   |   73.0   |   95.8   |
     |    ByteTrack    |   73.3   |   73.5   |   95.9   |
-    |     OC-SORT     |   74.0   | **75.4** |   95.6   |
-    |    BoT-SORT     |   74.1   |   74.0   |   96.9   |
+    |     OC-SORT     |   74.0   |   75.4   |   95.6   |
+    |    BoT-SORT     |   74.1   |   74.0   | **96.9** |
     |     C-BIoU      |   73.1   |   72.6   |   96.7   |
-    | BoT-SORT + ReID | **75.0** |   75.1   | **97.0** |
+    | BoT-SORT + ReID | **75.6** | **75.7** | **96.9** |
 
-    Tuned configuration for each tracker. The ReID row uses the generic `osnet_x1_0_msmt17_combineall`, not a fine-tune.
+    Tuned configuration for each tracker. The ReID row uses the generic `fastreid_mot17_sbs50`, not a fine-tune.
 
     ```yaml
     SORT:
@@ -215,11 +215,10 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       buffer_ratio_second: 0.5
 
     BoT-SORT + ReID:
-      reid_model: osnet_x1_0_msmt17_combineall
-      reid_fusion: adaptive
-      reid_appearance_weight: 0.75
-      reid_adaptive_weight_cap: 0.5
-      reid_proximity_threshold: 0.99
+      reid_model: fastreid_mot17_sbs50
+      reid_fusion: botsort
+      reid_appearance_threshold: 0.30
+      reid_proximity_threshold: 0.5
     ```
 
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
@@ -233,7 +232,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections. The BoT-SORT row is CMC without appearance; for OSNet MSMT17 appearance on this split see [BoT-SORT with and without ReID](../guides/reid.md#results).
+    Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections. The BoT-SORT row is geometry and CMC only; BoT-SORT + ReID adds the encoder named under the table. The [ReID guide](../guides/reid.md#results) carries both fusion methods and the generic and fine-tuned encoders side by side.
 
 === "Default"
 
@@ -268,8 +267,8 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |    ByteTrack    |   84.0   |   78.1   |   98.2   |
     |     OC-SORT     |   82.9   |   77.9   |   96.8   |
     |    BoT-SORT     |   85.0   |   79.7   |   97.2   |
-    |     C-BIoU      |   85.7   |   80.0   |   99.3   |
-    | BoT-SORT + ReID | **87.8** | **83.9** | **99.4** |
+    |     C-BIoU      |   85.7   |   80.0   | **99.3** |
+    | BoT-SORT + ReID | **88.4** | **84.4** | **99.3** |
 
     Tuned configuration for each tracker. The ReID row uses an `osnet_x1_0` fine-tuned on SoccerNet train.
 
@@ -323,7 +322,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       reid_appearance_weight: 0.75
       reid_adaptive_weight_cap: 0.5
       reid_proximity_threshold: 1.0
-      reid_appearance_floor: 0.7
+      reid_appearance_floor: 0.8
     ```
 
 !!! note "SoccerNet buffer ordering exception"
@@ -376,7 +375,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |     OC-SORT     |   54.1   |   53.3   |   89.3   |
     |    BoT-SORT     |   57.8   |   57.9   |   92.2   |
     |     C-BIoU      |   57.7   |   58.7   | **92.4** |
-    | BoT-SORT + ReID | **58.8** | **59.1** |   92.2   |
+    | BoT-SORT + ReID | **60.8** | **61.6** |   91.7   |
 
     Best configuration for each tracker. The ReID row uses an `osnet_x1_0` fine-tuned on DanceTrack train.
 
@@ -427,8 +426,8 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     BoT-SORT + ReID:
       reid_model: osnet_x1_0 fine-tuned on DanceTrack train
       reid_fusion: botsort
-      reid_appearance_threshold: 0.25
-      reid_proximity_threshold: 0.5
+      reid_appearance_threshold: 0.4716
+      reid_proximity_threshold: 0.6802
     ```
 
 !!! note "DanceTrack buffer ordering exception"
