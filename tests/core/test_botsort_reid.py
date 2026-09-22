@@ -454,10 +454,11 @@ class TestReidFusionSelection:
             BoTSORTTracker(reid_fusion="deepocsort")  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("parameter", ["reid_appearance_weight", "reid_adaptive_weight_cap"])
-    def test_rejects_negative_adaptive_weights(self, parameter: str) -> None:
+    @pytest.mark.parametrize("value", [-0.1, float("nan"), float("inf")])
+    def test_rejects_unusable_adaptive_weights(self, parameter: str, value: float) -> None:
         with pytest.raises(ValueError, match=parameter):
             # mypy cannot narrow a dynamic dict against typed kwargs.
-            BoTSORTTracker(enable_cmc=False, **{parameter: -0.1})  # type: ignore[arg-type]
+            BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
 
     def test_adaptive_parameters_reach_fusion(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import trackers.core.botsort.tracker as tracker_module

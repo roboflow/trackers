@@ -208,10 +208,12 @@ class BoTSORTTracker(BaseTracker):
         self.reid_proximity_threshold = reid_proximity_threshold
         if reid_fusion not in get_args(ReidFusionMethod):
             raise ValueError(f"Unknown reid_fusion {reid_fusion!r}. Valid options are: {get_args(ReidFusionMethod)}.")
-        if reid_appearance_weight < 0.0:
-            raise ValueError(f"reid_appearance_weight must be non-negative, got {reid_appearance_weight}")
-        if reid_adaptive_weight_cap < 0.0:
-            raise ValueError(f"reid_adaptive_weight_cap must be non-negative, got {reid_adaptive_weight_cap}")
+        if not np.isfinite(reid_appearance_weight) or reid_appearance_weight < 0.0:
+            raise ValueError(f"reid_appearance_weight must be finite and non-negative, got {reid_appearance_weight}")
+        if not np.isfinite(reid_adaptive_weight_cap) or reid_adaptive_weight_cap < 0.0:
+            raise ValueError(
+                f"reid_adaptive_weight_cap must be finite and non-negative, got {reid_adaptive_weight_cap}"
+            )
         if not 0.0 <= reid_appearance_floor <= 1.0:
             raise ValueError(f"reid_appearance_floor must be in [0, 1], got {reid_appearance_floor}")
         self.reid_fusion = reid_fusion
