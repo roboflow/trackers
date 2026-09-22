@@ -143,37 +143,3 @@ Two things follow. First, a threshold validated on adjacent frames says little a
 The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, which is why θ has to come down to about 0.1 on this domain instead of being traded against the gap.
 
 ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
-
----
-
-## BoT-SORT with and without ReID
-
-### MOT17 test
-
-YOLOX detections, CMC on, Codabench MOT17 test (same protocol as the [benchmark results](../evaluations/results.md) default table). ReID: `fastreid_mot17_sbs50`, `reid_appearance_threshold=0.2` ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8).
-
-| Config          |   HOTA   |   IDF1   |   MOTA   |
-| :-------------- | :------: | :------: | :------: |
-| BoT-SORT        |   63.7   |   78.7   | **79.2** |
-| BoT-SORT + ReID | **63.9** | **79.2** | **79.2** |
-
-### MOT17 val-half
-
-YOLOX detections, CMC on, MOT17 val-half split, same encoder and threshold, scored with `trackers eval`.
-
-| Config          |   HOTA   |   IDF1   |   MOTA   |
-| :-------------- | :------: | :------: | :------: |
-| BoT-SORT        |   68.9   |   81.2   |   78.3   |
-| BoT-SORT + ReID | **69.1** | **81.9** | **78.4** |
-
-The MOT17 re-ID study reports 68.43 HOTA / 80.92 IDF1 without ReID and 68.95 / 81.98 with, on the same split at `reid_appearance_threshold=0.2` (Table 8 and Table 13; MOTA is not reported for that YOLOX setup).
-
-### SoccerNet test (OSNet MSMT17)
-
-Oracle detections, CMC on, SoccerNet-tracking test (same protocol as the [benchmark results](../evaluations/results.md) default table). ReID: `osnet_x1_0_msmt17_combineall` (MSMT17 pretrained), so this is a cross-domain encoder on soccer footage.
-
-| Config                          |   HOTA   |   IDF1   |   MOTA   |
-| :------------------------------ | :------: | :------: | :------: |
-| BoT-SORT                        |   84.5   |   79.3   | **96.6** |
-| BoT-SORT + OSNet MSMT17 (θ=0.2) | **84.6** | **79.4** | **96.6** |
-| BoT-SORT + OSNet MSMT17 (θ=0.1) |   82.9   |   77.7   |   96.5   |
