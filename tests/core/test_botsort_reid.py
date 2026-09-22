@@ -460,6 +460,57 @@ class TestReidFusionSelection:
             # mypy cannot narrow a dynamic dict against typed kwargs.
             BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
 
+    @pytest.mark.parametrize("threshold", [0.01, 1.0])
+    def test_appearance_threshold_is_ignored_under_adaptive(self, threshold: float) -> None:
+        """The guide promises the threshold does nothing under adaptive fusion.
+
+        The track is offered two detections: the nearer one looks wrong, the farther one looks
+        right at cosine 0.8. Appearance has to win for the farther box to be matched. Under the
+        BoT-SORT rule a threshold of 0.01 would reject that match (``d_app`` is 0.1), so a tracker
+        that let the threshold reach the adaptive path would fall back to geometry and pick the
+        nearer box.
+        """
+        identity = _norm(np.array([1.0, 0.0, 0.0, 0.0]))
+        similar = _norm(np.array([0.8, 0.6, 0.0, 0.0]))  # cosine 0.8 against identity
+        impostor = _norm(np.array([0.0, 1.0, 0.0, 0.0]))
+
+        class _PhaseEncoder:
+            phase = 1
+
+            def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+                rows = []
+                for box in detections.xyxy:
+                    key = (round(float(box[0])), round(float(box[1])))
+                    if self.phase == 1:
+                        rows.append(identity)
+                    else:
+                        rows.append(impostor if key == (10, 10) else similar)
+                return np.stack(rows)
+
+        encoder = _PhaseEncoder()
+        frame = _frame(1)
+        tracker = BoTSORTTracker(
+            enable_cmc=False,
+            minimum_iou_threshold_first_assoc=0.01,
+            reid_fusion="adaptive",
+            reid_appearance_threshold=threshold,
+            reid_proximity_threshold=0.99,
+            reid_model=encoder,
+        )
+        tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=frame)
+        track_id = int(tracker.tracks[0].tracker_id)
+
+        competitors = sv.Detections(
+            xyxy=np.array([[10.0, 10.0, 30.0, 30.0], [14.0, 14.0, 34.0, 34.0]], dtype=np.float32),
+            confidence=np.array([0.9, 0.9], dtype=np.float32),
+        )
+        encoder.phase = 2
+        out = tracker.update(competitors, frame=frame)
+
+        assert out.tracker_id is not None
+        matched = out.xyxy[out.tracker_id == track_id][0]
+        assert (float(matched[0]), float(matched[1])) == (14.0, 14.0)
+
     def test_adaptive_parameters_reach_fusion(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import trackers.core.botsort.tracker as tracker_module
 

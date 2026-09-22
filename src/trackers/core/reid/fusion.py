@@ -108,6 +108,11 @@ def fuse_adaptive_reid_association(
     clear of the runner-up and falls back to ``reid_appearance_weight`` when
     the top candidates are hard to tell apart.
 
+    This is the adaptive appearance weighting on its own, not the full Deep
+    OC-SORT association cost: the geometric term is whatever the caller
+    passes (BoT-SORT's score-fused IoU in this library, another tracker's
+    similarity elsewhere), and the velocity-direction term of the reference
+    cost is left out, since it belongs to OC-SORT's motion model.
     Implements equations (4)-(6) of the Deep OC-SORT paper, matching
     ``compute_aw_new_metric`` in the authors' ``integrated_ocsort_embedding``
     tracker, the variant behind their published results.
