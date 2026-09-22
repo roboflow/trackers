@@ -285,12 +285,15 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
     | Dataset    | Config                      |   HOTA    |   IDF1    |   MOTA    |
     | :--------- | :-------------------------- | :-------: | :-------: | :-------: |
-    | MOT17      | BoT-SORT                    | **63.86** |   78.74   | **79.42** |
-    |            | BoT-SORT + ReID             |   63.85   | **78.82** |   79.41   |
+    | MOT17      | BoT-SORT                    |   63.86   |   78.74   |   79.42   |
+    |            | BoT-SORT + ReID             |   63.85   |   78.82   |   79.41   |
+    |            | BoT-SORT + ReID, `adaptive` | **64.58** | **79.94** |   79.41   |
     | SportsMOT  | BoT-SORT                    |   74.15   |   74.06   |   96.89   |
     |            | BoT-SORT + ReID             | **75.62** | **75.66** | **96.90** |
-    | DanceTrack | BoT-SORT                    | **57.8**  | **57.9**  | **92.2**  |
+    |            | BoT-SORT + ReID, `adaptive` |   74.06   |   73.74   |   96.87   |
+    | DanceTrack | BoT-SORT                    | **57.8**  | **57.9**  |   92.2    |
     |            | BoT-SORT + ReID             |   57.6    |   57.6    |   92.1    |
+    |            | BoT-SORT + ReID, `adaptive` |   57.5    |   57.3    | **92.3**  |
     | SoccerNet  | BoT-SORT                    |   85.00   |   79.68   |   97.25   |
     |            | BoT-SORT + ReID             |   84.96   |   79.66   |   97.25   |
     |            | BoT-SORT + ReID, `adaptive` | **85.89** | **80.40** | **97.94** |
@@ -299,38 +302,64 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
     ```yaml
     MOT17:
-      reid_model: fastreid_mot17_sbs50
-      reid_fusion: botsort
-      reid_appearance_threshold: 0.10
-      reid_proximity_threshold: 0.5
+      botsort:
+        reid_model: fastreid_mot17_sbs50
+        reid_appearance_threshold: 0.10
+        reid_proximity_threshold: 0.5
+      adaptive:
+        reid_model: fastreid_mot17_sbs50
+        reid_appearance_weight: 1.908
+        reid_adaptive_weight_cap: 0.545
+        reid_appearance_floor: 0.381
+        reid_proximity_threshold: 0.772
+        minimum_iou_threshold_first_assoc: 0.846
 
     SportsMOT:
-      reid_model: fastreid_mot17_sbs50
-      reid_fusion: botsort
-      reid_appearance_threshold: 0.30
-      reid_proximity_threshold: 0.5
+      botsort:
+        reid_model: fastreid_mot17_sbs50
+        reid_appearance_threshold: 0.30
+        reid_proximity_threshold: 0.5
+      adaptive:
+        reid_model: fastreid_mot17_sbs50
+        reid_appearance_weight: 2.540
+        reid_adaptive_weight_cap: 0.778
+        reid_appearance_floor: 0.783
+        reid_proximity_threshold: 0.216
+        minimum_iou_threshold_first_assoc: 0.176
 
     DanceTrack:
-      reid_model: fastreid_mot17_sbs50
-      reid_fusion: botsort
-      reid_appearance_threshold: 0.4822
-      reid_proximity_threshold: 0.5068
+      botsort:
+        reid_model: fastreid_mot17_sbs50
+        reid_appearance_threshold: 0.4822
+        reid_proximity_threshold: 0.5068
+      adaptive:
+        reid_model: fastreid_mot17_sbs50
+        reid_appearance_weight: 0.75
+        reid_adaptive_weight_cap: 0.5
+        reid_appearance_floor: 0.0
+        reid_proximity_threshold: 0.5
 
     SoccerNet:
-      reid_model: fastreid_mot17_sbs50
-      reid_fusion: adaptive
-      reid_appearance_weight: 1.178
-      reid_adaptive_weight_cap: 0.621
-      reid_appearance_floor: 0.195
-      reid_proximity_threshold: 0.975
-      minimum_iou_threshold_first_assoc: 0.349
+      botsort:
+        reid_model: fastreid_mot17_sbs50
+        reid_appearance_threshold: 0.0467
+        reid_proximity_threshold: 0.3511
+      adaptive:
+        reid_model: fastreid_mot17_sbs50
+        reid_appearance_weight: 1.178
+        reid_adaptive_weight_cap: 0.621
+        reid_appearance_floor: 0.195
+        reid_proximity_threshold: 0.975
+        minimum_iou_threshold_first_assoc: 0.349
     ```
 
     For MOT17, DanceTrack and SoccerNet, both thresholds were tuned together with `trackers tune`. The SportsMOT threshold comes from a sweep at the default proximity threshold. Each configuration was then evaluated once on test.
 
     ¹ SoccerNet-tracking has no validation split, so its tuning split is train. The other datasets tune on val, MOT17 on val-half.
 
-    A generic encoder improves HOTA on every tuning split, but only SportsMOT and SoccerNet keep the gain on test: +1.47 and +0.89 HOTA. On MOT17 and DanceTrack test HOTA stays within 0.2 of BoT-SORT without ReID. SoccerNet needs the additive rule to get there; under `botsort` the same encoder is flat, because the gate it was tuned to keeps appearance away from the pairs that would benefit.
+    Both fusion methods are listed, and the row in bold is the one the tuning split chose. A generic encoder improves HOTA on every tuning split, but only SportsMOT and SoccerNet keep the gain with the chosen method on test: +1.47 and +0.89 HOTA. SoccerNet needs the additive rule to get there; under `botsort` the same encoder is flat, because the gate it was tuned to keeps appearance away from the pairs that would benefit.
+
+    MOT17 is the case where the split chose wrong. `adaptive` scored 0.10 lower on val-half and 0.73 higher on test, where it beats every other MOT17 row on this page. Both numbers are shown rather than switching the choice after seeing test, which would make the split meaningless.
 
     SoccerNet uses ground-truth boxes as detections, so its numbers are not comparable to the YOLOX rows.
 
