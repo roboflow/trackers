@@ -9,7 +9,7 @@ This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, 
 
 !!! info "Benchmark version"
 
-    Results use **trackers v2.6.0** (released 2026-08-03). Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits. See [Methodology](methodology.md) for details.
+    Results use **trackers v2.6.0** (released 2026-08-03), except the BoT-SORT + ReID rows, which were produced in v2.7.0, the release that adds appearance association. Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits, and the ReID thresholds with [`trackers tune`](../guides/tune.md#tune-reid-thresholds). See [Methodology](methodology.md) for details.
 
     v2.6.0 changed all trackers' lost-track lifecycle from exclusive (`time_since_update < maximum_frames_without_update`) to inclusive (`<=`) boundary semantics, so confirmed tracks now survive one additional missed frame. Expect small IDSW/HOTA shifts versus earlier versions even for trackers whose parameters didn't change — see the [Changelog](../changelog.md) for details.
 
