@@ -5,7 +5,7 @@ description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, 
 
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the catalog-default encoder throughout; its Tuned rows use an encoder fine-tuned on the dataset's own train split for MOT17, SoccerNet and DanceTrack, and the generic `fastreid_mot17_sbs50` for SportsMOT, which has no fine-tuned encoder yet.
+This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the catalog-default encoder throughout; its Tuned rows use an encoder fine-tuned on the dataset's own train split.
 
 !!! info "Benchmark version"
 
@@ -166,9 +166,9 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |     OC-SORT     |   74.0   |   75.4   |   95.6   |
     |    BoT-SORT     |   74.1   |   74.0   | **96.9** |
     |     C-BIoU      |   73.1   |   72.6   |   96.7   |
-    | BoT-SORT + ReID | **75.6** | **75.7** | **96.9** |
+    | BoT-SORT + ReID | **77.8** | **78.5** | **96.9** |
 
-    Tuned configuration for each tracker. The ReID row uses the generic `fastreid_mot17_sbs50`, not a fine-tune.
+    Tuned configuration for each tracker. The ReID row uses an `osnet_x1_0` fine-tuned on SportsMOT train.
 
     ```yaml
     SORT:
@@ -215,10 +215,10 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       buffer_ratio_second: 0.5
 
     BoT-SORT + ReID:
-      reid_model: fastreid_mot17_sbs50
+      reid_model: osnet_x1_0 fine-tuned on SportsMOT train
       reid_fusion: botsort
-      reid_appearance_threshold: 0.30
-      reid_proximity_threshold: 0.5
+      reid_appearance_threshold: 0.3425
+      reid_proximity_threshold: 0.9953
     ```
 
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)

@@ -137,7 +137,7 @@ Clean, modular implementations of leading trackers. All HOTA scores use default 
 
     \*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the [McByte docs](trackers/mcbyte.md) for setup.
 
-    \*\*BoT-SORT + ReID is listed at library defaults with the generic `osnet_x1_0_msmt17_combineall`. Tuned, and with an encoder fine-tuned on the dataset where one exists, it reaches 64.0, 75.6, 88.4 and 60.8 HOTA, above BoT-SORT on all four. See the [ReID guide](guides/reid.md).
+    \*\*BoT-SORT + ReID is listed at library defaults with the generic `osnet_x1_0_msmt17_combineall`. Tuned, and with an encoder fine-tuned on each dataset, it reaches 64.0, 77.8, 88.4 and 60.8 HOTA, above BoT-SORT on all four. See the [ReID guide](guides/reid.md).
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](evaluations/results.md).
 

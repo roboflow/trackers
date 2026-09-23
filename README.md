@@ -99,7 +99,7 @@ Each tracker below is a faithful implementation of its original paper's motion a
 
 \*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the [McByte docs](https://trackers.roboflow.com/develop/trackers/mcbyte/) for setup.
 
-\*\*BoT-SORT + ReID is listed at library defaults with the generic `osnet_x1_0_msmt17_combineall`, where a cross-domain encoder costs a little accuracy. Tuned, and with an encoder fine-tuned on the dataset where one exists, it reaches 64.0, 75.6, 88.4 and 60.8 HOTA, above BoT-SORT on all four. See the [ReID guide](https://trackers.roboflow.com/develop/guides/reid/).
+\*\*BoT-SORT + ReID is listed at library defaults with the generic `osnet_x1_0_msmt17_combineall`, where a cross-domain encoder costs a little accuracy. Tuned, and with an encoder fine-tuned on each dataset, it reaches 64.0, 77.8, 88.4 and 60.8 HOTA, above BoT-SORT on all four. See the [ReID guide](https://trackers.roboflow.com/develop/guides/reid/).
 
 All scores use default parameters on the standard split. Detections come from a YOLOX detector (MOT17, SportsMOT, DanceTrack) or oracle ground-truth boxes (SoccerNet) — absolute numbers shift with detector quality. See the [tracker comparison](https://trackers.roboflow.com/develop/evaluations/results/) for tuned numbers and methodology.
 

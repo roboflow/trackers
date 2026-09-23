@@ -272,7 +272,7 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
     |            | BoT-SORT + ReID             | **69.64** |
     |            | BoT-SORT + ReID, `adaptive` |   69.54   |
     | SportsMOT  | BoT-SORT                    |   82.00   |
-    |            | BoT-SORT + ReID             | **82.69** |
+    |            | BoT-SORT + ReID             | **82.90** |
     |            | BoT-SORT + ReID, `adaptive` |   81.98   |
     | DanceTrack | BoT-SORT                    |   53.89   |
     |            | BoT-SORT + ReID             | **58.34** |
@@ -289,7 +289,7 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
     |            | BoT-SORT + ReID             |   63.85   |   78.82   |   79.41   |
     |            | BoT-SORT + ReID, `adaptive` | **64.58** | **79.94** |   79.41   |
     | SportsMOT  | BoT-SORT                    |   74.15   |   74.06   |   96.89   |
-    |            | BoT-SORT + ReID             | **75.62** | **75.66** | **96.90** |
+    |            | BoT-SORT + ReID             | **75.46** | **75.48** | **96.90** |
     |            | BoT-SORT + ReID, `adaptive` |   74.06   |   73.74   |   96.87   |
     | DanceTrack | BoT-SORT                    | **57.8**  | **57.9**  |   92.2    |
     |            | BoT-SORT + ReID             |   57.6    |   57.6    |   92.1    |
@@ -317,8 +317,8 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
     SportsMOT:
       botsort:
         reid_model: fastreid_mot17_sbs50
-        reid_appearance_threshold: 0.30
-        reid_proximity_threshold: 0.5
+        reid_appearance_threshold: 0.4761
+        reid_proximity_threshold: 0.5051
       adaptive:
         reid_model: fastreid_mot17_sbs50
         reid_appearance_weight: 2.540
@@ -357,7 +357,7 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
     ¹ SoccerNet-tracking has no validation split, so its tuning split is train. The other datasets tune on val, MOT17 on val-half.
 
-    Both fusion methods are listed, and the row in bold is the one the tuning split chose. A generic encoder improves HOTA on every tuning split, but only SportsMOT and SoccerNet keep the gain with the chosen method on test: +1.47 and +0.89 HOTA. SoccerNet needs the additive rule to get there; under `botsort` the same encoder is flat, because the gate it was tuned to keeps appearance away from the pairs that would benefit.
+    Both fusion methods are listed, and the row in bold is the one the tuning split chose. A generic encoder improves HOTA on every tuning split, but only SportsMOT and SoccerNet keep the gain with the chosen method on test: +1.31 and +0.89 HOTA. SoccerNet needs the additive rule to get there; under `botsort` the same encoder is flat, because the gate it was tuned to keeps appearance away from the pairs that would benefit.
 
     MOT17 is the case where the split chose wrong. `adaptive` scored 0.10 lower on val-half and 0.73 higher on test, where it beats every other MOT17 row on this page. Both numbers are shown rather than switching the choice after seeing test, which would make the split meaningless.
 
@@ -460,6 +460,6 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
     ² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170). The other datasets tune on val, MOT17 on val-half.
 
-    Fine-tuning pays on every dataset here, and most where the generic encoder does not help: on test it adds 3.67 HOTA on SportsMOT, 3.43 on SoccerNet with `adaptive`, 3.00 on DanceTrack, and 0.20 on MOT17, where the generic encoder is already in domain.
+    Fine-tuning improves on BoT-SORT without ReID on every dataset: on test it adds 3.67 HOTA on SportsMOT, 3.43 on SoccerNet with `adaptive`, 3.00 on DanceTrack and 0.20 on MOT17.
 
     Each encoder is one training run, and training is not deterministic across seeds: two SportsMOT encoders trained identically apart from the seed scored 83.50 and 83.72 on val, and on DanceTrack the spread across three seeds reached 1.54 HOTA. Treat differences below a point between fine-tuned rows as noise. The SportsMOT encoder is the better of its two seeds, chosen on val; `crops_per_identity=8` is carried over from DanceTrack rather than tuned per dataset.
