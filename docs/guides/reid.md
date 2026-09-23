@@ -374,6 +374,9 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
     | MOT17      | BoT-SORT                    |   69.05   |
     |            | BoT-SORT + ReID             | **69.29** |
     |            | BoT-SORT + ReID, `adaptive` | **69.29** |
+    | SportsMOT  | BoT-SORT                    |   82.00   |
+    |            | BoT-SORT + ReID             | **84.39** |
+    |            | BoT-SORT + ReID, `adaptive` |   83.15   |
     | DanceTrack | BoT-SORT                    |   53.89   |
     |            | BoT-SORT + ReID             | **59.28** |
     |            | BoT-SORT + ReID, `adaptive` |   58.71   |
@@ -388,6 +391,9 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
     | MOT17      | BoT-SORT                    |   63.8    |   78.7    |   79.4    |
     |            | BoT-SORT + ReID             |   64.00   |   78.89   |   79.43   |
     |            | BoT-SORT + ReID, `adaptive` | **64.05** | **79.21** | **79.44** |
+    | SportsMOT  | BoT-SORT                    |   74.15   |   74.06   |   96.89   |
+    |            | BoT-SORT + ReID             | **77.82** | **78.50** |   96.92   |
+    |            | BoT-SORT + ReID, `adaptive` |   76.36   |   76.76   | **96.96** |
     | DanceTrack | BoT-SORT                    |   57.8    |   57.9    |   92.2    |
     |            | BoT-SORT + ReID             | **60.80** | **61.60** |   91.70   |
     |            | BoT-SORT + ReID, `adaptive` |   58.30   |   58.20   | **92.30** |
@@ -410,6 +416,19 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
         reid_appearance_floor: 0.569
         reid_proximity_threshold: 0.342
         minimum_iou_threshold_first_assoc: 0.205
+
+    SportsMOT:
+      botsort:
+        reid_model: osnet_x1_0 fine-tuned on SportsMOT train
+        reid_appearance_threshold: 0.3425
+        reid_proximity_threshold: 0.9953
+      adaptive:
+        reid_model: osnet_x1_0 fine-tuned on SportsMOT train
+        reid_appearance_weight: 1.290
+        reid_adaptive_weight_cap: 0.718
+        reid_appearance_floor: 0.510
+        reid_proximity_threshold: 0.983
+        minimum_iou_threshold_first_assoc: 0.329
 
     DanceTrack:
       botsort:
@@ -441,4 +460,6 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
     ² SoccerNet-tracking has no validation split. This encoder was trained on the first 45 of the 57 train sequences, so its thresholds were tuned on the other 12 (SNMOT-159 to SNMOT-170). The other datasets tune on val, MOT17 on val-half.
 
-    Fine-tuning makes the biggest difference on SoccerNet and DanceTrack, the two datasets where the generic encoder does not help: on test the fine-tuned encoder adds 3.43 HOTA on SoccerNet with `adaptive` and 3.00 on DanceTrack with `botsort`. On MOT17 it adds 0.25. Which fusion method wins depends on the dataset, so tune both before choosing.
+    Fine-tuning pays on every dataset here, and most where the generic encoder does not help: on test it adds 3.67 HOTA on SportsMOT, 3.43 on SoccerNet with `adaptive`, 3.00 on DanceTrack, and 0.20 on MOT17, where the generic encoder is already in domain.
+
+    Each encoder is one training run, and training is not deterministic across seeds: two SportsMOT encoders trained identically apart from the seed scored 83.50 and 83.72 on val, and on DanceTrack the spread across three seeds reached 1.54 HOTA. Treat differences below a point between fine-tuned rows as noise. The SportsMOT encoder is the better of its two seeds, chosen on val; `crops_per_identity=8` is carried over from DanceTrack rather than tuned per dataset.
