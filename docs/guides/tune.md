@@ -183,6 +183,8 @@ MOT17-09-FRCNN
 
 Pass an encoder to BoT-SORT and the search adds `reid_appearance_threshold` and `reid_proximity_threshold`. Tune the two together: a looser proximity gate usually needs a stricter appearance threshold. To keep tuned motion parameters and search only these two, fix everything else. `images_dir` is required, because the encoder reads the frames.
 
+Every trial replays the same detections, so `cache_embeddings=True` embeds each one once and reuses it, which saves most of a study's time. The embeddings then stay in memory for the whole study, about 1 GB per 500k detections, which is why it is off by default.
+
 === "CLI"
 
     ```text
@@ -191,7 +193,7 @@ Pass an encoder to BoT-SORT and the search adds `reid_appearance_threshold` and 
         --gt_dir ./data/gt \
         --detections_dir ./data/detections \
         --images_dir ./data/images \
-        --reid.model osnet_x1_0_msmt17_combineall \
+        --reid.model fastreid_mot17_sbs50 \
         --fixed_params '{"lost_track_buffer": 30, "minimum_consecutive_frames": 2, "minimum_iou_threshold_first_assoc": 0.2, "minimum_iou_threshold_second_assoc": 0.5, "minimum_iou_threshold_unconfirmed_assoc": 0.2, "high_conf_det_threshold": 0.5, "track_activation_threshold": 0.6, "cmc_downscale": 2}' \
         --n_trials 20
     ```
@@ -202,7 +204,7 @@ Pass an encoder to BoT-SORT and the search adds `reid_appearance_threshold` and 
     from reid import ReIDModel
     from trackers.tune import Tuner
 
-    encoder = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall")
+    encoder = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
     tuned_motion = {
         "lost_track_buffer": 30,
         "minimum_consecutive_frames": 2,

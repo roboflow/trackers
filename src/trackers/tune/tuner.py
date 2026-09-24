@@ -65,6 +65,11 @@ class _CachedReIDEncoder:
 
         Returns:
             Embedding matrix with one row per box, in the order given.
+
+        Note:
+            ``detections`` always carries at least one box here:
+            :func:`trackers.core.reid.appearance.extract_detection_embeddings`, the only caller,
+            returns early without asking an encoder when there are none.
         """
         frame_key = hashlib.blake2b(np.ascontiguousarray(frame).data, digest_size=16).digest()
         boxes = np.ascontiguousarray(detections.xyxy, dtype=np.float32)
@@ -74,8 +79,6 @@ class _CachedReIDEncoder:
             embeddings = self._encoder.extract_features(sv.Detections(xyxy=boxes[missing]), frame)
             for index, embedding in zip(missing, embeddings, strict=True):
                 self._embeddings[keys[index]] = embedding
-        if not keys:
-            return np.empty((0, 0), dtype=np.float32)
         return np.stack([self._embeddings[key] for key in keys])
 
 
@@ -138,6 +141,12 @@ class Tuner:
             a range to your data, e.g.
             ``{"reid_appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}``
             for an encoder whose useful distances are small.
+        cache_embeddings: Whether to embed each detection once and reuse it across trials
+            when ``fixed_params`` passes a ``reid_model``. Every trial replays the same
+            detections, so this cuts most of a study's runtime, at the cost of holding one
+            embedding per distinct detection in memory for the whole study: roughly 1 GB per
+            500k detections at 512 float32 dimensions. Defaults to ``False``, which embeds on
+            every trial and keeps memory flat. Ignored without a ``reid_model``.
 
     Examples:
         Tune ByteTrack hyperparameters on a local dataset::
@@ -190,6 +199,7 @@ class Tuner:
         threshold: float = 0.5,
         seqmap: str | Path | None = None,
         search_space: dict[str, dict] | None = None,
+        cache_embeddings: bool = False,
     ) -> None:
         try:
             import optuna as _optuna
@@ -259,7 +269,9 @@ class Tuner:
                 "Pass images_dir pointing at MOT sequence folders (…/{sequence}/img1/) "
                 "so the encoder can read frames."
             )
-        self._cached_reid_model = _CachedReIDEncoder(reid_model) if reid_model is not None else None
+        self._cached_reid_model = (
+            _CachedReIDEncoder(reid_model) if reid_model is not None and cache_embeddings else None
+        )
 
         # Auto-add the metric family required by the chosen objective so
         # callers don't need to remember the mapping themselves.
