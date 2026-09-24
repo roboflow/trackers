@@ -31,3 +31,10 @@ th, td {
 .md-typeset__table table:not([class]) {
   font-size: 0.6rem;
 }
+
+/* Grouped tables, such as the ReID results: the first row of each group names it in the first
+   column and the rows below leave that cell empty. A heavier rule marks where each group starts,
+   including the first one under the header. */
+.md-typeset table:has(tbody td:first-child:empty) tbody tr:has(> td:first-child:not(:empty)) > td {
+  border-top: 2px solid var(--md-default-fg-color--light);
+}
