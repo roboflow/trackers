@@ -131,13 +131,13 @@ Clean, modular implementations of leading trackers. All HOTA scores use default 
 | [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                       Camera motion compensation.                       |    63.7    |      73.8      |      84.5      |      57.8       |
 |  [C-BIoU](https://arxiv.org/abs/2211.14317)   |      Cascaded buffered IoU matching for fast or irregular motion.       |    63.0    |      73.1      |      82.6      |      56.7       |
 |         [McByte](trackers/mcbyte.md)          | Mask-conditioned tracking — adds propagated SAM/Cutie masks as a cue.\* |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
-|       [BoT-SORT + ReID](guides/reid.md)       |  Appearance embeddings fused with motion, for harder association.\*\*   |    63.4    |      73.5      |      82.9      |      56.0       |
+|       [BoT-SORT + ReID](guides/reid.md)       |  Appearance embeddings fused with motion, for harder association.\*\*   |    63.9    |      75.5      |      84.3      |      57.0       |
 
 !!! note
 
     \*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the [McByte docs](trackers/mcbyte.md) for setup.
 
-    \*\*BoT-SORT + ReID is listed at library defaults with the generic `osnet_x1_0_msmt17_combineall`. Tuned, and with an encoder fine-tuned on each dataset, it reaches 64.0, 77.8, 88.4 and 60.8 HOTA, above BoT-SORT on all four. See the [ReID guide](guides/reid.md).
+    \*\*BoT-SORT + ReID is listed at library defaults with the default encoder `fastreid_mot17_sbs50`, BoT-SORT's own ReID model trained on MOT17. Tuned, and with an encoder fine-tuned on each dataset, it reaches 64.0, 77.8, 88.4 and 60.8 HOTA, above BoT-SORT on all four. See the [ReID guide](guides/reid.md).
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](evaluations/results.md).
 

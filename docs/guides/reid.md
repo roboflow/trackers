@@ -79,7 +79,7 @@ Fine-tuning an encoder on your own data is coming to the `reid` package.
 
 The encoder decides how much appearance can help, and every threshold below depends on it. There are two kinds:
 
-- **A generic encoder**, trained on another dataset, such as `osnet_x1_0_msmt17_combineall` (the default) or `fastreid_mot17_sbs50`. It works out of the box, but on footage unlike its training data appearance helps little, see [results](#results).
+- **A generic encoder**, trained on another dataset, such as `fastreid_mot17_sbs50`, BoT-SORT's own ReID model trained on MOT17 pedestrian crops. It is the encoder `trackers track` and `trackers tune` load when ReID is enabled without naming one. It works out of the box, but on footage unlike its training data appearance helps little, see [results](#results).
 - **An encoder fine-tuned on your footage**, where the largest gains in the results come from. Training one is coming to the `reid` package; the results below use encoders trained that way.
 
 Load either with `ReIDModel.from_pretrained`, as in the [quickstart](#quickstart). Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
@@ -151,7 +151,7 @@ plot_appearance_distances(distances, thresholds={0.20: "selected", 0.25: "defaul
 
 The [ReID API reference](../api/reid.md#choosing-a-threshold) lists the full signatures, and the [ReID cookbook](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb) runs the whole flow in Colab. The two examples below use 5000 same-person and 10000 different-person pairs, 1 to 30 frames apart.
 
-### MOT17 with a pedestrian encoder
+### MOT17 with an encoder trained on MOT17
 
 Blue bars are pairs of the same person, red bars are pairs of different people. A good threshold sits where the blue bars end and the red ones start. `fastreid_mot17_sbs50` on MOT17 val keeps the two groups mostly apart, with some overlap between 0.2 and 0.35.
 
@@ -166,9 +166,9 @@ This is what `rates_at` prints for two thresholds:
 
 Moving the threshold right accepts more same-person pairs, but it also starts letting different-person pairs through. We use 0.2, the same value as the [MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) (Table 8).
 
-### SoccerNet with the same kind of encoder
+### SoccerNet with an out-of-domain encoder
 
-`osnet_x1_0_msmt17_combineall` was trained on pedestrians. On SoccerNet test, players in the same kit look alike to it, so the blue and red bars overlap.
+`osnet_x1_0_msmt17_combineall` was trained on pedestrians from the MSMT17 dataset and has never seen football. On SoccerNet test, players in the same kit look alike to it, so the blue and red bars overlap.
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
 
@@ -214,9 +214,9 @@ From this we learn:
     | 61 to 120  |  0.865  |       31.8%       |          0.8%          |
     | 121 to 240 |  0.854  |       28.7%       |          0.8%          |
 
-??? info "The generic encoder on SoccerNet"
+??? info "An out-of-domain encoder on SoccerNet"
 
-    The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, so no threshold makes the generic encoder useful here under the minimum fusion; the additive rule with an open gate is what does, see the SoccerNet table under Other encoders. The SoccerNet rows in the tables above go further with an encoder fine-tuned on the dataset's own train split.
+    `osnet_x1_0_msmt17_combineall` on SoccerNet fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, so no threshold makes this encoder useful here. The SoccerNet rows in the [results](#results) use an encoder fine-tuned on the dataset's own train split instead.
 
     ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
 
