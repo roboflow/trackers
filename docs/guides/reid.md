@@ -79,8 +79,8 @@ Fine-tuning an encoder on your own data is coming to the `reid` package.
 
 The encoder decides how much appearance can help, and every threshold below depends on it. There are two kinds:
 
-- **A generic encoder**, used as published. The one used here is `fastreid_mot17_sbs50`, a FastReID SBS model with a ResNeSt-50 backbone, trained on MOT17 pedestrian crops and released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT). `trackers track` and `trackers tune` load it when ReID is enabled without naming a model; in Python, load it with `ReIDModel.from_pretrained("fastreid_mot17_sbs50")`, as in the [quickstart](#quickstart). It works out of the box, and how much it helps depends on the dataset, see [results](#results).
-- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. The results use an [OSNet](https://arxiv.org/abs/1905.00953) x1.0 fine-tuned on each dataset's train split. Training one is coming to the `reid` package, and these weights are not published yet.
+- **A generic encoder**, used as published. The one used here is `fastreid_mot17_sbs50`, a FastReID SBS model with a ResNeSt-50 backbone and 25.4M parameters, trained on MOT17 pedestrian crops and released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT). `trackers track` and `trackers tune` load it when ReID is enabled without naming a model; in Python, load it with `ReIDModel.from_pretrained("fastreid_mot17_sbs50")`, as in the [quickstart](#quickstart). It works out of the box, and how much it helps depends on the dataset, see [results](#results).
+- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. The results use an [OSNet](https://arxiv.org/abs/1905.00953) x1.0, a much smaller network with 2.2M parameters, fine-tuned on each dataset's train split. Training one is coming to the `reid` package, and these weights are not published yet.
 
 Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
 
