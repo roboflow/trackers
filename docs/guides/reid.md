@@ -79,17 +79,10 @@ Fine-tuning an encoder on your own data is coming to the `reid` package.
 
 The encoder decides how much appearance can help, and every threshold below depends on it. There are two kinds:
 
-- **A generic encoder**, used as published, such as `fastreid_mot17_sbs50`. It works out of the box, but on footage unlike its training data appearance helps little, see [results](#results).
-- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. Training one is coming to the `reid` package; the results below use encoders trained that way.
+- **A generic encoder**, used as published. The one used here is `fastreid_mot17_sbs50`, a FastReID SBS model with a ResNeSt-50 backbone, trained on MOT17 pedestrian crops and released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT). `trackers track` and `trackers tune` load it when ReID is enabled without naming a model; in Python, load it with `ReIDModel.from_pretrained("fastreid_mot17_sbs50")`, as in the [quickstart](#quickstart). It works out of the box, and how much it helps depends on the dataset, see [results](#results).
+- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. The results use an [OSNet](https://arxiv.org/abs/1905.00953) x1.0 fine-tuned on each dataset's train split. Training one is coming to the `reid` package, and these weights are not published yet.
 
-The encoders used on this page:
-
-| Encoder                  | Architecture                                   | Trained on                                                                              | Role here                                                                                                                          |
-| :----------------------- | :--------------------------------------------- | :-------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
-| `fastreid_mot17_sbs50`   | FastReID SBS with a ResNeSt-50 backbone        | MOT17 pedestrian crops, released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT) | Loaded by `trackers track` and `trackers tune` when ReID is enabled without naming a model. In domain on MOT17, generic elsewhere. |
-| `osnet_x1_0`, fine-tuned | [OSNet](https://arxiv.org/abs/1905.00953) x1.0 | The train split of the dataset it is evaluated on                                       | The fine-tuned [results](#results).                                                                                                |
-
-Load `fastreid_mot17_sbs50` by name with `ReIDModel.from_pretrained`, as in the [quickstart](#quickstart); the fine-tuned weights are not published yet. Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
+Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
 
 ---
 
