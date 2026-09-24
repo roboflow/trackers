@@ -5,7 +5,7 @@ description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, 
 
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the default encoder `fastreid_mot17_sbs50` throughout; its Tuned rows show the best test result among the configurations in the [ReID guide](../guides/reid.md#results): an encoder fine-tuned on the dataset's own train split, except on MOT17, where the generic `fastreid_mot17_sbs50` with `adaptive` fusion scored highest.
+This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the default encoder `fastreid_mot17_sbs50` throughout; its Tuned rows show the best test result among the configurations in the [ReID guide](../guides/reid.md#results), each with an encoder trained on that dataset: `osnet_x1_0` fine-tuned on the SportsMOT, SoccerNet and DanceTrack train splits, and on MOT17 `fastreid_mot17_sbs50`, which the BoT-SORT authors trained on MOT17.
 
 !!! info "Benchmark version"
 
@@ -66,7 +66,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |    BoT-SORT     |   63.8   |   78.7   | **79.4** |
     | BoT-SORT + ReID | **64.6** | **79.9** | **79.4** |
 
-    Tuned configuration for each tracker. The ReID row uses the generic `fastreid_mot17_sbs50` with `reid_fusion="adaptive"`, the best MOT17 test result in the [ReID guide](../guides/reid.md#results). It was chosen on test: on val-half, the `botsort` fusion scored 0.10 higher.
+    Tuned configuration for each tracker. The ReID row uses `fastreid_mot17_sbs50`, trained on MOT17 by the BoT-SORT authors, with `reid_fusion="adaptive"`: the best MOT17 test result in the [ReID guide](../guides/reid.md#results). It was chosen on test; on val-half, `botsort` scored 0.10 higher.
 
     ```yaml
     SORT:

@@ -262,7 +262,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
 === "Generic encoder"
 
-    Encoders that were not trained on the evaluated dataset. Both fusion methods were tuned with `trackers tune`, 20 trials each, on each dataset's tuning split¹.
+    Encoders used as published, without training on your data. `fastreid_mot17_sbs50` was trained on MOT17 by the BoT-SORT authors, so its MOT17 rows are in domain; on the other datasets it has not seen the footage, and it still helps on SportsMOT. Both fusion methods were tuned with `trackers tune`, 20 trials each, on each dataset's tuning split¹.
 
     | Dataset    | Config                      |   HOTA   |   IDF1   |   MOTA   |
     | :--------- | :-------------------------- | :------: | :------: | :------: |
