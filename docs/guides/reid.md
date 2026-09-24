@@ -252,9 +252,9 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
     `osnet_x1_0` fine-tuned on each dataset's train split, with `reid_fusion="botsort"` and `reid_fusion="adaptive"`.
 
-    | Dataset    | Config                      |   HOTA   |   IDF1   |   MOTA   |
-    | :--------- | :-------------------------- | :------: | :------: | :------: |
-    | MOT17      | BoT-SORT                    |   63.8   |   78.7   | **79.4** |
+    |  Dataset   | Config                      |   HOTA   |   IDF1   |   MOTA   |
+    | :--------: | :-------------------------- | :------: | :------: | :------: |
+    |   MOT17    | BoT-SORT                    |   63.8   |   78.7   | **79.4** |
     |            | BoT-SORT + ReID             | **64.0** |   78.9   | **79.4** |
     |            | BoT-SORT + ReID, `adaptive` | **64.0** | **79.2** | **79.4** |
     | SportsMOT  | BoT-SORT                    |   74.1   |   74.1   |   96.9   |
@@ -336,9 +336,9 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
     Encoders used as published, without training on your data. `fastreid_mot17_sbs50` was trained on MOT17 by the BoT-SORT authors, so its MOT17 rows are in domain; on the other datasets it has not seen the footage, and it still helps on SportsMOT. Both fusion methods were tuned with `trackers tune`, 20 trials each, on each dataset's tuning split².
 
-    | Dataset    | Config                      |   HOTA   |   IDF1   |   MOTA   |
-    | :--------- | :-------------------------- | :------: | :------: | :------: |
-    | MOT17      | BoT-SORT                    |   63.9   |   78.7   | **79.4** |
+    |  Dataset   | Config                      |   HOTA   |   IDF1   |   MOTA   |
+    | :--------: | :-------------------------- | :------: | :------: | :------: |
+    |   MOT17    | BoT-SORT                    |   63.9   |   78.7   | **79.4** |
     |            | BoT-SORT + ReID             |   63.8   |   78.8   | **79.4** |
     |            | BoT-SORT + ReID, `adaptive` | **64.6** | **79.9** | **79.4** |
     | SportsMOT  | BoT-SORT                    |   74.1   |   74.1   | **96.9** |

@@ -32,9 +32,12 @@ th, td {
   font-size: 0.6rem;
 }
 
-/* Grouped tables, such as the ReID results: the first row of each group names it in the first
-   column and the rows below leave that cell empty. A heavier rule marks where each group starts,
-   including the first one under the header. */
-.md-typeset table:has(tbody td:first-child:empty) tbody tr:has(> td:first-child:not(:empty)) > td {
+/* Grouped tables, such as the ReID results (see javascripts/grouped_tables.js): each group's name
+   spans its rows, vertically centred, and a heavier rule marks where each group starts. */
+.md-typeset table[data-grouped] tr.group-start > td {
   border-top: 2px solid var(--md-default-fg-color--light);
+}
+
+.md-typeset table[data-grouped] td[rowspan] {
+  vertical-align: middle;
 }
