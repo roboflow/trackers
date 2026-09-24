@@ -32,7 +32,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
 === "Default"
 
-    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
     | :-------------: | :------: | :------: | :------: |
@@ -137,7 +137,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 
 === "Default"
 
-    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
     | :-------------: | :------: | :------: | :------: |
@@ -239,7 +239,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 === "Default"
 
-    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
     | :-------------: | :------: | :------: | :------: |
@@ -347,7 +347,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 === "Default"
 
-    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
     | :-------------: | :------: | :------: | :------: |

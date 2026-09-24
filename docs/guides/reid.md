@@ -79,10 +79,18 @@ Fine-tuning an encoder on your own data is coming to the `reid` package.
 
 The encoder decides how much appearance can help, and every threshold below depends on it. There are two kinds:
 
-- **A generic encoder**, trained on another dataset, such as `fastreid_mot17_sbs50`, BoT-SORT's own ReID model trained on MOT17 pedestrian crops. It is the encoder `trackers track` and `trackers tune` load when ReID is enabled without naming one. It works out of the box, but on footage unlike its training data appearance helps little, see [results](#results).
+- **A generic encoder**, used as published, such as `fastreid_mot17_sbs50`. It works out of the box, but on footage unlike its training data appearance helps little, see [results](#results).
 - **An encoder fine-tuned on your footage**, where the largest gains in the results come from. Training one is coming to the `reid` package; the results below use encoders trained that way.
 
-Load either with `ReIDModel.from_pretrained`, as in the [quickstart](#quickstart). Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
+The encoders used on this page:
+
+| Encoder                        | Architecture                                   | Trained on                                                                              | Role here                                                                                                                          |
+| :----------------------------- | :--------------------------------------------- | :-------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| `fastreid_mot17_sbs50`         | FastReID SBS with a ResNeSt-50 backbone        | MOT17 pedestrian crops, released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT) | Loaded by `trackers track` and `trackers tune` when ReID is enabled without naming a model. In domain on MOT17, generic elsewhere. |
+| `osnet_x1_0_msmt17_combineall` | [OSNet](https://arxiv.org/abs/1905.00953) x1.0 | MSMT17, pedestrians on a university campus                                              | The out-of-domain example on SoccerNet below.                                                                                      |
+| `osnet_x1_0`, fine-tuned       | OSNet x1.0                                     | The train split of the dataset it is evaluated on                                       | The fine-tuned [results](#results).                                                                                                |
+
+Load the two published encoders by name with `ReIDModel.from_pretrained`, as in the [quickstart](#quickstart); the fine-tuned weights are not published yet. Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
 
 ---
 
