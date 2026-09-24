@@ -36,6 +36,7 @@ DEFAULT_MODEL = "rfdetr-nano"
 DEFAULT_TRACKER = "bytetrack"
 DEFAULT_CONFIDENCE = 0.5
 DEFAULT_DEVICE = "auto"
+DEFAULT_REID_MODEL = "fastreid_mot17_sbs50"
 
 # Re-exported: the palette moved to _annotate so that inspect draws tracklets in
 # the same colours, and track's own callers keep importing it from here.
@@ -78,7 +79,7 @@ class ReIDOptions:
         model: Checkpoint source: curated alias, ``hf://`` URL, local path, or
             ``save_pretrained`` directory. Implies enable and cannot be combined
             with an explicit disable. Default alias when omitted:
-            ``osnet_x1_0_msmt17_combineall``.
+            ``fastreid_mot17_sbs50``.
         device: ReID compute device: ``auto``, ``cpu``, ``cuda``, ``mps``.
         architecture: Backbone for bare ``.pth``/``.safetensors`` weights (e.g.
             ``osnet_x1_0``, ``fastreid_sbs_resnest50``). Required when ``model``
@@ -783,9 +784,7 @@ def _load_reid_model(reid: ReIDOptions) -> Any:
     if reid.architecture is not None and reid.model is None:
         raise ValueError("--reid.architecture requires --reid.model (bare weights need a checkpoint path).")
 
-    load_kwargs: dict[str, Any] = {"device": reid.device}
-    if reid.model is not None:
-        load_kwargs["source"] = reid.model
+    load_kwargs: dict[str, Any] = {"device": reid.device, "source": reid.model or DEFAULT_REID_MODEL}
     if reid.architecture is not None:
         load_kwargs["architecture"] = reid.architecture
 

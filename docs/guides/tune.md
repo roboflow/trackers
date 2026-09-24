@@ -193,7 +193,7 @@ Every trial replays the same detections, so `cache_embeddings=True` embeds each 
         --gt_dir ./data/gt \
         --detections_dir ./data/detections \
         --images_dir ./data/images \
-        --reid.model osnet_x1_0_msmt17_combineall \
+        --reid.model fastreid_mot17_sbs50 \
         --fixed_params '{"lost_track_buffer": 30, "minimum_consecutive_frames": 2, "minimum_iou_threshold_first_assoc": 0.2, "minimum_iou_threshold_second_assoc": 0.5, "minimum_iou_threshold_unconfirmed_assoc": 0.2, "high_conf_det_threshold": 0.5, "track_activation_threshold": 0.6, "cmc_downscale": 2}' \
         --n_trials 20
     ```
@@ -204,7 +204,7 @@ Every trial replays the same detections, so `cache_embeddings=True` embeds each 
     from reid import ReIDModel
     from trackers.tune import Tuner
 
-    encoder = ReIDModel.from_pretrained("osnet_x1_0_msmt17_combineall")
+    encoder = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
     tuned_motion = {
         "lost_track_buffer": 30,
         "minimum_consecutive_frames": 2,

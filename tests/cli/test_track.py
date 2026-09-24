@@ -470,7 +470,7 @@ class TestReIDOptions:
 
         assert isinstance(tracker, BoTSORTTracker)
         assert isinstance(tracker.reid_model, _FakeReIDModel)
-        assert fake_reid_module.last_kwargs == {"device": "cpu"}
+        assert fake_reid_module.last_kwargs == {"device": "cpu", "source": "fastreid_mot17_sbs50"}
 
     def test_architecture_is_forwarded(self, fake_reid_module: type[_FakeReIDModel], tmp_path: Path) -> None:
         """Bare weights pass both source and architecture through to the loader."""

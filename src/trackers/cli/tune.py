@@ -14,7 +14,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from trackers.cli.track import ReIDOptions, _load_reid_model, _reid_requested
+from trackers.cli.track import DEFAULT_REID_MODEL, ReIDOptions, _load_reid_model, _reid_requested
 
 
 @dataclass
@@ -80,7 +80,7 @@ def tune_command(
             (BoT-SORT). Same options as ``trackers track``: ``model`` (alias,
             ``hf://`` URL or local path), ``device``, and ``architecture``
             for bare weight files; on the command line, ``--reid.model
-            osnet_x1_0_msmt17_combineall``. The encoder is loaded once and
+            fastreid_mot17_sbs50``. The encoder is loaded once and
             held fixed, and ``reid_appearance_threshold`` and
             ``reid_proximity_threshold`` are added to the search. Requires
             ``images_dir``. Default: no encoder.
@@ -138,7 +138,7 @@ def tune_command(
     for name, value in best_params.items():
         print(f"  {name}: {value}")
     if reid_enabled and reid is not None:
-        print(f"  reid model: {reid.model or 'reid catalog default'}")
+        print(f"  reid model: {reid.model or DEFAULT_REID_MODEL}")
     if tuner.study is not None:
         print(f"\nBest {objective}: {tuner.study.best_value:.4f}")
 
