@@ -1,15 +1,15 @@
 ---
 title: Tracker Comparison — MOT Benchmark Results | Trackers
-description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
+description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
 ---
 
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row.
+This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the default encoder `fastreid_mot17_sbs50` throughout; its Tuned rows show the best test result among the configurations in the [ReID guide](../guides/reid.md#results), each with an encoder trained on that dataset: `osnet_x1_0` fine-tuned on the SportsMOT, SoccerNet and DanceTrack train splits, and on MOT17 `fastreid_mot17_sbs50`, which the BoT-SORT authors trained on MOT17.
 
 !!! info "Benchmark version"
 
-    Results use **trackers v2.6.0** (released 2026-08-03). Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits. See [Methodology](methodology.md) for details.
+    Results use **trackers v2.6.0** (released 2026-08-03), except the BoT-SORT + ReID rows, which were produced in v2.7.0, the release that adds appearance association. Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits, and the ReID thresholds with [`trackers tune`](../guides/tune.md#tune-reid-thresholds). See [Methodology](methodology.md) for details.
 
     v2.6.0 changed all trackers' lost-track lifecycle from exclusive (`time_since_update < maximum_frames_without_update`) to inclusive (`<=`) boundary semantics, so confirmed tracks now survive one additional missed frame. Expect small IDSW/HOTA shifts versus earlier versions even for trackers whose parameters didn't change — see the [Changelog](../changelog.md) for details.
 
@@ -28,20 +28,21 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
 !!! info
 
-    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model. BoT-SORT rows are CMC without appearance; see the [ReID guide](../guides/reid.md) for appearance association.
+    Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model. The BoT-SORT row is geometry and CMC only; BoT-SORT + ReID adds the encoder named under the table. The [ReID guide](../guides/reid.md#results) carries both fusion methods and the generic and fine-tuned encoders side by side.
 
 === "Default"
 
-    Results using default tracker parameters.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   58.4   |   69.9   |   67.2   |
-    | ByteTrack |   60.1   |   73.2   |   74.1   |
-    |  OC-SORT  |   61.9   |   76.4   |   76.0   |
-    | BoT-SORT  |   63.7   |   78.7   | **79.2** |
-    |  C-BIoU   |   63.0   |   79.1   |   77.4   |
-    |  McByte   | **64.1** | **79.7** |   79.1   |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   58.4   |   69.9   |   67.2   |
+    |    ByteTrack    |   60.1   |   73.2   |   74.1   |
+    |     OC-SORT     |   61.9   |   76.4   |   76.0   |
+    |     C-BIoU      |   63.0   |   79.1   |   77.4   |
+    |    BoT-SORT     |   63.7   |   78.7   | **79.2** |
+    | BoT-SORT + ReID |   63.9   |   78.9   | **79.2** |
+    |     McByte      | **64.1** | **79.7** |   79.1   |
 
     <!-- BENCH-XREF canonical:this-table id=mot17-default
          SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table + L13 headline not from this row), README.md (Algorithms table)
@@ -56,15 +57,16 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
     Results after grid search over tracker parameters.
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   60.4   |   72.5   |   75.8   |
-    | ByteTrack |   60.5   |   72.7   |   76.1   |
-    |  OC-SORT  |   62.0   |   76.5   |   77.3   |
-    | BoT-SORT  | **63.8** |   78.7   | **79.4** |
-    |  C-BIoU   |   63.0   | **79.1** |   77.4   |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   60.4   |   72.5   |   75.8   |
+    |    ByteTrack    |   60.5   |   72.7   |   76.1   |
+    |     OC-SORT     |   62.0   |   76.5   |   77.3   |
+    |     C-BIoU      |   63.0   |   79.1   |   77.4   |
+    |    BoT-SORT     |   63.8   |   78.7   | **79.4** |
+    | BoT-SORT + ReID | **64.6** | **79.9** | **79.4** |
 
-    Tuned configuration for each tracker.
+    Tuned configuration for each tracker. The ReID row uses `fastreid_mot17_sbs50`, trained on MOT17 by the BoT-SORT authors, with `reid_fusion="adaptive"`: the best MOT17 test result in the [ReID guide](../guides/reid.md#results). It was chosen on test; on val-half, `botsort` scored 0.10 higher.
 
     ```yaml
     SORT:
@@ -109,6 +111,15 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
       track_activation_threshold: 0.7
       buffer_ratio_first: 0.3
       buffer_ratio_second: 0.5
+
+    BoT-SORT + ReID:
+      reid_model: fastreid_mot17_sbs50
+      reid_fusion: adaptive
+      reid_appearance_weight: 1.908
+      reid_adaptive_weight_cap: 0.545
+      reid_appearance_floor: 0.381
+      reid_proximity_threshold: 0.772
+      minimum_iou_threshold_first_assoc: 0.846
     ```
 
 ## [SportsMOT](https://arxiv.org/abs/2304.05170)
@@ -126,16 +137,17 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 
 === "Default"
 
-    Results using default tracker parameters.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   70.8   |   68.9   |   95.5   |
-    | ByteTrack |   73.0   |   72.5   |   96.4   |
-    |  OC-SORT  |   71.7   |   71.4   |   95.0   |
-    | BoT-SORT  |   73.8   |   73.4   |   96.9   |
-    |  C-BIoU   |   73.1   |   72.6   |   96.7   |
-    |  McByte   | **76.5** | **76.9** | **97.0** |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   70.8   |   68.9   |   95.5   |
+    |    ByteTrack    |   73.0   |   72.5   |   96.4   |
+    |     OC-SORT     |   71.7   |   71.4   |   95.0   |
+    |     C-BIoU      |   73.1   |   72.6   |   96.7   |
+    |    BoT-SORT     |   73.8   |   73.4   |   96.9   |
+    | BoT-SORT + ReID |   75.5   |   75.2   | **97.0** |
+    |     McByte      | **76.5** | **76.9** | **97.0** |
 
     <!-- BENCH-XREF canonical:this-table id=sportsmot-default
          SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
@@ -150,15 +162,16 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 
     Results after grid search over tracker parameters.
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   72.9   |   73.0   |   95.8   |
-    | ByteTrack |   73.3   |   73.5   |   95.9   |
-    |  OC-SORT  |   74.0   | **75.4** |   95.6   |
-    | BoT-SORT  | **74.1** |   74.0   | **96.9** |
-    |  C-BIoU   |   73.1   |   72.6   |   96.7   |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   72.9   |   73.0   |   95.8   |
+    |    ByteTrack    |   73.3   |   73.5   |   95.9   |
+    |     OC-SORT     |   74.0   |   75.4   |   95.6   |
+    |     C-BIoU      |   73.1   |   72.6   |   96.7   |
+    |    BoT-SORT     |   74.1   |   74.0   | **96.9** |
+    | BoT-SORT + ReID | **77.8** | **78.5** | **96.9** |
 
-    Tuned configuration for each tracker.
+    Tuned configuration for each tracker. The ReID row uses `osnet_x1_0_sportsmot`, an OSNet x1.0 fine-tuned on SportsMOT train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     ```yaml
     SORT:
@@ -203,6 +216,12 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       track_activation_threshold: 0.7
       buffer_ratio_first: 0.3
       buffer_ratio_second: 0.5
+
+    BoT-SORT + ReID:
+      reid_model: osnet_x1_0_sportsmot
+      reid_fusion: botsort
+      reid_appearance_threshold: 0.3425
+      reid_proximity_threshold: 0.9953
     ```
 
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
@@ -216,20 +235,21 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 !!! info
 
-    Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections. The BoT-SORT row is CMC without appearance; see the [ReID guide](../guides/reid.md) for appearance association.
+    Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections. The BoT-SORT row is geometry and CMC only; BoT-SORT + ReID adds the encoder named under the table. The [ReID guide](../guides/reid.md#results) carries both fusion methods and the generic and fine-tuned encoders side by side.
 
 === "Default"
 
-    Results using default tracker parameters.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   81.6   |   76.2   |   95.1   |
-    | ByteTrack |   84.0   |   78.1   | **97.8** |
-    |  OC-SORT  |   78.4   |   72.6   |   94.1   |
-    | BoT-SORT  |   84.5   |   79.3   |   96.6   |
-    |  C-BIoU   |   82.6   |   76.6   |   97.0   |
-    |  McByte   | **85.0** | **79.9** |   97.0   |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   81.6   |   76.2   |   95.1   |
+    |    ByteTrack    |   84.0   |   78.1   | **97.8** |
+    |     OC-SORT     |   78.4   |   72.6   |   94.1   |
+    |     C-BIoU      |   82.6   |   76.6   |   97.0   |
+    |    BoT-SORT     |   84.5   |   79.3   |   96.6   |
+    | BoT-SORT + ReID |   84.3   |   79.1   |   96.5   |
+    |     McByte      | **85.0** | **79.9** |   97.0   |
 
     <!-- BENCH-XREF canonical:this-table id=soccernet-default
          SORT row      -> docs/trackers/sort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
@@ -244,15 +264,16 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
     Results after grid search over tracker parameters.
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   84.2   |   78.2   |   98.2   |
-    | ByteTrack |   84.0   |   78.1   |   98.2   |
-    |  OC-SORT  |   82.9   |   77.9   |   96.8   |
-    | BoT-SORT  |   85.0   |   79.7   |   97.2   |
-    |  C-BIoU   | **85.7** | **80.0** | **99.3** |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   84.2   |   78.2   |   98.2   |
+    |    ByteTrack    |   84.0   |   78.1   |   98.2   |
+    |     OC-SORT     |   82.9   |   77.9   |   96.8   |
+    |     C-BIoU      |   85.7   |   80.0   | **99.3** |
+    |    BoT-SORT     |   85.0   |   79.7   |   97.2   |
+    | BoT-SORT + ReID | **88.4** | **84.4** | **99.3** |
 
-    Tuned configuration for each tracker.
+    Tuned configuration for each tracker. The ReID row uses `osnet_x1_0_soccernet`, an OSNet x1.0 fine-tuned on SoccerNet train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     ```yaml
     SORT:
@@ -297,6 +318,14 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       track_activation_threshold: 0.48
       buffer_ratio_first: 0.68
       buffer_ratio_second: 0.50
+
+    BoT-SORT + ReID:
+      reid_model: osnet_x1_0_soccernet
+      reid_fusion: adaptive
+      reid_appearance_weight: 0.75
+      reid_adaptive_weight_cap: 0.5
+      reid_proximity_threshold: 1.0
+      reid_appearance_floor: 0.8
     ```
 
 !!! note "SoccerNet buffer ordering exception"
@@ -318,16 +347,17 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 === "Default"
 
-    Results using default tracker parameters.
+    Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default `fastreid_mot17_sbs50` encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   47.2   |   41.0   |   86.5   |
-    | ByteTrack |   53.3   |   53.6   |   90.3   |
-    |  OC-SORT  |   54.1   |   53.3   |   89.3   |
-    | BoT-SORT  |   57.8   |   57.9   |   92.2   |
-    |  C-BIoU   |   56.7   |   56.7   |   92.2   |
-    |  McByte   | **67.2** | **68.6** | **92.5** |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   47.2   |   41.0   |   86.5   |
+    |    ByteTrack    |   53.3   |   53.6   |   90.3   |
+    |     OC-SORT     |   54.1   |   53.3   |   89.3   |
+    |     C-BIoU      |   56.7   |   56.7   |   92.2   |
+    |    BoT-SORT     |   57.8   |   57.9   |   92.2   |
+    | BoT-SORT + ReID |   57.0   |   57.1   |   92.1   |
+    |     McByte      | **67.2** | **68.6** | **92.5** |
 
     <!-- BENCH-XREF canonical:this-table id=dancetrack-default
          SORT/ByteTrack/OC-SORT/BoT-SORT rows -> docs/index.md (Algorithms table, HOTA col only), README.md (Algorithms table, HOTA col only).
@@ -341,15 +371,16 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
     Hyperparameter tuning, reporting the best tuned configuration per tracker evaluated on the test set (tuning performed on the valid split; if tuning did not outperform registry defaults, defaults are shown).
 
-    |  Tracker  |   HOTA   |   IDF1   |   MOTA   |
-    | :-------: | :------: | :------: | :------: |
-    |   SORT    |   54.3   |   53.4   |   89.5   |
-    | ByteTrack |   55.3   |   55.2   |   89.9   |
-    |  OC-SORT  |   54.1   |   53.3   |   89.3   |
-    | BoT-SORT  | **57.8** |   57.9   |   92.2   |
-    |  C-BIoU   |   57.7   | **58.7** | **92.4** |
+    |     Tracker     |   HOTA   |   IDF1   |   MOTA   |
+    | :-------------: | :------: | :------: | :------: |
+    |      SORT       |   54.3   |   53.4   |   89.5   |
+    |    ByteTrack    |   55.3   |   55.2   |   89.9   |
+    |     OC-SORT     |   54.1   |   53.3   |   89.3   |
+    |     C-BIoU      |   57.7   |   58.7   | **92.4** |
+    |    BoT-SORT     |   57.8   |   57.9   |   92.2   |
+    | BoT-SORT + ReID | **60.8** | **61.6** |   91.7   |
 
-    Best configuration for each tracker.
+    Best configuration for each tracker. The ReID row uses `osnet_x1_0_dancetrack`, an OSNet x1.0 fine-tuned on DanceTrack train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     ```yaml
     SORT:
@@ -394,6 +425,12 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       high_conf_det_threshold: 0.34
       buffer_ratio_first: 0.12
       buffer_ratio_second: 0.10
+
+    BoT-SORT + ReID:
+      reid_model: osnet_x1_0_dancetrack
+      reid_fusion: botsort
+      reid_appearance_threshold: 0.4716
+      reid_proximity_threshold: 0.6802
     ```
 
 !!! note "DanceTrack buffer ordering exception"
@@ -412,7 +449,9 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 **BoT-SORT** is the choice when camera ego-motion is strong and you need the most stable identities. It extends ByteTrack with camera motion compensation (CMC) and confidence-aware association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is small relative to the detector, so the trade-off favors identity stability over raw speed.
 
-**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](../trackers/cbiou.md) for buffer scales **b1** and **b2**.
+**C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet among the motion-only trackers when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](../trackers/cbiou.md) for buffer scales **b1** and **b2**.
+
+**BoT-SORT + ReID** adds an appearance encoder to BoT-SORT's association; enable it with `reid_model=`. Appearance helps where overlap alone cannot tell candidates apart. It can only relink a track that is still kept as lost, for `lost_track_buffer` frames (30 by default, about one second), and at the default `reid_proximity_threshold` it only scores pairs that already overlap. Recovering a target that leaves the frame takes a fully open gate and a buffer long enough to cover the absence, see [Choosing a proximity threshold](../guides/reid.md#choosing-a-proximity-threshold). The gain depends on how well the encoder separates your targets: largest with an encoder trained on footage like yours, smallest when targets look alike. Tune the ReID thresholds on your data with [`trackers tune`](../guides/tune.md#tune-reid-thresholds).
 
 **McByte** is the choice when you want the highest identity stability and can afford optional SAM/Cutie mask dependencies. It extends BoT-SORT-style association with temporally propagated segmentation masks as an extra matching cue, requiring no per-video tuning. Reported against Trackers' BoT-SORT baseline (without re-identification) at default parameters, McByte improves HOTA and IDF1 on all four datasets in this comparison, with the largest gain on DanceTrack. Use McByte when identity consistency matters more than raw throughput or dependency footprint. See [McByte](../trackers/mcbyte.md) for setup and the mask-conditioning parameters.
 
