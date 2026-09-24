@@ -7,7 +7,7 @@
 
 </div>
 
-`trackers` gives you clean-room, benchmarked implementations of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte — so occlusions, fast motion, and moving cameras stop being your problem to solve from scratch. It speaks `supervision.Detections` natively, slotting into any detector you already use — YOLO, DETR, RT-DETR, or anything else — without glue code. One consistent interface, whether you're a researcher comparing algorithms, an engineer shipping a production pipeline, or a hobbyist building something cool. Requires Python ≥ 3.10.
+`trackers` gives you clean-room, benchmarked implementations of SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte — so occlusions, fast motion, and moving cameras stop being your problem to solve from scratch. It speaks `supervision.Detections` natively, slotting into any detector you already use — YOLO, DETR, RT-DETR, or anything else — without glue code. One consistent interface, whether you're a researcher comparing algorithms, an engineer shipping a production pipeline, or a hobbyist building something cool. Requires Python ≥ 3.10.
 
 ## Why trackers?
 

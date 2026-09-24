@@ -1,11 +1,11 @@
 ---
 title: Tracker Comparison — MOT Benchmark Results | Trackers
-description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
+description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
 ---
 
 # Tracker Comparison
 
-This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the default encoder `fastreid_mot17_sbs50` throughout; its Tuned rows show the best test result among the configurations in the [ReID guide](../guides/reid.md#results), each with an encoder trained on that dataset: `osnet_x1_0` fine-tuned on the SportsMOT, SoccerNet and DanceTrack train splits, and on MOT17 `fastreid_mot17_sbs50`, which the BoT-SORT authors trained on MOT17.
+This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the default encoder `fastreid_mot17_sbs50` throughout; its Tuned rows show the best test result among the configurations in the [ReID guide](../guides/reid.md#results), each with an encoder trained on that dataset: `osnet_x1_0` fine-tuned on the SportsMOT, SoccerNet and DanceTrack train splits, and on MOT17 `fastreid_mot17_sbs50`, which the BoT-SORT authors trained on MOT17.
 
 !!! info "Benchmark version"
 
