@@ -62,16 +62,16 @@ Fine-tuning an encoder on your own data is coming to the `reid` package.
 
 ## Key Parameters
 
-|          Parameter          |                                                                        Purpose                                                                        |                                                                                                                                   Tuning guidance                                                                                                                                    |
-| :-------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|        `reid_model`         |                                                    Appearance encoder queried during association.                                                     |                                                                                          Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                                                                                           |
-|      `reid_ema_alpha`       |                                                    EMA momentum for a track's appearance feature.                                                     |                                                                                   Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more.                                                                                   |
-| `reid_appearance_threshold` |                                  Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                  |                                                                                                      BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                                                                                       |
-| `reid_proximity_threshold`  |                  IoU gate applied before appearance (`IoU ≥ 1 - reid_proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.                   |                                                                                  Default 0.5. Raise to 1.0 where targets leave the frame and return, see [below](#choosing-a-proximity-threshold).                                                                                   |
-|        `reid_fusion`        |         How appearance combines with geometry: `"botsort"` takes the minimum of the two costs, `"adaptive"` adds a weighted appearance term.          |                                                                                           Default `"botsort"`. See [choosing a fusion method](#choosing-a-fusion-method) before switching.                                                                                           |
-|  `reid_appearance_weight`   |                                       Base appearance weight when `reid_fusion="adaptive"`. Ignored otherwise.                                        |                                                                                                             Default 0.75. Raise where geometry is unreliable, see below.                                                                                                             |
-| `reid_adaptive_weight_cap`  |                                    Ceiling on the adaptive bonus when `reid_fusion="adaptive"`. Ignored otherwise.                                    |                                                                                                              Default 0.5. Raise together with `reid_appearance_weight`.                                                                                                              |
-|   `reid_appearance_floor`   | Minimum cosine similarity for appearance to contribute when `reid_fusion="adaptive"`; below it a pair is scored on geometry alone. Ignored otherwise. | Default 0.0 (off, as in the Deep OC-SORT fusion). Calibrate per encoder: 0.8 with `reid_proximity_threshold=1.0` is the value for `osnet_x1_0` fine-tuned on SoccerNet and loses HOTA with the MOT17 and MSMT17 encoders, see [choosing a fusion method](#choosing-a-fusion-method). |
+|          Parameter          |                                                                        Purpose                                                                        |                                                                                                                                Tuning guidance                                                                                                                                |
+| :-------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|        `reid_model`         |                                                    Appearance encoder queried during association.                                                     |                                                                                       Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                                                                                       |
+|      `reid_ema_alpha`       |                                                    EMA momentum for a track's appearance feature.                                                     |                                                                               Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more.                                                                                |
+| `reid_appearance_threshold` |                                  Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                  |                                                                                                   BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                                                                                   |
+| `reid_proximity_threshold`  |                  IoU gate applied before appearance (`IoU ≥ 1 - reid_proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.                   |                                                                               Default 0.5. Raise to 1.0 where targets leave the frame and return, see [below](#choosing-a-proximity-threshold).                                                                               |
+|        `reid_fusion`        |         How appearance combines with geometry: `"botsort"` takes the minimum of the two costs, `"adaptive"` adds a weighted appearance term.          |                                                                                       Default `"botsort"`. See [choosing a fusion method](#choosing-a-fusion-method) before switching.                                                                                        |
+|  `reid_appearance_weight`   |                                       Base appearance weight when `reid_fusion="adaptive"`. Ignored otherwise.                                        |                                                                                                         Default 0.75. Raise where geometry is unreliable, see below.                                                                                                          |
+| `reid_adaptive_weight_cap`  |                                    Ceiling on the adaptive bonus when `reid_fusion="adaptive"`. Ignored otherwise.                                    |                                                                                                          Default 0.5. Raise together with `reid_appearance_weight`.                                                                                                           |
+|   `reid_appearance_floor`   | Minimum cosine similarity for appearance to contribute when `reid_fusion="adaptive"`; below it a pair is scored on geometry alone. Ignored otherwise. | Default 0.0 (off, as in the Deep OC-SORT fusion). Calibrate per encoder: 0.8 with `reid_proximity_threshold=1.0` is the value for `osnet_x1_0` fine-tuned on SoccerNet and loses HOTA with `fastreid_mot17_sbs50`, see [choosing a fusion method](#choosing-a-fusion-method). |
 
 ---
 
@@ -84,13 +84,12 @@ The encoder decides how much appearance can help, and every threshold below depe
 
 The encoders used on this page:
 
-| Encoder                        | Architecture                                   | Trained on                                                                              | Role here                                                                                                                          |
-| :----------------------------- | :--------------------------------------------- | :-------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
-| `fastreid_mot17_sbs50`         | FastReID SBS with a ResNeSt-50 backbone        | MOT17 pedestrian crops, released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT) | Loaded by `trackers track` and `trackers tune` when ReID is enabled without naming a model. In domain on MOT17, generic elsewhere. |
-| `osnet_x1_0_msmt17_combineall` | [OSNet](https://arxiv.org/abs/1905.00953) x1.0 | MSMT17, pedestrians on a university campus                                              | The out-of-domain example on SoccerNet below.                                                                                      |
-| `osnet_x1_0`, fine-tuned       | OSNet x1.0                                     | The train split of the dataset it is evaluated on                                       | The fine-tuned [results](#results).                                                                                                |
+| Encoder                  | Architecture                                   | Trained on                                                                              | Role here                                                                                                                          |
+| :----------------------- | :--------------------------------------------- | :-------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| `fastreid_mot17_sbs50`   | FastReID SBS with a ResNeSt-50 backbone        | MOT17 pedestrian crops, released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT) | Loaded by `trackers track` and `trackers tune` when ReID is enabled without naming a model. In domain on MOT17, generic elsewhere. |
+| `osnet_x1_0`, fine-tuned | [OSNet](https://arxiv.org/abs/1905.00953) x1.0 | The train split of the dataset it is evaluated on                                       | The fine-tuned [results](#results).                                                                                                |
 
-Load the two published encoders by name with `ReIDModel.from_pretrained`, as in the [quickstart](#quickstart); the fine-tuned weights are not published yet. Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
+Load `fastreid_mot17_sbs50` by name with `ReIDModel.from_pretrained`, as in the [quickstart](#quickstart); the fine-tuned weights are not published yet. Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
 
 ---
 
@@ -157,7 +156,7 @@ for threshold in (0.10, 0.20, 0.25):
 plot_appearance_distances(distances, thresholds={0.20: "selected", 0.25: "default"})
 ```
 
-The [ReID API reference](../api/reid.md#choosing-a-threshold) lists the full signatures, and the [ReID cookbook](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb) runs the whole flow in Colab. The two examples below use 5000 same-person and 10000 different-person pairs, 1 to 30 frames apart.
+The [ReID API reference](../api/reid.md#choosing-a-threshold) lists the full signatures, and the [ReID cookbook](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb) runs the whole flow in Colab. The example below uses 5000 same-person and 10000 different-person pairs, 1 to 30 frames apart.
 
 ### MOT17 with an encoder trained on MOT17
 
@@ -174,13 +173,7 @@ This is what `rates_at` prints for two thresholds:
 
 Moving the threshold right accepts more same-person pairs, but it also starts letting different-person pairs through. We use 0.2, the same value as the [MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) (Table 8).
 
-### SoccerNet with an out-of-domain encoder
-
-`osnet_x1_0_msmt17_combineall` was trained on pedestrians from the MSMT17 dataset and has never seen football. On SoccerNet test, players in the same kit look alike to it, so the blue and red bars overlap.
-
-![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
-
-When the two groups overlap like this, no threshold separates them: any value that keeps most same-person pairs also lets many different-person pairs through. Tuning the threshold will not fix it. Check the [proximity threshold](#choosing-a-proximity-threshold) and [fusion method](#choosing-a-fusion-method) first, and consider an encoder fine-tuned on your footage, see [results](#results).
+If the two groups overlap instead, no threshold separates them: any value that keeps most same-person pairs also lets many different-person pairs through. Check the [proximity threshold](#choosing-a-proximity-threshold) and [fusion method](#choosing-a-fusion-method) first, and consider an encoder fine-tuned on your footage, see [results](#results).
 
 ---
 
@@ -221,12 +214,6 @@ From this we learn:
     | 31 to 60   |  0.899  |       39.8%       |          0.9%          |
     | 61 to 120  |  0.865  |       31.8%       |          0.8%          |
     | 121 to 240 |  0.854  |       28.7%       |          0.8%          |
-
-??? info "An out-of-domain encoder on SoccerNet"
-
-    `osnet_x1_0_msmt17_combineall` on SoccerNet fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, so no threshold makes this encoder useful here. The SoccerNet rows in the [results](#results) use an encoder fine-tuned on the dataset's own train split instead.
-
-    ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
 
 ---
 
