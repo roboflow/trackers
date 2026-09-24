@@ -171,7 +171,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |    BoT-SORT     |   74.1   |   74.0   | **96.9** |
     | BoT-SORT + ReID | **77.8** | **78.5** | **96.9** |
 
-    Tuned configuration for each tracker. The ReID row uses an `osnet_x1_0` fine-tuned on SportsMOT train.
+    Tuned configuration for each tracker. The ReID row uses `osnet_x1_0_sportsmot`, an OSNet x1.0 fine-tuned on SportsMOT train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     ```yaml
     SORT:
@@ -218,7 +218,7 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
       buffer_ratio_second: 0.5
 
     BoT-SORT + ReID:
-      reid_model: osnet_x1_0 fine-tuned on SportsMOT train
+      reid_model: osnet_x1_0_sportsmot
       reid_fusion: botsort
       reid_appearance_threshold: 0.3425
       reid_proximity_threshold: 0.9953
@@ -273,7 +273,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |    BoT-SORT     |   85.0   |   79.7   |   97.2   |
     | BoT-SORT + ReID | **88.4** | **84.4** | **99.3** |
 
-    Tuned configuration for each tracker. The ReID row uses an `osnet_x1_0` fine-tuned on SoccerNet train.
+    Tuned configuration for each tracker. The ReID row uses `osnet_x1_0_soccernet`, an OSNet x1.0 fine-tuned on SoccerNet train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     ```yaml
     SORT:
@@ -320,7 +320,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       buffer_ratio_second: 0.50
 
     BoT-SORT + ReID:
-      reid_model: osnet_x1_0 fine-tuned on SoccerNet train
+      reid_model: osnet_x1_0_soccernet
       reid_fusion: adaptive
       reid_appearance_weight: 0.75
       reid_adaptive_weight_cap: 0.5
@@ -380,7 +380,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |    BoT-SORT     |   57.8   |   57.9   |   92.2   |
     | BoT-SORT + ReID | **60.8** | **61.6** |   91.7   |
 
-    Best configuration for each tracker. The ReID row uses an `osnet_x1_0` fine-tuned on DanceTrack train.
+    Best configuration for each tracker. The ReID row uses `osnet_x1_0_dancetrack`, an OSNet x1.0 fine-tuned on DanceTrack train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
     ```yaml
     SORT:
@@ -427,7 +427,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
       buffer_ratio_second: 0.10
 
     BoT-SORT + ReID:
-      reid_model: osnet_x1_0 fine-tuned on DanceTrack train
+      reid_model: osnet_x1_0_dancetrack
       reid_fusion: botsort
       reid_appearance_threshold: 0.4716
       reid_proximity_threshold: 0.6802

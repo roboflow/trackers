@@ -80,7 +80,7 @@ Fine-tuning an encoder on your own data is coming to the `reid` package.
 The encoder decides how much appearance can help, and every threshold below depends on it. There are two kinds:
 
 - **A generic encoder**, used as published. The one used here is `fastreid_mot17_sbs50`, a FastReID SBS model with a ResNeSt-50 backbone and 25.4M parameters, trained on MOT17 pedestrian crops and released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT). `trackers track` and `trackers tune` load it when ReID is enabled without naming a model; in Python, load it with `ReIDModel.from_pretrained("fastreid_mot17_sbs50")`, as in the [quickstart](#quickstart). It works out of the box, and how much it helps depends on the dataset, see [results](#results).
-- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. The results use an [OSNet](https://arxiv.org/abs/1905.00953) x1.0, a much smaller network with 2.2M parameters, fine-tuned on each dataset's train split. Training one is coming to the `reid` package, and these weights are not published yet.
+- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. The results use an [OSNet](https://arxiv.org/abs/1905.00953) x1.0, a much smaller network with 2.2M parameters, fine-tuned on each dataset's train split. All four are available by name: `osnet_x1_0_mot17`, `osnet_x1_0_sportsmot`, `osnet_x1_0_dancetrack` and `osnet_x1_0_soccernet`. Load one with `ReIDModel.from_pretrained("osnet_x1_0_sportsmot")`, or pass the name to `--reid.model` on the command line. Training your own is coming to the `reid` package.
 
 Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
 
@@ -216,7 +216,7 @@ From this we learn:
 
 While a track is lost it has no detection of its own, so it is matched through its estimated position, which keeps moving as if the target had carried on. After a short occlusion that estimate has drifted, so it barely overlaps the detection when the target reappears. After the target leaves the frame it drifts out of view entirely and the overlap drops to zero. The 0.5 default blocks appearance in both cases, 0.99 lets it score the first one, and only 1.0 lets it score the second. BoT-SORT has no separate step for targets that leave and return, so opening the gate is the only way to keep their ID.
 
-SoccerNet test, oracle detections, `osnet_x1_0` fine-tuned on SoccerNet train, library-default motion parameters, `reid_fusion="adaptive"` with its default weights:
+SoccerNet test, oracle detections, `osnet_x1_0_soccernet`, library-default motion parameters, `reid_fusion="adaptive"` with its default weights:
 
 | `reid_proximity_threshold` | appearance consulted when | HOTA  | IDF1  | ID switches |
 | :------------------------- | :------------------------ | :---: | :---: | :---------: |
@@ -250,7 +250,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
 === "Fine-tuned encoder"
 
-    `osnet_x1_0` fine-tuned on each dataset's train split, with `reid_fusion="botsort"` and `reid_fusion="adaptive"`.
+    `osnet_x1_0` fine-tuned on each dataset's train split (`osnet_x1_0_mot17`, `osnet_x1_0_sportsmot`, `osnet_x1_0_dancetrack`, `osnet_x1_0_soccernet`), with `reid_fusion="botsort"` and `reid_fusion="adaptive"`.
 
     |  Dataset   | Config                      |   HOTA   |   IDF1   |   MOTA   |
     | :--------: | :-------------------------- | :------: | :------: | :------: |
@@ -274,11 +274,11 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
         ```yaml
         MOT17:
           botsort:
-            reid_model: osnet_x1_0 fine-tuned on MOT17 train
+            reid_model: osnet_x1_0_mot17
             reid_appearance_threshold: 0.0448
             reid_proximity_threshold: 0.2697
           adaptive:
-            reid_model: osnet_x1_0 fine-tuned on MOT17 train
+            reid_model: osnet_x1_0_mot17
             reid_appearance_weight: 2.124
             reid_adaptive_weight_cap: 0.959
             reid_appearance_floor: 0.569
@@ -287,11 +287,11 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
         SportsMOT:
           botsort:
-            reid_model: osnet_x1_0 fine-tuned on SportsMOT train
+            reid_model: osnet_x1_0_sportsmot
             reid_appearance_threshold: 0.3425
             reid_proximity_threshold: 0.9953
           adaptive:
-            reid_model: osnet_x1_0 fine-tuned on SportsMOT train
+            reid_model: osnet_x1_0_sportsmot
             reid_appearance_weight: 1.290
             reid_adaptive_weight_cap: 0.718
             reid_appearance_floor: 0.510
@@ -300,11 +300,11 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
         DanceTrack:
           botsort:
-            reid_model: osnet_x1_0 fine-tuned on DanceTrack train
+            reid_model: osnet_x1_0_dancetrack
             reid_appearance_threshold: 0.4716
             reid_proximity_threshold: 0.6802
           adaptive:
-            reid_model: osnet_x1_0 fine-tuned on DanceTrack train
+            reid_model: osnet_x1_0_dancetrack
             reid_appearance_weight: 1.947
             reid_adaptive_weight_cap: 0.944
             reid_appearance_floor: 0.614
@@ -313,11 +313,11 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
         SoccerNet:
           botsort:
-            reid_model: osnet_x1_0 fine-tuned on SoccerNet train
+            reid_model: osnet_x1_0_soccernet
             reid_appearance_threshold: 0.075
             reid_proximity_threshold: 1.0
           adaptive:
-            reid_model: osnet_x1_0 fine-tuned on SoccerNet train
+            reid_model: osnet_x1_0_soccernet
             reid_appearance_weight: 0.75
             reid_adaptive_weight_cap: 0.5
             reid_proximity_threshold: 1.0
