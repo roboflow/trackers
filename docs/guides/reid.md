@@ -283,20 +283,22 @@ BoT-SORT with and without ReID, using the same detections and motion parameters.
 
     Test split:
 
-    | Dataset    | Config                      |   HOTA    |   IDF1    |   MOTA    |
-    | :--------- | :-------------------------- | :-------: | :-------: | :-------: |
-    | MOT17      | BoT-SORT                    |   63.86   |   78.74   |   79.42   |
-    |            | BoT-SORT + ReID             |   63.85   |   78.82   |   79.41   |
-    |            | BoT-SORT + ReID, `adaptive` | **64.58** | **79.94** |   79.41   |
-    | SportsMOT  | BoT-SORT                    |   74.15   |   74.06   |   96.89   |
-    |            | BoT-SORT + ReID             | **75.46** | **75.48** | **96.90** |
-    |            | BoT-SORT + ReID, `adaptive` |   74.06   |   73.74   |   96.87   |
-    | DanceTrack | BoT-SORT                    | **57.8**  | **57.9**  |   92.2    |
-    |            | BoT-SORT + ReID             |   57.6    |   57.6    |   92.1    |
-    |            | BoT-SORT + ReID, `adaptive` |   57.5    |   57.3    | **92.3**  |
-    | SoccerNet  | BoT-SORT                    |   85.00   |   79.68   |   97.25   |
-    |            | BoT-SORT + ReID             |   84.96   |   79.66   |   97.25   |
-    |            | BoT-SORT + ReID, `adaptive` | **85.89** | **80.40** | **97.94** |
+    | Dataset    | Config                      |   HOTA    |   IDF1    |   MOTA    |  FPS  |
+    | :--------- | :-------------------------- | :-------: | :-------: | :-------: | ----: |
+    | MOT17      | BoT-SORT                    |   63.86   |   78.74   |   79.42   |  66.7 |
+    |            | BoT-SORT + ReID             |   63.85   |   78.82   |   79.41   |  13.5 |
+    |            | BoT-SORT + ReID, `adaptive` | **64.58** | **79.94** |   79.41   |  13.7 |
+    | SportsMOT  | BoT-SORT                    |   74.15   |   74.06   |   96.89   |       |
+    |            | BoT-SORT + ReID             | **75.46** | **75.48** | **96.90** |       |
+    |            | BoT-SORT + ReID, `adaptive` |   74.06   |   73.74   |   96.87   |       |
+    | DanceTrack | BoT-SORT                    | **57.8**  | **57.9**  |   92.2    |  73.1 |
+    |            | BoT-SORT + ReID             |   57.6    |   57.6    |   92.1    |  22.5 |
+    |            | BoT-SORT + ReID, `adaptive` |   57.5    |   57.3    | **92.3**  |  22.5 |
+    | SoccerNet  | BoT-SORT                    |   85.00   |   79.68   |   97.25   |       |
+    |            | BoT-SORT + ReID             |   84.96   |   79.66   |   97.25   |       |
+    |            | BoT-SORT + ReID, `adaptive` | **85.89** | **80.40** | **97.94** |       |
+
+    FPS is frames per second of `tracker.update` on a Google Colab L4 runtime, at default parameters, over every frame of the MOT17 val-half sequences and 23 of the 25 DanceTrack val sequences. Loading the encoder and decoding frames are not included. ReID cost grows with the number of detections: on MOT17-04, with 53 per frame, BoT-SORT + ReID runs at 6.1 FPS. SportsMOT and SoccerNet are not measured yet.
 
     Tuned ReID configuration for each dataset. Motion parameters are the BoT-SORT values from the [tracker comparison](../evaluations/results.md).
 
