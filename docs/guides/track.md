@@ -330,7 +330,7 @@ See the [Dynamic Frame Rate guide](dynamic-frame-rate.md) for when to enable it,
 
 ## CLI Reference
 
-The commonly used arguments accepted by the `trackers track` command. `--tracker.*` is generated from the tracker registry, so it also carries parameters specific to one algorithm (`cbiou`'s buffer ratios, `botsort`/`mcbyte`'s camera motion compensation, `mcbyte`'s mask pipeline) that this table does not enumerate. Run `trackers track --help` for the complete, always-current set, and `trackers track --tracker.mask.help` for the mcbyte mask sub-options.
+The commonly used arguments accepted by the `trackers track` command. `--tracker.*` is generated from the tracker registry, so it also carries parameters specific to one algorithm (`cbiou`'s buffer ratios, `botsort`/`mcbyte`/`ocsort`'s camera motion compensation, `mcbyte`'s mask pipeline) that this table does not enumerate. Run `trackers track --help` for the complete, always-current set, and `trackers track --tracker.mask.help` for the mcbyte mask sub-options.
 
 Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset means the selected tracker's own default value is used, and that value differs per algorithm. See the [tracker API reference](../api/trackers.md) for actual constructor defaults and the individual [SORT](../trackers/sort.md), [ByteTrack](../trackers/bytetrack.md), [OC-SORT](../trackers/ocsort.md), [BoT-SORT](../trackers/botsort.md), [C-BIoU](../trackers/cbiou.md), and [McByte](../trackers/mcbyte.md) pages for parameter guidance. Note that OC-SORT has no `track_activation_threshold` parameter, even though `--tracker.track_activation_threshold` is exposed globally on the CLI.
 
@@ -470,17 +470,17 @@ Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset m
     </tr>
     <tr>
       <td><code>--tracker.enable_cmc</code></td>
-      <td>Camera motion compensation toggle. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td>Camera motion compensation toggle. <code>botsort</code>, <code>mcbyte</code> and <code>ocsort</code> (off by default for <code>ocsort</code>).</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.cmc_method</code></td>
-      <td>CMC method. Options: <code>orb</code>, <code>sift</code>, <code>sparseOptFlow</code>, <code>ecc</code>. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td>CMC method. Options: <code>orb</code>, <code>sift</code>, <code>sparseOptFlow</code>, <code>ecc</code>. <code>botsort</code>, <code>mcbyte</code> and <code>ocsort</code>.</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.cmc_downscale</code></td>
-      <td>Downscale factor used inside CMC for speed/robustness. <code>botsort</code> and <code>mcbyte</code> only.</td>
+      <td>Downscale factor used inside CMC for speed/robustness. <code>botsort</code>, <code>mcbyte</code> and <code>ocsort</code>.</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>

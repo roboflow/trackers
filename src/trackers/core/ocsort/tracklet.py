@@ -11,6 +11,7 @@ from collections.abc import Callable
 import numpy as np
 
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.cmc import CMC, _warp_kalman_states
 from trackers.utils.converters import (
     xyxy_to_xcycsr,
 )
@@ -18,6 +19,7 @@ from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
+    XYXYStateEstimator,
 )
 
 
@@ -266,6 +268,47 @@ class OCSORTTracklet(BaseTracklet):
 
         self._advance_miss_clocks(timing)
         return self.state_estimator.state_to_bbox()
+
+    def apply_camera_motion(self, affine_mtx: np.ndarray) -> None:
+        """Warp the stored observations and the ORU frozen state by a camera-motion transform.
+
+        ``CMC.apply_batch`` transforms the live Kalman state; this keeps the geometry
+        OC-SORT stores beside it in the same, current-frame coordinates: the
+        observations used by OCR, velocity estimation and the direction-consistency
+        term, and the frozen filter state that ORU restores when a lost track is
+        matched again. Boxes are warped corner-wise and replaced by their enclosing
+        axis-aligned box. The stored unit ``velocity`` is left as is; it is
+        re-estimated from the warped observations on the next match.
+
+        Args:
+            affine_mtx: 2x3 affine transform returned by ``CMC.estimate()``.
+        """
+        rot_mtx = affine_mtx[:2, :2].astype(np.float64)
+        translation = affine_mtx[:2, 2].astype(np.float64)
+
+        ages = list(self.observations)
+        boxes = [self.last_observation, *(self.observations[age] for age in ages)]
+        if self.previous_to_last_observation is not None:
+            boxes.append(self.previous_to_last_observation)
+        stacked = np.asarray(boxes, dtype=np.float64)
+        warped = np.stack(
+            CMC.warp_xyxy_corners(stacked[:, 0], stacked[:, 1], stacked[:, 2], stacked[:, 3], rot_mtx, translation),
+            axis=1,
+        )
+        self.last_observation = warped[0]
+        self.observations = {age: warped[i + 1] for i, age in enumerate(ages)}
+        if self.previous_to_last_observation is not None:
+            self.previous_to_last_observation = warped[-1]
+
+        if self._frozen_state is not None:
+            states, covariances = _warp_kalman_states(
+                self._frozen_state["state"].reshape(1, -1).astype(np.float64),
+                self._frozen_state["state_covariance"][np.newaxis].astype(np.float64),
+                affine_mtx,
+                is_xyxy=isinstance(self.state_estimator, XYXYStateEstimator),
+            )
+            self._frozen_state["state"] = states[0].reshape(-1, 1)
+            self._frozen_state["state_covariance"] = covariances[0]
 
     def get_state_bbox(self) -> np.ndarray:
         """Get current bounding box estimate from Kalman filter.
