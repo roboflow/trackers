@@ -6,8 +6,8 @@
 
 """Result classes for tracking evaluation metrics.
 
-This module provides dataclasses for storing and manipulating evaluation results
-with methods for serialization, display, and persistence.
+This module provides dataclasses for storing and manipulating evaluation results with methods for serialization,
+display, and persistence.
 """
 
 from __future__ import annotations
@@ -82,8 +82,9 @@ ALL_FLOAT_FIELDS = CLEAR_FLOAT_FIELDS + HOTA_FLOAT_FIELDS + IDENTITY_FLOAT_FIELD
 
 @dataclass
 class CLEARMetrics:
-    """CLEAR metrics with TrackEval-compatible field names. Float metrics are stored
-    as fractions (0-1 range), not percentages. The values follow the original CLEAR
+    """CLEAR metrics with TrackEval-compatible field names.
+
+    Float metrics are stored as fractions (0-1 range), not percentages. The values follow the original CLEAR
     MOT definitions.
 
     Attributes:
@@ -180,8 +181,9 @@ class CLEARMetrics:
 
 @dataclass
 class HOTAMetrics:
-    """HOTA metrics with TrackEval-compatible field names. HOTA evaluates both
-    detection quality and association quality. Float metrics are stored as fractions
+    """HOTA metrics with TrackEval-compatible field names.
+
+    HOTA evaluates both detection quality and association quality. Float metrics are stored as fractions
     (0-1 range).
 
     Attributes:
@@ -294,8 +296,9 @@ class HOTAMetrics:
 
 @dataclass
 class IdentityMetrics:
-    """Identity metrics with TrackEval-compatible field names. Identity metrics
-    measure global ID consistency using an optimal one-to-one assignment between GT
+    """Identity metrics with TrackEval-compatible field names.
+
+    Identity metrics measure global ID consistency using an optimal one-to-one assignment between GT
     and tracker IDs across the full sequence.
 
     Attributes:

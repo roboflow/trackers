@@ -22,15 +22,13 @@ from trackers.utils.state_representations import (
 
 
 class ByteTrackTracker(BaseTracker):
-    """ByteTrack operates online by processing all detector outputs, categorizing them
-    by confidence thresholds to enable a two-stage association process. High-score boxes
-    are initially linked to tracklets via Kalman filter predictions and IoU-based
-    Hungarian matching, optionally enhanced with appearance features. Low-score boxes
-    follow in a secondary matching phase using pure motion similarity to revive occluded
-    tracks. Tracks without matches are kept briefly for potential re-association,
-    preventing premature termination. This inclusive approach addresses common pitfalls
-    in detection filtering, establishing ByteTrack as a flexible enhancer for existing
-    tracking frameworks.
+    """ByteTrack operates online by processing all detector outputs, categorizing them by confidence thresholds to
+    enable a two-stage association process. High-score boxes are initially linked to tracklets via Kalman filter
+    predictions and IoU-based Hungarian matching, optionally enhanced with appearance features. Low-score boxes follow
+    in a secondary matching phase using pure motion similarity to revive occluded tracks. Tracks without matches are
+    kept briefly for potential re-association, preventing premature termination. This inclusive approach addresses
+    common pitfalls in detection filtering, establishing ByteTrack as a flexible enhancer for existing tracking
+    frameworks.
 
     ByteTrack excels in dense environments, where its low-score recovery mechanism
     minimizes missed detections and enhances overall trajectory completeness. It
@@ -250,10 +248,8 @@ class ByteTrackTracker(BaseTracker):
         similarity_matrix: np.ndarray,
         min_similarity_thresh: float,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """
-        Associate detections to tracks based on Similarity (IoU) using the
-        Jonker-Volgenant algorithm approach with no initialization instead of the
-        Hungarian algorithm as mentioned in the SORT paper, but it solves the
+        """Associate detections to tracks based on Similarity (IoU) using the Jonker-Volgenant algorithm approach with
+        no initialization instead of the Hungarian algorithm as mentioned in the SORT paper, but it solves the
         assignment problem in an optimal way.
 
         Args:
@@ -310,6 +306,7 @@ class ByteTrackTracker(BaseTracker):
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
+
         Call this method when switching to a new video or scene.
         """
         self.tracks = []

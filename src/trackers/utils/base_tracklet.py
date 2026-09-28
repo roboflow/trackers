@@ -15,8 +15,8 @@ from trackers.utils.state_representations import BaseStateEstimator
 
 
 class BaseTracklet(ABC):
-    """
-    Abstract base class for all tracker-specific tracklets.
+    """Abstract base class for all tracker-specific tracklets.
+
     Provides common interface and attributes for tracklet management.
     """
 
@@ -44,9 +44,8 @@ class BaseTracklet(ABC):
     def _advance_miss_clocks(self, timing: PredictTiming) -> None:
         """Advance miss counters by one step.
 
-        When ``elapsed_seconds`` is ``None`` (fixed-rate mode), the seconds
-        counter is reset to zero so stale values from a prior timestamp-mode
-        stretch cannot influence later seconds-budget pruning.
+        When ``elapsed_seconds`` is ``None`` (fixed-rate mode), the seconds counter is reset to zero so stale values
+        from a prior timestamp-mode stretch cannot influence later seconds-budget pruning.
         """
         self.time_since_update += 1
         if timing.elapsed_seconds is not None:

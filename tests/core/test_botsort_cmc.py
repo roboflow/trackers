@@ -49,16 +49,14 @@ def _xyxy_tracklet(bbox: np.ndarray) -> BoTSORTTracklet:
 class TestCMCEstimateAcrossMethods:
     """CMC.estimate() contract — parametrised over every supported method.
 
-    All tests instantiate CMC via `_make_cmc(method)` (skips when the method is
-    unavailable in the local OpenCV build) and feed it `_bgr_frame(...)` noise
-    frames; assertions cover the documented `estimate()` return contract:
-    shape (2, 3), dtype float32, identity on degenerate inputs, finite values
-    on real inputs.
+    All tests instantiate CMC via `_make_cmc(method)` (skips when the method is unavailable in the local OpenCV build)
+    and feed it `_bgr_frame(...)` noise frames; assertions cover the documented `estimate()` return contract: shape (2,
+    3), dtype float32, identity on degenerate inputs, finite values on real inputs.
     """
 
     @pytest.mark.parametrize("method", ALL_METHODS)
     def test_output_is_2x3_float32(self, method: str) -> None:
-        """estimate() must always return a (2, 3) float32 matrix."""
+        """Estimate() must always return a (2, 3) float32 matrix."""
         cmc = _make_cmc(method)
         frame1 = _bgr_frame(seed=0)
         frame2 = _bgr_frame(seed=1)
@@ -125,7 +123,7 @@ class TestCMCEstimateAcrossMethods:
 
     @pytest.mark.parametrize("method", ALL_METHODS)
     def test_downscale_produces_valid_output(self, method: str) -> None:
-        """downscale>1 must still return a finite (2,3) float32 transform."""
+        """Downscale>1 must still return a finite (2,3) float32 transform."""
         cmc_ds1 = _make_cmc(method, downscale=1)
         cmc_ds2 = _make_cmc(method, downscale=2)
 
@@ -149,9 +147,8 @@ class TestCMCEstimateAcrossMethods:
 class TestCMCApplyBatch:
     """`CMC.apply_batch` against center-state tracklets.
 
-    All tests build default `BoTSORTTracklet(bbox)` instances (center-state
-    estimator) and verify the batch entry-point against the per-track
-    `apply_cmc` contract (equivalence, multi-tracklet, no-op cases).
+    All tests build default `BoTSORTTracklet(bbox)` instances (center-state estimator) and verify the batch entry-point
+    against the per-track `apply_cmc` contract (equivalence, multi-tracklet, no-op cases).
     """
 
     def test_matches_single(self) -> None:
@@ -221,9 +218,8 @@ class TestCMCApplyBatch:
 class TestCMCApplyToXYXY:
     """Direct unit tests on `CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t=None)`.
 
-    Each test passes raw 1-D NumPy arrays for the four corner channels and a
-    2x2 `R` (and optional 1-D `t`), then asserts on the four return arrays.
-    No tracklet, no Kalman state — just the pure helper contract.
+    Each test passes raw 1-D NumPy arrays for the four corner channels and a 2x2 `R` (and optional 1-D `t`), then
+    asserts on the four return arrays. No tracklet, no Kalman state — just the pure helper contract.
     """
 
     def test_identity_translation_only(self) -> None:
@@ -335,11 +331,9 @@ class TestCMCApplyToXYXY:
 class TestXYXYCovarianceUpdate:
     """Covariance (P) update contract for XYXY-state tracklets under CMC.
 
-    All tests build an `_xyxy_tracklet([10, 20, 50, 80])`, snapshot
-    `kf.state_covariance`, construct an H matrix from a chosen 2x2 R block, apply CMC
-    (single via `tracklet.apply_cmc`, batch via `tracker.apply_cmc_batch`),
-    then assert P either propagates as `A @ P @ A.T` (axis-aligned R) or
-    is left untouched (cross-axis R).
+    All tests build an `_xyxy_tracklet([10, 20, 50, 80])`, snapshot `kf.state_covariance`, construct an H matrix from a
+    chosen 2x2 R block, apply CMC (single via `tracklet.apply_cmc`, batch via `tracker.apply_cmc_batch`), then assert P
+    either propagates as `A @ P @ A.T` (axis-aligned R) or is left untouched (cross-axis R).
     """
 
     @pytest.mark.parametrize(
@@ -431,10 +425,9 @@ class TestXYXYCovarianceUpdate:
 class TestXYXYAxisAlignedTolerance:
     """Boundary tests on the `atol=1e-6` axis-aligned classifier in CMC.
 
-    Both tests build the same `_xyxy_tracklet` and an R whose cross-axis
-    residual sits just below or just above 1e-6, then verify which branch
-    (P-update vs P-freeze) `tracklet.apply_cmc(H)` selected by inspecting
-    the post-call `kf.state_covariance`.
+    Both tests build the same `_xyxy_tracklet` and an R whose cross-axis residual sits just below or just above 1e-6,
+    then verify which branch (P-update vs P-freeze) `tracklet.apply_cmc(H)` selected by inspecting the post-call
+    `kf.state_covariance`.
     """
 
     def test_residual_below_atol_treated_as_axis_aligned(self) -> None:
@@ -541,8 +534,7 @@ def test_xyxy_velocity_rotates_without_translation() -> None:
 class TestCMCApplyBatchAdversarial:
     """Adversarial H inputs to CMC.apply_batch.
 
-    Covers wrong-shape H (should raise) and non-finite H values
-    (should propagate to state without raising).
+    Covers wrong-shape H (should raise) and non-finite H values (should propagate to state without raising).
     """
 
     def test_wrong_shape_h_raises(self) -> None:

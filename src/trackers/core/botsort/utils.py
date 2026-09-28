@@ -18,8 +18,7 @@ def get_alive_tracklets(
     maximum_frames_without_update: int,
     maximum_time_without_update: float | None = None,
 ) -> list[BoTSORTTracklet]:
-    """
-    Remove dead or immature lost tracklets and return alive ones.
+    """Remove dead or immature lost tracklets and return alive ones.
 
     A tracklet is kept if it is within ``maximum_frames_without_update`` **and**
     it satisfies at least one liveness condition:

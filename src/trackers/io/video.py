@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -14,6 +16,8 @@ import numpy as np
 
 from trackers.io.paths import _resolve_video_output_path
 
+logger = logging.getLogger("trackers.io.video")
+
 IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"})
 _DEFAULT_OUTPUT_FPS = 30.0
 
@@ -21,13 +25,13 @@ _DEFAULT_OUTPUT_FPS = 30.0
 def frames_from_source(
     source: str | Path | int,
 ) -> Iterator[tuple[int, np.ndarray]]:
-    """Yield numbered BGR frames from video files, webcams, network streams, or image
-    directories.
+    """Yield numbered BGR frames from video files, webcams, network streams, or image directories.
 
     Args:
         source: Video file path, RTSP/HTTP stream URL, webcam index, or path to a
             directory containing images (`.jpg`, `.jpeg`, `.png`, `.bmp`, `.tif`,
-            `.tiff`).
+            `.tiff`). Directory entries are ordered naturally, so unpadded numeric
+            names such as `2.jpg` and `10.jpg` are read in numeric order.
 
     Returns:
         Iterator of `(frame_id, frame)` tuples where `frame_id` is 1-based and `frame`
@@ -68,12 +72,32 @@ def _iter_capture_frames(
         cap.release()
 
 
+def _natural_sort_key(path: Path) -> tuple[str | int, ...]:
+    """Build a sort key that orders embedded digit runs by value rather than as text.
+
+    Plain lexicographic sorting puts `10.jpg` before `2.jpg`, which silently feeds an image sequence to a tracker in
+    the wrong temporal order. Splitting the name into alternating text and digit runs and comparing digit runs as
+    integers restores numeric order for unpadded names, while leaving zero-padded and non-numeric names unaffected.
+
+    Args:
+        path: Image file path; only the file name participates in the key.
+
+    Returns:
+        Tuple of alternating text and integer parts. `re.split` with a capturing group always yields text at even
+        positions and digits at odd ones, so keys compare position-wise without mixing types.
+    """
+    return tuple(int(part) if part.isdigit() else part for part in re.split(r"(\d+)", path.name))
+
+
 def _iter_image_folder_frames(
     folder: Path,
     *,
     extensions: frozenset[str] = IMAGE_EXTENSIONS,
 ) -> Iterator[tuple[int, np.ndarray]]:
-    images = sorted(p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in extensions)
+    images = sorted(
+        (p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in extensions),
+        key=_natural_sort_key,
+    )
 
     if not images:
         raise ValueError(f"No supported image files found in directory: {folder}")
@@ -92,9 +116,21 @@ class _VideoOutput:
         self.path = path
         self.fps = fps
         self._writer: cv2.VideoWriter | None = None
+        self._frame_size: tuple[int, int] | None = None
+        self._size_mismatch_logged = False
 
     def write(self, frame: np.ndarray) -> bool:
-        """Write a frame to the video file. Initializes writer on first call.
+        """Write a frame to the video file; initializes writer on first call.
+
+        The writer is bound to the first frame's resolution, and a video file
+        cannot hold frames of mixed sizes. A later frame of a different size
+        (e.g. a mid-stream resolution change from an RTSP renegotiation) is
+        resized to the writer's resolution so it is kept in the output stream
+        rather than being silently dropped by the codec. This guarantee only
+        covers height/width mismatches: the writer is opened with `isColor=True`
+        and channel count is not reconciled, so a mid-stream frame with a
+        different number of channels (e.g. single-channel grayscale) can still
+        be silently dropped by the codec.
 
         Returns:
             True if write succeeded or path is None, False on failure.
@@ -105,6 +141,7 @@ class _VideoOutput:
             self._writer = self._create_writer(frame)
             if self._writer is None:
                 return False
+        frame = self._match_writer_size(frame)
         self._writer.write(frame)
         return True
 
@@ -122,7 +159,36 @@ class _VideoOutput:
         if not writer.isOpened():
             raise OSError(f"Failed to open video writer for '{resolved}'")
 
+        self._frame_size = (width, height)
         return writer
+
+    def _match_writer_size(self, frame: np.ndarray) -> np.ndarray:
+        """Resize a frame to the writer's resolution, warning once on mismatch.
+
+        `cv2.VideoWriter.write` silently discards frames whose size differs from the one the writer was opened with, so
+        a resolution change mid-stream would drop frames from the output without any error. Resizing keeps the stream
+        contiguous; the mismatch is logged once to avoid per-frame spam. The resize stretches the frame to the writer's
+        exact dimensions without preserving the source aspect ratio (aspect ratio may be distorted). `cv2.INTER_AREA` is
+        used only when downscaling (both writer dimensions are smaller than the source frame's), since it degrades
+        toward nearest-neighbor quality when upscaling; `cv2.INTER_LINEAR` is used for upscaling or mixed-direction
+        resizes.
+        """
+        height, width = frame.shape[:2]
+        if self._frame_size is None or self._frame_size == (width, height):
+            return frame
+        if not self._size_mismatch_logged:
+            logger.warning(
+                "Video frame size %s differs from the writer size %s; resizing "
+                "to keep the output stream contiguous (aspect ratio may be "
+                "distorted).",
+                (width, height),
+                self._frame_size,
+            )
+            self._size_mismatch_logged = True
+        target_width, target_height = self._frame_size
+        is_downscale = target_width < width and target_height < height
+        interpolation = cv2.INTER_AREA if is_downscale else cv2.INTER_LINEAR
+        return cv2.resize(frame, self._frame_size, interpolation=interpolation)
 
     def __enter__(self) -> _VideoOutput:
         return self

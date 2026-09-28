@@ -12,7 +12,16 @@ import pytest
 torch = pytest.importorskip("torch")
 torchvision = pytest.importorskip("torchvision")
 
-from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU  # noqa: E402
+from trackers.utils.iou import (  # noqa: E402
+    BaseIoU,
+    BIoU,
+    CIoU,
+    DIoU,
+    GIoU,
+    IoU,
+    _compute_iou_and_enclosing,
+    variant_from_name,
+)
 
 
 def _torchvision_giou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
@@ -192,10 +201,9 @@ class TestIoUVariantsAgainstTorchvision:
     ) -> None:
         """Validate variant-vs-reference parity across shared geometric scenarios.
 
-        `upper_bound` is used only for cases where the original tests expected
-        negative scores for non-overlapping boxes (GIoU/DIoU/CIoU).
-        BIoU is intentionally excluded from this check because buffered IoU is
-        IoU-like (non-negative) and can be zero or positive for such cases.
+        `upper_bound` is used only for cases where the original tests expected negative scores for non-overlapping boxes
+        (GIoU/DIoU/CIoU). BIoU is intentionally excluded from this check because buffered IoU is IoU-like (non-negative)
+        and can be zero or positive for such cases.
         """
         result = ours.compute(boxes_1, boxes_2)
         expected = ref_or_baseline(boxes_1, boxes_2)
@@ -402,9 +410,8 @@ class TestNormalizeForFusion:
     def test_output_in_unit_range_over_random_batch(self, metric: BaseIoU) -> None:
         """normalize_for_fusion must map similarities into [0, 1] for score fusion.
 
-        CIoU's aspect-ratio penalty drives raw scores below -1, so the naive
-        ``(x + 1) / 2`` shift (without clamping) yields negatives that corrupt
-        ``_fuse_score``. The other variants already lie in [0, 1] post-shift.
+        CIoU's aspect-ratio penalty drives raw scores below -1, so the naive ``(x + 1) / 2`` shift (without clamping)
+        yields negatives that corrupt ``_fuse_score``. The other variants already lie in [0, 1] post-shift.
         """
         rng = np.random.default_rng(103)
         xy = rng.uniform(0, 500, size=(100, 2))
@@ -520,11 +527,90 @@ class TestDegenerateInputs:
         result = metric.compute(boxes_a, boxes_b)
         assert np.isfinite(result).all(), "Zero-area box should yield finite similarity"
 
-    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU()])
-    def test_inverted_coords_gives_zero_or_negative_similarity(self, metric: BaseIoU) -> None:
-        # x2 < x1 — degenerate box; result should not crash
-        boxes_a = np.array([[10.0, 0.0, 0.0, 10.0]])  # inverted x
+    @pytest.mark.parametrize(
+        "boxes_a",
+        [
+            pytest.param(np.array([[10.0, 0.0, 0.0, 10.0]]), id="inverted-x"),
+            pytest.param(np.array([[0.0, 10.0, 10.0, 0.0]]), id="inverted-y"),
+            pytest.param(np.array([[10.0, 10.0, 0.0, 0.0]]), id="inverted-both"),
+        ],
+    )
+    def test_inverted_coords_score_exactly_like_a_zero_area_box(self, boxes_a: np.ndarray) -> None:
+        """Every malformed ordering collapses to the degenerate zero-area GIoU score of ``0.0``.
+
+        ``_compute_iou_and_enclosing`` clamps box extents at zero, so a malformed box contributes no area whichever
+        corners are swapped. The exact value is asserted rather than a one-sided bound: without the clamp a doubly
+        inverted box has a negative width and a negative height whose product is a positive area, inflating the union
+        past the enclosing area and turning GIoU's penalty into a bonus (``+1.0``, a perfect match), while a singly
+        inverted box produced ``-1.0`` from a zero union. Both now agree with a well-formed zero-area box.
+        """
         boxes_b = np.array([[0.0, 0.0, 10.0, 10.0]])
-        result = metric.compute(boxes_a, boxes_b)
+        zero_area = np.array([[5.0, 5.0, 5.0, 5.0]])
+        expected = GIoU().compute(zero_area, boxes_b)[0, 0]
+
+        result = GIoU().compute(boxes_a, boxes_b)
+
         assert result.shape == (1, 1)
+        assert result[0, 0] == pytest.approx(expected)
+        assert result[0, 0] == pytest.approx(0.0)
+
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    @pytest.mark.parametrize(
+        "boxes_a",
+        [
+            pytest.param(np.array([[10.0, 0.0, 0.0, 10.0]]), id="inverted-x"),
+            pytest.param(np.array([[0.0, 10.0, 10.0, 0.0]]), id="inverted-y"),
+            pytest.param(np.array([[10.0, 10.0, 0.0, 0.0]]), id="inverted-both"),
+        ],
+    )
+    def test_inverted_coords_never_score_as_a_positive_match(self, metric: BaseIoU, boxes_a: np.ndarray) -> None:
+        """No variant may report a positive similarity for a malformed box, on any inversion pattern.
+
+        ``BIoU`` is included because its buffer expands an inverted box further apart rather than closer together.
+        """
+        boxes_b = np.array([[0.0, 0.0, 10.0, 10.0]])
+
+        result = metric.compute(boxes_a, boxes_b)
+
         assert np.isfinite(result).all(), "Inverted-coord box should not produce NaN/inf"
+        assert result[0, 0] <= 0.0, "Inverted-coord box must not score as a positive match"
+
+    def test_inverted_box_area_does_not_inflate_union(self) -> None:
+        """A malformed box contributes zero area, so the union can never exceed the enclosing area."""
+        boxes_a = np.array([[130.0, 160.0, 110.0, 120.0]])  # width -20, height -40
+        boxes_b = np.array([[100.0, 100.0, 140.0, 180.0]])
+
+        _, _, union, enclosing_area, _ = _compute_iou_and_enclosing(boxes_a, boxes_b)
+
+        assert union[0, 0] <= enclosing_area[0, 0]
+
+
+class TestVariantFromName:
+    """Tests for variant_from_name() registry lookup."""
+
+    @pytest.mark.parametrize(
+        ("name", "expected_type"),
+        [
+            ("iou", IoU),
+            ("giou", GIoU),
+            ("diou", DIoU),
+            ("ciou", CIoU),
+            ("biou", BIoU),
+        ],
+    )
+    def test_valid_names_return_correct_instance(self, name: str, expected_type: type) -> None:
+        """Each lowercase variant name resolves to the right BaseIoU subclass."""
+        result = variant_from_name(name)
+        assert isinstance(result, expected_type)
+
+    @pytest.mark.parametrize("name", ["IOU", "GIoU", "BIOU", "DiOU", "CIou"])
+    def test_case_insensitive_lookup(self, name: str) -> None:
+        """Lookup is case-insensitive — any casing resolves without error."""
+        result = variant_from_name(name)
+        assert isinstance(result, BaseIoU)
+
+    @pytest.mark.parametrize("name", ["", "foo", "wiou", "iou2"])
+    def test_invalid_name_raises_value_error(self, name: str) -> None:
+        """Unknown names raise ValueError; repr(name) appears in the error message."""
+        with pytest.raises(ValueError, match=repr(name)):
+            variant_from_name(name)

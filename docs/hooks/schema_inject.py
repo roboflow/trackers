@@ -121,8 +121,8 @@ _BENCHMARK_DATASETS = [
 def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
     """Build BreadcrumbList JSON-LD from navigation hierarchy.
 
-    Returns None if the page is at the root level (no meaningful breadcrumb)
-    or if the page is the homepage (to avoid "Home > Home > ..." duplication).
+    Returns None if the page is at the root level (no meaningful breadcrumb) or if the page is the homepage (to avoid
+    "Home > Home > ..." duplication).
     """
     # Skip breadcrumbs for the homepage to avoid "Home > Home > ..." duplication.
     if page.file.src_path == "index.md":
@@ -305,8 +305,8 @@ def on_page_context(context, page, config, nav):  # type: ignore[no-untyped-def]
             breadcrumbs, ensure_ascii=False, indent=2
         )
 
-    # ── Dataset JSON-LD (comparison page only) ──
-    if page.file.src_path == "trackers/comparison.md":
+    # ── Dataset JSON-LD (evaluations results page only) ──
+    if page.file.src_path == "evaluations/results.md":
         datasets = []
         for ds in _BENCHMARK_DATASETS:
             datasets.append(

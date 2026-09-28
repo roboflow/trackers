@@ -19,9 +19,8 @@ def _get_alive_tracklets(
     maximum_frames_without_update: int,
     maximum_time_without_update: float | None = None,
 ) -> list[T_SORTTracklet]:
-    """
-    Remove dead or immature lost tracklets and return alive trackers
-    that are within the time/frame budget AND (mature OR just updated).
+    """Remove dead or immature lost tracklets and return alive trackers that are within the time/frame budget AND
+    (mature OR just updated).
 
     Note:
         SORT uses total `number_of_successful_updates` (cumulative) for maturity,

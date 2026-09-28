@@ -398,7 +398,7 @@ class TestTunerRun:
         assert set(best.keys()) == expected_keys
 
     def test_run_calls_tracker_reset_per_sequence(self, tmp_path: Path) -> None:
-        """reset() must be called once per sequence per trial."""
+        """Reset() must be called once per sequence per trial."""
         from trackers import SORTTracker
 
         reset_calls: list[int] = []

@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Literal
 
 import numpy as np
@@ -29,7 +28,7 @@ def _xywh_to_xyxy(boxes: np.ndarray) -> np.ndarray:
     Returns:
         Array of shape `(N, 4)` in xyxy format `(x0, y0, x1, y1)`.
     """
-    boxes = deepcopy(boxes)
+    boxes = boxes.copy()
     boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
     boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
     return boxes
@@ -57,7 +56,8 @@ def box_iou(
         `boxes1[i]` and `boxes2[j]`. Values are in range `[0, 1]`.
 
     Raises:
-        ValueError: If box_format is not `"xyxy"` or `"xywh"`.
+        ValueError: If box_format is not `"xyxy"` or `"xywh"`, or if the two box
+            arrays disagree on column count or have fewer than 4 columns.
 
     Examples:
         >>> import numpy as np
@@ -103,7 +103,8 @@ def box_ioa(
         `boxes1[i]` and `boxes2[j]`. Values are in range `[0, 1]`.
 
     Raises:
-        ValueError: If box_format is not `"xyxy"` or `"xywh"`.
+        ValueError: If box_format is not `"xyxy"` or `"xywh"`, or if the two box
+            arrays disagree on column count or have fewer than 4 columns.
 
     Examples:
         >>> import numpy as np
@@ -144,11 +145,22 @@ def _calculate_box_ious(
         IoU/IoA matrix of shape `(N, M)`.
 
     Raises:
-        ValueError: If box_format is not `"xyxy"` or `"xywh"`.
+        ValueError: If box_format is not `"xyxy"` or `"xywh"`, or if the two box
+            arrays disagree on column count or have fewer than 4 columns.
     """
     # Handle empty input arrays
     if len(boxes1) == 0 or len(boxes2) == 0:
         return np.zeros((len(boxes1), len(boxes2)), dtype=np.float64)
+
+    # Column counts must agree and cover at least xyxy: broadcasting all four
+    # coordinate planes enforced this implicitly, but indexing only columns 0-3
+    # would silently accept ragged input. Extra columns (e.g. a trailing score
+    # kept alongside the box) stay allowed, as they were before.
+    columns1, columns2 = boxes1.shape[-1], boxes2.shape[-1]
+    if columns1 != columns2 or columns1 < 4:
+        raise ValueError(
+            f"boxes1 and boxes2 must have matching trailing dimensions of at least 4, got {columns1} and {columns2}"
+        )
 
     # Convert xywh to xyxy if needed
     if box_format == "xywh":
@@ -161,14 +173,22 @@ def _calculate_box_ious(
     boxes1 = np.asarray(boxes1, dtype=np.float64)
     boxes2 = np.asarray(boxes2, dtype=np.float64)
 
-    # Calculate intersection coordinates
-    # boxes1: (N, 4), boxes2: (M, 4) -> broadcasting to (N, M, 4)
-    min_ = np.minimum(boxes1[:, np.newaxis, :], boxes2[np.newaxis, :, :])
-    max_ = np.maximum(boxes1[:, np.newaxis, :], boxes2[np.newaxis, :, :])
-
-    # Intersection: max of left edges to min of right edges
-    # min_[..., 2] is min of x1 values, max_[..., 0] is max of x0 values
-    intersection = np.maximum(min_[..., 2] - max_[..., 0], 0) * np.maximum(min_[..., 3] - max_[..., 1], 0)
+    # xyxy layout: columns 0, 1, 2, 3 = x0, y0, x1, y1
+    # Calculate intersection dimensions by broadcasting each coordinate plane
+    # directly, without full (N, M, 4) arrays
+    intersection_width = np.maximum(
+        np.minimum(boxes1[:, np.newaxis, 2], boxes2[np.newaxis, :, 2])
+        - np.maximum(boxes1[:, np.newaxis, 0], boxes2[np.newaxis, :, 0]),
+        0,
+    )
+    intersection_height = np.maximum(
+        np.minimum(boxes1[:, np.newaxis, 3], boxes2[np.newaxis, :, 3])
+        - np.maximum(boxes1[:, np.newaxis, 1], boxes2[np.newaxis, :, 1]),
+        0,
+    )
+    intersection = intersection_width * intersection_height
+    # Not dead code: frees 2x (N, M) float64 before the union/IoU tail (-40% peak mem).
+    del intersection_width, intersection_height
 
     # Area of boxes1
     area1 = (boxes1[..., 2] - boxes1[..., 0]) * (boxes1[..., 3] - boxes1[..., 1])
@@ -187,8 +207,9 @@ def _calculate_box_ious(
         # Handle edge cases to avoid division issues
         intersection[area1 <= 0 + EPS, :] = 0
         intersection[:, area2 <= 0 + EPS] = 0
-        intersection[union <= 0 + EPS] = 0
-        union[union <= 0 + EPS] = 1
+        degenerate = union <= EPS
+        intersection[degenerate] = 0
+        union[degenerate] = 1
 
         ious = intersection / union
         return ious

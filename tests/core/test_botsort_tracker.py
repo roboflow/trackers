@@ -20,6 +20,7 @@ import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
@@ -60,9 +61,8 @@ class TestBoTSORTTrackerLifecycle:
     def test_instant_activated_track_survives_a_miss(self) -> None:
         """A first-frame track keeps its ID after a single miss (no ID switch).
 
-        With the default ``minimum_consecutive_frames=2`` an instant-activated
-        track has only one update, so without sticky maturity it is treated as
-        unconfirmed and deleted on a miss — an ID switch when the object returns.
+        With the default ``minimum_consecutive_frames=2`` an instant-activated track has only one update, so without
+        sticky maturity it is treated as unconfirmed and deleted on a miss — an ID switch when the object returns.
         """
         tracker = BoTSORTTracker(enable_cmc=False)
         obj = (10.0, 10.0, 50.0, 50.0)
@@ -90,9 +90,8 @@ class TestBoTSORTTrackerLifecycle:
     def test_instant_activated_track_survives_multiple_misses(self) -> None:
         """Track keeps its ID through two consecutive misses (confirmed then lost).
 
-        After the first miss the track sits in confirmed_tracks (time_since_update=1).
-        After the second miss it moves to lost_tracks (time_since_update=2).
-        get_alive_tracklets must keep it alive via the tracker_id != -1 guard.
+        After the first miss the track sits in confirmed_tracks (time_since_update=1). After the second miss it moves to
+        lost_tracks (time_since_update=2). get_alive_tracklets must keep it alive via the tracker_id != -1 guard.
         """
         tracker = BoTSORTTracker(enable_cmc=False)
         obj = (10.0, 10.0, 50.0, 50.0)
@@ -173,7 +172,7 @@ class TestBoTSORTTrackerCMC:
         assert result.tracker_id is not None
 
     def test_update_with_frame_applies_cmc_without_error(self) -> None:
-        """update() with a real textured frame and CMC enabled runs without error."""
+        """Update() with a real textured frame and CMC enabled runs without error."""
         tracker = BoTSORTTracker(
             enable_cmc=True,
             cmc_method="sparseOptFlow",
@@ -188,7 +187,7 @@ class TestBoTSORTTrackerCMC:
         assert result.tracker_id[0] >= 0
 
     def test_cmc_reset_clears_cmc_state(self) -> None:
-        """reset() also resets the internal CMC state."""
+        """Reset() also resets the internal CMC state."""
         tracker = BoTSORTTracker(
             enable_cmc=True,
             cmc_method="sparseOptFlow",
@@ -202,3 +201,42 @@ class TestBoTSORTTrackerCMC:
 
         assert tracker.cmc is not None
         assert not tracker.cmc._initialized, "CMC must be uninitialized after tracker reset"
+
+
+def test_get_iou_matrix_reads_cache_without_decoding(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_get_iou_matrix reads predicted boxes from the per-frame cache, never re-decoding.
+
+    P4-2 decode-once: each tracklet's box is decoded a single time per ``update()``
+    and passed to all three association stages via a map keyed by ``id()``. The
+    helper must read that map and never call ``get_state_bbox`` itself — doing so
+    would reintroduce the per-stage redundant decode the cache exists to remove.
+    """
+    tracker = BoTSORTTracker(enable_cmc=False)
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 10.0, 10.0]))
+
+    def _fail() -> np.ndarray:
+        raise AssertionError("get_state_bbox must not be called; boxes come from the cache")
+
+    monkeypatch.setattr(tracklet, "get_state_bbox", _fail)
+    cached_box = np.array([5.0, 5.0, 15.0, 15.0])
+    detections = np.array([[5.0, 5.0, 15.0, 15.0]])  # identical to the cached box -> IoU 1.0
+
+    result = tracker._get_iou_matrix([tracklet], detections, {id(tracklet): cached_box})
+
+    assert result.shape == (1, 1)
+    assert result[0, 0] == pytest.approx(1.0)
+
+
+def test_get_iou_matrix_raises_contextual_error_on_cache_miss() -> None:
+    """_get_iou_matrix raises a contextual KeyError when a tracklet is absent from the cache.
+
+    The decode-once map must contain every tracklet passed to the helper (it is built from ``self.tracks`` once per
+    ``update()``). A miss is an internal-invariant violation; the helper surfaces it with a message naming the cache
+    contract rather than a bare ``KeyError: <id int>``.
+    """
+    tracker = BoTSORTTracker(enable_cmc=False)
+    tracklet = BoTSORTTracklet(np.array([0.0, 0.0, 10.0, 10.0]))
+    detections = np.array([[0.0, 0.0, 10.0, 10.0]])
+
+    with pytest.raises(KeyError, match="decode-once box cache"):
+        tracker._get_iou_matrix([tracklet], detections, {})

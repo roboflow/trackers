@@ -10,6 +10,7 @@ from trackers.annotators.trace import MotionAwareTraceAnnotator
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.cbiou.tracker import CBIoUTracker
+from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
 from trackers.datasets.download import download_dataset
@@ -46,6 +47,8 @@ __all__ = [
     "HomographyTransformation",
     "IdentityTransformation",
     "IoU",
+    "McByteMaskConfig",
+    "McByteTracker",
     "MotionAwareTraceAnnotator",
     "MotionEstimator",
     "OCSORTTracker",

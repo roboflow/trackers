@@ -12,7 +12,7 @@ import re
 import types
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin
 
@@ -27,8 +27,7 @@ from trackers.utils.predict_timing import PredictTiming
 class ParameterInfo:
     """Holds metadata for a single tracker parameter.
 
-    Stores the type, default value, and description extracted from the
-    tracker's __init__ signature and docstring.
+    Stores the type, default value, and description extracted from the tracker's __init__ signature and docstring.
     """
 
     param_type: type
@@ -57,8 +56,7 @@ class TrackerParameters(dict[str, ParameterInfo]):
 class TrackerInfo:
     """Holds a tracker class and its extracted parameter metadata.
 
-    Used by the CLI to discover available trackers and their configurable
-    options without instantiating them.
+    Used by the CLI to discover available trackers and their configurable options without instantiating them.
     """
 
     tracker_class: type[BaseTracker]
@@ -373,8 +371,8 @@ class BaseTracker(ABC):
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register subclass in the tracker registry if it defines tracker_id.
 
-        Extracts parameter metadata from __init__ at class definition time.
-        Validates search_space (if present) against __init__ parameters.
+        Extracts parameter metadata from __init__ at class definition time. Validates search_space (if present) against
+        __init__ parameters.
         """
         super().__init_subclass__(**kwargs)
 
@@ -480,6 +478,7 @@ class BaseTracker(ABC):
             return PredictTiming(
                 frame_step=elapsed * self._frame_rate,
                 elapsed_seconds=elapsed,
+                frame_rate=self._frame_rate,
             )
 
         if timestamp < last:
@@ -505,6 +504,7 @@ class BaseTracker(ABC):
         return PredictTiming(
             frame_step=elapsed * self._frame_rate,
             elapsed_seconds=elapsed,
+            frame_rate=self._frame_rate,
         )
 
     def _detections_for_skipped_update(self, detections: sv.Detections) -> sv.Detections:
@@ -517,12 +517,41 @@ class BaseTracker(ABC):
         result.tracker_id = np.full(len(result), -1, dtype=int)
         return result
 
-    def _predict_tracklets(self, tracklets: list[Any], timing: PredictTiming) -> None:
-        """Predict all tracklets unless the timestamp did not advance."""
+    def _predict_tracklets(
+        self,
+        tracklets: Sequence[BaseTracklet],
+        timing: PredictTiming,
+        *,
+        return_predictions: bool = False,
+    ) -> dict[BaseTracklet, np.ndarray]:
+        """Predict all tracklets and optionally return states keyed by object identity.
+
+        Args:
+            tracklets: Tracklets to advance one predict step.
+            timing: Predict-step timing; ``timing.skip_predict`` short-circuits
+                to a no-op when the timestamp did not advance.
+            return_predictions: When ``True``, return each tracklet's predicted
+                bounding box keyed by the tracklet object itself. When
+                ``False``, predict in place and discard the results.
+
+        Returns:
+            A dict mapping each tracklet object to its predicted bounding box
+            when ``return_predictions`` is ``True`` and the predict step ran.
+            The dict holds a strong reference to every key, so entries stay
+            valid regardless of what the caller does with ``tracklets``
+            afterwards. Returns ``{}`` on three distinct paths — a skipped
+            predict step (``timing.skip_predict``), ``return_predictions=False``,
+            or an empty ``tracklets`` argument — so callers should not infer
+            "predict was skipped" from an empty dict alone; check
+            ``timing.skip_predict`` directly for that.
+        """
         if timing.skip_predict:
-            return
+            return {}
+        if return_predictions:
+            return {tracklet: tracklet.predict(timing) for tracklet in tracklets}
         for tracklet in tracklets:
             tracklet.predict(timing)
+        return {}
 
     def _lost_track_time_budget(
         self,
@@ -535,14 +564,13 @@ class BaseTracker(ABC):
     def _prune_lost_tracks(self, timing: PredictTiming) -> None:
         """Remove tracks that exceed their lost-track budget (ghost-ID prevention).
 
-        Applies a budget-only filter so immature tracks stay alive for matching.
-        Call after ``_predict_tracklets`` and before association.
+        Applies a budget-only filter so immature tracks stay alive for matching. Call after ``_predict_tracklets`` and
+        before association.
 
-        At fixed frame rate (no timestamps) this is a no-op — the frame-count
-        budget is enforced post-association, preserving the last-frame re-association
-        opportunity that the original trackers relied on.  In variable-FPS mode the
-        time budget can differ from the frame budget, so expired-by-time tracks are
-        removed here before they can be matched and revived with a stale ID.
+        At fixed frame rate (no timestamps) this is a no-op — the frame-count budget is enforced post-association,
+        preserving the last-frame re-association opportunity that the original trackers relied on.  In variable-FPS mode
+        the time budget can differ from the frame budget, so expired-by-time tracks are removed here before they can be
+        matched and revived with a stale ID.
         """
         budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
         if budget is None:
