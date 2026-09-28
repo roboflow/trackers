@@ -167,7 +167,7 @@ class BoTSORTTracker(BaseTracker):
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
                 Used for camera motion compensation when ``enable_cmc=True``.
             h_cmc: Precalculated camera motion compensation.
-                Used when ``enable_cmc=True``. 
+                Used when ``enable_cmc=True``.
                 If set, don't set ``frame``.
             timestamp: Absolute time of the current frame in seconds, or ``None``
                 for fixed-rate mode (``frame_step = 1.0`` per call).
