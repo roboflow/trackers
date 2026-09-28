@@ -2,7 +2,7 @@
 
 Guidance for AI coding agents working in this repo. Read by GitHub Copilot, Claude Code, and other agent tooling. This file is the single committed source of that guidance — everything an agent needs is here or linked from here.
 
-Roboflow Trackers is a Python library for multi-object tracking (MOT). It provides clean-room implementations of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte that plug into any detection model via the `supervision` library. End users install with `pip install trackers`; everything below targets work *inside* this repo.
+Roboflow Trackers is a Python library for multi-object tracking (MOT). It provides clean-room implementations of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, Hybrid-SORT, and McByte that plug into any detection model via the `supervision` library. End users install with `pip install trackers`; everything below targets work *inside* this repo.
 
 Docs-only guidance (the benchmark-number cross-reference map, one per BENCH-XREF-tagged file) lives in [docs/AGENTS.md](docs/AGENTS.md) instead of here — it doesn't apply to source/test work, so keeping it out of this root file keeps every non-docs session from loading it. Touching `docs/` or `README.md` benchmark numbers? Read that file first.
 
@@ -48,6 +48,7 @@ src/trackers/
 │   ├── botsort/   # BoT-SORT
 │   ├── cbiou/     # C-BIoU
 │   ├── ocsort/    # OC-SORT
+│   ├── hybridsort/ # Hybrid-SORT (OC-SORT + confidence modeling and HMIoU)
 │   ├── mcbyte/    # McByte
 │   └── masks/     # Shared mask-pipeline utilities (SAM/Cutie) used by McByte
 ├── motion/        # MotionEstimator, homography compensation
@@ -77,15 +78,15 @@ Detection format: input is `supervision.Detections` with `.xyxy` bounding boxes;
 
 Constructor signatures differ per tracker — do not assume a parameter exists everywhere. Read the target tracker's `__init__` before using or documenting a parameter; the docstrings are the source of truth (they are parsed at import time to build the CLI).
 
-Present on **all six** trackers: `lost_track_buffer`, `minimum_consecutive_frames`, `frame_rate`, `state_estimator_class`.
+Present on **all seven** trackers: `lost_track_buffer`, `minimum_consecutive_frames`, `frame_rate`, `state_estimator_class`.
 
 Deliberately **not** universal (common mistakes):
 
-- `minimum_iou_threshold` — SORT / ByteTrack / OC-SORT only. BoT-SORT, C-BIoU, and McByte instead split it into `minimum_iou_threshold_{first,second,unconfirmed}_assoc`.
-- `track_activation_threshold` — all trackers **except** OC-SORT.
+- `minimum_iou_threshold` — SORT / ByteTrack / OC-SORT / Hybrid-SORT only. BoT-SORT, C-BIoU, and McByte instead split it into `minimum_iou_threshold_{first,second,unconfirmed}_assoc`.
+- `track_activation_threshold` — all trackers **except** OC-SORT and Hybrid-SORT.
 - `high_conf_det_threshold` — all trackers **except** SORT.
 
-Tracker-specific: OC-SORT adds `direction_consistency_weight` and `delta_t`; C-BIoU adds `buffer_ratio_{first,second}`; BoT-SORT and McByte add the `enable_cmc` / `cmc_method` / `cmc_downscale` motion-compensation trio; McByte adds the `*_mask_*` family.
+Tracker-specific: OC-SORT adds `direction_consistency_weight` and `delta_t`; Hybrid-SORT keeps both and adds `confidence_weight_{first,second}_assoc`; C-BIoU adds `buffer_ratio_{first,second}`; BoT-SORT and McByte add the `enable_cmc` / `cmc_method` / `cmc_downscale` motion-compensation trio; McByte adds the `*_mask_*` family.
 
 ## Documentation
 

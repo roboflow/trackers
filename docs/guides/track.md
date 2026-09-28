@@ -405,7 +405,7 @@ Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset m
     </tr>
     <tr>
       <td><code>--tracker</code></td>
-      <td>Tracking algorithm. Options: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>, <code>botsort</code>, <code>cbiou</code>, <code>mcbyte</code>.</td>
+      <td>Tracking algorithm. Options: <code>bytetrack</code>, <code>sort</code>, <code>ocsort</code>, <code>botsort</code>, <code>cbiou</code>, <code>hybridsort</code>, <code>mcbyte</code>.</td>
       <td><code>bytetrack</code></td>
     </tr>
     <tr>

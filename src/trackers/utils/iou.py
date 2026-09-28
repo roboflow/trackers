@@ -16,7 +16,7 @@ class BaseIoU(ABC):
     """Abstract base for IoU similarity metrics used in tracker association.
 
     Subclasses implement a specific Intersection over Union variant
-    (e.g. standard IoU, GIoU, DIoU, CIoU, BIoU) that computes a pairwise
+    (e.g. standard IoU, GIoU, DIoU, CIoU, BIoU, HMIoU) that computes a pairwise
     similarity matrix between two sets of bounding boxes.
 
     The resulting matrix is used as a cost/similarity signal in the
@@ -68,8 +68,9 @@ class BaseIoU(ABC):
             is built from ``min``/``max`` of the corners, so an inverted box
             makes it stop enclosing the pair and the distance normaliser
             collapses. A malformed box may also still rank above a well-formed
-            but distant pair. Callers should reject malformed boxes rather than
-            rely on any of this.
+            but distant pair. :class:`HMIoU` multiplies the helper's IoU, which a
+            malformed axis already forces to zero, so it scores such pairs ``0``.
+            Callers should reject malformed boxes rather than rely on any of this.
         """
         if not np.isfinite(boxes_1).all():
             raise ValueError("boxes_1 contains non-finite values (NaN or inf)")
@@ -459,12 +460,59 @@ class CIoU(BaseIoU):
         return _shift_signed_to_unit_range(similarity_matrix)
 
 
+class HMIoU(BaseIoU):
+    """Height-Modulated Intersection over Union (Yang et al., 2024).
+
+    Scales standard IoU by the overlap of the two boxes' vertical extents:
+
+    ``HIoU = max(0, min(y2_a, y2_b) - max(y1_a, y1_b)) / (max(y2_a, y2_b) - min(y1_a, y1_b))``
+
+    ``HMIoU = HIoU * IoU``
+
+    Box height is a weak depth cue: under a roughly horizontal camera, an object's
+    height and vertical position change little between consecutive frames, while an
+    occluder standing at a different depth usually differs in both. Down-weighting
+    candidate pairs whose vertical extents disagree separates overlapping objects in
+    crowded scenes. Introduced by Hybrid-SORT, where it is the association metric of
+    every matching stage.
+
+    Values lie in ``[0, 1]`` and ``HMIoU <= IoU`` for every pair, with equality when
+    the two boxes share the same vertical extent.
+
+    Reference: https://arxiv.org/abs/2308.00783
+
+    Examples:
+        Overlapping boxes offset vertically score lower than with plain IoU::
+
+            >>> import numpy as np
+            >>> metric = HMIoU()
+            >>> boxes_a = np.array([[0.0, 0.0, 10.0, 10.0]])
+            >>> boxes_b = np.array([[5.0, 5.0, 15.0, 15.0]])
+            >>> round(float(metric.compute(boxes_a, boxes_b)[0, 0]), 4)
+            0.0476
+    """
+
+    def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+        iou, _, _, _, _ = _compute_iou_and_enclosing(boxes_1, boxes_2)
+
+        overlap_top = np.maximum(boxes_1[:, np.newaxis, 1], boxes_2[np.newaxis, :, 1])
+        overlap_bottom = np.minimum(boxes_1[:, np.newaxis, 3], boxes_2[np.newaxis, :, 3])
+        span_top = np.minimum(boxes_1[:, np.newaxis, 1], boxes_2[np.newaxis, :, 1])
+        span_bottom = np.maximum(boxes_1[:, np.newaxis, 3], boxes_2[np.newaxis, :, 3])
+
+        overlap = np.maximum(overlap_bottom - overlap_top, 0)
+        span = span_bottom - span_top
+        height_iou = np.divide(overlap, span, out=np.zeros(overlap.shape, dtype=np.float64), where=span > 0)
+        return height_iou * iou
+
+
 _VARIANTS: dict[str, type[BaseIoU]] = {
     "iou": IoU,
     "giou": GIoU,
     "diou": DIoU,
     "ciou": CIoU,
     "biou": BIoU,
+    "hmiou": HMIoU,
 }
 
 
@@ -472,7 +520,7 @@ def variant_from_name(name: str) -> BaseIoU:
     """Resolve a variant name (case-insensitive) to a default-constructed instance.
 
     Args:
-        name: One of ``iou``, ``giou``, ``diou``, ``ciou``, ``biou``
+        name: One of ``iou``, ``giou``, ``diou``, ``ciou``, ``biou``, ``hmiou``
             (case-insensitive).
 
     Returns:
