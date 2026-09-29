@@ -347,19 +347,20 @@ class TestFuseAdaptiveReidAssociation:
         assert fused[0, 1] == pytest.approx(0.9)
 
     def test_floored_competitor_does_not_inflate_the_bonus(self) -> None:
-        # Both detections look identical (0.9), so no bonus is owed. Flooring plays no
-        # role here (both pass), but the margin must be measured over raw appearance:
-        # a floored candidate reading as similarity 0 would fabricate a 0.9 gap.
+        # One detection clears the floor (0.9) and one does not (0.8). The margin must be
+        # measured over raw appearance, a gap of 0.1: flooring first would read the second
+        # detection as 0 and fabricate a gap of 0.9, capped to 0.5.
         fused = fuse_adaptive_reid_association(
             np.array([[0.6, 0.6]], dtype=np.float32),
-            np.array([[0.9, 0.9]], dtype=np.float32),
+            np.array([[0.9, 0.8]], dtype=np.float32),
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
-            reid_appearance_floor=0.95,
+            reid_appearance_floor=0.85,
         )
-        # Floor drops appearance for both pairs: geometry only.
-        assert fused[0, 0] == pytest.approx(0.6)
+        # Track gap 0.1, no detection gap (one track): 0.6 + (0.75 + 0.1 / 2) * 0.9.
+        assert fused[0, 0] == pytest.approx(1.32)
+        # Below the floor: geometry only.
         assert fused[0, 1] == pytest.approx(0.6)
 
     def test_gated_competitor_does_not_inflate_the_bonus(self) -> None:
