@@ -25,6 +25,10 @@ _OPTICAL_FLOW_MAX_ITERATIONS = 30
 _OPTICAL_FLOW_EPSILON = 0.01
 _MIN_POINTS_FOR_HOMOGRAPHY = 4
 
+# Below this the accumulated projective scale is treated as degenerate rather than renormalized,
+# since dividing by it would amplify the matrix into uselessly large values.
+_MIN_HOMOGRAPHY_SCALE = 1e-8
+
 
 class MotionEstimator:
     """Estimates camera motion between consecutive video frames.
@@ -242,9 +246,25 @@ class MotionEstimator:
             return None
 
         # H_total = H_current @ H_previous gives transformation from frame 0
-        self._accumulated_homography = homography_matrix @ self._accumulated_homography
+        accumulated_homography = homography_matrix @ self._accumulated_homography
 
-        return HomographyTransformation(self._accumulated_homography)
+        # Chained products drift in overall projective scale; pinning w back to 1 keeps the
+        # accumulator bounded over long sequences instead of compounding every frame.
+        scale = accumulated_homography[2, 2]
+        if np.isfinite(scale) and abs(scale) >= _MIN_HOMOGRAPHY_SCALE:
+            accumulated_homography = accumulated_homography / scale
+
+        try:
+            transformation = HomographyTransformation(accumulated_homography)
+        except ValueError:
+            # The accumulator has degenerated past the point of being invertible. Re-baseline the
+            # world frame instead of raising, since a corrupt accumulator never recovers on its own.
+            logger.warning("MotionEstimator: accumulated homography degenerated; re-baselining the world frame")
+            self._reset_accumulator()
+            return IdentityTransformation()
+
+        self._accumulated_homography = accumulated_homography
+        return transformation
 
     def _get_current_transformation(self) -> CoordinatesTransformation:
         """Get the current accumulated transformation.
