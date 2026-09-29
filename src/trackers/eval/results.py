@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -616,6 +617,45 @@ def _format_value(value: float | int, is_float: bool) -> str:
     return str(value)
 
 
+def _format_metric_rows(
+    rows: Sequence[tuple[str, dict[str, float | int]]],
+    columns: Sequence[str],
+    *,
+    label_header: str = "Sequence",
+    rule_before_last: bool = False,
+) -> str:
+    """Render labelled metric rows as a fixed-width table.
+
+    Args:
+        rows: Row label paired with its column values.
+        columns: Columns to include, in display order.
+        label_header: Header text above the row labels.
+        rule_before_last: Whether to draw a separator above the final row.
+
+    Returns:
+        Formatted table string.
+    """
+    cells = [
+        (label, {col: _format_value(values[col], col in ALL_FLOAT_FIELDS) for col in columns}) for label, values in rows
+    ]
+    col_widths = {col: max([len(col), *(len(row[col]) for _, row in cells)]) for col in columns}
+
+    header = label_header.ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
+    separator = "-" * len(header)
+
+    lines = [header, separator]
+    for index, (label, row) in enumerate(cells):
+        if rule_before_last and index == len(cells) - 1:
+            lines.append(separator)
+        lines.append(label.ljust(30) + "  ".join(row[col].rjust(col_widths[col]) for col in columns))
+    return "\n".join(lines)
+
+
+def _sequence_row(result: SequenceResult, columns: Sequence[str]) -> dict[str, float | int]:
+    """Collect one row of column values from a sequence result."""
+    return {col: _get_metrics_dict(result, col) for col in columns}
+
+
 def _format_sequence_table(result: SequenceResult, columns: list[str]) -> str:
     """Format single sequence metrics as a table.
 
@@ -626,28 +666,7 @@ def _format_sequence_table(result: SequenceResult, columns: list[str]) -> str:
     Returns:
         Formatted table string.
     """
-    # Determine column widths
-    col_widths = {}
-    for col in columns:
-        value = _get_metrics_dict(result, col)
-        is_float = col in ALL_FLOAT_FIELDS
-        formatted = _format_value(value, is_float)
-        col_widths[col] = max(len(col), len(formatted))
-
-    # Build header
-    header = "Sequence".ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
-    separator = "-" * len(header)
-
-    # Build row
-    row_values = []
-    for col in columns:
-        value = _get_metrics_dict(result, col)
-        is_float = col in ALL_FLOAT_FIELDS
-        formatted = _format_value(value, is_float)
-        row_values.append(formatted.rjust(col_widths[col]))
-    row = result.sequence.ljust(30) + "  ".join(row_values)
-
-    return f"{header}\n{separator}\n{row}"
+    return _format_metric_rows([(result.sequence, _sequence_row(result, columns))], columns)
 
 
 def _format_benchmark_table(
@@ -665,43 +684,6 @@ def _format_benchmark_table(
     Returns:
         Formatted table string.
     """
-    # Collect all results for column width calculation
-    all_results = [*list(sequences.values()), aggregate]
-
-    col_widths = {}
-    for col in columns:
-        max_width = len(col)
-        for result in all_results:
-            value = _get_metrics_dict(result, col)
-            is_float = col in ALL_FLOAT_FIELDS
-            formatted = _format_value(value, is_float)
-            max_width = max(max_width, len(formatted))
-        col_widths[col] = max_width
-
-    # Build header
-    header = "Sequence".ljust(30) + "  ".join(col.rjust(col_widths[col]) for col in columns)
-    separator = "-" * len(header)
-
-    # Build rows
-    lines = [header, separator]
-    for seq_name in sorted(sequences.keys()):
-        seq_result = sequences[seq_name]
-        row_values = []
-        for col in columns:
-            value = _get_metrics_dict(seq_result, col)
-            is_float = col in ALL_FLOAT_FIELDS
-            formatted = _format_value(value, is_float)
-            row_values.append(formatted.rjust(col_widths[col]))
-        lines.append(seq_name.ljust(30) + "  ".join(row_values))
-
-    # Add aggregate row
-    lines.append(separator)
-    agg_values = []
-    for col in columns:
-        value = _get_metrics_dict(aggregate, col)
-        is_float = col in ALL_FLOAT_FIELDS
-        formatted = _format_value(value, is_float)
-        agg_values.append(formatted.rjust(col_widths[col]))
-    lines.append("COMBINED".ljust(30) + "  ".join(agg_values))
-
-    return "\n".join(lines)
+    rows = [(name, _sequence_row(sequences[name], columns)) for name in sorted(sequences)]
+    rows.append(("COMBINED", _sequence_row(aggregate, columns)))
+    return _format_metric_rows(rows, columns, rule_before_last=True)
