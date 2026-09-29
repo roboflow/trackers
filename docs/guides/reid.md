@@ -338,7 +338,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
     |  Dataset   | Config                      |   HOTA   |   IDF1   |   MOTA   |
     | :--------: | :-------------------------- | :------: | :------: | :------: |
-    |   MOT17    | BoT-SORT                    |   63.9   |   78.7   | **79.4** |
+    |   MOT17    | BoT-SORT                    |   63.8   |   78.7   | **79.4** |
     |            | BoT-SORT + ReID             |   63.8   |   78.8   | **79.4** |
     |            | BoT-SORT + ReID, `adaptive` | **64.6** | **79.9** | **79.4** |
     | SportsMOT  | BoT-SORT                    |   74.1   |   74.1   | **96.9** |
