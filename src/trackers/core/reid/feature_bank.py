@@ -46,6 +46,8 @@ class FeatureBank:
         cleaned = np.asarray(embedding, dtype=np.float32).reshape(-1)
         if cleaned.size == 0:
             raise ValueError("embedding must be non-empty")
+        if not np.all(np.isfinite(cleaned)):
+            raise ValueError("embedding must contain only finite values")
         if not normalized:
             cleaned = _l2_normalize(cleaned)
 
