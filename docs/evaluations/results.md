@@ -49,8 +49,9 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
          ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table)
          OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table)
          BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "MOT17" tab)
-         C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table)
+         C-BIoU row    -> docs/trackers/cbiou.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
          McByte row    -> docs/trackers/mcbyte.md (McByte row, "MOT17" tab), docs/index.md (Algorithms table + FAQ "leads every benchmark" claim), README.md (Algorithms table)
+         BoT-SORT + ReID row -> docs/index.md (Algorithms table), README.md (Algorithms table)
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
 === "Tuned"
@@ -65,6 +66,12 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
     |     C-BIoU      |   63.0   |   79.1   |   77.4   |
     |    BoT-SORT     |   63.8   |   78.7   | **79.4** |
     | BoT-SORT + ReID | **64.6** | **79.9** | **79.4** |
+
+    <!-- BENCH-XREF canonical:this-table id=mot17-tuned
+         BoT-SORT row        -> docs/guides/reid.md (Results, both tabs, BoT-SORT row, HOTA/IDF1/MOTA)
+         BoT-SORT + ReID row <- copied FROM docs/guides/reid.md (best test row across its tabs); its HOTA
+                                also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
+         Change any cell above -> update every listed location. -->
 
     Tuned configuration for each tracker. The ReID row uses `fastreid_mot17_sbs50`, trained on MOT17 by the BoT-SORT authors, with `reid_fusion="adaptive"`: the best MOT17 test result in the [ReID guide](../guides/reid.md#results). It was chosen on test; on val-half, `botsort` scored 0.10 higher.
 
@@ -154,8 +161,9 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
          ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
          OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
          BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "SportsMOT" tab)
-         C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table only)
+         C-BIoU row    -> docs/trackers/cbiou.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
          McByte row    -> docs/trackers/mcbyte.md (McByte row, "SportsMOT" tab), docs/index.md (Algorithms table + FAQ "leads every benchmark" claim), README.md (Algorithms table)
+         BoT-SORT + ReID row -> docs/index.md (Algorithms table), README.md (Algorithms table)
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
 === "Tuned"
@@ -170,6 +178,12 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
     |     C-BIoU      |   73.1   |   72.6   |   96.7   |
     |    BoT-SORT     |   74.1   |   74.0   | **96.9** |
     | BoT-SORT + ReID | **77.8** | **78.5** | **96.9** |
+
+    <!-- BENCH-XREF canonical:this-table id=sportsmot-tuned
+         BoT-SORT row        -> docs/guides/reid.md (Results, both tabs, BoT-SORT row, HOTA/IDF1/MOTA)
+         BoT-SORT + ReID row <- copied FROM docs/guides/reid.md (best test row across its tabs); its HOTA
+                                also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
+         Change any cell above -> update every listed location. -->
 
     Tuned configuration for each tracker. The ReID row uses `osnet_x1_0_sportsmot`, an OSNet x1.0 fine-tuned on SportsMOT train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
@@ -256,8 +270,9 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
          ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
          OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
          BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "SoccerNet" tab)
-         C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table only)
+         C-BIoU row    -> docs/trackers/cbiou.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
          McByte row    -> docs/trackers/mcbyte.md (McByte row, "SoccerNet" tab), docs/index.md (Algorithms table + FAQ "leads every benchmark" claim), README.md (Algorithms table)
+         BoT-SORT + ReID row -> docs/index.md (Algorithms table), README.md (Algorithms table)
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
 === "Tuned"
@@ -272,6 +287,12 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
     |     C-BIoU      |   85.7   |   80.0   | **99.3** |
     |    BoT-SORT     |   85.0   |   79.7   |   97.2   |
     | BoT-SORT + ReID | **88.4** | **84.4** | **99.3** |
+
+    <!-- BENCH-XREF canonical:this-table id=soccernet-tuned
+         BoT-SORT row        -> docs/guides/reid.md (Results, both tabs, BoT-SORT row, HOTA/IDF1/MOTA)
+         BoT-SORT + ReID row <- copied FROM docs/guides/reid.md (best test row across its tabs); its HOTA
+                                also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
+         Change any cell above -> update every listed location. -->
 
     Tuned configuration for each tracker. The ReID row uses `osnet_x1_0_soccernet`, an OSNet x1.0 fine-tuned on SoccerNet train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
@@ -363,8 +384,9 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
          SORT/ByteTrack/OC-SORT/BoT-SORT rows -> docs/index.md (Algorithms table, HOTA col only), README.md (Algorithms table, HOTA col only).
          Note: docs/trackers/{sort,bytetrack,ocsort,botsort}.md intentionally have NO DanceTrack row — don't add one, that's existing scope not a gap.
          BoT-SORT row also -> docs/trackers/mcbyte.md (BoT-SORT row, "DanceTrack" tab)
-         C-BIoU row    -> docs/trackers/cbiou.md (table, DanceTrack row), README.md (Algorithms table)
+         C-BIoU row    -> docs/trackers/cbiou.md (table, DanceTrack row), docs/index.md (Algorithms table), README.md (Algorithms table)
          McByte row    -> docs/trackers/mcbyte.md (McByte row, "DanceTrack" tab), docs/index.md (Algorithms table + FAQ "leads every benchmark" claim), README.md (Algorithms table)
+         BoT-SORT + ReID row -> docs/index.md (Algorithms table), README.md (Algorithms table)
          Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 
 === "Tuned"
@@ -379,6 +401,12 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
     |     C-BIoU      |   57.7   |   58.7   | **92.4** |
     |    BoT-SORT     |   57.8   |   57.9   |   92.2   |
     | BoT-SORT + ReID | **60.8** | **61.6** |   91.7   |
+
+    <!-- BENCH-XREF canonical:this-table id=dancetrack-tuned
+         BoT-SORT row        -> docs/guides/reid.md (Results, both tabs, BoT-SORT row, HOTA/IDF1/MOTA)
+         BoT-SORT + ReID row <- copied FROM docs/guides/reid.md (best test row across its tabs); its HOTA
+                                also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
+         Change any cell above -> update every listed location. -->
 
     Best configuration for each tracker. The ReID row uses `osnet_x1_0_dancetrack`, an OSNet x1.0 fine-tuned on DanceTrack train (see [encoders](../guides/reid.md#choosing-an-encoder)).
 
