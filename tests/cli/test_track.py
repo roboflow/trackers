@@ -427,6 +427,18 @@ class TestReIDOptions:
             "can be extracted from frames.\n"
         )
 
+    def test_track_command_reports_conflicting_reid_options(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """An encoder together with an explicit disable is a usage error, not a traceback."""
+        exit_code = track_command(
+            detection=DetectionOptions(mot_file=Path("detections.txt")),
+            reid=ReIDOptions(enable=False, model="fastreid_mot17_sbs50"),
+        )
+
+        assert exit_code == 1
+        assert capsys.readouterr().err == (
+            "Error: --reid.model cannot be combined with --reid.no_enable or --reid.enable false.\n"
+        )
+
     def test_missing_optional_extra_reports_install_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A missing ReID dependency is translated into actionable CLI guidance."""
         import sys

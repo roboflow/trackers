@@ -396,7 +396,12 @@ def track_command(
     if needs_frames and source is None:
         print("Error: --source is required when using --output.video or --display.", file=sys.stderr)
         return 1
-    if _reid_requested(reid) and source is None:
+    try:
+        reid_requested = _reid_requested(reid)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    if reid_requested and source is None:
         print(
             "Error: ReID requires --source (video/webcam/images) so appearance "
             "embeddings can be extracted from frames.",
