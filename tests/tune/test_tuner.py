@@ -257,6 +257,49 @@ class TestTunerInit:
         assert tuner._objective_metric == "MOTA"
 
 
+class TestTunerGroundTruthLayout:
+    """Ground-truth validation must accept every layout evaluation accepts.
+
+    `Tuner` hands `gt_dir` straight to `evaluate_mot_sequences`, which auto-detects the flat `{seq}.txt` layout and the
+    MOT `{seq}/gt/gt.txt` layout that downloaded datasets ship in. Eager validation has to agree, or it rejects trees
+    that would evaluate fine.
+    """
+
+    def test_accepts_mot_layout_ground_truth(self, tmp_path: Path) -> None:
+        """A MOT-layout ground-truth tree initializes instead of being reported as missing."""
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        (det_dir / "seq1.txt").write_text(_MOT_LINE)
+        gt_dir = tmp_path / "gt"
+        (gt_dir / "seq1" / "gt").mkdir(parents=True)
+        (gt_dir / "seq1" / "gt" / "gt.txt").write_text(_MOT_LINE)
+
+        tuner = Tuner("bytetrack", gt_dir, det_dir)
+
+        assert tuner._sequences == ["seq1"]
+
+    def test_reports_missing_ground_truth_at_mot_layout_path(self, tmp_path: Path) -> None:
+        """A sequence missing from a MOT-layout tree is reported at its MOT path."""
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        (det_dir / "seq1.txt").write_text(_MOT_LINE)
+        (det_dir / "seq2.txt").write_text(_MOT_LINE)
+        gt_dir = tmp_path / "gt"
+        (gt_dir / "seq1" / "gt").mkdir(parents=True)
+        (gt_dir / "seq1" / "gt" / "gt.txt").write_text(_MOT_LINE)
+
+        with pytest.raises(FileNotFoundError, match=r"seq2.*gt.*gt\.txt"):
+            Tuner("bytetrack", gt_dir, det_dir)
+
+    def test_still_reports_missing_flat_ground_truth(self, tmp_path: Path) -> None:
+        """The flat layout keeps reporting missing files at the flat path."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (det_dir / "seq2.txt").write_text(_MOT_LINE)
+
+        with pytest.raises(FileNotFoundError, match=r"seq2\.txt"):
+            Tuner("bytetrack", gt_dir, det_dir)
+
+
 class TestTunerSeed:
     def test_create_optuna_study_uses_seeded_sampler(self) -> None:
         with patch.object(optuna, "create_study", wraps=optuna.create_study) as mock_create:
