@@ -1066,3 +1066,88 @@ def test_ocsort_ocr_recovery_remaps_reordered_detection_index() -> None:
     np.testing.assert_allclose(result.xyxy[recovered_row], last_seen_box)
     np.testing.assert_allclose(result.confidence[recovered_row], 0.9)
     assert len(tracker.tracks) == 1, "the low-confidence row must not spawn a second track"
+
+
+# ==========================================================================
+# 6. Non-finite detections
+# ==========================================================================
+
+# McByte is not in ALL_TRACKER_IDS but runs mask-free on a base install, and its update() needs the same guard.
+_NON_FINITE_TRACKER_IDS = [*ALL_TRACKER_IDS, "mcbyte"]
+_WARMUP_TIMESTAMPS = (0.0, 0.04)
+_BAD_TIMESTAMP = 0.08
+_BACKWARDS_TIMESTAMP = 0.02
+_NEXT_TIMESTAMP = 0.12
+_TRACKED_BOX = (10.0, 10.0, 50.0, 50.0)
+
+
+def _warmed_up_tracker(tracker_id: str) -> BaseTracker:
+    """Build a tracker holding one confirmed track after two timestamped frames."""
+    kwargs: dict[str, object] = {"minimum_consecutive_frames": 1}
+    if tracker_id in ("botsort", "mcbyte"):
+        kwargs["enable_cmc"] = False
+    tracker = _instantiate(tracker_id, **kwargs)
+    for timestamp in _WARMUP_TIMESTAMPS:
+        tracker.update(_detection(_TRACKED_BOX), timestamp=timestamp)
+    assert len(tracker.tracks) == 1
+    return tracker
+
+
+def _frame_with_bad_row(coordinate: float, confidence: float) -> sv.Detections:
+    """A valid detection on the track plus one row whose x_min is ``coordinate``."""
+    return sv.Detections(
+        xyxy=np.array([_TRACKED_BOX, (coordinate, 10.0, 50.0, 50.0)], dtype=np.float32),
+        confidence=np.array([0.9, confidence], dtype=np.float32),
+        class_id=np.zeros(2, dtype=int),
+    )
+
+
+def _state_snapshot(tracker: BaseTracker) -> tuple[list[tuple[int, int, int]], float | None, int]:
+    """Capture the per-track counters, timestamp anchor and ID counter that a failed update must not move."""
+    tracks = [(t.time_since_update, t.age, t.tracker_id) for t in tracker.tracks]
+    return tracks, tracker._last_timestamp, tracker._next_track_id
+
+
+@pytest.mark.parametrize("tracker_id", _NON_FINITE_TRACKER_IDS)
+@pytest.mark.parametrize("coordinate", [pytest.param(float("nan"), id="nan"), pytest.param(float("inf"), id="inf")])
+@pytest.mark.parametrize(
+    "confidence", [pytest.param(0.9, id="high-confidence"), pytest.param(0.1, id="low-confidence")]
+)
+class TestNonFiniteDetections:
+    """``update()`` rejects non-finite boxes before any tracker state is advanced."""
+
+    def test_raises_value_error(self, tracker_id: str, coordinate: float, confidence: float) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+
+        with pytest.raises(ValueError, match="non-finite"):
+            tracker.update(_frame_with_bad_row(coordinate, confidence), timestamp=_BAD_TIMESTAMP)
+
+    def test_raises_when_update_would_be_skipped(self, tracker_id: str, coordinate: float, confidence: float) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+
+        with pytest.raises(ValueError, match="non-finite"):
+            tracker.update(_frame_with_bad_row(coordinate, confidence), timestamp=_BACKWARDS_TIMESTAMP)
+
+    def test_leaves_track_state_untouched(self, tracker_id: str, coordinate: float, confidence: float) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+        expected = _state_snapshot(tracker)
+
+        with pytest.raises(ValueError, match="non-finite"):
+            tracker.update(_frame_with_bad_row(coordinate, confidence), timestamp=_BAD_TIMESTAMP)
+
+        assert _state_snapshot(tracker) == expected
+
+    def test_next_frame_matches_control_tracker(self, tracker_id: str, coordinate: float, confidence: float) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+        control = _warmed_up_tracker(tracker_id)
+        with pytest.raises(ValueError, match="non-finite"):
+            tracker.update(_frame_with_bad_row(coordinate, confidence), timestamp=_BAD_TIMESTAMP)
+
+        result = tracker.update(_detection(_TRACKED_BOX), timestamp=_NEXT_TIMESTAMP)
+        expected = control.update(_detection(_TRACKED_BOX), timestamp=_NEXT_TIMESTAMP)
+
+        assert result.tracker_id is not None
+        assert expected.tracker_id is not None
+        np.testing.assert_array_equal(result.tracker_id, expected.tracker_id)
+        np.testing.assert_array_equal(result.xyxy, expected.xyxy)
+        assert _state_snapshot(tracker) == _state_snapshot(control)
