@@ -73,7 +73,7 @@ def extract_detection_embeddings(
 
     Example:
         >>> class Encoder:
-        ...     def extract_features(self, detections, frame):
+        ...     def extract_embeddings(self, detections, frame):
         ...         return np.ones((len(detections), 2), dtype=np.float32)
         >>> frame = np.zeros((8, 8, 3), dtype=np.uint8)
         >>> boxes = np.array([[0.0, 0.0, 4.0, 4.0]], dtype=np.float32)
@@ -82,7 +82,7 @@ def extract_detection_embeddings(
     """
     if len(boxes) == 0:
         return np.empty((0, 0), dtype=np.float32)
-    embeddings = _require_embedding_matrix(model.extract_features(sv.Detections(xyxy=boxes), frame))
+    embeddings = _require_embedding_matrix(model.extract_embeddings(sv.Detections(xyxy=boxes), frame))
     if embeddings.shape[0] != len(boxes):
         raise ValueError(f"embedding rows ({embeddings.shape[0]}) must match detection boxes ({len(boxes)})")
     return _l2_normalize_rows(embeddings)
