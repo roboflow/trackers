@@ -43,7 +43,7 @@ class _KeyedReIDEncoder:
         self.table = table or {}
         self.calls = 0
 
-    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+    def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
         self.calls += 1
         if len(detections) == 0:
             return np.empty((0, 0), dtype=np.float32)
@@ -194,7 +194,7 @@ class TestBoTSORTTrackerReID:
         class _PhaseEncoder:
             phase = 1
 
-            def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+            def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
                 rows = []
                 for box in detections.xyxy:
                     key = (round(float(box[0])), round(float(box[1])))

@@ -56,7 +56,7 @@ class _CachedReIDEncoder:
         self._encoder = encoder
         self._embeddings: dict[tuple[bytes, bytes], np.ndarray] = {}
 
-    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+    def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
         """Return one embedding per box, running the encoder only on boxes not seen before.
 
         Args:
@@ -76,7 +76,7 @@ class _CachedReIDEncoder:
         keys = [(frame_key, box.tobytes()) for box in boxes]
         missing = [index for index, key in enumerate(keys) if key not in self._embeddings]
         if missing:
-            embeddings = self._encoder.extract_features(sv.Detections(xyxy=boxes[missing]), frame)
+            embeddings = self._encoder.extract_embeddings(sv.Detections(xyxy=boxes[missing]), frame)
             for index, embedding in zip(missing, embeddings, strict=True):
                 self._embeddings[keys[index]] = embedding
         return np.stack([self._embeddings[key] for key in keys])

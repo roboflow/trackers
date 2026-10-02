@@ -372,7 +372,7 @@ class _FakeReIDModel:
         cls.last_kwargs = dict(kwargs)
         return cls()
 
-    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+    def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
         return np.zeros((len(detections), 8), dtype=np.float32)
 
 

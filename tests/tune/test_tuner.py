@@ -440,7 +440,7 @@ class _CountingEncoder:
     def __init__(self) -> None:
         self.embedded = 0
 
-    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+    def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
         self.embedded += len(detections)
         return np.asarray(detections.xyxy, dtype=np.float32)[:, :2] + 1.0
 
@@ -551,8 +551,8 @@ class TestCachedReIDEncoder:
         encoder = _CountingEncoder()
         cached = _CachedReIDEncoder(encoder)
         frame = np.zeros((4, 4, 3), dtype=np.uint8)
-        cached.extract_features(self._detections([[0, 0, 2, 2]]), frame)
-        rows = cached.extract_features(self._detections([[1, 1, 3, 3], [0, 0, 2, 2]]), frame)
+        cached.extract_embeddings(self._detections([[0, 0, 2, 2]]), frame)
+        rows = cached.extract_embeddings(self._detections([[1, 1, 3, 3], [0, 0, 2, 2]]), frame)
         np.testing.assert_array_equal(rows, np.array([[2.0, 2.0], [1.0, 1.0]], dtype=np.float32))
         assert encoder.embedded == 2
 
@@ -560,8 +560,8 @@ class TestCachedReIDEncoder:
         encoder = _CountingEncoder()
         cached = _CachedReIDEncoder(encoder)
         detections = self._detections([[0, 0, 2, 2]])
-        cached.extract_features(detections, np.zeros((4, 4, 3), dtype=np.uint8))
-        cached.extract_features(detections, np.ones((4, 4, 3), dtype=np.uint8))
+        cached.extract_embeddings(detections, np.zeros((4, 4, 3), dtype=np.uint8))
+        cached.extract_embeddings(detections, np.ones((4, 4, 3), dtype=np.uint8))
         assert encoder.embedded == 2
 
 
