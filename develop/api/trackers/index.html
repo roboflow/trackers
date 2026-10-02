@@ -3895,7 +3895,11 @@ during occlusion.</p>
               <div class="doc-md-description">
                 <p>State estimator class to use for Kalman filter.
 Defaults to <code>XCYCSRStateEstimator</code>. Can also use
-<code>XYXYStateEstimator</code> for corner-based representation.</p>
+<code>XYXYStateEstimator</code> for corner-based representation or
+<code>XCYCWHStateEstimator</code> for center-width-height representation.
+The OC-SORT noise tuning is specific to <code>XCYCSRStateEstimator</code>;
+the other two only get its state-covariance and velocity
+process-noise scaling.</p>
               </div>
             </td>
             <td>
