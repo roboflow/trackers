@@ -65,7 +65,11 @@ class OCSORTTracker(BaseTracker):
             during occlusion.
         state_estimator_class: State estimator class to use for Kalman filter.
             Defaults to `XCYCSRStateEstimator`. Can also use
-            `XYXYStateEstimator` for corner-based representation.
+            `XYXYStateEstimator` for corner-based representation or
+            `XCYCWHStateEstimator` for center-width-height representation.
+            The OC-SORT noise tuning is specific to `XCYCSRStateEstimator`;
+            the other two only get its state-covariance and velocity
+            process-noise scaling.
         iou: IoU similarity metric instance to use for data association.
             Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
             subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
