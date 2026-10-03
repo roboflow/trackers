@@ -6,7 +6,7 @@
 
 """Shared test constants for tracker IDs used across test/core files."""
 
-ALL_TRACKER_IDS = ["sort", "bytetrack", "ocsort", "botsort", "cbiou"]
+ALL_TRACKER_IDS = ["sort", "bytetrack", "ocsort", "botsort", "cbiou", "hybridsort"]
 
 # Trackers that accept a user-supplied ``iou=`` constructor argument.
 # C-BIoU is intentionally excluded: it is opinionated and always uses BIoU.

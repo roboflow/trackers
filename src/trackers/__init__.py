@@ -10,6 +10,7 @@ from trackers.annotators.trace import MotionAwareTraceAnnotator
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.cbiou.tracker import CBIoUTracker
+from trackers.core.hybridsort.tracker import HybridSORTTracker
 from trackers.core.mcbyte.tracker import McByteMaskConfig, McByteTracker
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.sort.tracker import SORTTracker
@@ -25,7 +26,7 @@ from trackers.motion.transformation import (
 )
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod, CMCTMethod
 from trackers.utils.converters import xcycsr_to_xyxy, xyxy_to_xcycsr
-from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, IoU
+from trackers.utils.iou import BaseIoU, BIoU, CIoU, DIoU, GIoU, HMIoU, IoU
 
 __all__ = [
     "CMC",
@@ -44,7 +45,9 @@ __all__ = [
     "DatasetAsset",
     "DatasetSplit",
     "GIoU",
+    "HMIoU",
     "HomographyTransformation",
+    "HybridSORTTracker",
     "IdentityTransformation",
     "IoU",
     "McByteMaskConfig",

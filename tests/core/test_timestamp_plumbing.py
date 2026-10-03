@@ -24,6 +24,8 @@ from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.bytetrack.tracker import ByteTrackTracker
 from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.cbiou.tracker import CBIoUTracker
+from trackers.core.hybridsort.tracker import HybridSORTTracker
+from trackers.core.hybridsort.tracklet import HybridSORTTracklet
 from trackers.core.mcbyte.tracker import McByteTracker
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.core.ocsort.tracker import OCSORTTracker
@@ -59,6 +61,12 @@ TIMESTAMP_AWARE_TRACKERS: list[Any] = [
         BoTSORTTracklet,
         {"track_activation_threshold": 0.5},
         id="cbiou",
+    ),
+    pytest.param(
+        HybridSORTTracker,
+        HybridSORTTracklet,
+        {"high_conf_det_threshold": 0.5},
+        id="hybridsort",
     ),
     pytest.param(
         McByteTracker,
@@ -581,6 +589,7 @@ def test_mcbyte_predict_forwards_frame_rate_for_mid_band_gap() -> None:
     ("tracker_cls", "extra_kwargs"),
     [
         pytest.param(OCSORTTracker, {}, id="ocsort-default-xcycsr"),
+        pytest.param(HybridSORTTracker, {}, id="hybridsort-default-xcycsr"),
         pytest.param(
             SORTTracker,
             {"state_estimator_class": XCYCSRStateEstimator},
