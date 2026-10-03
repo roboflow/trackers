@@ -151,6 +151,7 @@ class BoTSORTTracker(BaseTracker):
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        h_cmc: np.ndarray | None = None,
         timestamp: float | None = None,
     ) -> sv.Detections:
         """
@@ -165,6 +166,9 @@ class BoTSORTTracker(BaseTracker):
                 it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
                 Used for camera motion compensation when ``enable_cmc=True``.
+            h_cmc: Precalculated camera motion compensation.
+                Used when ``enable_cmc=True``.
+                If set, don't set ``frame``.
             timestamp: Absolute time of the current frame in seconds, or ``None``
                 for fixed-rate mode (``frame_step = 1.0`` per call).
 
@@ -186,9 +190,10 @@ class BoTSORTTracker(BaseTracker):
                 the last state.
 
         Notes:
-            - If CMC is enabled, pass the current video frame via ``frame`` so the
+            - If CMC is enabled, pass either the current video frame via ``frame`` or
+              precalculatec homography via ``h_cmc`` so the
               tracker can estimate a global affine transform and warp predicted
-              track states before association. When ``frame=None`` and
+              track states before association. When ``frame=None`` or ``h_cmc=None`` and
               ``enable_cmc=True``, CMC is silently skipped for that step.
         """
         self._validate_detections(detections)
@@ -248,10 +253,16 @@ class BoTSORTTracker(BaseTracker):
                 unconfirmed_tracks.append(track)
 
         # CMC: apply to all predicted tracks before association
-        if self.enable_cmc and self.cmc is not None and frame is not None:
-            mask_boxes = high_boxes if len(high_boxes) > 0 else None
-            H = self.cmc.estimate(frame, mask_boxes)
-            CMC.apply_batch(H, self.tracks)
+        if self.enable_cmc:
+            calculate_cmc = self.cmc is not None and frame is not None
+            use_precalculated_cmc = h_cmc is not None
+
+            if calculate_cmc:
+                mask_boxes = high_boxes if len(high_boxes) > 0 else None
+                H = self.cmc.estimate(frame, mask_boxes)
+                CMC.apply_batch(H, self.tracks)
+            elif use_precalculated_cmc:
+                CMC.apply_batch(h_cmc, self.tracks)
 
         # Cache each tracklet's predicted state bbox once per update. Track state
         # is unchanged across the three association stages: a track matched in an
