@@ -7,12 +7,17 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from pathlib import Path
 from typing import Literal
 
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
+from trackers.eval.mot_classes import (
+    MOTClassConfig,
+    MOTClassPreset,
+)
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
@@ -32,6 +37,7 @@ def evaluate_mot_sequence(
     tracker_path: str | Path,
     metrics: list[str] | None = None,
     threshold: float = 0.5,
+    class_config: MOTClassPreset | MOTClassConfig = "mot17",
 ) -> SequenceResult:
     """Evaluate a single multi-object tracking result against ground truth. Computes
     standard multi-object tracking metrics (CLEAR MOT, HOTA, Identity) for one sequence
@@ -51,6 +57,8 @@ def evaluate_mot_sequence(
             `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
         threshold: IoU threshold for `CLEAR` and `Identity` matching. Defaults
             to `0.5`. `HOTA` evaluates across multiple thresholds internally.
+        class_config: MOT class preset ("mot17", "mot20") or custom `MOTClassConfig`.
+            Defaults to "mot17".
 
     Returns:
         `SequenceResult` with `CLEAR`, `HOTA`, and/or `Identity` populated based
@@ -88,12 +96,24 @@ def evaluate_mot_sequence(
     gt_path = Path(gt_path)
     tracker_path = Path(tracker_path)
 
+    seq_name = gt_path.stem
+    if seq_name == "gt":
+        seq_name = gt_path.parent.parent.name
+
+    if seq_name.startswith("MOT20-") and class_config == "mot17":
+        warnings.warn(
+            f"Sequence '{seq_name}' matches MOT20 pattern, but MOT17 class configuration is selected. "
+            "Use class_config='mot20' to treat non_mot_vehicle (class 6) as a distractor.",
+            UserWarning,
+            stacklevel=2,
+        )
+
     # Load data
     gt_data = load_mot_file(gt_path)
     tracker_data = load_mot_file(tracker_path)
 
     # Prepare sequence (compute IoU, remap IDs)
-    seq_data = _prepare_mot_sequence(gt_data, tracker_data)
+    seq_data = _prepare_mot_sequence(gt_data, tracker_data, class_config=class_config)
 
     # Compute metrics
     clear_metrics: CLEARMetrics | None = None
@@ -141,6 +161,7 @@ def evaluate_mot_sequences(
     seqmap: str | Path | None = None,
     metrics: list[str] | None = None,
     threshold: float = 0.5,
+    class_config: MOTClassPreset | MOTClassConfig = "mot17",
 ) -> BenchmarkResult:
     """Evaluate multiple multi-object tracking results against ground truth. Computes
     standard multi-object tracking metrics (CLEAR MOT, HOTA, Identity) across one or
@@ -202,6 +223,8 @@ def evaluate_mot_sequences(
         metrics: Metric families to compute. Supported values are
             `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
         threshold: IoU threshold for `CLEAR` and `Identity`. Defaults to `0.5`.
+        class_config: MOT class preset ("mot17", "mot20") or custom `MOTClassConfig`.
+            Defaults to "mot17".
 
     Returns:
         `BenchmarkResult` with per-sequence results and a `COMBINED` aggregate.
@@ -276,6 +299,7 @@ def evaluate_mot_sequences(
             tracker_path=tracker_path,
             metrics=metrics,
             threshold=threshold,
+            class_config=class_config,
         )
         # Fix sequence name (evaluate_mot_sequence uses file stem)
         sequence_results[seq_name] = SequenceResult(
