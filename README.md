@@ -87,19 +87,19 @@ Each tracker below is a faithful implementation of its original paper's motion a
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](docs/evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, all 7 rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte/BoT-SORT + ReID). Also duplicated in [docs/index.md](docs/index.md)'s Algorithms table (all 7 rows). The BoT-SORT + ReID footnote below also copies the Tuned ReID HOTA of all four results.md Tuned tables. Update results.md first, then mirror both copies. -->
 
-|                               Algorithm                               |                                   Description                                    | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
-| :-------------------------------------------------------------------: | :------------------------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|               [SORT](https://arxiv.org/abs/1602.00763)                |                   Kalman filter + Hungarian matching baseline.                   |    58.4    |      70.8      |      81.6      |      47.2       |
-|             [ByteTrack](https://arxiv.org/abs/2110.06864)             |         Two-stage association using high and low confidence detections.          |    60.1    |      73.0      |      84.0      |      53.3       |
-|              [OC-SORT](https://arxiv.org/abs/2203.14360)              |                  Observation-centric recovery for lost tracks.                   |    61.9    |      71.7      |      78.4      |      54.1       |
-|              [C-BIoU](https://arxiv.org/abs/2211.14317)               |           Cascaded buffered IoU matching for fast or irregular motion.           |    63.0    |      73.1      |      82.6      |      56.7       |
-|             [BoT-SORT](https://arxiv.org/abs/2206.14651)              |                           Camera motion compensation.                            |    63.7    |      73.8      |      84.5      |      57.8       |
-| [BoT-SORT + ReID](https://trackers.roboflow.com/develop/guides/reid/) |       Appearance embeddings fused with motion, for harder association.\*\*       |    63.9    |      75.5      |      84.3      |      57.0       |
-|              [McByte](https://arxiv.org/abs/2506.01373)               | Mask-conditioned tracking — adds propagated SAM/Cutie masks as a matching cue.\* |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
+|                               Algorithm                               |                                    Description                                     | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :-------------------------------------------------------------------: | :--------------------------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
+|               [SORT](https://arxiv.org/abs/1602.00763)                |                    Kalman filter + Hungarian matching baseline.                    |    58.4    |      70.8      |      81.6      |      47.2       |
+|             [ByteTrack](https://arxiv.org/abs/2110.06864)             |          Two-stage association using high and low confidence detections.           |    60.1    |      73.0      |      84.0      |      53.3       |
+|              [OC-SORT](https://arxiv.org/abs/2203.14360)              |                   Observation-centric recovery for lost tracks.                    |    61.9    |      71.7      |      78.4      |      54.1       |
+|              [C-BIoU](https://arxiv.org/abs/2211.14317)               |            Cascaded buffered IoU matching for fast or irregular motion.            |    63.0    |      73.1      |      82.6      |      56.7       |
+|             [BoT-SORT](https://arxiv.org/abs/2206.14651)              |                            Camera motion compensation.                             |    63.7    |      73.8      |      84.5      |      57.8       |
+| [BoT-SORT + ReID](https://trackers.roboflow.com/develop/guides/reid/) |         Appearance embeddings fused with motion, for harder association.\*         |    63.9    |      75.5      |      84.3      |      57.0       |
+|              [McByte](https://arxiv.org/abs/2506.01373)               | Mask-conditioned tracking — adds propagated SAM/Cutie masks as a matching cue.\*\* |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
 
-\*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the [McByte docs](https://trackers.roboflow.com/develop/trackers/mcbyte/) for setup.
+\*BoT-SORT + ReID is listed with library default parameters and the default encoder `fastreid_mot17_sbs50` (BoT-SORT's own ReID model, trained on MOT17) on all four datasets. At its best tuned configuration on each dataset, it reaches 64.6 (MOT17), 77.8 (SportsMOT), 88.4 (SoccerNet) and 60.8 (DanceTrack) HOTA on the test sets, above BoT-SORT without ReID on all four. See the [ReID guide](https://trackers.roboflow.com/develop/guides/reid/).
 
-\*\*BoT-SORT + ReID is listed at library defaults with the default encoder `fastreid_mot17_sbs50`, BoT-SORT's own ReID model trained on MOT17. At its best tuned configuration on each test set it reaches 64.6, 77.8, 88.4 and 60.8 HOTA, above BoT-SORT on all four. See the [ReID guide](https://trackers.roboflow.com/develop/guides/reid/).
+\*\*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above. See the [McByte docs](https://trackers.roboflow.com/develop/trackers/mcbyte/) for setup.
 
 All scores use default parameters on the standard split. Detections come from a YOLOX detector (MOT17, SportsMOT, DanceTrack) or oracle ground-truth boxes (SoccerNet) — absolute numbers shift with detector quality. See the [tracker comparison](https://trackers.roboflow.com/develop/evaluations/results/) for tuned numbers and methodology.
 
