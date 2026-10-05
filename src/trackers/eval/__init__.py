@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING
 
 from trackers.eval.box import box_ioa, box_iou
@@ -24,15 +25,33 @@ from trackers.eval.results import (
 
 if TYPE_CHECKING:
     from trackers.eval.evaluate import evaluate_mot_sequence, evaluate_mot_sequences
+    from trackers.eval.multicamera import (
+        MulticameraBenchmarkResult,
+        SceneMeanHOTA,
+        evaluate_multicamera_scene,
+        evaluate_multicamera_scenes,
+    )
+
+_LAZY_MODULES = {
+    "evaluate_mot_sequence": "trackers.eval.evaluate",
+    "evaluate_mot_sequences": "trackers.eval.evaluate",
+    "MulticameraBenchmarkResult": "trackers.eval.multicamera",
+    "SceneMeanHOTA": "trackers.eval.multicamera",
+    "evaluate_multicamera_scene": "trackers.eval.multicamera",
+    "evaluate_multicamera_scenes": "trackers.eval.multicamera",
+}
 
 
 def __getattr__(name: str) -> object:
-    """Lazy imports for evaluate functions to avoid circular imports."""
-    if name in ("evaluate_mot_sequence", "evaluate_mot_sequences"):
-        from trackers.eval import evaluate as _evaluate
-
-        return getattr(_evaluate, name)
+    """Lazy imports for modules that read MOT files, to avoid circular imports."""
+    module_name = _LAZY_MODULES.get(name)
+    if module_name is not None:
+        return getattr(importlib.import_module(module_name), name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_LAZY_MODULES))
 
 
 __all__ = [
@@ -40,6 +59,8 @@ __all__ = [
     "CLEARMetrics",
     "HOTAMetrics",
     "IdentityMetrics",
+    "MulticameraBenchmarkResult",
+    "SceneMeanHOTA",
     "SequenceResult",
     "aggregate_clear_metrics",
     "aggregate_hota_metrics",
@@ -51,4 +72,6 @@ __all__ = [
     "compute_identity_metrics",
     "evaluate_mot_sequence",
     "evaluate_mot_sequences",
+    "evaluate_multicamera_scene",
+    "evaluate_multicamera_scenes",
 ]
