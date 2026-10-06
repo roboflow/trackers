@@ -4380,7 +4380,10 @@ hardcoded cost threshold of 0.7 (= similarity 0.3).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Whether to enable camera motion compensation (CMC).</p>
+                <p>Whether to build the internal frame-based camera motion
+compensation (CMC) estimator, used when <code>update()</code> receives a
+<code>frame</code>. A precomputed <code>cmc_transform</code> passed to <code>update()</code> is applied
+regardless of this flag.</p>
               </div>
             </td>
             <td>
@@ -4489,8 +4492,12 @@ supply an <code>iou</code> argument.</p>
 <li>Positive <code>maximum_frames_without_update</code> values are scaled by
   <code>frame_rate</code> and rounded up to at least one missed frame. Explicit
   zero-buffer configurations remain zero.</li>
-<li>When CMC is enabled, pass the current video frame via the <code>frame</code>
-  argument of :meth:<code>update</code>.</li>
+<li>Camera motion compensation in :meth:<code>update</code> takes its transform from
+  one of two alternatives: the current video frame via <code>frame</code>
+  (estimated internally, requires <code>enable_cmc=True</code>) or a precomputed
+  2x3 affine via the keyword-only <code>cmc_transform</code> (applied regardless of
+  <code>enable_cmc</code>). Passing both raises <code>ValueError</code>; passing neither
+  skips CMC for that step.</li>
 </ul>
 </details>
 
@@ -4518,7 +4525,7 @@ supply an <code>iou</code> argument.</p>
 
 
 <h3 id="trackers.core.botsort.tracker.BoTSORTTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">cmc_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -4569,7 +4576,9 @@ it returns a new <code>sv.Detections</code> with <code>tracker_id</code> assigne
             <td>
               <div class="doc-md-description">
                 <p>Current video frame in BGR format (H, W, 3), or <code>None</code>.
-Used for camera motion compensation when <code>enable_cmc=True</code>.</p>
+When given and <code>enable_cmc=True</code>, the internal CMC estimator
+computes the camera motion from it. Mutually exclusive with
+<code>cmc_transform</code>.</p>
               </div>
             </td>
             <td>
@@ -4587,6 +4596,26 @@ Used for camera motion compensation when <code>enable_cmc=True</code>.</p>
               <div class="doc-md-description">
                 <p>Absolute time of the current frame in seconds, or <code>None</code>
 for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cmc_transform</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Keyword-only precomputed camera-motion transform for this
+step, or <code>None</code>. A <code>(2, 3)</code> affine matrix mapping
+previous-frame to current-frame pixel coordinates (original image
+scale), the same convention as <code>CMC.estimate()</code>. Applied
+regardless of <code>enable_cmc</code>. Mutually exclusive with <code>frame</code>.</p>
               </div>
             </td>
             <td>
@@ -4655,9 +4684,11 @@ for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If <code>detections.xyxy</code> contains NaN or inf. The check runs
-before any tracker state is advanced, so a failed call leaves the
-tracker unchanged.</p>
+                <p>If <code>detections.xyxy</code> contains NaN or inf, if both
+<code>frame</code> and <code>cmc_transform</code> are given, or if <code>cmc_transform</code> is not a
+finite real-valued <code>(2, 3)</code> matrix. All checks run before any
+tracker state is advanced, so a failed call leaves the tracker
+unchanged.</p>
               </div>
             </td>
           </tr>
@@ -4695,10 +4726,22 @@ the last state.</p>
 <details class="notes" open>
   <summary>Notes</summary>
   <ul>
-<li>If CMC is enabled, pass the current video frame via <code>frame</code> so the
-  tracker can estimate a global affine transform and warp predicted
-  track states before association. When <code>frame=None</code> and
-  <code>enable_cmc=True</code>, CMC is silently skipped for that step.</li>
+<li>Camera motion compensation (CMC) warps predicted track states before
+  association. The transform comes from one of two alternatives: pass
+  the current video frame via <code>frame</code> so the internal estimator
+  (built when <code>enable_cmc=True</code>) computes it, or pass a precomputed
+  transform via <code>cmc_transform</code>, which is applied regardless of
+  <code>enable_cmc</code>.</li>
+<li>Passing both <code>frame</code> and <code>cmc_transform</code> raises <code>ValueError</code>. When both
+  are <code>None</code>, CMC is silently skipped for that step; <code>frame</code> alone
+  is also ignored when <code>enable_cmc=False</code>.</li>
+<li><code>cmc_transform</code> is a per-frame <code>(2, 3)</code> affine mapping previous-frame to
+  current-frame pixel coordinates, the convention of
+  <code>CMC.estimate()</code>. A 3x3 homography, such as the cumulative one
+  emitted by <code>MotionEstimator</code>, is rejected.</li>
+<li>Applying <code>cmc_transform</code> resets the internal estimator, so switching back
+  to <code>frame</code> re-initializes it (one uncompensated step) instead of
+  compensating the externally handled motion twice.</li>
 </ul>
 </details>
 
@@ -5131,7 +5174,7 @@ result = tracker.update(detections)
 
 
 <h3 id="trackers.core.cbiou.tracker.CBIoUTracker.update" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">cmc_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -5197,6 +5240,24 @@ result = tracker.update(detections)
               <div class="doc-md-description">
                 <p>Absolute time of the current frame in seconds, or <code>None</code>
 for fixed-rate mode (<code>frame_step = 1.0</code> per call).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cmc_transform</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unused. Emits a <code>UserWarning</code> if provided. Accepted only so
+the signature stays compatible with
+:meth:<code>BoTSORTTracker.update</code>.</p>
               </div>
             </td>
             <td>
@@ -5290,8 +5351,8 @@ tracker unchanged.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If <code>frame</code> is passed but C-BIoU does not perform
-camera motion compensation (CMC), the frame is ignored.</p>
+                <p>If <code>frame</code> or <code>cmc_transform</code> is passed; C-BIoU does not
+perform camera motion compensation (CMC), so both are ignored.</p>
               </div>
             </td>
           </tr>
