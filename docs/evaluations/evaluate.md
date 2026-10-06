@@ -180,6 +180,11 @@ All arguments accepted by `trackers eval`.
       <td><code>0.5</code></td>
     </tr>
     <tr>
+      <td><code>--class_config</code></td>
+      <td>MOT ground-truth class handling. Presets: <code>mot17</code> and <code>mot20</code> (MOT20 adds class 6 as a distractor). Preset names are lowercase only (<code>mot20</code>, not <code>MOT20</code>). Also accepts an inline JSON object, e.g. <code>--class_config '{"distractor_classes": [2, 6, 7, 8, 12]}'</code>.</td>
+      <td><code>mot17</code></td>
+    </tr>
+    <tr>
       <td><code>--columns</code></td>
       <td>Metric columns to display. If omitted, all columns for the selected metrics are shown.</td>
       <td>auto</td>
