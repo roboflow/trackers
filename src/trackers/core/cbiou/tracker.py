@@ -201,10 +201,16 @@ class CBIoUTracker(BoTSORTTracker):
             low-confidence detections are included with ``tracker_id == -1``;
             callers filtering by ``tracker_id >= 0`` will silently drop these rows.
 
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
         Warns:
             UserWarning: If ``frame`` is passed but C-BIoU does not perform
                 camera motion compensation (CMC), the frame is ignored.
         """
+        self._validate_detections(detections)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)

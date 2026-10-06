@@ -177,6 +177,11 @@ class BoTSORTTracker(BaseTracker):
             Confirmed tracks have tracker_id >= 0; unconfirmed tracks have
             tracker_id of -1.
 
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
         Warns:
             UserWarning: If ``timestamp`` is earlier than the previous call
                 (backwards order); the whole update is skipped and all output
@@ -191,6 +196,7 @@ class BoTSORTTracker(BaseTracker):
               track states before association. When ``frame=None`` or ``h_cmc=None`` and
               ``enable_cmc=True``, CMC is silently skipped for that step.
         """
+        self._validate_detections(detections)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)

@@ -431,6 +431,11 @@ class McByteTracker(BaseTracker):
             tracker_id of -1. When the update is skipped (backwards or non-finite
             timestamp), all ``tracker_id`` values are ``-1``.
 
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
         Warns:
             UserWarning: If ``timestamp`` is earlier than the previous call
                 (backwards order); the whole update is skipped and all output
@@ -438,6 +443,7 @@ class McByteTracker(BaseTracker):
                 (duplicate); predict is skipped but association still runs on
                 the last state.
         """
+        self._validate_detections(detections)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
