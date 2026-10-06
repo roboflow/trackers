@@ -180,18 +180,18 @@ class CBIoUTracker(BoTSORTTracker):
                 ) from exc
         return iou.compute(track_boxes, boxes)
 
-    def _warn_if_cmc_matrix_unused(self, h_cmc: np.ndarray | None) -> None:
+    def _warn_if_cmc_matrix_unused(self, cmc_transform: np.ndarray | None) -> None:
         """Emit a UserWarning when a camera-motion transform is passed to C-BIoU.
 
-        C-BIoU never performs camera motion compensation, so an ``h_cmc`` given to
+        C-BIoU never performs camera motion compensation, so an ``cmc_transform`` given to
         :meth:`update` is ignored. Sibling of ``BaseTracker._warn_if_frame_unused``.
 
         Args:
-            h_cmc: Value passed to ``update(h_cmc=...)``.
+            cmc_transform: Value passed to ``update(cmc_transform=...)``.
         """
-        if h_cmc is not None:
+        if cmc_transform is not None:
             warnings.warn(
-                f"{type(self).__name__}.update() received an h_cmc argument but does not use it.",
+                f"{type(self).__name__}.update() received an cmc_transform argument but does not use it.",
                 UserWarning,
                 stacklevel=3,
             )
@@ -202,7 +202,7 @@ class CBIoUTracker(BoTSORTTracker):
         frame: np.ndarray | None = None,
         timestamp: float | None = None,
         *,
-        h_cmc: np.ndarray | None = None,
+        cmc_transform: np.ndarray | None = None,
     ) -> sv.Detections:
         """Update the C-BIoU tracker with detections from the current frame.
 
@@ -214,7 +214,7 @@ class CBIoUTracker(BoTSORTTracker):
             frame: Unused. Emits a ``UserWarning`` if provided.
             timestamp: Absolute time of the current frame in seconds, or ``None``
                 for fixed-rate mode (``frame_step = 1.0`` per call).
-            h_cmc: Unused. Emits a ``UserWarning`` if provided. Accepted only so
+            cmc_transform: Unused. Emits a ``UserWarning`` if provided. Accepted only so
                 the signature stays compatible with
                 :meth:`BoTSORTTracker.update`.
 
@@ -229,7 +229,7 @@ class CBIoUTracker(BoTSORTTracker):
                 tracker unchanged.
 
         Warns:
-            UserWarning: If ``frame`` or ``h_cmc`` is passed; C-BIoU does not
+            UserWarning: If ``frame`` or ``cmc_transform`` is passed; C-BIoU does not
                 perform camera motion compensation (CMC), so both are ignored.
         """
         self._validate_detections(detections)
@@ -237,7 +237,7 @@ class CBIoUTracker(BoTSORTTracker):
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
         self._warn_if_frame_unused(frame)
-        self._warn_if_cmc_matrix_unused(h_cmc)
+        self._warn_if_cmc_matrix_unused(cmc_transform)
         self.frame_id += 1
 
         if len(self.tracks) == 0 and len(detections) == 0:
