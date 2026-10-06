@@ -101,3 +101,43 @@ class TestEvaluateMOTSequence:
         json_str = result.json()
         assert "HOTA" in json_str
         assert "DetA" in json_str
+
+
+class TestEvaluateMOTSequenceUnscorableGroundTruth:
+    """Ground truth that filters down to nothing is reported instead of scored as zeros.
+
+    Only pedestrian-class (1) rows marked for consideration are scored, mirroring TrackEval. Ground truth whose rows are
+    all dropped by that filter cannot produce a meaningful score, and returning zeros looks like a tracker that found
+    nothing rather than a ground-truth file the evaluator cannot use.
+    """
+
+    def test_tracker_output_used_as_ground_truth_raises(self, tmp_path: Path) -> None:
+        """Files written by `_MOTOutput` carry class -1, so they cannot be reused as ground truth."""
+        gt_path = tmp_path / "gt.txt"
+        tracker_path = tmp_path / "tracker.txt"
+        gt_path.write_text("1,1,100,200,50,60,0.9000,-1,-1,-1\n2,1,105,205,50,60,0.9000,-1,-1,-1\n")
+        tracker_path.write_text("1,10,102,202,50,60,0.9,1\n2,10,107,207,50,60,0.9,1\n")
+
+        with pytest.raises(ValueError, match="no scored ground-truth"):
+            evaluate_mot_sequence(gt_path=gt_path, tracker_path=tracker_path)
+
+    def test_all_ignored_ground_truth_raises(self, tmp_path: Path) -> None:
+        """Ground truth where every row is marked ignored (confidence 0) is also unscorable."""
+        gt_path = tmp_path / "gt.txt"
+        tracker_path = tmp_path / "tracker.txt"
+        gt_path.write_text("1,1,100,200,50,60,0,1\n2,1,105,205,50,60,0,1\n")
+        tracker_path.write_text("1,10,102,202,50,60,0.9,1\n")
+
+        with pytest.raises(ValueError, match="no scored ground-truth"):
+            evaluate_mot_sequence(gt_path=gt_path, tracker_path=tracker_path)
+
+    def test_partially_filtered_ground_truth_is_scored(self, tmp_path: Path) -> None:
+        """A file keeping at least one scored row evaluates normally."""
+        gt_path = tmp_path / "gt.txt"
+        tracker_path = tmp_path / "tracker.txt"
+        gt_path.write_text("1,1,100,200,50,60,1,1\n1,2,150,250,40,50,1,8\n")
+        tracker_path.write_text("1,10,102,202,50,60,0.9,1\n")
+
+        result = evaluate_mot_sequence(gt_path=gt_path, tracker_path=tracker_path)
+
+        assert result.CLEAR is not None
