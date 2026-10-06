@@ -16,6 +16,8 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) OC-SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (L13 headline + Algorithms table), and [README.md](../../README.md) (Algorithms table). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
+Default OC-SORT results on the test split (CMC off):
+
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
 |   MOT17   | 61.9 | 76.4 | 76.0 |
@@ -49,10 +51,7 @@ detections = tracker.update(detections, frame=frame_bgr)
 
 CMC is off by default, which keeps the original OC-SORT and its frame-free throughput. Turn it on for handheld, panning, or broadcast footage, and leave it off for static cameras: when moving objects fill most of the frame, the motion estimate picks some of them up as camera motion.
 
-| HOTA (validation splits, YOLOX detections) | MOT17 half-val | SportsMOT val | DanceTrack val |
-| :----------------------------------------- | :------------: | :-----------: | :------------: |
-| OC-SORT                                    |      66.0      |     70.4      |    **52.3**    |
-| OC-SORT with `enable_cmc=True`             |    **67.5**    |   **72.9**    |      52.0      |
+Contributor-reported validation-split runs (YOLOX detections) show gains from CMC on MOT17 and SportsMOT and a slight loss on DanceTrack. These runs are not part of the [tracker comparison](../evaluations/results.md) and have not been independently reproduced; see [PR #611](https://github.com/roboflow/trackers/pull/611) for details.
 
 ## Key Parameters
 
