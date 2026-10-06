@@ -10,9 +10,10 @@ comment) and update every listed sibling. If you change a cell somewhere else fi
 it's the source of truth, not just another copy.
 
 Discover live: grep -rn BENCH-XREF docs/ README.md
-(15 xref comments as of 2026-08-12: 5 in results.md, 6 in docs/trackers/*.md, 3 in docs/index.md, 1 in README.md.
- A 16th lived in .github/copilot-instructions.md until 2026-08-12, when that file was deleted and its guidance
- merged into the root AGENTS.md — which deliberately carries NO benchmark table. Don't add one there.)
+(16 xref comments as of 2026-09-10: 5 in results.md, 6 in docs/trackers/*.md, 3 in docs/index.md, 1 in README.md,
+ 1 in docs/hooks/schema_inject.py (added when that hook's FAQPage JSON-LD started mirroring the index.md FAQ).
+ One more used to live in .github/copilot-instructions.md until 2026-08-12, when that file was deleted and its
+ guidance merged into the root AGENTS.md — which deliberately carries NO benchmark table. Don't add one there.)
 
 ## Canonical tables ([evaluations/results.md](evaluations/results.md))
 - id=mot17-default       (## MOT17 -> === "Default")
@@ -53,6 +54,7 @@ McByte row (mot17/sportsmot/soccernet/dancetrack):
   -> [trackers/mcbyte.md](trackers/mcbyte.md)                  (McByte row, matching benchmark tab, full row)
   -> [index.md](index.md)                                      (Algorithms table, HOTA column only; FAQ "Which tracker should I use?" answer: "McByte leads every benchmark in our evaluation")
   -> [../README.md](../README.md)                              (Algorithms table, HOTA column only; includes C-BIoU row too)
+  -> [hooks/schema_inject.py](hooks/schema_inject.py)          (FAQPage JSON-LD _HOMEPAGE_FAQ[0] answer text; must mirror index.md's "Which tracker should I use?" FAQ verbatim)
      — the index.md FAQ claim above is TRUE only while McByte is bolded-best in all 4 Default tables. Re-verify, don't assume.
 
 ## Structural asymmetries (intentional — do not "fix" by adding rows)
