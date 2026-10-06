@@ -3928,6 +3928,59 @@ supply an <code>iou</code> argument.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>enable_cmc</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>bool</code> specifying whether to compensate camera motion.
+When <code>True</code>, pass the current video frame to <code>update(frame=...)</code>:
+the estimated global motion is applied to every track's Kalman state
+and stored observations before association. Defaults to <code>False</code>,
+the original OC-SORT, which ignores frames.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cmc_method</code>
+            </td>
+            <td>
+                  <code><span title="trackers.utils.cmc.CMCMethod">CMCMethod</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>CMC method string passed into <code>CMCConfig(method=...)</code>.
+Supported values: "orb", "sift", "sparseOptFlow", "ecc". See CMCConfig.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;sparseOptFlow&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cmc_downscale</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Downscale factor used inside CMC for speed/robustness.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -4010,8 +4063,11 @@ association/spawning regardless of its value.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Ignored by OC-SORT. If provided (not <code>None</code>), a warning is
-emitted.</p>
+                <p>Current video frame (BGR <code>np.ndarray</code>), used for camera
+motion compensation when <code>enable_cmc=True</code>. Ignored otherwise;
+if provided (not <code>None</code>) without CMC, a warning is emitted.
+When <code>frame=None</code> and <code>enable_cmc=True</code>, CMC is skipped for
+that step, with a warning emitted once per tracker instance.</p>
               </div>
             </td>
             <td>
@@ -4142,8 +4198,10 @@ tracker unchanged.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If <code>frame</code> is passed but OC-SORT does not perform
-camera motion compensation (CMC), the frame is ignored.</p>
+                <p>If <code>frame</code> is passed while camera motion compensation
+(CMC) is disabled, the frame is ignored. Also emitted, once per
+tracker instance, the first time CMC is enabled but
+<code>frame=None</code> makes it skip a step.</p>
               </div>
             </td>
           </tr>
