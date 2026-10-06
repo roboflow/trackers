@@ -318,7 +318,7 @@ class TestObservationCentricReUpdate:
         expected = _confidence_kf_replay_oracle(predicts_after_match, frame_step, replay=True)
         without_replay = _confidence_kf_replay_oracle(predicts_after_match, frame_step, replay=False)
         assert tracklet.kalman_confidence == pytest.approx(expected, abs=1e-6)
-        assert abs(expected - without_replay) > 5e-4,"scenario must distinguish replayed from non-replayed filters"
+        assert abs(expected - without_replay) > 5e-4, "scenario must distinguish replayed from non-replayed filters"
 
 
 def _confidence_kf_replay_oracle(predicts_after_match: int, frame_step: float, *, replay: bool) -> float:
