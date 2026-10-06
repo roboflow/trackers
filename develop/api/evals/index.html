@@ -2695,7 +2695,7 @@
 
 
 <h2 id="trackers.eval.evaluate.evaluate_mot_sequence" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">trackers</span><span class="o">.</span><span class="n">eval</span><span class="o">.</span><span class="n">evaluate</span><span class="o">.</span><span class="n">evaluate_mot_sequence</span><span class="p">(</span><span class="n">gt_path</span><span class="p">,</span> <span class="n">tracker_path</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">trackers</span><span class="o">.</span><span class="n">eval</span><span class="o">.</span><span class="n">evaluate</span><span class="o">.</span><span class="n">evaluate_mot_sequence</span><span class="p">(</span><span class="n">gt_path</span><span class="p">,</span> <span class="n">tracker_path</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">class_config</span><span class="o">=</span><span class="s1">&#39;mot17&#39;</span><span class="p">)</span></code>
 
 </h2>
 
@@ -2791,6 +2791,23 @@ to <code>0.5</code>. <code>HOTA</code> evaluates across multiple thresholds inte
                   <code>0.5</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>class_config</code>
+            </td>
+            <td>
+                  <code><span title="trackers.eval.mot_classes.MOTClassPreset">MOTClassPreset</span> | <span title="trackers.eval.mot_classes.MOTClassConfig">MOTClassConfig</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>MOT class preset ("mot17", "mot20") or custom <code>MOTClassConfig</code>.
+Defaults to "mot17".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;mot17&#39;</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -2849,7 +2866,8 @@ on <code>metrics</code>.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If an unsupported metric family is requested.</p>
+                <p>If an unsupported metric family is requested, or if <code>class_config</code> is neither a supported
+preset name nor a <code>MOTClassConfig</code>.</p>
               </div>
             </td>
           </tr>
@@ -2884,7 +2902,7 @@ on <code>metrics</code>.</p>
 
 
 <h2 id="trackers.eval.evaluate.evaluate_mot_sequences" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">trackers</span><span class="o">.</span><span class="n">eval</span><span class="o">.</span><span class="n">evaluate</span><span class="o">.</span><span class="n">evaluate_mot_sequences</span><span class="p">(</span><span class="n">gt_dir</span><span class="p">,</span> <span class="n">tracker_dir</span><span class="p">,</span> <span class="n">seqmap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span></code>
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">trackers</span><span class="o">.</span><span class="n">eval</span><span class="o">.</span><span class="n">evaluate</span><span class="o">.</span><span class="n">evaluate_mot_sequences</span><span class="p">(</span><span class="n">gt_dir</span><span class="p">,</span> <span class="n">tracker_dir</span><span class="p">,</span> <span class="n">seqmap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">class_config</span><span class="o">=</span><span class="s1">&#39;mot17&#39;</span><span class="p">)</span></code>
 
 </h2>
 
@@ -3037,6 +3055,23 @@ evaluated.</p>
                   <code>0.5</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>class_config</code>
+            </td>
+            <td>
+                  <code><span title="trackers.eval.mot_classes.MOTClassPreset">MOTClassPreset</span> | <span title="trackers.eval.mot_classes.MOTClassConfig">MOTClassConfig</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>MOT class preset ("mot17", "mot20") or custom <code>MOTClassConfig</code>.
+Defaults to "mot17".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;mot17&#39;</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -3094,7 +3129,8 @@ evaluated.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If no sequences are found.</p>
+                <p>If no sequences are found, if an unsupported metric family is requested, or if <code>class_config</code>
+is neither a supported preset name nor a <code>MOTClassConfig</code>.</p>
               </div>
             </td>
           </tr>
