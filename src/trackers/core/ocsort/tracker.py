@@ -112,6 +112,7 @@ class OCSORTTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
         iou: BaseIoU | None = None,
         enable_cmc: bool = False,
+        *,
         cmc_method: CMCMethod = "sparseOptFlow",
         cmc_downscale: int = 2,
     ) -> None:
