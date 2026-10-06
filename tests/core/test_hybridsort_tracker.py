@@ -30,6 +30,7 @@ from trackers.core.hybridsort.tracklet import HybridSORTTracklet
 from trackers.core.hybridsort.utils import _build_corner_direction_consistency_matrix
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.utils.iou import HMIoU, IoU
+from trackers.utils.predict_timing import PredictTiming
 
 
 def _detections(boxes: list[list[float]], confidences: list[float]) -> sv.Detections:
@@ -92,6 +93,87 @@ class TestLowConfidenceStage:
         dipped = [_BOX[0] + 8, _BOX[1], _BOX[2] + 8, _BOX[3]]
         assert _id_of(hybrid.update(_detections([dipped], [0.4])), dipped) == hybrid_id
         assert _id_of(ocsort.update(_detections([dipped], [0.4])), dipped) == -1
+
+    @pytest.mark.parametrize(
+        "confidences",
+        [
+            pytest.param([0.4, 0.4], id="both-low"),
+            pytest.param([0.4, 0.9], id="first-low-second-high"),
+            pytest.param([0.9, 0.4], id="first-high-second-low"),
+        ],
+    )
+    def test_each_box_keeps_its_own_id_when_rows_are_reordered_across_confidence_stages(
+        self, confidences: list[float]
+    ) -> None:
+        """Two confirmed tracks keep their IDs when detections arrive in the opposite order and mixed confidence.
+
+        Detections are split into high- and low-confidence subsets and matched per stage, so each stage's row index must
+        be mapped back to the input row. Feeding the rows in reverse track order with one row in each stage makes any
+        index mix-up hand A's ID to B's box (or the reverse).
+        """
+        tracker = HybridSORTTracker(minimum_consecutive_frames=1)
+        box_a, box_b = _BOX, [400.0, 100.0, 500.0, 300.0]
+        for _ in range(3):
+            warmup = tracker.update(_detections([box_a, box_b], [0.9, 0.9]))
+        id_a, id_b = _id_of(warmup, box_a), _id_of(warmup, box_b)
+        assert {id_a, id_b} == {0, 1}
+
+        result = tracker.update(_detections([box_b, box_a], confidences))
+
+        assert _id_of(result, box_a) == id_a
+        assert _id_of(result, box_b) == id_b
+
+    def test_ocr_recovered_track_is_reported_on_its_input_row(self) -> None:
+        """A track recovered by the last-observation (OCR) stage is reported on the detection's *input* row.
+
+        The high-confidence detection sits behind a low-confidence row, so the high-subset index differs from the input
+        index. The drifted Kalman prediction overshoots the last observed box, so the first stage misses and only OCR
+        can recover it. Mirrors the OC-SORT remap test in test_trackers.py.
+        """
+        tracker = HybridSORTTracker(high_conf_det_threshold=0.6, minimum_consecutive_frames=1, lost_track_buffer=30)
+        spawn_box = [100.0, 100.0, 200.0, 200.0]
+        last_seen_box = [140.0, 100.0, 240.0, 200.0]
+        low_conf_box = [500.0, 500.0, 560.0, 560.0]
+        tracker.update(_detections([spawn_box], [0.9]))
+        tracker.update(_detections([last_seen_box], [0.9]))
+        tracker.update(sv.Detections.empty())  # missed frame: the prediction keeps moving and overshoots
+
+        result = tracker.update(_detections([low_conf_box, last_seen_box], [0.3, 0.9]))
+
+        assert len(result) == 2
+        assert _id_of(result, last_seen_box) >= 0
+        assert _id_of(result, low_conf_box) == -1
+        assert len(tracker.tracks) == 1, "the low-confidence row must not spawn a second track"
+
+    @pytest.mark.parametrize(
+        ("history", "detection_confidence", "shift", "weight", "recovered"),
+        [
+            pytest.param([0.9, 0.9], 0.15, 50.0, 1.0, False, id="confidence-gap-rejects-match"),
+            pytest.param([0.9, 0.9], 0.15, 50.0, 0.0, True, id="weight-zero-ignores-confidence-gap"),
+            pytest.param([0.9, 0.9], 0.55, 50.0, 1.0, True, id="consistent-confidence-accepted"),
+            pytest.param([0.7, 0.95], 0.59, 50.0, 1.0, True, id="rising-trend-capped-at-high-threshold"),
+            pytest.param([0.95, 0.95, 0.4], 0.3, 40.0, 1.0, True, id="falling-trend-floored-at-low-bound"),
+        ],
+    )
+    def test_confidence_trend_penalty_decides_low_stage_recovery(
+        self, history: list[float], detection_confidence: float, shift: float, weight: float, recovered: bool
+    ) -> None:
+        """A shifted low-confidence detection is recovered only if IoU survives the confidence-trend penalty.
+
+        A stationary confirmed track is followed by a detection offset by ``shift`` px (IoU 1/3 at 50 px, 3/7 at 40 px)
+        whose confidence is compared with the track's linearly extrapolated confidence. With the weight at 1 a large
+        gap pushes the penalised score under the IoU threshold; at weight 0 the very same geometry is accepted. The
+        extrapolated trend is bounded to ``[0.1, high_conf_det_threshold]``: a trend of 1.2 acts like 0.6 and one of
+        -0.15 like 0.1, so detections near those bounds are accepted although the raw trend is far away.
+        """
+        tracker = HybridSORTTracker(minimum_consecutive_frames=1, confidence_weight_second_assoc=weight)
+        for confidence in history:
+            tracker.update(_detections([_BOX], [confidence]))
+        shifted = [_BOX[0] + shift, _BOX[1], _BOX[2] + shift, _BOX[3]]
+
+        result = tracker.update(_detections([shifted], [detection_confidence]))
+
+        assert (_id_of(result, shifted) >= 0) is recovered
 
     def test_low_confidence_detections_never_spawn_tracks(self) -> None:
         tracker = HybridSORTTracker()
@@ -163,6 +245,22 @@ class TestTrackletConfidenceModeling:
 
         assert tracker.tracks[0].previous_confidence is None
 
+    def test_first_match_after_gap_takes_pre_gap_confidence_as_previous(self) -> None:
+        """The first match after a missed frame uses the stale pre-gap confidence as its trend reference.
+
+        Reference Hybrid-SORT behaviour: a miss clears the trend, but the next matched update still records the last
+        matched confidence (0.8 here, from before the gap) as the previous one, so the trend spans the gap.
+        """
+        tracker = HybridSORTTracker(minimum_consecutive_frames=1)
+        for confidence in (0.9, 0.8):
+            tracker.update(_detections([_BOX], [confidence]))
+        tracker.update(sv.Detections.empty())
+
+        tracker.update(_detections([_BOX], [0.7]))
+
+        assert tracker.tracks[0].previous_confidence == pytest.approx(0.8)
+        assert tracker.tracks[0].linear_confidence == pytest.approx(2 * 0.7 - 0.8)
+
     def test_kalman_confidence_converges_to_observations(self) -> None:
         tracklet = HybridSORTTracklet(np.array(_BOX), confidence=0.9)
         for _ in range(30):
@@ -196,6 +294,73 @@ class TestObservationCentricReUpdate:
         assert tracklet._frozen_confidence_state is None
         assert 0.3 < tracklet.kalman_confidence < 0.9
 
+    @pytest.mark.parametrize("predicts_after_match", [2, 3])
+    @pytest.mark.parametrize("frame_step", [1.0, 2.0])
+    def test_replayed_confidence_matches_an_independent_kalman_filter(
+        self, predicts_after_match: int, frame_step: float
+    ) -> None:
+        """After a gap the confidence filter equals a reference KF restored to its first-miss state and re-updated.
+
+        The replay interpolates linearly from the last matched confidence (0.9) to the new one (0.3) across the gap, for
+        one and two missed frames, at the nominal step and at a double step (15 fps stream on a 30 fps tracker). The
+        expectation comes from a small independent numpy filter and must differ from the no-replay filter, so a dropped
+        replay or a wrong noise scaling fails.
+        """
+        timing = PredictTiming(frame_step=frame_step, elapsed_seconds=frame_step / 30.0, frame_rate=30.0)
+        tracklet = HybridSORTTracklet(np.array(_BOX), confidence=0.9)
+        tracklet.predict(timing)
+        tracklet.update(np.array(_BOX), timing, confidence=0.9)
+        for _ in range(predicts_after_match):
+            tracklet.predict(timing)
+
+        tracklet.update(np.array(_BOX), timing, confidence=0.3)
+
+        expected = _confidence_kf_replay_oracle(predicts_after_match, frame_step, replay=True)
+        without_replay = _confidence_kf_replay_oracle(predicts_after_match, frame_step, replay=False)
+        assert tracklet.kalman_confidence == pytest.approx(expected, abs=1e-6)
+        assert abs(expected - without_replay) > 5e-4,"scenario must distinguish replayed from non-replayed filters"
+
+
+def _confidence_kf_replay_oracle(predicts_after_match: int, frame_step: float, *, replay: bool) -> float:
+    """Independent 2-state (confidence, velocity) Kalman filter built from the documented constants.
+
+    R=10, P0=diag(10, 1e4), Q=diag(1, 1e-4) at a nominal step and the DWNA layout (sigma_a^2 = 1e-4) otherwise; the
+    track is matched at 0.9 twice-in-a-row-free (create, predict, update 0.9), then predicts ``predicts_after_match``
+    times unmatched and is re-matched at 0.3. With ``replay`` the filter is restored to its first-miss state and
+    re-updated along the linear 0.9 -> 0.3 interpolation before the real update.
+    """
+    nominal = abs(frame_step - 1.0) <= 0.1
+    q = (
+        np.diag([1.0, 1e-4])
+        if nominal
+        else 1e-4 * np.array([[frame_step**4 / 4, frame_step**3 / 2], [frame_step**3 / 2, frame_step**2]])
+    )
+    f = np.array([[1.0, frame_step], [0.0, 1.0]])
+    h = np.array([[1.0, 0.0]])
+
+    def predict(x: np.ndarray, p: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return f @ x, f @ p @ f.T + q
+
+    def update(x: np.ndarray, p: np.ndarray, z: float) -> tuple[np.ndarray, np.ndarray]:
+        gain = p @ h.T / (h @ p @ h.T + 10.0)
+        return x + gain * (z - h @ x), (np.eye(2) - gain @ h) @ p
+
+    x, p = predict(np.array([[0.9], [0.0]]), np.diag([10.0, 1e4]))
+    x, p = update(x, p, 0.9)
+    x, p = predict(x, p)
+    first_miss = (x, p)
+    for _ in range(predicts_after_match - 1):
+        x, p = predict(x, p)
+    if replay:
+        x, p = first_miss
+        step = (0.3 - 0.9) / predicts_after_match
+        for i in range(predicts_after_match):
+            x, p = update(x, p, 0.9 + (i + 1) * step)
+            if i < predicts_after_match - 1:
+                x, p = predict(x, p)
+    x, p = update(x, p, 0.3)
+    return float(x[0, 0])
+
 
 class TestRobustObservationCentricMomentum:
     def test_corner_velocities_sum_directions_over_delta_t(self) -> None:
@@ -222,6 +387,95 @@ class TestRobustObservationCentricMomentum:
         # Exact alignment scores +/-0.5; the reference 1e-6 norm guard keeps arccos a hair off 0.
         np.testing.assert_allclose(scores, [[0.5, -0.5]], atol=1e-3)
         np.testing.assert_array_equal(masked, np.zeros((1, 2)))
+
+
+def _track_moving_right(tracker: HybridSORTTracker, frames: int) -> float:
+    """Feed one 100x200 box moving +10 px/frame at confidence 0.9; return the last box's left edge."""
+    for frame in range(frames):
+        tracker.update(_detections([_shifted_box(100.0 + 10.0 * frame)], [0.9]))
+    return 100.0 + 10.0 * (frames - 1)
+
+
+def _shifted_box(left: float) -> list[float]:
+    return [left, 100.0, left + 100.0, 300.0]
+
+
+class TestDirectionConsistencyInAssociation:
+    """Robust OCM through ``update()``: the direction term steers matches among ambiguous detections."""
+
+    @pytest.mark.parametrize(
+        ("direction_weight", "winner"),
+        [
+            pytest.param(0.2, "ahead", id="default-weight-prefers-motion-direction"),
+            pytest.param(0.0, "behind", id="zero-weight-leaves-iou-in-charge"),
+        ],
+    )
+    def test_motion_direction_overrides_a_small_iou_advantage(self, direction_weight: float, winner: str) -> None:
+        """A track moving right takes the detection ahead of it over a slightly better-overlapping one behind it.
+
+        The detection behind the track overlaps the prediction better (IoU 0.33 vs 0.25) but lies against the track's
+        direction of motion; the direction term outweighs that gap. Confidence penalties are disabled to isolate the
+        direction term, and at weight ``0`` IoU alone picks the detection behind.
+        """
+        tracker = HybridSORTTracker(
+            minimum_consecutive_frames=1,
+            direction_consistency_weight=direction_weight,
+            confidence_weight_first_assoc=0.0,
+        )
+        last = _track_moving_right(tracker, frames=5)
+        ahead, behind = _shifted_box(last + 70.0), _shifted_box(last - 40.0)
+
+        result = tracker.update(_detections([ahead, behind], [0.9, 0.9]))
+
+        taken, left = (ahead, behind) if winner == "ahead" else (behind, ahead)
+        assert _id_of(result, taken) >= 0
+        assert _id_of(result, left) == -1
+
+    @pytest.mark.parametrize("direction_weight", [0.0, 0.2, 5.0])
+    def test_track_with_a_single_observation_is_not_steered_by_direction(self, direction_weight: float) -> None:
+        """Until a track has two matched observations it has no motion direction, so the weight is irrelevant."""
+        tracker = HybridSORTTracker(
+            minimum_consecutive_frames=1,
+            direction_consistency_weight=direction_weight,
+            confidence_weight_first_assoc=0.0,
+        )
+        last = _track_moving_right(tracker, frames=2)
+        ahead, behind = _shifted_box(last + 70.0), _shifted_box(last - 40.0)
+
+        result = tracker.update(_detections([ahead, behind], [0.9, 0.9]))
+
+        assert _id_of(result, behind) >= 0, "IoU alone must decide for a track without a motion direction"
+        assert _id_of(result, ahead) == -1
+
+    @pytest.mark.parametrize(
+        ("near_confidence", "far_confidence", "direction_weight", "winner"),
+        [
+            pytest.param(0.6, 0.95, 1.0, "far", id="higher-confidence-earns-larger-bonus"),
+            pytest.param(0.6, 0.6, 1.0, "near", id="equal-confidence-leaves-iou-in-charge"),
+            pytest.param(0.6, 0.95, 0.0, "near", id="zero-weight-ignores-confidence"),
+        ],
+    )
+    def test_direction_bonus_scales_with_detection_confidence(
+        self, near_confidence: float, far_confidence: float, direction_weight: float, winner: str
+    ) -> None:
+        """Both candidates lie ahead of the track, so the bonus differs only through detection confidence.
+
+        The nearer detection overlaps more (IoU 0.25 vs 0.18). A 0.95-confidence far detection earns a larger direction
+        bonus than a 0.6-confidence near one and overtakes it; at equal confidence it does not.
+        """
+        tracker = HybridSORTTracker(
+            minimum_consecutive_frames=1,
+            direction_consistency_weight=direction_weight,
+            confidence_weight_first_assoc=0.0,
+        )
+        last = _track_moving_right(tracker, frames=5)
+        near, far = _shifted_box(last + 70.0), _shifted_box(last + 80.0)
+
+        result = tracker.update(_detections([near, far], [near_confidence, far_confidence]))
+
+        taken, left = (near, far) if winner == "near" else (far, near)
+        assert _id_of(result, taken) >= 0
+        assert _id_of(result, left) == -1
 
 
 class TestReviewRegressions:

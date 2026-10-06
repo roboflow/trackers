@@ -588,12 +588,28 @@ class TestDegenerateInputs:
         with pytest.raises(ValueError, match="non-finite"):
             metric.compute(boxes_a, boxes_b)
 
-    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU(), HMIoU()])
     def test_zero_area_box_returns_finite(self, metric: BaseIoU) -> None:
         boxes_a = np.array([[5.0, 5.0, 5.0, 5.0]])  # zero-area
         boxes_b = np.array([[0.0, 0.0, 10.0, 10.0]])
         result = metric.compute(boxes_a, boxes_b)
         assert np.isfinite(result).all(), "Zero-area box should yield finite similarity"
+
+    def test_hmiou_zero_height_boxes_on_same_row_score_zero_without_warnings(self) -> None:
+        """Two zero-height boxes on the same row have a zero vertical span and must score ``0.0``, not NaN.
+
+        The height ratio divides vertical overlap by vertical span; when both boxes collapse onto one row the span is
+        zero, so a bare divide would yield ``0/0``. HMIoU is documented to lie in ``[0, 1]``, so the degenerate pair is
+        a clean zero and raises no floating-point warning.
+        """
+        boxes_a = np.array([[0.0, 5.0, 10.0, 5.0]])
+        boxes_b = np.array([[3.0, 5.0, 8.0, 5.0]])
+
+        with np.errstate(all="raise"):
+            result = HMIoU().compute(boxes_a, boxes_b)
+
+        assert result.shape == (1, 1)
+        assert result[0, 0] == 0.0
 
     @pytest.mark.parametrize(
         "boxes_a",
@@ -622,7 +638,7 @@ class TestDegenerateInputs:
         assert result[0, 0] == pytest.approx(expected)
         assert result[0, 0] == pytest.approx(0.0)
 
-    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU(), HMIoU()])
     @pytest.mark.parametrize(
         "boxes_a",
         [
