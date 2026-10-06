@@ -86,6 +86,23 @@ class TestCBIoUFrameWarning:
             warnings.simplefilter("error")
             tracker.update(_detection((100.0, 100.0, 200.0, 200.0)))
 
+    def test_h_cmc_warns_and_is_ignored(self) -> None:
+        """CBIoU accepts h_cmc for signature compatibility with BoT-SORT, warns, and does not shift track state.
+
+        A twin tracker without h_cmc gives the reference box: any difference would mean the transform leaked in.
+        """
+        tracker = CBIoUTracker()
+        baseline = CBIoUTracker()
+        seed = _detection((100.0, 100.0, 200.0, 200.0))
+        tracker.update(seed)
+        baseline.update(seed)
+        baseline.update(sv.Detections.empty())
+
+        with pytest.warns(UserWarning, match="h_cmc"):
+            tracker.update(sv.Detections.empty(), h_cmc=np.array([[1.0, 0.0, 50.0], [0.0, 1.0, 50.0]]))
+
+        np.testing.assert_array_equal(tracker.tracks[0].get_state_bbox(), baseline.tracks[0].get_state_bbox())
+
 
 class TestCBIoUAssociationTolerance:
     """BIoU should associate near-miss detections that plain IoU would miss."""

@@ -41,6 +41,24 @@ def _make_frame(h: int = 480, w: int = 640, seed: int = 42) -> np.ndarray:
     return rng.integers(0, 255, (h, w, 3), dtype=np.uint8)
 
 
+def _translation(dx: float, dy: float) -> np.ndarray:
+    """Pure-translation 2x3 affine (previous -> current frame)."""
+    return np.array([[1.0, 0.0, dx], [0.0, 1.0, dy]], dtype=np.float64)
+
+
+def _state_shift_after_one_step(tracker: BoTSORTTracker, baseline: BoTSORTTracker, h_cmc: np.ndarray) -> np.ndarray:
+    """Seed both trackers with one box, advance one empty step (h_cmc only on ``tracker``), return the bbox delta.
+
+    The empty step matters: a detection would re-update the Kalman state and mask the CMC shift.
+    """
+    seed = _detection((100.0, 100.0, 200.0, 200.0))
+    tracker.update(seed)
+    baseline.update(seed)
+    tracker.update(sv.Detections.empty(), h_cmc=h_cmc)
+    baseline.update(sv.Detections.empty())
+    return tracker.tracks[0].get_state_bbox() - baseline.tracks[0].get_state_bbox()
+
+
 class TestBoTSORTTrackerLifecycle:
     """BoT-SORT-specific lifecycle behavior."""
 
@@ -201,6 +219,111 @@ class TestBoTSORTTrackerCMC:
 
         assert tracker.cmc is not None
         assert not tracker.cmc._initialized, "CMC must be uninitialized after tracker reset"
+
+
+class TestBoTSORTTrackerExternalCMC:
+    """BoT-SORT with a precomputed camera-motion transform passed via ``update(h_cmc=...)``."""
+
+    def test_h_cmc_shifts_state_without_internal_estimate(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A translation h_cmc shifts the predicted box by (dx, dy) and never calls the internal estimator.
+
+        Twin trackers see identical input except for h_cmc, so the state-bbox delta isolates the compensation; the spy
+        proves the external transform replaces, rather than adds to, the frame-based estimate.
+        """
+        tracker = BoTSORTTracker(enable_cmc=True)
+        assert tracker.cmc is not None
+        estimate_calls: list[tuple[object, ...]] = []
+        monkeypatch.setattr(tracker.cmc, "estimate", lambda *args: estimate_calls.append(args))
+
+        shift = _state_shift_after_one_step(tracker, BoTSORTTracker(enable_cmc=True), _translation(12.0, -7.0))
+
+        np.testing.assert_allclose(shift, [12.0, -7.0, 12.0, -7.0], atol=1e-9)
+        assert estimate_calls == []
+
+    def test_h_cmc_applied_when_enable_cmc_false(self) -> None:
+        """enable_cmc=False only disables the internal estimator; a precomputed h_cmc is still applied.
+
+        Users relying solely on external registration should not need to build an unused internal estimator.
+        """
+        shift = _state_shift_after_one_step(
+            BoTSORTTracker(enable_cmc=False), BoTSORTTracker(enable_cmc=False), _translation(12.0, -7.0)
+        )
+
+        np.testing.assert_allclose(shift, [12.0, -7.0, 12.0, -7.0], atol=1e-9)
+
+    def test_positional_third_argument_binds_timestamp(self) -> None:
+        """Update(detections, frame, timestamp) keeps the BaseTracker positional order.
+
+        h_cmc is keyword-only, so existing positional callers passing a timestamp third must not have it rebound to the
+        transform.
+        """
+        tracker = BoTSORTTracker(enable_cmc=False)
+
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), None, 1.5)
+
+        assert tracker._last_timestamp == 1.5
+
+    def test_positional_h_cmc_rejected(self) -> None:
+        """h_cmc passed as a fourth positional argument raises TypeError instead of binding silently."""
+        tracker = BoTSORTTracker(enable_cmc=False)
+
+        with pytest.raises(TypeError):
+            tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), None, None, _translation(1.0, 1.0))  # type: ignore[misc]
+
+    @pytest.mark.parametrize(
+        ("bad_h_cmc", "message"),
+        [
+            pytest.param(np.array([[1.0, 0.0, np.nan], [0.0, 1.0, 0.0]]), "non-finite", id="nan"),
+            pytest.param(np.array([[1.0, 0.0, 0.0], [0.0, 1.0, np.inf]]), "non-finite", id="inf"),
+            pytest.param(np.eye(3), "3x3 homographies", id="homography-3x3"),
+            pytest.param(np.eye(2), "shape", id="shape-2x2"),
+            pytest.param(np.zeros(6), "shape", id="flat-6"),
+            pytest.param(np.array(1.0), "shape", id="scalar"),
+            pytest.param(np.array([["a", "b", "c"], ["d", "e", "f"]]), "real numbers", id="strings"),
+            pytest.param(np.eye(2, 3, dtype=np.complex128), "real numbers", id="complex"),
+        ],
+    )
+    def test_invalid_h_cmc_raises_and_leaves_state_unchanged(self, bad_h_cmc: np.ndarray, message: str) -> None:
+        """Malformed h_cmc raises a ValueError naming h_cmc before predict, so tracker state is untouched.
+
+        A NaN or wrongly shaped transform applied to the Kalman state would poison every later association; failing fast
+        at the boundary keeps the tracker usable after the caller fixes the input.
+        """
+        tracker = BoTSORTTracker(enable_cmc=False)
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), timestamp=0.0)
+        box_before = tracker.tracks[0].get_state_bbox().copy()
+
+        with pytest.raises(ValueError, match=f"h_cmc.*{message}"):
+            tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), timestamp=1.0, h_cmc=bad_h_cmc)
+
+        assert (tracker.frame_id, tracker._last_timestamp, len(tracker.tracks)) == (1, 0.0, 1)
+        np.testing.assert_array_equal(tracker.tracks[0].get_state_bbox(), box_before)
+
+    def test_frame_and_h_cmc_together_raises(self) -> None:
+        """Passing both CMC sources is ambiguous and raises before any state change."""
+        tracker = BoTSORTTracker(enable_cmc=True)
+
+        with pytest.raises(ValueError, match="both frame and h_cmc"):
+            tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=_make_frame(), h_cmc=_translation(1.0, 1.0))
+
+        assert (tracker.frame_id, len(tracker.tracks)) == (0, 0)
+
+    def test_h_cmc_resets_internal_estimator(self) -> None:
+        """Switching frame -> h_cmc resets the internal estimator so a later frame call cannot double-compensate.
+
+        Without the reset, the next frame-based estimate would measure motion against the pre-switch frame and re-apply
+        motion the external transforms already compensated.
+        """
+        tracker = BoTSORTTracker(enable_cmc=True, minimum_consecutive_frames=1)
+        assert tracker.cmc is not None
+        frame = _make_frame()
+        for _ in range(2):
+            tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame=frame)
+        initialized_after_frames = tracker.cmc._initialized
+
+        tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), h_cmc=_translation(0.0, 0.0))
+
+        assert (initialized_after_frames, tracker.cmc._initialized) == (True, False)
 
 
 def test_get_iou_matrix_reads_cache_without_decoding(monkeypatch: pytest.MonkeyPatch) -> None:
