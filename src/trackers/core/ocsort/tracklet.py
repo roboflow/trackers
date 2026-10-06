@@ -22,6 +22,92 @@ from trackers.utils.state_representations import (
     XYXYStateEstimator,
 )
 
+#: Output norms at or below this are treated as zero when rescaling warped directions.
+_DIRECTION_EPS = 1e-12
+
+
+def _rotate_directions(directions: np.ndarray, rot_mtx: np.ndarray) -> np.ndarray:
+    """Map OC-SORT direction vectors through the linear part of a camera-motion transform.
+
+    Directions are stored ``[dy, dx]`` (see ``OCSORTTracklet._compute_velocity``). Each
+    one is mapped as an ``(x, y)`` vector by ``rot_mtx`` and rescaled to its original
+    norm, so a unit direction stays unit under rotation, zoom or shear, and an identity
+    linear part (pure translation) returns it unchanged, bit for bit. Zero vectors stay
+    zero.
+
+    Args:
+        directions: ``(N, 2)`` direction vectors ``[dy, dx]``.
+        rot_mtx: 2x2 linear part of the affine transform.
+
+    Returns:
+        ``(N, 2)`` transformed direction vectors ``[dy, dx]``.
+
+    Examples:
+        >>> import numpy as np
+        >>> rot_90 = np.array([[0.0, -1.0], [1.0, 0.0]])
+        >>> _rotate_directions(np.array([[0.0, 1.0]]), rot_90).tolist()  # +x becomes +y
+        [[1.0, 0.0]]
+    """
+    dy = directions[:, 0]
+    dx = directions[:, 1]
+    # Element-wise rather than a matmul, so each row's result does not depend on how
+    # many rows are transformed together.
+    new_dx = rot_mtx[0, 0] * dx + rot_mtx[0, 1] * dy
+    new_dy = rot_mtx[1, 0] * dx + rot_mtx[1, 1] * dy
+    norm_in = np.sqrt(dx * dx + dy * dy)
+    norm_out = np.sqrt(new_dx * new_dx + new_dy * new_dy)
+    scale = np.divide(norm_in, norm_out, out=np.zeros_like(norm_out), where=norm_out > _DIRECTION_EPS)
+    return np.stack([new_dy * scale, new_dx * scale], axis=1)
+
+
+def _warp_observation_boxes(
+    boxes: np.ndarray,
+    rot_mtx: np.ndarray,
+    translation: np.ndarray,
+    *,
+    corner_wise: bool,
+) -> np.ndarray:
+    """Warp stored ``xyxy`` observations with the same model CMC applies to the Kalman state.
+
+    ``CMC.apply_batch`` moves only the centre of centre-based states (``XCYCSR``,
+    ``XCYCWH``) and keeps their size terms, while ``XYXY`` states are warped
+    corner-wise into the enclosing axis-aligned box. Observations follow the same
+    model, so OCR, ORU and the direction term never compare boxes warped two
+    different ways (an enclosing box would also grow under every small rotation).
+
+    Args:
+        boxes: ``(N, 4)`` boxes ``[x1, y1, x2, y2]``.
+        rot_mtx: 2x2 linear part of the affine transform.
+        translation: 2-element translation of the affine transform.
+        corner_wise: ``True`` for ``XYXY`` states (enclosing box of the warped
+            corners); ``False`` to move each box by its centre's displacement and
+            keep width and height (box size is not scale-compensated).
+
+    Returns:
+        ``(N, 4)`` warped boxes ``[x1, y1, x2, y2]``.
+
+    Examples:
+        >>> import numpy as np
+        >>> rot_90 = np.array([[0.0, -1.0], [1.0, 0.0]])
+        >>> box = np.array([[0.0, 0.0, 2.0, 4.0]])
+        >>> _warp_observation_boxes(box, rot_90, np.zeros(2), corner_wise=False).tolist()
+        [[-3.0, -1.0, -1.0, 3.0]]
+        >>> _warp_observation_boxes(box, rot_90, np.zeros(2), corner_wise=True).tolist()
+        [[-4.0, 0.0, 0.0, 2.0]]
+    """
+    if corner_wise:
+        return np.stack(
+            CMC.warp_xyxy_corners(boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3], rot_mtx, translation),
+            axis=1,
+        )
+    centre_x = (boxes[:, 0] + boxes[:, 2]) / 2.0
+    centre_y = (boxes[:, 1] + boxes[:, 3]) / 2.0
+    # Displacement (R - I) c + t of each centre, element-wise so that an identity linear
+    # part shifts by exactly ``translation`` and rows do not depend on batch size.
+    shift_x = (rot_mtx[0, 0] - 1.0) * centre_x + rot_mtx[0, 1] * centre_y + translation[0]
+    shift_y = rot_mtx[1, 0] * centre_x + (rot_mtx[1, 1] - 1.0) * centre_y + translation[1]
+    return boxes + np.stack([shift_x, shift_y, shift_x, shift_y], axis=1)
+
 
 class OCSORTTracklet(BaseTracklet):
     """Tracklet for OC-SORT tracker with ORU (Observation-centric Re-Update).
@@ -281,9 +367,14 @@ class OCSORTTracklet(BaseTracklet):
         OC-SORT stores beside it in the same, current-frame coordinates: the
         observations used by OCR, velocity estimation and the direction-consistency
         term, and the frozen filter state that ORU restores when a lost track is
-        matched again. Boxes are warped corner-wise and replaced by their enclosing
-        axis-aligned box. The stored unit ``velocity`` is left as is; it is
-        re-estimated from the warped observations on the next match.
+        matched again. Boxes are warped with the same model as the Kalman state (see
+        ``_warp_observation_boxes``): for the centre-based estimators (XCYCSR,
+        XCYCWH) only the centre moves and width and height are kept, so box size
+        is not scale-compensated and camera zoom is absorbed by the next matched
+        detection; for XYXY the corners are warped and replaced by their enclosing
+        axis-aligned box. The stored unit direction ``velocity`` is mapped through
+        the linear part of the transform too, because the direction-consistency term
+        reads it before the next match re-estimates it (see ``_rotate_directions``).
 
         Args:
             affine_mtx: 2x3 affine transform returned by ``CMC.estimate()``.
@@ -291,15 +382,16 @@ class OCSORTTracklet(BaseTracklet):
         rot_mtx = affine_mtx[:2, :2].astype(np.float64)
         translation = affine_mtx[:2, 2].astype(np.float64)
 
+        if self.velocity is not None:
+            self.velocity = _rotate_directions(self.velocity[np.newaxis], rot_mtx)[0]
+
         ages = list(self.observations)
         boxes = [self.last_observation, *(self.observations[age] for age in ages)]
         if self.previous_to_last_observation is not None:
             boxes.append(self.previous_to_last_observation)
         stacked = np.asarray(boxes, dtype=np.float64)
-        warped = np.stack(
-            CMC.warp_xyxy_corners(stacked[:, 0], stacked[:, 1], stacked[:, 2], stacked[:, 3], rot_mtx, translation),
-            axis=1,
-        )
+        is_xyxy = isinstance(self.state_estimator, XYXYStateEstimator)
+        warped = _warp_observation_boxes(stacked, rot_mtx, translation, corner_wise=is_xyxy)
         self.last_observation = warped[0]
         self.observations = {age: warped[i + 1] for i, age in enumerate(ages)}
         if self.previous_to_last_observation is not None:
@@ -310,7 +402,7 @@ class OCSORTTracklet(BaseTracklet):
                 self._frozen_state["state"].reshape(1, -1).astype(np.float64),
                 self._frozen_state["state_covariance"][np.newaxis].astype(np.float64),
                 affine_mtx,
-                is_xyxy=isinstance(self.state_estimator, XYXYStateEstimator),
+                is_xyxy=is_xyxy,
             )
             self._frozen_state["state"] = states[0].reshape(-1, 1)
             self._frozen_state["state_covariance"] = covariances[0]
