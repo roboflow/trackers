@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from trackers.eval import MOTClassConfig
+from trackers.eval.mot_classes import MOTClassConfig
 from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence
 
 
