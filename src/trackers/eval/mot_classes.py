@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Literal
 
+#: Names of the built-in MOT class presets, accepted case-insensitively by `resolve_mot_class_config`.
 MOTClassPreset = Literal["mot17", "mot20"]
 
 
@@ -51,7 +52,32 @@ def _coerce_class_ids(field_name: str, values: Iterable[int]) -> tuple[int, ...]
 
 @dataclass(frozen=True)
 class MOTClassConfig:
-    """Configure which MOT ground-truth classes are scored or treated as distractors."""
+    """Configure which MOT ground-truth classes are scored and which act as distractors.
+
+    A ground-truth row is scored when its confidence flag is non-zero and its class is in ``scored_classes``. Tracker
+    detections that best match a row of a distractor class are removed during preprocessing, so they count as neither
+    false positives nor true positives. The defaults reproduce TrackEval's MOT17 convention
+    (``trackeval/datasets/mot_challenge_2d_box.py``).
+
+    Both fields are normalized to tuples of ints on creation, so lists and NumPy integers are accepted and the instance
+    stays hashable.
+
+    Attributes:
+        scored_classes: Class IDs scored as ground truth. Must be non-empty. TrackEval scores only pedestrians
+            (class 1); scoring several classes is an extension of this configuration.
+        distractor_classes: Class IDs whose regions suppress matching tracker detections. Must not overlap
+            ``scored_classes``. MOT17 uses 2 (person_on_vehicle), 7 (static_person), 8 (distractor) and
+            12 (reflection); MOT20 also adds 6 (non_mot_vehicle).
+
+    Raises:
+        ValueError: If a field is not an iterable of integer class IDs, if ``scored_classes`` is empty, or if a class
+            appears in both fields.
+
+    Example:
+        >>> from trackers.eval.mot_classes import MOTClassConfig
+        >>> MOTClassConfig(scored_classes=[1], distractor_classes=[2, 6])
+        MOTClassConfig(scored_classes=(1,), distractor_classes=(2, 6))
+    """
 
     scored_classes: tuple[int, ...] = (1,)
     distractor_classes: tuple[int, ...] = (2, 7, 8, 12)
@@ -75,6 +101,8 @@ class MOTClassConfig:
         object.__setattr__(self, "distractor_classes", distractor)
 
 
+#: Read-only registry of the built-in presets: ``mot17`` (TrackEval MOT17 rules) and ``mot20`` (also treats class 6 as
+#: a distractor).
 MOT_CLASS_PRESETS: Mapping[MOTClassPreset, MOTClassConfig] = MappingProxyType(
     {
         "mot17": MOTClassConfig(),
@@ -94,6 +122,11 @@ def resolve_mot_class_config(class_config: MOTClassPreset | MOTClassConfig) -> M
 
     Raises:
         ValueError: If ``class_config`` is neither a supported preset name nor a ``MOTClassConfig``.
+
+    Example:
+        >>> from trackers.eval.mot_classes import resolve_mot_class_config
+        >>> resolve_mot_class_config("mot20").distractor_classes
+        (2, 6, 7, 8, 12)
     """
     if isinstance(class_config, MOTClassConfig):
         return class_config
