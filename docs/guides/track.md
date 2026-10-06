@@ -455,17 +455,17 @@ Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset m
     </tr>
     <tr>
       <td><code>--tracker.direction_consistency_weight</code></td>
-      <td>Weight for direction consistency in the association cost. Higher values prioritize angle alignment between motion and association direction. <code>ocsort</code> only.</td>
+      <td>Weight for direction consistency in the association cost. Higher values prioritize angle alignment between motion and association direction. <code>ocsort</code> and <code>hybridsort</code> only.</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.delta_t</code></td>
-      <td>Number of past frames used for velocity estimation. Higher values give more stable direction estimates during occlusion. <code>ocsort</code> only.</td>
+      <td>Number of past frames used for velocity estimation. Higher values give more stable direction estimates during occlusion. <code>ocsort</code> and <code>hybridsort</code> only.</td>
       <td><code>null</code> (tracker default)</td>
     </tr>
     <tr>
       <td><code>--tracker.iou_variant</code></td>
-      <td>IoU similarity metric for data association. Options: <code>iou</code>, <code>giou</code>, <code>diou</code>, <code>ciou</code>, <code>biou</code>, <code>hmiou</code>. Applies to all trackers.</td>
+      <td>IoU similarity metric for data association. Options: <code>iou</code>, <code>giou</code>, <code>diou</code>, <code>ciou</code>, <code>biou</code>, <code>hmiou</code>. Applies to every tracker that accepts <code>iou=</code> (all except <code>cbiou</code>, which always uses BIoU; the option is ignored with a warning).</td>
       <td><code>null</code> (tracker default: <code>iou</code>, <code>hmiou</code> for <code>hybridsort</code>)</td>
     </tr>
     <tr>

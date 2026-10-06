@@ -267,7 +267,7 @@ Left: IoU. Right: BIoU. Notice how ID switches happen when fast players temporar
 \mathrm{HMIoU}(A, B) = \mathrm{HIoU}(A, B) \cdot \mathrm{IoU}(A, B)
 \]
 
-Box height is a weak depth cue: under a roughly horizontal camera, an object's height and vertical position barely change between frames, while an occluder standing closer to or further from the camera differs in both. Two candidates with the same IoU are therefore split by whether their heights agree. HMIoU equals IoU when the vertical extents coincide and is never larger. It is the association metric of the [Hybrid-SORT](../trackers/hybridsort.md) tracker, and it works in any other tracker too:
+Box height is a weak depth cue: under a roughly horizontal camera, an object's height and vertical position barely change between frames, while an occluder standing closer to or further from the camera differs in both. Two candidates with the same IoU are therefore split by whether their heights agree. HMIoU equals IoU when the vertical extents coincide and is never larger. It is the association metric of the [Hybrid-SORT](../trackers/hybridsort.md) tracker, and it works in every tracker that accepts `iou=` (all except C-BIoU, which always uses BIoU):
 
 ```python
 from trackers import ByteTrackTracker
