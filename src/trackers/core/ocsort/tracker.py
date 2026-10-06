@@ -65,7 +65,11 @@ class OCSORTTracker(BaseTracker):
             during occlusion.
         state_estimator_class: State estimator class to use for Kalman filter.
             Defaults to `XCYCSRStateEstimator`. Can also use
-            `XYXYStateEstimator` for corner-based representation.
+            `XYXYStateEstimator` for corner-based representation or
+            `XCYCWHStateEstimator` for center-width-height representation.
+            The OC-SORT noise tuning is specific to `XCYCSRStateEstimator`;
+            the other two only get its state-covariance and velocity
+            process-noise scaling.
         iou: IoU similarity metric instance to use for data association.
             Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
             subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
@@ -219,10 +223,16 @@ class OCSORTTracker(BaseTracker):
             spawn a track), have tracker_id of -1. Detection order may differ
             from input.
 
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
         Warns:
             UserWarning: If ``frame`` is passed but OC-SORT does not perform
                 camera motion compensation (CMC), the frame is ignored.
         """
+        self._validate_detections(detections)
         self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:

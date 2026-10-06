@@ -431,6 +431,21 @@ class BaseTracker(ABC):
         self._frame_rate = frame_rate
         self._last_timestamp = None
 
+    def _validate_detections(self, detections: sv.Detections) -> None:
+        """Reject detections with non-finite boxes before any tracker state changes.
+
+        Concrete trackers call this as the first statement of ``update()``, so a
+        failed call leaves tracks, IDs and the timestamp anchor untouched.
+
+        Args:
+            detections: Value passed to ``update(detections=...)``.
+
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf.
+        """
+        if len(detections) > 0 and not np.isfinite(detections.xyxy).all():
+            raise ValueError("detections.xyxy contains non-finite values (NaN or inf)")
+
     def _warn_if_frame_unused(self, frame: np.ndarray | None) -> None:
         """Emit a UserWarning when a frame is passed to a tracker that ignores it.
 
@@ -613,6 +628,11 @@ class BaseTracker(ABC):
             sv.Detections enriched with tracker_id assigned for each
             detection box. When the update is skipped (backwards or
             non-finite timestamp), all ``tracker_id`` values are ``-1``.
+
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
 
         Warns:
             UserWarning: If ``timestamp`` is earlier than the previous call

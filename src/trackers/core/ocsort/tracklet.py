@@ -27,7 +27,7 @@ class OCSORTTracklet(BaseTracklet):
     Manages a single tracked object with Kalman filter state estimation.
     Implements OC-SORT specific features: freeze/unfreeze for saving state
     before track is lost, virtual trajectory generation (ORU) for recovering
-    lost tracks, and configurable state representation (XCYCSR or XYXY).
+    lost tracks, and configurable state representation (XCYCSR, XYXY or XCYCWH).
 
     Attributes:
         age: Age of the tracklet in frames.
@@ -101,7 +101,8 @@ class OCSORTTracklet(BaseTracklet):
         if isinstance(self.state_estimator, XCYCSRStateEstimator):
             self._unfreeze_xcycsr(new_bbox, time_gap, sub_step)
         else:
-            self._unfreeze_xyxy(new_bbox, time_gap, sub_step)
+            # Every other estimator: interpolate linearly in xyxy, then encode per estimator.
+            self._unfreeze_linear(new_bbox, time_gap, sub_step)
 
         self._frozen_state = None
 
@@ -146,11 +147,14 @@ class OCSORTTracklet(BaseTracklet):
             if i < time_gap - 1:
                 self.state_estimator.predict(sub_step)
 
-    def _unfreeze_xyxy(self, new_bbox: np.ndarray, time_gap: int, sub_step: float) -> None:
-        """ORU interpolation for XYXY representation.
+    def _unfreeze_linear(self, new_bbox: np.ndarray, time_gap: int, sub_step: float) -> None:
+        """ORU interpolation for every estimator except XCYCSR (XYXY, XCYCWH, ...).
 
         Same pattern as XCYCSR: time_gap predict+update cycles with factors
-        0 to (time_gap-1)/time_gap. Caller does the final real update.
+        0 to (time_gap-1)/time_gap. Caller does the final real update. Boxes are
+        interpolated linearly in xyxy, then each one is encoded with
+        ``bbox_to_measurement`` so the virtual observation lives in the filter's
+        measurement space.
         """
         last_xyxy = self.last_observation
         new_xyxy = new_bbox
@@ -159,7 +163,8 @@ class OCSORTTracklet(BaseTracklet):
         delta = (new_xyxy - last_xyxy) / time_gap
 
         for i in range(time_gap):
-            virtual_obs = (last_xyxy + (i + 1) * delta).reshape((4, 1))
+            virtual_bbox = last_xyxy + (i + 1) * delta
+            virtual_obs = self.state_estimator.bbox_to_measurement(virtual_bbox).reshape((4, 1))
 
             self.state_estimator.kf.update(virtual_obs)
             if i < time_gap - 1:
@@ -288,7 +293,7 @@ class OCSORTTracklet(BaseTracklet):
             process_noise[-1, -1] *= 0.01
             process_noise[4:, 4:] *= 0.01
         else:
-            # XYXY: same velocity uncertainty scaling
+            # XYXY / XCYCWH: same velocity uncertainty scaling
             state_covariance[4:, 4:] *= 1000.0
             state_covariance *= 10.0
             process_noise[4:, 4:] *= 0.01

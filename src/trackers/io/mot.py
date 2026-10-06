@@ -48,12 +48,14 @@ def _valid_ground_truth_mask(frame_data: _MOTFrameData, class_config: MOTClassCo
     """Boolean mask of ground-truth rows that are scored as ground truth.
 
     Mirrors TrackEval's ``gt_to_keep_mask``: a row counts as ground truth only
-    when it is marked for consideration (``conf != 0``) and belongs to the
-    pedestrian class. Distractor-class and ignored rows are excluded so they are
-    never counted as false negatives.
+    when it is marked for consideration (``conf != 0``) and belongs to one of
+    ``class_config.scored_classes`` (the pedestrian class, 1, in the built-in
+    presets). Distractor-class and ignored rows are excluded so they are never
+    counted as false negatives.
 
     Args:
         frame_data: Detections for a single ground-truth frame.
+        class_config: Class configuration naming the scored ground-truth classes.
 
     Returns:
         Boolean array of shape `(N,)`, `True` for scored ground-truth rows.
@@ -64,13 +66,14 @@ def _valid_ground_truth_mask(frame_data: _MOTFrameData, class_config: MOTClassCo
 def _distractor_ground_truth_mask(frame_data: _MOTFrameData, class_config: MOTClassConfig) -> NDArray[np.bool_]:
     """Boolean mask of ground-truth rows belonging to a distractor class.
 
-    Mirrors TrackEval's ``distractor_classes``. Tracker detections that
-    best-match one of these regions are removed by `_remove_distractor_matches`,
-    so they are neither penalized as false positives nor rewarded as true
-    positives.
+    Mirrors TrackEval's ``distractor_classes`` for the built-in presets.
+    Tracker detections that best-match one of these regions are removed by
+    `_remove_distractor_matches`, so they are neither penalized as false
+    positives nor rewarded as true positives.
 
     Args:
         frame_data: Detections for a single ground-truth frame.
+        class_config: Class configuration naming the distractor classes.
 
     Returns:
         Boolean array of shape `(N,)`, `True` for distractor-class rows.
@@ -254,6 +257,12 @@ def _build_id_mappings(
 ) -> tuple[dict[int, int], dict[int, int]]:
     """Collect valid IDs across all frames and build original-to-0-indexed maps.
 
+    Args:
+        ground_truth_data: Ground truth data from `load_mot_file`, keyed by frame.
+        tracker_data: Tracker predictions from `load_mot_file`, keyed by frame.
+        num_frames: Total number of frames to scan, starting at frame 1.
+        class_config: Class configuration naming the scored ground-truth classes.
+
     Returns:
         Tuple of (ground_truth_id_map, tracker_id_map) where each maps original
         track IDs to contiguous 0-indexed values.
@@ -284,6 +293,11 @@ def _extract_ground_truth_frame(
     class_config: MOTClassConfig,
 ) -> tuple[NDArray[np.float64], NDArray[np.intp], NDArray[np.float64], NDArray[np.bool_]]:
     """Extract and split ground truth data for a single frame.
+
+    Args:
+        ground_truth_data: Ground truth data from `load_mot_file`, keyed by frame.
+        frame: Frame number to extract.
+        class_config: Class configuration naming the scored and distractor classes.
 
     Returns:
         Tuple of (valid_boxes, valid_ids, all_boxes, distractor_mask).
@@ -388,7 +402,9 @@ def _prepare_mot_sequence(
         tracker_data: Tracker predictions from `load_mot_file`.
         num_frames: Total number of frames in the sequence. If `None`,
             auto-detected from the maximum frame number in the data.
-        class_config: MOT class preset or explicit class configuration.
+        class_config: MOT class preset name (`"mot17"`, the default, or `"mot20"`)
+            or an explicit `MOTClassConfig`. Selects which ground-truth classes
+            are scored and which act as distractors.
 
     Returns:
         `_MOTSequenceData` containing prepared data ready for metric evaluation.
