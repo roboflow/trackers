@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Literal
 
@@ -15,8 +16,10 @@ from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
 from trackers.eval.mot_classes import (
+    MOT_CLASS_PRESETS,
     MOTClassConfig,
     MOTClassPreset,
+    resolve_mot_class_config,
 )
 from trackers.eval.results import (
     BenchmarkResult,
@@ -30,6 +33,9 @@ from trackers.io.mot import _prepare_mot_sequence, load_mot_file
 logger = logging.getLogger(__name__)
 
 SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
+
+#: Sequence-name prefix of the MOT20 benchmark, whose ground truth needs the `mot20` class preset.
+_MOT20_SEQUENCE_PREFIX = "MOT20-"
 
 
 def evaluate_mot_sequence(
@@ -66,7 +72,8 @@ def evaluate_mot_sequence(
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
-        ValueError: If an unsupported metric family is requested.
+        ValueError: If an unsupported metric family is requested, or if `class_config` is neither a supported
+            preset name nor a `MOTClassConfig`.
 
     Examples:
         >>> from trackers.eval import evaluate_mot_sequence  # doctest: +SKIP
@@ -85,29 +92,52 @@ def evaluate_mot_sequence(
         --------------------------------------
         MOT17-02  75.600  62.300  72.100    42
     """
-    if metrics is None:
-        metrics = ["CLEAR"]
-
-    # Validate metrics
-    for metric in metrics:
-        if metric not in SUPPORTED_METRICS:
-            raise ValueError(f"Unsupported metric: {metric}. Supported metrics: {SUPPORTED_METRICS}")
+    validated_metrics = _validate_metrics(metrics)
+    resolved_class_config = resolve_mot_class_config(class_config)
 
     gt_path = Path(gt_path)
     tracker_path = Path(tracker_path)
 
+    # MOT layout stores ground truth as `<seq>/gt/gt.txt`, so the sequence is named by the grandparent directory.
     seq_name = gt_path.stem
     if seq_name == "gt":
         seq_name = gt_path.parent.parent.name
+    _warn_if_mot20_sequences_use_mot17_config([seq_name], resolved_class_config)
 
-    if seq_name.startswith("MOT20-") and class_config == "mot17":
-        warnings.warn(
-            f"Sequence '{seq_name}' matches MOT20 pattern, but MOT17 class configuration is selected. "
-            "Use class_config='mot20' to treat non_mot_vehicle (class 6) as a distractor.",
-            UserWarning,
-            stacklevel=2,
-        )
+    return _evaluate_mot_sequence_resolved(
+        gt_path=gt_path,
+        tracker_path=tracker_path,
+        metrics=validated_metrics,
+        threshold=threshold,
+        class_config=resolved_class_config,
+    )
 
+
+def _evaluate_mot_sequence_resolved(
+    gt_path: Path,
+    tracker_path: Path,
+    metrics: list[str],
+    threshold: float,
+    class_config: MOTClassConfig,
+) -> SequenceResult:
+    """Compute the requested metrics for one sequence from already-validated inputs.
+
+    Shared by `evaluate_mot_sequence` and `evaluate_mot_sequences`, which validate `metrics`, resolve `class_config`
+    and emit the MOT20 warning themselves, so this worker never warns.
+
+    Args:
+        gt_path: Path to the ground-truth MOT file.
+        tracker_path: Path to the tracker MOT file.
+        metrics: Validated metric families to compute.
+        threshold: IoU threshold for `CLEAR` and `Identity` matching.
+        class_config: Resolved MOT class configuration.
+
+    Returns:
+        `SequenceResult` named after the ground-truth file stem.
+
+    Raises:
+        FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
+    """
     # Load data
     gt_data = load_mot_file(gt_path)
     tracker_data = load_mot_file(tracker_path)
@@ -231,7 +261,8 @@ def evaluate_mot_sequences(
 
     Raises:
         FileNotFoundError: If `gt_dir` or `tracker_dir` does not exist.
-        ValueError: If no sequences are found.
+        ValueError: If no sequences are found, if an unsupported metric family is requested, or if `class_config`
+            is neither a supported preset name nor a `MOTClassConfig`.
 
     Examples:
         Auto-detect layout and evaluate all sequences:
@@ -252,8 +283,8 @@ def evaluate_mot_sequences(
         ---------------------------------------
         COMBINED   75.450  62.050  71.850    82
     """
-    if metrics is None:
-        metrics = ["CLEAR"]
+    validated_metrics = _validate_metrics(metrics)
+    resolved_class_config = resolve_mot_class_config(class_config)
 
     gt_dir = Path(gt_dir)
     tracker_dir = Path(tracker_dir)
@@ -276,6 +307,8 @@ def evaluate_mot_sequences(
     if not sequences:
         raise ValueError(f"No sequences found in {gt_dir}")
 
+    _warn_if_mot20_sequences_use_mot17_config(sequences, resolved_class_config)
+
     logger.info("Evaluating %d sequences...", len(sequences))
 
     # Evaluate each sequence
@@ -294,14 +327,14 @@ def evaluate_mot_sequences(
         if not tracker_path.exists():
             raise FileNotFoundError(f"Tracker file not found: {tracker_path}")
 
-        seq_result = evaluate_mot_sequence(
+        seq_result = _evaluate_mot_sequence_resolved(
             gt_path=gt_path,
             tracker_path=tracker_path,
-            metrics=metrics,
+            metrics=validated_metrics,
             threshold=threshold,
-            class_config=class_config,
+            class_config=resolved_class_config,
         )
-        # Fix sequence name (evaluate_mot_sequence uses file stem)
+        # Fix sequence name (_evaluate_mot_sequence_resolved uses file stem)
         sequence_results[seq_name] = SequenceResult(
             sequence=seq_name,
             CLEAR=seq_result.CLEAR,
@@ -310,11 +343,59 @@ def evaluate_mot_sequences(
         )
 
     # Compute aggregate metrics
-    aggregate = _aggregate_metrics(sequence_results, metrics)
+    aggregate = _aggregate_metrics(sequence_results, validated_metrics)
 
     return BenchmarkResult(
         sequences=sequence_results,
         aggregate=aggregate,
+    )
+
+
+def _validate_metrics(metrics: list[str] | None) -> list[str]:
+    """Apply the default metric family and reject unsupported ones before any file is read.
+
+    Args:
+        metrics: Requested metric families, or `None` for the default `["CLEAR"]`.
+
+    Returns:
+        The requested metric families, or `["CLEAR"]` when none were given.
+
+    Raises:
+        ValueError: If a requested metric family is not in `SUPPORTED_METRICS`.
+    """
+    if metrics is None:
+        return ["CLEAR"]
+    for metric in metrics:
+        if metric not in SUPPORTED_METRICS:
+            raise ValueError(f"Unsupported metric: {metric}. Supported metrics: {SUPPORTED_METRICS}")
+    return metrics
+
+
+def _warn_if_mot20_sequences_use_mot17_config(sequence_names: Iterable[str], class_config: MOTClassConfig) -> None:
+    """Emit one warning when MOT20 sequences are about to be scored with the MOT17 class preset.
+
+    Only the built-in `mot17` preset object triggers the warning (however the preset name was spelled); an explicit
+    `MOTClassConfig` is treated as a deliberate choice and stays silent. All matching sequences are named in a single
+    warning, so evaluating a whole benchmark warns once rather than once per sequence.
+
+    Args:
+        sequence_names: Names of the sequences about to be evaluated.
+        class_config: Resolved MOT class configuration.
+    """
+    if class_config is not MOT_CLASS_PRESETS["mot17"]:
+        return
+    mot20_names = [name for name in sequence_names if name.startswith(_MOT20_SEQUENCE_PREFIX)]
+    if not mot20_names:
+        return
+    quoted_names = ", ".join(f"'{name}'" for name in mot20_names)
+    subject = f"Sequence {quoted_names} matches" if len(mot20_names) == 1 else f"Sequences {quoted_names} match"
+    warnings.warn(
+        f"{subject} MOT20 pattern, but MOT17 class configuration is selected. "
+        "To treat non_mot_vehicle (class 6) as a distractor, pass class_config='mot20' in Python or run "
+        "'trackers eval --class_config mot20'; 'trackers tune' does not support class_config yet.",
+        UserWarning,
+        # 1 = this helper, 2 = the public evaluator, 3 = the user's call site.
+        stacklevel=3,
     )
 
 

@@ -12,10 +12,11 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from trackers.eval.mot_classes import MOTClassConfig, MOTClassPreset
+# jsonargparse resolves ``eval_command``'s annotations when it builds the parser, so a type reaching the signature
+# cannot be deferred behind ``TYPE_CHECKING``. It costs nothing beyond the ``trackers`` package itself, which
+# importing this module implies.
+from trackers.eval.mot_classes import MOTClassConfig, MOTClassPreset
 
 
 def eval_command(
