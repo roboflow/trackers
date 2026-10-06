@@ -23,7 +23,10 @@ from trackers.utils.state_representations import (
     XCYCSRStateEstimator,
 )
 
-# Detections at or below this confidence never enter association (BoT-SORT uses the same floor).
+# Lower bound of the low-confidence band: detections below `high_conf_det_threshold` and at or below this
+# confidence never enter association (BoT-SORT uses the same floor). It does not bound the high-confidence band:
+# when `high_conf_det_threshold <= 0.1`, every detection at or above the threshold is high confidence and the
+# low-confidence stage is empty, as in the reference implementation.
 _LOW_CONF_DET_FLOOR = 0.1
 
 
@@ -84,6 +87,18 @@ class HybridSORTTracker(OCSORTTracker):
     appearance, such as group dancing. On oracle boxes, where every detection
     has the same confidence, TCM contributes nothing.
 
+    Note:
+        Known limitation in dynamic frame-rate mode (`update` called with a
+        `timestamp`): the confidence Kalman filter gets its process noise from
+        the shared `KalmanMotionModel`. For an off-nominal frame step, that
+        model rebuilds the position noise from the velocity variance alone
+        rather than from the configured position noise, and it caches the
+        noise matrix keyed on the frame step only, so the matrix built during
+        the observation-centric re-update replay (which runs without a frame
+        rate) is reused by the next prediction at the same step. Both
+        mechanisms are pre-existing shared code that also drives the box
+        filters and will be fixed separately. Fixed-rate mode is unaffected.
+
     Args:
         lost_track_buffer: Non-negative `int` specifying number of 30 FPS frames
             to buffer when a track is lost. `0` deletes a confirmed track on the
@@ -96,18 +111,26 @@ class HybridSORTTracker(OCSORTTracker):
             frames before a track is considered valid. Before reaching this
             threshold, tracks are assigned `tracker_id` of `-1`.
         minimum_iou_threshold: `float` specifying the minimum similarity (HMIoU
-            by default) for accepting a match in every association stage.
-            Higher values require more overlap.
+            by default) for accepting a match. The first (high-confidence) and
+            third (last-observation recovery) stages gate on the raw
+            similarity. The second (low-confidence) stage gates on the
+            penalized score, the similarity minus
+            `confidence_weight_second_assoc` times the absolute confidence
+            gap, so a larger weight effectively raises its threshold. Higher
+            values require more overlap.
         direction_consistency_weight: `float` specifying weight of the
-            four-corner direction-consistency (robust OCM) term in the first
-            association stage. Higher values prioritize agreement between each
-            track's recent motion direction and the direction to a candidate
-            detection.
+            direction-consistency (OCM) term in the first association stage;
+            OC-SORT compares box centers, Hybrid-SORT all four corners. Higher
+            values prioritize agreement between each track's recent motion
+            direction and the direction to a candidate detection.
         high_conf_det_threshold: `float` specifying threshold for high
             confidence detections, which are matched first and can spawn new
-            tracks. Detections between `0.1` and this threshold are only used
-            to recover existing tracks in the second stage. Detections at or
-            below `0.1` never enter association. Unmatched detections are
+            tracks. Detections below this threshold but strictly above `0.1`
+            are only used to recover existing tracks in the second stage; the
+            other detections below it never enter association. The `0.1`
+            floor bounds only this low-confidence band, so when the threshold
+            is `0.1` or lower every detection at or above it is high
+            confidence and the second stage is empty. Unmatched detections are
             returned with `tracker_id` of `-1`.
         confidence_weight_first_assoc: `float` specifying weight of the
             confidence-consistency penalty in the first association stage: the
@@ -186,15 +209,25 @@ class HybridSORTTracker(OCSORTTracker):
         )
         self.confidence_weight_first_assoc = confidence_weight_first_assoc
         self.confidence_weight_second_assoc = confidence_weight_second_assoc
+        # `list` is invariant and OCSORTTracker declares `self.tracks: list[OCSORTTracklet]`, so narrowing the
+        # element type needs this ignore until the parent's `tracks` is generic over the tracklet type. Tracklets
+        # are only created by `_spawn_new_tracklets` below, which always builds `HybridSORTTracklet`.
         self.tracks: list[HybridSORTTracklet] = []  # type: ignore[assignment]
 
-    def _spawn_tracklets(self, boxes: np.ndarray, confidences: np.ndarray) -> None:
-        """Create new tracklets from bounding boxes and their confidences.
+    def _spawn_new_tracklets(self, boxes: np.ndarray, confidences: np.ndarray | None = None) -> None:
+        """Create new Hybrid-SORT tracklets from bounding boxes and their confidences.
+
+        Overrides the OC-SORT hook so that every spawned tracklet carries the
+        confidence state Hybrid-SORT needs; `confidences` is optional to keep
+        the parent signature.
 
         Args:
             boxes: Bounding boxes `(N, 4)` in xyxy format.
-            confidences: Detection confidences `(N,)`.
+            confidences: Detection confidences `(N,)`. `None` treats every box
+                as confidence `1.0`, as for detections without scores.
         """
+        if confidences is None:
+            confidences = np.ones(len(boxes))
         for xyxy, confidence in zip(boxes, confidences):
             self.tracks.append(
                 HybridSORTTracklet(
@@ -365,7 +398,7 @@ class HybridSORTTracker(OCSORTTracker):
         for track_index in unmatched_tracks:
             self.tracks[track_index].break_confidence_trend()
 
-        self._spawn_tracklets(high_boxes[unmatched_high], high_scores[unmatched_high])
+        self._spawn_new_tracklets(high_boxes[unmatched_high], high_scores[unmatched_high])
 
         # Post-association budget prune: removes tracks that exceeded budget after predict.
         self.tracks = cast(list[HybridSORTTracklet], self._prune_expired_tracklets(timing))

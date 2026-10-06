@@ -177,6 +177,9 @@ class HybridSORTTracklet(OCSORTTracklet):
         if not self._observed:
             self._replay_confidence(confidence, timing)
         self._confidence_filter.update(np.array([[confidence]]))
+        # Deliberate, as in the reference implementation (hybrid_sort.py): the first match after a gap copies the
+        # stale pre-gap confidence into `previous_confidence`, so the linear trend straddles the gap instead of
+        # restarting from a single observation. `break_confidence_trend` only clears it for the unmatched frames.
         self.previous_confidence = self.confidence
         self.confidence = float(confidence)
 
@@ -187,6 +190,11 @@ class HybridSORTTracklet(OCSORTTracklet):
 
         The linear confidence trend is only meaningful between consecutive matches; as in the reference implementation,
         the tracker calls this for every track left unmatched by an update.
+
+        Note:
+            This clears `previous_confidence` only for the unmatched frames themselves. The first match after a gap
+            deliberately copies the stale pre-gap `confidence` back into `previous_confidence` (reference behaviour),
+            so the linear trend of that match spans the gap.
         """
         self.previous_confidence = None
 
