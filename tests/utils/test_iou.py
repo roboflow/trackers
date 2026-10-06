@@ -18,6 +18,7 @@ from trackers.utils.iou import (  # noqa: E402
     CIoU,
     DIoU,
     GIoU,
+    HMIoU,
     IoU,
     _compute_iou_and_enclosing,
     variant_from_name,
@@ -69,11 +70,27 @@ def _reference_biou(boxes_1: np.ndarray, boxes_2: np.ndarray, buffer_ratio: floa
     return _iou.compute(boxes_1_b, boxes_2_b).astype(np.float64)
 
 
+def _reference_hmiou(boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
+    """Independent HMIoU reference: torchvision IoU times the overlap ratio of the vertical extents."""
+    t1 = torch.tensor(boxes_1, dtype=torch.float64)
+    t2 = torch.tensor(boxes_2, dtype=torch.float64)
+    iou = torchvision.ops.box_iou(t1, t2).numpy()
+    y1_a, y2_a = boxes_1[:, 1:2], boxes_1[:, 3:4]
+    y1_b, y2_b = boxes_2[:, 1], boxes_2[:, 3]
+    overlap = np.clip(np.minimum(y2_a, y2_b) - np.maximum(y1_a, y1_b), 0.0, None)
+    span = np.maximum(y2_a, y2_b) - np.minimum(y1_a, y1_b)
+    return iou * overlap / span
+
+
 _iou = IoU()
 _biou = BIoU()
 _giou = GIoU()
 _diou = DIoU()
 _ciou = CIoU()
+_hmiou = HMIoU()
+
+# Non-negative variants never satisfy the negative ``upper_bound`` expectations of the signed ones.
+_UNSIGNED_REFERENCES = (_reference_biou, _reference_hmiou)
 
 
 _TORCHVISION_COMPARISON_VARIANTS = [
@@ -81,6 +98,7 @@ _TORCHVISION_COMPARISON_VARIANTS = [
     pytest.param(_giou, _torchvision_giou, id="giou"),
     pytest.param(_diou, _torchvision_diou, id="diou"),
     pytest.param(_ciou, _torchvision_ciou, id="ciou"),
+    pytest.param(_hmiou, _reference_hmiou, id="hmiou"),
 ]
 
 _TORCHVISION_COMPARISON_CASES = [
@@ -202,7 +220,7 @@ class TestIoUVariantsAgainstTorchvision:
         """Validate variant-vs-reference parity across shared geometric scenarios.
 
         `upper_bound` is used only for cases where the original tests expected negative scores for non-overlapping boxes
-        (GIoU/DIoU/CIoU). BIoU is intentionally excluded from this check because buffered IoU is IoU-like (non-negative)
+        (GIoU/DIoU/CIoU). BIoU and HMIoU are intentionally excluded from this check: both are IoU-like, never negative,
         and can be zero or positive for such cases.
         """
         result = ours.compute(boxes_1, boxes_2)
@@ -212,8 +230,8 @@ class TestIoUVariantsAgainstTorchvision:
         if diag_one:
             np.testing.assert_allclose(np.diag(result), 1.0, atol=1e-6)
         # Negative upper-bound expectations are metric-specific to
-        # GIoU/DIoU/CIoU; they are not a valid invariant for BIoU.
-        if upper_bound is not None and ref_or_baseline is not _reference_biou:
+        # GIoU/DIoU/CIoU; they are not a valid invariant for BIoU or HMIoU.
+        if upper_bound is not None and ref_or_baseline not in _UNSIGNED_REFERENCES:
             assert result[0, 0] < upper_bound
 
     @pytest.mark.parametrize("ours, ref_or_baseline", _TORCHVISION_COMPARISON_VARIANTS)
@@ -399,13 +417,63 @@ class TestCIoUProperties:
         assert np.all(ciou_result <= diou_result + 1e-6)
 
 
+class TestHMIoUProperties:
+    """Verify behavior of Height-Modulated IoU."""
+
+    def test_never_exceeds_iou(self) -> None:
+        rng = np.random.default_rng(7)
+        xy = rng.uniform(0, 300, size=(40, 2))
+        wh = rng.uniform(5, 120, size=(40, 2))
+        boxes_1 = np.hstack([xy, xy + wh])
+        xy2 = rng.uniform(0, 300, size=(25, 2))
+        wh2 = rng.uniform(5, 120, size=(25, 2))
+        boxes_2 = np.hstack([xy2, xy2 + wh2])
+
+        hmiou = _hmiou.compute(boxes_1, boxes_2)
+        iou = _iou.compute(boxes_1, boxes_2)
+
+        assert np.all(hmiou >= 0.0)
+        assert np.all(hmiou <= iou + 1e-6)
+
+    def test_equals_iou_for_shared_vertical_extent(self) -> None:
+        """Boxes spanning the same rows are not modulated: HMIoU reduces to IoU."""
+        boxes_1 = np.array([[0.0, 10.0, 40.0, 90.0]])
+        boxes_2 = np.array([[15.0, 10.0, 70.0, 90.0]])
+        np.testing.assert_allclose(_hmiou.compute(boxes_1, boxes_2), _iou.compute(boxes_1, boxes_2), atol=1e-6)
+
+    def test_prefers_horizontal_over_vertical_offset_at_equal_iou(self) -> None:
+        """At equal IoU, the candidate that disagrees in height scores lower -- the cue HMIoU adds."""
+        track = np.array([[100.0, 100.0, 200.0, 200.0]])
+        candidates = np.array(
+            [
+                [120.0, 100.0, 220.0, 200.0],  # shifted right by 20
+                [100.0, 120.0, 200.0, 220.0],  # shifted down by 20
+            ]
+        )
+        iou = _iou.compute(track, candidates)
+        hmiou = _hmiou.compute(track, candidates)
+
+        np.testing.assert_allclose(iou[0, 0], iou[0, 1], atol=1e-6)
+        assert hmiou[0, 0] > hmiou[0, 1]
+
+    def test_is_symmetric(self) -> None:
+        boxes_1 = np.array([[0.0, 0.0, 10.0, 30.0], [5.0, 8.0, 25.0, 20.0]])
+        boxes_2 = np.array([[3.0, 4.0, 14.0, 26.0]])
+        np.testing.assert_allclose(_hmiou.compute(boxes_1, boxes_2), _hmiou.compute(boxes_2, boxes_1).T, atol=1e-12)
+
+    def test_zero_without_vertical_overlap(self) -> None:
+        boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0]])
+        boxes_2 = np.array([[0.0, 15.0, 10.0, 25.0]])
+        assert _hmiou.compute(boxes_1, boxes_2)[0, 0] == 0.0
+
+
 class TestNormalizeForFusion:
     """Verify the [0, 1] fusion contract of BaseIoU.normalize_for_fusion."""
 
     @pytest.mark.parametrize(
         "metric",
-        [_iou, _biou, _giou, _diou, _ciou],
-        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU"],
+        [_iou, _biou, _giou, _diou, _ciou, _hmiou],
+        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU", "HMIoU"],
     )
     def test_output_in_unit_range_over_random_batch(self, metric: BaseIoU) -> None:
         """normalize_for_fusion must map similarities into [0, 1] for score fusion.
@@ -428,11 +496,11 @@ class TestNormalizeForFusion:
 
     @pytest.mark.parametrize(
         "metric",
-        [_iou, _biou],
-        ids=["IoU", "BIoU"],
+        [_iou, _biou, _hmiou],
+        ids=["IoU", "BIoU", "HMIoU"],
     )
     def test_normalize_for_fusion_is_identity_for_unsigned_variants(self, metric: BaseIoU) -> None:
-        """normalize_for_fusion must be a no-op for IoU and BIoU."""
+        """normalize_for_fusion must be a no-op for IoU, BIoU and HMIoU."""
         rng = np.random.default_rng(201)
         xy = rng.uniform(0, 100, (10, 2))
         wh = rng.uniform(1, 50, (10, 2))
@@ -471,8 +539,8 @@ class TestEmptyArrayHandling:
 
     @pytest.mark.parametrize(
         "iou_instance",
-        [_iou, _biou, _giou, _diou, _ciou],
-        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU"],
+        [_iou, _biou, _giou, _diou, _ciou, _hmiou],
+        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU", "HMIoU"],
     )
     def test_empty_boxes_1(self, iou_instance) -> None:
         boxes_1 = np.empty((0, 4))
@@ -482,8 +550,8 @@ class TestEmptyArrayHandling:
 
     @pytest.mark.parametrize(
         "iou_instance",
-        [_iou, _biou, _giou, _diou, _ciou],
-        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU"],
+        [_iou, _biou, _giou, _diou, _ciou, _hmiou],
+        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU", "HMIoU"],
     )
     def test_empty_boxes_2(self, iou_instance) -> None:
         boxes_1 = np.array([[0.0, 0.0, 10.0, 10.0], [5.0, 5.0, 15.0, 15.0]])
@@ -493,8 +561,8 @@ class TestEmptyArrayHandling:
 
     @pytest.mark.parametrize(
         "iou_instance",
-        [_iou, _biou, _giou, _diou, _ciou],
-        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU"],
+        [_iou, _biou, _giou, _diou, _ciou, _hmiou],
+        ids=["IoU", "BIoU", "GIoU", "DIoU", "CIoU", "HMIoU"],
     )
     def test_both_empty(self, iou_instance) -> None:
         boxes_1 = np.empty((0, 4))
@@ -506,26 +574,42 @@ class TestEmptyArrayHandling:
 class TestDegenerateInputs:
     """Pin behavior of BaseIoU.compute on edge-case inputs."""
 
-    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU(), HMIoU()])
     def test_nan_coordinates_raise(self, metric: BaseIoU) -> None:
         boxes_a = np.array([[0.0, 0.0, np.nan, 10.0]])
         boxes_b = np.array([[5.0, 5.0, 15.0, 15.0]])
         with pytest.raises(ValueError, match="non-finite"):
             metric.compute(boxes_a, boxes_b)
 
-    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU(), HMIoU()])
     def test_inf_coordinates_raise(self, metric: BaseIoU) -> None:
         boxes_a = np.array([[0.0, 0.0, np.inf, 10.0]])
         boxes_b = np.array([[5.0, 5.0, 15.0, 15.0]])
         with pytest.raises(ValueError, match="non-finite"):
             metric.compute(boxes_a, boxes_b)
 
-    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU(), HMIoU()])
     def test_zero_area_box_returns_finite(self, metric: BaseIoU) -> None:
         boxes_a = np.array([[5.0, 5.0, 5.0, 5.0]])  # zero-area
         boxes_b = np.array([[0.0, 0.0, 10.0, 10.0]])
         result = metric.compute(boxes_a, boxes_b)
         assert np.isfinite(result).all(), "Zero-area box should yield finite similarity"
+
+    def test_hmiou_zero_height_boxes_on_same_row_score_zero_without_warnings(self) -> None:
+        """Two zero-height boxes on the same row have a zero vertical span and must score ``0.0``, not NaN.
+
+        The height ratio divides vertical overlap by vertical span; when both boxes collapse onto one row the span is
+        zero, so a bare divide would yield ``0/0``. HMIoU is documented to lie in ``[0, 1]``, so the degenerate pair is
+        a clean zero and raises no floating-point warning.
+        """
+        boxes_a = np.array([[0.0, 5.0, 10.0, 5.0]])
+        boxes_b = np.array([[3.0, 5.0, 8.0, 5.0]])
+
+        with np.errstate(all="raise"):
+            result = HMIoU().compute(boxes_a, boxes_b)
+
+        assert result.shape == (1, 1)
+        assert result[0, 0] == 0.0
 
     @pytest.mark.parametrize(
         "boxes_a",
@@ -554,7 +638,7 @@ class TestDegenerateInputs:
         assert result[0, 0] == pytest.approx(expected)
         assert result[0, 0] == pytest.approx(0.0)
 
-    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU()])
+    @pytest.mark.parametrize("metric", [IoU(), GIoU(), DIoU(), CIoU(), BIoU(), HMIoU()])
     @pytest.mark.parametrize(
         "boxes_a",
         [
@@ -596,6 +680,7 @@ class TestVariantFromName:
             ("diou", DIoU),
             ("ciou", CIoU),
             ("biou", BIoU),
+            ("hmiou", HMIoU),
         ],
     )
     def test_valid_names_return_correct_instance(self, name: str, expected_type: type) -> None:
@@ -603,7 +688,7 @@ class TestVariantFromName:
         result = variant_from_name(name)
         assert isinstance(result, expected_type)
 
-    @pytest.mark.parametrize("name", ["IOU", "GIoU", "BIOU", "DiOU", "CIou"])
+    @pytest.mark.parametrize("name", ["IOU", "GIoU", "BIOU", "DiOU", "CIou", "HMIoU"])
     def test_case_insensitive_lookup(self, name: str) -> None:
         """Lookup is case-insensitive — any casing resolves without error."""
         result = variant_from_name(name)

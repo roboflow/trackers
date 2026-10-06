@@ -274,8 +274,10 @@ def _build_tracker_options() -> type:
     field_specs.append(("iou_variant", str | None, None))
     doc_lines.append(
         "    iou_variant: IoU similarity metric for data association. One of "
-        "``iou`` (standard), ``giou``, ``diou``, ``ciou``, ``biou``. Applies "
-        "to all trackers. Defaults to ``iou``."
+        "``iou`` (standard), ``giou``, ``diou``, ``ciou``, ``biou``, ``hmiou``. "
+        "Applies to every tracker that accepts ``iou=`` (all except ``cbiou``, "
+        "which always uses BIoU). Defaults to the tracker's own metric: ``iou``, "
+        "or ``hmiou`` for ``hybridsort``."
     )
 
     cls = make_dataclass("TrackerOptions", field_specs)

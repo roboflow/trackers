@@ -1,5 +1,5 @@
 ---
-description: Python API reference for SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples.
+description: Python API reference for SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, Hybrid-SORT, and McByte tracker classes in Roboflow Trackers. Complete method signatures, parameters, and usage examples.
 ---
 
 # Trackers API
@@ -23,6 +23,10 @@ description: Python API reference for SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU
 ## C-BIoU
 
 ::: trackers.core.cbiou.tracker.CBIoUTracker
+
+## Hybrid-SORT
+
+::: trackers.core.hybridsort.tracker.HybridSORTTracker
 
 ## McByte
 

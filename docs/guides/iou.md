@@ -1,5 +1,5 @@
 ---
-description: Learn IoU, GIoU, DIoU, CIoU, and BIoU for object tracking association, with practical guidance on choosing metrics and thresholds.
+description: Learn IoU, GIoU, DIoU, CIoU, BIoU, and HMIoU for object tracking association, with practical guidance on choosing metrics and thresholds.
 ---
 
 # IoU API
@@ -48,12 +48,14 @@ tracker = SORTTracker(
 | `DIoU`  | `[-1, 1]`   | Fast-moving objects; centre-distance signal without aspect sensitivity |
 | `CIoU`  | `[-1, 1]`   | Same as DIoU plus aspect-ratio consistency                             |
 | `BIoU`  | `[0, 1]`    | Very small or very fast objects where raw boxes rarely overlap         |
+| `HMIoU` | `[0, 1]`    | Crowded scenes where overlapping objects stand at different depths     |
 
 **Formula Summary** (`A, B` boxes, `C` enclosing box, `d` center distance, `c` enclosing diagonal):
 
 - \( \mathrm{GIoU} = \mathrm{IoU} - \frac{|C \setminus (A \cup B)|}{|C|} \)
 - \( \mathrm{DIoU} = \mathrm{IoU} - \frac{d^2}{c^2 + \epsilon} \)
 - \( \mathrm{CIoU} = \mathrm{DIoU} - \alpha v \), where \( v = \frac{4}{\pi^2}\left(\arctan\frac{w_A}{h_A} - \arctan\frac{w_B}{h_B}\right)^2 \) and \( \alpha = \frac{v}{1 - \mathrm{IoU} + v + \epsilon} \)
+- \( \mathrm{HMIoU} = \mathrm{IoU} \cdot \frac{|A_y \cap B_y|}{|A_y \cup B_y|} \), where \( A_y, B_y \) are the boxes' vertical extents \( [y_1, y_2] \)
 
 ## IoU
 
@@ -95,6 +97,7 @@ sort_biou = SORTTracker(
 Set `minimum_iou_threshold` based on the score range of your chosen metric.
 
 - `IoU` and `BIoU` usually work with non-negative thresholds (for example, `0.2` to `0.5`).
+- `HMIoU` is never larger than `IoU`, so its thresholds sit lower (for example, `0.1` to `0.25`).
 - `GIoU`, `DIoU`, and `CIoU` can produce negative scores, so negative thresholds are valid.
 - Tune thresholds per dataset and tracker; there is no universal best value.
 
@@ -252,6 +255,40 @@ Left: IoU. Right: BIoU. Notice how ID switches happen when fast players temporar
 
 ---
 
+## HMIoU
+
+**Height-Modulated IoU** ([Yang et al., 2024](https://arxiv.org/abs/2308.00783)) — multiplies IoU by the IoU of the two boxes' vertical extents:
+
+\[
+\mathrm{HIoU}(A, B) = \frac{\max\big(0,\; \min(y_2^A, y_2^B) - \max(y_1^A, y_1^B)\big)}{\max(y_2^A, y_2^B) - \min(y_1^A, y_1^B)}
+\]
+
+\[
+\mathrm{HMIoU}(A, B) = \mathrm{HIoU}(A, B) \cdot \mathrm{IoU}(A, B)
+\]
+
+Box height is a weak depth cue: under a roughly horizontal camera, an object's height and vertical position barely change between frames, while an occluder standing closer to or further from the camera differs in both. Two candidates with the same IoU are therefore split by whether their heights agree. HMIoU equals IoU when the vertical extents coincide and is never larger. It is the association metric of the [Hybrid-SORT](../trackers/hybridsort.md) tracker, and it works in every tracker that accepts `iou=` (all except C-BIoU, which always uses BIoU):
+
+```python
+from trackers import ByteTrackTracker
+from trackers.utils.iou import HMIoU
+
+tracker = ByteTrackTracker(iou=HMIoU())
+```
+
+**Example — drop-in HMIoU at default parameters**
+
+HOTA change from swapping standard IoU for HMIoU (`HOTA(HMIoU) - HOTA(IoU)`), each tracker at its default parameters (including `minimum_iou_threshold`), on the public validation splits with YOLOX detections. BoT-SORT runs without camera motion compensation.
+
+| Tracker   | DanceTrack val | SportsMOT val | MOT17 half-val |
+| :-------- | -------------: | ------------: | -------------: |
+| SORT      |          +1.55 |         +0.46 |          +1.88 |
+| ByteTrack |          +1.56 |         +1.31 |          +1.01 |
+| OC-SORT   |          +2.32 |         +0.88 |          +0.42 |
+| BoT-SORT  |          +3.29 |         +0.11 |          -0.36 |
+
+---
+
 ## IoU Variant Performance Across Benchmarks
 
 We evaluate how much each variant changes performance across datasets. For each `(dataset, tracker)` pair, we keep the `state_estimator` with the highest **IoU HOTA** on the evaluation split, then report mean `ΔHOTA = HOTA(variant) − HOTA(IoU)` over trackers (same split; thresholds tuned per experiment).
@@ -319,3 +356,7 @@ With ground-truth detections, mean ΔHOTA increases for three of four variants o
 ## BIoU
 
 ::: trackers.utils.iou.BIoU
+
+## HMIoU
+
+::: trackers.utils.iou.HMIoU
