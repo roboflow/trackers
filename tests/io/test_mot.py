@@ -28,6 +28,11 @@ def _frame(
     )
 
 
+# one class-6 (non_mot_vehicle) GT box and one pedestrian tracker detection on the same region
+_CLASS_6_GROUND_TRUTH = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
+_OVERLAPPING_TRACKER = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+
+
 class TestMotDistractorPreprocessing:
     """GT preprocessing must follow TrackEval's class-based distractor handling.
 
@@ -124,33 +129,25 @@ class TestMotDistractorPreprocessing:
         assert sequence.num_gt_dets == 0
         assert sequence.num_tracker_dets == 0
 
-    def test_mot20_class_is_not_distractor_by_default(self) -> None:
-        """Class 6 remains a false-positive-producing non-distractor under MOT17 defaults."""
-        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
-        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
-
-        sequence = _prepare_mot_sequence(ground_truth, tracker)
-
-        assert sequence.num_gt_dets == 0
-        assert sequence.num_tracker_dets == 1
-
-    def test_mot20_class_suppresses_overlapping_tracker_detection(self) -> None:
-        """The MOT20 preset treats class 6 as a distractor."""
-        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
-        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
-
-        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config="mot20")
+    @pytest.mark.parametrize(
+        ("class_config", "expected_tracker_dets"),
+        [
+            pytest.param("mot17", 1, id="mot17-keeps-tracker-detection"),
+            pytest.param("mot20", 0, id="mot20-suppresses-tracker-detection"),
+        ],
+    )
+    def test_class_6_is_a_distractor_only_under_mot20(self, class_config: str, expected_tracker_dets: int) -> None:
+        """A tracker detection over a class-6 GT row is kept under MOT17 and suppressed under MOT20."""
+        sequence = _prepare_mot_sequence(_CLASS_6_GROUND_TRUTH, _OVERLAPPING_TRACKER, class_config=class_config)  # type: ignore[arg-type]
 
         assert sequence.num_gt_dets == 0
-        assert sequence.num_tracker_dets == 0
+        assert sequence.num_tracker_dets == expected_tracker_dets
 
     def test_custom_class_config_overrides_presets(self) -> None:
         """A caller-supplied configuration controls class-6 handling directly."""
-        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
-        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
         class_config = MOTClassConfig(distractor_classes=(), scored_classes=(6,))
 
-        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config=class_config)
+        sequence = _prepare_mot_sequence(_CLASS_6_GROUND_TRUTH, _OVERLAPPING_TRACKER, class_config=class_config)
 
         assert sequence.num_gt_dets == 1
         assert sequence.num_tracker_dets == 1
