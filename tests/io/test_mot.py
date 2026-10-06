@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from trackers.eval.mot_classes import MOTClassConfig
-from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence
+from trackers.io.mot import _class_mask, _MOTFrameData, _prepare_mot_sequence
 
 
 def _frame(
@@ -280,3 +280,28 @@ class TestMotDistractorPreprocessing:
         assert sequence.num_tracker_dets == 2
         assert sequence.num_gt_ids == 2
         assert sequence.num_tracker_ids == 2
+
+
+class TestClassMask:
+    """The `_class_mask` fast path must be byte-identical to `np.isin`."""
+
+    @pytest.mark.parametrize(
+        ("num_rows", "wanted"),
+        [
+            pytest.param(200, (1,), id="scored-single"),
+            pytest.param(200, (2, 7, 8, 12), id="distractor-mot17"),
+            pytest.param(200, (), id="empty-wanted"),
+            pytest.param(0, (2, 7, 8, 12), id="empty-frame"),
+            pytest.param(0, (), id="empty-frame-empty-wanted"),
+        ],
+    )
+    def test_matches_np_isin(self, num_rows: int, wanted: tuple[int, ...]) -> None:
+        """Mask equals `np.isin` in dtype, shape and bytes, including empty class tuples and empty frames."""
+        classes = np.random.default_rng(0).integers(1, 13, size=num_rows).astype(np.intp)
+
+        mask = _class_mask(classes, wanted)
+
+        expected = np.isin(classes, wanted)
+        assert mask.dtype == expected.dtype
+        assert mask.shape == expected.shape
+        assert mask.tobytes() == expected.tobytes()

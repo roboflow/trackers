@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import csv
+import functools
+import operator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
@@ -44,6 +46,26 @@ class _MOTFrameData:
     classes: NDArray[np.intp]
 
 
+def _class_mask(classes: NDArray[np.intp], wanted: tuple[int, ...]) -> NDArray[np.bool_]:
+    """Boolean mask of rows whose class is in ``wanted``; equivalent to ``np.isin``.
+
+    Class tuples are tiny (a handful of IDs), so OR-ing per-class equality
+    masks avoids the fixed per-call overhead of ``np.isin``, which dominates
+    on the small per-frame arrays this runs on.
+
+    Args:
+        classes: Class IDs per row. Shape `(N,)`.
+        wanted: Class IDs to select. May be empty.
+
+    Returns:
+        Boolean array of shape `(N,)`, all `False` when ``wanted`` is empty.
+    """
+    if not wanted:
+        return np.zeros(classes.shape, dtype=bool)
+    mask: NDArray[np.bool_] = functools.reduce(operator.or_, (classes == class_id for class_id in wanted))
+    return mask
+
+
 def _valid_ground_truth_mask(frame_data: _MOTFrameData, class_config: MOTClassConfig) -> NDArray[np.bool_]:
     """Boolean mask of ground-truth rows that are scored as ground truth.
 
@@ -60,7 +82,7 @@ def _valid_ground_truth_mask(frame_data: _MOTFrameData, class_config: MOTClassCo
     Returns:
         Boolean array of shape `(N,)`, `True` for scored ground-truth rows.
     """
-    return (frame_data.confidences != 0) & np.isin(frame_data.classes, class_config.scored_classes)
+    return (frame_data.confidences != 0) & _class_mask(frame_data.classes, class_config.scored_classes)
 
 
 def _distractor_ground_truth_mask(frame_data: _MOTFrameData, class_config: MOTClassConfig) -> NDArray[np.bool_]:
@@ -78,7 +100,7 @@ def _distractor_ground_truth_mask(frame_data: _MOTFrameData, class_config: MOTCl
     Returns:
         Boolean array of shape `(N,)`, `True` for distractor-class rows.
     """
-    return np.isin(frame_data.classes, class_config.distractor_classes)
+    return _class_mask(frame_data.classes, class_config.distractor_classes)
 
 
 def _mot_frame_to_detections(frame_data: _MOTFrameData) -> sv.Detections:
