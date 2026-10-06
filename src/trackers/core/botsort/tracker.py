@@ -65,7 +65,10 @@ class BoTSORTTracker(BaseTracker):
         high_conf_det_threshold: Confidence threshold used to split detections into:
             - high confidence: confidence >= threshold
             - low confidence:  confidence < threshold
-        enable_cmc: Whether to enable camera motion compensation (CMC).
+        enable_cmc: Whether to build the internal frame-based camera motion
+            compensation (CMC) estimator, used when ``update()`` receives a
+            ``frame``. A precomputed ``h_cmc`` passed to ``update()`` is applied
+            regardless of this flag.
         cmc_method: CMC method string passed into `CMCConfig(method=...)`.
             Supported values: "orb", "sift", "sparseOptFlow", "ecc". See CMCConfig.
         cmc_downscale: Downscale factor used inside CMC for speed/robustness.
@@ -88,8 +91,12 @@ class BoTSORTTracker(BaseTracker):
         - Positive `maximum_frames_without_update` values are scaled by
           ``frame_rate`` and rounded up to at least one missed frame. Explicit
           zero-buffer configurations remain zero.
-        - When CMC is enabled, pass the current video frame via the ``frame``
-          argument of :meth:`update`.
+        - Camera motion compensation in :meth:`update` takes its transform from
+          one of two alternatives: the current video frame via ``frame``
+          (estimated internally, requires ``enable_cmc=True``) or a precomputed
+          2x3 affine via the keyword-only ``h_cmc`` (applied regardless of
+          ``enable_cmc``). Passing both raises ``ValueError``; passing neither
+          skips CMC for that step.
     """
 
     tracker_id = "botsort"
@@ -147,12 +154,57 @@ class BoTSORTTracker(BaseTracker):
 
         self._init_timestamp_state(frame_rate)
 
+    @staticmethod
+    def _validate_cmc_matrix(h_cmc: np.ndarray) -> np.ndarray:
+        """Check a precomputed camera-motion transform before any tracker state changes.
+
+        ``update()`` calls this before predict, so a rejected ``h_cmc`` leaves tracks,
+        IDs and the timestamp anchor untouched (same contract as
+        ``_validate_detections``).
+
+        Args:
+            h_cmc: Value passed to ``update(h_cmc=...)``. Must be a real-valued
+                ``(2, 3)`` affine transform mapping previous-frame to current-frame
+                pixel coordinates, the same convention as ``CMC.estimate()``.
+
+        Returns:
+            The transform as a new ``float64`` array of shape ``(2, 3)``.
+
+        Raises:
+            ValueError: If ``h_cmc`` is not a real-valued numeric array, does not
+                have shape ``(2, 3)`` (3x3 homographies are rejected), or contains
+                NaN or inf.
+
+        Example:
+            >>> import numpy as np
+            >>> shift = np.array([[1, 0, 5], [0, 1, -2]])
+            >>> BoTSORTTracker._validate_cmc_matrix(shift).tolist()
+            [[1.0, 0.0, 5.0], [0.0, 1.0, -2.0]]
+        """
+        try:
+            matrix = np.asarray(h_cmc)
+        except ValueError as exc:
+            raise ValueError(f"h_cmc must be a numeric array of shape (2, 3); conversion failed: {exc}") from exc
+        if matrix.dtype.kind not in "iuf":
+            raise ValueError(f"h_cmc must contain real numbers, got dtype {matrix.dtype}")
+        if matrix.shape != (2, 3):
+            hint = (
+                "; 3x3 homographies are not accepted, pass the per-frame previous-to-current 2x3 affine"
+                if matrix.shape == (3, 3)
+                else ""
+            )
+            raise ValueError(f"h_cmc must have shape (2, 3), got {matrix.shape}{hint}")
+        if not np.isfinite(matrix).all():
+            raise ValueError("h_cmc contains non-finite values (NaN or inf)")
+        return matrix.astype(np.float64)
+
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
-        h_cmc: np.ndarray | None = None,
         timestamp: float | None = None,
+        *,
+        h_cmc: np.ndarray | None = None,
     ) -> sv.Detections:
         """
         Update the tracker with detections from the current frame.
@@ -165,12 +217,16 @@ class BoTSORTTracker(BaseTracker):
                 recommended. This method does not mutate the input detections;
                 it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
-                Used for camera motion compensation when ``enable_cmc=True``.
-            h_cmc: Precalculated camera motion compensation.
-                Used when ``enable_cmc=True``.
-                If set, don't set ``frame``.
+                When given and ``enable_cmc=True``, the internal CMC estimator
+                computes the camera motion from it. Mutually exclusive with
+                ``h_cmc``.
             timestamp: Absolute time of the current frame in seconds, or ``None``
                 for fixed-rate mode (``frame_step = 1.0`` per call).
+            h_cmc: Keyword-only precomputed camera-motion transform for this
+                step, or ``None``. A ``(2, 3)`` affine matrix mapping
+                previous-frame to current-frame pixel coordinates (original image
+                scale), the same convention as ``CMC.estimate()``. Applied
+                regardless of ``enable_cmc``. Mutually exclusive with ``frame``.
 
         Returns:
             New sv.Detections with tracker_id assigned for each detection.
@@ -178,9 +234,11 @@ class BoTSORTTracker(BaseTracker):
             tracker_id of -1.
 
         Raises:
-            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
-                before any tracker state is advanced, so a failed call leaves the
-                tracker unchanged.
+            ValueError: If ``detections.xyxy`` contains NaN or inf, if both
+                ``frame`` and ``h_cmc`` are given, or if ``h_cmc`` is not a
+                finite real-valued ``(2, 3)`` matrix. All checks run before any
+                tracker state is advanced, so a failed call leaves the tracker
+                unchanged.
 
         Warns:
             UserWarning: If ``timestamp`` is earlier than the previous call
@@ -190,13 +248,31 @@ class BoTSORTTracker(BaseTracker):
                 the last state.
 
         Notes:
-            - If CMC is enabled, pass either the current video frame via ``frame`` or
-              precalculatec homography via ``h_cmc`` so the
-              tracker can estimate a global affine transform and warp predicted
-              track states before association. When ``frame=None`` or ``h_cmc=None`` and
-              ``enable_cmc=True``, CMC is silently skipped for that step.
+            - Camera motion compensation (CMC) warps predicted track states before
+              association. The transform comes from one of two alternatives: pass
+              the current video frame via ``frame`` so the internal estimator
+              (built when ``enable_cmc=True``) computes it, or pass a precomputed
+              transform via ``h_cmc``, which is applied regardless of
+              ``enable_cmc``.
+            - Passing both ``frame`` and ``h_cmc`` raises ``ValueError``. When both
+              are ``None``, CMC is silently skipped for that step; ``frame`` alone
+              is also ignored when ``enable_cmc=False``.
+            - ``h_cmc`` is a per-frame ``(2, 3)`` affine mapping previous-frame to
+              current-frame pixel coordinates, the convention of
+              ``CMC.estimate()``. A 3x3 homography, such as the cumulative one
+              emitted by ``MotionEstimator``, is rejected.
+            - Applying ``h_cmc`` resets the internal estimator, so switching back
+              to ``frame`` re-initializes it (one uncompensated step) instead of
+              compensating the externally handled motion twice.
         """
         self._validate_detections(detections)
+        if frame is not None and h_cmc is not None:
+            raise ValueError(
+                "update() received both frame and h_cmc; pass frame for the internal CMC estimate "
+                "or h_cmc for a precomputed transform, not both"
+            )
+        if h_cmc is not None:
+            h_cmc = self._validate_cmc_matrix(h_cmc)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
@@ -253,16 +329,20 @@ class BoTSORTTracker(BaseTracker):
                 unconfirmed_tracks.append(track)
 
         # CMC: apply to all predicted tracks before association
-        if self.enable_cmc:
-            calculate_cmc = self.cmc is not None and frame is not None
-            use_precalculated_cmc = h_cmc is not None
-
-            if calculate_cmc:
-                mask_boxes = high_boxes if len(high_boxes) > 0 else None
-                H = self.cmc.estimate(frame, mask_boxes)
-                CMC.apply_batch(H, self.tracks)
-            elif use_precalculated_cmc:
-                CMC.apply_batch(h_cmc, self.tracks)
+        # A precomputed h_cmc is applied regardless of enable_cmc, which only
+        # controls the internal frame-based estimator (self.cmc).
+        H: np.ndarray | None = None
+        if h_cmc is not None:
+            H = h_cmc
+            if self.cmc is not None:
+                # Motion for this step is compensated externally; drop the internal
+                # estimator's previous-frame state so a later frame-based call
+                # re-initializes instead of re-applying motion already compensated.
+                self.cmc.reset()
+        elif self.cmc is not None and frame is not None:
+            mask_boxes = high_boxes if len(high_boxes) > 0 else None
+            H = self.cmc.estimate(frame, mask_boxes)
+        CMC.apply_batch(H, self.tracks)  # None (no CMC this step) is a no-op
 
         # Cache each tracklet's predicted state bbox once per update. Track state
         # is unchanged across the three association stages: a track matched in an
