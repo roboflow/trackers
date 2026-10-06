@@ -125,11 +125,12 @@ class BoTSORTTracker(BaseTracker):
         minimum_iou_threshold_unconfirmed_assoc: float = 0.3,
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
-        cmc_method: CMCMethod = "sparseOptFlow",
-        cmc_downscale: int = 2,
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
+        *,
+        cmc_method: CMCMethod = "sparseOptFlow",
+        cmc_downscale: int = 2,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
             lost_track_buffer=lost_track_buffer,

@@ -4,6 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+import warnings
 from typing import ClassVar, cast
 
 import numpy as np
@@ -14,6 +15,7 @@ from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.ocsort.utils import _build_direction_consistency_matrix_batch
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.predict_timing import PredictTiming
@@ -77,6 +79,14 @@ class OCSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
+        enable_cmc: `bool` specifying whether to compensate camera motion.
+            When `True`, pass the current video frame to `update(frame=...)`:
+            the estimated global motion is applied to every track's Kalman state
+            and stored observations before association. Defaults to `False`,
+            the original OC-SORT, which ignores frames.
+        cmc_method: CMC method string passed into `CMCConfig(method=...)`.
+            Supported values: "orb", "sift", "sparseOptFlow", "ecc". See CMCConfig.
+        cmc_downscale: Downscale factor used inside CMC for speed/robustness.
     """
 
     tracker_id = "ocsort"
@@ -101,6 +111,10 @@ class OCSORTTracker(BaseTracker):
         delta_t: int = 3,
         state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
         iou: BaseIoU | None = None,
+        enable_cmc: bool = False,
+        *,
+        cmc_method: CMCMethod = "sparseOptFlow",
+        cmc_downscale: int = 2,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
             lost_track_buffer=lost_track_buffer,
@@ -118,6 +132,10 @@ class OCSORTTracker(BaseTracker):
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
         self._reset_id_allocator()
+
+        self.enable_cmc = enable_cmc
+        self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
+        self._warned_cmc_without_frame = False
 
         self._init_timestamp_state(frame_rate)
 
@@ -211,8 +229,11 @@ class OCSORTTracker(BaseTracker):
                 detections are treated as confidence `1.0` -- they bypass
                 `high_conf_det_threshold` entirely and are eligible for
                 association/spawning regardless of its value.
-            frame: Ignored by OC-SORT. If provided (not `None`), a warning is
-                emitted.
+            frame: Current video frame (BGR `np.ndarray`), used for camera
+                motion compensation when `enable_cmc=True`. Ignored otherwise;
+                if provided (not `None`) without CMC, a warning is emitted.
+                When ``frame=None`` and ``enable_cmc=True``, CMC is skipped for
+                that step, with a warning emitted once per tracker instance.
             timestamp: Absolute time of the current frame in seconds, or ``None``
                 for fixed-rate mode (``frame_step = 1.0`` per call).
 
@@ -229,11 +250,14 @@ class OCSORTTracker(BaseTracker):
                 tracker unchanged.
 
         Warns:
-            UserWarning: If ``frame`` is passed but OC-SORT does not perform
-                camera motion compensation (CMC), the frame is ignored.
+            UserWarning: If ``frame`` is passed while camera motion compensation
+                (CMC) is disabled, the frame is ignored. Also emitted, once per
+                tracker instance, the first time CMC is enabled but
+                ``frame=None`` makes it skip a step.
         """
         self._validate_detections(detections)
-        self._warn_if_frame_unused(frame)
+        if not self.enable_cmc or self.cmc is None:
+            self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
@@ -274,9 +298,11 @@ class OCSORTTracker(BaseTracker):
         out_tracker_ids: list[int] = []
 
         # Predicted boxes may alias live Kalman state (see state_to_bbox's Note in
-        # state_representations.py) rather than being fresh copies. Nothing below
-        # may mutate tracklet/Kalman state between this call and the decode step
-        # further down, or the cached values could silently change underneath it.
+        # state_representations.py) rather than being fresh copies. The only
+        # mutation allowed between this call and the decode step further down is
+        # the CMC warp in _compensate_camera_motion, and when it runs the cache is
+        # discarded and the warped states are decoded again. Anything else that
+        # mutates tracklet/Kalman state here would silently change the cached values.
         predicted_boxes_by_tracklet = self._predict_tracklets(self.tracks, timing, return_predictions=True)
 
         # Ghost-ID prevention: only prune before association in variable-FPS mode.
@@ -285,12 +311,15 @@ class OCSORTTracker(BaseTracker):
         if self._lost_track_time_budget(timing, self.maximum_time_without_update) is not None:
             self.tracks = self._prune_expired_tracklets(timing)
 
+        cmc_applied = self._compensate_camera_motion(frame, high_boxes)
+
         # The cache is empty either because predict was skipped (duplicate
         # timestamp) or because self.tracks was empty when predicted; in both
-        # cases decode the tracklets' unchanged current states instead.
+        # cases decode the tracklets' current states instead. Applied CMC also
+        # invalidates it: the states were warped after predict() returned.
         predicted_boxes = np.array(
             [predicted_boxes_by_tracklet[t] for t in self.tracks]
-            if not timing.skip_predict
+            if not (timing.skip_predict or cmc_applied)
             else [t.get_state_bbox() for t in self.tracks]
         )
         iou_matrix = self.iou.compute(predicted_boxes, high_boxes)
@@ -387,6 +416,44 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         self._last_timestamp = None
         self._reset_id_allocator()
+        if self.cmc is not None:
+            self.cmc.reset()
+
+    def _compensate_camera_motion(self, frame: np.ndarray | None, detection_boxes: np.ndarray) -> bool:
+        """Estimate camera motion for ``frame`` and warp every track into its coordinates.
+
+        Args:
+            frame: Current video frame, or ``None`` to skip compensation.
+            detection_boxes: High-confidence detection boxes, masked out of the
+                background by feature-based CMC methods.
+
+        Returns:
+            ``True`` if CMC was applied, i.e. the track states were warped (which
+                invalidates boxes decoded before the warp); ``False`` if CMC is
+                disabled, no frame was given, or the estimate is the identity.
+        """
+        if not self.enable_cmc or self.cmc is None:
+            return False
+        if frame is None:
+            if not self._warned_cmc_without_frame:
+                warnings.warn(
+                    f"{type(self).__name__} has enable_cmc=True but update() received frame=None; "
+                    "camera motion compensation is skipped for that step. Pass the current video "
+                    "frame as update(frame=...). This warning is shown once per tracker instance.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                self._warned_cmc_without_frame = True
+            return False
+        affine_mtx = self.cmc.estimate(frame, detection_boxes if len(detection_boxes) > 0 else None)
+        # ``CMC.estimate`` returns an exact identity on the first frame and when
+        # estimation fails. Warping by it is a no-op, so skip it and keep the
+        # predicted boxes cached by ``_predict_tracklets`` valid.
+        if np.array_equal(affine_mtx, np.eye(2, 3)):
+            return False
+        CMC.apply_batch(affine_mtx, self.tracks)
+        OCSORTTracklet.apply_camera_motion_batch(self.tracks, affine_mtx)
+        return True
 
     def _prune_expired_tracklets(self, timing: PredictTiming) -> list[OCSORTTracklet]:
         """Remove tracklets that have been lost for too long.
