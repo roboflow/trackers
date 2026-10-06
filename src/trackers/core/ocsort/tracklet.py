@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
@@ -107,6 +107,96 @@ def _warp_observation_boxes(
     shift_x = (rot_mtx[0, 0] - 1.0) * centre_x + rot_mtx[0, 1] * centre_y + translation[0]
     shift_y = rot_mtx[1, 0] * centre_x + (rot_mtx[1, 1] - 1.0) * centre_y + translation[1]
     return boxes + np.stack([shift_x, shift_y, shift_x, shift_y], axis=1)
+
+
+def _warp_velocities(tracklets: Sequence[OCSORTTracklet], rot_mtx: np.ndarray) -> None:
+    """Rotate the stored direction ``velocity`` of every tracklet that has one, batched per dtype.
+
+    ``_rotate_directions`` computes the input norm in the input dtype, so a ``float32``
+    direction (from ``float32`` detection boxes) stacked with ``float64`` ones would be
+    promoted and rounded differently than when rotated on its own. Grouping by dtype
+    keeps every row bit-identical to a per-tracklet call.
+
+    Args:
+        tracklets: Tracklets whose ``velocity`` is rotated in place (``None`` is skipped).
+        rot_mtx: 2x2 linear part of the affine transform.
+    """
+    groups: dict[np.dtype, tuple[list[OCSORTTracklet], list[np.ndarray]]] = {}
+    for tracklet in tracklets:
+        velocity = tracklet.velocity
+        if velocity is not None:
+            members, directions = groups.setdefault(velocity.dtype, ([], []))
+            members.append(tracklet)
+            directions.append(velocity)
+    for members, directions in groups.values():
+        rotated = _rotate_directions(np.stack(directions), rot_mtx)
+        for tracklet, direction in zip(members, rotated, strict=True):
+            tracklet.velocity = direction
+
+
+def _warp_observation_histories(
+    tracklets: Sequence[OCSORTTracklet],
+    rot_mtx: np.ndarray,
+    translation: np.ndarray,
+    *,
+    corner_wise: bool,
+) -> None:
+    """Warp every tracklet's stored observations with one ``_warp_observation_boxes`` call.
+
+    Boxes are gathered in a fixed per-tracklet order (``last_observation``, the
+    ``observations`` window in insertion order, then ``previous_to_last_observation``
+    when set), warped together and scattered back in the same order. Both warp paths
+    are row-independent, so each row matches a per-tracklet call bit for bit.
+
+    Args:
+        tracklets: Tracklets whose observations are replaced by their warped copies.
+        rot_mtx: 2x2 linear part of the affine transform.
+        translation: 2-element translation of the affine transform.
+        corner_wise: Forwarded to ``_warp_observation_boxes`` (``True`` for ``XYXY``).
+    """
+    boxes: list[np.ndarray] = []
+    for tracklet in tracklets:
+        boxes.append(tracklet.last_observation)
+        boxes.extend(tracklet.observations.values())
+        if tracklet.previous_to_last_observation is not None:
+            boxes.append(tracklet.previous_to_last_observation)
+    warped = _warp_observation_boxes(np.asarray(boxes, dtype=np.float64), rot_mtx, translation, corner_wise=corner_wise)
+    rows = iter(warped)
+    for tracklet in tracklets:
+        tracklet.last_observation = next(rows)
+        tracklet.observations = {age: next(rows) for age in tracklet.observations}
+        if tracklet.previous_to_last_observation is not None:
+            tracklet.previous_to_last_observation = next(rows)
+
+
+def _warp_frozen_states(tracklets: Sequence[OCSORTTracklet], affine_mtx: np.ndarray, *, is_xyxy: bool) -> None:
+    """Warp the ORU frozen filter state of every lost tracklet with one ``_warp_kalman_states`` call.
+
+    Args:
+        tracklets: Tracklets whose ``_frozen_state`` (when set) is warped in place.
+        affine_mtx: 2x3 affine transform returned by ``CMC.estimate()``.
+        is_xyxy: Whether the states use the ``XYXY`` layout.
+    """
+    frozen_states = [state for tracklet in tracklets if (state := tracklet._frozen_state) is not None]
+    if not frozen_states:
+        return
+    # Not bit-identical to warping each frozen state on its own: for the centre-based
+    # layouts ``_warp_kalman_states`` maps the centre and its velocity with one 2-D
+    # ``(K, 2) @ (2, 2)`` product, and the BLAS kernel picked for it depends on K (a
+    # single row and a stacked batch round differently in the last ulp; measured
+    # relative deviation below 1e-14, so ``np.allclose(rtol=1e-12, atol=0)`` holds).
+    # The live states already take this batched path in ``CMC.apply_batch``, so the
+    # frozen states now follow the same arithmetic. The covariance product and the
+    # ``XYXY`` corner warp are stacked per-slice matmuls and stay bit-identical.
+    states, covariances = _warp_kalman_states(
+        np.array([state["state"].reshape(-1) for state in frozen_states], dtype=np.float64),
+        np.array([state["state_covariance"] for state in frozen_states], dtype=np.float64),
+        affine_mtx,
+        is_xyxy=is_xyxy,
+    )
+    for frozen, warped_state, warped_covariance in zip(frozen_states, states, covariances, strict=True):
+        frozen["state"] = warped_state.reshape(-1, 1)
+        frozen["state_covariance"] = warped_covariance
 
 
 class OCSORTTracklet(BaseTracklet):
@@ -375,37 +465,56 @@ class OCSORTTracklet(BaseTracklet):
         axis-aligned box. The stored unit direction ``velocity`` is mapped through
         the linear part of the transform too, because the direction-consistency term
         reads it before the next match re-estimates it (see ``_rotate_directions``).
+        This is the single-tracklet form of ``apply_camera_motion_batch``.
 
         Args:
             affine_mtx: 2x3 affine transform returned by ``CMC.estimate()``.
         """
+        self.apply_camera_motion_batch([self], affine_mtx)
+
+    @staticmethod
+    def apply_camera_motion_batch(tracklets: Sequence[OCSORTTracklet], affine_mtx: np.ndarray) -> None:
+        """Warp the stored observations and ORU frozen states of many tracklets at once.
+
+        Same per-tracklet result as ``apply_camera_motion``, with the linear part and
+        translation derived once and each kind of stored geometry (observation boxes,
+        direction vectors, frozen filter states) gathered into one array, warped by a
+        single call and scattered back, instead of one round of NumPy calls per
+        tracklet. Observations and directions match the per-tracklet warp bit for bit;
+        frozen states can differ from it in the last ulp (see ``_warp_frozen_states``).
+
+        Args:
+            tracklets: Tracklets sharing one state estimator type; empty is a no-op.
+            affine_mtx: 2x3 affine transform returned by ``CMC.estimate()``.
+
+        Raises:
+            TypeError: If the tracklets use different state estimator types, since
+                one warp model is chosen for the whole batch.
+
+        Examples:
+            >>> import numpy as np
+            >>> track = OCSORTTracklet(np.array([10.0, 20.0, 50.0, 80.0]))
+            >>> shift = np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]])
+            >>> OCSORTTracklet.apply_camera_motion_batch([track], shift)
+            >>> track.last_observation.tolist()
+            [15.0, 17.0, 55.0, 77.0]
+        """
+        if len(tracklets) == 0:
+            return
+        estimator_type = type(tracklets[0].state_estimator)
+        mismatch = next((t for t in tracklets if type(t.state_estimator) is not estimator_type), None)
+        if mismatch is not None:
+            raise TypeError(
+                "OCSORTTracklet.apply_camera_motion_batch requires homogeneous state types; "
+                f"got {estimator_type.__name__!r} and {type(mismatch.state_estimator).__name__!r}."
+            )
+        is_xyxy = issubclass(estimator_type, XYXYStateEstimator)
         rot_mtx = affine_mtx[:2, :2].astype(np.float64)
         translation = affine_mtx[:2, 2].astype(np.float64)
 
-        if self.velocity is not None:
-            self.velocity = _rotate_directions(self.velocity[np.newaxis], rot_mtx)[0]
-
-        ages = list(self.observations)
-        boxes = [self.last_observation, *(self.observations[age] for age in ages)]
-        if self.previous_to_last_observation is not None:
-            boxes.append(self.previous_to_last_observation)
-        stacked = np.asarray(boxes, dtype=np.float64)
-        is_xyxy = isinstance(self.state_estimator, XYXYStateEstimator)
-        warped = _warp_observation_boxes(stacked, rot_mtx, translation, corner_wise=is_xyxy)
-        self.last_observation = warped[0]
-        self.observations = {age: warped[i + 1] for i, age in enumerate(ages)}
-        if self.previous_to_last_observation is not None:
-            self.previous_to_last_observation = warped[-1]
-
-        if self._frozen_state is not None:
-            states, covariances = _warp_kalman_states(
-                self._frozen_state["state"].reshape(1, -1).astype(np.float64),
-                self._frozen_state["state_covariance"][np.newaxis].astype(np.float64),
-                affine_mtx,
-                is_xyxy=is_xyxy,
-            )
-            self._frozen_state["state"] = states[0].reshape(-1, 1)
-            self._frozen_state["state_covariance"] = covariances[0]
+        _warp_velocities(tracklets, rot_mtx)
+        _warp_observation_histories(tracklets, rot_mtx, translation, corner_wise=is_xyxy)
+        _warp_frozen_states(tracklets, affine_mtx, is_xyxy=is_xyxy)
 
     def get_state_bbox(self) -> np.ndarray:
         """Get current bounding box estimate from Kalman filter.

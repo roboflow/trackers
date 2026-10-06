@@ -451,8 +451,7 @@ class OCSORTTracker(BaseTracker):
         if np.array_equal(affine_mtx, np.eye(2, 3)):
             return False
         CMC.apply_batch(affine_mtx, self.tracks)
-        for tracklet in self.tracks:
-            tracklet.apply_camera_motion(affine_mtx)
+        OCSORTTracklet.apply_camera_motion_batch(self.tracks, affine_mtx)
         return True
 
     def _prune_expired_tracklets(self, timing: PredictTiming) -> list[OCSORTTracklet]:
