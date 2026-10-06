@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from trackers.eval.mot_classes import MOTClassConfig
 from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence
 
 
@@ -25,6 +26,11 @@ def _frame(
         confidences=np.array(confidences, dtype=np.float64),
         classes=np.array(classes, dtype=np.intp),
     )
+
+
+# one class-6 (non_mot_vehicle) GT box and one pedestrian tracker detection on the same region
+_CLASS_6_GROUND_TRUTH = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
+_OVERLAPPING_TRACKER = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
 
 
 class TestMotDistractorPreprocessing:
@@ -82,23 +88,124 @@ class TestMotDistractorPreprocessing:
         assert sequence.tracker_id_mapping[30] in surviving
 
     @pytest.mark.parametrize(
-        "distractor_class",
+        ("class_config", "distractor_class"),
         [
-            pytest.param(2, id="person_on_vehicle"),
-            pytest.param(7, id="static_person"),
-            pytest.param(8, id="distractor"),
-            pytest.param(12, id="reflection"),
+            pytest.param("mot17", 2, id="mot17-person_on_vehicle"),
+            pytest.param("mot17", 7, id="mot17-static_person"),
+            pytest.param("mot17", 8, id="mot17-distractor"),
+            pytest.param("mot17", 12, id="mot17-reflection"),
+            pytest.param("mot20", 2, id="mot20-person_on_vehicle"),
+            pytest.param("mot20", 6, id="mot20-non_mot_vehicle"),
+            pytest.param("mot20", 7, id="mot20-static_person"),
+            pytest.param("mot20", 8, id="mot20-distractor"),
+            pytest.param("mot20", 12, id="mot20-reflection"),
         ],
     )
-    def test_all_distractor_classes_excluded(self, distractor_class: int) -> None:
-        """Every class in _DISTRACTOR_CLASSES must be excluded from GT and suppress an overlapping tracker detection."""
+    def test_all_distractor_classes_excluded(self, class_config: str, distractor_class: int) -> None:
+        """Every distractor class of a preset is excluded from GT and suppresses an overlapping tracker detection.
+
+        MOT20 adds class 6 to the MOT17 distractor set, so each preset is exercised over its own full class list; a
+        preset that silently dropped or gained a class fails here instead of passing on the default alone.
+        """
         ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [distractor_class])}
+        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config=class_config)  # type: ignore[arg-type]
+
+        assert sequence.num_gt_dets == 0
+        assert sequence.num_tracker_dets == 0
+
+    def test_mot20_distractor_status_follows_class_not_confidence(self) -> None:
+        """A class-6 GT row marked ignored (conf=0) still suppresses an overlapping tracker detection under MOT20.
+
+        The distractor mask is class-based, so the confidence flag decides only whether a row is scored, never whether
+        it is a distractor.
+        """
+        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [0.0], [6])}
+        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config="mot20")
+
+        assert sequence.num_gt_dets == 0
+        assert sequence.num_tracker_dets == 0
+
+    @pytest.mark.parametrize(
+        ("class_config", "expected_tracker_dets"),
+        [
+            pytest.param("mot17", 1, id="mot17-keeps-tracker-detection"),
+            pytest.param("mot20", 0, id="mot20-suppresses-tracker-detection"),
+        ],
+    )
+    def test_class_6_is_a_distractor_only_under_mot20(self, class_config: str, expected_tracker_dets: int) -> None:
+        """A tracker detection over a class-6 GT row is kept under MOT17 and suppressed under MOT20."""
+        sequence = _prepare_mot_sequence(_CLASS_6_GROUND_TRUTH, _OVERLAPPING_TRACKER, class_config=class_config)  # type: ignore[arg-type]
+
+        assert sequence.num_gt_dets == 0
+        assert sequence.num_tracker_dets == expected_tracker_dets
+
+    def test_custom_class_config_overrides_presets(self) -> None:
+        """A caller-supplied configuration controls class-6 handling directly."""
+        class_config = MOTClassConfig(distractor_classes=(), scored_classes=(6,))
+
+        sequence = _prepare_mot_sequence(_CLASS_6_GROUND_TRUTH, _OVERLAPPING_TRACKER, class_config=class_config)
+
+        assert sequence.num_gt_dets == 1
+        assert sequence.num_tracker_dets == 1
+
+    def test_custom_scored_class_builds_id_mapping_from_that_class(self) -> None:
+        """Scoring class 6 instead of pedestrians maps only the class-6 GT track to a 0-indexed ID."""
+        ground_truth = {1: _frame([1, 2], [[0, 0, 10, 10], [50, 50, 10, 10]], [1.0, 1.0], [6, 1])}
+        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+        class_config = MOTClassConfig(scored_classes=(6,))
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config=class_config)
+
+        assert sequence.gt_id_mapping == {1: 0}
+        assert sequence.num_gt_ids == 1
+        assert [ids.tolist() for ids in sequence.gt_ids] == [[0]]
+
+    def test_default_config_leaves_class_6_track_out_of_id_mapping(self) -> None:
+        """Under the default config a class-6 GT track gets no ID and the remaining IDs stay contiguous."""
+        ground_truth = {
+            1: _frame([1, 2, 3], [[0, 0, 10, 10], [50, 50, 10, 10], [100, 100, 10, 10]], [1.0, 1.0, 1.0], [1, 6, 1])
+        }
         tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
 
         sequence = _prepare_mot_sequence(ground_truth, tracker)
 
-        assert sequence.num_gt_dets == 0
-        assert sequence.num_tracker_dets == 0
+        assert sequence.gt_id_mapping == {1: 0, 3: 1}
+        assert sequence.num_gt_ids == 2
+        assert [ids.tolist() for ids in sequence.gt_ids] == [[0, 1]]
+
+    def test_multiple_scored_classes_count_every_matching_row(self) -> None:
+        """Scoring classes 1 and 6 together counts both rows and maps both GT tracks."""
+        ground_truth = {1: _frame([1, 2], [[0, 0, 10, 10], [50, 50, 10, 10]], [1.0, 1.0], [1, 6])}
+        tracker = {1: _frame([10, 20], [[0, 0, 10, 10], [50, 50, 10, 10]], [1.0, 1.0], [1, 1])}
+        class_config = MOTClassConfig(scored_classes=(1, 6))
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config=class_config)
+
+        assert sequence.num_gt_dets == 2
+        assert sequence.num_gt_ids == 2
+        assert sequence.gt_id_mapping == {1: 0, 2: 1}
+
+    @pytest.mark.parametrize(
+        "class_config",
+        [
+            pytest.param("mot17", id="mot17"),
+            pytest.param("mot20", id="mot20"),
+            pytest.param(MOTClassConfig(scored_classes=(6,)), id="custom-scored-class-6"),
+        ],
+    )
+    def test_tracker_id_mapping_does_not_depend_on_class_config(self, class_config: str | MOTClassConfig) -> None:
+        """Tracker IDs are mapped before distractor suppression, so the class config never changes the mapping."""
+        ground_truth = {1: _frame([1, 2], [[0, 0, 10, 10], [50, 50, 10, 10]], [1.0, 1.0], [1, 6])}
+        tracker = {1: _frame([10, 20], [[0, 0, 10, 10], [50, 50, 10, 10]], [1.0, 1.0], [1, 1])}
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config=class_config)  # type: ignore[arg-type]
+
+        assert sequence.tracker_id_mapping == {10: 0, 20: 1}
+        assert sequence.num_tracker_ids == 2
 
     def test_ignored_non_distractor_gt_does_not_suppress_tracker(self) -> None:
         """GT (conf=0, non-distractor class) is neither scored GT nor a distractor.
