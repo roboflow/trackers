@@ -13,6 +13,7 @@ BoT-SORT can fuse appearance embeddings with IoU during association. Embeddings 
 - Which parameters control the appearance gate
 - How to pick `reid_appearance_threshold` for your encoder and domain
 - What ReID changes on MOT17, SportsMOT, DanceTrack and SoccerNet, with a generic and a fine-tuned encoder
+- What ReID costs in frames per second
 
 ---
 
@@ -415,3 +416,18 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
     On MOT17 the tuning split preferred `botsort` by 0.10 HOTA, while `adaptive` scored 0.73 higher on test, the best MOT17 result on this page.
 
     SoccerNet uses ground-truth boxes as detections, so its numbers are not comparable to the YOLOX rows.
+
+---
+
+## Speed
+
+ReID runs the encoder on every detection in every frame, so it lowers throughput. The table gives frames per second of `tracker.update` over every sequence of each tuning split, with library defaults, camera motion compensation on, and the provided detections. Detection time is not included. Measured on a Google Colab T4 GPU with a 2-vCPU Intel Xeon @ 2.00GHz.
+
+|  Dataset   |  Split   | Boxes per frame | BoT-SORT | + `osnet_x1_0_<dataset>` | + `fastreid_mot17_sbs50` |
+| :--------: | :------: | :-------------: | :------: | :----------------------: | :----------------------: |
+|   MOT17    | val-half |      34.5       |   32.9   |           11.2           |           5.0            |
+| SportsMOT  |   val    |      11.1       |   39.3   |           17.0           |           7.2            |
+| DanceTrack |   val    |      10.8       |   35.5   |           16.2           |           7.9            |
+| SoccerNet  |  train   |      17.1       |   28.7   |           11.7           |           5.4            |
+
+The fine-tuned OSNet runs at 2.2 to 2.9 times lower FPS than BoT-SORT without ReID, and FastReID, with 11 times the parameters, at 4.5 to 6.6 times lower. MOT17, with the most boxes per frame, is the slowest with either encoder.
