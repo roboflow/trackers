@@ -1,5 +1,5 @@
 ---
-title: Benchmark Methodology | Trackers
+title: Benchmark Methodology
 description: How Trackers' benchmark results are produced — detection sources, tuning procedure, and train/validation/test split usage.
 ---
 

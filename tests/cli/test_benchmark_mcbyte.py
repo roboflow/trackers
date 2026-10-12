@@ -13,8 +13,10 @@ import re
 from pathlib import Path
 from typing import get_args
 
+import cv2
 import numpy as np
 import pytest
+import supervision as sv
 
 from trackers.cli.__main__ import _CLIParser, _normalise_option
 from trackers.cli._detections import (
@@ -30,6 +32,7 @@ from trackers.cli.benchmark.mcbyte import (
     DatasetConfig,
     DatasetName,
     DatasetPaths,
+    _read_sequence_frame_rate,
     _runtime_error,
     _unknown_datasets_error,
     benchmark_command,
@@ -37,6 +40,7 @@ from trackers.cli.benchmark.mcbyte import (
     prepare_mot17_submission,
     resolve_datasets,
     run_dataset,
+    run_sequence,
     sequence_name,
 )
 
@@ -369,6 +373,207 @@ class TestImageDirectory:
 
         with pytest.raises(ValueError, match="--dataset_roots"):
             image_directory("MOT17-01", config)
+
+
+class TestReadSequenceFrameRate:
+    """``seqinfo.ini``, not the dataset-wide default, should decide a sequence's frame rate.
+
+    Regression coverage for H-FRAME-RATE-NEVER-PROPAGATED: ``DatasetConfig.frame_rate`` is a single 30.0 fallback
+    for every sequence in a dataset, but real sequences run at a different rate (verified locally: every cached
+    SportsMOT-val sequence is 25 fps, every cached DanceTrack-val sequence is 20 fps).
+    """
+
+    def test_missing_seqinfo_falls_back_to_default(self, tmp_path: Path) -> None:
+        """No ``seqinfo.ini`` next to the sequence: the dataset default is used verbatim."""
+        image_dir = tmp_path / "seq" / "img1"
+        image_dir.mkdir(parents=True)
+
+        assert _read_sequence_frame_rate(image_dir, default=30.0) == 30.0
+
+    def test_reads_the_real_frame_rate_from_seqinfo(self, tmp_path: Path) -> None:
+        """A real ``seqinfo.ini`` (SportsMOT-val's own format) overrides the default."""
+        seq_dir = tmp_path / "seq"
+        image_dir = seq_dir / "img1"
+        image_dir.mkdir(parents=True)
+        (seq_dir / "seqinfo.ini").write_text(
+            "[Sequence]\nname=v_0kUtTtmLaJA_c006\nimDir=img1\nframeRate=25\nseqLength=346\n"
+        )
+
+        assert _read_sequence_frame_rate(image_dir, default=30.0) == 25.0
+
+    def test_missing_frame_rate_key_falls_back_to_default(self, tmp_path: Path) -> None:
+        """A ``seqinfo.ini`` present but without ``frameRate`` still falls back."""
+        seq_dir = tmp_path / "seq"
+        image_dir = seq_dir / "img1"
+        image_dir.mkdir(parents=True)
+        (seq_dir / "seqinfo.ini").write_text("[Sequence]\nname=no-frame-rate\n")
+
+        assert _read_sequence_frame_rate(image_dir, default=30.0) == 30.0
+
+    def test_malformed_ini_falls_back_to_default(self, tmp_path: Path) -> None:
+        """Unparsable INI content does not raise; it falls back like a missing file."""
+        seq_dir = tmp_path / "seq"
+        image_dir = seq_dir / "img1"
+        image_dir.mkdir(parents=True)
+        (seq_dir / "seqinfo.ini").write_text("not an ini file at all\n===\n")
+
+        assert _read_sequence_frame_rate(image_dir, default=30.0) == 30.0
+
+    @pytest.mark.parametrize(
+        "frame_rate_value",
+        ["0", "-25", "nan", "inf"],
+    )
+    def test_non_positive_or_non_finite_frame_rate_falls_back(self, tmp_path: Path, frame_rate_value: str) -> None:
+        """A degenerate ``frameRate`` (zero, negative, NaN, inf) is rejected like a missing one."""
+        seq_dir = tmp_path / "seq"
+        image_dir = seq_dir / "img1"
+        image_dir.mkdir(parents=True)
+        (seq_dir / "seqinfo.ini").write_text(f"[Sequence]\nframeRate={frame_rate_value}\n")
+
+        assert _read_sequence_frame_rate(image_dir, default=30.0) == 30.0
+
+    def test_missing_seqinfo_does_not_warn(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        """No ``seqinfo.ini`` at all is unremarkable: no warning, unlike a present-but-bad file."""
+        image_dir = tmp_path / "seq" / "img1"
+        image_dir.mkdir(parents=True)
+
+        with caplog.at_level(logging.WARNING, logger="test_mcbyte_seqinfo"):
+            _read_sequence_frame_rate(
+                image_dir, default=30.0, logger=logging.getLogger("test_mcbyte_seqinfo"), sequence="seq"
+            )
+
+        assert caplog.records == []
+
+    def test_malformed_ini_warns_with_logger(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        """A ``seqinfo.ini`` present but unparsable warns, distinguishing it from a missing file."""
+        seq_dir = tmp_path / "seq"
+        image_dir = seq_dir / "img1"
+        image_dir.mkdir(parents=True)
+        (seq_dir / "seqinfo.ini").write_text("not an ini file at all\n===\n")
+
+        with caplog.at_level(logging.WARNING, logger="test_mcbyte_seqinfo"):
+            result = _read_sequence_frame_rate(
+                image_dir, default=30.0, logger=logging.getLogger("test_mcbyte_seqinfo"), sequence="seq"
+            )
+
+        assert result == 30.0
+        assert len(caplog.records) == 1
+        assert "seq" in caplog.records[0].message
+        assert "seqinfo.ini" in caplog.records[0].message
+
+    def test_degenerate_frame_rate_warns_with_logger(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        """A ``seqinfo.ini`` with a non-finite/non-positive ``frameRate`` warns too."""
+        seq_dir = tmp_path / "seq"
+        image_dir = seq_dir / "img1"
+        image_dir.mkdir(parents=True)
+        (seq_dir / "seqinfo.ini").write_text("[Sequence]\nframeRate=nan\n")
+
+        with caplog.at_level(logging.WARNING, logger="test_mcbyte_seqinfo"):
+            result = _read_sequence_frame_rate(
+                image_dir, default=30.0, logger=logging.getLogger("test_mcbyte_seqinfo"), sequence="seq"
+            )
+
+        assert result == 30.0
+        assert len(caplog.records) == 1
+        assert "nan" in caplog.records[0].message
+
+
+class TestRunSequenceUsesRealFrameRate:
+    """``run_sequence`` must build the tracker with the sequence's real frame rate, not always ``config.frame_rate``.
+
+    ``create_tracker`` is monkeypatched to a stub that only records its ``frame_rate`` kwarg and returns a minimal fake
+    tracker — the real ``McByteTracker`` needs SAM/Cutie, far too heavy for this wiring check. One real 1x1 frame and a
+    one-line detection file are the only filesystem fixtures, matching the sequence layout ``run_sequence`` actually
+    reads (``image_dir`` for frames, ``image_dir.parent / "seqinfo.ini"``).
+    """
+
+    class _FakeTracker:
+        def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
+            return sv.Detections.empty()
+
+        def reset(self) -> None:
+            pass
+
+    def _make_sequence(self, tmp_path: Path) -> tuple[Path, Path]:
+        """Write one detection file and one real frame; return (detection_file, image_dir)."""
+        image_dir = tmp_path / "seq" / "img1"
+        image_dir.mkdir(parents=True)
+        cv2.imwrite(str(image_dir / "000001.jpg"), np.zeros((4, 4, 3), dtype=np.uint8))
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("1,10,20,30,40,0.9\n")
+        return detection_file, image_dir
+
+    def test_seqinfo_frame_rate_reaches_create_tracker(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """With a ``seqinfo.ini`` present, its ``frameRate`` — not the dataset default — reaches the tracker."""
+        detection_file, image_dir = self._make_sequence(tmp_path)
+        (image_dir.parent / "seqinfo.ini").write_text("[Sequence]\nframeRate=25\n")
+
+        captured: dict[str, float] = {}
+
+        def fake_create_tracker(
+            *, frame_rate: float, **_kwargs: object
+        ) -> TestRunSequenceUsesRealFrameRate._FakeTracker:
+            captured["frame_rate"] = frame_rate
+            return TestRunSequenceUsesRealFrameRate._FakeTracker()
+
+        monkeypatch.setattr("trackers.cli.benchmark.mcbyte.create_tracker", fake_create_tracker)
+
+        config = DatasetConfig(name="sportsmot", detection_format="xyxy", frame_rate=30.0)
+        run_sequence(
+            sequence="seq",
+            detection_file=detection_file,
+            image_dir=image_dir,
+            output_file=tmp_path / "out" / "seq.txt",
+            config=config,
+            device="cpu",
+            enable_isolated_mask_matching=False,
+            enable_cmc=False,
+            cmc_method="sparseOptFlow",
+            cmc_downscale=6,
+            keep_partial_results=False,
+            logger=logging.getLogger("test_mcbyte"),
+        )
+
+        assert captured["frame_rate"] == 25.0
+
+    def test_without_seqinfo_falls_back_to_dataset_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No ``seqinfo.ini``: ``config.frame_rate`` reaches the tracker exactly as before this fix.
+
+        Without the fix — ``create_tracker(frame_rate=config.frame_rate, ...)`` unconditionally — this test would
+        still pass, but :meth:`test_seqinfo_frame_rate_reaches_create_tracker` above would fail (30.0 instead of
+        25.0), which is the actual regression guard.
+        """
+        detection_file, image_dir = self._make_sequence(tmp_path)
+
+        captured: dict[str, float] = {}
+
+        def fake_create_tracker(
+            *, frame_rate: float, **_kwargs: object
+        ) -> TestRunSequenceUsesRealFrameRate._FakeTracker:
+            captured["frame_rate"] = frame_rate
+            return TestRunSequenceUsesRealFrameRate._FakeTracker()
+
+        monkeypatch.setattr("trackers.cli.benchmark.mcbyte.create_tracker", fake_create_tracker)
+
+        config = DatasetConfig(name="sportsmot", detection_format="xyxy", frame_rate=30.0)
+        run_sequence(
+            sequence="seq",
+            detection_file=detection_file,
+            image_dir=image_dir,
+            output_file=tmp_path / "out" / "seq.txt",
+            config=config,
+            device="cpu",
+            enable_isolated_mask_matching=False,
+            enable_cmc=False,
+            cmc_method="sparseOptFlow",
+            cmc_downscale=6,
+            keep_partial_results=False,
+            logger=logging.getLogger("test_mcbyte"),
+        )
+
+        assert captured["frame_rate"] == 30.0
 
 
 class TestPrepareMot17Submission:
