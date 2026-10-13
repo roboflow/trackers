@@ -6,14 +6,15 @@
 
 """Tests for the ``trackers inspect`` component group.
 
-Every test here stops at the parsing and validation surface. None of the components can run without SAM and Cutie
-weights, so the contract under test is that a wrong invocation is rejected before any model is touched.
+Every test here stops at command discovery, parsing and validation. These checks require no model weights; an invalid
+invocation must be rejected before inference begins.
 """
 
 from __future__ import annotations
 
 import inspect
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -44,11 +45,27 @@ class TestInspectRegistration:
 
     def test_every_component_names_what_it_inspects(self) -> None:
         """Component keys name the inspected thing, not the tracker that uses it."""
-        assert set(INSPECT_COMPONENTS) == {"sam", "cutie", "mask-manager", "mcbyte"}
+        assert set(INSPECT_COMPONENTS) == {"sam", "cutie", "edgetam", "mask-manager", "mcbyte"}
 
     def test_components_are_callables(self) -> None:
         """Each entry dispatches to a command function."""
         assert all(callable(command) for command in INSPECT_COMPONENTS.values())
+
+    def test_cli_discovery_without_optional_dependencies(self) -> None:
+        """Discover commands in a fresh process with Torch and Transformers unavailable.
+
+        A fresh process prevents modules cached by other tests from hiding eager imports.
+        """
+        script = """
+import sys
+sys.modules["torch"] = None
+sys.modules["transformers"] = None
+from trackers.cli.inspect import INSPECT_COMPONENTS
+assert "edgetam" in INSPECT_COMPONENTS
+"""
+        # Both executable and script are fixed test inputs, with no shell involved.
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)  # noqa: S603
+        assert result.returncode == 0, result.stderr
 
     def test_inspect_is_a_registered_subcommand(self) -> None:
         """An absent entry makes the legacy translator skip the hyphen sweep."""

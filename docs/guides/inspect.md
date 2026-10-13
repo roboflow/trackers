@@ -1,5 +1,5 @@
 ---
-title: Inspect the Mask Pipeline — SAM, Cutie, MaskManager
+title: Inspect the Mask Pipeline — SAM, Cutie, EdgeTAM, MaskManager
 description: Render what each stage of the mask pipeline produced, frame by frame, with the trackers inspect command.
 ---
 
@@ -10,6 +10,7 @@ description: Render what each stage of the mask pipeline produced, frame by fram
 **What you'll learn:**
 
 - Which component each subcommand inspects
+- How to replay the same boxes and lifecycle events with Cutie and EdgeTAM, including EdgeTAM session rollover
 - How to drive `mask-manager` from hand-written boxes or from ground truth
 - How to compare McByte's two association modes on one sequence
 
@@ -17,21 +18,28 @@ description: Render what each stage of the mask pipeline produced, frame by fram
 
 Each name is the thing being inspected, not the tracker that happens to use it:
 
-| Command                         | Inspects                                 | Answers                                                     |
-| ------------------------------- | ---------------------------------------- | ----------------------------------------------------------- |
-| `trackers inspect sam`          | `SAMBoxMaskGenerator`                    | Did SAM turn these boxes into the masks I expected?         |
-| `trackers inspect cutie`        | `CutieMaskPropagator`                    | Did the masks survive propagation across frames?            |
-| `trackers inspect mask-manager` | `MaskManager`                            | Were masks created, added, and removed on the right frames? |
-| `trackers inspect mcbyte`       | [`McByteTracker`](../trackers/mcbyte.md) | What did mask conditioning change versus locked IoU?        |
+| Command                         | Inspects                                 | Answers                                                                |
+| ------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `trackers inspect sam`          | `SAMBoxMaskGenerator`                    | Did SAM turn these boxes into the masks I expected?                    |
+| `trackers inspect cutie`        | `CutieMaskPropagator`                    | Did the masks survive propagation across frames?                       |
+| `trackers inspect edgetam`      | `EdgeTAMMaskBackend`                     | Do creation, propagation and bounded sessions preserve mask ownership? |
+| `trackers inspect mask-manager` | `MaskManager`                            | Were masks created, added, and removed on the right frames?            |
+| `trackers inspect mcbyte`       | [`McByteTracker`](../trackers/mcbyte.md) | What did mask conditioning change versus locked IoU?                   |
 
-The first three live in `trackers.core.masks` and are tracker-agnostic: nothing in them depends on McByte. Only the last one inspects a tracker.
+The mask components live in `trackers.core.masks` and are tracker-agnostic. Only `mcbyte` inspects a tracker.
 
-!!! warning "Requires the mask extra"
+!!! warning "Install the component's optional dependencies"
 
-    Every `inspect` command builds SAM and Cutie, so install them first:
+    For SAM, Cutie, MaskManager and McByte inspection:
 
     ```bash
     pip install "trackers[mask]"
+    ```
+
+    For EdgeTAM creation and propagation:
+
+    ```bash
+    pip install "trackers[edgetam]"
     ```
 
     Without the extra the command exits with an install hint rather than a traceback.
@@ -73,6 +81,63 @@ trackers inspect cutie \
 ```
 
 An add event names the frame where the box is valid; the mask is applied there and propagated to the next frame, matching McByte timing. Add events therefore cannot sit on the last selected frame, and remove events cannot sit on the first.
+
+## Inspect EdgeTAM
+
+EdgeTAM creates masks from boxes and propagates them using one loaded model. The command follows the same manual ID and event timing as `cutie`:
+
+```bash
+trackers inspect edgetam \
+    --image_dir frames \
+    --start_file 000001.jpg --end_file 000010.jpg \
+    --box='[[10,20,110,220],[30,40,130,240]]' \
+    --add_at+ 000004.jpg:300,400,430,540 \
+    --remove_at+ 000007.jpg:1 \
+    --max_session_frames 3
+```
+
+This short session limit deliberately exercises rollover. The default is **200** stored images, including the seed frame, for every input source. Use `--max_session_frames 1000` for a longer history or `--max_session_frames null` to disable rollover. Finite limits must be at least two. Filename gaps do not count as processed images. A session limit bounds retained history; total memory also depends on image size and object count.
+
+Masks may overlap. Additions submit the existing latest masks and new masks together, retaining earlier history. Removal reseeds the surviving objects; rollover transfers their latest masks, including empty masks. This command does not repair an existing object's empty mask or recover its identity. Each addition creates a new manual ID.
+
+Outputs go under `outputs/inspect/edgetam/<timestamp>/`:
+
+- Annotated frames show mask colours, active IDs, session position and rollover events.
+- `config.json` records replay options, including the resolved model revision when available. Repeat with `trackers inspect edgetam --config path/to/config.json`.
+- `run.json` records completion or failure, dependency versions, input hashes, added/removed IDs and session indices for each saved frame.
+
+The default model, `yonigozlan/EdgeTAM-hf`, is pinned to tested commit `c266ce53b3fc00f0f495b583f6a116c4e57f53bb`. Override it with `--revision`, for example `--revision main` to follow the model's main branch. A custom `--model_id` does not inherit this commit; specify its own revision for reproducible comparisons. The resolved commit and dependency versions are saved for each run. Inference defaults to fp32 and `--device auto` selects CUDA when available, otherwise CPU. `--mask_threshold` is a logit threshold (default zero), not a mask confidence score.
+
+This is **manual mask replay**, suitable for fixed boxes and lifecycle events extracted from a labelled sequence. It does not run a tracker or compute HOTA, IDF1 or MOTA. When evaluating tracking on SoccerNet oracle detections, use ground-truth identities only for scoring; a ground-truth identity replay is a separate inspection experiment.
+
+Configuration files are optional: every setting can also be passed directly as a command-line argument, as above. For a longer replay, the shared [SNMOT-116 example config](../assets/inspect/snmot-116.json) supplies identical frames, initial boxes, additions and removals to both `edgetam` and `cutie`. It selects frames `000548.jpg` through `000650.jpg`, with seven initial objects, four additions and four removals. IDs follow the order of initial boxes and then additions; these are manual inspection IDs, not SoccerNet ground-truth identities.
+
+After installing the `edgetam` and `mask` extras, run these commands from the repository root, replacing the image directory with your dataset location. Arguments after `--config` override the file's values, so the generic path in the example does not need editing:
+
+```bash
+trackers inspect edgetam \
+    --config docs/assets/inspect/snmot-116.json \
+    --image_dir /path/to/tracking/test/SNMOT-116/img1 \
+    --max_session_frames 50
+
+trackers inspect cutie \
+    --config docs/assets/inspect/snmot-116.json \
+    --image_dir /path/to/tracking/test/SNMOT-116/img1
+```
+
+The config uses CPU for both backends. EdgeTAM's session limit stays on its command line because it is not a Cutie option; 50 stored images exercises rollover within this sequence. Each command keeps its own default output directory under `outputs/inspect/edgetam/` or `outputs/inspect/cutie/` and saves the effective configuration for replay.
+
+The backend also implements the existing mask interfaces:
+
+```python
+from trackers.core.masks.edgetam import EdgeTAMMaskBackend
+from trackers.core.masks.manager import MaskManager
+
+backend = EdgeTAMMaskBackend(max_session_frames=200)
+manager = MaskManager(mask_generator=backend, mask_propagator=backend)
+```
+
+These mask interfaces take **RGB** uint8 images. Generation uses a temporary session, preserving temporal state. Outputs contain original-resolution boolean masks and `mask_avg_prob_dict=None`. Tracker association must explicitly support masks without confidence before using this backend for tracking; current McByte confidence gating is unchanged. `backend.reset()` releases all temporal frames and features while keeping the model loaded.
 
 ## Inspect MaskManager
 

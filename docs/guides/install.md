@@ -92,7 +92,7 @@ The `tune` extra installs `optuna`, enabling automated hyperparameter search —
 
 ### Mask
 
-The `mask` extra installs `torch`, `torchvision`, `rf-segment-anything`, and `rf-cutie`, enabling the SAM + Cutie mask pipeline used by McByte, `trackers inspect`, and the mask-conditioned benchmarking commands — see the [inspect guide](inspect.md).
+The `mask` extra installs `torch`, `torchvision`, `rf-segment-anything`, and `rf-cutie`, enabling the SAM + Cutie mask pipeline used by McByte, the `sam`, `cutie`, `mask-manager` and `mcbyte` inspection commands, and mask-conditioned benchmarking — see the [inspect guide](inspect.md).
 
 === "pip"
 
@@ -109,6 +109,24 @@ The `mask` extra installs `torch`, `torchvision`, `rf-segment-anything`, and `rf
 !!! tip "GPU Acceleration"
 
     For GPU support, ensure PyTorch is installed with CUDA or MPS.
+
+### EdgeTAM
+
+The `edgetam` extra installs `torch`, `torchvision`, `timm`, and `transformers`, enabling EdgeTAM mask creation and propagation through the shared mask interfaces and `trackers inspect edgetam` — see the [EdgeTAM inspection guide](inspect.md#inspect-edgetam).
+
+=== "pip"
+
+    ```bash
+    pip install "trackers[edgetam]"
+    ```
+
+=== "uv"
+
+    ```bash
+    uv pip install "trackers[edgetam]"
+    ```
+
+To inspect both EdgeTAM and SAM/Cutie, install `trackers[edgetam,mask]`. In a local checkout, use `uv sync --extra edgetam --extra mask --group dev`. The default model revision is pinned and inference uses fp32. Automatic device selection uses CUDA when available, otherwise CPU; pass an explicit device to override it.
 
 ---
 
