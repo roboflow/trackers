@@ -199,6 +199,30 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
 
+- **How to Track Objects with McByte**
+
+    ---
+
+    End-to-end example showing how to run RF-DETR detection with the McByte tracker and its SAM and Cutie masks.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-objects-with-mcbyte-tracker.ipynb)
+
+- **How to Track Objects on a Moving Camera with BoT-SORT**
+
+    ---
+
+    Watch BoT-SORT with camera motion compensation off and on on MOT17-13, filmed from a moving bus.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb)
+
+- **How to Track Objects with BoT-SORT and Re-ID**
+
+    ---
+
+    Add appearance Re-ID to BoT-SORT, choose its threshold from data, and measure the change on MOT17.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb)
+
 - **How to Tune Tracker Hyperparameters**
 
     ---
