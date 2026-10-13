@@ -203,6 +203,8 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-objects-with-mcbyte-tracker.ipynb"><img src="assets/tutorials/mcbyte-sample.webp" alt="McByte tracker tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
     End-to-end example showing how to run RF-DETR detection with the McByte tracker and its SAM and Cutie masks.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-objects-with-mcbyte-tracker.ipynb)
@@ -211,7 +213,9 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
-    Watch BoT-SORT with camera motion compensation off and on on MOT17-13, filmed from a moving bus.
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb"><img src="assets/tutorials/cmc-sample.webp" alt="BoT-SORT camera motion compensation tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
+    See what camera motion compensation changes for BoT-SORT on MOT17-13, filmed from a moving bus.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb)
 
@@ -219,7 +223,7 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
-    Add appearance Re-ID to BoT-SORT, choose its threshold from data, and measure the change on MOT17.
+    Add appearance Re-ID to BoT-SORT and choose its threshold from data.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb)
 
