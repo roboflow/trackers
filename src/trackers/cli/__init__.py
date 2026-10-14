@@ -31,8 +31,8 @@ Deliberate divergences
 
 ``inspect``'s members name the component under inspection rather than a tracker,
 because the mask stack they exercise is tracker-agnostic — ``sam``, ``cutie``,
-and ``mask-manager`` live in :mod:`trackers.core.masks` and reference no tracker
-at all. Only ``inspect mcbyte`` inspects a tracker. A ``trackers inspect
+``edgetam``, and ``mask-manager`` live in :mod:`trackers.core.masks` and reference
+no tracker at all. Only ``inspect mcbyte`` inspects a tracker. A ``trackers inspect
 <tracker> <component>`` shape was rejected for implying a per-tracker variation
 that does not exist: two trackers using SAM would run identical code.
 

@@ -54,6 +54,12 @@ mask = [
     "rf-segment-anything>=1.0",
     "rf-cutie[inference]>=1.0.0",
 ]
+edgetam = [
+    "torch",
+    "torchvision",
+    "timm>=1.0,<2",
+    "transformers>=5.15.0,<5.18.0", # bounded to the validated session API
+]
 
 [project.scripts]
 trackers = "trackers.cli.__main__:main"

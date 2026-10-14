@@ -4341,6 +4341,12 @@ dependencies = [
 detection = [
     { name = "inference-models" },
 ]
+edgetam = [
+    { name = "timm" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+]
 mask = [
     { name = "rf-cutie", extra = ["inference"] },
     { name = "rf-segment-anything" },
@@ -4393,10 +4399,14 @@ requires-dist = [
     { name = "rich", specifier = ">=13.0.0" },
     { name = "scipy", specifier = ">=1.13.1" },
     { name = "supervision", specifier = ">=0.26.1" },
+    { name = "timm", marker = "extra == 'edgetam'", specifier = ">=1.0,<2" },
+    { name = "torch", marker = "extra == 'edgetam'" },
     { name = "torch", marker = "extra == 'mask'" },
+    { name = "torchvision", marker = "extra == 'edgetam'" },
     { name = "torchvision", marker = "extra == 'mask'" },
+    { name = "transformers", marker = "extra == 'edgetam'", specifier = ">=5.15.0,<5.18.0" },
 ]
-provides-extras = ["detection", "tune", "mask"]
+provides-extras = ["detection", "tune", "mask", "edgetam"]
 
 [package.metadata.requires-dev]
 build = [
