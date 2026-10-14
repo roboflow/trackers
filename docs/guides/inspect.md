@@ -125,7 +125,7 @@ trackers inspect cutie \
     --image_dir /path/to/tracking/test/SNMOT-116/img1
 ```
 
-The config uses CPU for both backends. EdgeTAM's session limit stays on its command line because it is not a Cutie option; 50 stored images exercises rollover within this sequence. Each command keeps its own default output directory under `outputs/inspect/edgetam/` or `outputs/inspect/cutie/` and saves the effective configuration for replay.
+The config uses CPU for both backends. EdgeTAM's session limit stays on its command line because it is not a Cutie option; 50 stored images exercises rollover within this sequence. Both commands save annotated images in their own default output directories under `outputs/inspect/edgetam/` or `outputs/inspect/cutie/`. EdgeTAM also saves the effective configuration in `config.json` for replay and a `run.json` manifest.
 
 The backend also implements the existing mask interfaces:
 

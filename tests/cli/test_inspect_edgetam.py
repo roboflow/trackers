@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 import pytest
 
+from trackers.cli.__main__ import main
 from trackers.cli.inspect._common import load_rgb_image, save_rgb_image
 from trackers.cli.inspect.cutie import cutie_inspection
 from trackers.cli.inspect.edgetam import edgetam_inspection
@@ -111,6 +112,76 @@ def test_replay_preserves_event_timing_and_saves_images(
     config = json.loads((run_dir / "config.json").read_text())
     assert config["revision"] == "fake-revision"
     assert config["max_session_frames"] == 200
+
+
+@pytest.mark.parametrize("max_session_frames", [200, None])
+def test_generated_config_replays_through_cli_with_overrides(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, max_session_frames: int | None
+) -> None:
+    """Replay a generated config through the real CLI, preserving events and applying overrides."""
+    images = tmp_path / "images"
+    names = ("000001.png", "000008.png", "000050.png", "000099.png")
+    for index, name in enumerate(names):
+        save_rgb_image(np.full((100, 120, 3), index, dtype=np.uint8), images / name)
+    backend_options: list[dict[str, Any]] = []
+
+    def make_backend(**kwargs: Any) -> FakeBackend:
+        """Record the effective model settings while avoiding optional inference dependencies."""
+        backend_options.append(kwargs)
+        return FakeBackend(**kwargs)
+
+    monkeypatch.setattr("trackers.core.masks.edgetam.EdgeTAMMaskBackend", make_backend)
+    output_root = tmp_path / "original"
+    assert (
+        edgetam_inspection(
+            images,
+            names[0],
+            names[-1],
+            [(1, 1, 5, 6)],
+            add_at=["000008.png:2,2,6,8", "000008.png:8,2,12,8"],
+            remove_at=["000050.png:1", "000050.png:3"],
+            output_root=output_root,
+            device="cpu",
+            max_session_frames=max_session_frames,
+        )
+        == 0
+    )
+    original_dir = next(output_root.iterdir())
+    config_path = original_dir / "config.json"
+    config = json.loads(config_path.read_text())
+    assert config["max_session_frames"] == max_session_frames
+    replay_root = tmp_path / "replay"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "trackers",
+            "inspect",
+            "edgetam",
+            "--config",
+            str(config_path),
+            "--max_session_frames",
+            "50",
+            "--output_root",
+            str(replay_root),
+        ],
+    )
+    with pytest.warns(UserWarning, match="The trackers CLI is in beta"):
+        assert main() == 0
+
+    assert len(backend_options) == 2
+    assert backend_options[1]["max_session_frames"] == 50
+    assert backend_options[1]["revision"] == "fake-revision"
+    replay_dir = next(replay_root.iterdir())
+    replay_config = json.loads((replay_dir / "config.json").read_text())
+    assert replay_config == {**config, "max_session_frames": 50, "output_root": str(replay_root.resolve())}
+    original_manifest = json.loads((original_dir / "run.json").read_text())
+    replay_manifest = json.loads((replay_dir / "run.json").read_text())
+    assert replay_manifest["status"] == "completed"
+    assert replay_manifest["frames"] == original_manifest["frames"]
+    assert sorted(path.name for path in replay_dir.glob("*.png")) == list(names)
+    for name in names:
+        assert np.array_equal(load_rgb_image(replay_dir / name), load_rgb_image(original_dir / name))
 
 
 def test_invalid_events_are_rejected_before_loading(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
