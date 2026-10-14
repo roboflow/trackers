@@ -215,7 +215,7 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb"><img src="assets/tutorials/cmc-sample.webp" alt="BoT-SORT camera motion compensation tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
 
-    See what camera motion compensation changes for BoT-SORT on MOT17-13, filmed from a moving bus.
+    End-to-end example showing how BoT-SORT's camera motion compensation keeps IDs steady when the camera moves.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb)
 
@@ -223,7 +223,9 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
 
     ---
 
-    Add appearance Re-ID to BoT-SORT and choose its threshold from data.
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb"><img src="assets/tutorials/reid-sample.webp" alt="BoT-SORT Re-ID tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
+    End-to-end example showing how BoT-SORT with Re-ID keeps football players' IDs when they leave the frame and come back.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb)
 
