@@ -17,7 +17,7 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker
-from trackers.eval.evaluate import evaluate_mot_sequences
+from trackers.eval.evaluate import _detect_format, _ground_truth_path, evaluate_mot_sequences
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
@@ -201,7 +201,8 @@ class Tuner:
         """Validate that every selected sequence has required MOT files.
 
         This performs eager filesystem validation so configuration errors are reported during tuner initialization
-        rather than later during trial execution.
+        rather than later during trial execution. Ground truth is accepted in either the flat `{seq}.txt` layout or the
+        MOT `{seq}/gt/gt.txt` layout, matching what `evaluate_mot_sequences` detects.
         """
         missing_detection_files = [
             str(self._detections_dir / f"{seq_name}.txt")
@@ -213,11 +214,14 @@ class Tuner:
                 "Missing detection files for selected sequences: " + ", ".join(missing_detection_files)
             )
 
-        missing_gt_files = [
-            str(self._gt_dir / f"{seq_name}.txt")
-            for seq_name in self._sequences
-            if not (self._gt_dir / f"{seq_name}.txt").is_file()
-        ]
+        # Ground truth may use either layout that `evaluate_mot_sequences` accepts, so validation
+        # resolves paths the same way rather than assuming the flat one.
+        gt_format = _detect_format(self._gt_dir)
+        missing_gt_files = []
+        for seq_name in self._sequences:
+            gt_path = _ground_truth_path(self._gt_dir, seq_name, gt_format)
+            if not gt_path.is_file():
+                missing_gt_files.append(str(gt_path))
         if missing_gt_files:
             raise FileNotFoundError("Missing ground-truth files for selected sequences: " + ", ".join(missing_gt_files))
 
