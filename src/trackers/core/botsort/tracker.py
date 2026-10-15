@@ -58,14 +58,16 @@ class BoTSORTTracker(BaseTracker):
             assigning a stable track ID (different than initial -1).
         minimum_iou_threshold_first_assoc: Minimum fused similarity (IoU x
             detection confidence) to accept a detection-track association during
-            the first association step.
+            the first association step. With a ``reid_model``, appearance can raise
+            a pair's similarity, and this threshold applies to the fused value.
         minimum_iou_threshold_second_assoc: Minimum IoU to accept a
             detection-track association during the second association step.
             No score fusion is applied in this pass, so this is plain IoU.
         minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU x
             score) to accept a match between an unconfirmed track and a remaining
             high-confidence detection.  Corresponds to the original ByteTrack's
-            hardcoded cost threshold of 0.7 (= similarity 0.3).
+            hardcoded cost threshold of 0.7 (= similarity 0.3). With a
+            ``reid_model``, appearance is fused in as in the first step.
         high_conf_det_threshold: Confidence threshold used to split detections into:
             - high confidence: confidence >= threshold
             - low confidence:  confidence < threshold
