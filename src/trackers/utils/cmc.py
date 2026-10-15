@@ -788,14 +788,16 @@ class CMC:
 
     @staticmethod
     def apply_batch(affine_mtx: np.ndarray | None, tracklets: Sequence[BaseTracklet]) -> None:
-        """Apply a 2x3 affine camera-motion transform to a list of BoT-SORT tracklets.
+        """Apply a 2x3 affine camera-motion transform to a list of tracklets' Kalman states.
 
         .. note::
-            This method is BoT-SORT-specific. It requires each tracklet to expose a
-            ``state_estimator`` with a ``kf.state`` state-vector column (``(dim, 1)``) and
-            ``kf.state_covariance`` matrix, matching the layout of
-            ``XCYCWHStateEstimator`` / ``XYXYStateEstimator``. Passing arbitrary
+            It requires each tracklet to expose a ``state_estimator`` with a
+            ``kf.state`` state-vector column (``(dim, 1)``) and ``kf.state_covariance``
+            matrix, matching the layout of ``XCYCWHStateEstimator``,
+            ``XCYCSRStateEstimator`` or ``XYXYStateEstimator``. Passing arbitrary
             tracklets without this layout will raise ``AttributeError`` at runtime.
+            Only the live filter state is transformed; trackers that keep more
+            per-track geometry (OC-SORT's observation history) warp it themselves.
 
         All tracklets in the list must share the same state representation type.
         Pass a heterogeneous list and ``TypeError`` is raised immediately.
@@ -807,13 +809,13 @@ class CMC:
         (off-diagonals < 1e-6). When ``rot_mtx`` has cross-axis terms, the covariance is
         left unchanged.
 
-        For XCYCWH-state tracks, only the centre position and velocity are rotated;
-        width/height and their velocities are not transformed.
+        For XCYCWH- and XCYCSR-state tracks, only the centre position and velocity are
+        rotated; the size terms and their velocities are not transformed.
 
         Args:
             affine_mtx: 2x3 affine transform matrix returned by ``CMC.estimate()``. If
                 ``None``, this method is a no-op.
-            tracklets: Homogeneous list of BoT-SORT tracklets, each with a
+            tracklets: Homogeneous list of tracklets, each with a
                 ``state_estimator.kf.state`` state vector and ``kf.state_covariance`` covariance.
 
         Raises:
@@ -833,9 +835,6 @@ class CMC:
         if affine_mtx is None or len(tracklets) == 0:
             return
 
-        rot_mtx = affine_mtx[:2, :2].astype(np.float64)
-        translation = affine_mtx[:2, 2].astype(np.float64)
-
         first_estimator: BaseStateEstimator = tracklets[0].state_estimator
         if not all(type(trk.state_estimator) is type(first_estimator) for trk in tracklets):
             mismatch = next(trk for trk in tracklets if type(trk.state_estimator) is not type(first_estimator))
@@ -843,53 +842,83 @@ class CMC:
                 f"CMC.apply_batch requires homogeneous state types; "
                 f"got {type(first_estimator).__name__!r} and {type(mismatch.state_estimator).__name__!r}."
             )
-        dim = first_estimator.kf.state.shape[0]
         is_xyxy = isinstance(first_estimator, XYXYStateEstimator)
 
         # Stack states (N, dim) and covariances (N, dim, dim)
         states = np.array([trk.state_estimator.kf.state.reshape(-1) for trk in tracklets])
         covariances = np.array([trk.state_estimator.kf.state_covariance for trk in tracklets])
-
-        if is_xyxy:
-            # XYXY boxes must remain axis-aligned after CMC. For transforms with
-            # rotation/reflection/shear, applying the affine matrix only to the
-            # top-left and bottom-right corners can invert the box or produce
-            # invalid geometry. Transform all four corners, then rebuild the
-            # enclosing axis-aligned box with per-axis min/max.
-            states[:, 0], states[:, 1], states[:, 2], states[:, 3] = CMC.warp_xyxy_corners(
-                states[:, 0], states[:, 1], states[:, 2], states[:, 3], rot_mtx, translation
-            )
-            # Keep XYXY velocity ordering valid under mixed-axis transforms by
-            # applying the same corner-wise normalization to the paired velocity
-            # components.
-            states[:, 4], states[:, 5], states[:, 6], states[:, 7] = CMC.warp_xyxy_corners(
-                states[:, 4], states[:, 5], states[:, 6], states[:, 7], rot_mtx
-            )
-        else:
-            # Batch-transform centre positions: pos' = pos @ rot_mtx.T + translation
-            states[:, 0:2] = states[:, 0:2] @ rot_mtx.T + translation
-            # Batch-transform centre velocities: vel' = vel @ rot_mtx.T
-            states[:, 4:6] = states[:, 4:6] @ rot_mtx.T
-
-        block_rot = None
-        if is_xyxy:
-            # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
-            # to 1e-6 residuals on off-diagonals even for pure-translation affine_mtx;
-            # default atol=1e-8 misclassifies those as cross-axis transforms.
-            if np.isclose(rot_mtx[0, 1], 0.0, atol=1e-6) and np.isclose(rot_mtx[1, 0], 0.0, atol=1e-6):
-                block_rot = np.eye(dim, dtype=np.float64)
-                block_rot[0:2, 0:2] = rot_mtx
-                block_rot[2:4, 2:4] = rot_mtx
-                block_rot[4:6, 4:6] = rot_mtx
-                block_rot[6:8, 6:8] = rot_mtx
-        else:
-            block_rot = np.eye(dim, dtype=np.float64)
-            block_rot[0:2, 0:2] = rot_mtx
-            block_rot[4:6, 4:6] = rot_mtx
-
-        if block_rot is not None:
-            covariances = block_rot @ covariances @ block_rot.T
+        states, covariances = _warp_kalman_states(states, covariances, affine_mtx, is_xyxy=is_xyxy)
 
         for i, trk in enumerate(tracklets):
             trk.state_estimator.kf.state = states[i].reshape(-1, 1)
             trk.state_estimator.kf.state_covariance = covariances[i]
+
+
+def _warp_kalman_states(
+    states: np.ndarray,
+    covariances: np.ndarray,
+    affine_mtx: np.ndarray,
+    *,
+    is_xyxy: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Apply a 2x3 affine camera-motion transform to stacked Kalman states and covariances.
+
+    Centre-based states (``XCYCWH``, ``XCYCSR``: ``[xc, yc, _, _, vx, vy, ...]``) have
+    their centre position and velocity transformed; the size terms are left
+    unchanged. ``XYXY`` states are warped corner-wise (see ``CMC.apply_batch``).
+
+    Args:
+        states: ``(N, dim)`` state vectors.
+        covariances: ``(N, dim, dim)`` state covariances.
+        affine_mtx: 2x3 affine transform returned by ``CMC.estimate()``.
+        is_xyxy: Whether the states use the ``XYXY`` layout.
+
+    Returns:
+        Transformed ``(states, covariances)``; the inputs are modified in place
+            where possible.
+    """
+    rot_mtx = affine_mtx[:2, :2].astype(np.float64)
+    translation = affine_mtx[:2, 2].astype(np.float64)
+    dim = states.shape[1]
+
+    if is_xyxy:
+        # XYXY boxes must remain axis-aligned after CMC. For transforms with
+        # rotation/reflection/shear, applying the affine matrix only to the
+        # top-left and bottom-right corners can invert the box or produce
+        # invalid geometry. Transform all four corners, then rebuild the
+        # enclosing axis-aligned box with per-axis min/max.
+        states[:, 0], states[:, 1], states[:, 2], states[:, 3] = CMC.warp_xyxy_corners(
+            states[:, 0], states[:, 1], states[:, 2], states[:, 3], rot_mtx, translation
+        )
+        # Keep XYXY velocity ordering valid under mixed-axis transforms by
+        # applying the same corner-wise normalization to the paired velocity
+        # components.
+        states[:, 4], states[:, 5], states[:, 6], states[:, 7] = CMC.warp_xyxy_corners(
+            states[:, 4], states[:, 5], states[:, 6], states[:, 7], rot_mtx
+        )
+    else:
+        # Batch-transform centre positions: pos' = pos @ rot_mtx.T + translation
+        states[:, 0:2] = states[:, 0:2] @ rot_mtx.T + translation
+        # Batch-transform centre velocities: vel' = vel @ rot_mtx.T
+        states[:, 4:6] = states[:, 4:6] @ rot_mtx.T
+
+    block_rot = None
+    if is_xyxy:
+        # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
+        # to 1e-6 residuals on off-diagonals even for pure-translation affine_mtx;
+        # default atol=1e-8 misclassifies those as cross-axis transforms.
+        if np.isclose(rot_mtx[0, 1], 0.0, atol=1e-6) and np.isclose(rot_mtx[1, 0], 0.0, atol=1e-6):
+            block_rot = np.eye(dim, dtype=np.float64)
+            block_rot[0:2, 0:2] = rot_mtx
+            block_rot[2:4, 2:4] = rot_mtx
+            block_rot[4:6, 4:6] = rot_mtx
+            block_rot[6:8, 6:8] = rot_mtx
+    else:
+        block_rot = np.eye(dim, dtype=np.float64)
+        block_rot[0:2, 0:2] = rot_mtx
+        block_rot[4:6, 4:6] = rot_mtx
+
+    if block_rot is not None:
+        covariances = block_rot @ covariances @ block_rot.T
+
+    return states, covariances

@@ -1,5 +1,5 @@
 ---
-title: Tune Tracker Hyperparameters — Optuna Guide | Trackers
+title: Tune Tracker Hyperparameters — Optuna Guide
 description: Optimize tracker hyperparameters with the Trackers Tuner class and CLI using Optuna, MOT-format detections, and evaluation metrics like HOTA, MOTA, and IDF1.
 ---
 
@@ -223,11 +223,12 @@ Every trial replays the same detections, so `cache_embeddings=True` embeds each 
         images_dir="./data/images",
         fixed_params={**tuned_motion, "reid_model": encoder},
         n_trials=20,
+        cache_embeddings=True,
     )
     best_params = tuner.run()
     ```
 
-Each detection is embedded once and reused by later trials, so the first trial is the slow one.
+With the cache on, each detection is embedded once and reused by later trials, so the first trial is the slow one.
 
 ---
 

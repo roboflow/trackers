@@ -1,5 +1,5 @@
 ---
-title: ByteTrack — Multi-Object Tracking Algorithm | Trackers
+title: ByteTrack — Multi-Object Tracking Algorithm
 comments: true
 description: ByteTrack improves multi-object tracking by associating every detection box — including low-confidence ones — to reduce missed tracks and fragmentation while maintaining real-time performance.
 ---
@@ -24,8 +24,8 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ## Watch It in Action
 
-<video title="ByteTrack demo video" width="100%" style="aspect-ratio: 16/9;" controls>
-  <source src="https://github.com/user-attachments/assets/9c9736c9-ca78-48b3-b3c4-46d3e904dbb3" type="video/mp4">
+<video title="ByteTrack demo video" width="100%" style="aspect-ratio: 16/9;" controls preload="none" poster="../../assets/bytetrack-demo-poster.webp">
+  <source src="https://github.com/user-attachments/assets/7dfa0326-9b57-422c-899f-4729448bdded" type="video/mp4">
 </video>
 
 ## How does ByteTrack work?

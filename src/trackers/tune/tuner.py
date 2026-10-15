@@ -92,8 +92,9 @@ class Tuner:
     predictions with ``evaluate_mot_sequences``.
 
     When ``fixed_params`` passes a ``reid_model``, search-space entries that
-    require it (BoT-SORT's ReID thresholds) are tuned too, and each detection is
-    embedded once for the whole study rather than once per trial.
+    require it (BoT-SORT's ReID thresholds) are tuned too. With
+    ``cache_embeddings=True``, each detection is then embedded once for the
+    whole study rather than once per trial.
 
     Args:
         tracker_id: Registered tracker identifier (e.g. ``"bytetrack"``).

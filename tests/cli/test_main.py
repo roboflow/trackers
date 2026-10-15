@@ -33,6 +33,7 @@ from trackers.cli.eval import eval_command
 from trackers.cli.track import DEFAULT_TRACKER, track_command
 from trackers.cli.tune import tune_command
 from trackers.core.base import BaseTracker
+from trackers.eval.mot_classes import MOTClassConfig
 
 
 @pytest.fixture()
@@ -509,6 +510,54 @@ class TestCliMigration:
         """Supplying both spellings of one input is an error, not a silent winner."""
         with pytest.raises(ValueError, match="--predictions_dir"):
             _translate_legacy_args(["eval", "--tracker_dir", "old", "--predictions_dir", "new"])
+
+
+class TestEvalClassConfigOption:
+    """``trackers eval --class_config`` parses presets and inline custom class configurations."""
+
+    @pytest.fixture()
+    def eval_parser(self) -> ArgumentParser:
+        """ArgumentParser built from the eval_command() signature."""
+        parser = ArgumentParser(exit_on_error=False)
+        parser.add_function_arguments(eval_command)
+        return parser
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            pytest.param("mot20", "mot20", id="preset"),
+            pytest.param(
+                '{"scored_classes": [1], "distractor_classes": [2, 6]}',
+                MOTClassConfig(scored_classes=(1,), distractor_classes=(2, 6)),
+                id="inline-json-config",
+            ),
+        ],
+    )
+    def test_parses_to_the_value_eval_command_receives(
+        self,
+        eval_parser: ArgumentParser,
+        value: str,
+        expected: str | MOTClassConfig,
+    ) -> None:
+        """A preset name stays a string and inline JSON becomes a MOTClassConfig with tuple fields.
+
+        The option is typed as a ``MOTClassPreset | MOTClassConfig`` union that jsonargparse resolves from the signature
+        when it builds the parser. Instantiating the parsed namespace mirrors what ``CLI`` does before calling
+        ``eval_command``, so a jsonargparse upgrade that stops resolving either branch fails here. Equality with a
+        tuple-built config also pins the JSON lists arriving as tuples.
+        """
+        parsed = eval_parser.instantiate(eval_parser.parse_args(["--class_config", value]))
+
+        assert parsed.class_config == expected
+
+    def test_rejects_an_unknown_preset_naming_the_option(self, eval_parser: ArgumentParser) -> None:
+        """An unknown preset name is a parse error that names ``class_config``.
+
+        A typo such as ``mot21`` must fail when the command line is parsed and point at the offending option, instead of
+        reaching the evaluator or silently falling back to the default MOT17 rules.
+        """
+        with pytest.raises(ArgumentError, match="class_config"):
+            eval_parser.parse_args(["--class_config", "mot21"])
 
 
 class TestListValuedTrackFilters:

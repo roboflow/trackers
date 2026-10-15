@@ -1,5 +1,5 @@
 ---
-title: Code of Conduct — Roboflow Trackers | Trackers
+title: Code of Conduct — Roboflow Trackers
 description: Community standards for Roboflow Trackers — the Contributor Covenant Code of Conduct, enforcement guidelines, and how to report a violation.
 ---
 

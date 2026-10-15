@@ -190,10 +190,16 @@ class SORTTracker(BaseTracker):
             sv.Detections with tracker_id assigned for each detection.
             Unmatched or immature tracks have tracker_id of -1.
 
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
         Warns:
             UserWarning: If ``frame`` is passed but SORT does not perform
                 camera motion compensation (CMC), the frame is ignored.
         """
+        self._validate_detections(detections)
         self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
