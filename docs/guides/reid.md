@@ -22,7 +22,7 @@ BoT-SORT can fuse appearance embeddings with IoU during association. Embeddings 
 pip install "trackers[reid]"
 ```
 
-For extra contents and other options, see the [install guide](install.md).
+The `reid` extra installs the [`reid`](https://github.com/roboflow/re-ID) package, which loads the encoders and brings PyTorch with it. To combine it with other extras, such as `detection` for running a detector from the CLI, or to install with `uv`, see the [install guide](install.md#reid-bot-sort-appearance).
 
 ---
 
