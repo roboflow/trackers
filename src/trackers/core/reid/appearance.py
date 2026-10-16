@@ -186,8 +186,9 @@ def appearance_similarity(
             unit embeddings from :func:`extract_detection_embeddings`.
 
     Returns:
-        Float32 similarity matrix with shape ``(T, N)``. A ``None`` track feature
-        produces an all-zero row.
+        Float32 cosine similarities in ``[-1, 1]`` with shape ``(T, N)``, where
+        higher means more similar. A track without a feature yet gets a row of
+        zeros, so appearance neither helps nor hurts its matches.
 
     Raises:
         ValueError: If detection embeddings are not a finite 2-D matrix, or a
