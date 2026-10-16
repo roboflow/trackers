@@ -73,11 +73,11 @@ For the model catalog and fine-tuning, see the [`reid` training guide](https://g
 
 ## Choosing an appearance threshold
 
-BoT-SORT fuses costs as `min(d_iou, d_app)` with `d_app = 0.5 * (1 - cos_sim)`, and discards the appearance term when `d_app` exceeds `reid_appearance_threshold` (paper default 0.25) or when the pair fails the `reid_proximity_threshold` IoU gate. Appearance can therefore only lower a pair's cost, never veto a geometric match. Pick θ on a labeled split with the encoder you will track with:
+BoT-SORT fuses costs as `min(d_iou, d_app)` with `d_app = 0.5 * (1 - cos_sim)`, and discards the appearance term when `d_app` exceeds `reid_appearance_threshold` (paper default 0.25) or when the pair fails the `reid_proximity_threshold` IoU gate. Appearance can therefore only lower a pair's cost, never veto a geometric match. Pick $\theta$ on a labeled split with the encoder you will track with:
 
 1. Embed GT crops.
 2. Histogram `d_app` for association-local pairs: same video only, with frame gap bounded by the lost-track horizon (default 30 frames). Positives are same-ID; negatives are different-ID that could co-compete. Sample both classes with the same per-sequence quota, otherwise one crowded sequence decides the answer.
-3. Choose θ so most same-ID pairs fall below it and most different-ID pairs fall above it.
+3. Choose $\theta$ so most same-ID pairs fall below it and most different-ID pairs fall above it.
 
 All three steps ship with Trackers, so you can run them on your own footage. `extract_ground_truth_embeddings` reads any MOT-format dataset, meaning a `gt/gt.txt` and an `img1` folder per sequence, and returns each crop's embedding alongside the identity, frame and sequence it came from:
 
@@ -99,11 +99,11 @@ plot_appearance_distances(distances, thresholds={0.20: "selected", 0.25: "defaul
 
 See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full signatures. The figures on this page were produced with these helpers on MOT17 val and SoccerNet test ground truth. To reproduce them end to end, from download to calibrated threshold, open the [ReID cookbook](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb) in Colab.
 
-**MOT17 val, `fastreid_mot17_sbs50`.** Same-ID distances peak near 0 and different-ID near 0.4. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 keeps 68% of same-ID pairs while passing 1.1% of different-ID pairs. Raising θ to the BoT-SORT default 0.25 recovers same-ID pairs (79%) but nearly triples the different-ID pairs it admits (2.9%), which is why 0.2 is the better operating point here ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8 uses the same threshold).
+**MOT17 val, `fastreid_mot17_sbs50`.** Same-ID distances peak near 0 and different-ID near 0.4. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), $\theta = 0.2$ keeps 68% of same-ID pairs while passing 1.1% of different-ID pairs. Raising $\theta$ to the BoT-SORT default 0.25 recovers same-ID pairs (79%) but nearly triples the different-ID pairs it admits (2.9%), which is why 0.2 is the better operating point here ([MOT17 re-ID study](https://www-sop.inria.fr/members/Francois.Bremond/Postscript/Tomasz__SCCAI_2025.pdf) Table 8 uses the same threshold).
 
 ![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.png)
 
-**SoccerNet test, `osnet_x1_0_msmt17_combineall`.** A pedestrian encoder on soccer footage squeezes every distance into a narrow range: same-ID pairs peak near 0.05 and different-ID pairs near 0.20 (similar kits). The two shapes still separate, but the scale no longer matches the thresholds BoT-SORT was tuned with. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), θ=0.2 admits 96% of same-ID pairs but also 49% of different-ID pairs, and tracking stays flat against CMC-only. θ=0.1 holds different-ID pairs to 9%, yet appearance still assists a mix of correct and same-kit pairs and costs HOTA and IDF1 (see the SoccerNet table below). Calibrate θ on your own domain rather than carrying 0.2 or 0.25 across.
+**SoccerNet test, `osnet_x1_0_msmt17_combineall`.** A pedestrian encoder on soccer footage squeezes every distance into a narrow range: same-ID pairs peak near 0.05 and different-ID pairs near 0.20 (similar kits). The two shapes still separate, but the scale no longer matches the thresholds BoT-SORT was tuned with. On association-local GT crop pairs (5000 same-ID, 10000 different-ID, frame gap 1 to 30), $\theta = 0.2$ admits 96% of same-ID pairs but also 49% of different-ID pairs, and tracking stays flat against CMC-only. $\theta = 0.1$ holds different-ID pairs to 9%, yet appearance still assists a mix of correct and same-kit pairs and costs HOTA and IDF1 (see the SoccerNet table below). Calibrate $\theta$ on your own domain rather than carrying 0.2 or 0.25 across.
 
 ![OSNet MSMT17 on SoccerNet test GT](../assets/reid/soccernet-osnet-appearance-distances.png)
 
@@ -122,7 +122,7 @@ plot_frame_gap_sweep(sweep, thresholds={0.20: "selected", 0.25: "default"})
 
 On MOT17 val, different-ID distances barely move with the gap: the median stays near 0.41 and the 10th percentile near 0.31 from a 1-frame gap out to 240 frames. Same-ID distances spread steadily, from a median of 0.04 at a 1-frame gap to 0.20 across the 16 to 30 band and 0.28 beyond 120 frames.
 
-ROC AUC below is the chance that a random same-ID pair scores closer than a random different-ID pair: 1.0 means the two never cross, 0.5 means appearance carries no information, and its complement is how often a same-ID pair sits farther apart than a different-ID one. It is the area under the curve traced by sweeping θ from 0 to 1 and plotting the two rates next to it, so it summarises every threshold instead of the single one we ship.
+ROC AUC below is the chance that a random same-ID pair scores closer than a random different-ID pair: 1.0 means the two never cross, 0.5 means appearance carries no information, and its complement is how often a same-ID pair sits farther apart than a different-ID one. It is the area under the curve traced by sweeping $\theta$ from 0 to 1 and plotting the two rates next to it, so it summarises every threshold instead of the single one we ship.
 
 It is not the area where the shaded bands cross in the figure. That is two percentile ranges intersecting, which ignores where the mass sits and which side is closer; at a 1-frame gap the bands never touch yet the AUC is 0.998 rather than 1.0. The two rates beside it evaluate the default 0.25 and the 0.2 this page argues for, rather than deriving a third.
 
@@ -138,8 +138,8 @@ It is not the area where the shaded bands cross in the figure. That is two perce
 
 ![FastReID MOT17 SBS separability vs frame gap](../assets/reid/mot17-fastreid-appearance-distances-vs-gap.png)
 
-Two things follow. First, a threshold validated on adjacent frames says little about re-association: at θ=0.2 appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight θ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `reid_appearance_threshold` with it and re-check the different-ID column.
+Two things follow. First, a threshold validated on adjacent frames says little about re-association: at $\theta = 0.2$ appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight $\theta$ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `reid_appearance_threshold` with it and re-check the different-ID column.
 
-The cross-domain encoder fails differently. On SoccerNet the different-ID rate at θ=0.2 stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, which is why θ has to come down to about 0.1 on this domain instead of being traded against the gap.
+The cross-domain encoder fails differently. On SoccerNet the different-ID rate at $\theta = 0.2$ stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, which is why $\theta$ has to come down to about 0.1 on this domain instead of being traded against the gap.
 
 ![OSNet MSMT17 separability vs frame gap](../assets/reid/soccernet-osnet-appearance-distances-vs-gap.png)
