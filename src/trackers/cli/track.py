@@ -67,7 +67,7 @@ class DetectionOptions:
     api_key: str | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReIDOptions:
     """Appearance ReID settings, for trackers that accept an encoder.
 
