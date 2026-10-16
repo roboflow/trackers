@@ -398,9 +398,8 @@ class BoTSORTTracker(BaseTracker):
         predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
 
         det_embeddings: np.ndarray | None = None
-        if self.reid_model is not None and frame is not None:
-            if len(high_boxes) > 0:
-                det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
+        if self.reid_model is not None and frame is not None and len(high_boxes) > 0:
+            det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
 
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
