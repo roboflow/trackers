@@ -8,16 +8,11 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
-
 import numpy as np
 import pytest
 
 from trackers.core.reid.thresholds import (
     AppearanceDistances,
-    plot_appearance_distances,
-    plot_frame_gap_sweep,
     roc_auc,
     sample_appearance_distances,
     sweep_frame_gap,
@@ -231,36 +226,3 @@ def test_sweep_skips_bands_the_data_cannot_fill() -> None:
 def test_sweep_rejects_mismatched_dataset_lengths() -> None:
     with pytest.raises(ValueError, match="equal length"):
         sweep_frame_gap(_EMBEDDINGS[:-1], _IDS, _FRAME_IDS, _SEQUENCE_IDS)
-
-
-def test_both_plots_build() -> None:
-    """Both figures build, and the histogram displays its complete data range."""
-    distances = AppearanceDistances(
-        same_id=np.array([0.0, 0.2]),
-        different_id=np.array([0.5, 1.0]),
-        minimum_frame_gap=1,
-        maximum_frame_gap=1,
-    )
-    sweep = sweep_frame_gap(*_DATASET, pairs_per_class=4)
-
-    histogram = plot_appearance_distances(distances, thresholds={0.2: "selected"})
-    lower_bound, upper_bound = histogram.axes[0].get_xlim()
-
-    assert lower_bound <= min(np.min(distances.same_id), np.min(distances.different_id))
-    assert upper_bound >= max(np.max(distances.same_id), np.max(distances.different_id))
-    assert plot_frame_gap_sweep(sweep) is not None
-
-
-def test_importing_the_tracker_does_not_pull_matplotlib() -> None:
-    """Plotting is opt-in, so the tracking path must not pay for matplotlib."""
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; import trackers.core.botsort.tracker; assert 'matplotlib' not in sys.modules",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr

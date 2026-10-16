@@ -15,12 +15,10 @@ from trackers.core.reid.appearance import (
 )
 from trackers.core.reid.encoder import ReIDEncoder
 from trackers.core.reid.feature_bank import FeatureBank
+from trackers.core.reid.plots import ThresholdLines, plot_appearance_distances, plot_frame_gap_sweep
 from trackers.core.reid.thresholds import (
     DEFAULT_FRAME_GAP_BANDS,
     AppearanceDistances,
-    ThresholdLines,
-    plot_appearance_distances,
-    plot_frame_gap_sweep,
     roc_auc,
     sample_appearance_distances,
     sweep_frame_gap,

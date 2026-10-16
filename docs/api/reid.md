@@ -68,8 +68,8 @@ plot_frame_gap_sweep(sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids))
 
 ### plot_appearance_distances
 
-::: trackers.core.reid.thresholds.plot_appearance_distances
+::: trackers.core.reid.plots.plot_appearance_distances
 
 ### plot_frame_gap_sweep
 
-::: trackers.core.reid.thresholds.plot_frame_gap_sweep
+::: trackers.core.reid.plots.plot_frame_gap_sweep
