@@ -111,7 +111,7 @@ See the [ReID API reference](../api/reid.md#choosing-a-threshold) for the full s
 
 ## How far the threshold carries
 
-A histogram fixes one frame gap, so it only describes re-association over that horizon. Sweeping the gap shows how long a track can stay lost before appearance stops helping to re-find it. `sweep_frame_gap` repeats the sampling above across widening bands, and `plot_frame_gap_sweep` draws the result:
+To choose `lost_track_buffer`, it helps to see how Re-ID behaves as the frame gap grows. A player's encoded appearance can change over time, so `sweep_frame_gap` samples labeled crop pairs across widening gap bands. It does not simulate dropped frames or occlusions. Plot the results with `plot_frame_gap_sweep`:
 
 ```python
 from trackers.core.reid import plot_frame_gap_sweep, sweep_frame_gap
@@ -120,11 +120,9 @@ sweep = sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids)
 plot_frame_gap_sweep(sweep, thresholds={0.20: "selected", 0.25: "default"})
 ```
 
-On MOT17 val, different-ID distances barely move with the gap: the median stays near 0.41 and the 10th percentile near 0.31 from a 1-frame gap out to 240 frames. Same-ID distances spread steadily, from a median of 0.04 at a 1-frame gap to 0.20 across the 16 to 30 band and 0.28 beyond 120 frames.
+On MOT17 val, the typical appearance difference between two different people stays near 0.41 even at gaps up to 240 frames. For the same person, it grows from 0.04 one frame apart to 0.20 at 16 to 30 frames and 0.28 at 121 to 240 frames. Smaller values mean the crops look more alike, so matching the same person gets harder as the gap grows.
 
-ROC AUC below is the chance that a random same-ID pair scores closer than a random different-ID pair: 1.0 means the two never cross, 0.5 means appearance carries no information, and its complement is how often a same-ID pair sits farther apart than a different-ID one. It is the area under the curve traced by sweeping $\theta$ from 0 to 1 and plotting the two rates next to it, so it summarises every threshold instead of the single one we ship.
-
-It is not the area where the shaded bands cross in the figure. That is two percentile ranges intersecting, which ignores where the mass sits and which side is closer; at a 1-frame gap the bands never touch yet the AUC is 0.998 rather than 1.0. The two rates beside it evaluate the default 0.25 and the 0.2 this page argues for, rather than deriving a third.
+ROC AUC shows how well the encoder separates same-ID from different-ID pairs across all thresholds: 1.0 is perfect separation, while 0.5 is no better than chance. The shaded bands in the plot show where most pair scores fall; AUC uses every pair. The last two columns show the share of each group accepted at the 0.2 threshold.
 
 | Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
 | :--------- | :-----: | :---------------: | :--------------------: |
