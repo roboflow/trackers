@@ -28,4 +28,4 @@ jobs:
         run: uv sync --group dev --extra reid --upgrade-package reid
 
       - name: 🧪 Smoke-test the trackers to reid boundary
-        run: uv run pytest tests/core/test_botsort_reid.py::TestBoTSORTTrackerReID::test_real_reid_model_runs_over_frames -v --tb=short
+        run: uv run pytest -m reid -v --tb=short

@@ -264,6 +264,7 @@ class TestBoTSORTTrackerReID:
         np.testing.assert_allclose(before, after)
 
     @pytest.mark.integration
+    @pytest.mark.reid
     def test_real_reid_model_runs_over_frames(self) -> None:
         """Smoke the ``trackers`` → ``reid`` boundary with a real encoder."""
         import reid
