@@ -1,4 +1,4 @@
-name: ReID Pre-release Compatibility
+name: ReID Compatibility
 
 on:
   schedule:
