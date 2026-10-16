@@ -124,13 +124,6 @@ def extract_ground_truth_embeddings(
         FileNotFoundError: If no sequence under ``dataset_root`` has a
             ``gt/gt.txt``, or a named sequence is missing one.
         ValueError: If no crop survived the filters.
-
-    Examples:
-        >>> from trackers.core.reid import extract_ground_truth_embeddings  # doctest: +SKIP
-        >>>
-        >>> crops = extract_ground_truth_embeddings(  # doctest: +SKIP
-        ...     model, "mot17/val", keep_classes=(1,)
-        ... )
     """
     root = Path(dataset_root)
     names = sorted(p.parent.parent.name for p in root.glob("*/gt/gt.txt")) if sequences is None else list(sequences)
