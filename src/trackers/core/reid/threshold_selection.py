@@ -36,7 +36,7 @@ class AppearanceDistances:
     """Sampled appearance distances for one frame-gap band.
 
     Distances are ``0.5 * (1 - cosine_similarity)``, the term BoT-SORT gates on
-    with ``reid_appearance_threshold``.
+    with ``ReIDConfig.appearance_threshold``.
 
     Attributes:
         same_id: Distances between two crops of the same identity.
@@ -70,10 +70,10 @@ class AppearanceDistances:
 
         A pair counts as accepted at or below the threshold, matching the gate in
         :func:`trackers.core.reid.fusion.fuse_botsort_reid_association`, which discards
-        appearance only once the distance *exceeds* ``reid_appearance_threshold``.
+        appearance only once the distance *exceeds* ``ReIDConfig.appearance_threshold``.
 
         Args:
-            threshold: Candidate ``reid_appearance_threshold``.
+            threshold: Candidate ``ReIDConfig.appearance_threshold``.
 
         Returns:
             ``(same_id_rate, different_id_rate)``: the fraction of same-ID pairs

@@ -6,7 +6,11 @@ description: Python API reference for the ReID encoder protocol, feature bank, a
 
 Requires the `reid` extra (`pip install "trackers[reid]"`, see the [install guide](../guides/install.md)).
 
-This page covers the `ReIDEncoder` protocol, `FeatureBank`, appearance association helpers, and the threshold-selection plots in `trackers.core.reid`. For enabling appearance on BoT-SORT and for benchmark results, see the [ReID appearance guide](../guides/reid.md). Model loading and gallery evaluation are in the standalone [`reid`](https://github.com/roboflow/re-ID) package.
+This page covers `ReIDConfig`, the `ReIDEncoder` protocol, `FeatureBank`, appearance association helpers, and the threshold-selection plots in `trackers.core.reid`. For enabling appearance on BoT-SORT and for benchmark results, see the [ReID appearance guide](../guides/reid.md). Model loading and gallery evaluation are in the standalone [`reid`](https://github.com/roboflow/re-ID) package.
+
+## ReIDConfig
+
+::: trackers.core.reid.config.ReIDConfig
 
 ## ReIDEncoder
 

@@ -11,7 +11,7 @@ BoT-SORT can fuse appearance embeddings with IoU during association. Embeddings 
 
 - How to enable appearance association on BoT-SORT
 - Which parameters control the appearance gate
-- How to pick `reid_appearance_threshold` for your encoder and domain
+- How to pick `ReIDConfig.appearance_threshold` for your encoder and domain
 - What ReID changes on MOT17 and SoccerNet
 
 ---
@@ -33,22 +33,22 @@ The `reid` extra installs the [`reid`](https://github.com/roboflow/re-ID) packag
     ```python
     from reid import ReIDModel
 
-    from trackers import BoTSORTTracker
+    from trackers import BoTSORTTracker, ReIDConfig
 
     reid_model = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
-    tracker = BoTSORTTracker(reid_model=reid_model, reid_appearance_threshold=0.2)
+    tracker = BoTSORTTracker(reid_model=reid_model, reid_config=ReIDConfig(appearance_threshold=0.2))
     ```
 
 === "CLI"
 
-    `--reid.model` takes a curated alias, an `hf://` URL, or a local path, and enables appearance association on its own. Tracker parameters keep their Python names, so the appearance gate is `--tracker.reid_appearance_threshold`. See the [CLI reference](cli.md) for every argument.
+    `--reid.model` takes a curated alias, an `hf://` URL, or a local path, and enables appearance association on its own. The appearance gate is `--tracker.reid_config.appearance_threshold`. See the [CLI reference](cli.md) for every argument.
 
     ```bash
     trackers track \
         --source <SOURCE_VIDEO_PATH> \
         --tracker botsort \
         --reid.model fastreid_mot17_sbs50 \
-        --tracker.reid_appearance_threshold 0.2 \
+        --tracker.reid_config.appearance_threshold 0.2 \
         --output.video output.mp4
     ```
 
@@ -62,18 +62,18 @@ For the model catalog and fine-tuning, see the [`reid` training guide](https://g
 
 ## Key Parameters
 
-| Parameter                   | Purpose                                                                                                            | Tuning guidance                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `reid_model`                | Appearance encoder queried during association.                                                                     | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                |
-| `reid_ema_alpha`            | EMA momentum for a track's appearance feature.                                                                     | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more. |
-| `reid_appearance_threshold` | Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                        |
-| `reid_proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - reid_proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU. | Default 0.5. Lower restricts how far apart a pair may be before appearance stops contributing.                   |
+| Parameter                          | Purpose                                                                                                                   | Tuning guidance                                                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `reid_model`                       | Appearance encoder queried during association.                                                                            | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                |
+| `reid_config.ema_alpha`            | EMA momentum for a track's appearance feature.                                                                            | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more. |
+| `reid_config.appearance_threshold` | Maximum appearance distance `d_app` for appearance to lower a pair's matching cost.                                       | BoT-SORT paper default 0.25. Calibrate per encoder and domain, see below.                                        |
+| `reid_config.proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - reid_config.proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU. | Default 0.5. Lower restricts how far apart a pair may be before appearance stops contributing.                   |
 
 ---
 
 ## Choosing an appearance threshold
 
-BoT-SORT fuses costs as `min(d_iou, d_app)` with `d_app = 0.5 * (1 - cos_sim)`, and discards the appearance term when `d_app` exceeds `reid_appearance_threshold` (paper default 0.25) or when the pair fails the `reid_proximity_threshold` IoU gate. Appearance can therefore only lower a pair's cost, never veto a geometric match. Pick $\theta$ on a labeled split with the encoder you will track with:
+BoT-SORT fuses costs as `min(d_iou, d_app)` with `d_app = 0.5 * (1 - cos_sim)`, and discards the appearance term when `d_app` exceeds `reid_config.appearance_threshold` (paper default 0.25) or when the pair fails the `reid_config.proximity_threshold` IoU gate. Appearance can therefore only lower a pair's cost, never veto a geometric match. Pick $\theta$ on a labeled split with the encoder you will track with:
 
 1. Embed GT crops.
 2. Histogram `d_app` for association-local pairs: same video only, with frame gap bounded by the lost-track horizon (default 30 frames). Positives are same-ID; negatives are different-ID that could co-compete. Sample both classes with the same per-sequence quota, otherwise one crowded sequence decides the answer.
@@ -136,7 +136,7 @@ ROC AUC shows how well the encoder separates same-ID from different-ID pairs acr
 
 ![FastReID MOT17 SBS separability vs frame gap](../assets/reid/mot17-fastreid-appearance-distances-vs-gap.png)
 
-Two things follow. First, a threshold validated on adjacent frames says little about re-association: at $\theta = 0.2$ appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight $\theta$ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `reid_appearance_threshold` with it and re-check the different-ID column.
+Two things follow. First, a threshold validated on adjacent frames says little about re-association: at $\theta = 0.2$ appearance helps 98% of same-ID pairs one frame apart but only 51% across the default 30-frame lost-track buffer. Second, the price of a tight $\theta$ over long gaps is missed re-associations rather than extra wrong ones, because the different-ID rate stays near 1% throughout. If you raise `lost_track_buffer` to recover tracks after long occlusions, raise `reid_config.appearance_threshold` with it and re-check the different-ID column.
 
 The cross-domain encoder fails differently. On SoccerNet the different-ID rate at $\theta = 0.2$ stays between 44% and 51% at every gap, so the frame gap is not what limits it; the encoder simply cannot separate players in matching kits at any horizon. Widening the gap costs same-ID pairs (99.6% down to 87.0%) without ever making the different-ID side usable, which is why $\theta$ has to come down to about 0.1 on this domain instead of being traded against the gap.
 

@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from trackers.cli.track import DEFAULT_REID_MODEL, ReIDOptions, _load_reid_model, _reid_requested
+from trackers.core.reid.config import ReIDConfig
 
 
 @dataclass
@@ -84,11 +85,11 @@ def tune_command(
             ``hf://`` URL or local path), ``device``, and ``architecture``
             for bare weight files; on the command line, ``--reid.model
             fastreid_mot17_sbs50``. The encoder is loaded once and
-            held fixed, and ``reid_appearance_threshold`` and
-            ``reid_proximity_threshold`` are added to the search. Requires
+            held fixed, and ``reid_config.appearance_threshold`` and
+            ``reid_config.proximity_threshold`` are added to the search. Requires
             ``images_dir``. Default: no encoder.
         search_space: Entries that replace or add to the tracker's search
-            space for this run, e.g. a narrower ``reid_appearance_threshold``
+            space for this run, e.g. a narrower ``reid_config.appearance_threshold``
             range for an encoder whose useful distances are small.
 
     Returns:
@@ -149,7 +150,8 @@ def tune_command(
     if output:
         try:
             output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(json.dumps(best_params, indent=2))
+            serializable = {k: asdict(v) if isinstance(v, ReIDConfig) else v for k, v in best_params.items()}
+            output.write_text(json.dumps(serializable, indent=2))
         except OSError as e:
             print(f"Error writing output: {e}", file=sys.stderr)
             return 1

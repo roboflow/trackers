@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 import supervision as sv
 
-from trackers import ByteTrackTracker
+from trackers import BoTSORTTracker, ByteTrackTracker
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
@@ -486,7 +486,7 @@ class TestTunerReIDSearchSpace:
 
     def test_reid_thresholds_tuned_only_with_encoder(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
-        reid_keys = {"reid_appearance_threshold", "reid_proximity_threshold"}
+        reid_keys = {"reid_config.appearance_threshold", "reid_config.proximity_threshold"}
         without = Tuner("botsort", gt_dir, det_dir, fixed_params={"enable_cmc": False})
         with_encoder = Tuner(
             "botsort", gt_dir, det_dir, images_dir=tmp_path, fixed_params=_reid_fixed_params(_CountingEncoder())
@@ -508,9 +508,22 @@ class TestTunerReIDSearchSpace:
             det_dir,
             images_dir=tmp_path,
             fixed_params=_reid_fixed_params(_CountingEncoder()),
-            search_space={"reid_appearance_threshold": narrow},
+            search_space={"reid_config.appearance_threshold": narrow},
         )
-        assert tuner._tunable_search_space["reid_appearance_threshold"] == narrow
+        assert tuner._tunable_search_space["reid_config.appearance_threshold"] == narrow
+
+    def test_sampled_thresholds_build_reid_config(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner(
+            "botsort", gt_dir, det_dir, images_dir=tmp_path, fixed_params=_reid_fixed_params(_CountingEncoder())
+        )
+        tracker = tuner._build_tracker(
+            {"reid_config.appearance_threshold": 0.12, "reid_config.proximity_threshold": 0.8}
+        )
+        assert isinstance(tracker, BoTSORTTracker)
+        assert tracker.reid_config.appearance_threshold == 0.12
+        assert tracker.reid_config.proximity_threshold == 0.8
+        assert tracker.reid_config.ema_alpha == 0.9
 
     def test_search_space_override_rejects_unknown_key(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)

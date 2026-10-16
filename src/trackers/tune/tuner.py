@@ -11,13 +11,14 @@ from __future__ import annotations
 import hashlib
 import inspect
 import tempfile
+from dataclasses import is_dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, get_args, get_type_hints
 
 import numpy as np
 import supervision as sv
 
-from trackers.core.base import BaseTracker, _validate_search_space_entry
+from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
 from trackers.eval.evaluate import evaluate_mot_sequences
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
@@ -144,7 +145,7 @@ class Tuner:
         search_space: Entries that replace or add to the tracker's
             ``search_space`` for this run, validated the same way. Use it to fit
             a range to your data, e.g.
-            ``{"reid_appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}``
+            ``{"reid_config.appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}``
             for an encoder whose useful distances are small.
         cache_embeddings: Whether to embed each detection once and reuse it across trials
             when ``fixed_params`` passes a ``reid_model``. Every trial replays the same
@@ -240,7 +241,13 @@ class Tuner:
         if search_space:
             init_params = set(inspect.signature(tracker_info.tracker_class.__init__).parameters) - {"self"}
             for name, spec in search_space.items():
-                _validate_search_space_entry(tracker_info.tracker_class.__name__, name, spec, init_params)
+                _validate_search_space_entry(
+                    tracker_info.tracker_class.__name__,
+                    name,
+                    spec,
+                    init_params,
+                    _nested_search_fields(tracker_info.tracker_class),
+                )
             merged_search_space.update(search_space)
         self._search_space: dict[str, dict] = {
             name: spec
@@ -327,7 +334,7 @@ class Tuner:
 
     def _build_tracker(self, trial_params: dict[str, Any]) -> BaseTracker:
         """Instantiate the tracker from sampled and fixed parameters."""
-        params = {**trial_params, **self._fixed_params}
+        params = _assemble_constructor_params(self._tracker_info.tracker_class, {**trial_params, **self._fixed_params})
         if self._cached_reid_model is not None:
             params["reid_model"] = self._cached_reid_model
         return self._tracker_info.tracker_class(**params)
@@ -407,7 +414,9 @@ class Tuner:
                 }
             )
         self.study.optimize(self._objective, n_trials=self._n_trials)
-        return {**dict(self.study.best_params), **self._fixed_params}
+        return _assemble_constructor_params(
+            self._tracker_info.tracker_class, {**dict(self.study.best_params), **self._fixed_params}
+        )
 
 
 def _create_optuna_study(
@@ -430,6 +439,9 @@ def _constructor_defaults(tracker_class: type[BaseTracker], names: list[str]) ->
     signature = inspect.signature(tracker_class.__init__)  # type: ignore[misc]
     defaults: dict[str, Any] = {}
     for name in names:
+        if "." in name:
+            defaults[name] = _nested_default(tracker_class, name)
+            continue
         parameter = signature.parameters.get(name)
         if parameter is None or name == "self":
             raise ValueError(f"Unknown tracker parameter {name!r} for {tracker_class.__name__}")
@@ -444,7 +456,12 @@ def _validate_tracker_init_params(tracker_class: type[BaseTracker], params: dict
     if not params:
         return
     init_params = {n for n in inspect.signature(tracker_class.__init__).parameters if n != "self"}  # type: ignore[misc]
-    unknown = set(params) - init_params
+    nested_fields = _nested_search_fields(tracker_class)
+    unknown = set()
+    for name in params:
+        group, separator, field = name.partition(".")
+        if name not in init_params and (not separator or field not in nested_fields.get(group, set())):
+            unknown.add(name)
     if unknown:
         raise ValueError(
             f"Unknown tracker parameter(s) {sorted(unknown)!r} for {tracker_class.__name__}. "
@@ -473,6 +490,9 @@ def _default_trial_params(
     sig = inspect.signature(tracker_class.__init__)  # type: ignore[misc]
     params: dict[str, Any] = {}
     for name, spec in search_space.items():
+        if "." in name:
+            params[name] = _nested_default(tracker_class, name)
+            continue
         param = sig.parameters.get(name)
         if param is None:
             raise ValueError(f"search_space key {name!r} is not a parameter of {tracker_class.__name__}.__init__")
@@ -482,6 +502,41 @@ def _default_trial_params(
             )
         params[name] = param.default
     return params
+
+
+def _nested_config_type(tracker_class: type[BaseTracker], group: str) -> type:
+    """Resolve a constructor's dataclass option type."""
+    annotation = get_type_hints(tracker_class.__init__)[group]
+    for part in get_args(annotation) or (annotation,):
+        if isinstance(part, type) and is_dataclass(part):
+            return part
+    raise ValueError(f"{group!r} is not a dataclass configuration parameter")
+
+
+def _nested_default(tracker_class: type[BaseTracker], name: str) -> Any:
+    """Resolve the default of a nested dataclass field."""
+    group, _, field = name.partition(".")
+    if field not in _nested_search_fields(tracker_class).get(group, set()):
+        raise ValueError(f"Unknown tracker parameter {name!r} for {tracker_class.__name__}")
+    parameter = inspect.signature(tracker_class.__init__).parameters[group]
+    config = parameter.default if parameter.default is not None else _nested_config_type(tracker_class, group)()
+    return getattr(config, field)
+
+
+def _assemble_constructor_params(tracker_class: type[BaseTracker], params: dict[str, Any]) -> dict[str, Any]:
+    """Combine dotted search values into their constructor config objects."""
+    assembled = dict(params)
+    nested: dict[str, dict[str, Any]] = {}
+    for name in list(assembled):
+        if "." in name:
+            group, _, field = name.partition(".")
+            nested.setdefault(group, {})[field] = assembled.pop(name)
+    for group, overrides in nested.items():
+        config = assembled.get(group)
+        if config is None:
+            config = _nested_config_type(tracker_class, group)()
+        assembled[group] = replace(config, **overrides)
+    return assembled
 
 
 def _discover_sequences(

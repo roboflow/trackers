@@ -13,8 +13,8 @@ import types
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
-from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin
+from dataclasses import dataclass, fields, is_dataclass
+from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin, get_type_hints
 
 import numpy as np
 import supervision as sv
@@ -235,8 +235,26 @@ def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
 _VALID_SPACE_TYPES: frozenset[str] = frozenset({"randint", "uniform", "choice"})
 
 
-def _validate_search_space_entry(cls_name: str, key: str, spec: Any, init_params: set[str]) -> None:
-    if key not in init_params:
+def _nested_search_fields(tracker_class: type[BaseTracker]) -> dict[str, set[str]]:
+    """Return dataclass fields reachable through a tracker's constructor."""
+    try:
+        hints = get_type_hints(tracker_class.__init__)
+    except (NameError, TypeError):
+        return {}
+    return {
+        name: {field.name for field in fields(part)}
+        for name, hint in hints.items()
+        for part in (get_args(hint) or (hint,))
+        if isinstance(part, type) and is_dataclass(part)
+    }
+
+
+def _validate_search_space_entry(
+    cls_name: str, key: str, spec: Any, init_params: set[str], nested_fields: dict[str, set[str]] | None = None
+) -> None:
+    group, separator, field = key.partition(".")
+    valid_nested = bool(separator and field in (nested_fields or {}).get(group, set()))
+    if key not in init_params and not valid_nested:
         raise ValueError(
             f"{cls_name}: search_space key {key!r} is not a "
             f"parameter of __init__. "
@@ -390,7 +408,7 @@ class BaseTracker(ABC):
         if search_space is not None and len(search_space) > 0:
             init_params = {n for n in inspect.signature(cls.__init__).parameters if n != "self"}
             for key, spec in search_space.items():
-                _validate_search_space_entry(cls.__name__, key, spec, init_params)
+                _validate_search_space_entry(cls.__name__, key, spec, init_params, _nested_search_fields(cls))
 
         tracker_id = getattr(cls, "tracker_id", None)
         if tracker_id is not None:

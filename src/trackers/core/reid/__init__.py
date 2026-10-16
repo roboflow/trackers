@@ -13,6 +13,7 @@ from trackers.core.reid.appearance import (
     extract_detection_embeddings,
     extract_ground_truth_embeddings,
 )
+from trackers.core.reid.config import ReIDConfig
 from trackers.core.reid.encoder import ReIDEncoder
 from trackers.core.reid.feature_bank import FeatureBank
 from trackers.core.reid.plots import ThresholdLines, plot_appearance_distances, plot_frame_gap_sweep
@@ -28,6 +29,7 @@ __all__ = [
     "DEFAULT_FRAME_GAP_BANDS",
     "AppearanceDistances",
     "FeatureBank",
+    "ReIDConfig",
     "ReIDEncoder",
     "ThresholdLines",
     "appearance_similarity",

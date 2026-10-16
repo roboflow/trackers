@@ -16,6 +16,7 @@ import pytest
 
 from trackers.cli.track import ReIDOptions
 from trackers.cli.tune import TrackerSelection, tune_command
+from trackers.core.reid.config import ReIDConfig
 
 
 class TestTune:
@@ -106,10 +107,10 @@ class TestTuneReID:
 
     def test_encoder_and_search_space_reach_the_tuner_and_encoder_is_left_out_of_output(self, tmp_path: Path) -> None:
         encoder = object()
-        space = {"reid_appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}
+        space = {"reid_config.appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}
         output_path = tmp_path / "best.json"
         mock_tuner = MagicMock()
-        mock_tuner.run.return_value = {"reid_appearance_threshold": 0.2, "reid_model": encoder}
+        mock_tuner.run.return_value = {"reid_config": ReIDConfig(appearance_threshold=0.2), "reid_model": encoder}
         mock_tuner.study = None
         with (
             patch("trackers.cli.tune._load_reid_model", return_value=encoder),
@@ -128,7 +129,9 @@ class TestTuneReID:
         assert tuner_class.call_args.kwargs["fixed_params"]["reid_model"] is encoder
         assert tuner_class.call_args.kwargs["fixed_defaults"] == ["lost_track_buffer"]
         assert tuner_class.call_args.kwargs["search_space"] == space
-        assert json.loads(output_path.read_text()) == {"reid_appearance_threshold": 0.2}
+        assert json.loads(output_path.read_text()) == {
+            "reid_config": {"ema_alpha": 0.9, "appearance_threshold": 0.2, "proximity_threshold": 0.5}
+        }
 
     def test_returns_1_when_encoder_fails_to_load(self, tmp_path: Path) -> None:
         with patch("trackers.cli.tune._load_reid_model", side_effect=ValueError("Failed to load ReID model: x")):

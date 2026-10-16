@@ -183,7 +183,7 @@ MOT17-09-FRCNN
 
 ## Tune ReID Thresholds
 
-Pass an encoder to BoT-SORT and the search adds `reid_appearance_threshold` and `reid_proximity_threshold`. Tune the two together: a looser proximity gate usually needs a stricter appearance threshold. To search only these two, hold the other search parameters at BoT-SORT's constructor defaults with `fixed_defaults`. `images_dir` is required, because the encoder reads the frames.
+Pass an encoder to BoT-SORT and the search adds `reid_config.appearance_threshold` and `reid_config.proximity_threshold`. Tune the two together: a looser proximity gate usually needs a stricter appearance threshold. To search only these two, hold the other search parameters at BoT-SORT's constructor defaults with `fixed_defaults`. `images_dir` is required, because the encoder reads the frames.
 
 Every trial replays the same detections, so `cache_embeddings=True` embeds each one once and reuses it, which saves most of a study's time. The embeddings then stay in memory for the whole study, about 1 GB per 500k detections, which is why it is off by default.
 
@@ -231,7 +231,7 @@ Every trial replays the same detections, so `cache_embeddings=True` embeds each 
     best_params = tuner.run()
     ```
 
-With the cache on, each detection is embedded once and reused by later trials, so the first trial is the slow one.
+With the cache on, each detection is embedded once and reused by later trials, so the first trial is the slow one. The Python result contains a `ReIDConfig` object and can be passed directly to `BoTSORTTracker`. When loading saved JSON, construct `ReIDConfig(**best_params["reid_config"])` before unpacking it into the tracker.
 
 ---
 
@@ -310,7 +310,7 @@ All arguments accepted by `trackers tune`.
     </tr>
     <tr>
       <td><code>--reid.model</code></td>
-      <td>ReID encoder for BoT-SORT: alias, <code>hf://</code> URL, or local path. Adds <code>reid_appearance_threshold</code> and <code>reid_proximity_threshold</code> to the search. Requires <code>--images_dir</code>. Also accepts <code>--reid.device</code> and <code>--reid.architecture</code>.</td>
+      <td>ReID encoder for BoT-SORT: alias, <code>hf://</code> URL, or local path. Adds <code>reid_config.appearance_threshold</code> and <code>reid_config.proximity_threshold</code> to the search. Requires <code>--images_dir</code>. Also accepts <code>--reid.device</code> and <code>--reid.architecture</code>.</td>
       <td>None</td>
     </tr>
     <tr>

@@ -15,6 +15,7 @@ from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.core.reid.config import ReIDConfig
 from trackers.core.reid.encoder import ReIDEncoder
 from trackers.core.reid.feature_bank import FeatureBank
 from trackers.core.reid.fusion import fuse_botsort_reid_association
@@ -96,15 +97,9 @@ class BoTSORTTracker(BaseTracker):
             association. Pass a ``reid.ReIDModel`` in normal use. Requires
             ``frame`` in :meth:`update`. When ``None`` (default), behaviour
             matches the geometry-only BoT-SORT baseline.
-        reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
-        reid_appearance_threshold: Appearance distance gate. Drops the appearance term
-            when the halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this
-            value, leaving the pair scored on geometry alone. Default ``0.25``
-            (BoT-SORT ``appearance_thresh``).
-        reid_proximity_threshold: Standard-IoU distance gate applied before appearance
-            is used. Computed from true IoU even when ``iou`` is GIoU/DIoU/CIoU.
-            Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires
-            ``IoU >= 1 - reid_proximity_threshold``).
+        reid_config: Appearance association settings. Defaults to
+            :class:`ReIDConfig`. Passing it without ``reid_model`` raises
+            ``ValueError``; the encoder is supplied separately.
 
     Notes:
         - Positive `maximum_frames_without_update` values are scaled by
@@ -133,8 +128,8 @@ class BoTSORTTracker(BaseTracker):
         "high_conf_det_threshold": {"type": "uniform", "range": [0.3, 0.8]},
         "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
         "cmc_downscale": {"type": "randint", "range": [1, 4]},
-        "reid_appearance_threshold": {"type": "uniform", "range": [0.01, 0.5], "requires": "reid_model"},
-        "reid_proximity_threshold": {"type": "uniform", "range": [0.2, 1.0], "requires": "reid_model"},
+        "reid_config.appearance_threshold": {"type": "uniform", "range": [0.01, 0.5], "requires": "reid_model"},
+        "reid_config.proximity_threshold": {"type": "uniform", "range": [0.2, 1.0], "requires": "reid_model"},
     }
 
     def __init__(
@@ -152,9 +147,7 @@ class BoTSORTTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
         reid_model: ReIDEncoder | None = None,
-        reid_ema_alpha: float = 0.9,
-        reid_appearance_threshold: float = 0.25,
-        reid_proximity_threshold: float = 0.5,
+        reid_config: ReIDConfig | None = None,
         *,
         cmc_method: CMCMethod = "sparseOptFlow",
         cmc_downscale: int = 2,
@@ -180,16 +173,10 @@ class BoTSORTTracker(BaseTracker):
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
 
+        if reid_config is not None and reid_model is None:
+            raise ValueError("reid_config requires reid_model; appearance settings have no effect without an encoder.")
         self.reid_model = reid_model
-        if not 0.0 <= reid_ema_alpha <= 1.0:
-            raise ValueError(f"reid_ema_alpha must be in [0, 1], got {reid_ema_alpha}")
-        self.reid_ema_alpha = reid_ema_alpha
-        if not 0.0 <= reid_appearance_threshold <= 1.0:
-            raise ValueError(f"reid_appearance_threshold must be in [0, 1], got {reid_appearance_threshold}")
-        if not 0.0 <= reid_proximity_threshold <= 1.0:
-            raise ValueError(f"reid_proximity_threshold must be in [0, 1], got {reid_proximity_threshold}")
-        self.reid_appearance_threshold = reid_appearance_threshold
-        self.reid_proximity_threshold = reid_proximity_threshold
+        self.reid_config = reid_config if reid_config is not None else ReIDConfig()
 
         self._init_timestamp_state(frame_rate)
 
@@ -554,8 +541,8 @@ class BoTSORTTracker(BaseTracker):
             iou_sim_fused,
             appearance_similarity(track_feats, embeddings, det_embeddings_normalized=True),
             proximity_iou_similarity=proximity_iou,
-            reid_proximity_threshold=self.reid_proximity_threshold,
-            reid_appearance_threshold=self.reid_appearance_threshold,
+            reid_proximity_threshold=self.reid_config.proximity_threshold,
+            reid_appearance_threshold=self.reid_config.appearance_threshold,
         )
 
     def _get_iou_matrix(
@@ -662,7 +649,7 @@ class BoTSORTTracker(BaseTracker):
                     state_estimator_class=self.state_estimator_class,
                 )
                 if self.reid_model is not None:
-                    tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
+                    tracklet.feature_bank = FeatureBank(self.reid_config.ema_alpha)
                     if det_embeddings is not None:
                         tracklet.feature_bank.update(det_embeddings[det_local_idx], normalized=True)
                 if is_first_frame and self.instant_first_frame_activation:

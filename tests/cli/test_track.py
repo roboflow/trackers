@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 import supervision as sv
 
+from trackers.cli._parser import _add_track_arguments, _CLIParser
 from trackers.cli.track import (
     _EXCLUDED_TRACKER_PARAMETERS,
     DetectionOptions,
@@ -41,6 +42,7 @@ from trackers.cli.track import (
 )
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.reid.config import ReIDConfig
 
 
 class TestInitAnnotators:
@@ -536,15 +538,22 @@ class TestReIDOptions:
         assert "reid_model" in _EXCLUDED_TRACKER_PARAMETERS
         assert "reid_model" not in {field.name for field in fields(TrackerOptions)}
 
-    def test_appearance_parameters_stay_cli_reachable(self) -> None:
-        """The three scalar ReID knobs are still generated from the registry."""
+    def test_appearance_parameters_stay_cli_reachable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The Re-ID config is generated from the tracker constructor."""
         option_fields = {field.name for field in fields(TrackerOptions)}
-        assert {
-            "reid_appearance_threshold",
-            "reid_ema_alpha",
-            "reid_proximity_threshold",
-        } <= option_fields
-        assert {"appearance_threshold", "proximity_threshold"}.isdisjoint(option_fields)
+        assert "reid_config" in option_fields
+        assert {"reid_appearance_threshold", "reid_ema_alpha", "reid_proximity_threshold"}.isdisjoint(option_fields)
+        config = ReIDConfig(appearance_threshold=0.2)
+        monkeypatch.setattr("trackers.cli.track._load_reid_model", lambda _: object())
+        tracker = _init_tracker(TrackerOptions(name="botsort", reid_config=config), ReIDOptions(enable=True))
+        assert isinstance(tracker, BoTSORTTracker)
+        assert tracker.reid_config == config
+
+    def test_appearance_config_parses_from_cli(self) -> None:
+        parser = _CLIParser()
+        _add_track_arguments(parser)
+        args = parser.instantiate(parser.parse_args(["--tracker.reid_config.appearance_threshold", "0.2"]))
+        assert args.tracker.reid_config == ReIDConfig(appearance_threshold=0.2)
 
 
 class TestInitTrackerDetectedFrameRate:
