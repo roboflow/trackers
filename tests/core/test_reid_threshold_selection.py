@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from trackers.core.reid.thresholds import (
+from trackers.core.reid.threshold_selection import (
     AppearanceDistances,
     roc_auc,
     sample_appearance_distances,

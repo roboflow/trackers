@@ -14,7 +14,7 @@ import sys
 import numpy as np
 
 from trackers.core.reid.plots import plot_appearance_distances, plot_frame_gap_sweep
-from trackers.core.reid.thresholds import AppearanceDistances, sweep_frame_gap
+from trackers.core.reid.threshold_selection import AppearanceDistances, sweep_frame_gap
 
 # Two sequences, two orthogonal identities, one crop of each in frames 1 to 6.
 _EMBEDDINGS = np.array([[1.0, 0.0], [0.0, 1.0]] * 12, dtype=np.float32)

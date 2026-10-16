@@ -52,19 +52,19 @@ plot_frame_gap_sweep(sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids))
 
 ### AppearanceDistances
 
-::: trackers.core.reid.thresholds.AppearanceDistances
+::: trackers.core.reid.threshold_selection.AppearanceDistances
 
 ### sample_appearance_distances
 
-::: trackers.core.reid.thresholds.sample_appearance_distances
+::: trackers.core.reid.threshold_selection.sample_appearance_distances
 
 ### sweep_frame_gap
 
-::: trackers.core.reid.thresholds.sweep_frame_gap
+::: trackers.core.reid.threshold_selection.sweep_frame_gap
 
 ### roc_auc
 
-::: trackers.core.reid.thresholds.roc_auc
+::: trackers.core.reid.threshold_selection.roc_auc
 
 ### plot_appearance_distances
 
