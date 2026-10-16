@@ -68,15 +68,15 @@ class DetectionOptions:
 
 
 @dataclass(frozen=True)
-class ReIDOptions:
-    """Appearance ReID settings, for trackers that accept an encoder.
+class ReIDModelConfig:
+    """CLI configuration for selecting and loading a Re-ID model.
 
     Requires the ``reid`` extra (``pip install "trackers[reid]"``). BoT-SORT is
     the only tracker that accepts an encoder today.
 
     Attributes:
         enable: Explicitly enable or disable appearance association. When
-            omitted, any non-default ReID option enables it.
+            omitted, any non-default model setting enables it.
         model: Checkpoint source: curated alias, ``hf://`` URL, local path, or
             ``save_pretrained`` directory. Implies enable and cannot be combined
             with an explicit disable. Default alias when omitted:
@@ -161,7 +161,7 @@ _CLI_PARAMETER_RENAMES_REVERSED = {short: long for long, short in _CLI_PARAMETER
 # Tracker registry parameters that never reach the CLI. Both take a live object
 # rather than a value a command line can express: ``mask_manager`` a
 # ``MaskManager``, whose CLI-facing switch is ``enable_mask_manager``, and
-# ``reid_model`` an encoder, built from the ``ReIDOptions`` group instead.
+# ``reid_model`` an encoder, built from the ``ReIDModelConfig`` group instead.
 _EXCLUDED_TRACKER_PARAMETERS = frozenset({"mask_manager", "reid_model"})
 
 
@@ -354,7 +354,7 @@ def track_command(
     detection: DetectionOptions | None = None,
     filters: FilterOptions | None = None,
     tracker: TrackerOptions | None = None,  # type: ignore[valid-type]
-    reid: ReIDOptions | None = None,
+    reid: ReIDModelConfig | None = None,
     output: OutputOptions | None = None,
     display: bool = False,
     show: ShowOptions | None = None,
@@ -384,7 +384,7 @@ def track_command(
     if tracker is None:
         tracker = TrackerOptions()
     if reid is None:
-        reid = ReIDOptions()
+        reid = ReIDModelConfig()
     if output is None:
         output = OutputOptions()
     if show is None:
@@ -771,7 +771,7 @@ def _warn_dropped_tracker_overrides(tracker_id: str, dropped: list[str]) -> None
         )
 
 
-def _reid_requested(reid: ReIDOptions) -> bool:
+def _reid_requested(reid: ReIDModelConfig) -> bool:
     """Whether the command line asked for appearance association.
 
     Raises:
@@ -784,7 +784,7 @@ def _reid_requested(reid: ReIDOptions) -> bool:
     return reid.model is not None or reid.architecture is not None or reid.device != DEFAULT_DEVICE
 
 
-def _load_reid_model(reid: ReIDOptions) -> Any:
+def _load_reid_model(reid: ReIDModelConfig) -> Any:
     """Build the ReID encoder described by ``reid``.
 
     Args:
@@ -825,7 +825,7 @@ def _load_reid_model(reid: ReIDOptions) -> Any:
 
 def _init_tracker(
     params: TrackerOptions | None,  # type: ignore[valid-type]
-    reid: ReIDOptions | None = None,
+    reid: ReIDModelConfig | None = None,
     *,
     detected_frame_rate: float | None = None,
 ) -> BaseTracker:

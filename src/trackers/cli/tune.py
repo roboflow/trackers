@@ -14,7 +14,7 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from trackers.cli.track import DEFAULT_REID_MODEL, ReIDOptions, _load_reid_model, _reid_requested
+from trackers.cli.track import DEFAULT_REID_MODEL, ReIDModelConfig, _load_reid_model, _reid_requested
 from trackers.core.reid.config import ReIDConfig
 
 
@@ -51,7 +51,7 @@ def tune_command(
     enqueue_defaults: bool = True,
     seed: int | None = None,
     output: Path | None = None,
-    reid: ReIDOptions | None = None,
+    reid: ReIDModelConfig | None = None,
     search_space: dict | None = None,
     fixed_defaults: list[str] | None = None,
 ) -> int:

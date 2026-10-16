@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from trackers.cli.track import ReIDOptions
+from trackers.cli.track import ReIDModelConfig
 from trackers.cli.tune import TrackerSelection, tune_command
 from trackers.core.reid.config import ReIDConfig
 
@@ -120,7 +120,7 @@ class TestTuneReID:
                 TrackerSelection(name="botsort"),
                 tmp_path,
                 tmp_path,
-                reid=ReIDOptions(model="fastreid_mot17_sbs50"),
+                reid=ReIDModelConfig(model="fastreid_mot17_sbs50"),
                 search_space=space,
                 fixed_defaults=["lost_track_buffer"],
                 output=output_path,
@@ -136,7 +136,7 @@ class TestTuneReID:
     def test_returns_1_when_encoder_fails_to_load(self, tmp_path: Path) -> None:
         with patch("trackers.cli.tune._load_reid_model", side_effect=ValueError("Failed to load ReID model: x")):
             result = tune_command(
-                TrackerSelection(name="botsort"), tmp_path, tmp_path, reid=ReIDOptions(model="missing")
+                TrackerSelection(name="botsort"), tmp_path, tmp_path, reid=ReIDModelConfig(model="missing")
             )
         assert result == 1
 
