@@ -153,10 +153,12 @@ class TestTunerFixedParams:
                 n_trials=1,
                 enqueue_defaults=False,
                 fixed_params={"frame_rate": 25.0},
+                fixed_defaults=["lost_track_buffer"],
             )
             best = tuner.run()
 
         assert best["frame_rate"] == 25.0
+        assert best["lost_track_buffer"] == 30
 
     def test_raises_when_enable_cmc_without_images(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
@@ -184,6 +186,36 @@ class TestTunerFixedParams:
         assert "lost_track_buffer" in tuner._search_space
         assert "lost_track_buffer" not in tuner._tunable_search_space
         assert tuner._fixed_params["lost_track_buffer"] == 42
+
+    def test_fixed_defaults_use_constructor_values_and_are_not_tuned(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner(
+            "botsort",
+            gt_dir,
+            det_dir,
+            fixed_defaults=["lost_track_buffer", "minimum_iou_threshold_unconfirmed_assoc"],
+            fixed_params={"enable_cmc": False},
+        )
+        assert tuner._fixed_params["lost_track_buffer"] == 30
+        assert tuner._fixed_params["minimum_iou_threshold_unconfirmed_assoc"] == 0.3
+        assert "lost_track_buffer" not in tuner._tunable_search_space
+        assert "minimum_iou_threshold_unconfirmed_assoc" not in tuner._tunable_search_space
+
+    def test_explicit_fixed_param_overrides_fixed_default(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner(
+            "bytetrack",
+            gt_dir,
+            det_dir,
+            fixed_defaults=["lost_track_buffer"],
+            fixed_params={"lost_track_buffer": 42},
+        )
+        assert tuner._fixed_params["lost_track_buffer"] == 42
+
+    def test_fixed_defaults_reject_unknown_name(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        with pytest.raises(ValueError, match="Unknown tracker parameter"):
+            Tuner("bytetrack", gt_dir, det_dir, fixed_defaults=["not_a_param"])
 
 
 class TestTunerInit:

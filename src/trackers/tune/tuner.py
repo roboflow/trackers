@@ -124,6 +124,10 @@ class Tuner:
             key. Use for options you do not want tuned, e.g.
             ``{"enable_cmc": False}`` or ``{"lost_track_buffer": 30}``.
             Keys in ``fixed_params`` are not sampled by Optuna.
+        fixed_defaults: Tracker ``__init__`` parameter names held at their
+            constructor defaults for every trial, e.g. ``["lost_track_buffer"]``.
+            These names are not sampled by Optuna and are included in the result.
+            An explicit value in ``fixed_params`` takes priority.
         images_dir: Optional MOT-style image root. When set, frames are loaded
             from ``{images_dir}/{sequence}/img1/`` using 6- or 8-digit MOT
             stems (and common image extensions) and passed to
@@ -201,6 +205,7 @@ class Tuner:
         seqmap: str | Path | None = None,
         search_space: dict[str, dict] | None = None,
         cache_embeddings: bool = False,
+        fixed_defaults: list[str] | None = None,
     ) -> None:
         try:
             import optuna as _optuna
@@ -225,7 +230,10 @@ class Tuner:
 
         self._tracker_id = tracker_id
         self._tracker_info = tracker_info
-        self._fixed_params = dict(fixed_params) if fixed_params else {}
+        self._fixed_params = {
+            **_constructor_defaults(tracker_info.tracker_class, fixed_defaults or []),
+            **(fixed_params or {}),
+        }
         _validate_tracker_init_params(self._tracker_info.tracker_class, self._fixed_params)
 
         merged_search_space = dict(class_search_space)
@@ -415,6 +423,20 @@ def _create_optuna_study(
     if seed is not None:
         kwargs["sampler"] = optuna_module.samplers.TPESampler(seed=seed)
     return optuna_module.create_study(**kwargs)
+
+
+def _constructor_defaults(tracker_class: type[BaseTracker], names: list[str]) -> dict[str, Any]:
+    """Resolve named tracker parameters to their ``__init__`` defaults."""
+    signature = inspect.signature(tracker_class.__init__)  # type: ignore[misc]
+    defaults: dict[str, Any] = {}
+    for name in names:
+        parameter = signature.parameters.get(name)
+        if parameter is None or name == "self":
+            raise ValueError(f"Unknown tracker parameter {name!r} for {tracker_class.__name__}")
+        if parameter.default is inspect.Parameter.empty:
+            raise ValueError(f"Tracker parameter {name!r} has no constructor default")
+        defaults[name] = parameter.default
+    return defaults
 
 
 def _validate_tracker_init_params(tracker_class: type[BaseTracker], params: dict[str, Any]) -> None:

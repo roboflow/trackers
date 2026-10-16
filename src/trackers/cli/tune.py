@@ -52,6 +52,7 @@ def tune_command(
     output: Path | None = None,
     reid: ReIDOptions | None = None,
     search_space: dict | None = None,
+    fixed_defaults: list[str] | None = None,
 ) -> int:
     """Tune tracker hyperparameters using Optuna.
 
@@ -70,6 +71,8 @@ def tune_command(
         seqmap: Sequence map file listing sequences to evaluate.
         fixed_params: Tracker ``__init__`` kwargs held constant across all
             trials (e.g. ``{"enable_cmc": False}``).
+        fixed_defaults: Tracker ``__init__`` parameter names held at their
+            constructor defaults across all trials (e.g. ``["lost_track_buffer"]``).
         images_dir: MOT-style image root for frame-based features such as CMC.
             Frames are read from ``{images_dir}/{sequence}/img1/``.
         enqueue_defaults: When ``True`` (default), the first trial evaluates
@@ -117,6 +120,7 @@ def tune_command(
             threshold=threshold,
             seqmap=seqmap,
             fixed_params=fixed_params,
+            fixed_defaults=fixed_defaults,
             images_dir=images_dir,
             enqueue_defaults=enqueue_defaults,
             seed=seed,

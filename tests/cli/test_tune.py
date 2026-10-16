@@ -121,10 +121,12 @@ class TestTuneReID:
                 tmp_path,
                 reid=ReIDOptions(model="fastreid_mot17_sbs50"),
                 search_space=space,
+                fixed_defaults=["lost_track_buffer"],
                 output=output_path,
             )
         assert result == 0
         assert tuner_class.call_args.kwargs["fixed_params"]["reid_model"] is encoder
+        assert tuner_class.call_args.kwargs["fixed_defaults"] == ["lost_track_buffer"]
         assert tuner_class.call_args.kwargs["search_space"] == space
         assert json.loads(output_path.read_text()) == {"reid_appearance_threshold": 0.2}
 
@@ -159,6 +161,7 @@ class TestCliInvocation:
             threshold: float = 0.5,
             seqmap: Path | None = None,
             fixed_params: dict | None = None,
+            fixed_defaults: list[str] | None = None,
             images_dir: Path | None = None,
             enqueue_defaults: bool = True,
             seed: int | None = None,
@@ -175,6 +178,7 @@ class TestCliInvocation:
                     threshold=threshold,
                     seqmap=seqmap,
                     fixed_params=fixed_params,
+                    fixed_defaults=fixed_defaults,
                     images_dir=images_dir,
                     enqueue_defaults=enqueue_defaults,
                     seed=seed,
@@ -205,6 +209,8 @@ class TestCliInvocation:
                 "MOTA",
                 "--n_trials",
                 "50",
+                "--fixed_defaults",
+                '["lost_track_buffer"]',
             ],
             spy,
         )
@@ -215,6 +221,7 @@ class TestCliInvocation:
         assert spy[0]["detections_dir"] == det_dir
         assert spy[0]["objective"] == "MOTA"
         assert spy[0]["n_trials"] == 50
+        assert spy[0]["fixed_defaults"] == ["lost_track_buffer"]
 
     @pytest.mark.parametrize(
         "flag,arg_value,attr,expected",
