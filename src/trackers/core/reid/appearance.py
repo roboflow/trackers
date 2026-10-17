@@ -124,13 +124,6 @@ def extract_ground_truth_embeddings(
         FileNotFoundError: If no sequence under ``dataset_root`` has a
             ``gt/gt.txt``, or a named sequence is missing one.
         ValueError: If no crop survived the filters.
-
-    Examples:
-        >>> from trackers.core.reid import extract_ground_truth_embeddings  # doctest: +SKIP
-        >>>
-        >>> crops = extract_ground_truth_embeddings(  # doctest: +SKIP
-        ...     model, "mot17/val", keep_classes=(1,)
-        ... )
     """
     root = Path(dataset_root)
     names = sorted(p.parent.parent.name for p in root.glob("*/gt/gt.txt")) if sequences is None else list(sequences)
@@ -193,8 +186,9 @@ def appearance_similarity(
             unit embeddings from :func:`extract_detection_embeddings`.
 
     Returns:
-        Float32 similarity matrix with shape ``(T, N)``. A ``None`` track feature
-        produces an all-zero row.
+        Float32 cosine similarities in ``[-1, 1]`` with shape ``(T, N)``, where
+        higher means more similar. A track without a feature yet gets a row of
+        zeros, so appearance neither helps nor hurts its matches.
 
     Raises:
         ValueError: If detection embeddings are not a finite 2-D matrix, or a

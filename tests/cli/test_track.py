@@ -18,11 +18,12 @@ import numpy as np
 import pytest
 import supervision as sv
 
+from trackers.cli._parser import _add_track_arguments, _CLIParser
 from trackers.cli.track import (
     _EXCLUDED_TRACKER_PARAMETERS,
     DetectionOptions,
     OutputOptions,
-    ReIDOptions,
+    ReIDModelConfig,
     ShowOptions,
     TrackerOptions,
     _abbreviate_parameter_name,
@@ -41,6 +42,7 @@ from trackers.cli.track import (
 )
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.reid.config import ReIDConfig
 
 
 class TestInitAnnotators:
@@ -391,36 +393,36 @@ def fake_reid_module(monkeypatch: pytest.MonkeyPatch) -> type[_FakeReIDModel]:
     return _FakeReIDModel
 
 
-class TestReIDOptions:
+class TestReIDModelConfig:
     """CLI wiring for optional appearance-encoder loading."""
 
     def test_model_source_implies_enable(self) -> None:
         """Naming a checkpoint is enough; --reid.enable is not also required."""
-        assert _reid_requested(ReIDOptions(model="osnet_x1_0_msmt17_combineall"))
+        assert _reid_requested(ReIDModelConfig(model="osnet_x1_0_msmt17_combineall"))
 
     @pytest.mark.parametrize(
         "options",
         [
-            pytest.param(ReIDOptions(architecture="osnet_x1_0"), id="architecture"),
-            pytest.param(ReIDOptions(device="cpu"), id="device"),
+            pytest.param(ReIDModelConfig(architecture="osnet_x1_0"), id="architecture"),
+            pytest.param(ReIDModelConfig(device="cpu"), id="device"),
         ],
     )
-    def test_non_default_options_imply_enable(self, options: ReIDOptions) -> None:
+    def test_non_default_options_imply_enable(self, options: ReIDModelConfig) -> None:
         assert _reid_requested(options)
 
     def test_explicit_disable_conflicts_with_model(self) -> None:
         with pytest.raises(ValueError, match="cannot be combined"):
-            _reid_requested(ReIDOptions(enable=False, model="osnet_x1_0_msmt17_combineall"))
+            _reid_requested(ReIDModelConfig(enable=False, model="osnet_x1_0_msmt17_combineall"))
 
     def test_absent_by_default(self) -> None:
         """Default options leave ReID off, so geometry-only tracking is unchanged."""
-        assert not _reid_requested(ReIDOptions())
+        assert not _reid_requested(ReIDModelConfig())
 
     def test_track_command_rejects_reid_without_source(self, capsys: pytest.CaptureFixture[str]) -> None:
         """The command entry point rejects ReID when MOT input supplies no frames."""
         exit_code = track_command(
             detection=DetectionOptions(mot_file=Path("detections.txt")),
-            reid=ReIDOptions(enable=True),
+            reid=ReIDModelConfig(enable=True),
         )
 
         assert exit_code == 1
@@ -433,7 +435,7 @@ class TestReIDOptions:
         """An encoder together with an explicit disable is a usage error, not a traceback."""
         exit_code = track_command(
             detection=DetectionOptions(mot_file=Path("detections.txt")),
-            reid=ReIDOptions(enable=False, model="fastreid_mot17_sbs50"),
+            reid=ReIDModelConfig(enable=False, model="fastreid_mot17_sbs50"),
         )
 
         assert exit_code == 1
@@ -449,7 +451,7 @@ class TestReIDOptions:
         monkeypatch.setitem(sys.modules, "reid", ModuleType("reid"))
 
         with pytest.raises(ValueError) as exc_info:
-            _load_reid_model(ReIDOptions(enable=True))
+            _load_reid_model(ReIDModelConfig(enable=True))
 
         assert str(exc_info.value) == (
             "ReID tracking requires the optional `trackers[reid]` extra.\nInstall with: pip install 'trackers[reid]'"
@@ -474,13 +476,13 @@ class TestReIDOptions:
         monkeypatch.setattr(fake_reid_module, "from_pretrained", Mock(side_effect=load_error))
 
         with pytest.raises(ValueError, match="Failed to load ReID model: checkpoint unavailable") as exc_info:
-            _load_reid_model(ReIDOptions(enable=True))
+            _load_reid_model(ReIDModelConfig(enable=True))
 
         assert exc_info.value.__cause__ is load_error
 
     def test_encoder_reaches_the_tracker(self, fake_reid_module: type[_FakeReIDModel]) -> None:
         """A requested encoder is injected as the tracker's reid_model."""
-        tracker = _init_tracker(TrackerOptions(name="botsort"), ReIDOptions(enable=True, device="cpu"))
+        tracker = _init_tracker(TrackerOptions(name="botsort"), ReIDModelConfig(enable=True, device="cpu"))
 
         assert isinstance(tracker, BoTSORTTracker)
         assert isinstance(tracker.reid_model, _FakeReIDModel)
@@ -493,7 +495,7 @@ class TestReIDOptions:
 
         _init_tracker(
             TrackerOptions(name="botsort"),
-            ReIDOptions(model=str(weights), device="cpu", architecture="osnet_x1_0"),
+            ReIDModelConfig(model=str(weights), device="cpu", architecture="osnet_x1_0"),
         )
 
         assert fake_reid_module.last_kwargs is not None
@@ -503,12 +505,12 @@ class TestReIDOptions:
     def test_architecture_requires_model(self, fake_reid_module: type[_FakeReIDModel]) -> None:
         """An architecture with no checkpoint to apply it to is rejected."""
         with pytest.raises(ValueError, match=r"--reid\.architecture requires --reid\.model"):
-            _init_tracker(TrackerOptions(name="botsort"), ReIDOptions(enable=True, architecture="osnet_x0_25"))
+            _init_tracker(TrackerOptions(name="botsort"), ReIDModelConfig(enable=True, architecture="osnet_x0_25"))
 
     def test_tracker_without_encoder_support_is_rejected(self, fake_reid_module: type[_FakeReIDModel]) -> None:
         """Requesting ReID on a geometry-only tracker fails loudly."""
         with pytest.raises(ValueError, match=r"--reid\.\* options apply only to a tracker that accepts an encoder"):
-            _init_tracker(TrackerOptions(name="bytetrack"), ReIDOptions(enable=True))
+            _init_tracker(TrackerOptions(name="bytetrack"), ReIDModelConfig(enable=True))
 
     def test_transitive_reid_import_error_is_preserved(self, monkeypatch: pytest.MonkeyPatch) -> None:
         original_import = builtins.__import__
@@ -527,24 +529,31 @@ class TestReIDOptions:
         monkeypatch.setattr(builtins, "__import__", fail_reid_import)
 
         with pytest.raises(ImportError, match="broken_dependency") as exc_info:
-            _load_reid_model(ReIDOptions(enable=True))
+            _load_reid_model(ReIDModelConfig(enable=True))
 
         assert exc_info.value.name == "broken_dependency"
 
     def test_reid_model_is_not_a_cli_flag(self) -> None:
-        """The encoder is built from ReIDOptions, so it must not become a --tracker flag."""
+        """The encoder is built from ReIDModelConfig, so it must not become a --tracker flag."""
         assert "reid_model" in _EXCLUDED_TRACKER_PARAMETERS
         assert "reid_model" not in {field.name for field in fields(TrackerOptions)}
 
-    def test_appearance_parameters_stay_cli_reachable(self) -> None:
-        """The three scalar ReID knobs are still generated from the registry."""
+    def test_appearance_parameters_stay_cli_reachable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The Re-ID config is generated from the tracker constructor."""
         option_fields = {field.name for field in fields(TrackerOptions)}
-        assert {
-            "reid_appearance_threshold",
-            "reid_ema_alpha",
-            "reid_proximity_threshold",
-        } <= option_fields
-        assert {"appearance_threshold", "proximity_threshold"}.isdisjoint(option_fields)
+        assert "reid_config" in option_fields
+        assert {"reid_appearance_threshold", "reid_ema_alpha", "reid_proximity_threshold"}.isdisjoint(option_fields)
+        config = ReIDConfig(appearance_threshold=0.2)
+        monkeypatch.setattr("trackers.cli.track._load_reid_model", lambda _: object())
+        tracker = _init_tracker(TrackerOptions(name="botsort", reid_config=config), ReIDModelConfig(enable=True))
+        assert isinstance(tracker, BoTSORTTracker)
+        assert tracker.reid_config == config
+
+    def test_appearance_config_parses_from_cli(self) -> None:
+        parser = _CLIParser()
+        _add_track_arguments(parser)
+        args = parser.instantiate(parser.parse_args(["--tracker.reid_config.appearance_threshold", "0.2"]))
+        assert args.tracker.reid_config == ReIDConfig(appearance_threshold=0.2)
 
 
 class TestInitTrackerDetectedFrameRate:
@@ -639,7 +648,7 @@ class TestTrackCommandDetectsSourceFrameRate:
 
         def spy_init_tracker(
             params: TrackerOptions | None,  # type: ignore[valid-type]
-            reid: ReIDOptions | None = None,
+            reid: ReIDModelConfig | None = None,
             *,
             detected_frame_rate: float | None = None,
         ) -> BaseTracker:
@@ -670,7 +679,7 @@ class TestTrackCommandDetectsSourceFrameRate:
 
         def spy_init_tracker(
             params: TrackerOptions | None,  # type: ignore[valid-type]
-            reid: ReIDOptions | None = None,
+            reid: ReIDModelConfig | None = None,
             *,
             detected_frame_rate: float | None = None,
         ) -> BaseTracker:

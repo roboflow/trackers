@@ -38,6 +38,8 @@ For each `search_space` key, the baseline uses the tracker's default when it lie
 
 Options that are not tuned (or differ from `__init__`) are set with `fixed_params` on `Tuner`. They apply to every trial, including the baseline, override the same key in `search_space` if present, and are returned from `run()` merged into the best parameter dict.
 
+Use `fixed_defaults` to hold named parameters at their tracker constructor defaults without copying their values. These parameters are also excluded from the search and returned with the best parameters. If a name appears in both, its explicit `fixed_params` value wins.
+
 === "Python"
 
     ```python
@@ -181,7 +183,7 @@ MOT17-09-FRCNN
 
 ## Tune ReID Thresholds
 
-Pass an encoder to BoT-SORT and the search adds `reid_appearance_threshold` and `reid_proximity_threshold`. Tune the two together: a looser proximity gate usually needs a stricter appearance threshold. To keep tuned motion parameters and search only these two, fix everything else. `images_dir` is required, because the encoder reads the frames.
+Pass an encoder to BoT-SORT and the search adds `reid_config.appearance_threshold` and `reid_config.proximity_threshold`. Tune the two together: a looser proximity gate usually needs a stricter appearance threshold. To search only these two, hold the other search parameters at BoT-SORT's constructor defaults with `fixed_defaults`. `images_dir` is required, because the encoder reads the frames.
 
 Every trial replays the same detections, so `cache_embeddings=True` embeds each one once and reuses it, which saves most of a study's time. The embeddings then stay in memory for the whole study, about 1 GB per 500k detections, which is why it is off by default.
 
@@ -194,7 +196,7 @@ Every trial replays the same detections, so `cache_embeddings=True` embeds each 
         --detections_dir ./data/detections \
         --images_dir ./data/images \
         --reid.model fastreid_mot17_sbs50 \
-        --fixed_params '{"lost_track_buffer": 30, "minimum_consecutive_frames": 2, "minimum_iou_threshold_first_assoc": 0.2, "minimum_iou_threshold_second_assoc": 0.5, "minimum_iou_threshold_unconfirmed_assoc": 0.2, "high_conf_det_threshold": 0.5, "track_activation_threshold": 0.6, "cmc_downscale": 2}' \
+        --fixed_defaults '["lost_track_buffer", "minimum_consecutive_frames", "minimum_iou_threshold_first_assoc", "minimum_iou_threshold_second_assoc", "minimum_iou_threshold_unconfirmed_assoc", "high_conf_det_threshold", "track_activation_threshold", "cmc_downscale"]' \
         --n_trials 20
     ```
 
@@ -205,30 +207,31 @@ Every trial replays the same detections, so `cache_embeddings=True` embeds each 
     from trackers.tune import Tuner
 
     encoder = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
-    tuned_motion = {
-        "lost_track_buffer": 30,
-        "minimum_consecutive_frames": 2,
-        "minimum_iou_threshold_first_assoc": 0.2,
-        "minimum_iou_threshold_second_assoc": 0.5,
-        "minimum_iou_threshold_unconfirmed_assoc": 0.2,
-        "high_conf_det_threshold": 0.5,
-        "track_activation_threshold": 0.6,
-        "cmc_downscale": 2,
-    }
+    motion_defaults = [
+        "lost_track_buffer",
+        "minimum_consecutive_frames",
+        "minimum_iou_threshold_first_assoc",
+        "minimum_iou_threshold_second_assoc",
+        "minimum_iou_threshold_unconfirmed_assoc",
+        "high_conf_det_threshold",
+        "track_activation_threshold",
+        "cmc_downscale",
+    ]
 
     tuner = Tuner(
         tracker_id="botsort",
         gt_dir="./data/gt",
         detections_dir="./data/detections",
         images_dir="./data/images",
-        fixed_params={**tuned_motion, "reid_model": encoder},
+        fixed_params={"reid_model": encoder},
+        fixed_defaults=motion_defaults,
         n_trials=20,
         cache_embeddings=True,
     )
     best_params = tuner.run()
     ```
 
-With the cache on, each detection is embedded once and reused by later trials, so the first trial is the slow one.
+With the cache on, each detection is embedded once and reused by later trials, so the first trial is the slow one. The Python result contains a `ReIDConfig` object and can be passed directly to `BoTSORTTracker`. When loading saved JSON, construct `ReIDConfig(**best_params["reid_config"])` before unpacking it into the tracker.
 
 ---
 
@@ -296,13 +299,18 @@ All arguments accepted by `trackers tune`.
       <td>None</td>
     </tr>
     <tr>
+      <td><code>--fixed_defaults</code></td>
+      <td>Tracker constructor parameter names held at their defaults across every trial (JSON list). Explicit <code>fixed_params</code> values take priority.</td>
+      <td>None</td>
+    </tr>
+    <tr>
       <td><code>--images_dir</code></td>
       <td>MOT-style image root for frame-based features such as CMC. Frames are read from <code>{images_dir}/{sequence}/img1/</code>.</td>
       <td>None</td>
     </tr>
     <tr>
       <td><code>--reid.model</code></td>
-      <td>ReID encoder for BoT-SORT: alias, <code>hf://</code> URL, or local path. Adds <code>reid_appearance_threshold</code> and <code>reid_proximity_threshold</code> to the search. Requires <code>--images_dir</code>. Also accepts <code>--reid.device</code> and <code>--reid.architecture</code>.</td>
+      <td>ReID encoder for BoT-SORT: alias, <code>hf://</code> URL, or local path. Adds <code>reid_config.appearance_threshold</code> and <code>reid_config.proximity_threshold</code> to the search. Requires <code>--images_dir</code>. Also accepts <code>--reid.device</code> and <code>--reid.architecture</code>.</td>
       <td>None</td>
     </tr>
     <tr>
