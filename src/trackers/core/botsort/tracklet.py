@@ -6,12 +6,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from trackers.utils.cmc import CMC
 from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.scale_aware_tracklet import ScaleAwareNoiseTracklet
 from trackers.utils.state_representations import BaseStateEstimator, XCYCWHStateEstimator
+
+if TYPE_CHECKING:
+    from trackers.core.reid.feature_bank import FeatureBank
 
 
 class BoTSORTTracklet(ScaleAwareNoiseTracklet):
@@ -43,6 +48,8 @@ class BoTSORTTracklet(ScaleAwareNoiseTracklet):
         # Count initial bbox as first successful update so that
         # number_of_successful_updates starts at 1.
         self.number_of_successful_updates = 1
+        # Optional appearance feature bank, set by BoTSORTTracker when ReID is enabled.
+        self.feature_bank: FeatureBank | None = None
 
     def update(self, bbox: np.ndarray) -> None:
         """Update tracklet with a new observation.

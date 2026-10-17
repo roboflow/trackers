@@ -37,6 +37,7 @@ DEFAULT_MODEL = "rfdetr-nano"
 DEFAULT_TRACKER = "bytetrack"
 DEFAULT_CONFIDENCE = 0.5
 DEFAULT_DEVICE = "auto"
+DEFAULT_REID_MODEL = "fastreid_mot17_sbs50"
 
 # Re-exported: the palette moved to _annotate so that inspect draws tracklets in
 # the same colours, and track's own callers keep importing it from here.
@@ -64,6 +65,32 @@ class DetectionOptions:
     confidence: float = DEFAULT_CONFIDENCE
     device: str = DEFAULT_DEVICE
     api_key: str | None = None
+
+
+@dataclass(frozen=True)
+class ReIDModelConfig:
+    """CLI configuration for selecting and loading a Re-ID model.
+
+    Requires the ``reid`` extra (``pip install "trackers[reid]"``). BoT-SORT is
+    the only tracker that accepts an encoder today.
+
+    Attributes:
+        enable: Explicitly enable or disable appearance association. When
+            omitted, any non-default model setting enables it.
+        model: Checkpoint source: curated alias, ``hf://`` URL, local path, or
+            ``save_pretrained`` directory. Implies enable and cannot be combined
+            with an explicit disable. Default alias when omitted:
+            ``fastreid_mot17_sbs50``.
+        device: ReID compute device: ``auto``, ``cpu``, ``cuda``, ``mps``.
+        architecture: Backbone for bare ``.pth``/``.safetensors`` weights (e.g.
+            ``osnet_x1_0``, ``fastreid_sbs_resnest50``). Required when ``model``
+            points at a bare weights file.
+    """
+
+    enable: bool | None = None
+    model: str | None = None
+    device: str = DEFAULT_DEVICE
+    architecture: str | None = None
 
 
 @dataclass
@@ -131,10 +158,11 @@ _CLI_PARAMETER_ABBREVIATIONS = {"minimum_": "min_", "maximum_": "max_"}
 _CLI_PARAMETER_RENAMES = {"mask_config": "mask"}
 _CLI_PARAMETER_RENAMES_REVERSED = {short: long for long, short in _CLI_PARAMETER_RENAMES.items()}
 
-# Tracker registry parameters that never reach the CLI. ``mask_manager`` takes
-# a live ``MaskManager`` instance, not a value a command line can express;
-# ``enable_mask_manager`` is its CLI-facing switch.
-_EXCLUDED_TRACKER_PARAMETERS = frozenset({"mask_manager"})
+# Tracker registry parameters that never reach the CLI. Both take a live object
+# rather than a value a command line can express: ``mask_manager`` a
+# ``MaskManager``, whose CLI-facing switch is ``enable_mask_manager``, and
+# ``reid_model`` an encoder, built from the ``ReIDModelConfig`` group instead.
+_EXCLUDED_TRACKER_PARAMETERS = frozenset({"mask_manager", "reid_model"})
 
 
 def _abbreviate_parameter_name(name: str) -> str:
@@ -326,6 +354,7 @@ def track_command(
     detection: DetectionOptions | None = None,
     filters: FilterOptions | None = None,
     tracker: TrackerOptions | None = None,  # type: ignore[valid-type]
+    reid: ReIDModelConfig | None = None,
     output: OutputOptions | None = None,
     display: bool = False,
     show: ShowOptions | None = None,
@@ -339,6 +368,8 @@ def track_command(
         filters: Class and track-ID filters applied to detections and tracks.
         tracker: Algorithm ID plus optional parameter overrides; only fields
             matching the chosen tracker's ``__init__`` are forwarded.
+        reid: Appearance ReID encoder options. Requires ``source``, since
+            embeddings are extracted from frames.
         output: Output paths.
         display: Show a live preview window during tracking.
         show: Annotation elements to draw on each frame.
@@ -352,6 +383,8 @@ def track_command(
         filters = FilterOptions()
     if tracker is None:
         tracker = TrackerOptions()
+    if reid is None:
+        reid = ReIDModelConfig()
     if output is None:
         output = OutputOptions()
     if show is None:
@@ -363,6 +396,18 @@ def track_command(
         return 1
     if needs_frames and source is None:
         print("Error: --source is required when using --output.video or --display.", file=sys.stderr)
+        return 1
+    try:
+        reid_requested = _reid_requested(reid)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    if reid_requested and source is None:
+        print(
+            "Error: ReID requires --source (video/webcam/images) so appearance "
+            "embeddings can be extracted from frames.",
+            file=sys.stderr,
+        )
         return 1
 
     if output.video:
@@ -383,6 +428,7 @@ def track_command(
     try:
         tracker_obj = _init_tracker(
             tracker,
+            reid,
             detected_frame_rate=source_info.fps if source_info is not None else None,
         )
     except ValueError as e:
@@ -725,7 +771,64 @@ def _warn_dropped_tracker_overrides(tracker_id: str, dropped: list[str]) -> None
         )
 
 
-def _init_tracker(params: TrackerOptions | None, *, detected_frame_rate: float | None = None) -> BaseTracker:  # type: ignore[valid-type]
+def _reid_requested(reid: ReIDModelConfig) -> bool:
+    """Whether the command line asked for appearance association.
+
+    Raises:
+        ValueError: If a checkpoint is combined with an explicit disable.
+    """
+    if reid.enable is False and reid.model is not None:
+        raise ValueError("--reid.model cannot be combined with --reid.no_enable or --reid.enable false.")
+    if reid.enable is not None:
+        return reid.enable
+    return reid.model is not None or reid.architecture is not None or reid.device != DEFAULT_DEVICE
+
+
+def _load_reid_model(reid: ReIDModelConfig) -> Any:
+    """Build the ReID encoder described by ``reid``.
+
+    Args:
+        reid: Encoder selection and loading options.
+
+    Returns:
+        A ``reid.ReIDModel`` satisfying the ``ReIDEncoder`` protocol.
+
+    Raises:
+        ImportError: If the ``reid`` package is present but one of its imports
+            fails.
+        ValueError: If the ``reid`` extra is not installed, ``architecture`` was
+            given without ``model``, or the checkpoint fails to load.
+    """
+    try:
+        from reid import ReIDModel
+    except ImportError as exc:
+        if exc.name != "reid":
+            raise
+        raise ValueError(
+            "ReID tracking requires the optional `trackers[reid]` extra.\nInstall with: pip install 'trackers[reid]'"
+        ) from exc
+
+    if reid.architecture is not None and reid.model is None:
+        raise ValueError("--reid.architecture requires --reid.model (bare weights need a checkpoint path).")
+
+    load_kwargs: dict[str, Any] = {"device": reid.device, "source": reid.model or DEFAULT_REID_MODEL}
+    if reid.architecture is not None:
+        load_kwargs["architecture"] = reid.architecture
+
+    try:
+        return ReIDModel.from_pretrained(**load_kwargs)
+    except KeyboardInterrupt:
+        raise
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ValueError(f"Failed to load ReID model: {exc}") from exc
+
+
+def _init_tracker(
+    params: TrackerOptions | None,  # type: ignore[valid-type]
+    reid: ReIDModelConfig | None = None,
+    *,
+    detected_frame_rate: float | None = None,
+) -> BaseTracker:
     """Create a tracker instance from the registry.
 
     ``params.name`` selects the algorithm; every other field is a parameter
@@ -736,6 +839,11 @@ def _init_tracker(params: TrackerOptions | None, *, detected_frame_rate: float |
 
     Args:
         params: Tracker selection and parameter overrides.
+        reid: Appearance options. When ReID is requested, the encoder is built
+            here and injected as the ``reid_model`` keyword, mirroring how
+            ``iou_variant`` becomes the ``iou`` keyword. Loading happens after
+            the tracker ID resolves, so a bad ID fails before a checkpoint
+            download.
         detected_frame_rate: Real frame rate read from the source (e.g. via
             ``cv2.VideoCapture(...).get(cv2.CAP_PROP_FPS)``), used to fill in
             ``frame_rate`` for trackers that accept it, when the caller did
@@ -750,7 +858,8 @@ def _init_tracker(params: TrackerOptions | None, *, detected_frame_rate: float |
         Initialised tracker instance.
 
     Raises:
-        ValueError: If ``params.name`` is not registered.
+        ValueError: If ``params.name`` is not registered, the chosen tracker
+            does not accept an encoder, or the encoder fails to load.
     """
     raw = _tracker_options_as_dict(params)
     tracker_id = raw.pop("name", DEFAULT_TRACKER)
@@ -780,6 +889,10 @@ def _init_tracker(params: TrackerOptions | None, *, detected_frame_rate: float |
                 UserWarning,
                 stacklevel=2,
             )
+    if reid is not None and _reid_requested(reid):
+        if "reid_model" not in accepted:
+            raise ValueError(f"--reid.* options apply only to a tracker that accepts an encoder, got '{tracker_id}'.")
+        kwargs["reid_model"] = _load_reid_model(reid)
     return info.tracker_class(**kwargs)
 
 

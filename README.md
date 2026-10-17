@@ -18,6 +18,7 @@
 - **Benchmarked across four datasets.** MOT17, SportsMOT, SoccerNet, and DanceTrack — at default parameters and after hyperparameter tuning (McByte: defaults only, by design), so you know what to expect before you deploy.
 - **Tunable with one extra.** Optuna-based hyperparameter search via `trackers tune` (`pip install "trackers[tune]"`) so you can optimize for your specific scene and detector.
 - **Camera motion compensation.** BoT-SORT and McByte handle moving cameras natively, keeping track IDs stable even when the whole frame shifts.
+- **Optional appearance ReID.** BoT-SORT can fuse visual embeddings with motion for harder association scenes: install `trackers[reid]` (pulls in the [`reid`](https://github.com/roboflow/re-ID) package), pass a `reid.ReIDModel` as `reid_model`, and supply `frame=` to `update()`.
 
 ## Install
 
