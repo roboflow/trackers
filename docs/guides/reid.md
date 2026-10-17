@@ -421,7 +421,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
 ## Speed
 
-ReID runs the encoder on every detection in every frame, so it lowers throughput. The table gives frames per second of `tracker.update` over every sequence of each tuning split, with library defaults, camera motion compensation on, and the provided detections. Detection time is not included. Measured on a Google Colab T4 GPU with a 2-vCPU Intel Xeon @ 2.00GHz.
+ReID runs the encoder on every detection in every frame, so it lowers throughput. The table gives frames per second (FPS) of `tracker.update` over every sequence of each tuning split, with library defaults, camera motion compensation on, and the provided detections. Detection time is not included. Measured on a Google Colab T4 GPU with a 2-vCPU Intel Xeon @ 2.00GHz.
 
 The columns compare BoT-SORT without ReID, with the dataset's fine-tuned `osnet_x1_0_<dataset>`, and with the same `fastreid_mot17_sbs50` on every dataset.
 
