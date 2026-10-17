@@ -432,4 +432,4 @@ The columns compare BoT-SORT without ReID, with the dataset's fine-tuned `osnet_
 | DanceTrack | val      |                        33.8 |                              15.4 |                      10.9 |
 | SoccerNet  | train    |                        32.6 |                              13.2 |                       6.8 |
 
-The fine-tuned OSNet runs at 2.2 to 2.9 times lower FPS than BoT-SORT without ReID, and FastReID, with 11 times the parameters, at 3.1 to 5.1 times lower. MOT17 is the slowest with either encoder.
+With the fine-tuned OSNet, BoT-SORT runs 2.2 to 2.9 times slower than without ReID. With FastReID, it runs 3.1 to 5.1 times slower than without ReID.
