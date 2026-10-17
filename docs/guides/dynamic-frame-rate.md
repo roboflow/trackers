@@ -1,5 +1,5 @@
 ---
-title: Dynamic Frame Rate — Variable-Gap Tracking | Trackers
+title: Dynamic Frame Rate — Variable-Gap Tracking
 description: Track with irregular frame timing by passing timestamps to tracker.update(). Scale Kalman prediction and lost-track pruning to real wall-clock gaps on SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte.
 ---
 

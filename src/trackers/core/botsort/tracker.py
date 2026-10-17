@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import ClassVar, cast, get_args
+from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
@@ -15,10 +15,10 @@ from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.core.reid.config import ReIDConfig
 from trackers.core.reid.encoder import ReIDEncoder
 from trackers.core.reid.feature_bank import FeatureBank
 from trackers.core.reid.fusion import (
-    ReidFusionMethod,
     fuse_adaptive_reid_association,
     fuse_botsort_reid_association,
 )
@@ -62,18 +62,23 @@ class BoTSORTTracker(BaseTracker):
             assigning a stable track ID (different than initial -1).
         minimum_iou_threshold_first_assoc: Minimum fused similarity (IoU x
             detection confidence) to accept a detection-track association during
-            the first association step.
+            the first association step. With a ``reid_model``, appearance can raise
+            a pair's similarity, and this threshold applies to the fused value.
         minimum_iou_threshold_second_assoc: Minimum IoU to accept a
             detection-track association during the second association step.
             No score fusion is applied in this pass, so this is plain IoU.
         minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU x
             score) to accept a match between an unconfirmed track and a remaining
             high-confidence detection.  Corresponds to the original ByteTrack's
-            hardcoded cost threshold of 0.7 (= similarity 0.3).
+            hardcoded cost threshold of 0.7 (= similarity 0.3). With a
+            ``reid_model``, appearance is fused in as in the first step.
         high_conf_det_threshold: Confidence threshold used to split detections into:
             - high confidence: confidence >= threshold
             - low confidence:  confidence < threshold
-        enable_cmc: Whether to enable camera motion compensation (CMC).
+        enable_cmc: Whether to build the internal frame-based camera motion
+            compensation (CMC) estimator, used when ``update()`` receives a
+            ``frame``. A precomputed ``cmc_transform`` passed to ``update()`` is applied
+            regardless of this flag.
         cmc_method: CMC method string passed into `CMCConfig(method=...)`.
             Supported values: "orb", "sift", "sparseOptFlow", "ecc". See CMCConfig.
         cmc_downscale: Downscale factor used inside CMC for speed/robustness.
@@ -95,47 +100,24 @@ class BoTSORTTracker(BaseTracker):
             association. Pass a ``reid.ReIDModel`` in normal use. Requires
             ``frame`` in :meth:`update`. When ``None`` (default), behaviour
             matches the geometry-only BoT-SORT baseline.
-        reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
-        reid_appearance_threshold: Appearance distance gate. Drops the appearance term
-            when the halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this
-            value, leaving the pair scored on geometry alone. Default ``0.25``
-            (BoT-SORT ``appearance_thresh``). Used by ``reid_fusion="botsort"``
-            only.
-        reid_proximity_threshold: Standard-IoU distance gate applied before appearance
-            is used. Computed from true IoU even when ``iou`` is GIoU/DIoU/CIoU.
-            Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires
-            ``IoU >= 1 - reid_proximity_threshold``).
-        reid_fusion: How appearance is combined with geometry. ``"botsort"``
-            (default) takes the minimum of the geometry and appearance costs.
-            ``"adaptive"`` adds an adaptively weighted appearance term, which
-            weighs appearance more heavily when the best match stands clear of
-            the runner-up (see
-            :func:`~trackers.core.reid.fusion.fuse_adaptive_reid_association`).
-            The two produce different similarity ranges, so the thresholds applied
-            to a fused similarity need retuning when switching:
-            ``minimum_iou_threshold_first_assoc`` and
-            ``minimum_iou_threshold_unconfirmed_assoc``.
-            ``minimum_iou_threshold_second_assoc`` is unaffected, since that step
-            matches on IoU alone.
-        reid_appearance_weight: Base appearance weight for ``reid_fusion="adaptive"``.
-            Ignored otherwise. Default ``0.75``, the value Deep OC-SORT reports
-            for MOT17 and MOT20; they use ``1.25`` for DanceTrack.
-        reid_adaptive_weight_cap: Upper bound on the adaptive appearance bonus for
-            ``reid_fusion="adaptive"``. Ignored otherwise. Default ``0.5``, the value
-            Deep OC-SORT reports for MOT17 and MOT20; they use ``1.0`` for DanceTrack.
-        reid_appearance_floor: Minimum cosine similarity for appearance to contribute
-            when ``reid_fusion="adaptive"``. Ignored otherwise. Below the floor a pair
-            is scored on geometry alone, so a lost track cannot capture a detection on
-            a weak appearance match. Default ``0.0`` (disabled, the Deep OC-SORT
-            reference behaviour; see
-            :func:`~trackers.core.reid.fusion.fuse_adaptive_reid_association`).
+        reid_config: Appearance association and fusion settings. Defaults to
+            :class:`ReIDConfig`. Passing it without ``reid_model`` raises
+            ``ValueError``; the encoder is supplied separately. The default
+            appearance threshold is ``0.25`` with ``fusion="botsort"``; the
+            adaptive appearance floor defaults to ``0.0`` (disabled).
 
     Notes:
         - Positive `maximum_frames_without_update` values are scaled by
           ``frame_rate`` and rounded up to at least one missed frame. Explicit
           zero-buffer configurations remain zero.
-        - When CMC or ReID is enabled, pass the current video frame via the
-          ``frame`` argument of :meth:`update`.
+        - Camera motion compensation in :meth:`update` takes its transform from
+          one of two alternatives: the current video frame via ``frame``
+          (estimated internally, requires ``enable_cmc=True``) or a precomputed
+          2x3 affine via the keyword-only ``cmc_transform`` (applied regardless of
+          ``enable_cmc``). Passing both raises ``ValueError``; passing neither
+          skips CMC for that step.
+        - When ReID is enabled, also pass the current video frame via ``frame``:
+          appearance embeddings are extracted from it.
     """
 
     tracker_id = "botsort"
@@ -151,8 +133,8 @@ class BoTSORTTracker(BaseTracker):
         "high_conf_det_threshold": {"type": "uniform", "range": [0.3, 0.8]},
         "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
         "cmc_downscale": {"type": "randint", "range": [1, 4]},
-        "reid_appearance_threshold": {"type": "uniform", "range": [0.01, 0.5], "requires": "reid_model"},
-        "reid_proximity_threshold": {"type": "uniform", "range": [0.2, 1.0], "requires": "reid_model"},
+        "reid_config.appearance_threshold": {"type": "uniform", "range": [0.01, 0.5], "requires": "reid_model"},
+        "reid_config.proximity_threshold": {"type": "uniform", "range": [0.2, 1.0], "requires": "reid_model"},
     }
 
     def __init__(
@@ -166,19 +148,14 @@ class BoTSORTTracker(BaseTracker):
         minimum_iou_threshold_unconfirmed_assoc: float = 0.3,
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
-        cmc_method: CMCMethod = "sparseOptFlow",
-        cmc_downscale: int = 2,
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
         reid_model: ReIDEncoder | None = None,
-        reid_ema_alpha: float = 0.9,
-        reid_appearance_threshold: float = 0.25,
-        reid_proximity_threshold: float = 0.5,
-        reid_fusion: ReidFusionMethod = "botsort",
-        reid_appearance_weight: float = 0.75,
-        reid_adaptive_weight_cap: float = 0.5,
-        reid_appearance_floor: float = 0.0,
+        reid_config: ReIDConfig | None = None,
+        *,
+        cmc_method: CMCMethod = "sparseOptFlow",
+        cmc_downscale: int = 2,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
             lost_track_buffer=lost_track_buffer,
@@ -201,38 +178,66 @@ class BoTSORTTracker(BaseTracker):
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
 
+        if reid_config is not None and reid_model is None:
+            raise ValueError("reid_config requires reid_model; appearance settings have no effect without an encoder.")
         self.reid_model = reid_model
-        if not 0.0 <= reid_ema_alpha <= 1.0:
-            raise ValueError(f"reid_ema_alpha must be in [0, 1], got {reid_ema_alpha}")
-        self.reid_ema_alpha = reid_ema_alpha
-        if not 0.0 <= reid_appearance_threshold <= 1.0:
-            raise ValueError(f"reid_appearance_threshold must be in [0, 1], got {reid_appearance_threshold}")
-        if not 0.0 <= reid_proximity_threshold <= 1.0:
-            raise ValueError(f"reid_proximity_threshold must be in [0, 1], got {reid_proximity_threshold}")
-        self.reid_appearance_threshold = reid_appearance_threshold
-        self.reid_proximity_threshold = reid_proximity_threshold
-        if reid_fusion not in get_args(ReidFusionMethod):
-            raise ValueError(f"Unknown reid_fusion {reid_fusion!r}. Valid options are: {get_args(ReidFusionMethod)}.")
-        if not np.isfinite(reid_appearance_weight) or reid_appearance_weight < 0.0:
-            raise ValueError(f"reid_appearance_weight must be finite and non-negative, got {reid_appearance_weight}")
-        if not np.isfinite(reid_adaptive_weight_cap) or reid_adaptive_weight_cap < 0.0:
-            raise ValueError(
-                f"reid_adaptive_weight_cap must be finite and non-negative, got {reid_adaptive_weight_cap}"
-            )
-        if not 0.0 <= reid_appearance_floor <= 1.0:
-            raise ValueError(f"reid_appearance_floor must be in [0, 1], got {reid_appearance_floor}")
-        self.reid_fusion = reid_fusion
-        self.reid_appearance_weight = reid_appearance_weight
-        self.reid_adaptive_weight_cap = reid_adaptive_weight_cap
-        self.reid_appearance_floor = reid_appearance_floor
+        self.reid_config = reid_config if reid_config is not None else ReIDConfig()
 
         self._init_timestamp_state(frame_rate)
+
+    @staticmethod
+    def _validate_cmc_matrix(cmc_transform: np.ndarray) -> np.ndarray:
+        """Check a precomputed camera-motion transform before any tracker state changes.
+
+        ``update()`` calls this before predict, so a rejected ``cmc_transform`` leaves tracks,
+        IDs and the timestamp anchor untouched (same contract as
+        ``_validate_detections``).
+
+        Args:
+            cmc_transform: Value passed to ``update(cmc_transform=...)``. Must be a real-valued
+                ``(2, 3)`` affine transform mapping previous-frame to current-frame
+                pixel coordinates, the same convention as ``CMC.estimate()``.
+
+        Returns:
+            The transform as a new ``float64`` array of shape ``(2, 3)``.
+
+        Raises:
+            ValueError: If ``cmc_transform`` is not a real-valued numeric array, does not
+                have shape ``(2, 3)`` (3x3 homographies are rejected), or contains
+                NaN or inf.
+
+        Example:
+            >>> import numpy as np
+            >>> shift = np.array([[1, 0, 5], [0, 1, -2]])
+            >>> BoTSORTTracker._validate_cmc_matrix(shift).tolist()
+            [[1.0, 0.0, 5.0], [0.0, 1.0, -2.0]]
+        """
+        try:
+            matrix = np.asarray(cmc_transform)
+        except ValueError as exc:
+            raise ValueError(
+                f"cmc_transform must be a numeric array of shape (2, 3); conversion failed: {exc}"
+            ) from exc
+        if matrix.dtype.kind not in "iuf":
+            raise ValueError(f"cmc_transform must contain real numbers, got dtype {matrix.dtype}")
+        if matrix.shape != (2, 3):
+            hint = (
+                "; 3x3 homographies are not accepted, pass the per-frame previous-to-current 2x3 affine"
+                if matrix.shape == (3, 3)
+                else ""
+            )
+            raise ValueError(f"cmc_transform must have shape (2, 3), got {matrix.shape}{hint}")
+        if not np.isfinite(matrix).all():
+            raise ValueError("cmc_transform contains non-finite values (NaN or inf)")
+        return matrix.astype(np.float64)
 
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
         timestamp: float | None = None,
+        *,
+        cmc_transform: np.ndarray | None = None,
     ) -> sv.Detections:
         """
         Update the tracker with detections from the current frame.
@@ -245,14 +250,28 @@ class BoTSORTTracker(BaseTracker):
                 recommended. This method does not mutate the input detections;
                 it returns a new ``sv.Detections`` with ``tracker_id`` assigned.
             frame: Current video frame in BGR format (H, W, 3), or ``None``.
-                Used for camera motion compensation when ``enable_cmc=True``.
+                When given and ``enable_cmc=True``, the internal CMC estimator
+                computes the camera motion from it. Mutually exclusive with
+                ``cmc_transform``.
             timestamp: Absolute time of the current frame in seconds, or ``None``
                 for fixed-rate mode (``frame_step = 1.0`` per call).
+            cmc_transform: Keyword-only precomputed camera-motion transform for this
+                step, or ``None``. A ``(2, 3)`` affine matrix mapping
+                previous-frame to current-frame pixel coordinates (original image
+                scale), the same convention as ``CMC.estimate()``. Applied
+                regardless of ``enable_cmc``. Mutually exclusive with ``frame``.
 
         Returns:
             New sv.Detections with tracker_id assigned for each detection.
             Confirmed tracks have tracker_id >= 0; unconfirmed tracks have
             tracker_id of -1.
+
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf, if both
+                ``frame`` and ``cmc_transform`` are given, or if ``cmc_transform`` is not a
+                finite real-valued ``(2, 3)`` matrix. All checks run before any
+                tracker state is advanced, so a failed call leaves the tracker
+                unchanged.
 
         Warns:
             UserWarning: If ``timestamp`` is earlier than the previous call
@@ -262,15 +281,36 @@ class BoTSORTTracker(BaseTracker):
                 the last state.
 
         Notes:
-            - If CMC or ReID is enabled, pass the current video frame via ``frame``
-              so the tracker can estimate a global affine transform and/or extract
-              appearance embeddings before association. When ``frame=None`` and
-              ``enable_cmc=True``, CMC is silently skipped for that step; ReID
-              requires ``frame`` and raises when it is ``None``.
+            - Camera motion compensation (CMC) warps predicted track states before
+              association. The transform comes from one of two alternatives: pass
+              the current video frame via ``frame`` so the internal estimator
+              (built when ``enable_cmc=True``) computes it, or pass a precomputed
+              transform via ``cmc_transform``, which is applied regardless of
+              ``enable_cmc``.
+            - Passing both ``frame`` and ``cmc_transform`` raises ``ValueError``. When both
+              are ``None``, CMC is silently skipped for that step; ``frame`` alone
+              is also ignored when ``enable_cmc=False``.
+            - ``cmc_transform`` is a per-frame ``(2, 3)`` affine mapping previous-frame to
+              current-frame pixel coordinates, the convention of
+              ``CMC.estimate()``. A 3x3 homography, such as the cumulative one
+              emitted by ``MotionEstimator``, is rejected.
+            - Applying ``cmc_transform`` resets the internal estimator, so switching back
+              to ``frame`` re-initializes it (one uncompensated step) instead of
+              compensating the externally handled motion twice.
+            - If ``reid_model`` is set, ``frame`` is required: appearance
+              embeddings are extracted from it, and ``update()`` raises when it
+              is ``None``.
         """
+        self._validate_detections(detections)
+        if frame is not None and cmc_transform is not None:
+            raise ValueError(
+                "update() received both frame and cmc_transform; pass frame for the internal CMC estimate "
+                "or cmc_transform for a precomputed transform, not both"
+            )
+        if cmc_transform is not None:
+            cmc_transform = self._validate_cmc_matrix(cmc_transform)
         if self.reid_model is not None and frame is None:
             raise ValueError(f"{type(self).__name__}.update() requires frame when reid_model is set.")
-
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
@@ -327,10 +367,20 @@ class BoTSORTTracker(BaseTracker):
                 unconfirmed_tracks.append(track)
 
         # CMC: apply to all predicted tracks before association
-        if self.enable_cmc and self.cmc is not None and frame is not None:
+        # A precomputed cmc_transform is applied regardless of enable_cmc, which only
+        # controls the internal frame-based estimator (self.cmc).
+        H: np.ndarray | None = None
+        if cmc_transform is not None:
+            H = cmc_transform
+            if self.cmc is not None:
+                # Motion for this step is compensated externally; drop the internal
+                # estimator's previous-frame state so a later frame-based call
+                # re-initializes instead of re-applying motion already compensated.
+                self.cmc.reset()
+        elif self.cmc is not None and frame is not None:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(frame, mask_boxes)
-            CMC.apply_batch(H, self.tracks)
+        CMC.apply_batch(H, self.tracks)  # None (no CMC this step) is a no-op
 
         # Cache each tracklet's predicted state bbox once per update. Track state
         # is unchanged across the three association stages: a track matched in an
@@ -340,9 +390,8 @@ class BoTSORTTracker(BaseTracker):
         predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
 
         det_embeddings: np.ndarray | None = None
-        if self.reid_model is not None and frame is not None:
-            if len(high_boxes) > 0:
-                det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
+        if self.reid_model is not None and frame is not None and len(high_boxes) > 0:
+            det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
 
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
@@ -494,22 +543,22 @@ class BoTSORTTracker(BaseTracker):
             else self._get_iou_matrix(tracklets, boxes, tracklet_boxes_by_id, metric=IoU())
         )
         appearance = appearance_similarity(track_feats, embeddings, det_embeddings_normalized=True)
-        if self.reid_fusion == "adaptive":
+        if self.reid_config.fusion == "adaptive":
             return fuse_adaptive_reid_association(
                 iou_sim_fused,
                 appearance,
                 proximity_iou_similarity=proximity_iou,
-                reid_proximity_threshold=self.reid_proximity_threshold,
-                reid_appearance_weight=self.reid_appearance_weight,
-                reid_adaptive_weight_cap=self.reid_adaptive_weight_cap,
-                reid_appearance_floor=self.reid_appearance_floor,
+                reid_proximity_threshold=self.reid_config.proximity_threshold,
+                reid_appearance_weight=self.reid_config.appearance_weight,
+                reid_adaptive_weight_cap=self.reid_config.adaptive_weight_cap,
+                reid_appearance_floor=self.reid_config.appearance_floor,
             )
         return fuse_botsort_reid_association(
             iou_sim_fused,
             appearance,
             proximity_iou_similarity=proximity_iou,
-            reid_proximity_threshold=self.reid_proximity_threshold,
-            reid_appearance_threshold=self.reid_appearance_threshold,
+            reid_proximity_threshold=self.reid_config.proximity_threshold,
+            reid_appearance_threshold=self.reid_config.appearance_threshold,
         )
 
     def _get_iou_matrix(
@@ -616,7 +665,7 @@ class BoTSORTTracker(BaseTracker):
                     state_estimator_class=self.state_estimator_class,
                 )
                 if self.reid_model is not None:
-                    tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
+                    tracklet.feature_bank = FeatureBank(self.reid_config.ema_alpha)
                     if det_embeddings is not None:
                         tracklet.feature_bank.update(det_embeddings[det_local_idx], normalized=True)
                 if is_first_frame and self.instant_first_frame_activation:

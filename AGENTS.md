@@ -85,7 +85,7 @@ Deliberately **not** universal (common mistakes):
 - `track_activation_threshold` — all trackers **except** OC-SORT.
 - `high_conf_det_threshold` — all trackers **except** SORT.
 
-Tracker-specific: OC-SORT adds `direction_consistency_weight` and `delta_t`; C-BIoU adds `buffer_ratio_{first,second}`; BoT-SORT and McByte add the `enable_cmc` / `cmc_method` / `cmc_downscale` motion-compensation trio; McByte adds the `*_mask_*` family.
+Tracker-specific: OC-SORT adds `direction_consistency_weight` and `delta_t`; C-BIoU adds `buffer_ratio_{first,second}`; BoT-SORT and McByte add the `enable_cmc` / `cmc_method` / `cmc_downscale` motion-compensation trio, which OC-SORT also accepts (off by default); McByte adds the `*_mask_*` family.
 
 ## Documentation
 

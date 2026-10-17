@@ -25,7 +25,7 @@ from trackers.cli.track import (
     DetectionOptions,
     FilterOptions,
     OutputOptions,
-    ReIDOptions,
+    ReIDModelConfig,
     ShowOptions,
     TrackerOptions,
     track_command,
@@ -40,7 +40,7 @@ _TRACK_OPTION_GROUPS: tuple[tuple[type, str], ...] = (
     (DetectionOptions, "detection"),
     (FilterOptions, "filters"),
     (TrackerOptions, "tracker"),
-    (ReIDOptions, "reid"),
+    (ReIDModelConfig, "reid"),
     (OutputOptions, "output"),
     (ShowOptions, "show"),
 )
@@ -214,7 +214,7 @@ def _add_track_arguments(parser: ArgumentParser) -> list[str]:
     )
     added_args = ["source"]
     for option_class, nested_key in _TRACK_OPTION_GROUPS:
-        if option_class is ReIDOptions:
+        if option_class is ReIDModelConfig:
             added_args.extend(parser.add_class_arguments(option_class, nested_key, skip={"enable"}))
             # jsonargparse handles ``bool | None`` as a value-taking type hint.
             # Registering the field as ``bool`` preserves the paired bare flags

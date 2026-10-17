@@ -19,6 +19,7 @@ import pytest
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.mcbyte.tracklet import McByteTracklet
 from trackers.utils.predict_timing import PredictTiming
+from trackers.utils.scale_aware_tracklet import ScaleAwareNoiseTracklet
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
@@ -92,6 +93,123 @@ class TestBotsortTracklet:
         large_Q = np.diag(large.state_estimator.kf.process_noise)
 
         assert np.all(large_Q > small_Q), "larger box must produce larger process noise diagonal"
+
+    @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+    def test_current_wh_reconstructs_corner_subtraction_without_bbox_decode(
+        self,
+        tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+    ) -> None:
+        """The default estimator fast path must preserve center-dependent corner rounding without decoding an array."""
+        tracklet = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
+        tracklet.state_estimator.kf.state[:4, 0] = np.array([1e12, -1e12, 0.1, 0.2])
+        bbox = tracklet.state_estimator.state_to_bbox()
+        expected = np.array(
+            [
+                max(float(bbox[2] - bbox[0]), 1e-3),
+                max(float(bbox[3] - bbox[1]), 1e-3),
+            ]
+        )
+        direct = tracklet.state_estimator.kf.state[2:4, 0]
+        assert not np.array_equal(expected.view(np.uint64), direct.view(np.uint64))
+
+        with patch.object(tracklet.state_estimator, "state_to_bbox", side_effect=AssertionError("decoded bbox")):
+            actual = np.array(tracklet._current_wh())
+
+        np.testing.assert_array_equal(actual.view(np.uint64), expected.view(np.uint64))
+
+    @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+    def test_current_wh_matches_decoder_for_float32_restored_state(
+        self,
+        tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+    ) -> None:
+        """Restored float32 state must retain the decoder's float64 corner arithmetic."""
+        tracklet = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
+        restored_state = tracklet.state_estimator.get_state()
+        restored_state["state"] = restored_state["state"].astype(np.float32)
+        restored_state["state"][:4, 0] = np.array([1e12, -1e12, 0.1, 0.2], dtype=np.float32)
+        tracklet.state_estimator.set_state(restored_state)
+        assert tracklet.state_estimator.kf.state.dtype == np.float32
+
+        decoded_bbox = tracklet.state_estimator.state_to_bbox()
+        expected = (
+            max(float(decoded_bbox[2] - decoded_bbox[0]), 1e-3),
+            max(float(decoded_bbox[3] - decoded_bbox[1]), 1e-3),
+        )
+
+        assert tracklet._current_wh() == expected
+
+    @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+    @pytest.mark.parametrize(
+        ("width", "height"),
+        [
+            pytest.param(0.0, 0.0, id="zero"),
+            pytest.param(-4.0, -6.0, id="negative"),
+        ],
+    )
+    def test_current_wh_clamps_nonpositive_dimensions_to_minimum(
+        self,
+        tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+        width: float,
+        height: float,
+    ) -> None:
+        """Zero and negative default-estimator dimensions must match the decoder's 1e-3 clamp."""
+        tracklet = tracklet_cls(np.array([0.0, 0.0, 20.0, 20.0]))
+        tracklet.state_estimator.kf.state[:4, 0] = np.array([100.0, -100.0, width, height])
+
+        decoded_bbox = tracklet.state_estimator.state_to_bbox()
+        expected = (
+            max(float(decoded_bbox[2] - decoded_bbox[0]), 1e-3),
+            max(float(decoded_bbox[3] - decoded_bbox[1]), 1e-3),
+        )
+
+        assert expected == (1e-3, 1e-3)
+        assert tracklet._current_wh() == expected
+
+    @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+    @pytest.mark.parametrize("estimator_class", [XYXYStateEstimator, XCYCSRStateEstimator])
+    def test_current_wh_keeps_bbox_decode_for_other_state_representations(
+        self,
+        bbox: np.ndarray,
+        tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+        estimator_class: type[BaseStateEstimator],
+    ) -> None:
+        """Non-XCYCWH representations retain the state estimator's bbox decoder."""
+        tracklet = tracklet_cls(bbox, state_estimator_class=estimator_class)
+        decoded_bbox = tracklet.state_estimator.state_to_bbox()
+        expected = (
+            max(float(decoded_bbox[2] - decoded_bbox[0]), 1e-3),
+            max(float(decoded_bbox[3] - decoded_bbox[1]), 1e-3),
+        )
+
+        with patch.object(
+            tracklet.state_estimator, "state_to_bbox", wraps=tracklet.state_estimator.state_to_bbox
+        ) as mock_decode:
+            actual = tracklet._current_wh()
+
+        mock_decode.assert_called_once_with()
+        assert actual == expected
+
+    @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
+    def test_current_wh_keeps_bbox_decode_for_xcycwh_subclass(
+        self,
+        bbox: np.ndarray,
+        tracklet_cls: type[BoTSORTTracklet] | type[McByteTracklet],
+    ) -> None:
+        """A subclass overriding ``state_to_bbox()`` must not be routed through the exact-class fast path."""
+
+        class CustomXCYCWHStateEstimator(XCYCWHStateEstimator):
+            def state_to_bbox(self) -> np.ndarray:
+                return np.array([3.0, 5.0, 50.0, 76.0])
+
+        tracklet = tracklet_cls(bbox, state_estimator_class=CustomXCYCWHStateEstimator)
+
+        with patch.object(
+            tracklet.state_estimator, "state_to_bbox", wraps=tracklet.state_estimator.state_to_bbox
+        ) as mock_decode:
+            actual = tracklet._current_wh()
+
+        mock_decode.assert_called_once_with()
+        assert actual == (47.0, 71.0)
 
     @pytest.mark.parametrize("tracklet_cls", [BoTSORTTracklet, McByteTracklet])
     def test_larger_box_has_larger_measurement_noise(
@@ -280,6 +398,36 @@ class TestBotsortTracklet:
         np.testing.assert_array_equal(restored_kf.measurement_noise, snapshot["measurement_noise"])
         np.testing.assert_array_equal(restored_kf.state, snapshot["state"])
         np.testing.assert_array_equal(restored_kf.state_covariance, snapshot["state_covariance"])
+
+    def test_botsort_and_mcbyte_share_scale_aware_noise_base(self) -> None:
+        """Both tracklets inherit their noise machinery from one shared base.
+
+        Inheritance alone is too weak to pin the deduplication this refactor establishes: a subclass could subclass
+        the base and still carry its own ``_build_*`` / ``_clamp_*`` copy. So every shared callable the base owns is
+        required to resolve, on both subclasses, to the *same function object* the base defines — and to be absent
+        from each subclass's own ``__dict__``.
+
+        The shared surface is read off the base rather than hard-coded, so a method added there is covered here
+        without touching this test.
+        """
+        assert issubclass(BoTSORTTracklet, ScaleAwareNoiseTracklet)
+        assert issubclass(McByteTracklet, ScaleAwareNoiseTracklet)
+
+        shared_names = {
+            name
+            for name, value in vars(ScaleAwareNoiseTracklet).items()
+            if not name.startswith("__") and (callable(value) or isinstance(value, staticmethod))
+        }
+        assert shared_names, "base class exposes no shared callables — the invariant below would be vacuous"
+
+        for subclass in (BoTSORTTracklet, McByteTracklet):
+            reintroduced = shared_names & set(vars(subclass))
+            assert not reintroduced, f"{subclass.__name__} redeclares shared noise machinery: {sorted(reintroduced)}"
+
+            for name in sorted(shared_names):
+                assert getattr(subclass, name) is getattr(ScaleAwareNoiseTracklet, name), (
+                    f"{subclass.__name__}.{name} does not resolve to ScaleAwareNoiseTracklet.{name}"
+                )
 
     def test_botsort_and_mcbyte_noise_constants_agree(self) -> None:
         """Sibling tracklets must retain identical scale-aware noise constants."""

@@ -4,9 +4,13 @@ description: Python API reference for the ReID encoder protocol, feature bank, a
 
 # ReID API
 
-Requires the `reid` extra (`pip install "trackers[reid]"`, see the [install guide](../guides/install.md)).
+The encoder protocol, feature bank, and NumPy helpers are included in the base package. For model loading and plotting, install the `reid` extra (`pip install "trackers[reid]"`; see the [install guide](../guides/install.md)).
 
-This page covers the `ReIDEncoder` protocol, `FeatureBank`, appearance association helpers, and the threshold-selection plots in `trackers.core.reid`. For enabling appearance on BoT-SORT and for benchmark results, see the [ReID appearance guide](../guides/reid.md). Model loading and gallery evaluation are in the standalone [`reid`](https://github.com/roboflow/re-ID) package.
+This page covers `ReIDConfig`, the `ReIDEncoder` protocol, `FeatureBank`, appearance association helpers, and the threshold-selection plots in `trackers.core.reid`. For enabling appearance on BoT-SORT and for benchmark results, see the [ReID appearance guide](../guides/reid.md). Model loading and gallery evaluation are in the standalone [`reid`](https://github.com/roboflow/re-ID) package.
+
+## ReIDConfig
+
+::: trackers.core.reid.config.ReIDConfig
 
 ## ReIDEncoder
 
@@ -52,24 +56,24 @@ plot_frame_gap_sweep(sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids))
 
 ### AppearanceDistances
 
-::: trackers.core.reid.thresholds.AppearanceDistances
+::: trackers.core.reid.threshold_selection.AppearanceDistances
 
 ### sample_appearance_distances
 
-::: trackers.core.reid.thresholds.sample_appearance_distances
+::: trackers.core.reid.threshold_selection.sample_appearance_distances
 
 ### sweep_frame_gap
 
-::: trackers.core.reid.thresholds.sweep_frame_gap
+::: trackers.core.reid.threshold_selection.sweep_frame_gap
 
 ### roc_auc
 
-::: trackers.core.reid.thresholds.roc_auc
+::: trackers.core.reid.threshold_selection.roc_auc
 
 ### plot_appearance_distances
 
-::: trackers.core.reid.thresholds.plot_appearance_distances
+::: trackers.core.reid.plots.plot_appearance_distances
 
 ### plot_frame_gap_sweep
 
-::: trackers.core.reid.thresholds.plot_frame_gap_sweep
+::: trackers.core.reid.plots.plot_frame_gap_sweep

@@ -14,8 +14,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from trackers.cli.track import ReIDOptions
+from trackers.cli.track import ReIDModelConfig
 from trackers.cli.tune import TrackerSelection, tune_command
+from trackers.core.reid.config import ReIDConfig
 
 
 class TestTune:
@@ -106,10 +107,10 @@ class TestTuneReID:
 
     def test_encoder_and_search_space_reach_the_tuner_and_encoder_is_left_out_of_output(self, tmp_path: Path) -> None:
         encoder = object()
-        space = {"reid_appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}
+        space = {"reid_config.appearance_threshold": {"type": "uniform", "range": [0.02, 0.15]}}
         output_path = tmp_path / "best.json"
         mock_tuner = MagicMock()
-        mock_tuner.run.return_value = {"reid_appearance_threshold": 0.2, "reid_model": encoder}
+        mock_tuner.run.return_value = {"reid_config": ReIDConfig(appearance_threshold=0.2), "reid_model": encoder}
         mock_tuner.study = None
         with (
             patch("trackers.cli.tune._load_reid_model", return_value=encoder),
@@ -119,19 +120,31 @@ class TestTuneReID:
                 TrackerSelection(name="botsort"),
                 tmp_path,
                 tmp_path,
-                reid=ReIDOptions(model="fastreid_mot17_sbs50"),
+                reid=ReIDModelConfig(model="fastreid_mot17_sbs50"),
                 search_space=space,
+                fixed_defaults=["lost_track_buffer"],
                 output=output_path,
             )
         assert result == 0
         assert tuner_class.call_args.kwargs["fixed_params"]["reid_model"] is encoder
+        assert tuner_class.call_args.kwargs["fixed_defaults"] == ["lost_track_buffer"]
         assert tuner_class.call_args.kwargs["search_space"] == space
-        assert json.loads(output_path.read_text()) == {"reid_appearance_threshold": 0.2}
+        assert json.loads(output_path.read_text()) == {
+            "reid_config": {
+                "ema_alpha": 0.9,
+                "appearance_threshold": 0.2,
+                "proximity_threshold": 0.5,
+                "fusion": "botsort",
+                "appearance_weight": 0.75,
+                "adaptive_weight_cap": 0.5,
+                "appearance_floor": 0.0,
+            }
+        }
 
     def test_returns_1_when_encoder_fails_to_load(self, tmp_path: Path) -> None:
         with patch("trackers.cli.tune._load_reid_model", side_effect=ValueError("Failed to load ReID model: x")):
             result = tune_command(
-                TrackerSelection(name="botsort"), tmp_path, tmp_path, reid=ReIDOptions(model="missing")
+                TrackerSelection(name="botsort"), tmp_path, tmp_path, reid=ReIDModelConfig(model="missing")
             )
         assert result == 1
 
@@ -159,6 +172,7 @@ class TestCliInvocation:
             threshold: float = 0.5,
             seqmap: Path | None = None,
             fixed_params: dict | None = None,
+            fixed_defaults: list[str] | None = None,
             images_dir: Path | None = None,
             enqueue_defaults: bool = True,
             seed: int | None = None,
@@ -175,6 +189,7 @@ class TestCliInvocation:
                     threshold=threshold,
                     seqmap=seqmap,
                     fixed_params=fixed_params,
+                    fixed_defaults=fixed_defaults,
                     images_dir=images_dir,
                     enqueue_defaults=enqueue_defaults,
                     seed=seed,
@@ -205,6 +220,8 @@ class TestCliInvocation:
                 "MOTA",
                 "--n_trials",
                 "50",
+                "--fixed_defaults",
+                '["lost_track_buffer"]',
             ],
             spy,
         )
@@ -215,6 +232,7 @@ class TestCliInvocation:
         assert spy[0]["detections_dir"] == det_dir
         assert spy[0]["objective"] == "MOTA"
         assert spy[0]["n_trials"] == 50
+        assert spy[0]["fixed_defaults"] == ["lost_track_buffer"]
 
     @pytest.mark.parametrize(
         "flag,arg_value,attr,expected",

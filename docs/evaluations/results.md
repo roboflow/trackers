@@ -1,6 +1,6 @@
 ---
-title: Tracker Comparison — MOT Benchmark Results | Trackers
-description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
+title: Tracker Comparison — MOT Benchmark Results
+description: Side-by-side MOT benchmark comparison of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on MOT17, DanceTrack, SportsMOT, and SoccerNet — HOTA, IDF1, MOTA with default and tuned parameters.
 ---
 
 # Tracker Comparison
@@ -21,7 +21,7 @@ This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, C-BIoU, Bo
 
 Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests re-identification and identity stability.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/mot17-ground-truth-poster.webp" aria-label="MOT17 ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/MOT17_MOT17-04-DPM-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for MOT17.</small></p>
@@ -73,7 +73,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
                                 also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
          Change any cell above -> update every listed location. -->
 
-    Tuned configuration for each tracker. The ReID row uses `fastreid_mot17_sbs50`, trained on MOT17 by the BoT-SORT authors, with `reid_fusion="adaptive"`: the best MOT17 test result in the [ReID guide](../guides/reid.md#results). It was chosen on test; on val-half, `botsort` scored 0.10 higher.
+    Tuned configuration for each tracker. The ReID row uses `fastreid_mot17_sbs50`, trained on MOT17 by the BoT-SORT authors, with `reid_config.fusion="adaptive"`: the best MOT17 test result in the [ReID guide](../guides/reid.md#results). It was chosen on test; on val-half, `botsort` scored 0.10 higher.
 
     ```yaml
     SORT:
@@ -121,11 +121,11 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
     BoT-SORT + ReID:
       reid_model: fastreid_mot17_sbs50
-      reid_fusion: adaptive
-      reid_appearance_weight: 1.908
-      reid_adaptive_weight_cap: 0.545
-      reid_appearance_floor: 0.381
-      reid_proximity_threshold: 0.772
+      reid_config.fusion: adaptive
+      reid_config.appearance_weight: 1.908
+      reid_config.adaptive_weight_cap: 0.545
+      reid_config.appearance_floor: 0.381
+      reid_config.proximity_threshold: 0.772
       minimum_iou_threshold_first_assoc: 0.846
     ```
 
@@ -133,7 +133,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
 
 Sports broadcast tracking with fast motion, camera pans, and similar-looking targets. Tests association under speed and appearance ambiguity.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/sportsmot-ground-truth-poster.webp" aria-label="SportsMOT ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SportsMOT_v_-6Os86HzwCs_c001-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SportsMOT.</small></p>
@@ -233,16 +233,16 @@ Sports broadcast tracking with fast motion, camera pans, and similar-looking tar
 
     BoT-SORT + ReID:
       reid_model: osnet_x1_0_sportsmot
-      reid_fusion: botsort
-      reid_appearance_threshold: 0.3425
-      reid_proximity_threshold: 0.9953
+      reid_config.fusion: botsort
+      reid_config.appearance_threshold: 0.3425
+      reid_config.proximity_threshold: 0.9953
     ```
 
 ## [SoccerNet-tracking](https://arxiv.org/abs/2204.06918)
 
 Long sequences with dense interactions and partial occlusions. Tests long-term ID consistency.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/soccernet-ground-truth-poster.webp" aria-label="SoccerNet ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/SoccerNet-tracking_SNMOT-060-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for SoccerNet.</small></p>
@@ -342,11 +342,11 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
     BoT-SORT + ReID:
       reid_model: osnet_x1_0_soccernet
-      reid_fusion: adaptive
-      reid_appearance_weight: 0.75
-      reid_adaptive_weight_cap: 0.5
-      reid_proximity_threshold: 1.0
-      reid_appearance_floor: 0.8
+      reid_config.fusion: adaptive
+      reid_config.appearance_weight: 0.75
+      reid_config.adaptive_weight_cap: 0.5
+      reid_config.proximity_threshold: 1.0
+      reid_config.appearance_floor: 0.8
     ```
 
 !!! note "SoccerNet buffer ordering exception"
@@ -357,7 +357,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
 
 Group dancing tracking with uniform appearance, diverse motions, and extreme articulation. Tests motion-based association without relying on visual discrimination.
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/dancetrack-ground-truth-poster.webp" aria-label="DanceTrack ground-truth annotations">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/datasets/DanceTrack_dancetrack0052-1280x720.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>Visualization of ground-truth annotations for DanceTrack.</small></p>
@@ -456,9 +456,9 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
     BoT-SORT + ReID:
       reid_model: osnet_x1_0_dancetrack
-      reid_fusion: botsort
-      reid_appearance_threshold: 0.4716
-      reid_proximity_threshold: 0.6802
+      reid_config.fusion: botsort
+      reid_config.appearance_threshold: 0.4716
+      reid_config.proximity_threshold: 0.6802
     ```
 
 !!! note "DanceTrack buffer ordering exception"
@@ -479,7 +479,7 @@ Group dancing tracking with uniform appearance, diverse motions, and extreme art
 
 **C-BIoU** targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet among the motion-only trackers when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See [C-BIoU](../trackers/cbiou.md) for buffer scales **b1** and **b2**.
 
-**BoT-SORT + ReID** adds an appearance encoder to BoT-SORT's association; enable it with `reid_model=`. Appearance helps where overlap alone cannot tell candidates apart. It can only relink a track that is still kept as lost, for `lost_track_buffer` frames (30 by default, about one second), and at the default `reid_proximity_threshold` it only scores pairs that already overlap. Recovering a target that leaves the frame takes a fully open gate and a buffer long enough to cover the absence, see [Choosing a proximity threshold](../guides/reid.md#choosing-a-proximity-threshold). The gain depends on how well the encoder separates your targets: largest with an encoder trained on footage like yours, smallest when targets look alike. Tune the ReID thresholds on your data with [`trackers tune`](../guides/tune.md#tune-reid-thresholds).
+**BoT-SORT + ReID** adds an appearance encoder to BoT-SORT's association; enable it with `reid_model=`. Appearance helps where overlap alone cannot tell candidates apart. It can only relink a track that is still kept as lost, for `lost_track_buffer` frames (30 by default, about one second), and at the default `reid_config.proximity_threshold` it only scores pairs that already overlap. Recovering a target that leaves the frame takes a fully open gate and a buffer long enough to cover the absence, see [Choosing a proximity threshold](../guides/reid.md#choosing-a-proximity-threshold). The gain depends on how well the encoder separates your targets: largest with an encoder trained on footage like yours, smallest when targets look alike. Tune the ReID thresholds on your data with [`trackers tune`](../guides/tune.md#tune-reid-thresholds).
 
 **McByte** is the choice when you want the highest identity stability and can afford optional SAM/Cutie mask dependencies. It extends BoT-SORT-style association with temporally propagated segmentation masks as an extra matching cue, requiring no per-video tuning. Reported against Trackers' BoT-SORT baseline (without re-identification) at default parameters, McByte improves HOTA and IDF1 on all four datasets in this comparison, with the largest gain on DanceTrack. Use McByte when identity consistency matters more than raw throughput or dependency footprint. See [McByte](../trackers/mcbyte.md) for setup and the mask-conditioning parameters.
 
