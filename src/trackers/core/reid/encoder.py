@@ -15,9 +15,9 @@ import supervision as sv
 
 
 class ReIDEncoder(Protocol):
-    """Encoder with ``extract_features(detections, frame)``."""
+    """Encoder with ``extract_embeddings(detections, frame)``."""
 
-    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+    def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
         """Return appearance embeddings for each detection box.
 
         Args:
