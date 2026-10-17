@@ -16,6 +16,7 @@ import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.reid.config import ReIDConfig
 from trackers.core.reid.fusion import (
     ReidFusionMethod,
     fuse_adaptive_reid_association,
@@ -120,24 +121,9 @@ class TestFuseBotsortReidAssociation:
 class TestBoTSORTTrackerReID:
     """Integration-style tests for BoT-SORT tracker appearance association."""
 
-    def test_rejects_invalid_reid_ema_alpha(self) -> None:
-        with pytest.raises(ValueError, match="reid_ema_alpha"):
-            BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder(), reid_ema_alpha=1.5)
-
-    @pytest.mark.parametrize("parameter", ["reid_appearance_threshold", "reid_proximity_threshold"])
-    @pytest.mark.parametrize("value", [-0.01, 1.01])
-    def test_rejects_invalid_association_thresholds(self, parameter: str, value: float) -> None:
-        with pytest.raises(ValueError, match=parameter):
-            # mypy cannot narrow a dynamic dict against typed kwargs.
-            BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
-
-    @pytest.mark.parametrize("parameter", ["reid_appearance_threshold", "reid_proximity_threshold"])
-    @pytest.mark.parametrize("value", [0.0, 1.0])
-    def test_accepts_association_threshold_boundaries(self, parameter: str, value: float) -> None:
-        # mypy cannot narrow a dynamic dict against typed kwargs.
-        tracker = BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
-
-        assert getattr(tracker, parameter) == value
+    def test_rejects_config_without_encoder(self) -> None:
+        with pytest.raises(ValueError, match="reid_config requires reid_model"):
+            BoTSORTTracker(enable_cmc=False, reid_config=ReIDConfig())
 
     def test_requires_frame_when_reid_enabled(self) -> None:
         tracker = BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder())
@@ -163,7 +149,7 @@ class TestBoTSORTTrackerReID:
             enable_cmc=False,
             instant_first_frame_activation=False,
             reid_model=encoder,
-            reid_ema_alpha=0.5,
+            reid_config=ReIDConfig(ema_alpha=0.5),
             minimum_iou_threshold_unconfirmed_assoc=0.85,
         )
         detection = _detection((10.0, 10.0, 30.0, 30.0), conf=0.8)
@@ -215,16 +201,13 @@ class TestBoTSORTTrackerReID:
         geo = BoTSORTTracker(
             enable_cmc=False,
             minimum_iou_threshold_first_assoc=0.01,
-            reid_appearance_threshold=0.6,
-            reid_proximity_threshold=0.99,
         )
         geo.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=frame)
 
         reid = BoTSORTTracker(
             enable_cmc=False,
             minimum_iou_threshold_first_assoc=0.01,
-            reid_appearance_threshold=0.6,
-            reid_proximity_threshold=0.99,
+            reid_config=ReIDConfig(appearance_threshold=0.6, proximity_threshold=0.99),
             reid_model=encoder,
         )
         reid.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=frame)
@@ -268,6 +251,7 @@ class TestBoTSORTTrackerReID:
         np.testing.assert_allclose(before, after)
 
     @pytest.mark.integration
+    @pytest.mark.reid
     def test_real_reid_model_runs_over_frames(self) -> None:
         """Smoke the ``trackers`` → ``reid`` boundary with a real encoder."""
         import reid
@@ -448,22 +432,11 @@ class TestReidFusionSelection:
     """The fusion selector on the tracker."""
 
     def test_botsort_fusion_is_the_default(self) -> None:
-        assert BoTSORTTracker().reid_fusion == "botsort"
-
-    def test_unknown_fusion_raises(self) -> None:
-        with pytest.raises(ValueError, match="Unknown reid_fusion"):
-            BoTSORTTracker(reid_fusion="deepocsort")  # type: ignore[arg-type]
-
-    @pytest.mark.parametrize("parameter", ["reid_appearance_weight", "reid_adaptive_weight_cap"])
-    @pytest.mark.parametrize("value", [-0.1, float("nan"), float("inf")])
-    def test_rejects_unusable_adaptive_weights(self, parameter: str, value: float) -> None:
-        with pytest.raises(ValueError, match=parameter):
-            # mypy cannot narrow a dynamic dict against typed kwargs.
-            BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
+        assert BoTSORTTracker().reid_config.fusion == "botsort"
 
     @pytest.mark.parametrize("threshold", [0.01, 1.0])
     def test_appearance_threshold_is_ignored_under_adaptive(self, threshold: float) -> None:
-        """The guide promises the threshold does nothing under adaptive fusion.
+        """The BoT-SORT appearance threshold does not affect adaptive fusion.
 
         The track is offered two detections: the nearer one looks wrong, the farther one looks
         right at cosine 0.8. Appearance has to win for the farther box to be matched. Under the
@@ -493,9 +466,7 @@ class TestReidFusionSelection:
         tracker = BoTSORTTracker(
             enable_cmc=False,
             minimum_iou_threshold_first_assoc=0.01,
-            reid_fusion="adaptive",
-            reid_appearance_threshold=threshold,
-            reid_proximity_threshold=0.99,
+            reid_config=ReIDConfig(fusion="adaptive", appearance_threshold=threshold, proximity_threshold=0.99),
             reid_model=encoder,
         )
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=frame)
@@ -527,11 +498,13 @@ class TestReidFusionSelection:
         tracker = BoTSORTTracker(
             enable_cmc=False,
             reid_model=_KeyedReIDEncoder({(10, 10): _norm(np.array([1.0, 0.0, 0.0, 0.0]))}),
-            reid_fusion="adaptive",
-            reid_appearance_weight=0.5,
-            reid_adaptive_weight_cap=0.4,
-            reid_proximity_threshold=0.9,
-            reid_appearance_floor=0.3,
+            reid_config=ReIDConfig(
+                fusion="adaptive",
+                appearance_weight=0.5,
+                adaptive_weight_cap=0.4,
+                proximity_threshold=0.9,
+                appearance_floor=0.3,
+            ),
         )
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(5))
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(6))
@@ -552,9 +525,7 @@ class TestReidFusionSelection:
             tracker = BoTSORTTracker(
                 enable_cmc=False,
                 reid_model=_KeyedReIDEncoder({(10, 10): feature, (11, 11): feature}),
-                reid_fusion=fusion,
-                reid_appearance_weight=0.3,
-                reid_adaptive_weight_cap=0.1,
+                reid_config=ReIDConfig(fusion=fusion, appearance_weight=0.3, adaptive_weight_cap=0.1),
                 minimum_iou_threshold_first_assoc=1.02,
             )
             tracker.update(_detection(far), frame=_frame(5))

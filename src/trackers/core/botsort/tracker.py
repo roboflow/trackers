@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import ClassVar, cast, get_args
+from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
@@ -15,10 +15,10 @@ from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.core.reid.config import ReIDConfig
 from trackers.core.reid.encoder import ReIDEncoder
 from trackers.core.reid.feature_bank import FeatureBank
 from trackers.core.reid.fusion import (
-    ReidFusionMethod,
     fuse_adaptive_reid_association,
     fuse_botsort_reid_association,
 )
@@ -62,14 +62,16 @@ class BoTSORTTracker(BaseTracker):
             assigning a stable track ID (different than initial -1).
         minimum_iou_threshold_first_assoc: Minimum fused similarity (IoU x
             detection confidence) to accept a detection-track association during
-            the first association step.
+            the first association step. With a ``reid_model``, appearance can raise
+            a pair's similarity, and this threshold applies to the fused value.
         minimum_iou_threshold_second_assoc: Minimum IoU to accept a
             detection-track association during the second association step.
             No score fusion is applied in this pass, so this is plain IoU.
         minimum_iou_threshold_unconfirmed_assoc: Minimum fused similarity (IoU x
             score) to accept a match between an unconfirmed track and a remaining
             high-confidence detection.  Corresponds to the original ByteTrack's
-            hardcoded cost threshold of 0.7 (= similarity 0.3).
+            hardcoded cost threshold of 0.7 (= similarity 0.3). With a
+            ``reid_model``, appearance is fused in as in the first step.
         high_conf_det_threshold: Confidence threshold used to split detections into:
             - high confidence: confidence >= threshold
             - low confidence:  confidence < threshold
@@ -98,40 +100,11 @@ class BoTSORTTracker(BaseTracker):
             association. Pass a ``reid.ReIDModel`` in normal use. Requires
             ``frame`` in :meth:`update`. When ``None`` (default), behaviour
             matches the geometry-only BoT-SORT baseline.
-        reid_ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
-        reid_appearance_threshold: Appearance distance gate. Drops the appearance term
-            when the halved cosine distance ``0.5 * (1 - cos_sim)`` exceeds this
-            value, leaving the pair scored on geometry alone. Default ``0.25``
-            (BoT-SORT ``appearance_thresh``). Used by ``reid_fusion="botsort"``
-            only.
-        reid_proximity_threshold: Standard-IoU distance gate applied before appearance
-            is used. Computed from true IoU even when ``iou`` is GIoU/DIoU/CIoU.
-            Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires
-            ``IoU >= 1 - reid_proximity_threshold``).
-        reid_fusion: How appearance is combined with geometry. ``"botsort"``
-            (default) takes the minimum of the geometry and appearance costs.
-            ``"adaptive"`` adds an adaptively weighted appearance term, which
-            weighs appearance more heavily when the best match stands clear of
-            the runner-up (see
-            :func:`~trackers.core.reid.fusion.fuse_adaptive_reid_association`).
-            The two produce different similarity ranges, so the thresholds applied
-            to a fused similarity need retuning when switching:
-            ``minimum_iou_threshold_first_assoc`` and
-            ``minimum_iou_threshold_unconfirmed_assoc``.
-            ``minimum_iou_threshold_second_assoc`` is unaffected, since that step
-            matches on IoU alone.
-        reid_appearance_weight: Base appearance weight for ``reid_fusion="adaptive"``.
-            Ignored otherwise. Default ``0.75``, the value Deep OC-SORT reports
-            for MOT17 and MOT20; they use ``1.25`` for DanceTrack.
-        reid_adaptive_weight_cap: Upper bound on the adaptive appearance bonus for
-            ``reid_fusion="adaptive"``. Ignored otherwise. Default ``0.5``, the value
-            Deep OC-SORT reports for MOT17 and MOT20; they use ``1.0`` for DanceTrack.
-        reid_appearance_floor: Minimum cosine similarity for appearance to contribute
-            when ``reid_fusion="adaptive"``. Ignored otherwise. Below the floor a pair
-            is scored on geometry alone, so a lost track cannot capture a detection on
-            a weak appearance match. Default ``0.0`` (disabled, the Deep OC-SORT
-            reference behaviour; see
-            :func:`~trackers.core.reid.fusion.fuse_adaptive_reid_association`).
+        reid_config: Appearance association and fusion settings. Defaults to
+            :class:`ReIDConfig`. Passing it without ``reid_model`` raises
+            ``ValueError``; the encoder is supplied separately. The default
+            appearance threshold is ``0.25`` with ``fusion="botsort"``; the
+            adaptive appearance floor defaults to ``0.0`` (disabled).
 
     Notes:
         - Positive `maximum_frames_without_update` values are scaled by
@@ -160,8 +133,8 @@ class BoTSORTTracker(BaseTracker):
         "high_conf_det_threshold": {"type": "uniform", "range": [0.3, 0.8]},
         "minimum_consecutive_frames": {"type": "randint", "range": [1, 4]},
         "cmc_downscale": {"type": "randint", "range": [1, 4]},
-        "reid_appearance_threshold": {"type": "uniform", "range": [0.01, 0.5], "requires": "reid_model"},
-        "reid_proximity_threshold": {"type": "uniform", "range": [0.2, 1.0], "requires": "reid_model"},
+        "reid_config.appearance_threshold": {"type": "uniform", "range": [0.01, 0.5], "requires": "reid_model"},
+        "reid_config.proximity_threshold": {"type": "uniform", "range": [0.2, 1.0], "requires": "reid_model"},
     }
 
     def __init__(
@@ -179,13 +152,7 @@ class BoTSORTTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
         reid_model: ReIDEncoder | None = None,
-        reid_ema_alpha: float = 0.9,
-        reid_appearance_threshold: float = 0.25,
-        reid_proximity_threshold: float = 0.5,
-        reid_fusion: ReidFusionMethod = "botsort",
-        reid_appearance_weight: float = 0.75,
-        reid_adaptive_weight_cap: float = 0.5,
-        reid_appearance_floor: float = 0.0,
+        reid_config: ReIDConfig | None = None,
         *,
         cmc_method: CMCMethod = "sparseOptFlow",
         cmc_downscale: int = 2,
@@ -211,30 +178,10 @@ class BoTSORTTracker(BaseTracker):
         self.enable_cmc = enable_cmc
         self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
 
+        if reid_config is not None and reid_model is None:
+            raise ValueError("reid_config requires reid_model; appearance settings have no effect without an encoder.")
         self.reid_model = reid_model
-        if not 0.0 <= reid_ema_alpha <= 1.0:
-            raise ValueError(f"reid_ema_alpha must be in [0, 1], got {reid_ema_alpha}")
-        self.reid_ema_alpha = reid_ema_alpha
-        if not 0.0 <= reid_appearance_threshold <= 1.0:
-            raise ValueError(f"reid_appearance_threshold must be in [0, 1], got {reid_appearance_threshold}")
-        if not 0.0 <= reid_proximity_threshold <= 1.0:
-            raise ValueError(f"reid_proximity_threshold must be in [0, 1], got {reid_proximity_threshold}")
-        self.reid_appearance_threshold = reid_appearance_threshold
-        self.reid_proximity_threshold = reid_proximity_threshold
-        if reid_fusion not in get_args(ReidFusionMethod):
-            raise ValueError(f"Unknown reid_fusion {reid_fusion!r}. Valid options are: {get_args(ReidFusionMethod)}.")
-        if not np.isfinite(reid_appearance_weight) or reid_appearance_weight < 0.0:
-            raise ValueError(f"reid_appearance_weight must be finite and non-negative, got {reid_appearance_weight}")
-        if not np.isfinite(reid_adaptive_weight_cap) or reid_adaptive_weight_cap < 0.0:
-            raise ValueError(
-                f"reid_adaptive_weight_cap must be finite and non-negative, got {reid_adaptive_weight_cap}"
-            )
-        if not 0.0 <= reid_appearance_floor <= 1.0:
-            raise ValueError(f"reid_appearance_floor must be in [0, 1], got {reid_appearance_floor}")
-        self.reid_fusion = reid_fusion
-        self.reid_appearance_weight = reid_appearance_weight
-        self.reid_adaptive_weight_cap = reid_adaptive_weight_cap
-        self.reid_appearance_floor = reid_appearance_floor
+        self.reid_config = reid_config if reid_config is not None else ReIDConfig()
 
         self._init_timestamp_state(frame_rate)
 
@@ -443,9 +390,8 @@ class BoTSORTTracker(BaseTracker):
         predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
 
         det_embeddings: np.ndarray | None = None
-        if self.reid_model is not None and frame is not None:
-            if len(high_boxes) > 0:
-                det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
+        if self.reid_model is not None and frame is not None and len(high_boxes) > 0:
+            det_embeddings = extract_detection_embeddings(self.reid_model, frame, high_boxes)
 
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Lost tracks are included here (following the original ByteTrack), and
@@ -597,22 +543,22 @@ class BoTSORTTracker(BaseTracker):
             else self._get_iou_matrix(tracklets, boxes, tracklet_boxes_by_id, metric=IoU())
         )
         appearance = appearance_similarity(track_feats, embeddings, det_embeddings_normalized=True)
-        if self.reid_fusion == "adaptive":
+        if self.reid_config.fusion == "adaptive":
             return fuse_adaptive_reid_association(
                 iou_sim_fused,
                 appearance,
                 proximity_iou_similarity=proximity_iou,
-                reid_proximity_threshold=self.reid_proximity_threshold,
-                reid_appearance_weight=self.reid_appearance_weight,
-                reid_adaptive_weight_cap=self.reid_adaptive_weight_cap,
-                reid_appearance_floor=self.reid_appearance_floor,
+                reid_proximity_threshold=self.reid_config.proximity_threshold,
+                reid_appearance_weight=self.reid_config.appearance_weight,
+                reid_adaptive_weight_cap=self.reid_config.adaptive_weight_cap,
+                reid_appearance_floor=self.reid_config.appearance_floor,
             )
         return fuse_botsort_reid_association(
             iou_sim_fused,
             appearance,
             proximity_iou_similarity=proximity_iou,
-            reid_proximity_threshold=self.reid_proximity_threshold,
-            reid_appearance_threshold=self.reid_appearance_threshold,
+            reid_proximity_threshold=self.reid_config.proximity_threshold,
+            reid_appearance_threshold=self.reid_config.appearance_threshold,
         )
 
     def _get_iou_matrix(
@@ -719,7 +665,7 @@ class BoTSORTTracker(BaseTracker):
                     state_estimator_class=self.state_estimator_class,
                 )
                 if self.reid_model is not None:
-                    tracklet.feature_bank = FeatureBank(self.reid_ema_alpha)
+                    tracklet.feature_bank = FeatureBank(self.reid_config.ema_alpha)
                     if det_embeddings is not None:
                         tracklet.feature_bank.update(det_embeddings[det_local_idx], normalized=True)
                 if is_first_frame and self.instant_first_frame_activation:
