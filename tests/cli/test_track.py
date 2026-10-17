@@ -555,6 +555,27 @@ class TestReIDModelConfig:
         args = parser.instantiate(parser.parse_args(["--tracker.reid_config.appearance_threshold", "0.2"]))
         assert args.tracker.reid_config == ReIDConfig(appearance_threshold=0.2)
 
+    def test_adaptive_config_parses_from_cli(self) -> None:
+        parser = _CLIParser()
+        _add_track_arguments(parser)
+        args = parser.instantiate(
+            parser.parse_args(
+                [
+                    "--tracker.reid_config.fusion",
+                    "adaptive",
+                    "--tracker.reid_config.appearance_weight",
+                    "1.25",
+                    "--tracker.reid_config.adaptive_weight_cap",
+                    "1.0",
+                    "--tracker.reid_config.appearance_floor",
+                    "0.8",
+                ]
+            )
+        )
+        assert args.tracker.reid_config == ReIDConfig(
+            fusion="adaptive", appearance_weight=1.25, adaptive_weight_cap=1.0, appearance_floor=0.8
+        )
+
 
 class TestInitTrackerDetectedFrameRate:
     """``detected_frame_rate`` should seed ``frame_rate`` unless the CLI already overrode it.

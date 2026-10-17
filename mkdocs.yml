@@ -63,6 +63,7 @@ extra_javascript:
   - javascripts/mathjax.js
   - javascripts/cli_builder_framework.js
   - javascripts/command_builder.js
+  - javascripts/grouped_tables.js
 
 markdown_extensions:
    # Adds support for card grids
