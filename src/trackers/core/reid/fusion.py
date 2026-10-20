@@ -98,7 +98,7 @@ def fuse_adaptive_reid_association(
     reid_appearance_weight: float,
     reid_adaptive_weight_cap: float,
     reid_proximity_threshold: float,
-    reid_appearance_floor: float = 0.0,
+    reid_appearance_threshold: float,
     proximity_iou_similarity: np.ndarray | None = None,
 ) -> np.ndarray:
     """Fuse IoU and appearance with Deep OC-SORT's adaptive weighting.
@@ -134,9 +134,10 @@ def fuse_adaptive_reid_association(
             ``1.0`` for DanceTrack.
         reid_proximity_threshold: Maximum standard-IoU distance at which
             appearance may contribute.
-        reid_appearance_floor: Minimum cosine similarity for appearance to
-            contribute; below it the pair is scored on geometry alone. Default
-            ``0.0`` (disabled, the reference behaviour).
+        reid_appearance_threshold: Maximum appearance distance,
+            ``0.5 * (1 - cos_sim)``, at which appearance may contribute; above it
+            the pair is scored on geometry alone. ``0.5`` lets every positive
+            cosine similarity contribute. The proximity check still applies.
         proximity_iou_similarity: Standard-IoU similarities with shape ``(T, N)``.
             Defaults to ``association_similarity``.
 
@@ -166,14 +167,13 @@ def fuse_adaptive_reid_association(
         The velocity-direction term of the full Deep OC-SORT cost is not
         included; it belongs to OC-SORT's motion model.
 
-        ``reid_appearance_floor`` is an extension over the reference, which has
-        no appearance gate at all. Because the fusion is additive, any positive
-        cosine similarity raises the fused score above the association
-        threshold once geometry contributes nothing, so with the proximity gate
-        disabled a lost track can capture an unrelated detection on a weak
-        appearance match instead of letting it start a new track. The floor
-        zeroes the appearance term for such pairs, leaving them scored on
-        geometry alone. Like the proximity gate, it applies only to the
+        ``reid_appearance_threshold`` is an extension over the reference, which has
+        no appearance gate at all. With the proximity gate disabled, even a
+        weak appearance match can pass the association threshold if its weight
+        is high enough. A lost track may then take an unrelated detection.
+        The appearance threshold excludes pairs whose appearance distance is
+        too large, leaving them scored on geometry alone. Like the proximity
+        gate, it applies only to the
         appearance term: margins are still measured over all candidates.
     """
     if proximity_iou_similarity is None:
@@ -187,6 +187,6 @@ def fuse_adaptive_reid_association(
 
     out_of_range = (1.0 - proximity_iou_similarity) > reid_proximity_threshold
     gated_appearance = np.where(out_of_range, 0.0, appearance)
-    gated_appearance = np.where(appearance < reid_appearance_floor, 0.0, gated_appearance)
+    gated_appearance = np.where(0.5 * (1.0 - appearance) > reid_appearance_threshold, 0.0, gated_appearance)
 
     return association_similarity + (reid_appearance_weight + adaptive_bonus) * gated_appearance

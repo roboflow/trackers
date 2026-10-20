@@ -137,7 +137,6 @@ class TestTuneReID:
                 "fusion": "botsort",
                 "appearance_weight": 0.75,
                 "adaptive_weight_cap": 0.5,
-                "appearance_floor": 0.0,
             }
         }
 

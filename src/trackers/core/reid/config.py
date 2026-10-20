@@ -24,25 +24,23 @@ class ReIDConfig:
 
     Attributes:
         ema_alpha: EMA momentum for track appearance features. Default ``0.9``.
-        appearance_threshold: Maximum appearance distance used by ``"botsort"``.
-            Default ``0.25`` (BoT-SORT ``appearance_thresh``). Ignored by
-            ``"adaptive"``.
+        appearance_threshold: Maximum appearance distance,
+            ``0.5 * (1 - cosine similarity)``, allowed to contribute with either
+            fusion method. Default ``0.25`` (BoT-SORT ``appearance_thresh``).
+            The proximity check still applies in both cases.
         proximity_threshold: IoU distance gate applied before appearance is
             used. Default ``0.5`` (BoT-SORT ``proximity_thresh``; requires
             ``IoU >= 1 - proximity_threshold``).
-        fusion: How appearance combines with geometry. ``"botsort"`` takes the
-            minimum cost; ``"adaptive"`` adds weighted appearance similarity.
+        fusion: How appearance combines with box overlap. ``"botsort"`` keeps
+            the better of the two scores, so a close appearance match can stand
+            in for weak overlap. ``"adaptive"``, from Deep OC-SORT, adds
+            appearance on top of overlap and weights it more when one candidate
+            clearly looks most alike, less when several look alike.
         appearance_weight: Base appearance weight for adaptive fusion.
         adaptive_weight_cap: Maximum adaptive appearance bonus.
-        appearance_floor: Minimum cosine similarity for appearance to
-            contribute with ``"adaptive"``. Default ``0.0`` (disabled).
 
     Raises:
         ValueError: If a setting is outside its valid range.
-
-    Example:
-        >>> ReIDConfig(appearance_threshold=0.3).appearance_threshold
-        0.3
     """
 
     ema_alpha: float = 0.9
@@ -51,10 +49,9 @@ class ReIDConfig:
     fusion: ReidFusionMethod = "botsort"
     appearance_weight: float = 0.75
     adaptive_weight_cap: float = 0.5
-    appearance_floor: float = 0.0
 
     def __post_init__(self) -> None:
-        for name in ("ema_alpha", "appearance_threshold", "proximity_threshold", "appearance_floor"):
+        for name in ("ema_alpha", "appearance_threshold", "proximity_threshold"):
             value = getattr(self, name)
             if not 0.0 <= value <= 1.0:
                 raise ValueError(f"{name} must be in [0, 1], got {value}")

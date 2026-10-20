@@ -124,7 +124,7 @@ Pedestrian tracking with crowded scenes and frequent occlusions. Strongly tests 
       reid_config.fusion: adaptive
       reid_config.appearance_weight: 1.908
       reid_config.adaptive_weight_cap: 0.545
-      reid_config.appearance_floor: 0.381
+      reid_config.appearance_threshold: 0.3095
       reid_config.proximity_threshold: 0.772
       minimum_iou_threshold_first_assoc: 0.846
     ```
@@ -346,7 +346,7 @@ Long sequences with dense interactions and partial occlusions. Tests long-term I
       reid_config.appearance_weight: 0.75
       reid_config.adaptive_weight_cap: 0.5
       reid_config.proximity_threshold: 1.0
-      reid_config.appearance_floor: 0.8
+      reid_config.appearance_threshold: 0.1
     ```
 
 !!! note "SoccerNet buffer ordering exception"

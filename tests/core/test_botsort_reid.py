@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 import supervision as sv
 
+import trackers.core.botsort.tracker as tracker_module
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.reid.config import ReIDConfig
 from trackers.core.reid.fusion import (
@@ -290,6 +291,7 @@ class TestFuseAdaptiveReidAssociation:
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.5,
         )
         tied = fuse_adaptive_reid_association(
             iou,
@@ -297,6 +299,7 @@ class TestFuseAdaptiveReidAssociation:
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.5,
         )
         # Gap 0.8 is capped at 0.5, halved to a 0.25 bonus: 0.6 + (0.75 + 0.25) * 0.9.
         assert dominant[0, 0] == pytest.approx(1.5)
@@ -313,38 +316,40 @@ class TestFuseAdaptiveReidAssociation:
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(0.36)
 
-    def test_appearance_floor_drops_weak_matches(self) -> None:
-        # Cosine 0.6 is below the 0.65 floor, so the pair falls back to geometry alone;
-        # cosine 0.8 is above it and contributes as usual: 0.3 + 0.75 * 0.8.
+    def test_appearance_threshold_drops_weak_matches(self) -> None:
+        # Cosine 0.6 is distance 0.2, above the 0.175 threshold, so the pair falls back to
+        # geometry alone; cosine 0.8 is distance 0.1 and contributes as usual: 0.3 + 0.75 * 0.8.
         fused = fuse_adaptive_reid_association(
             np.array([[0.3, 0.3]], dtype=np.float32),
             np.array([[0.6, 0.8]], dtype=np.float32),
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.0,
             reid_proximity_threshold=1.0,
-            reid_appearance_floor=0.65,
+            reid_appearance_threshold=0.175,
         )
         assert fused[0, 0] == pytest.approx(0.3)
         assert fused[0, 1] == pytest.approx(0.9)
 
-    def test_floored_competitor_does_not_inflate_the_bonus(self) -> None:
-        # One detection clears the floor (0.9) and one does not (0.8). The margin must be
-        # measured over raw appearance, a gap of 0.1: flooring first would read the second
-        # detection as 0 and fabricate a gap of 0.9, capped to 0.5.
+    def test_thresholded_competitor_does_not_inflate_the_bonus(self) -> None:
+        # One detection passes the 0.075 threshold (cosine 0.9, distance 0.05) and one does
+        # not (cosine 0.8, distance 0.1). The margin must be measured over raw appearance, a
+        # gap of 0.1: gating first would read the second detection as 0 and
+        # fabricate a gap of 0.9, capped to 0.5.
         fused = fuse_adaptive_reid_association(
             np.array([[0.6, 0.6]], dtype=np.float32),
             np.array([[0.9, 0.8]], dtype=np.float32),
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
-            reid_appearance_floor=0.85,
+            reid_appearance_threshold=0.075,
         )
         # Track gap 0.1, no detection gap (one track): 0.6 + (0.75 + 0.1 / 2) * 0.9.
         assert fused[0, 0] == pytest.approx(1.32)
-        # Below the floor: geometry only.
+        # Above the threshold: geometry only.
         assert fused[0, 1] == pytest.approx(0.6)
 
     def test_gated_competitor_does_not_inflate_the_bonus(self) -> None:
@@ -358,6 +363,7 @@ class TestFuseAdaptiveReidAssociation:
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.5,
         )
         one_gated = fuse_adaptive_reid_association(
             np.array([[0.6, 0.4]], dtype=np.float32),
@@ -365,6 +371,7 @@ class TestFuseAdaptiveReidAssociation:
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.5,
         )
 
         # Base weight only in both cases: 0.6 + 0.75 * 0.9.
@@ -383,6 +390,7 @@ class TestFuseAdaptiveReidAssociation:
             reid_appearance_weight=0.5,
             reid_adaptive_weight_cap=0.4,
             reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(0.6 + (0.5 + 0.4) * 0.9)
         # Track 1 leads its own row by only 0.1, so its bonus is smaller.
@@ -397,6 +405,7 @@ class TestFuseAdaptiveReidAssociation:
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(0.8)
 
@@ -409,6 +418,7 @@ class TestFuseAdaptiveReidAssociation:
             reid_appearance_weight=0.75,
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
+            reid_appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(1.3)
 
@@ -424,6 +434,7 @@ class TestFuseAdaptiveReidAssociation:
             reid_adaptive_weight_cap=0.5,
             reid_proximity_threshold=0.5,
             proximity_iou_similarity=np.array([[0.35]], dtype=np.float32),
+            reid_appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(float(association_iou[0, 0]))
 
@@ -434,15 +445,13 @@ class TestReidFusionSelection:
     def test_botsort_fusion_is_the_default(self) -> None:
         assert BoTSORTTracker().reid_config.fusion == "botsort"
 
-    @pytest.mark.parametrize("threshold", [0.01, 1.0])
-    def test_appearance_threshold_is_ignored_under_adaptive(self, threshold: float) -> None:
-        """The BoT-SORT appearance threshold does not affect adaptive fusion.
+    @pytest.mark.parametrize(("threshold", "matched_corner"), [(0.5, (14.0, 14.0)), (0.05, (10.0, 10.0))])
+    def test_appearance_threshold_gates_adaptive(self, threshold: float, matched_corner: tuple[float, float]) -> None:
+        """The appearance threshold gates the adaptive path too.
 
         The track is offered two detections: the nearer one looks wrong, the farther one looks
-        right at cosine 0.8. Appearance has to win for the farther box to be matched. Under the
-        BoT-SORT rule a threshold of 0.01 would reject that match (``d_app`` is 0.1), so a tracker
-        that let the threshold reach the adaptive path would fall back to geometry and pick the
-        nearer box.
+        right at cosine 0.8, distance 0.1. At 0.5 appearance wins the farther box; at 0.05
+        appearance is gated, so geometry picks the nearer box.
         """
         identity = _norm(np.array([1.0, 0.0, 0.0, 0.0]))
         similar = _norm(np.array([0.8, 0.6, 0.0, 0.0]))  # cosine 0.8 against identity
@@ -481,11 +490,9 @@ class TestReidFusionSelection:
 
         assert out.tracker_id is not None
         matched = out.xyxy[out.tracker_id == track_id][0]
-        assert (float(matched[0]), float(matched[1])) == (14.0, 14.0)
+        assert (float(matched[0]), float(matched[1])) == matched_corner
 
     def test_adaptive_parameters_reach_fusion(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import trackers.core.botsort.tracker as tracker_module
-
         received: dict[str, float] = {}
 
         def spy(association, appearance, **kwargs):
@@ -503,7 +510,7 @@ class TestReidFusionSelection:
                 appearance_weight=0.5,
                 adaptive_weight_cap=0.4,
                 proximity_threshold=0.9,
-                appearance_floor=0.3,
+                appearance_threshold=0.35,
             ),
         )
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(5))
@@ -512,7 +519,7 @@ class TestReidFusionSelection:
         assert received["reid_appearance_weight"] == 0.5
         assert received["reid_adaptive_weight_cap"] == 0.4
         assert received["reid_proximity_threshold"] == 0.9
-        assert received["reid_appearance_floor"] == 0.3
+        assert received["reid_appearance_threshold"] == 0.35
 
     def test_adaptive_fusion_changes_association(self) -> None:
         # Non-default weights: at 0.75 with the cap binding the effective weight is exactly

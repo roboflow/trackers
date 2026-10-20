@@ -66,12 +66,11 @@ Fine-tuning an encoder on your own data is coming to the `reid` package.
 | :--------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
 | `reid_model`                       | Appearance encoder queried during association.                                                                                       | Leave unset for IoU and CMC only. Pick a checkpoint trained on your object domain where possible.                 |
 | `reid_config.ema_alpha`            | EMA momentum for a track's appearance feature.                                                                                       | Default 0.9. Higher keeps a stable long-term identity; lower adapts faster to appearance change but drifts more.  |
-| `reid_config.appearance_threshold` | Maximum appearance distance for appearance to lower a pair's matching cost with `"botsort"`.                                         | Default 0.25 (BoT-SORT paper). Calibrate per encoder and domain, see below.                                       |
+| `reid_config.appearance_threshold` | Maximum appearance distance for appearance to count, with either fusion method.                                                      | Default 0.25. Calibrate per encoder and domain, see below.                                                        |
 | `reid_config.proximity_threshold`  | IoU gate applied before appearance (`IoU ≥ 1 - reid_config.proximity_threshold`), from true IoU even with GIoU/DIoU/CIoU.            | Default 0.5. Raise to 1.0 where targets leave the frame and return, see [below](#choosing-a-proximity-threshold). |
 | `reid_config.fusion`               | How appearance combines with geometry: `"botsort"` takes the minimum of the two costs, `"adaptive"` adds a weighted appearance term. | Default `"botsort"`. See [choosing a fusion method](#choosing-a-fusion-method) before switching.                  |
 | `reid_config.appearance_weight`    | Base appearance weight when `reid_config.fusion="adaptive"`. Ignored otherwise.                                                      | Default 0.75. Raise where geometry is unreliable, see below.                                                      |
 | `reid_config.adaptive_weight_cap`  | Ceiling on the adaptive bonus when `reid_config.fusion="adaptive"`. Ignored otherwise.                                               | Default 0.5. Raise together with `reid_config.appearance_weight`.                                                 |
-| `reid_config.appearance_floor`     | Minimum cosine similarity for appearance to contribute with `"adaptive"`; below it a pair is scored on geometry alone.               | Default 0.0 (off, as in Deep OC-SORT). Calibrate per encoder; 0.8 is used for the tuned SoccerNet result below.   |
 
 ---
 
@@ -104,11 +103,11 @@ In more detail:
 
 **`"botsort"`.** Appearance is only used for a pair when its distance is below `reid_config.appearance_threshold` and the boxes pass the `reid_config.proximity_threshold` check. Otherwise the pair is scored on box overlap alone.
 
-**`"adaptive"`.** This is the appearance fusion from Deep OC-SORT. Each pair starts from its box overlap, and appearance is added on top: `score = box overlap + (reid_config.appearance_weight + bonus) * appearance similarity`. The bonus rewards a clear winner. For a track, it is how much more its most similar detection looks like it than the second most similar one; for a detection, the same against its two most similar tracks. Each margin is capped at `reid_config.adaptive_weight_cap`, and the pair's bonus is their average. So appearance counts more when one candidate clearly stands out, and less when several look alike. Negative similarities count as zero, so appearance can only raise a score. `reid_config.appearance_floor`, added by this library, sets the lowest appearance similarity that counts: below it, a pair is scored on box overlap alone. With the proximity gate open, this stops a lost track from taking an unrelated detection that only looks vaguely similar.
+**`"adaptive"`.** This is the appearance fusion from Deep OC-SORT. Each pair starts from its box overlap, and appearance is added on top: `score = box overlap + (reid_config.appearance_weight + bonus) * appearance similarity`. The bonus rewards a clear winner. For a track, it is how much more its most similar detection looks like it than the second most similar one; for a detection, the same against its two most similar tracks. Each margin is capped at `reid_config.adaptive_weight_cap`, and the pair's bonus is their average. So appearance counts more when one candidate clearly stands out, and less when several look alike. Negative similarities count as zero, so appearance can only raise a score. `reid_config.appearance_threshold` applies here too: a pair whose appearance distance is above it is scored on box overlap alone. With the proximity gate open, it stops a lost track from taking an unrelated detection that only looks vaguely similar.
 
 !!! note "What `adaptive` includes"
 
-    Only the appearance fusion is taken from Deep OC-SORT; the rest of that tracker is not added to BoT-SORT. `reid_config.appearance_threshold` has no effect with `reid_config.fusion="adaptive"`.
+    Only the appearance fusion is taken from Deep OC-SORT; the rest of that tracker is not added to BoT-SORT.
 
 Two consequences are worth knowing before switching:
 
@@ -121,7 +120,7 @@ With the gate open, `adaptive` keeps IDs more stable than `"botsort"`, which swi
 
 ## Choosing an appearance threshold
 
-This threshold only applies to `reid_config.fusion="botsort"`; with `"adaptive"` it has no effect.
+This threshold applies to both fusion methods and defaults to 0.25, the value used in the BoT-SORT paper.
 
 `reid_config.appearance_threshold` is how different two crops may look and still count as the same target. Appearance is compared as a distance, `0.5 * (1 - cosine similarity)`, running from 0 for identical crops to 1 for opposite ones; the BoT-SORT paper uses 0.25. Below the threshold, looking alike makes the tracker more willing to pair the two; above it, the pair stands on box overlap alone. Appearance only ever lowers a pair's cost, never raises it, but the assignment weighs every pair at once, so a look-alike pair can still take a detection away from a track that merely overlapped it.
 
@@ -216,7 +215,7 @@ From this we learn:
 
 While a track is lost it has no detection of its own, so it is matched through its estimated position, which keeps moving as if the target had carried on. After a short occlusion that estimate has drifted, so it barely overlaps the detection when the target reappears. After the target leaves the frame it drifts out of view entirely and the overlap drops to zero. The 0.5 default blocks appearance in both cases, 0.99 lets it score the first one, and only 1.0 lets it score the second. BoT-SORT has no separate step for targets that leave and return, so opening the gate is the only way to keep their ID.
 
-SoccerNet test, oracle detections, `osnet_x1_0_soccernet`, library-default motion parameters, `reid_config.fusion="adaptive"` with its default weights:
+SoccerNet test, oracle detections, `osnet_x1_0_soccernet`, library-default motion parameters, `reid_config.fusion="adaptive"` with its default weights and `reid_config.appearance_threshold=0.5`:
 
 | `reid_config.proximity_threshold` | appearance consulted when | HOTA  | IDF1  | ID switches |
 | :-------------------------------- | :------------------------ | :---: | :---: | :---------: |
@@ -281,7 +280,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
             reid_model: osnet_x1_0_mot17
             reid_config.appearance_weight: 2.124
             reid_config.adaptive_weight_cap: 0.959
-            reid_config.appearance_floor: 0.569
+            reid_config.appearance_threshold: 0.2155
             reid_config.proximity_threshold: 0.342
             minimum_iou_threshold_first_assoc: 0.205
 
@@ -294,7 +293,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
             reid_model: osnet_x1_0_sportsmot
             reid_config.appearance_weight: 1.290
             reid_config.adaptive_weight_cap: 0.718
-            reid_config.appearance_floor: 0.510
+            reid_config.appearance_threshold: 0.245
             reid_config.proximity_threshold: 0.983
             minimum_iou_threshold_first_assoc: 0.329
 
@@ -307,7 +306,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
             reid_model: osnet_x1_0_dancetrack
             reid_config.appearance_weight: 1.947
             reid_config.adaptive_weight_cap: 0.944
-            reid_config.appearance_floor: 0.614
+            reid_config.appearance_threshold: 0.193
             reid_config.proximity_threshold: 0.690
             minimum_iou_threshold_first_assoc: 0.946
 
@@ -321,7 +320,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
             reid_config.appearance_weight: 0.75
             reid_config.adaptive_weight_cap: 0.5
             reid_config.proximity_threshold: 1.0
-            reid_config.appearance_floor: 0.8
+            reid_config.appearance_threshold: 0.1
         ```
 
     Every configuration was tuned with `trackers tune` on its own tuning split¹, 20 trials per fusion method, then evaluated once on test.
@@ -365,7 +364,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
             reid_model: fastreid_mot17_sbs50
             reid_config.appearance_weight: 1.908
             reid_config.adaptive_weight_cap: 0.545
-            reid_config.appearance_floor: 0.381
+            reid_config.appearance_threshold: 0.3095
             reid_config.proximity_threshold: 0.772
             minimum_iou_threshold_first_assoc: 0.846
 
@@ -378,7 +377,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
             reid_model: fastreid_mot17_sbs50
             reid_config.appearance_weight: 2.540
             reid_config.adaptive_weight_cap: 0.778
-            reid_config.appearance_floor: 0.783
+            reid_config.appearance_threshold: 0.1085
             reid_config.proximity_threshold: 0.216
             minimum_iou_threshold_first_assoc: 0.176
 
@@ -391,7 +390,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
             reid_model: fastreid_mot17_sbs50
             reid_config.appearance_weight: 0.75
             reid_config.adaptive_weight_cap: 0.5
-            reid_config.appearance_floor: 0.0
+            reid_config.appearance_threshold: 0.5
             reid_config.proximity_threshold: 0.5
 
         SoccerNet:
@@ -403,7 +402,7 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
             reid_model: fastreid_mot17_sbs50
             reid_config.appearance_weight: 1.178
             reid_config.adaptive_weight_cap: 0.621
-            reid_config.appearance_floor: 0.195
+            reid_config.appearance_threshold: 0.4025
             reid_config.proximity_threshold: 0.975
             minimum_iou_threshold_first_assoc: 0.349
         ```

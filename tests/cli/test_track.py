@@ -567,13 +567,13 @@ class TestReIDModelConfig:
                     "1.25",
                     "--tracker.reid_config.adaptive_weight_cap",
                     "1.0",
-                    "--tracker.reid_config.appearance_floor",
-                    "0.8",
+                    "--tracker.reid_config.appearance_threshold",
+                    "0.1",
                 ]
             )
         )
         assert args.tracker.reid_config == ReIDConfig(
-            fusion="adaptive", appearance_weight=1.25, adaptive_weight_cap=1.0, appearance_floor=0.8
+            fusion="adaptive", appearance_weight=1.25, adaptive_weight_cap=1.0, appearance_threshold=0.1
         )
 
 

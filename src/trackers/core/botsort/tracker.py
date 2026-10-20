@@ -102,9 +102,7 @@ class BoTSORTTracker(BaseTracker):
             matches the geometry-only BoT-SORT baseline.
         reid_config: Appearance association and fusion settings. Defaults to
             :class:`ReIDConfig`. Passing it without ``reid_model`` raises
-            ``ValueError``; the encoder is supplied separately. The default
-            appearance threshold is ``0.25`` with ``fusion="botsort"``; the
-            adaptive appearance floor defaults to ``0.0`` (disabled).
+            ``ValueError``; the encoder is supplied separately.
 
     Notes:
         - Positive `maximum_frames_without_update` values are scaled by
@@ -551,7 +549,7 @@ class BoTSORTTracker(BaseTracker):
                 reid_proximity_threshold=self.reid_config.proximity_threshold,
                 reid_appearance_weight=self.reid_config.appearance_weight,
                 reid_adaptive_weight_cap=self.reid_config.adaptive_weight_cap,
-                reid_appearance_floor=self.reid_config.appearance_floor,
+                reid_appearance_threshold=self.reid_config.appearance_threshold,
             )
         return fuse_botsort_reid_association(
             iou_sim_fused,
