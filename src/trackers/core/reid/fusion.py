@@ -56,7 +56,7 @@ def fuse_botsort_reid_association(
             ``(T, N)``.
         reid_proximity_threshold: Maximum standard-IoU distance at which appearance
             may lower the association cost.
-        reid_appearance_threshold: Maximum appearance cost allowed to contribute to
+        reid_appearance_threshold: Maximum appearance distance allowed to contribute to
             the fused association.
         proximity_iou_similarity: Standard-IoU similarities with shape ``(T, N)``.
             Defaults to ``association_similarity``.
@@ -173,8 +173,8 @@ def fuse_adaptive_reid_association(
         is high enough. A lost track may then take an unrelated detection.
         The appearance threshold excludes pairs whose appearance distance is
         too large, leaving them scored on geometry alone. Like the proximity
-        gate, it applies only to the
-        appearance term: margins are still measured over all candidates.
+        gate, it applies only to the appearance term: margins are still
+        measured over all candidates.
     """
     if proximity_iou_similarity is None:
         proximity_iou_similarity = association_similarity

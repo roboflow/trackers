@@ -114,13 +114,13 @@ Two consequences are worth knowing before switching:
 - **The similarity range changes.** `"botsort"` returns values in `[0, 1]`; `"adaptive"` returns `[0, 1 + reid_config.appearance_weight + reid_config.adaptive_weight_cap]`, which is `[0, 2.25]` at the defaults. Two thresholds are applied to that fused value: `minimum_iou_threshold_first_assoc`, which matches detections to confirmed and lost tracks, and `minimum_iou_threshold_unconfirmed_assoc`, which matches what is left to tracks that are not confirmed yet. Both are a different gate under the other method, so retune them when you switch, or the comparison measures the gate rather than the fusion. `minimum_iou_threshold_second_assoc` is unaffected, because that step matches on IoU alone.
 - **The weights are domain-dependent.** The Deep OC-SORT paper uses `reid_config.appearance_weight=0.75` with `reid_config.adaptive_weight_cap=0.5` for MOT17, and `1.25` with `1.0` for DanceTrack, where dancers occlude constantly and geometry carries less. The defaults here follow the MOT17 pair.
 
-With the gate open, `adaptive` keeps IDs more stable than `"botsort"`, which switches between look-alike candidates from one frame to the next. `"botsort"` stays the default because it is the safer choice: appearance is only used below `reid_config.appearance_threshold`, and turning it on does not require retuning the other thresholds.
+**Which to use.** `"botsort"` keeps only the better of the two scores once a pair's appearance distance is below the threshold, so a wrong match that looks close can override the boxes. `"adaptive"` always combines appearance and box overlap in the same score, so appearance moves every score but never replaces box overlap. In our [results](#results) with the generic encoder, `"adaptive"` did better where the encoder told people apart well (ROC AUC 0.96 on MOT17, 0.91 on SoccerNet), and `"botsort"` where it did less well (0.86 on SportsMOT, 0.72 on DanceTrack). Measure your encoder's ROC AUC as in [How far the threshold carries](#how-far-the-threshold-carries), and try both.
 
 ---
 
 ## Choosing an appearance threshold
 
-This threshold applies to both fusion methods and defaults to 0.25, the value used in the BoT-SORT paper.
+This threshold applies to both fusion methods and defaults to 0.25.
 
 `reid_config.appearance_threshold` is how different two crops may look and still count as the same target. Appearance is compared as a distance, `0.5 * (1 - cosine similarity)`, running from 0 for identical crops to 1 for opposite ones; the BoT-SORT paper uses 0.25. Below the threshold, looking alike makes the tracker more willing to pair the two; above it, the pair stands on box overlap alone. Appearance only ever lowers a pair's cost, never raises it, but the assignment weighs every pair at once, so a look-alike pair can still take a detection away from a track that merely overlapped it.
 
@@ -237,7 +237,7 @@ The right value depends on the footage. Use 1.0 when targets leave the frame or 
 
 ## Tuning the thresholds
 
-The steps above give a good starting point. `trackers tune` then searches `reid_config.appearance_threshold` and `reid_config.proximity_threshold` together, keeping the motion parameters you pass fixed, see [Tune ReID Thresholds](tune.md#tune-reid-thresholds). The command tunes the `"botsort"` thresholds; for `"adaptive"` it does not search the weights yet.
+The steps above give a good starting point. `trackers tune` then searches `reid_config.appearance_threshold` and `reid_config.proximity_threshold` together, keeping the motion parameters you pass fixed, see [Tune ReID Thresholds](tune.md#tune-reid-thresholds). The command searches both thresholds under either fusion method; for `"adaptive"` it does not search the weights yet.
 
 ---
 

@@ -35,7 +35,7 @@ class _NoPairsInBand(ValueError):
 class AppearanceDistances:
     """Sampled appearance distances for one frame-gap band.
 
-    Distances are ``0.5 * (1 - cosine_similarity)``, the term both ReID fusion
+    Distances are ``0.5 * (1 - cosine_similarity)``, the term both fusion
     methods compare with ``ReIDConfig.appearance_threshold``.
 
     Attributes:
@@ -68,7 +68,7 @@ class AppearanceDistances:
     def rates_at(self, threshold: float) -> tuple[float, float]:
         """Return the match rate of both classes at one candidate threshold.
 
-        A pair counts as accepted at or below the threshold, matching both ReID
+        A pair counts as accepted at or below the threshold, matching both
         fusion methods. Appearance is excluded only once the distance *exceeds*
         ``ReIDConfig.appearance_threshold``.
 

@@ -45,7 +45,7 @@ class TestReIDConfig:
 
         assert (config.ema_alpha, config.appearance_threshold, config.proximity_threshold) == (0.9, 0.25, 0.5)
 
-    def test_adaptive_defaults_match_deep_ocsort(self) -> None:
+    def test_adaptive_weight_defaults_match_deep_ocsort(self) -> None:
         config = ReIDConfig(fusion="adaptive")
 
         assert (config.appearance_weight, config.adaptive_weight_cap) == (0.75, 0.5)
