@@ -107,6 +107,7 @@ def evaluate_mot_sequence(
     return _evaluate_mot_sequence_resolved(
         gt_path=gt_path,
         tracker_path=tracker_path,
+        sequence=seq_name,
         metrics=validated_metrics,
         threshold=threshold,
         class_config=resolved_class_config,
@@ -116,6 +117,7 @@ def evaluate_mot_sequence(
 def _evaluate_mot_sequence_resolved(
     gt_path: Path,
     tracker_path: Path,
+    sequence: str,
     metrics: list[str],
     threshold: float,
     class_config: MOTClassConfig,
@@ -128,12 +130,13 @@ def _evaluate_mot_sequence_resolved(
     Args:
         gt_path: Path to the ground-truth MOT file.
         tracker_path: Path to the tracker MOT file.
+        sequence: Sequence name to report in the result.
         metrics: Validated metric families to compute.
         threshold: IoU threshold for `CLEAR` and `Identity` matching.
         class_config: Resolved MOT class configuration.
 
     Returns:
-        `SequenceResult` named after the ground-truth file stem.
+        `SequenceResult` named `sequence`.
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
@@ -178,7 +181,7 @@ def _evaluate_mot_sequence_resolved(
 
     # Build result
     return SequenceResult(
-        sequence=gt_path.stem,
+        sequence=sequence,
         CLEAR=clear_metrics,
         HOTA=hota_metrics,
         Identity=identity_metrics,
@@ -327,19 +330,13 @@ def evaluate_mot_sequences(
         if not tracker_path.exists():
             raise FileNotFoundError(f"Tracker file not found: {tracker_path}")
 
-        seq_result = _evaluate_mot_sequence_resolved(
+        sequence_results[seq_name] = _evaluate_mot_sequence_resolved(
             gt_path=gt_path,
             tracker_path=tracker_path,
+            sequence=seq_name,
             metrics=validated_metrics,
             threshold=threshold,
             class_config=resolved_class_config,
-        )
-        # Fix sequence name (_evaluate_mot_sequence_resolved uses file stem)
-        sequence_results[seq_name] = SequenceResult(
-            sequence=seq_name,
-            CLEAR=seq_result.CLEAR,
-            HOTA=seq_result.HOTA,
-            Identity=seq_result.Identity,
         )
 
     # Compute aggregate metrics

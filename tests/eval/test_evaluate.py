@@ -105,6 +105,25 @@ class TestEvaluateMOTSequence:
         assert "DetA" in json_str
 
     @pytest.mark.parametrize(
+        ("gt_relpath", "expected_sequence"),
+        [
+            pytest.param("MOT17-02-FRCNN.txt", "MOT17-02-FRCNN", id="flat-layout"),
+            pytest.param("MOT17-02-FRCNN/gt/gt.txt", "MOT17-02-FRCNN", id="mot-layout"),
+        ],
+    )
+    def test_sequence_name_from_gt_path(self, tmp_path: Path, gt_relpath: str, expected_sequence: str) -> None:
+        """A MOT-layout `<seq>/gt/gt.txt` file is named after `<seq>`, not after the `gt` file stem."""
+        gt_file = tmp_path / gt_relpath
+        gt_file.parent.mkdir(parents=True, exist_ok=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_file = tmp_path / "tracker.txt"
+        tracker_file.write_text("1,1,10,10,20,20,1,1\n")
+
+        result = evaluate_mot_sequence(gt_file, tracker_file)
+
+        assert result.sequence == expected_sequence
+
+    @pytest.mark.parametrize(
         ("gt_relpath", "class_config", "expect_warning"),
         [
             pytest.param("MOT20-01.txt", "mot17", True, id="mot20-flat-mot17-warns"),
