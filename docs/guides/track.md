@@ -320,6 +320,28 @@ Save tracking results as annotated video files or display them in real time.
 
 ---
 
+## Detection Data
+
+`update()` returns rows of the input `sv.Detections` with `tracker_id` added. Rows can come back in a different order, and with default settings BoT-SORT, C-BIoU and McByte leave out detections with confidence of `0.1` or lower.
+
+Each returned row keeps its per-detection fields: `class_id`, `mask`, and `data` entries such as `class_name` from a connector or values you add yourself. Frame-level `metadata` is kept as well. A result with no rows keeps the same fields, so the same code works on frames without detections.
+
+To find the input detection behind each output row, store its position before tracking. In the loop above, keep the input under its own name:
+
+```python
+import numpy as np
+
+detections = sv.Detections.from_inference(result)
+detections.data["input_index"] = np.arange(len(detections))
+tracked = tracker.update(detections)
+
+tracked.data["input_index"]  # position in `detections` of each output row
+```
+
+The index refers to the input of that call only; `tracker_id` is what follows an object across frames.
+
+---
+
 ## Dynamic frame rate {#variable-frame-rate}
 
 By default, each `update()` assumes one frame at a steady rate. If your pipeline skips frames or has irregular timing, pass an optional monotonic **`timestamp`** (seconds) to `tracker.update()` so Kalman prediction and lost-track pruning match the real gap. Omit `timestamp` to keep fixed-rate behaviour.
