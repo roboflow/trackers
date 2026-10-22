@@ -130,7 +130,14 @@ class TestTuneReID:
         assert tuner_class.call_args.kwargs["fixed_defaults"] == ["lost_track_buffer"]
         assert tuner_class.call_args.kwargs["search_space"] == space
         assert json.loads(output_path.read_text()) == {
-            "reid_config": {"ema_alpha": 0.9, "appearance_threshold": 0.2, "proximity_threshold": 0.5}
+            "reid_config": {
+                "ema_alpha": 0.9,
+                "appearance_threshold": 0.2,
+                "proximity_threshold": 0.5,
+                "fusion": "botsort",
+                "appearance_weight": 0.75,
+                "adaptive_weight_cap": 0.5,
+            }
         }
 
     def test_returns_1_when_encoder_fails_to_load(self, tmp_path: Path) -> None:

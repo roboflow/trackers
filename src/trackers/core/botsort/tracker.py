@@ -18,7 +18,10 @@ from trackers.core.reid.appearance import appearance_similarity, extract_detecti
 from trackers.core.reid.config import ReIDConfig
 from trackers.core.reid.encoder import ReIDEncoder
 from trackers.core.reid.feature_bank import FeatureBank
-from trackers.core.reid.fusion import fuse_botsort_reid_association
+from trackers.core.reid.fusion import (
+    fuse_adaptive_reid_association,
+    fuse_botsort_reid_association,
+)
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
@@ -97,7 +100,7 @@ class BoTSORTTracker(BaseTracker):
             association. Pass a ``reid.ReIDModel`` in normal use. Requires
             ``frame`` in :meth:`update`. When ``None`` (default), behaviour
             matches the geometry-only BoT-SORT baseline.
-        reid_config: Appearance association settings. Defaults to
+        reid_config: Appearance association and fusion settings. Defaults to
             :class:`ReIDConfig`. Passing it without ``reid_model`` raises
             ``ValueError``; the encoder is supplied separately.
 
@@ -525,7 +528,7 @@ class BoTSORTTracker(BaseTracker):
         scores: np.ndarray,
         embeddings: np.ndarray | None,
     ) -> np.ndarray:
-        """Score-fused association similarity, with optional BoT-SORT ReID fusion."""
+        """Score-fused association similarity, with optional ReID fusion."""
         iou_sim_raw = self.iou.normalize_for_fusion(self._get_iou_matrix(tracklets, boxes, tracklet_boxes_by_id))
         iou_sim_fused = _fuse_score(iou_sim_raw, scores)
         if embeddings is None or len(tracklets) == 0:
@@ -537,9 +540,20 @@ class BoTSORTTracker(BaseTracker):
             if isinstance(self.iou, IoU)
             else self._get_iou_matrix(tracklets, boxes, tracklet_boxes_by_id, metric=IoU())
         )
+        appearance = appearance_similarity(track_feats, embeddings, det_embeddings_normalized=True)
+        if self.reid_config.fusion == "adaptive":
+            return fuse_adaptive_reid_association(
+                iou_sim_fused,
+                appearance,
+                proximity_iou_similarity=proximity_iou,
+                reid_proximity_threshold=self.reid_config.proximity_threshold,
+                reid_appearance_weight=self.reid_config.appearance_weight,
+                reid_adaptive_weight_cap=self.reid_config.adaptive_weight_cap,
+                reid_appearance_threshold=self.reid_config.appearance_threshold,
+            )
         return fuse_botsort_reid_association(
             iou_sim_fused,
-            appearance_similarity(track_feats, embeddings, det_embeddings_normalized=True),
+            appearance,
             proximity_iou_similarity=proximity_iou,
             reid_proximity_threshold=self.reid_config.proximity_threshold,
             reid_appearance_threshold=self.reid_config.appearance_threshold,

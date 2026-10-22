@@ -35,8 +35,8 @@ class _NoPairsInBand(ValueError):
 class AppearanceDistances:
     """Sampled appearance distances for one frame-gap band.
 
-    Distances are ``0.5 * (1 - cosine_similarity)``, the term BoT-SORT gates on
-    with ``ReIDConfig.appearance_threshold``.
+    Distances are ``0.5 * (1 - cosine_similarity)``, the term both fusion
+    methods compare with ``ReIDConfig.appearance_threshold``.
 
     Attributes:
         same_id: Distances between two crops of the same identity.
@@ -68,9 +68,9 @@ class AppearanceDistances:
     def rates_at(self, threshold: float) -> tuple[float, float]:
         """Return the match rate of both classes at one candidate threshold.
 
-        A pair counts as accepted at or below the threshold, matching the gate in
-        :func:`trackers.core.reid.fusion.fuse_botsort_reid_association`, which discards
-        appearance only once the distance *exceeds* ``ReIDConfig.appearance_threshold``.
+        A pair counts as accepted at or below the threshold, matching both
+        fusion methods. Appearance is excluded only once the distance *exceeds*
+        ``ReIDConfig.appearance_threshold``.
 
         Args:
             threshold: Candidate ``ReIDConfig.appearance_threshold``.
