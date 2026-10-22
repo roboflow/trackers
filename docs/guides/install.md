@@ -1,5 +1,5 @@
 ---
-title: Install Roboflow Trackers — Python MOT Library | Trackers
+title: Install Roboflow Trackers — Python MOT Library
 description: Install Roboflow Trackers with pip or uv. Add multi-object tracking to any detection pipeline with a single package — supports SORT, ByteTrack, OC-SORT, and BoT-SORT out of the box.
 ---
 

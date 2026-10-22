@@ -46,9 +46,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-detection = ["inference-models>=0.19.0"]
+detection = ["inference-models>=0.36.0"]
 tune = ["optuna>=3.0.0"]
-reid = ["reid>=0.1.0.dev1,<0.2", "matplotlib>=3.7.0"]
+reid = ["reid==0.1.0rc1", "matplotlib>=3.7.0"]
 mask = [
     "torch",
     "torchvision",
@@ -201,6 +201,7 @@ addopts = [
 doctest_optionflags = "ELLIPSIS NORMALIZE_WHITESPACE"
 markers = [
     "integration: marks tests as integration tests (require external data download)",
+    "reid: tests that load a real encoder from the reid package (run by the reid pre-release workflow)",
 ]
 
 [tool.docformatter]

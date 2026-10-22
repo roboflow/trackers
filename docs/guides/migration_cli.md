@@ -1,5 +1,5 @@
 ---
-title: CLI Migration Guide | Trackers
+title: CLI Migration Guide
 description: Migrate Trackers CLI commands from the legacy argparse interface to the jsonargparse CLI.
 ---
 

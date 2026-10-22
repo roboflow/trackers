@@ -16,6 +16,7 @@ import pytest
 import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
+from trackers.core.reid.config import ReIDConfig
 from trackers.core.reid.fusion import fuse_botsort_reid_association
 
 
@@ -116,24 +117,9 @@ class TestFuseBotsortReidAssociation:
 class TestBoTSORTTrackerReID:
     """Integration-style tests for BoT-SORT tracker appearance association."""
 
-    def test_rejects_invalid_reid_ema_alpha(self) -> None:
-        with pytest.raises(ValueError, match="reid_ema_alpha"):
-            BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder(), reid_ema_alpha=1.5)
-
-    @pytest.mark.parametrize("parameter", ["reid_appearance_threshold", "reid_proximity_threshold"])
-    @pytest.mark.parametrize("value", [-0.01, 1.01])
-    def test_rejects_invalid_association_thresholds(self, parameter: str, value: float) -> None:
-        with pytest.raises(ValueError, match=parameter):
-            # mypy cannot narrow a dynamic dict against typed kwargs.
-            BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
-
-    @pytest.mark.parametrize("parameter", ["reid_appearance_threshold", "reid_proximity_threshold"])
-    @pytest.mark.parametrize("value", [0.0, 1.0])
-    def test_accepts_association_threshold_boundaries(self, parameter: str, value: float) -> None:
-        # mypy cannot narrow a dynamic dict against typed kwargs.
-        tracker = BoTSORTTracker(enable_cmc=False, **{parameter: value})  # type: ignore[arg-type]
-
-        assert getattr(tracker, parameter) == value
+    def test_rejects_config_without_encoder(self) -> None:
+        with pytest.raises(ValueError, match="reid_config requires reid_model"):
+            BoTSORTTracker(enable_cmc=False, reid_config=ReIDConfig())
 
     def test_requires_frame_when_reid_enabled(self) -> None:
         tracker = BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder())
@@ -159,7 +145,7 @@ class TestBoTSORTTrackerReID:
             enable_cmc=False,
             instant_first_frame_activation=False,
             reid_model=encoder,
-            reid_ema_alpha=0.5,
+            reid_config=ReIDConfig(ema_alpha=0.5),
             minimum_iou_threshold_unconfirmed_assoc=0.85,
         )
         detection = _detection((10.0, 10.0, 30.0, 30.0), conf=0.8)
@@ -211,16 +197,13 @@ class TestBoTSORTTrackerReID:
         geo = BoTSORTTracker(
             enable_cmc=False,
             minimum_iou_threshold_first_assoc=0.01,
-            reid_appearance_threshold=0.6,
-            reid_proximity_threshold=0.99,
         )
         geo.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=frame)
 
         reid = BoTSORTTracker(
             enable_cmc=False,
             minimum_iou_threshold_first_assoc=0.01,
-            reid_appearance_threshold=0.6,
-            reid_proximity_threshold=0.99,
+            reid_config=ReIDConfig(appearance_threshold=0.6, proximity_threshold=0.99),
             reid_model=encoder,
         )
         reid.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=frame)
@@ -264,6 +247,7 @@ class TestBoTSORTTrackerReID:
         np.testing.assert_allclose(before, after)
 
     @pytest.mark.integration
+    @pytest.mark.reid
     def test_real_reid_model_runs_over_frames(self) -> None:
         """Smoke the ``trackers`` → ``reid`` boundary with a real encoder."""
         import reid

@@ -41,7 +41,7 @@ def fuse_botsort_reid_association(
 
     Args:
         association_similarity: Geometry-based track-detection similarities with
-            shape ``(T, N)``.
+            shape ``(T, N)`` and values in ``[0, 1]``.
         appearance_similarity: Cosine similarities for the same pairs with shape
             ``(T, N)``.
         reid_proximity_threshold: Maximum standard-IoU distance at which appearance

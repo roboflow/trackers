@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 import supervision as sv
 
-from trackers import ByteTrackTracker
+from trackers import BoTSORTTracker, ByteTrackTracker
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
@@ -153,10 +153,12 @@ class TestTunerFixedParams:
                 n_trials=1,
                 enqueue_defaults=False,
                 fixed_params={"frame_rate": 25.0},
+                fixed_defaults=["lost_track_buffer"],
             )
             best = tuner.run()
 
         assert best["frame_rate"] == 25.0
+        assert best["lost_track_buffer"] == 30
 
     def test_raises_when_enable_cmc_without_images(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
@@ -184,6 +186,36 @@ class TestTunerFixedParams:
         assert "lost_track_buffer" in tuner._search_space
         assert "lost_track_buffer" not in tuner._tunable_search_space
         assert tuner._fixed_params["lost_track_buffer"] == 42
+
+    def test_fixed_defaults_use_constructor_values_and_are_not_tuned(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner(
+            "botsort",
+            gt_dir,
+            det_dir,
+            fixed_defaults=["lost_track_buffer", "minimum_iou_threshold_unconfirmed_assoc"],
+            fixed_params={"enable_cmc": False},
+        )
+        assert tuner._fixed_params["lost_track_buffer"] == 30
+        assert tuner._fixed_params["minimum_iou_threshold_unconfirmed_assoc"] == 0.3
+        assert "lost_track_buffer" not in tuner._tunable_search_space
+        assert "minimum_iou_threshold_unconfirmed_assoc" not in tuner._tunable_search_space
+
+    def test_explicit_fixed_param_overrides_fixed_default(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner(
+            "bytetrack",
+            gt_dir,
+            det_dir,
+            fixed_defaults=["lost_track_buffer"],
+            fixed_params={"lost_track_buffer": 42},
+        )
+        assert tuner._fixed_params["lost_track_buffer"] == 42
+
+    def test_fixed_defaults_reject_unknown_name(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        with pytest.raises(ValueError, match="Unknown tracker parameter"):
+            Tuner("bytetrack", gt_dir, det_dir, fixed_defaults=["not_a_param"])
 
 
 class TestTunerInit:
@@ -454,7 +486,7 @@ class TestTunerReIDSearchSpace:
 
     def test_reid_thresholds_tuned_only_with_encoder(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
-        reid_keys = {"reid_appearance_threshold", "reid_proximity_threshold"}
+        reid_keys = {"reid_config.appearance_threshold", "reid_config.proximity_threshold"}
         without = Tuner("botsort", gt_dir, det_dir, fixed_params={"enable_cmc": False})
         with_encoder = Tuner(
             "botsort", gt_dir, det_dir, images_dir=tmp_path, fixed_params=_reid_fixed_params(_CountingEncoder())
@@ -476,9 +508,22 @@ class TestTunerReIDSearchSpace:
             det_dir,
             images_dir=tmp_path,
             fixed_params=_reid_fixed_params(_CountingEncoder()),
-            search_space={"reid_appearance_threshold": narrow},
+            search_space={"reid_config.appearance_threshold": narrow},
         )
-        assert tuner._tunable_search_space["reid_appearance_threshold"] == narrow
+        assert tuner._tunable_search_space["reid_config.appearance_threshold"] == narrow
+
+    def test_sampled_thresholds_build_reid_config(self, tmp_path: Path) -> None:
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        tuner = Tuner(
+            "botsort", gt_dir, det_dir, images_dir=tmp_path, fixed_params=_reid_fixed_params(_CountingEncoder())
+        )
+        tracker = tuner._build_tracker(
+            {"reid_config.appearance_threshold": 0.12, "reid_config.proximity_threshold": 0.8}
+        )
+        assert isinstance(tracker, BoTSORTTracker)
+        assert tracker.reid_config.appearance_threshold == 0.12
+        assert tracker.reid_config.proximity_threshold == 0.8
+        assert tracker.reid_config.ema_alpha == 0.9
 
     def test_search_space_override_rejects_unknown_key(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
