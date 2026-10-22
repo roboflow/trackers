@@ -13,6 +13,7 @@ BoT-SORT can fuse appearance embeddings with IoU during association. Embeddings 
 - Which parameters control the appearance gate
 - How to pick `reid_config.appearance_threshold` for your encoder and domain
 - What ReID changes on MOT17, SportsMOT, DanceTrack and SoccerNet, with a generic and a fine-tuned encoder
+- What ReID costs in frames per second
 
 ---
 
@@ -414,3 +415,22 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
     On MOT17 the tuning split preferred `botsort` by 0.10 HOTA, while `adaptive` scored 0.73 higher on test, the best MOT17 result on this page.
 
     SoccerNet uses ground-truth boxes as detections, so its numbers are not comparable to the YOLOX rows.
+
+---
+
+## Speed
+
+BoT-SORT extracts ReID embeddings only for detections with confidence at or above `high_conf_det_threshold` (0.6 by default). Running the encoder lowers throughput.
+
+The table gives frames per second (FPS) of `tracker.update` over every sequence of each tuning split, with library defaults, camera motion compensation on, and the provided detections. Detection time is not included. Measured on a Google Colab T4 GPU with a 2-vCPU Intel Xeon @ 2.00GHz.
+
+The columns compare BoT-SORT without ReID, with the dataset's fine-tuned `osnet_x1_0_<dataset>`, and with the same `fastreid_mot17_sbs50` on every dataset.
+
+| Dataset    | Split    | BoT-SORT without ReID (FPS) | BoT-SORT + fine-tuned OSNet (FPS) | BoT-SORT + FastReID (FPS) |
+| :--------- | :------- | --------------------------: | --------------------------------: | ------------------------: |
+| MOT17      | val-half |                        31.1 |                              10.7 |                       6.1 |
+| SportsMOT  | val      |                        38.4 |                              16.3 |                      10.3 |
+| DanceTrack | val      |                        33.8 |                              15.4 |                      10.9 |
+| SoccerNet  | train    |                        32.6 |                              13.2 |                       6.8 |
+
+With the fine-tuned OSNet, BoT-SORT runs 2.2 to 2.9 times slower than without ReID. With FastReID, it runs 3.1 to 5.1 times slower than without ReID.
