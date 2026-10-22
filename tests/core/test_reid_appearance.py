@@ -40,7 +40,7 @@ def test_reid_public_api_is_exported_from_package_root() -> None:
 class _MeanIntensityEncoder:
     """Encoder returning one row per box, tagged with the frame's mean intensity."""
 
-    def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+    def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
         return np.full((len(detections), 2), float(frame.mean()), dtype=np.float32)
 
 
@@ -111,7 +111,7 @@ class TestAppearanceSimilarity:
     def test_extract_detection_embeddings_requires_one_row_per_box(self) -> None:
         # Encoder must return embeddings.shape[0] == len(boxes).
         class _WrongLengthEncoder:
-            def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+            def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
                 return np.empty((0, 4), dtype=np.float32)
 
         with pytest.raises(ValueError, match="rows"):
@@ -123,7 +123,7 @@ class TestAppearanceSimilarity:
 
     def test_extract_detection_embeddings_normalizes_all_rows(self) -> None:
         class _RawEncoder:
-            def extract_features(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
+            def extract_embeddings(self, detections: sv.Detections, frame: np.ndarray) -> np.ndarray:
                 return np.array([[3.0, 4.0], [0.0, 0.0]], dtype=np.float32)
 
         embeddings = extract_detection_embeddings(
