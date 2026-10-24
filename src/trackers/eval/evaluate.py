@@ -434,13 +434,18 @@ def _discover_sequences(
         data_format: Directory format.
 
     Returns:
-        List of sequence names.
+        List of sequence names. Hidden entries (names starting with `.`, e.g.
+            `.ipynb_checkpoints`) are skipped in both layouts.
     """
     if data_format == "flat":
         return sorted(p.stem for p in gt_dir.glob("*.txt") if not p.name.startswith("."))
     else:
-        # MOT format: gt_dir/{seq}/gt/gt.txt
-        return sorted(p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.name.startswith("."))
+        # MOT format: gt_dir/{seq}/gt/gt.txt — the sequence name is the grandparent directory,
+        # so the hidden-entry check has to look at that name rather than at `p.name`, which is
+        # always "gt.txt".
+        return sorted(
+            p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.parent.parent.name.startswith(".")
+        )
 
 
 def _get_paths(

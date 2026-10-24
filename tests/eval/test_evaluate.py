@@ -185,3 +185,38 @@ class TestEvaluateMOTSequencesClassConfig:
 
         assert result.aggregate.CLEAR is not None
         assert result.aggregate.CLEAR.MOTA == pytest.approx(expected_mota)
+
+
+class TestEvaluateMOTSequencesDiscovery:
+    """Sequence discovery must ignore hidden entries in both supported layouts."""
+
+    @pytest.mark.parametrize(
+        ("gt_relpath", "hidden_relpath"),
+        [
+            pytest.param("sequence1.txt", ".hidden.txt", id="flat-layout"),
+            pytest.param("sequence1/gt/gt.txt", ".ipynb_checkpoints/gt/gt.txt", id="mot-layout"),
+        ],
+    )
+    def test_hidden_entries_are_not_treated_as_sequences(
+        self,
+        tmp_path: Path,
+        gt_relpath: str,
+        hidden_relpath: str,
+    ) -> None:
+        """A hidden ground-truth entry is skipped instead of being evaluated as a sequence.
+
+        Tooling leaves hidden siblings next to the sequences (`.ipynb_checkpoints`, editor and sync artifacts). They
+        have no matching prediction file, so discovering one aborts the whole benchmark with `FileNotFoundError`.
+        """
+        gt_dir = tmp_path / "gt"
+        for relpath in (gt_relpath, hidden_relpath):
+            gt_file = gt_dir / relpath
+            gt_file.parent.mkdir(parents=True, exist_ok=True)
+            gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
+
+        assert list(result.sequences) == ["sequence1"]
