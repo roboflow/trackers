@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  reid-integration-smoke:
+  reid-integration:
     name: ReID Integration Smoke
     timeout-minutes: 15
     runs-on: ubuntu-latest
