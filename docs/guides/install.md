@@ -86,7 +86,7 @@ The `reid` extra installs the standalone [`reid`](https://github.com/roboflow/re
     uv pip install "trackers[reid]"
     ```
 
-Use via `from reid import ReIDModel` and `BoTSORTTracker(reid_model=...)`, or via CLI flags such as `--reid.enable` and `--reid.architecture` on `trackers track` command (BoT-SORT only).
+Use via `from reid import ReIDModel` and `BoTSORTTracker(reid_model=...)`, or via CLI flags such as `--reid.enable` and `--reid.architecture` on `trackers track` command (BoT-SORT only). See the [Re-ID guide](reid.md) for loading an encoder and choosing thresholds.
 
 !!! tip "GPU Acceleration"
 

@@ -32,11 +32,17 @@ For extra contents and other options, see the [install guide](install.md).
 === "Python"
 
     ```python
-    from reid import ReIDModel
-
     from trackers import BoTSORTTracker, ReIDConfig
 
-    reid_model = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
+    tracker = BoTSORTTracker(reid_model="fastreid_mot17_sbs50", reid_config=ReIDConfig(appearance_threshold=0.2))
+    ```
+
+    `reid_model` takes a curated alias, an `hf://` URL, or a local path, and loads it with the `reid` package's defaults. To choose the device or load bare weights, load the encoder yourself and pass it instead:
+
+    ```python
+    from reid import ReIDModel
+
+    reid_model = ReIDModel.from_pretrained("fastreid_mot17_sbs50", device="cuda")
     tracker = BoTSORTTracker(reid_model=reid_model, reid_config=ReIDConfig(appearance_threshold=0.2))
     ```
 
@@ -49,7 +55,7 @@ For extra contents and other options, see the [install guide](install.md).
         --source <SOURCE_VIDEO_PATH> \
         --tracker botsort \
         --reid.model fastreid_mot17_sbs50 \
-        --reid_config.appearance_threshold 0.2 \
+        --tracker.reid_config.appearance_threshold 0.2 \
         --output.video output.mp4
     ```
 
@@ -79,8 +85,8 @@ Fine-tuning an encoder on your own data is coming to the `reid` package.
 
 The encoder decides how much appearance can help, and every threshold below depends on it. There are two kinds:
 
-- **A generic encoder**, used as published. The one used here is `fastreid_mot17_sbs50`, a FastReID SBS model with a ResNeSt-50 backbone and 25.4M parameters, trained on MOT17 pedestrian crops and released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT). `trackers track` and `trackers tune` load it when ReID is enabled without naming a model; in Python, load it with `ReIDModel.from_pretrained("fastreid_mot17_sbs50")`, as in the [quickstart](#quickstart). It works out of the box, and how much it helps depends on the dataset, see [results](#results).
-- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. The results use an [OSNet](https://arxiv.org/abs/1905.00953) x1.0, a much smaller network with 2.2M parameters, fine-tuned on each dataset's train split. All four are available by name: `osnet_x1_0_mot17`, `osnet_x1_0_sportsmot`, `osnet_x1_0_dancetrack` and `osnet_x1_0_soccernet`. Load one with `ReIDModel.from_pretrained("osnet_x1_0_sportsmot")`, or pass the name to `--reid.model` on the command line. Training your own is coming to the `reid` package.
+- **A generic encoder**, used as published. The one used here is `"fastreid_mot17_sbs50"`, a FastReID SBS model with a ResNeSt-50 backbone and 25.4M parameters, trained on MOT17 pedestrian crops and released with [BoT-SORT](https://github.com/NirAharon/BoT-SORT). `trackers track` and `trackers tune` load it when ReID is enabled without naming a model; in Python, pass `reid_model="fastreid_mot17_sbs50"`, as in the [quickstart](#quickstart). It works out of the box, and how much it helps depends on the dataset, see [results](#results).
+- **An encoder fine-tuned on your footage**, where the largest gains in the results come from. The results use an [OSNet](https://arxiv.org/abs/1905.00953) x1.0, a much smaller network with 2.2M parameters, fine-tuned on each dataset's train split. All four are available by name: `osnet_x1_0_mot17`, `osnet_x1_0_sportsmot`, `osnet_x1_0_dancetrack` and `osnet_x1_0_soccernet`. Pass the name as `reid_model="osnet_x1_0_sportsmot"`, or to `--reid.model` on the command line. Training your own is coming to the `reid` package.
 
 Each encoder has its own distance scale, so choose the thresholds for the encoder you will track with.
 

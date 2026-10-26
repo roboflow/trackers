@@ -16,7 +16,7 @@ from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
 from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
 from trackers.core.reid.config import ReIDConfig
-from trackers.core.reid.encoder import ReIDEncoder
+from trackers.core.reid.encoder import ReIDEncoder, _load_reid_encoder
 from trackers.core.reid.feature_bank import FeatureBank
 from trackers.core.reid.fusion import (
     fuse_adaptive_reid_association,
@@ -96,10 +96,11 @@ class BoTSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
-        reid_model: Optional appearance encoder (``ReIDEncoder``) for appearance
-            association. Pass a ``reid.ReIDModel`` in normal use. Requires
-            ``frame`` in :meth:`update`. When ``None`` (default), behaviour
-            matches the geometry-only BoT-SORT baseline.
+        reid_model: Appearance encoder for appearance association: a model name
+            (curated alias, ``hf://`` URL or local path, loaded with the ``reid``
+            package's defaults) or an encoder you loaded yourself, e.g. to choose
+            the device. Requires ``frame`` in :meth:`update`. When ``None``
+            (default), behaviour matches the geometry-only BoT-SORT baseline.
         reid_config: Appearance association and fusion settings. Defaults to
             :class:`ReIDConfig`. Passing it without ``reid_model`` raises
             ``ValueError``; the encoder is supplied separately.
@@ -149,7 +150,7 @@ class BoTSORTTracker(BaseTracker):
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
-        reid_model: ReIDEncoder | None = None,
+        reid_model: ReIDEncoder | str | None = None,
         reid_config: ReIDConfig | None = None,
         *,
         cmc_method: CMCMethod = "sparseOptFlow",
@@ -178,7 +179,7 @@ class BoTSORTTracker(BaseTracker):
 
         if reid_config is not None and reid_model is None:
             raise ValueError("reid_config requires reid_model; appearance settings have no effect without an encoder.")
-        self.reid_model = reid_model
+        self.reid_model = _load_reid_encoder(reid_model) if isinstance(reid_model, str) else reid_model
         self.reid_config = reid_config if reid_config is not None else ReIDConfig()
 
         self._init_timestamp_state(frame_rate)

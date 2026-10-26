@@ -203,10 +203,8 @@ Every trial replays the same detections, so `cache_embeddings=True` embeds each 
 === "Python"
 
     ```python
-    from reid import ReIDModel
     from trackers.tune import Tuner
 
-    encoder = ReIDModel.from_pretrained("fastreid_mot17_sbs50")
     motion_defaults = [
         "lost_track_buffer",
         "minimum_consecutive_frames",
@@ -223,7 +221,7 @@ Every trial replays the same detections, so `cache_embeddings=True` embeds each 
         gt_dir="./data/gt",
         detections_dir="./data/detections",
         images_dir="./data/images",
-        fixed_params={"reid_model": encoder},
+        fixed_params={"reid_model": "fastreid_mot17_sbs50"},
         fixed_defaults=motion_defaults,
         n_trials=20,
         cache_embeddings=True,

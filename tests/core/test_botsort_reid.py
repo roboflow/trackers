@@ -126,6 +126,21 @@ class TestBoTSORTTrackerReID:
         with pytest.raises(ValueError, match="reid_config requires reid_model"):
             BoTSORTTracker(enable_cmc=False, reid_config=ReIDConfig())
 
+    def test_loads_encoder_from_model_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        loaded: list[str] = []
+        encoder = _KeyedReIDEncoder()
+
+        def load(source: str) -> object:
+            loaded.append(source)
+            return encoder
+
+        monkeypatch.setattr(tracker_module, "_load_reid_encoder", load)
+
+        tracker = BoTSORTTracker(enable_cmc=False, reid_model="osnet_x1_0_mot17")
+
+        assert loaded == ["osnet_x1_0_mot17"]
+        assert tracker.reid_model is encoder
+
     def test_requires_frame_when_reid_enabled(self) -> None:
         tracker = BoTSORTTracker(enable_cmc=False, reid_model=_KeyedReIDEncoder())
         with pytest.raises(ValueError, match="requires frame"):

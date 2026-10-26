@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import supervision as sv
 
-from trackers.core.reid.encoder import ReIDEncoder
+from trackers.core.reid.encoder import ReIDEncoder, _load_reid_encoder
 from trackers.io.frames import load_mot_frame_image, resolve_mot_frame_path
 from trackers.io.mot import load_mot_file
 
@@ -89,7 +89,7 @@ def extract_detection_embeddings(
 
 
 def extract_ground_truth_embeddings(
-    model: ReIDEncoder,
+    model: ReIDEncoder | str,
     dataset_root: str | Path,
     *,
     sequences: Sequence[str] | None = None,
@@ -108,7 +108,7 @@ def extract_ground_truth_embeddings(
     an ``appearance_threshold`` gets calibrated on a new dataset.
 
     Args:
-        model: Encoder to embed crops with.
+        model: Encoder to embed crops with, or a model name to load.
         dataset_root: Directory holding one folder per sequence.
         sequences: Sequences to read. Defaults to every one found.
         keep_classes: MOT class ids to keep, e.g. ``(1,)`` for MOT17
@@ -125,6 +125,8 @@ def extract_ground_truth_embeddings(
             ``gt/gt.txt``, or a named sequence is missing one.
         ValueError: If no crop survived the filters.
     """
+    if isinstance(model, str):
+        model = _load_reid_encoder(model)
     root = Path(dataset_root)
     names = sorted(p.parent.parent.name for p in root.glob("*/gt/gt.txt")) if sequences is None else list(sequences)
     if not names:

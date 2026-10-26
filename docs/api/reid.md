@@ -43,7 +43,9 @@ from trackers.core.reid import (
     sweep_frame_gap,
 )
 
-embeddings, ids, frame_ids, sequence_ids = extract_ground_truth_embeddings(model, "mot17/val", keep_classes=(1,))
+embeddings, ids, frame_ids, sequence_ids = extract_ground_truth_embeddings(
+    "fastreid_mot17_sbs50", "mot17/val", keep_classes=(1,)
+)
 distances = sample_appearance_distances(embeddings, ids, frame_ids, sequence_ids)
 same_id_rate, different_id_rate = distances.rates_at(0.25)
 plot_appearance_distances(distances, thresholds={0.20: "selected", 0.25: "default"})

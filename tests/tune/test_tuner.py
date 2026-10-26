@@ -9,10 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import cv2
 import numpy as np
 import pytest
 import supervision as sv
 
+import trackers.tune.tuner as tuner_module
 from trackers import BoTSORTTracker, ByteTrackTracker
 from trackers.eval.results import (
     BenchmarkResult,
@@ -499,6 +501,37 @@ class TestTunerReIDSearchSpace:
         with pytest.raises(ValueError, match="reid_model but images_dir"):
             Tuner("botsort", gt_dir, det_dir, fixed_params=_reid_fixed_params(_CountingEncoder()))
 
+    def test_model_name_is_loaded_once_across_trials(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A model name in ``fixed_params`` is loaded once, and every trial reuses that encoder."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        frame_dir = tmp_path / "images" / "seq1" / "img1"
+        frame_dir.mkdir(parents=True)
+        cv2.imwrite(str(frame_dir / "000001.jpg"), np.zeros((200, 200, 3), dtype=np.uint8))
+        loaded: list[str] = []
+        encoder = _CountingEncoder()
+
+        def load(source: str) -> object:
+            loaded.append(source)
+            return encoder
+
+        monkeypatch.setattr(tuner_module, "_load_reid_encoder", load)
+        with patch("trackers.tune.tuner.evaluate_mot_sequences", return_value=_make_benchmark_result(hota=0.6)):
+            tuner = Tuner(
+                "botsort",
+                gt_dir,
+                det_dir,
+                images_dir=tmp_path / "images",
+                objective="HOTA",
+                n_trials=3,
+                seed=0,
+                fixed_params=_reid_fixed_params("osnet_x1_0_mot17"),
+            )
+            best = tuner.run()
+        assert tuner.study is not None
+        assert len(tuner.study.trials) == 3
+        assert loaded == ["osnet_x1_0_mot17"]
+        assert best["reid_model"] is encoder
+
     def test_search_space_override_replaces_entry(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
         narrow = {"type": "uniform", "range": [0.02, 0.15], "requires": "reid_model"}
@@ -537,7 +570,6 @@ class TestTunerReIDSearchSpace:
             )
 
     def test_later_trials_reuse_embeddings_and_return_the_encoder(self, tmp_path: Path) -> None:
-        import cv2
 
         gt_dir, det_dir = _setup_dirs(tmp_path)
         frame_dir = tmp_path / "images" / "seq1" / "img1"
@@ -563,7 +595,6 @@ class TestTunerReIDSearchSpace:
         assert best["reid_model"] is encoder
 
     def test_embeds_every_trial_without_the_cache(self, tmp_path: Path) -> None:
-        import cv2
 
         gt_dir, det_dir = _setup_dirs(tmp_path)
         frame_dir = tmp_path / "images" / "seq1" / "img1"
@@ -621,8 +652,6 @@ class TestLoadMotSequenceFrame:
             _load_mot_sequence_frame(images_dir, "seq_a", 1)
 
     def test_loads_frame_with_supported_extension(self, tmp_path: Path) -> None:
-        import cv2
-        import numpy as np
 
         from trackers.tune.tuner import _load_mot_sequence_frame
 
@@ -637,8 +666,6 @@ class TestLoadMotSequenceFrame:
         assert frame.shape == (8, 8, 3)
 
     def test_loads_eight_digit_dancetrack_frame(self, tmp_path: Path) -> None:
-        import cv2
-        import numpy as np
 
         from trackers.tune.tuner import _load_mot_sequence_frame
 

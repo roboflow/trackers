@@ -19,6 +19,7 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
+from trackers.core.reid.encoder import _load_reid_encoder
 from trackers.eval.evaluate import evaluate_mot_sequences
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
@@ -178,15 +179,13 @@ class Tuner:
 
         Tune BoTSORT together with its ReID thresholds for one encoder::
 
-            from reid import ReIDModel
-
             tuner = Tuner(
                 tracker_id="botsort",
                 gt_dir="data/gt/",
                 detections_dir="data/det/",
                 images_dir="data/images/",
                 objective="HOTA",
-                fixed_params={"reid_model": ReIDModel.from_pretrained("fastreid_mot17_sbs50")},
+                fixed_params={"reid_model": "fastreid_mot17_sbs50"},
             )
     """
 
@@ -279,6 +278,9 @@ class Tuner:
                 "so CMC can read frames, or set enable_cmc=False."
             )
         reid_model = self._fixed_params.get("reid_model")
+        if isinstance(reid_model, str):
+            # Load once here; a name in fixed_params would otherwise reload the encoder every trial.
+            reid_model = self._fixed_params["reid_model"] = _load_reid_encoder(reid_model)
         if reid_model is not None and self._images_dir is None:
             raise ValueError(
                 "fixed_params passes reid_model but images_dir was not provided. "

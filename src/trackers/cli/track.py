@@ -24,6 +24,7 @@ from trackers import frames_from_source
 from trackers.cli._annotate import COLOR_PALETTE as _COLOR_PALETTE
 from trackers.cli._progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.core.base import BaseTracker, ParameterInfo
+from trackers.core.reid.encoder import _load_reid_encoder
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
@@ -799,28 +800,9 @@ def _load_reid_model(reid: ReIDModelConfig) -> Any:
         ValueError: If the ``reid`` extra is not installed, ``architecture`` was
             given without ``model``, or the checkpoint fails to load.
     """
-    try:
-        from reid import ReIDModel
-    except ImportError as exc:
-        if exc.name != "reid":
-            raise
-        raise ValueError(
-            "ReID tracking requires the optional `trackers[reid]` extra.\nInstall with: pip install 'trackers[reid]'"
-        ) from exc
-
     if reid.architecture is not None and reid.model is None:
         raise ValueError("--reid.architecture requires --reid.model (bare weights need a checkpoint path).")
-
-    load_kwargs: dict[str, Any] = {"device": reid.device, "source": reid.model or DEFAULT_REID_MODEL}
-    if reid.architecture is not None:
-        load_kwargs["architecture"] = reid.architecture
-
-    try:
-        return ReIDModel.from_pretrained(**load_kwargs)
-    except KeyboardInterrupt:
-        raise
-    except (OSError, ValueError, RuntimeError) as exc:
-        raise ValueError(f"Failed to load ReID model: {exc}") from exc
+    return _load_reid_encoder(reid.model or DEFAULT_REID_MODEL, device=reid.device, architecture=reid.architecture)
 
 
 def _init_tracker(
