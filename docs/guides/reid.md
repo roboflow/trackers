@@ -49,7 +49,7 @@ For extra contents and other options, see the [install guide](install.md).
         --source <SOURCE_VIDEO_PATH> \
         --tracker botsort \
         --reid.model fastreid_mot17_sbs50 \
-        --tracker.reid_config.appearance_threshold 0.2 \
+        --reid_config.appearance_threshold 0.2 \
         --output.video output.mp4
     ```
 
