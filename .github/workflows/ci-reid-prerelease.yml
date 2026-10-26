@@ -25,7 +25,7 @@ jobs:
           activate-environment: true
 
       - name: 🚀 Install Packages with the latest allowed reid pre-release
-        run: uv sync --group dev --extra reid --upgrade-package reid
+        run: uv sync --group dev --extra reid
 
       - name: 🧪 Smoke-test the trackers to reid boundary
         run: uv run pytest -m reid -v --tb=short
