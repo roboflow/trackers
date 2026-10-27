@@ -80,14 +80,11 @@ def tune_command(
             the tracker's default parameters before Optuna sampling begins.
         seed: Random seed for Optuna's TPE sampler for reproducible runs.
         output: Output JSON file for best parameters.
-        reid: ReID encoder to tune with, for trackers that accept one
-            (BoT-SORT). Same options as ``trackers track``: ``model`` (alias,
-            ``hf://`` URL or local path), ``device``, and ``architecture``
-            for bare weight files; on the command line, ``--reid.model
-            fastreid_mot17_sbs50``. The encoder is loaded once and
-            held fixed, and ``reid_config.appearance_threshold`` and
-            ``reid_config.proximity_threshold`` are added to the search. Requires
-            ``images_dir``. Default: no encoder.
+        reid: ReID encoder to tune with, for trackers that accept one (BoT-SORT). Same options as ``trackers track``:
+            ``model`` (alias, ``hf://`` URL or local path), ``device``, and ``architecture`` for bare weight files; on
+            the command line, ``--reid.model fastreid_mot17_sbs50``. The encoder is loaded once and held fixed, and
+            ``reid_config.appearance_threshold`` and ``reid_config.proximity_threshold`` are added to the search.
+            Requires ``images_dir``. Default: no encoder.
         search_space: Entries that replace or add to the tracker's search
             space for this run, e.g. a narrower ``reid_config.appearance_threshold``
             range for an encoder whose useful distances are small.
