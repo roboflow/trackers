@@ -6,17 +6,19 @@
 
 """Trackers benchmarked by ``trackers benchmark``.
 
-Each key in :data:`BENCHMARK_COMMANDS` names a tracker run over a complete benchmark test set. Only McByte has a
-benchmark harness today; the group exists so the top-level CLI holds verbs alone.
+Each key in :data:`BENCHMARK_COMMANDS` names a tracker run over a benchmark test set. McByte supports several datasets;
+McByte++ currently supports SoccerNet.
 
-These commands need the ``mask`` extra (``pip install 'trackers[mask]'``). The heavy imports are deferred into the
-command bodies so that importing the CLI stays cheap for everyone else.
+McByte needs the ``mask`` extra and McByte++ needs ``edgetam``. Heavy imports are deferred until execution so CLI
+discovery does not load inference dependencies.
 """
 
 from trackers.cli.benchmark.mcbyte import benchmark_command
+from trackers.cli.benchmark.mcbyteplusplus import benchmark_command as mcbyteplusplus_benchmark_command
 
-__all__ = ["BENCHMARK_COMMANDS", "benchmark_command"]
+__all__ = ["BENCHMARK_COMMANDS", "benchmark_command", "mcbyteplusplus_benchmark_command"]
 
 BENCHMARK_COMMANDS = {
     "mcbyte": benchmark_command,
+    "mcbyteplusplus": mcbyteplusplus_benchmark_command,
 }

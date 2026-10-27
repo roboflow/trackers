@@ -36,6 +36,21 @@ from trackers.core.base import BaseTracker
 from trackers.eval.mot_classes import MOTClassConfig
 
 
+@pytest.mark.parametrize(
+    "arguments",
+    [["inspect", "mcbyteplusplus"], ["inspect", "mcbyte"], ["track"]],
+)
+def test_cli_beta_warning_remains_visible(arguments: list[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    from trackers.cli import __main__ as module
+
+    monkeypatch.setattr(sys, "argv", ["trackers", *arguments])
+    monkeypatch.setattr(module, "CLI", lambda *args, **kwargs: 0)
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        assert module.main() == 0
+    assert any("CLI is in beta" in str(warning.message) for warning in captured)
+
+
 @pytest.fixture()
 def track_parser() -> ArgumentParser:
     """ArgumentParser built from the track_command() signature with --config support."""
@@ -906,7 +921,7 @@ class TestGeneratedTrackerOptions:
     """``TrackerOptions`` is generated from the registry — verify what that buys."""
 
     def test_mask_config_nests_under_tracker_mask(self) -> None:
-        """``mask_config`` is the one exact-name rename, spelled ``mask``."""
+        """McByte's ``mask_config`` is renamed to ``mask`` on the CLI."""
         parser = _CLIParser(exit_on_error=False)
         parser.add_function_arguments(track_command)
         options = {option for action in parser._actions for option in action.option_strings}
@@ -928,6 +943,45 @@ class TestGeneratedTrackerOptions:
 
         assert isinstance(parsed.tracker.mask, McByteMaskConfig)
         assert parsed.tracker.mask.cutie_mem_every == 7
+
+    def test_mcbyteplusplus_registry_and_config_roundtrip(self, tmp_path: Path) -> None:
+        """McByte++'s nested EdgeTAM configuration survives saving and constructor-argument resolution."""
+        from trackers import McBytePlusPlusMaskConfig, McBytePlusPlusTracker
+        from trackers.cli.track import _resolve_tracker_kwargs, _tracker_options_as_dict
+
+        info = BaseTracker._lookup_tracker("mcbyteplusplus")
+        assert info is not None
+        assert info.tracker_class is McBytePlusPlusTracker
+        parser = _CLIParser(exit_on_error=False)
+        parser.add_argument("--config", action=ActionConfigFile)
+        parser.add_function_arguments(track_command)
+        parsed = parser.parse_args(
+            [
+                "--tracker.name",
+                "mcbyteplusplus",
+                "--tracker.edgetam.device",
+                "cpu",
+                "--tracker.edgetam.max_session_frames",
+                "4",
+                "--tracker.enable_mask_manager",
+                "false",
+                "--tracker.enable_mask_trust_filter",
+                "false",
+            ]
+        )
+        config_file = tmp_path / "track.yaml"
+        config_file.write_text(parser.dump(parsed), encoding="utf-8")
+        restored = parser.instantiate_classes(parser.parse_args(["--config", str(config_file)]))
+        assert isinstance(restored.tracker.edgetam, McBytePlusPlusMaskConfig)
+        assert restored.tracker.edgetam.device == "cpu"
+        assert restored.tracker.edgetam.max_session_frames == 4
+        raw = _tracker_options_as_dict(restored.tracker)
+        raw.pop("name")
+        raw.pop("iou_variant")
+        kwargs, dropped = _resolve_tracker_kwargs(raw, set(info.parameters))
+        assert kwargs["edgetam_config"] is restored.tracker.edgetam
+        assert kwargs["enable_mask_trust_filter"] is False
+        assert dropped == []
 
     def test_class_path_parameter_resolves_to_the_class(self) -> None:
         """``state_estimator_class`` takes a dotted class path, not a string."""

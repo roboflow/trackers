@@ -1,0 +1,27 @@
+{
+    "sequence": {
+        "image_dir": "/path/to/SoccerNet/tracking/test/SNMOT-116/img1",
+        "det_file": "/path/to/SoccerNet/tracking/test/SNMOT-116/det/det.txt",
+        "start_frame": 1,
+        "end_frame": 50,
+        "frame_rate": 25.0,
+        "confidence_override": 1.0
+    },
+    "edgetam": {
+        "device": "cpu",
+        "max_session_frames": 200,
+        "mask_creation_bbox_overlap_threshold": 0.1
+    },
+    "cmc": {
+        "enable": true,
+        "method": "orb",
+        "downscale": 4
+    },
+    "tracker": {
+        "enable_mask_refresh": true,
+        "enable_mask_trust_filter": true,
+        "mask_refresh_coverage_threshold": 0.5,
+        "minimum_mask_creation_frames": 1
+    },
+    "output_dir": "outputs/inspect/mcbyteplusplus"
+}

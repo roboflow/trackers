@@ -572,3 +572,28 @@ def test_mask_manager_pending_tracklet_ids_property_snapshots_the_pool() -> None
     assert pending == frozenset({1, 2})
     assert isinstance(pending, frozenset)
     assert manager._pending_tracklet_ids == {1, 2}
+
+
+@pytest.mark.parametrize("initialized", [False, True])
+def test_reference_tracklets_defer_only_eligible_candidates(initialized: bool) -> None:
+    """Unmasked detections can block creation without becoming creation candidates."""
+    manager = MaskManager(DummyBoxMaskGenerator(), DummyIdentityMaskPropagator(), 0.1)
+    image = _make_frame()
+    existing = _tracklet(1, (50, 50, 60, 60))
+    if initialized:
+        manager.get_updated_masks(image, image, [existing])
+    candidate = _tracklet(2, (10, 10, 20, 20))
+    occluder = _tracklet(3, (10, 10, 20, 25))
+    output = manager.get_updated_masks(
+        image, image, [candidate], new_tracklets=[candidate], reference_tracklets=[candidate, occluder]
+    )
+    assert manager.pending_tracklet_ids == frozenset({2})
+    if initialized:
+        assert output is not None
+        assert set(output.tracklet_mask_dict) == {1}
+    else:
+        assert output is None
+    output = manager.get_updated_masks(image, image, [candidate], reference_tracklets=[candidate])
+    assert output is not None
+    assert set(output.tracklet_mask_dict) == ({1, 2} if initialized else {2})
+    assert not manager.pending_tracklet_ids

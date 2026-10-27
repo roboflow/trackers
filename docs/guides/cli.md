@@ -11,7 +11,7 @@ Every command the `trackers` CLI exposes, in one table, plus the full flag refer
 
 - Every top-level command and subcommand the CLI exposes
 - Where each command's detailed guide and flag table lives
-- The full flag reference for `trackers inspect sam` / `cutie` / `edgetam` / `mask-manager` / `mcbyte`
+- The flag reference for `trackers inspect sam` / `cutie` / `edgetam` / `mask-manager` / `mcbyte` / `mcbyteplusplus`
 - The [EdgeTAM inspection workflow](inspect.md#inspect-edgetam) and its built-in `trackers inspect edgetam --help` reference
 
 ---
@@ -94,6 +94,11 @@ pip install trackers
       <td>Run McByte over complete benchmark test sets and write MOTChallenge-format results.</td>
       <td><a href="../../evaluations/benchmark-runner/#cli-reference">Benchmark Runner guide</a></td>
     </tr>
+    <tr>
+      <td><code>trackers benchmark mcbyteplusplus</code></td>
+      <td>Run McByte++ on SoccerNet oracle detections and save MOT results, annotated frame images and FPS measurements.</td>
+      <td><a href="../../evaluations/benchmark-runner/#mcbyte-on-soccernet">SoccerNet benchmark guide</a></td>
+    </tr>
   </tbody>
 </table>
 
@@ -111,7 +116,7 @@ For `sam`, `cutie`, `mask-manager` and `mcbyte`, install the SAM/Cutie dependenc
 pip install "trackers[mask]"
 ```
 
-For `edgetam`, install the EdgeTAM dependencies:
+For `edgetam` and `mcbyteplusplus`, install the EdgeTAM dependencies:
 
 ```bash
 pip install "trackers[edgetam]"
@@ -529,3 +534,17 @@ Each tab lists all arguments accepted by that `trackers inspect` subcommand.
         </tr>
       </tbody>
     </table>
+
+=== "mcbyteplusplus"
+
+    `trackers inspect mcbyteplusplus` replays detector boxes through the complete McByte++ tracker with EdgeTAM masks always enabled. CMC defaults to enabled, using ORB at downscale 4. Install `trackers[edgetam]`.
+
+    | Group          | Settings                                                                                                                                                                                                                                                    |
+    | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | `--sequence.*` | Required `image_dir`, `det_file`, `start_frame`, `end_frame`; optional `det_format`, `frame_rate`, `confidence_override`. Use 25 FPS and confidence 1.0 for the SoccerNet oracle example.                                                                   |
+    | `--edgetam.*`  | `model_id`, `revision`, `device`, `max_session_frames` (200), `mask_threshold`, `mask_creation_bbox_overlap_threshold` (0.1). JSON `null` disables the session bound.                                                                                       |
+    | `--cmc.*`      | `enable` (true), `method` (`orb`), `downscale` (4).                                                                                                                                                                                                         |
+    | `--tracker.*`  | Association and confirmation settings, `minimum_mask_creation_frames` (1), `enable_mask_refresh` (true), `enable_mask_trust_filter` (true), `mask_refresh_coverage_threshold` (0.5, strict `<`), `mask_refresh_interval` (1). Run `--help` for every field. |
+    | `--output_dir` | Output root, default `outputs/inspect/mcbyteplusplus`. Each run saves frames, MOT results, reusable config and provenance.                                                                                                                                  |
+
+    See the [worked SoccerNet example](inspect.md#inspect-mcbyte-with-oracle-detections). For the generic `trackers track` command, select `--tracker mcbyteplusplus`, enable masks with `--tracker.enable_mask_manager true`, and configure the backend with `--tracker.edgetam.*`.
