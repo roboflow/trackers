@@ -14,7 +14,7 @@ Run a tracker over a complete benchmark test set — MOT17, DanceTrack, SportsMO
 - Select one or more datasets to run
 - Read the output layout, including the MOT17 submission files
 
-`trackers benchmark` is a command group, one subcommand per tracker with a benchmark harness. McByte is the only one available today, so every example below reads `trackers benchmark mcbyte`; the steps and the output layout are the same for any harness added later.
+`trackers benchmark` is a command group, one subcommand per tracker. The steps below describe `trackers benchmark mcbyte`. For the SoccerNet-only McByte++ command, see [McByte++ on SoccerNet](#mcbyte-on-soccernet); it reads the original unzipped dataset layout and also saves visual outputs and timings.
 
 !!! note "McByte specifics"
 
@@ -215,3 +215,51 @@ All arguments accepted by `trackers benchmark mcbyte`.
     </tr>
   </tbody>
 </table>
+
+## McByte++ on SoccerNet
+
+Install `trackers[edgetam]` and point `--dataset_root` at the unzipped **test** directory. Each sequence must contain `seqinfo.ini`, `img1/`, and `det/det.txt`. Ground-truth files are reserved for separate evaluation and are not read by this command. Oracle detections supply boxes with confidence set to 1.0; input identity columns are ignored.
+
+```bash
+trackers benchmark mcbyteplusplus \
+    --dataset_root /path/to/SoccerNet/tracking/test \
+    --edgetam.device cuda \
+    --output_root outputs/mcbyteplusplus_benchmarks
+```
+
+This runs all discovered `SNMOT-*` directories. For a short CPU trial, add `--sequences '[SNMOT-116]' --max_frames 10 --edgetam.device cpu` instead. Omit `--max_frames` for complete sequences. Every declared frame is processed, including frames without detections; sequence length and playback FPS come from `seqinfo.ini` (25 FPS for SoccerNet).
+
+EdgeTAM masks are always enabled. The `--edgetam.*`, `--cmc.*` and `--tracker.*` groups use the same settings as the [McByte++ inspector](../guides/inspect.md#inspect-mcbyte-with-oracle-detections): bounded EdgeTAM sessions of 200 images, ORB CMC at downscale 4, and enabled mask refresh and trust filtering by default. A fresh tracker is constructed for each sequence and reset on exit. Long-term re-ID and selective CMC are not part of this implementation yet.
+
+Each run creates a timestamped directory:
+
+```text
+outputs/mcbyteplusplus_benchmarks/<timestamp>/
+├── config.json              # reusable CLI settings, resolved device/revision
+├── run.json                 # per-sequence and pooled timing, warnings, status
+├── run.log                  # library diagnostics, including any OOM fallbacks
+├── results/
+│   ├── SNMOT-116.txt         # ten-column MOT results; original frame numbers
+│   └── ...
+└── frames/
+    ├── SNMOT-116/
+    │   ├── 000001.jpg       # masks, boxes, IDs and exclusion status
+    │   └── ...
+    └── ...
+```
+
+Annotated JPEGs are enabled by default (`--save_frames true`), with one image per processed frame under `frames/<sequence>/`. Videos are disabled by default; `--save_video true` additionally writes `videos/<sequence>.mp4`. To save only text results and reports, use `--save_frames false --save_video false`; with both visual options off, the command skips drawing entirely. The CLI beta notice remains visible; captured Python warnings are saved in `run.json`.
+
+Each annotated image has colored masks and tracked boxes with ID labels. A fixed, left-aligned panel in the top-left corner shows the tracker name, original frame number, current output track IDs, internal mask-owner IDs and excluded mask IDs. Raw masks remain visible even when excluded from association, making the exclusion status useful for debugging.
+
+**Timing definitions:**
+
+- `tracking_fps` is completed frames divided by the sum of their `tracker.update()` times. It includes CMC, EdgeTAM generation/propagation, additions, removals, refreshes and session rollover. CUDA/MPS work is synchronized before and after each update. The first update is included; there is no discarded warm-up.
+- `end_to_end_fps` divides completed frames by the total run time, including model loading, detection-file reading, image decoding, rendering, writing outputs and tracker reset. The report also records model-loading time separately per sequence.
+- Pooled tracking FPS uses **total frames / total tracking seconds**, not the mean of per-sequence FPS. Oracle detections mean there is no detector inference in either measurement. Hardware, software versions, model revision and settings are recorded for comparison.
+
+Results retain `.partial` names until the sequence succeeds. A failed sequence is recorded and the remaining sequences continue; the command exits nonzero if any fail. Ctrl-C preserves completed outputs, partial files and the run report. Failed sequences are excluded from pooled tracking FPS, so an incomplete run must not be reported as a full-test-set result. `all_discovered_sequences_completed` is true only when every discovered sequence completed its full declared length; this is a check against the supplied directory, not an independent check that the download contains the official complete split.
+
+Check completion and `run.log` before evaluating HOTA, IDF1 and MOTA from `results/*.txt` with the SoccerNet ground truth. The tracker retains its OOM fallback, so any logged fallback must be considered when interpreting quality and speed. The benchmark command itself does not calculate these metrics. Replay the saved configuration with `trackers benchmark mcbyteplusplus --config <run>/config.json`; command-line options can override it, and replay creates a new output directory.
+
+Run `trackers benchmark mcbyteplusplus --help` for all options.
