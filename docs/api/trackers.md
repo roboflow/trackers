@@ -30,6 +30,12 @@ description: Python API reference for SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU
 
 ::: trackers.core.mcbyte.tracker.McByteMaskConfig
 
+## McByte++
+
+::: trackers.core.mcbyteplusplus.tracker.McBytePlusPlusTracker
+
+::: trackers.core.mcbyteplusplus.tracker.McBytePlusPlusMaskConfig
+
 ## Utilities
 
 ::: trackers.utils.converters.xyxy_to_xcycsr

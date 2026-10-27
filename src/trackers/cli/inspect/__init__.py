@@ -8,7 +8,7 @@
 
 Each entry in :data:`INSPECT_COMPONENTS` names the thing it inspects, not the tracker that happens to use it. The mask
 stack (``sam``, ``cutie``, ``edgetam``, ``mask-manager``) is tracker-agnostic and lives in :mod:`trackers.core.masks`;
-only ``mcbyte`` inspects a tracker.
+``mcbyte`` and ``mcbyteplusplus`` inspect trackers.
 
 EdgeTAM needs the ``edgetam`` extra; the other commands use ``mask``. Heavy inference imports are deferred into the
 command bodies so that importing the CLI stays cheap for everyone else.
@@ -18,6 +18,7 @@ from trackers.cli.inspect.cutie import cutie_inspection
 from trackers.cli.inspect.edgetam import edgetam_inspection
 from trackers.cli.inspect.mask_manager import mask_manager_inspection
 from trackers.cli.inspect.mcbyte import mcbyte_inspection
+from trackers.cli.inspect.mcbyteplusplus import mcbyteplusplus_inspection
 from trackers.cli.inspect.sam import sam_inspection
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     "edgetam_inspection",
     "mask_manager_inspection",
     "mcbyte_inspection",
+    "mcbyteplusplus_inspection",
     "sam_inspection",
 ]
 
@@ -35,4 +37,5 @@ INSPECT_COMPONENTS = {
     "edgetam": edgetam_inspection,
     "mask-manager": mask_manager_inspection,
     "mcbyte": mcbyte_inspection,
+    "mcbyteplusplus": mcbyteplusplus_inspection,
 }

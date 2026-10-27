@@ -51,7 +51,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, TextIO
+from typing import Literal
 
 import numpy as np
 import supervision as sv
@@ -66,6 +66,7 @@ from trackers.cli._detections import (
     read_detection_file,
 )
 from trackers.cli._parser import register_argument_adder
+from trackers.cli._tracking import SequenceOptions, append_mot_results
 from trackers.cli.inspect._common import (
     INSPECT_OUTPUT_ROOT,
     get_mask_tracklet_ids_in_order,
@@ -82,31 +83,6 @@ DEFAULT_OUTPUT_DIR = INSPECT_OUTPUT_ROOT / "mcbyte"
 
 RunMode = Literal["locked_iou", "mask_conditioned"]
 RUN_MODES: tuple[RunMode, ...] = ("locked_iou", "mask_conditioned")
-
-DetectionFileFormat = Literal["mot_tlwh", "xyxy"]
-
-
-@dataclass
-class SequenceOptions:
-    """Frames, detections, and the frame range to process.
-
-    Attributes:
-        image_dir: Directory containing sequence frames.
-        det_file: Path to the detection file.
-        start_frame: First frame number to process, inclusive.
-        end_frame: Last frame number to process, inclusive.
-        det_format: Detection-file column format. ``mot_tlwh`` expects
-            ``frame,id,left,top,width,height,confidence,...``; ``xyxy`` expects
-            ``frame,x1,y1,x2,y2,confidence``.
-        frame_rate: Sequence frame rate used to scale the lost-track buffer.
-    """
-
-    image_dir: Path
-    det_file: Path
-    start_frame: int
-    end_frame: int
-    det_format: DetectionFileFormat = "mot_tlwh"
-    frame_rate: float = 30.0
 
 
 @dataclass
@@ -300,43 +276,6 @@ def visualize_frame(
         )
 
     return draw_status_lines(visual, status_lines)
-
-
-def append_mot_results(
-    *,
-    results_file: TextIO,
-    frame_number: int,
-    tracked_detections: sv.Detections,
-) -> None:
-    """Append confirmed tracker outputs in MOTChallenge result format.
-
-    Detections with negative tracker IDs are omitted.
-    """
-    tracker_ids = tracked_detections.tracker_id
-    if tracker_ids is None:
-        return
-
-    confidences = tracked_detections.confidence
-    if confidences is None:
-        confidences = np.ones(len(tracked_detections), dtype=np.float32)
-
-    for xyxy, tracker_id_value, confidence_value in zip(
-        tracked_detections.xyxy,
-        tracker_ids,
-        confidences,
-    ):
-        tracker_id = int(tracker_id_value)
-        if tracker_id < 0:
-            continue
-
-        left, top, right, bottom = map(float, xyxy)
-        width = right - left
-        height = bottom - top
-        confidence = float(confidence_value)
-
-        results_file.write(
-            f"{frame_number},{tracker_id},{left:.2f},{top:.2f},{width:.2f},{height:.2f},{confidence:.6f},-1,-1,-1\n"
-        )
 
 
 def run_mode(
