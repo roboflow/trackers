@@ -126,10 +126,6 @@ class Tuner:
             key. Use for options you do not want tuned, e.g.
             ``{"enable_cmc": False}`` or ``{"lost_track_buffer": 30}``.
             Keys in ``fixed_params`` are not sampled by Optuna.
-        fixed_defaults: Tracker ``__init__`` parameter names held at their
-            constructor defaults for every trial, e.g. ``["lost_track_buffer"]``.
-            These names are not sampled by Optuna and are included in the result.
-            An explicit value in ``fixed_params`` takes priority.
         images_dir: Optional MOT-style image root. When set, frames are loaded
             from ``{images_dir}/{sequence}/img1/`` using 6- or 8-digit MOT
             stems (and common image extensions) and passed to
@@ -154,6 +150,11 @@ class Tuner:
             embedding per distinct detection in memory for the whole study: roughly 1 GB per
             500k detections at 512 float32 dimensions. Defaults to ``False``, which embeds on
             every trial and keeps memory flat. Ignored without a ``reid_model``.
+        fixed_defaults: Tracker ``__init__`` parameter names held at their
+            constructor defaults for every trial, e.g. ``["lost_track_buffer"]``.
+            These names are not sampled by Optuna, even if they appear in
+            ``search_space``, and are included in the result. An explicit value in
+            ``fixed_params`` takes priority.
 
     Examples:
         Tune ByteTrack hyperparameters on a local dataset::

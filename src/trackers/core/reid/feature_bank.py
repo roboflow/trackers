@@ -18,6 +18,10 @@ class FeatureBank:
 
     Follows the per-track feature update in BoT-SORT
     (https://github.com/NirAharon/BoT-SORT/blob/main/tracker/bot_sort.py).
+
+    Args:
+        alpha: EMA momentum, the weight kept on the stored embedding at each
+            update. Default ``0.9``, as in BoT-SORT.
     """
 
     def __init__(self, alpha: float = 0.9) -> None:
