@@ -252,7 +252,7 @@ The steps above give a good starting point. `trackers tune` then searches `reid_
 
 ## Results
 
-BoT-SORT with and without ReID on the test splits, using the same detections and motion parameters. The ReID thresholds were tuned on a separate split first, and each configuration was then evaluated once on test. The best value for each dataset is in bold. Motion parameters are the tuned values from the [tracker comparison](../evaluations/results.md).
+BoT-SORT without Re-ID and with each Re-ID fusion method on the test splits, using the same detections and motion parameters. The ReID thresholds were tuned on a separate split first, and each configuration was then evaluated once on test. The best value for each dataset is in bold. Motion parameters are the tuned values from the [tracker comparison](../evaluations/results.md).
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) BoT-SORT rows in the mot17/sportsmot/soccernet/dancetrack Tuned tables (test rows only), and the BoT-SORT + ReID rows of the generic tab. The encoder, split and parameter columns exist only here. Update results.md first, then mirror those rows here. results.md carries one ReID row per dataset, the best test row across both tabs here; this page carries both fusion methods. The shared rows must move together. -->
 
@@ -260,20 +260,20 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
     `osnet_x1_0` fine-tuned on each dataset's train split (`osnet_x1_0_mot17`, `osnet_x1_0_sportsmot`, `osnet_x1_0_dancetrack`, `osnet_x1_0_soccernet`), with `reid_config.fusion="botsort"` and `reid_config.fusion="adaptive"`.
 
-    |  Dataset   | Config                      |   HOTA   |   IDF1   |   MOTA   |
-    | :--------: | :-------------------------- | :------: | :------: | :------: |
-    |   MOT17    | BoT-SORT                    |   63.8   |   78.7   | **79.4** |
-    |            | BoT-SORT + ReID             | **64.0** |   78.9   | **79.4** |
-    |            | BoT-SORT + ReID, `adaptive` | **64.0** | **79.2** | **79.4** |
-    | SportsMOT  | BoT-SORT                    |   74.1   |   74.1   |   96.9   |
-    |            | BoT-SORT + ReID             | **77.8** | **78.5** |   96.9   |
-    |            | BoT-SORT + ReID, `adaptive` |   76.4   |   76.8   | **97.0** |
-    | DanceTrack | BoT-SORT                    |   57.8   |   57.9   |   92.2   |
-    |            | BoT-SORT + ReID             | **60.8** | **61.6** |   91.7   |
-    |            | BoT-SORT + ReID, `adaptive` |   58.3   |   58.2   | **92.3** |
-    | SoccerNet  | BoT-SORT                    |   85.0   |   79.7   |   97.2   |
-    |            | BoT-SORT + ReID             |   87.3   |   83.2   |   98.7   |
-    |            | BoT-SORT + ReID, `adaptive` | **88.4** | **84.4** | **99.3** |
+    |  Dataset   | Re-ID fusion |   HOTA   |   IDF1   |   MOTA   |
+    | :--------: | :----------- | :------: | :------: | :------: |
+    |   MOT17    | none         |   63.8   |   78.7   | **79.4** |
+    |            | `"botsort"`  | **64.0** |   78.9   | **79.4** |
+    |            | `"adaptive"` | **64.0** | **79.2** | **79.4** |
+    | SportsMOT  | none         |   74.1   |   74.1   |   96.9   |
+    |            | `"botsort"`  | **77.8** | **78.5** |   96.9   |
+    |            | `"adaptive"` |   76.4   |   76.8   | **97.0** |
+    | DanceTrack | none         |   57.8   |   57.9   |   92.2   |
+    |            | `"botsort"`  | **60.8** | **61.6** |   91.7   |
+    |            | `"adaptive"` |   58.3   |   58.2   | **92.3** |
+    | SoccerNet  | none         |   85.0   |   79.7   |   97.2   |
+    |            | `"botsort"`  |   87.3   |   83.2   |   98.7   |
+    |            | `"adaptive"` | **88.4** | **84.4** | **99.3** |
 
     ??? info "Tuned ReID configuration"
 
@@ -344,20 +344,20 @@ BoT-SORT with and without ReID on the test splits, using the same detections and
 
     Encoders used as published, without training on your data. `fastreid_mot17_sbs50` was trained on MOT17 by the BoT-SORT authors, so its MOT17 rows are in domain; on the other datasets it has not seen the footage, and it still helps on SportsMOT. Both fusion methods were tuned with `trackers tune`, 20 trials each, on each dataset's tuning split².
 
-    |  Dataset   | Config                      |   HOTA   |   IDF1   |   MOTA   |
-    | :--------: | :-------------------------- | :------: | :------: | :------: |
-    |   MOT17    | BoT-SORT                    |   63.8   |   78.7   | **79.4** |
-    |            | BoT-SORT + ReID             |   63.8   |   78.8   | **79.4** |
-    |            | BoT-SORT + ReID, `adaptive` | **64.6** | **79.9** | **79.4** |
-    | SportsMOT  | BoT-SORT                    |   74.1   |   74.1   | **96.9** |
-    |            | BoT-SORT + ReID             | **75.5** | **75.5** | **96.9** |
-    |            | BoT-SORT + ReID, `adaptive` |   74.1   |   73.7   | **96.9** |
-    | DanceTrack | BoT-SORT                    | **57.8** | **57.9** |   92.2   |
-    |            | BoT-SORT + ReID             |   57.6   |   57.6   |   92.1   |
-    |            | BoT-SORT + ReID, `adaptive` |   57.5   |   57.3   | **92.3** |
-    | SoccerNet  | BoT-SORT                    |   85.0   |   79.7   |   97.2   |
-    |            | BoT-SORT + ReID             |   85.0   |   79.7   |   97.2   |
-    |            | BoT-SORT + ReID, `adaptive` | **85.9** | **80.4** | **97.9** |
+    |  Dataset   | Re-ID fusion |   HOTA   |   IDF1   |   MOTA   |
+    | :--------: | :----------- | :------: | :------: | :------: |
+    |   MOT17    | none         |   63.8   |   78.7   | **79.4** |
+    |            | `"botsort"`  |   63.8   |   78.8   | **79.4** |
+    |            | `"adaptive"` | **64.6** | **79.9** | **79.4** |
+    | SportsMOT  | none         |   74.1   |   74.1   | **96.9** |
+    |            | `"botsort"`  | **75.5** | **75.5** | **96.9** |
+    |            | `"adaptive"` |   74.1   |   73.7   | **96.9** |
+    | DanceTrack | none         | **57.8** | **57.9** |   92.2   |
+    |            | `"botsort"`  |   57.6   |   57.6   |   92.1   |
+    |            | `"adaptive"` |   57.5   |   57.3   | **92.3** |
+    | SoccerNet  | none         |   85.0   |   79.7   |   97.2   |
+    |            | `"botsort"`  |   85.0   |   79.7   |   97.2   |
+    |            | `"adaptive"` | **85.9** | **80.4** | **97.9** |
 
     ??? info "Tuned ReID configuration"
 
