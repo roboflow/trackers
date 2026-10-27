@@ -146,8 +146,10 @@ from trackers.core.reid import (
     sample_appearance_distances,
 )
 
-embeddings, ids, frame_ids, sequence_ids = extract_ground_truth_embeddings(model, "mot17/val", keep_classes=(1,))
-distances = sample_appearance_distances(embeddings, ids, frame_ids, sequence_ids)
+embeddings, ids, frame_ids, sequence_ids = extract_ground_truth_embeddings(
+    "fastreid_mot17_sbs50", "mot17/val", keep_classes=(1,)
+)
+distances = sample_appearance_distances(embeddings, ids, frame_ids, sequence_ids, different_id_pairs=10000)
 for threshold in (0.10, 0.20, 0.25):
     same_id_rate, different_id_rate = distances.rates_at(threshold)
     print(f"θ={threshold:.2f}: same-ID {same_id_rate:.1%}, different-ID {different_id_rate:.1%}")
@@ -161,7 +163,7 @@ The [ReID API reference](../api/reid.md#choosing-a-threshold) lists the full sig
 
 Blue bars are pairs of the same person, red bars are pairs of different people. A good threshold sits where the blue bars end and the red ones start. `fastreid_mot17_sbs50` on MOT17 val keeps the two groups mostly apart, with some overlap between 0.2 and 0.35.
 
-![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.png)
+![FastReID MOT17 SBS on MOT17 val GT](../assets/reid/mot17-fastreid-appearance-distances.svg)
 
 This is what `rates_at` prints for two thresholds:
 
@@ -183,22 +185,22 @@ A histogram fixes one frame gap, so it only describes re-association over that h
 ```python
 from trackers.core.reid import plot_frame_gap_sweep, sweep_frame_gap
 
-sweep = sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids)
+sweep = sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids, pairs_per_class=8000)
 plot_frame_gap_sweep(sweep, thresholds={0.20: "selected", 0.25: "default"})
 ```
 
 On MOT17 val, pairs of different people stay about as far apart at every gap. Pairs of the same person drift apart as the gap grows, because pose, lighting and occlusion change, so a threshold that catches them one frame apart misses more of them after a long absence.
 
-![FastReID MOT17 SBS separability vs frame gap](../assets/reid/mot17-fastreid-appearance-distances-vs-gap.png)
+![FastReID MOT17 SBS separability vs frame gap](../assets/reid/mot17-fastreid-appearance-distances-vs-gap.svg)
 
 From this we learn:
 
 - **Check the threshold at the gap you care about.** A threshold that works one frame apart can fail after a lost track: at 0.2 it matches 98% of same-person pairs one frame apart, but only 51% across the default 30-frame `lost_track_buffer`.
-- **Long gaps make people harder to tell apart.** The same person looks less like themselves after a long absence, so same-person and different-person distances overlap more: ROC AUC, explained below, falls from 0.998 at a 1-frame gap to 0.854 beyond 120 frames. With the threshold at 0.2, appearance stops recognizing most people after a long absence: only 29% of same-person pairs more than 120 frames apart are under 0.2, against 98% one frame apart. Raising the threshold to catch those also lets more different people through, so if you increase `lost_track_buffer`, check both rates at that gap before raising `reid_config.appearance_threshold`.
+- **Long gaps make people harder to tell apart.** The same person looks less like themselves after a long absence, so same-person and different-person distances overlap more: ROC AUC, explained below, falls from 0.997 at a 1-frame gap to 0.843 beyond 120 frames. With the threshold at 0.2, appearance stops recognizing most people after a long absence: only 26% of same-person pairs more than 120 frames apart are under 0.2, against 98% one frame apart. Raising the threshold to catch those also lets more different people through, so if you increase `lost_track_buffer`, check both rates at that gap before raising `reid_config.appearance_threshold`.
 
 ??? info "How to read ROC AUC, and the numbers per frame gap"
 
-    ROC AUC answers one question: if you pick one pair of crops of the same person and one pair of different people at random, how often is the same-person pair closer? 1.0 means always, so some threshold separates the two groups perfectly. 0.5 means a coin flip, so appearance tells you nothing. Unlike the two rates in the table, it does not depend on a chosen threshold. It is also not where the shaded bands overlap in the figure: those bands only span the 10th to 90th percentiles, so at a 1-frame gap they never touch even though the AUC is 0.998.
+    ROC AUC answers one question: if you pick one pair of crops of the same person and one pair of different people at random, how often is the same-person pair closer? 1.0 means always, so some threshold separates the two groups perfectly. 0.5 means a coin flip, so appearance tells you nothing. Unlike the two rates in the table, it does not depend on a chosen threshold. It is also not where the shaded bands overlap in the figure: those bands only span the 10th to 90th percentiles, so at a 1-frame gap they never touch even though the AUC is 0.997.
 
     How it is calculated: each frame-gap band gets its own sample of same-person and different-person pairs. For every threshold from 0 to 1, count the share of same-person pairs below it and the share of different-person pairs below it, and plot the first share against the second. That traces the ROC curve from (0, 0) to (1, 1), and ROC AUC is the area under it. `sweep_frame_gap` gets the same number without drawing the curve, by comparing every same-person distance with every different-person distance and counting how often the same-person one is smaller, with ties counting as half (`trackers.core.reid.roc_auc`). The result is the lower panel of the figure above.
 
@@ -206,13 +208,13 @@ From this we learn:
 
     | Frame gap  | ROC AUC | same-ID below 0.2 | different-ID below 0.2 |
     | :--------- | :-----: | :---------------: | :--------------------: |
-    | 1          |  0.998  |       98.0%       |          1.7%          |
-    | 2 to 5     |  0.987  |       87.6%       |          1.6%          |
-    | 6 to 15    |  0.957  |       67.4%       |          1.1%          |
-    | 16 to 30   |  0.929  |       51.4%       |          1.1%          |
-    | 31 to 60   |  0.899  |       39.8%       |          0.9%          |
-    | 61 to 120  |  0.865  |       31.8%       |          0.8%          |
-    | 121 to 240 |  0.854  |       28.7%       |          0.8%          |
+    | 1          |  0.997  |       97.9%       |          1.5%          |
+    | 2 to 5     |  0.987  |       87.6%       |          1.5%          |
+    | 6 to 15    |  0.958  |       66.8%       |          1.1%          |
+    | 16 to 30   |  0.929  |       50.9%       |          1.1%          |
+    | 31 to 60   |  0.892  |       39.6%       |          0.7%          |
+    | 61 to 120  |  0.857  |       29.8%       |          0.9%          |
+    | 121 to 240 |  0.843  |       26.4%       |          0.6%          |
 
 ---
 
