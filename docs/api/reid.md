@@ -30,7 +30,7 @@ This page covers `ReIDConfig`, the `ReIDEncoder` protocol, `FeatureBank`, appear
 
 ## Choosing a threshold
 
-Measure your own encoder on your own footage instead of inheriting a threshold from a paper. These helpers embed a labeled dataset, sample the distances a tracker actually sees, plot them, and report separability. Plotting needs `matplotlib`, which ships with the `reid` extra.
+Measure your own encoder on your own footage instead of inheriting a threshold from a paper. These helpers embed a labeled dataset, sample the distances a tracker actually sees, plot them, and report separability.
 
 Both plot functions take their reference lines as `ThresholdLines`, either a sequence of values or a mapping from value to annotation.
 
