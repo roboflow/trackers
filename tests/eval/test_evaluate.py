@@ -109,10 +109,13 @@ class TestEvaluateMOTSequence:
         [
             pytest.param("MOT17-02-FRCNN.txt", "MOT17-02-FRCNN", id="flat-layout"),
             pytest.param("MOT17-02-FRCNN/gt/gt.txt", "MOT17-02-FRCNN", id="mot-layout"),
+            pytest.param("gt.txt", "gt", id="bare-gt-file-keeps-stem"),
+            pytest.param("MOT17-02-FRCNN/gt.txt", "gt", id="gt-file-outside-gt-dir-keeps-stem"),
+            pytest.param("data/sequence-A/gt.txt", "gt", id="unrelated-grandparent-is-ignored"),
         ],
     )
     def test_sequence_name_from_gt_path(self, tmp_path: Path, gt_relpath: str, expected_sequence: str) -> None:
-        """A MOT-layout `<seq>/gt/gt.txt` file is named after `<seq>`, not after the `gt` file stem."""
+        """A MOT-layout `<seq>/gt/gt.txt` file is named after `<seq>`; every other file keeps its stem."""
         gt_file = tmp_path / gt_relpath
         gt_file.parent.mkdir(parents=True, exist_ok=True)
         gt_file.write_text("1,1,10,10,20,20,1,1\n")
@@ -122,6 +125,42 @@ class TestEvaluateMOTSequence:
         result = evaluate_mot_sequence(gt_file, tracker_file)
 
         assert result.sequence == expected_sequence
+
+    @pytest.mark.parametrize(
+        "gt_arg",
+        [
+            pytest.param("gt/gt.txt", id="relative-inside-sequence-dir"),
+            pytest.param("./gt/gt.txt", id="dot-relative"),
+            pytest.param("../MOT17-02-FRCNN/gt/gt.txt", id="parent-traversal"),
+        ],
+    )
+    def test_relative_gt_path_is_named_after_its_sequence_directory(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, gt_arg: str
+    ) -> None:
+        """A relative `gt/gt.txt` resolves against the working directory, never to an empty or `..` name."""
+        sequence_dir = tmp_path / "MOT17-02-FRCNN"
+        (sequence_dir / "gt").mkdir(parents=True)
+        (sequence_dir / "gt" / "gt.txt").write_text("1,1,10,10,20,20,1,1\n")
+        tracker_file = tmp_path / "tracker.txt"
+        tracker_file.write_text("1,1,10,10,20,20,1,1\n")
+        monkeypatch.chdir(sequence_dir)
+
+        result = evaluate_mot_sequence(gt_arg, tracker_file)
+
+        assert result.sequence == "MOT17-02-FRCNN"
+
+    def test_mot20_layout_sets_name_and_warns_about_class_config(self, tmp_path: Path) -> None:
+        """The same name drives the MOT20 warning and the result, so a `MOT20-01/gt/gt.txt` file does both."""
+        gt_file = tmp_path / "MOT20-01" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_file = tmp_path / "tracker.txt"
+        tracker_file.write_text("1,1,10,10,20,20,1,1\n")
+
+        with pytest.warns(UserWarning, match="MOT20-01"):
+            result = evaluate_mot_sequence(gt_file, tracker_file)
+
+        assert result.sequence == "MOT20-01"
 
     @pytest.mark.parametrize(
         ("gt_relpath", "class_config", "expect_warning"),
@@ -204,3 +243,32 @@ class TestEvaluateMOTSequencesClassConfig:
 
         assert result.aggregate.CLEAR is not None
         assert result.aggregate.CLEAR.MOTA == pytest.approx(expected_mota)
+
+
+class TestEvaluateMOTSequencesNaming:
+    """`evaluate_mot_sequences` names each result after the sequence it was discovered under."""
+
+    @pytest.mark.parametrize(
+        "gt_template",
+        [
+            pytest.param("{seq}.txt", id="flat-layout"),
+            pytest.param("{seq}/gt/gt.txt", id="mot-layout"),
+        ],
+    )
+    def test_each_result_carries_its_sequence_name(self, tmp_path: Path, gt_template: str) -> None:
+        """Every `result.sequences[name].sequence` equals its key, with no per-result rename step left to drift."""
+        gt_dir = tmp_path / "gt"
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        for name in ("sequence1", "sequence2"):
+            gt_file = gt_dir / gt_template.format(seq=name)
+            gt_file.parent.mkdir(parents=True, exist_ok=True)
+            gt_file.write_text("1,1,10,10,20,20,1,1\n")
+            (tracker_dir / f"{name}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir)
+
+        assert {name: seq_result.sequence for name, seq_result in result.sequences.items()} == {
+            "sequence1": "sequence1",
+            "sequence2": "sequence2",
+        }
