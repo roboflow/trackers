@@ -2833,7 +2833,8 @@ Defaults to "mot17".</p>
             <td>
               <div class="doc-md-description">
                 <p><code>SequenceResult</code> with <code>CLEAR</code>, <code>HOTA</code>, and/or <code>Identity</code> populated based
-on <code>metrics</code>.</p>
+on <code>metrics</code>. Its <code>sequence</code> is named after <code>&lt;seq&gt;</code> for the MOT layout <code>&lt;seq&gt;/gt/gt.txt</code>,
+otherwise after the ground-truth file stem.</p>
               </div>
             </td>
           </tr>
@@ -2879,7 +2880,7 @@ preset name nor a <code>MOTClassConfig</code>.</p>
     <div class="language-pycon highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.eval</span><span class="w"> </span><span class="kn">import</span> <span class="n">evaluate_mot_sequence</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="gp">&gt;&gt;&gt;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">evaluate_mot_sequence</span><span class="p">(</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="gp">... </span>    <span class="n">gt_path</span><span class="o">=</span><span class="s2">&quot;data/gt/MOT17-02/gt.txt&quot;</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="gp">... </span>    <span class="n">gt_path</span><span class="o">=</span><span class="s2">&quot;data/MOT17-02/gt/gt.txt&quot;</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="gp">... </span>    <span class="n">tracker_path</span><span class="o">=</span><span class="s2">&quot;data/trackers/MOT17-02.txt&quot;</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="gp">... </span>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;CLEAR&quot;</span><span class="p">,</span> <span class="s2">&quot;HOTA&quot;</span><span class="p">,</span> <span class="s2">&quot;Identity&quot;</span><span class="p">],</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="gp">... </span><span class="p">)</span>
