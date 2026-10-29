@@ -1094,12 +1094,18 @@ def _warmed_up_tracker(tracker_id: str) -> BaseTracker:
 
 
 def _frame_with_bad_row(coordinate: float, confidence: float) -> sv.Detections:
-    """A valid detection on the track plus one row whose x_min is ``coordinate``."""
-    return sv.Detections(
-        xyxy=np.array([_TRACKED_BOX, (coordinate, 10.0, 50.0, 50.0)], dtype=np.float32),
+    """A valid detection on the track plus one row whose x_min is ``coordinate``.
+
+    The bad value is written after construction: supervision>=0.31 rejects non-finite boxes in
+    ``sv.Detections(...)``, but not boxes changed in place, which is how they can still reach a tracker.
+    """
+    detections = sv.Detections(
+        xyxy=np.array([_TRACKED_BOX, _TRACKED_BOX], dtype=np.float32),
         confidence=np.array([0.9, confidence], dtype=np.float32),
         class_id=np.zeros(2, dtype=int),
     )
+    detections.xyxy[1, 0] = coordinate
+    return detections
 
 
 def _state_snapshot(tracker: BaseTracker) -> tuple[list[tuple[int, int, int]], float | None, int]:
