@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
@@ -98,10 +99,7 @@ def evaluate_mot_sequence(
     gt_path = Path(gt_path)
     tracker_path = Path(tracker_path)
 
-    # MOT layout stores ground truth as `<seq>/gt/gt.txt`, so the sequence is named by the grandparent directory.
-    seq_name = gt_path.stem
-    if seq_name == "gt":
-        seq_name = gt_path.parent.parent.name
+    seq_name = _sequence_name_from_gt_path(gt_path)
     _warn_if_mot20_sequences_use_mot17_config([seq_name], resolved_class_config)
 
     return _evaluate_mot_sequence_resolved(
@@ -112,6 +110,25 @@ def evaluate_mot_sequence(
         threshold=threshold,
         class_config=resolved_class_config,
     )
+
+
+def _sequence_name_from_gt_path(gt_path: Path) -> str:
+    """Name the sequence that a ground-truth file belongs to.
+
+    MOT layout stores ground truth as `<seq>/gt/gt.txt`, so those files are named after `<seq>`. Any other file,
+    including a flat `<name>.txt` or a bare `gt.txt`, keeps its file stem. The path is normalized lexically, so a
+    relative `gt/gt.txt` or `../gt/gt.txt` resolves against the working directory without following symlinks.
+
+    Args:
+        gt_path: Path to the ground-truth MOT file.
+
+    Returns:
+        The sequence directory name for `<seq>/gt/gt.txt`, otherwise the file stem.
+    """
+    normalized = Path(os.path.abspath(gt_path))
+    if normalized.name == "gt.txt" and normalized.parent.name == "gt" and normalized.parent.parent.name:
+        return normalized.parent.parent.name
+    return gt_path.stem
 
 
 def _evaluate_mot_sequence_resolved(
