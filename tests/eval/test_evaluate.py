@@ -281,7 +281,7 @@ class TestEvaluateMOTSequencesDiscovery:
         ("gt_relpath", "hidden_relpath"),
         [
             pytest.param("sequence1.txt", ".hidden.txt", id="flat-layout"),
-            pytest.param("sequence1/gt/gt.txt", ".ipynb_checkpoints/gt/gt.txt", id="mot-layout"),
+            pytest.param("sequence1/gt/gt.txt", ".sequence1-backup/gt/gt.txt", id="mot-layout"),
         ],
     )
     def test_hidden_entries_are_not_treated_as_sequences(
@@ -292,8 +292,8 @@ class TestEvaluateMOTSequencesDiscovery:
     ) -> None:
         """A hidden ground-truth entry is skipped instead of being evaluated as a sequence.
 
-        Tooling leaves hidden siblings next to the sequences (`.ipynb_checkpoints`, editor and sync artifacts). They
-        have no matching prediction file, so discovering one aborts the whole benchmark with `FileNotFoundError`.
+        Backup and sync tools can leave hidden copies next to the sequences (`.sequence1-backup/gt/gt.txt`). Such a copy
+        is not a sequence to evaluate, and discovering one aborts the whole benchmark when it has no prediction file.
         """
         gt_dir = tmp_path / "gt"
         for relpath in (gt_relpath, hidden_relpath):

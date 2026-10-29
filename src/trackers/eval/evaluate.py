@@ -451,8 +451,8 @@ def _discover_sequences(
         data_format: Directory format.
 
     Returns:
-        List of sequence names. Hidden entries (names starting with `.`, e.g.
-            `.ipynb_checkpoints`) are skipped in both layouts.
+        List of sequence names. Hidden entries (names starting with `.`, e.g. a
+            `.MOT17-02-backup` copy) are skipped in both layouts.
     """
     if data_format == "flat":
         return sorted(p.stem for p in gt_dir.glob("*.txt") if not p.name.startswith("."))
