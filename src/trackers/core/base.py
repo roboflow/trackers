@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import copy
 import inspect
 import math
 import re
@@ -529,6 +530,9 @@ class BaseTracker(ABC):
         Keeps the input's fields (``data`` keys, ``mask``, ``metadata``) that ``sv.Detections.empty()`` would drop.
         """
         result = cast(sv.Detections, detections[np.array([], dtype=int)])
+        if result is detections:
+            # supervision 0.28.x/0.29.x return the input itself for an empty index; never write tracker_id onto it.
+            result = copy.deepcopy(result)
         result.tracker_id = np.array([], dtype=int)
         return result
 
