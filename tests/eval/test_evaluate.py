@@ -307,3 +307,22 @@ class TestEvaluateMOTSequencesDiscovery:
         result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
 
         assert list(result.sequences) == ["sequence1"]
+
+    def test_hidden_root_file_does_not_switch_mot_layout_to_flat(self, tmp_path: Path) -> None:
+        """A hidden `.txt` file at the root of a MOT-layout `gt_dir` leaves the layout detected as MOT.
+
+        Format detection used to count hidden root files, so `.notes.txt` next to `sequence1/gt/gt.txt` selected the
+        flat layout, whose discovery skips hidden files and then found no sequence at all (`ValueError`).
+        """
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / "sequence1" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        (gt_dir / ".notes.txt").write_text("scratch\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
+
+        assert list(result.sequences) == ["sequence1"]

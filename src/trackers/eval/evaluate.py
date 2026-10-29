@@ -424,13 +424,15 @@ def _detect_format(gt_dir: Path) -> Literal["flat", "mot"]:
         "flat" if .txt files exist in gt_dir, "mot" if sequence
         subdirectories with gt/gt.txt exist.
     """
+    # Hidden entries are skipped exactly as `_discover_sequences` skips them, so a stray hidden file
+    # cannot select a layout under which discovery then finds no sequences.
     # Check for flat format (*.txt files directly in gt_dir)
-    txt_files = list(gt_dir.glob("*.txt"))
+    txt_files = [p for p in gt_dir.glob("*.txt") if not p.name.startswith(".")]
     if txt_files:
         return "flat"
 
     # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir)
-    mot_files = list(gt_dir.glob("*/gt/gt.txt"))
+    mot_files = [p for p in gt_dir.glob("*/gt/gt.txt") if not p.parent.parent.name.startswith(".")]
     if mot_files:
         return "mot"
 
