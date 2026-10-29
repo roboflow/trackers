@@ -326,3 +326,24 @@ class TestEvaluateMOTSequencesDiscovery:
         result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
 
         assert list(result.sequences) == ["sequence1"]
+
+    def test_seqmap_selects_hidden_mot_sequence(self, tmp_path: Path) -> None:
+        """A `seqmap` still evaluates a MOT-layout sequence directory whose name starts with `.`.
+
+        Discovery skips hidden directories, so the seqmap is the documented way to include one. Layout detection must
+        keep seeing such a directory as MOT; otherwise a `gt_dir` holding only hidden sequences is read as flat and the
+        seqmap entry resolves to a missing `.5.txt`.
+        """
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / ".5" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / ".5.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_text("name\n.5\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap, metrics=["CLEAR"])
+
+        assert list(result.sequences) == [".5"]
