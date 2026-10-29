@@ -69,7 +69,8 @@ def evaluate_mot_sequence(
 
     Returns:
         `SequenceResult` with `CLEAR`, `HOTA`, and/or `Identity` populated based
-            on `metrics`.
+            on `metrics`. Its `sequence` is named after `<seq>` for the MOT layout `<seq>/gt/gt.txt`,
+            otherwise after the ground-truth file stem.
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
@@ -80,7 +81,7 @@ def evaluate_mot_sequence(
         >>> from trackers.eval import evaluate_mot_sequence  # doctest: +SKIP
         >>>
         >>> result = evaluate_mot_sequence(  # doctest: +SKIP
-        ...     gt_path="data/gt/MOT17-02/gt.txt",
+        ...     gt_path="data/MOT17-02/gt/gt.txt",
         ...     tracker_path="data/trackers/MOT17-02.txt",
         ...     metrics=["CLEAR", "HOTA", "Identity"],
         ... )
