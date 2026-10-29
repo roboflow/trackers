@@ -1187,6 +1187,42 @@ def _assert_keeps_fields(result: sv.Detections, class_names: list[str]) -> None:
     assert result.mask is not None, "update() must keep the input's mask"
     assert result.mask.shape == (len(class_names), *_MASK_SHAPE)
     assert result.metadata == {"camera": "cam-a"}
+    assert result.xyxy.dtype == np.float32, "update() must keep the input's dtypes"
+    assert result.confidence is not None
+    assert result.confidence.dtype == np.float32
+    assert result.class_id is not None
+    assert result.class_id.dtype == np.zeros(1, dtype=int).dtype
+    assert result.mask.dtype == bool
+    assert result.data["class_name"].dtype.kind == "U"
+    assert result.tracker_id.dtype.kind == "i"
+
+
+def _empty_input_variants() -> dict[str, sv.Detections]:
+    """Zero-row inputs in the shapes that supervision versions index differently."""
+    return {
+        "empty": sv.Detections.empty(),
+        "no_optional_fields": sv.Detections(xyxy=np.empty((0, 4), dtype=np.float64)),
+        "with_fields": _detections_with_fields([]),
+        "zero_row_data_key": sv.Detections(
+            xyxy=np.empty((0, 4), dtype=np.float32), data={"class_name": np.array([], dtype=str)}
+        ),
+    }
+
+
+@pytest.mark.parametrize("variant", list(_empty_input_variants()))
+@pytest.mark.parametrize("tracker_id", _EMPTY_RESULT_TRACKER_IDS)
+def test_empty_result_is_fresh_and_input_unchanged(tracker_id: str, variant: str) -> None:
+    """An empty result is a new object and leaves the caller's detections unchanged."""
+    detections = _empty_input_variants()[variant]
+    expected_keys = list(detections.data)
+
+    result = _instantiate(tracker_id).update(detections)
+
+    assert result is not detections
+    assert detections.tracker_id is None, "update() must not assign tracker_id on the caller's detections"
+    assert list(detections.data) == expected_keys
+    assert result.tracker_id is not None
+    assert len(result.tracker_id) == 0
 
 
 @pytest.mark.parametrize("tracker_id", _EMPTY_RESULT_TRACKER_IDS)
@@ -1221,7 +1257,18 @@ class TestEmptyResultKeepsInputFields:
         assert result.confidence is None
         assert result.class_id is None
 
-    def test_only_low_confidence_detections(self, tracker_id: str) -> None:
-        result = _instantiate(tracker_id).update(_detections_with_fields([0.05]))
+    @pytest.mark.parametrize(
+        "confidence",
+        [
+            pytest.param([0.05], id="below-threshold"),
+            pytest.param([0.1], id="at-threshold"),
+            pytest.param([0.05, 0.1], id="multi-row"),
+        ],
+    )
+    def test_only_low_confidence_detections(self, tracker_id: str, confidence: list[float]) -> None:
+        """Rows at or below the 0.1 confidence cut-off are dropped or kept per tracker, fields intact either way."""
+        result = _instantiate(tracker_id).update(_detections_with_fields(confidence))
 
-        _assert_keeps_fields(result, [] if tracker_id in _DISCARDS_LOW_CONFIDENCE else ["person"])
+        kept = [] if tracker_id in _DISCARDS_LOW_CONFIDENCE else ["person"] * len(confidence)
+        _assert_keeps_fields(result, kept)
+        assert all(result.tracker_id == -1)
