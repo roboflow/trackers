@@ -278,10 +278,10 @@ class TestEvaluateMOTSequencesDiscovery:
     """Sequence discovery must ignore hidden entries in both supported layouts."""
 
     @pytest.mark.parametrize(
-        ("gt_relpath", "hidden_relpath"),
+        ("gt_relpath", "hidden_relpath", "hidden_sequence"),
         [
-            pytest.param("sequence1.txt", ".hidden.txt", id="flat-layout"),
-            pytest.param("sequence1/gt/gt.txt", ".sequence1-backup/gt/gt.txt", id="mot-layout"),
+            pytest.param("sequence1.txt", ".hidden.txt", ".hidden", id="flat-layout"),
+            pytest.param("sequence1/gt/gt.txt", ".sequence1-backup/gt/gt.txt", ".sequence1-backup", id="mot-layout"),
         ],
     )
     def test_hidden_entries_are_not_treated_as_sequences(
@@ -289,11 +289,13 @@ class TestEvaluateMOTSequencesDiscovery:
         tmp_path: Path,
         gt_relpath: str,
         hidden_relpath: str,
+        hidden_sequence: str,
     ) -> None:
         """A hidden ground-truth entry is skipped instead of being evaluated as a sequence.
 
         Backup and sync tools can leave hidden copies next to the sequences (`.sequence1-backup/gt/gt.txt`). Such a copy
-        is not a sequence to evaluate, and discovering one aborts the whole benchmark when it has no prediction file.
+        is not a sequence to evaluate. The hidden entry gets its own prediction file here, so the test pins discovery
+        itself rather than an evaluator that merely skips sequences without predictions.
         """
         gt_dir = tmp_path / "gt"
         for relpath in (gt_relpath, hidden_relpath):
@@ -303,6 +305,7 @@ class TestEvaluateMOTSequencesDiscovery:
         tracker_dir = tmp_path / "trackers"
         tracker_dir.mkdir()
         (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        (tracker_dir / f"{hidden_sequence}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
 
         result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
 
