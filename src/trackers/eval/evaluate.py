@@ -424,12 +424,14 @@ def _detect_format(gt_dir: Path) -> Literal["flat", "mot"]:
         "flat" if .txt files exist in gt_dir, "mot" if sequence
         subdirectories with gt/gt.txt exist.
     """
-    # Check for flat format (*.txt files directly in gt_dir)
-    txt_files = list(gt_dir.glob("*.txt"))
+    # Check for flat format (*.txt files directly in gt_dir). Hidden files are skipped as
+    # `_discover_sequences` skips them, so a stray `.notes.txt` cannot select the flat layout.
+    txt_files = [p for p in gt_dir.glob("*.txt") if not p.name.startswith(".")]
     if txt_files:
         return "flat"
 
-    # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir)
+    # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir). Hidden sequence
+    # directories still count here: a `seqmap` may list them explicitly.
     mot_files = list(gt_dir.glob("*/gt/gt.txt"))
     if mot_files:
         return "mot"
@@ -449,13 +451,18 @@ def _discover_sequences(
         data_format: Directory format.
 
     Returns:
-        List of sequence names.
+        List of sequence names. Hidden entries (names starting with `.`, e.g. a
+            `.MOT17-02-backup` copy) are skipped in both layouts.
     """
     if data_format == "flat":
         return sorted(p.stem for p in gt_dir.glob("*.txt") if not p.name.startswith("."))
     else:
-        # MOT format: gt_dir/{seq}/gt/gt.txt
-        return sorted(p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.name.startswith("."))
+        # MOT format: gt_dir/{seq}/gt/gt.txt — the sequence name is the grandparent directory,
+        # so the hidden-entry check has to look at that name rather than at `p.name`, which is
+        # always "gt.txt".
+        return sorted(
+            p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.parent.parent.name.startswith(".")
+        )
 
 
 def _get_paths(

@@ -272,3 +272,81 @@ class TestEvaluateMOTSequencesNaming:
             "sequence1": "sequence1",
             "sequence2": "sequence2",
         }
+
+
+class TestEvaluateMOTSequencesDiscovery:
+    """Sequence discovery must ignore hidden entries in both supported layouts."""
+
+    @pytest.mark.parametrize(
+        ("gt_relpath", "hidden_relpath", "hidden_sequence"),
+        [
+            pytest.param("sequence1.txt", ".hidden.txt", ".hidden", id="flat-layout"),
+            pytest.param("sequence1/gt/gt.txt", ".sequence1-backup/gt/gt.txt", ".sequence1-backup", id="mot-layout"),
+        ],
+    )
+    def test_hidden_entries_are_not_treated_as_sequences(
+        self,
+        tmp_path: Path,
+        gt_relpath: str,
+        hidden_relpath: str,
+        hidden_sequence: str,
+    ) -> None:
+        """A hidden ground-truth entry is skipped instead of being evaluated as a sequence.
+
+        Backup and sync tools can leave hidden copies next to the sequences (`.sequence1-backup/gt/gt.txt`). Such a copy
+        is not a sequence to evaluate. The hidden entry gets its own prediction file here, so the test pins discovery
+        itself rather than an evaluator that merely skips sequences without predictions.
+        """
+        gt_dir = tmp_path / "gt"
+        for relpath in (gt_relpath, hidden_relpath):
+            gt_file = gt_dir / relpath
+            gt_file.parent.mkdir(parents=True, exist_ok=True)
+            gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        (tracker_dir / f"{hidden_sequence}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
+
+        assert list(result.sequences) == ["sequence1"]
+
+    def test_hidden_root_file_does_not_switch_mot_layout_to_flat(self, tmp_path: Path) -> None:
+        """A hidden `.txt` file at the root of a MOT-layout `gt_dir` leaves the layout detected as MOT.
+
+        Format detection used to count hidden root files, so `.notes.txt` next to `sequence1/gt/gt.txt` selected the
+        flat layout, whose discovery skips hidden files and then found no sequence at all (`ValueError`).
+        """
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / "sequence1" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        (gt_dir / ".notes.txt").write_text("scratch\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
+
+        assert list(result.sequences) == ["sequence1"]
+
+    def test_seqmap_selects_hidden_mot_sequence(self, tmp_path: Path) -> None:
+        """A `seqmap` still evaluates a MOT-layout sequence directory whose name starts with `.`.
+
+        Discovery skips hidden directories, so the seqmap is the documented way to include one. Layout detection must
+        keep seeing such a directory as MOT; otherwise a `gt_dir` holding only hidden sequences is read as flat and the
+        seqmap entry resolves to a missing `.5.txt`.
+        """
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / ".5" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / ".5.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_text("name\n.5\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap, metrics=["CLEAR"])
+
+        assert list(result.sequences) == [".5"]
