@@ -326,7 +326,7 @@ Save tracking results as annotated video files or display them in real time.
 
 Each returned row keeps its per-detection fields: `class_id`, `mask`, and `data` entries such as `class_name` from a connector or values you add yourself. Frame-level `metadata` is kept as well. A result with no rows keeps the same fields, so the same code works on frames without detections.
 
-To find the input detection behind each output row, store its position before tracking. In the loop above, keep the input under its own name:
+To find the input detection behind each output row, store its position before tracking. Unlike the loop above, which overwrites `detections` with the tracker output, keep the input under its own name. `sv`, `tracker` and `result` come from that loop:
 
 ```python
 import numpy as np
