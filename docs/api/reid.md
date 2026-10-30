@@ -6,27 +6,27 @@ description: Python API reference for the ReID encoder protocol, feature bank, a
 
 The encoder protocol, feature bank, and NumPy helpers are included in the base package. For model loading and plotting, install the `reid` extra (`pip install "trackers[reid]"`; see the [install guide](../guides/install.md)).
 
-This page covers `ReIDConfig`, the `ReIDEncoder` protocol, `FeatureBank`, appearance association helpers, and the threshold-selection plots in `trackers.core.reid`. For enabling appearance on BoT-SORT and for benchmark results, see the [ReID appearance guide](../guides/reid.md). Model loading and gallery evaluation are in the standalone [`reid`](https://github.com/roboflow/re-ID) package.
+This page covers `ReIDConfig`, the `ReIDEncoder` protocol, `FeatureBank`, appearance association helpers, and the threshold-selection plots in `trackers.reid`. For enabling appearance on BoT-SORT and for benchmark results, see the [ReID appearance guide](../guides/reid.md). Model loading and gallery evaluation are in the standalone [`reid`](https://github.com/roboflow/re-ID) package.
 
 ## ReIDConfig
 
-::: trackers.core.reid.config.ReIDConfig
+::: trackers.reid.config.ReIDConfig
 
 ## ReIDEncoder
 
-::: trackers.core.reid.encoder.ReIDEncoder
+::: trackers.reid.encoder.ReIDEncoder
 
 ## FeatureBank
 
-::: trackers.core.reid.feature_bank.FeatureBank
+::: trackers.reid.feature_bank.FeatureBank
 
 ## appearance_similarity
 
-::: trackers.core.reid.appearance.appearance_similarity
+::: trackers.reid.appearance.appearance_similarity
 
 ## extract_detection_embeddings
 
-::: trackers.core.reid.appearance.extract_detection_embeddings
+::: trackers.reid.appearance.extract_detection_embeddings
 
 ## Choosing a threshold
 
@@ -35,7 +35,7 @@ Measure your own encoder on your own footage instead of inheriting a threshold f
 Both plot functions take their reference lines as `ThresholdLines`, either a sequence of values or a mapping from value to annotation.
 
 ```python
-from trackers.core.reid import (
+from trackers.reid import (
     extract_ground_truth_embeddings,
     plot_appearance_distances,
     plot_frame_gap_sweep,
@@ -54,28 +54,28 @@ plot_frame_gap_sweep(sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids))
 
 ### extract_ground_truth_embeddings
 
-::: trackers.core.reid.appearance.extract_ground_truth_embeddings
+::: trackers.reid.appearance.extract_ground_truth_embeddings
 
 ### AppearanceDistances
 
-::: trackers.core.reid.threshold_selection.AppearanceDistances
+::: trackers.reid.threshold_selection.AppearanceDistances
 
 ### sample_appearance_distances
 
-::: trackers.core.reid.threshold_selection.sample_appearance_distances
+::: trackers.reid.threshold_selection.sample_appearance_distances
 
 ### sweep_frame_gap
 
-::: trackers.core.reid.threshold_selection.sweep_frame_gap
+::: trackers.reid.threshold_selection.sweep_frame_gap
 
 ### roc_auc
 
-::: trackers.core.reid.threshold_selection.roc_auc
+::: trackers.reid.threshold_selection.roc_auc
 
 ### plot_appearance_distances
 
-::: trackers.core.reid.plots.plot_appearance_distances
+::: trackers.reid.plots.plot_appearance_distances
 
 ### plot_frame_gap_sweep
 
-::: trackers.core.reid.plots.plot_frame_gap_sweep
+::: trackers.reid.plots.plot_frame_gap_sweep

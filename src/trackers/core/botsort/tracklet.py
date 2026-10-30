@@ -16,7 +16,7 @@ from trackers.utils.scale_aware_tracklet import ScaleAwareNoiseTracklet
 from trackers.utils.state_representations import BaseStateEstimator, XCYCWHStateEstimator
 
 if TYPE_CHECKING:
-    from trackers.core.reid.feature_bank import FeatureBank
+    from trackers.reid.feature_bank import FeatureBank
 
 
 class BoTSORTTracklet(ScaleAwareNoiseTracklet):

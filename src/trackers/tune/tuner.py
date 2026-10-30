@@ -19,16 +19,16 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
-from trackers.core.reid.encoder import _load_reid_encoder
 from trackers.eval.evaluate import evaluate_mot_sequences
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
+from trackers.reid.encoder import _load_reid_encoder
 
 if TYPE_CHECKING:
     import optuna
 
-    from trackers.core.reid.encoder import ReIDEncoder
+    from trackers.reid.encoder import ReIDEncoder
 
 
 def _load_mot_sequence_frame(images_dir: Path, seq_name: str, frame_idx: int) -> np.ndarray:
@@ -70,7 +70,7 @@ class _CachedReIDEncoder:
 
         Note:
             ``detections`` always carries at least one box here:
-            :func:`trackers.core.reid.appearance.extract_detection_embeddings`, the only caller,
+            :func:`trackers.reid.appearance.extract_detection_embeddings`, the only caller,
             returns early without asking an encoder when there are none.
         """
         frame_key = hashlib.blake2b(np.ascontiguousarray(frame).data, digest_size=16).digest()

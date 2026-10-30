@@ -17,8 +17,8 @@ import supervision as sv
 
 import trackers.core.botsort.tracker as tracker_module
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.reid.config import ReIDConfig
-from trackers.core.reid.fusion import (
+from trackers.reid.config import ReIDConfig
+from trackers.reid.fusion import (
     ReidFusionMethod,
     fuse_adaptive_reid_association,
     fuse_botsort_reid_association,
@@ -88,8 +88,8 @@ class TestFuseBotsortReidAssociation:
         fused = fuse_botsort_reid_association(
             np.array([[0.63]], dtype=np.float32),
             np.array([[0.8]], dtype=np.float32),
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.25,
+            proximity_threshold=0.5,
+            appearance_threshold=0.25,
         )
         assert fused[0, 0] == pytest.approx(0.9)
 
@@ -100,8 +100,8 @@ class TestFuseBotsortReidAssociation:
         fused = fuse_botsort_reid_association(
             iou_only,
             np.array([[0.9]], dtype=np.float32),
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.25,
+            proximity_threshold=0.5,
+            appearance_threshold=0.25,
         )
         assert fused[0, 0] == pytest.approx(float(iou_only[0, 0]))
 
@@ -112,8 +112,8 @@ class TestFuseBotsortReidAssociation:
         fused = fuse_botsort_reid_association(
             association_iou,
             np.array([[0.95]], dtype=np.float32),
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.25,
+            proximity_threshold=0.5,
+            appearance_threshold=0.25,
             proximity_iou_similarity=np.array([[0.35]], dtype=np.float32),
         )
         assert fused[0, 0] == pytest.approx(float(association_iou[0, 0]))
@@ -302,18 +302,18 @@ class TestFuseAdaptiveReidAssociation:
         dominant = fuse_adaptive_reid_association(
             iou,
             np.array([[0.9, 0.1]], dtype=np.float32),
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.5,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
+            appearance_threshold=0.5,
         )
         tied = fuse_adaptive_reid_association(
             iou,
             np.array([[0.9, 0.9]], dtype=np.float32),
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.5,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
+            appearance_threshold=0.5,
         )
         # Gap 0.8 is capped at 0.5, halved to a 0.25 bonus: 0.6 + (0.75 + 0.25) * 0.9.
         assert dominant[0, 0] == pytest.approx(1.5)
@@ -327,10 +327,10 @@ class TestFuseAdaptiveReidAssociation:
         fused = fuse_adaptive_reid_association(
             np.array([[0.36]], dtype=np.float32),
             np.array([[0.9]], dtype=np.float32),
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.5,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
+            appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(0.36)
 
@@ -340,10 +340,10 @@ class TestFuseAdaptiveReidAssociation:
         fused = fuse_adaptive_reid_association(
             np.array([[0.3, 0.3]], dtype=np.float32),
             np.array([[0.6, 0.8]], dtype=np.float32),
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.0,
-            reid_proximity_threshold=1.0,
-            reid_appearance_threshold=0.175,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.0,
+            proximity_threshold=1.0,
+            appearance_threshold=0.175,
         )
         assert fused[0, 0] == pytest.approx(0.3)
         assert fused[0, 1] == pytest.approx(0.9)
@@ -356,10 +356,10 @@ class TestFuseAdaptiveReidAssociation:
         fused = fuse_adaptive_reid_association(
             np.array([[0.6, 0.6]], dtype=np.float32),
             np.array([[0.9, 0.8]], dtype=np.float32),
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.075,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
+            appearance_threshold=0.075,
         )
         # Track gap 0.1, no detection gap (one track): 0.6 + (0.75 + 0.1 / 2) * 0.9.
         assert fused[0, 0] == pytest.approx(1.32)
@@ -374,18 +374,18 @@ class TestFuseAdaptiveReidAssociation:
         both_close = fuse_adaptive_reid_association(
             np.array([[0.6, 0.6]], dtype=np.float32),
             appearance,
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.5,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
+            appearance_threshold=0.5,
         )
         one_gated = fuse_adaptive_reid_association(
             np.array([[0.6, 0.4]], dtype=np.float32),
             appearance,
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.5,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
+            appearance_threshold=0.5,
         )
 
         # Base weight only in both cases: 0.6 + 0.75 * 0.9.
@@ -401,10 +401,10 @@ class TestFuseAdaptiveReidAssociation:
         fused = fuse_adaptive_reid_association(
             np.full((2, 3), 0.6, dtype=np.float32),
             np.array([[0.9, 0.3, 0.2], [0.4, 0.3, 0.2]], dtype=np.float32),
-            reid_appearance_weight=0.5,
-            reid_adaptive_weight_cap=0.4,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.5,
+            appearance_weight=0.5,
+            adaptive_weight_cap=0.4,
+            proximity_threshold=0.5,
+            appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(0.6 + (0.5 + 0.4) * 0.9)
         # Track 1 leads its own row by only 0.1, so its bonus is smaller.
@@ -416,10 +416,10 @@ class TestFuseAdaptiveReidAssociation:
         fused = fuse_adaptive_reid_association(
             np.array([[0.8]], dtype=np.float32),
             np.array([[-0.5]], dtype=np.float32),
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.5,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
+            appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(0.8)
 
@@ -429,10 +429,10 @@ class TestFuseAdaptiveReidAssociation:
         fused = fuse_adaptive_reid_association(
             np.array([[0.7]], dtype=np.float32),
             np.array([[0.8]], dtype=np.float32),
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
-            reid_appearance_threshold=0.5,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
+            appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(1.3)
 
@@ -444,11 +444,11 @@ class TestFuseAdaptiveReidAssociation:
         fused = fuse_adaptive_reid_association(
             association_iou,
             np.array([[0.95]], dtype=np.float32),
-            reid_appearance_weight=0.75,
-            reid_adaptive_weight_cap=0.5,
-            reid_proximity_threshold=0.5,
+            appearance_weight=0.75,
+            adaptive_weight_cap=0.5,
+            proximity_threshold=0.5,
             proximity_iou_similarity=np.array([[0.35]], dtype=np.float32),
-            reid_appearance_threshold=0.5,
+            appearance_threshold=0.5,
         )
         assert fused[0, 0] == pytest.approx(float(association_iou[0, 0]))
 
@@ -512,7 +512,7 @@ class TestReidFusionSelection:
         def spy(association, appearance, **kwargs):
             received.update(kwargs)
             return tracker_module.fuse_botsort_reid_association(
-                association, appearance, reid_proximity_threshold=0.5, reid_appearance_threshold=0.25
+                association, appearance, proximity_threshold=0.5, appearance_threshold=0.25
             )
 
         monkeypatch.setattr(tracker_module, "fuse_adaptive_reid_association", spy)
@@ -530,10 +530,10 @@ class TestReidFusionSelection:
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(5))
         tracker.update(_detection((10.0, 10.0, 30.0, 30.0)), frame=_frame(6))
 
-        assert received["reid_appearance_weight"] == 0.5
-        assert received["reid_adaptive_weight_cap"] == 0.4
-        assert received["reid_proximity_threshold"] == 0.9
-        assert received["reid_appearance_threshold"] == 0.35
+        assert received["appearance_weight"] == 0.5
+        assert received["adaptive_weight_cap"] == 0.4
+        assert received["proximity_threshold"] == 0.9
+        assert received["appearance_threshold"] == 0.35
 
     def test_adaptive_fusion_changes_association(self) -> None:
         # Non-default weights: at 0.75 with the cap binding the effective weight is exactly

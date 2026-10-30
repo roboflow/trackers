@@ -14,9 +14,9 @@ from pathlib import Path
 import numpy as np
 import supervision as sv
 
-from trackers.core.reid.encoder import ReIDEncoder, _load_reid_encoder
 from trackers.io.frames import load_mot_frame_image, resolve_mot_frame_path
 from trackers.io.mot import load_mot_file
+from trackers.reid.encoder import ReIDEncoder, _load_reid_encoder
 
 _NORM_EPS = 1e-12
 
@@ -104,7 +104,7 @@ def extract_ground_truth_embeddings(
     track number in two videos stays two identities.
 
     The four returned arrays are what
-    :func:`trackers.core.reid.sample_appearance_distances` expects, which is how
+    :func:`trackers.reid.sample_appearance_distances` expects, which is how
     an ``appearance_threshold`` gets calibrated on a new dataset.
 
     Args:
@@ -176,7 +176,7 @@ def appearance_similarity(
     track_features: Sequence[np.ndarray | None],
     det_embeddings: np.ndarray,
     *,
-    det_embeddings_normalized: bool = False,
+    are_embeddings_normalized: bool = False,
 ) -> np.ndarray:
     """Compute cosine similarities between track and detection embeddings.
 
@@ -184,8 +184,8 @@ def appearance_similarity(
         track_features: Sequence of ``T`` track features, each with shape ``(D,)``.
             Entries may be ``None`` when a track has no appearance feature.
         det_embeddings: Detection embedding matrix with shape ``(N, D)``.
-        det_embeddings_normalized: Whether detection rows are already validated
-            unit embeddings from :func:`extract_detection_embeddings`.
+        are_embeddings_normalized: Whether detection rows are already validated unit embeddings from
+            :func:`extract_detection_embeddings`.
 
     Returns:
         Float32 cosine similarities in ``[-1, 1]`` with shape ``(T, N)``, where
@@ -204,7 +204,7 @@ def appearance_similarity(
                [0., 0.]], dtype=float32)
     """
     n_tracks = len(track_features)
-    if det_embeddings_normalized:
+    if are_embeddings_normalized:
         det_embeddings = np.asarray(det_embeddings, dtype=np.float32)
     else:
         det_embeddings = _l2_normalize_rows(_require_embedding_matrix(det_embeddings))

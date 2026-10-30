@@ -42,7 +42,7 @@ from trackers.cli.track import (
 )
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.reid.config import ReIDConfig
+from trackers.reid.config import ReIDConfig
 
 
 class TestInitAnnotators:

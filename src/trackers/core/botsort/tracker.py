@@ -14,11 +14,11 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
-from trackers.core.reid.config import ReIDConfig
-from trackers.core.reid.encoder import ReIDEncoder, _load_reid_encoder
-from trackers.core.reid.feature_bank import FeatureBank
-from trackers.core.reid.fusion import (
+from trackers.reid.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.reid.config import ReIDConfig
+from trackers.reid.encoder import ReIDEncoder, _load_reid_encoder
+from trackers.reid.feature_bank import FeatureBank
+from trackers.reid.fusion import (
     fuse_adaptive_reid_association,
     fuse_botsort_reid_association,
 )
@@ -511,7 +511,7 @@ class BoTSORTTracker(BaseTracker):
         """Update a track from a matched detection and record output indices."""
         track.update(bbox)
         if track.feature_bank is not None and embedding is not None:
-            track.feature_bank.update(embedding, normalized=True)
+            track.feature_bank.update(embedding, skip_normalize=True)
         if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
             track.tracker_id = self._allocate_tracker_id()
         out_det_indices.append(global_det_index)
@@ -537,23 +537,23 @@ class BoTSORTTracker(BaseTracker):
             if isinstance(self.iou, IoU)
             else self._get_iou_matrix(tracklets, boxes, tracklet_boxes_by_id, metric=IoU())
         )
-        appearance = appearance_similarity(track_feats, embeddings, det_embeddings_normalized=True)
+        appearance = appearance_similarity(track_feats, embeddings, are_embeddings_normalized=True)
         if self.reid_config.fusion == "adaptive":
             return fuse_adaptive_reid_association(
                 iou_sim_fused,
                 appearance,
                 proximity_iou_similarity=proximity_iou,
-                reid_proximity_threshold=self.reid_config.proximity_threshold,
-                reid_appearance_weight=self.reid_config.appearance_weight,
-                reid_adaptive_weight_cap=self.reid_config.adaptive_weight_cap,
-                reid_appearance_threshold=self.reid_config.appearance_threshold,
+                proximity_threshold=self.reid_config.proximity_threshold,
+                appearance_weight=self.reid_config.appearance_weight,
+                adaptive_weight_cap=self.reid_config.adaptive_weight_cap,
+                appearance_threshold=self.reid_config.appearance_threshold,
             )
         return fuse_botsort_reid_association(
             iou_sim_fused,
             appearance,
             proximity_iou_similarity=proximity_iou,
-            reid_proximity_threshold=self.reid_config.proximity_threshold,
-            reid_appearance_threshold=self.reid_config.appearance_threshold,
+            proximity_threshold=self.reid_config.proximity_threshold,
+            appearance_threshold=self.reid_config.appearance_threshold,
         )
 
     def _get_iou_matrix(
@@ -662,7 +662,7 @@ class BoTSORTTracker(BaseTracker):
                 if self.reid_model is not None:
                     tracklet.feature_bank = FeatureBank(self.reid_config.ema_alpha)
                     if det_embeddings is not None:
-                        tracklet.feature_bank.update(det_embeddings[det_local_idx], normalized=True)
+                        tracklet.feature_bank.update(det_embeddings[det_local_idx], skip_normalize=True)
                 if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = self._allocate_tracker_id()
                 self.tracks.append(tracklet)

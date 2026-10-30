@@ -17,8 +17,8 @@ import pytest
 import supervision as sv
 
 import trackers
-from trackers.core import reid
-from trackers.core.reid.appearance import (
+from trackers import reid
+from trackers.reid.appearance import (
     appearance_similarity,
     extract_detection_embeddings,
     extract_ground_truth_embeddings,

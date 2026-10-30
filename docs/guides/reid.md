@@ -140,7 +140,7 @@ The right value depends on the encoder and the footage, so measure it on labeled
 Trackers has a helper for each step. `extract_ground_truth_embeddings` reads any dataset in [MOT format](../evaluations/evaluate.md#data-format):
 
 ```python
-from trackers.core.reid import (
+from trackers.reid import (
     extract_ground_truth_embeddings,
     plot_appearance_distances,
     sample_appearance_distances,
@@ -183,7 +183,7 @@ If the two groups overlap instead, no threshold separates them: any value that k
 A histogram fixes one frame gap, so it only describes re-association over that horizon. Sweeping the gap shows how long a track can stay lost before appearance stops helping to re-find it. `sweep_frame_gap` repeats the sampling above across widening bands, and `plot_frame_gap_sweep` draws the result:
 
 ```python
-from trackers.core.reid import plot_frame_gap_sweep, sweep_frame_gap
+from trackers.reid import plot_frame_gap_sweep, sweep_frame_gap
 
 sweep = sweep_frame_gap(embeddings, ids, frame_ids, sequence_ids, pairs_per_class=8000)
 plot_frame_gap_sweep(sweep, thresholds={0.20: "selected", 0.25: "default"})
@@ -202,7 +202,7 @@ From this we learn:
 
     ROC AUC answers one question: if you pick one pair of crops of the same person and one pair of different people at random, how often is the same-person pair closer? 1.0 means always, so some threshold separates the two groups perfectly. 0.5 means a coin flip, so appearance tells you nothing. Unlike the two rates in the table, it does not depend on a chosen threshold. It is also not where the shaded bands overlap in the figure: those bands only span the 10th to 90th percentiles, so at a 1-frame gap they never touch even though the AUC is 0.997.
 
-    How it is calculated: each frame-gap band gets its own sample of same-person and different-person pairs. For every threshold from 0 to 1, count the share of same-person pairs below it and the share of different-person pairs below it, and plot the first share against the second. That traces the ROC curve from (0, 0) to (1, 1), and ROC AUC is the area under it. `sweep_frame_gap` gets the same number without drawing the curve, by comparing every same-person distance with every different-person distance and counting how often the same-person one is smaller, with ties counting as half (`trackers.core.reid.roc_auc`). The result is the lower panel of the figure above.
+    How it is calculated: each frame-gap band gets its own sample of same-person and different-person pairs. For every threshold from 0 to 1, count the share of same-person pairs below it and the share of different-person pairs below it, and plot the first share against the second. That traces the ROC curve from (0, 0) to (1, 1), and ROC AUC is the area under it. `sweep_frame_gap` gets the same number without drawing the curve, by comparing every same-person distance with every different-person distance and counting how often the same-person one is smaller, with ties counting as half (`trackers.reid.roc_auc`). The result is the lower panel of the figure above.
 
     The last two columns show the two rates at a threshold of 0.2.
 

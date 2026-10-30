@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from trackers.core.reid.appearance import _l2_normalize
+from trackers.reid.appearance import _l2_normalize
 
 
 class FeatureBank:
@@ -35,14 +35,12 @@ class FeatureBank:
         """Current stored unit embedding, or ``None`` if never updated."""
         return None if self._feature is None else self._feature.copy()
 
-    def update(self, embedding: np.ndarray, *, normalized: bool = False) -> None:
+    def update(self, embedding: np.ndarray, *, skip_normalize: bool = False) -> None:
         """Blend an embedding into the stored unit feature.
 
         Args:
-            embedding: Raw embedding, or a unit embedding when ``normalized`` is
-                true.
-            normalized: Skip input normalization for validated output from
-                ``extract_detection_embeddings``.
+            embedding: Raw embedding, or a unit embedding when ``skip_normalize`` is true.
+            skip_normalize: Skip input normalization for validated output from ``extract_detection_embeddings``.
 
         Raises:
             ValueError: If the embedding is empty, non-finite, or changes shape.
@@ -52,7 +50,7 @@ class FeatureBank:
             raise ValueError("embedding must be non-empty")
         if not np.all(np.isfinite(cleaned)):
             raise ValueError("embedding must contain only finite values")
-        if not normalized:
+        if not skip_normalize:
             cleaned = _l2_normalize(cleaned)
 
         if self._feature is None:

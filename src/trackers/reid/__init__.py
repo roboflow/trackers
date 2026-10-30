@@ -8,16 +8,16 @@
 
 from __future__ import annotations
 
-from trackers.core.reid.appearance import (
+from trackers.reid.appearance import (
     appearance_similarity,
     extract_detection_embeddings,
     extract_ground_truth_embeddings,
 )
-from trackers.core.reid.config import ReIDConfig
-from trackers.core.reid.encoder import ReIDEncoder
-from trackers.core.reid.feature_bank import FeatureBank
-from trackers.core.reid.plots import ThresholdLines, plot_appearance_distances, plot_frame_gap_sweep
-from trackers.core.reid.threshold_selection import (
+from trackers.reid.config import ReIDConfig
+from trackers.reid.encoder import ReIDEncoder
+from trackers.reid.feature_bank import FeatureBank
+from trackers.reid.plots import ThresholdLines, plot_appearance_distances, plot_frame_gap_sweep
+from trackers.reid.threshold_selection import (
     DEFAULT_FRAME_GAP_BANDS,
     AppearanceDistances,
     roc_auc,

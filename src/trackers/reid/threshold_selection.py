@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from trackers.core.reid.appearance import _l2_normalize_rows, _require_embedding_matrix
+from trackers.reid.appearance import _l2_normalize_rows, _require_embedding_matrix
 
 DEFAULT_FRAME_GAP_BANDS: tuple[tuple[int, int], ...] = (
     (1, 1),
@@ -371,5 +371,5 @@ def sweep_frame_gap(
                 )
             )
         except _NoPairsInBand:
-            continue
+            pass
     return sweep

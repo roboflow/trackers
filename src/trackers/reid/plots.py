@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Plots for choosing an appearance threshold, built on :mod:`trackers.core.reid.threshold_selection`."""
+"""Plots for choosing an appearance threshold, built on :mod:`trackers.reid.threshold_selection`."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from trackers.core.reid.threshold_selection import AppearanceDistances
+from trackers.reid.threshold_selection import AppearanceDistances
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
