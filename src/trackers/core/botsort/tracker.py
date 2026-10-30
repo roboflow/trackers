@@ -537,7 +537,7 @@ class BoTSORTTracker(BaseTracker):
             if isinstance(self.iou, IoU)
             else self._get_iou_matrix(tracklets, boxes, tracklet_boxes_by_id, metric=IoU())
         )
-        appearance = appearance_similarity(track_feats, embeddings, det_embeddings_normalized=True)
+        appearance = appearance_similarity(track_feats, embeddings, are_embeddings_normalized=True)
         if self.reid_config.fusion == "adaptive":
             return fuse_adaptive_reid_association(
                 iou_sim_fused,
