@@ -105,6 +105,64 @@ class TestEvaluateMOTSequence:
         assert "DetA" in json_str
 
     @pytest.mark.parametrize(
+        ("gt_relpath", "expected_sequence"),
+        [
+            pytest.param("MOT17-02-FRCNN.txt", "MOT17-02-FRCNN", id="flat-layout"),
+            pytest.param("MOT17-02-FRCNN/gt/gt.txt", "MOT17-02-FRCNN", id="mot-layout"),
+            pytest.param("gt.txt", "gt", id="bare-gt-file-keeps-stem"),
+            pytest.param("MOT17-02-FRCNN/gt.txt", "gt", id="gt-file-outside-gt-dir-keeps-stem"),
+            pytest.param("data/sequence-A/gt.txt", "gt", id="unrelated-grandparent-is-ignored"),
+        ],
+    )
+    def test_sequence_name_from_gt_path(self, tmp_path: Path, gt_relpath: str, expected_sequence: str) -> None:
+        """A MOT-layout `<seq>/gt/gt.txt` file is named after `<seq>`; every other file keeps its stem."""
+        gt_file = tmp_path / gt_relpath
+        gt_file.parent.mkdir(parents=True, exist_ok=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_file = tmp_path / "tracker.txt"
+        tracker_file.write_text("1,1,10,10,20,20,1,1\n")
+
+        result = evaluate_mot_sequence(gt_file, tracker_file)
+
+        assert result.sequence == expected_sequence
+
+    @pytest.mark.parametrize(
+        "gt_arg",
+        [
+            pytest.param("gt/gt.txt", id="relative-inside-sequence-dir"),
+            pytest.param("./gt/gt.txt", id="dot-relative"),
+            pytest.param("../MOT17-02-FRCNN/gt/gt.txt", id="parent-traversal"),
+        ],
+    )
+    def test_relative_gt_path_is_named_after_its_sequence_directory(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, gt_arg: str
+    ) -> None:
+        """A relative `gt/gt.txt` resolves against the working directory, never to an empty or `..` name."""
+        sequence_dir = tmp_path / "MOT17-02-FRCNN"
+        (sequence_dir / "gt").mkdir(parents=True)
+        (sequence_dir / "gt" / "gt.txt").write_text("1,1,10,10,20,20,1,1\n")
+        tracker_file = tmp_path / "tracker.txt"
+        tracker_file.write_text("1,1,10,10,20,20,1,1\n")
+        monkeypatch.chdir(sequence_dir)
+
+        result = evaluate_mot_sequence(gt_arg, tracker_file)
+
+        assert result.sequence == "MOT17-02-FRCNN"
+
+    def test_mot20_layout_sets_name_and_warns_about_class_config(self, tmp_path: Path) -> None:
+        """The same name drives the MOT20 warning and the result, so a `MOT20-01/gt/gt.txt` file does both."""
+        gt_file = tmp_path / "MOT20-01" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_file = tmp_path / "tracker.txt"
+        tracker_file.write_text("1,1,10,10,20,20,1,1\n")
+
+        with pytest.warns(UserWarning, match="MOT20-01"):
+            result = evaluate_mot_sequence(gt_file, tracker_file)
+
+        assert result.sequence == "MOT20-01"
+
+    @pytest.mark.parametrize(
         ("gt_relpath", "class_config", "expect_warning"),
         [
             pytest.param("MOT20-01.txt", "mot17", True, id="mot20-flat-mot17-warns"),
@@ -185,3 +243,110 @@ class TestEvaluateMOTSequencesClassConfig:
 
         assert result.aggregate.CLEAR is not None
         assert result.aggregate.CLEAR.MOTA == pytest.approx(expected_mota)
+
+
+class TestEvaluateMOTSequencesNaming:
+    """`evaluate_mot_sequences` names each result after the sequence it was discovered under."""
+
+    @pytest.mark.parametrize(
+        "gt_template",
+        [
+            pytest.param("{seq}.txt", id="flat-layout"),
+            pytest.param("{seq}/gt/gt.txt", id="mot-layout"),
+        ],
+    )
+    def test_each_result_carries_its_sequence_name(self, tmp_path: Path, gt_template: str) -> None:
+        """Every `result.sequences[name].sequence` equals its key, with no per-result rename step left to drift."""
+        gt_dir = tmp_path / "gt"
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        for name in ("sequence1", "sequence2"):
+            gt_file = gt_dir / gt_template.format(seq=name)
+            gt_file.parent.mkdir(parents=True, exist_ok=True)
+            gt_file.write_text("1,1,10,10,20,20,1,1\n")
+            (tracker_dir / f"{name}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir)
+
+        assert {name: seq_result.sequence for name, seq_result in result.sequences.items()} == {
+            "sequence1": "sequence1",
+            "sequence2": "sequence2",
+        }
+
+
+class TestEvaluateMOTSequencesDiscovery:
+    """Sequence discovery must ignore hidden entries in both supported layouts."""
+
+    @pytest.mark.parametrize(
+        ("gt_relpath", "hidden_relpath", "hidden_sequence"),
+        [
+            pytest.param("sequence1.txt", ".hidden.txt", ".hidden", id="flat-layout"),
+            pytest.param("sequence1/gt/gt.txt", ".sequence1-backup/gt/gt.txt", ".sequence1-backup", id="mot-layout"),
+        ],
+    )
+    def test_hidden_entries_are_not_treated_as_sequences(
+        self,
+        tmp_path: Path,
+        gt_relpath: str,
+        hidden_relpath: str,
+        hidden_sequence: str,
+    ) -> None:
+        """A hidden ground-truth entry is skipped instead of being evaluated as a sequence.
+
+        Backup and sync tools can leave hidden copies next to the sequences (`.sequence1-backup/gt/gt.txt`). Such a copy
+        is not a sequence to evaluate. The hidden entry gets its own prediction file here, so the test pins discovery
+        itself rather than an evaluator that merely skips sequences without predictions.
+        """
+        gt_dir = tmp_path / "gt"
+        for relpath in (gt_relpath, hidden_relpath):
+            gt_file = gt_dir / relpath
+            gt_file.parent.mkdir(parents=True, exist_ok=True)
+            gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        (tracker_dir / f"{hidden_sequence}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
+
+        assert list(result.sequences) == ["sequence1"]
+
+    def test_hidden_root_file_does_not_switch_mot_layout_to_flat(self, tmp_path: Path) -> None:
+        """A hidden `.txt` file at the root of a MOT-layout `gt_dir` leaves the layout detected as MOT.
+
+        Format detection used to count hidden root files, so `.notes.txt` next to `sequence1/gt/gt.txt` selected the
+        flat layout, whose discovery skips hidden files and then found no sequence at all (`ValueError`).
+        """
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / "sequence1" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        (gt_dir / ".notes.txt").write_text("scratch\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
+
+        assert list(result.sequences) == ["sequence1"]
+
+    def test_seqmap_selects_hidden_mot_sequence(self, tmp_path: Path) -> None:
+        """A `seqmap` still evaluates a MOT-layout sequence directory whose name starts with `.`.
+
+        Discovery skips hidden directories, so the seqmap is the documented way to include one. Layout detection must
+        keep seeing such a directory as MOT; otherwise a `gt_dir` holding only hidden sequences is read as flat and the
+        seqmap entry resolves to a missing `.5.txt`.
+        """
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / ".5" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / ".5.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_text("name\n.5\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap, metrics=["CLEAR"])
+
+        assert list(result.sequences) == [".5"]

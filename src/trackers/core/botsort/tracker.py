@@ -316,9 +316,7 @@ class BoTSORTTracker(BaseTracker):
         self.frame_id += 1
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
@@ -494,9 +492,7 @@ class BoTSORTTracker(BaseTracker):
 
         # Build final detections
         if not out_det_indices:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         idx = np.array(out_det_indices)
         result = cast(sv.Detections, detections[idx])

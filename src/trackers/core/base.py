@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import copy
 import inspect
 import math
 import re
@@ -549,12 +550,23 @@ class BaseTracker(ABC):
             frame_rate=self._frame_rate,
         )
 
+    @staticmethod
+    def _empty_result(detections: sv.Detections) -> sv.Detections:
+        """Return a zero-row result built like a non-empty one, by indexing the input.
+
+        Keeps the input's fields (``data`` keys, ``mask``, ``metadata``) that ``sv.Detections.empty()`` would drop.
+        """
+        result = cast(sv.Detections, detections[np.array([], dtype=int)])
+        if result is detections:
+            # supervision 0.28.x/0.29.x return the input itself for an empty index; never write tracker_id onto it.
+            result = copy.deepcopy(result)
+        result.tracker_id = np.array([], dtype=int)
+        return result
+
     def _detections_for_skipped_update(self, detections: sv.Detections) -> sv.Detections:
         """Return detections unchanged except tracker_id=-1; do not mutate tracks."""
         if len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
         result = cast(sv.Detections, detections[:])
         result.tracker_id = np.full(len(result), -1, dtype=int)
         return result
@@ -653,7 +665,9 @@ class BaseTracker(ABC):
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each
-            detection box. When the update is skipped (backwards or
+            detection box. Rows are rows of the input, so they keep its
+            fields (``class_id``, ``mask``, ``data``, ``metadata``), also when
+            the result is empty. When the update is skipped (backwards or
             non-finite timestamp), all ``tracker_id`` values are ``-1``.
 
         Raises:

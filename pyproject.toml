@@ -36,7 +36,7 @@ keywords = ["tracking", "mot", "sort", "bytetrack", "machine-learning", "deep-le
 
 dependencies = [
     "numpy>=2.0.2",
-    "supervision>=0.26.1",
+    "supervision>=0.31.0",
     "scipy>=1.13.1",
     "opencv-python>=4.8.0",
     "rich>=13.0.0",

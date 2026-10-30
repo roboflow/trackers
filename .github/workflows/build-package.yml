@@ -12,13 +12,14 @@ on:
       - 'src/**'
       - 'tests/**'
       - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/build-package.yml'
   workflow_call:
     inputs:
       python-version:
         required: false
         type: string
-        default: "3.10"
+        default: "3.12"
 
 jobs:
   build:
@@ -27,17 +28,17 @@ jobs:
       - name: 📥 Checkout the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: 🐍 Install uv and set Python version ${{ inputs.python-version || '3.10' }}
+      - name: 🐍 Install uv and set Python version ${{ inputs.python-version || '3.12' }}
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
-          python-version: ${{ inputs.python-version || '3.10' }}
+          python-version: ${{ inputs.python-version || '3.12' }}
           activate-environment: true
 
       - name: 🏗️ Build source and wheel distributions
         run: |
-          uv sync --frozen --group build
+          uv sync --frozen --only-group build
           uv build
-          uv run twine check --strict dist/*
+          uv run --no-sync twine check --strict dist/*
           ls -l dist/
 
       - name: 📤 Upload distribution artifacts
