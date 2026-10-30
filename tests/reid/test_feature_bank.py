@@ -45,12 +45,12 @@ class TestFeatureBank:
         assert feature is not None
         np.testing.assert_allclose(feature, 0.0)
 
-    @pytest.mark.parametrize("normalized", [False, True])
+    @pytest.mark.parametrize("skip_normalize", [False, True])
     @pytest.mark.parametrize("bad", [np.nan, np.inf])
-    def test_non_finite_embedding_raises(self, normalized: bool, bad: float) -> None:
+    def test_non_finite_embedding_raises(self, skip_normalize: bool, bad: float) -> None:
         bank = FeatureBank()
         with pytest.raises(ValueError, match="finite"):
-            bank.update(np.array([1.0, bad], dtype=np.float32), normalized=normalized)
+            bank.update(np.array([1.0, bad], dtype=np.float32), skip_normalize=skip_normalize)
         assert bank.feature is None
 
     def test_shape_change_raises(self) -> None:
