@@ -371,5 +371,5 @@ def sweep_frame_gap(
                 )
             )
         except _NoPairsInBand:
-            continue
+            pass
     return sweep
