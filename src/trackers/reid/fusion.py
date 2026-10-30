@@ -35,8 +35,8 @@ def fuse_botsort_reid_association(
     association_similarity: np.ndarray,
     appearance_similarity: np.ndarray,
     *,
-    reid_proximity_threshold: float,
-    reid_appearance_threshold: float,
+    proximity_threshold: float,
+    appearance_threshold: float,
     proximity_iou_similarity: np.ndarray | None = None,
 ) -> np.ndarray:
     """Fuse IoU and appearance the way BoT-SORT ``bot_sort.py`` does.
@@ -54,9 +54,9 @@ def fuse_botsort_reid_association(
             shape ``(T, N)`` and values in ``[0, 1]``.
         appearance_similarity: Cosine similarities for the same pairs with shape
             ``(T, N)``.
-        reid_proximity_threshold: Maximum standard-IoU distance at which appearance
+        proximity_threshold: Maximum standard-IoU distance at which appearance
             may lower the association cost.
-        reid_appearance_threshold: Maximum appearance distance allowed to contribute to
+        appearance_threshold: Maximum appearance distance allowed to contribute to
             the fused association.
         proximity_iou_similarity: Standard-IoU similarities with shape ``(T, N)``.
             Defaults to ``association_similarity``.
@@ -71,8 +71,8 @@ def fuse_botsort_reid_association(
     d_iou = 1.0 - association_similarity
     d_iou_proximity = 1.0 - proximity_iou_similarity
     d_app = 0.5 * (1.0 - appearance_similarity)
-    d_app = np.where(d_app > reid_appearance_threshold, 1.0, d_app)
-    d_app = np.where(d_iou_proximity > reid_proximity_threshold, 1.0, d_app)
+    d_app = np.where(d_app > appearance_threshold, 1.0, d_app)
+    d_app = np.where(d_iou_proximity > proximity_threshold, 1.0, d_app)
     fused_cost = np.minimum(d_iou, d_app)
     return 1.0 - fused_cost
 
@@ -95,17 +95,17 @@ def fuse_adaptive_reid_association(
     association_similarity: np.ndarray,
     appearance_similarity: np.ndarray,
     *,
-    reid_appearance_weight: float,
-    reid_adaptive_weight_cap: float,
-    reid_proximity_threshold: float,
-    reid_appearance_threshold: float,
+    appearance_weight: float,
+    adaptive_weight_cap: float,
+    proximity_threshold: float,
+    appearance_threshold: float,
     proximity_iou_similarity: np.ndarray | None = None,
 ) -> np.ndarray:
     """Fuse IoU and appearance with Deep OC-SORT's adaptive weighting.
 
     Adds a weighted appearance term to the geometric similarity instead of
     taking a minimum. The weight grows when the best appearance match stands
-    clear of the runner-up and falls back to ``reid_appearance_weight`` when
+    clear of the runner-up and falls back to ``appearance_weight`` when
     the top candidates are hard to tell apart.
 
     This is the adaptive appearance weighting on its own, not the full Deep
@@ -126,15 +126,15 @@ def fuse_adaptive_reid_association(
             shape ``(T, N)``.
         appearance_similarity: Cosine similarities for the same pairs with shape
             ``(T, N)``.
-        reid_appearance_weight: Base appearance weight, ``a_w`` in the paper.
+        appearance_weight: Base appearance weight, ``a_w`` in the paper.
             The authors report ``0.75`` for MOT17 and MOT20 and ``1.25`` for
             DanceTrack.
-        reid_adaptive_weight_cap: Upper bound on the adaptive bonus, ``epsilon``
+        adaptive_weight_cap: Upper bound on the adaptive bonus, ``epsilon``
             in the paper. The authors report ``0.5`` for MOT17 and MOT20 and
             ``1.0`` for DanceTrack.
-        reid_proximity_threshold: Maximum standard-IoU distance at which
+        proximity_threshold: Maximum standard-IoU distance at which
             appearance may contribute.
-        reid_appearance_threshold: Maximum appearance distance,
+        appearance_threshold: Maximum appearance distance,
             ``0.5 * (1 - cos_sim)``, at which appearance may contribute; above it
             the pair is scored on geometry alone. ``0.5`` lets every positive
             cosine similarity contribute. The proximity check still applies.
@@ -143,7 +143,7 @@ def fuse_adaptive_reid_association(
 
     Returns:
         Fused track-detection similarities with shape ``(T, N)``, spanning
-        ``[0, 1 + reid_appearance_weight + reid_adaptive_weight_cap]``.
+        ``[0, 1 + appearance_weight + adaptive_weight_cap]``.
         Association thresholds tuned against the BoT-SORT fusion do not carry
         over and need retuning.
 
@@ -156,7 +156,7 @@ def fuse_adaptive_reid_association(
         then discards any matched pair whose raw IoU is below its IoU
         threshold. BoT-SORT has no such post-match check: its association
         threshold is applied to the fused similarity, which a zero-IoU pair
-        can clear on appearance alone. ``reid_proximity_threshold`` is where
+        can clear on appearance alone. ``proximity_threshold`` is where
         that check lives here; ``1.0`` disables it, which is what lets a
         track be recovered after leaving the frame, since its prediction no
         longer overlaps the returning detection. The gate applies only to the
@@ -167,7 +167,7 @@ def fuse_adaptive_reid_association(
         The velocity-direction term of the full Deep OC-SORT cost is not
         included; it belongs to OC-SORT's motion model.
 
-        ``reid_appearance_threshold`` is an extension over the reference, which has
+        ``appearance_threshold`` is an extension over the reference, which has
         no appearance gate at all. With the proximity gate disabled, even a
         weak appearance match can pass the association threshold if its weight
         is high enough. A lost track may then take an unrelated detection.
@@ -181,12 +181,12 @@ def fuse_adaptive_reid_association(
 
     appearance = np.clip(appearance_similarity, 0.0, None)
 
-    track_margin = _top_two_margin(appearance, axis=1, cap=reid_adaptive_weight_cap)
-    detection_margin = _top_two_margin(appearance, axis=0, cap=reid_adaptive_weight_cap)
+    track_margin = _top_two_margin(appearance, axis=1, cap=adaptive_weight_cap)
+    detection_margin = _top_two_margin(appearance, axis=0, cap=adaptive_weight_cap)
     adaptive_bonus = (track_margin[:, np.newaxis] + detection_margin[np.newaxis, :]) / 2.0
 
-    out_of_range = (1.0 - proximity_iou_similarity) > reid_proximity_threshold
+    out_of_range = (1.0 - proximity_iou_similarity) > proximity_threshold
     gated_appearance = np.where(out_of_range, 0.0, appearance)
-    gated_appearance = np.where(0.5 * (1.0 - appearance) > reid_appearance_threshold, 0.0, gated_appearance)
+    gated_appearance = np.where(0.5 * (1.0 - appearance) > appearance_threshold, 0.0, gated_appearance)
 
-    return association_similarity + (reid_appearance_weight + adaptive_bonus) * gated_appearance
+    return association_similarity + (appearance_weight + adaptive_bonus) * gated_appearance

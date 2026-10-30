@@ -543,17 +543,17 @@ class BoTSORTTracker(BaseTracker):
                 iou_sim_fused,
                 appearance,
                 proximity_iou_similarity=proximity_iou,
-                reid_proximity_threshold=self.reid_config.proximity_threshold,
-                reid_appearance_weight=self.reid_config.appearance_weight,
-                reid_adaptive_weight_cap=self.reid_config.adaptive_weight_cap,
-                reid_appearance_threshold=self.reid_config.appearance_threshold,
+                proximity_threshold=self.reid_config.proximity_threshold,
+                appearance_weight=self.reid_config.appearance_weight,
+                adaptive_weight_cap=self.reid_config.adaptive_weight_cap,
+                appearance_threshold=self.reid_config.appearance_threshold,
             )
         return fuse_botsort_reid_association(
             iou_sim_fused,
             appearance,
             proximity_iou_similarity=proximity_iou,
-            reid_proximity_threshold=self.reid_config.proximity_threshold,
-            reid_appearance_threshold=self.reid_config.appearance_threshold,
+            proximity_threshold=self.reid_config.proximity_threshold,
+            appearance_threshold=self.reid_config.appearance_threshold,
         )
 
     def _get_iou_matrix(
