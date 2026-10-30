@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
+
+from trackers.cli.track import DEFAULT_REID_MODEL, ReIDModelConfig, _load_reid_model, _reid_requested
+from trackers.reid.config import ReIDConfig
 
 
 @dataclass
@@ -48,6 +51,9 @@ def tune_command(
     enqueue_defaults: bool = True,
     seed: int | None = None,
     output: Path | None = None,
+    reid: ReIDModelConfig | None = None,
+    search_space: dict | None = None,
+    fixed_defaults: list[str] | None = None,
 ) -> int:
     """Tune tracker hyperparameters using Optuna.
 
@@ -66,18 +72,38 @@ def tune_command(
         seqmap: Sequence map file listing sequences to evaluate.
         fixed_params: Tracker ``__init__`` kwargs held constant across all
             trials (e.g. ``{"enable_cmc": False}``).
+        fixed_defaults: Tracker ``__init__`` parameter names held at their
+            constructor defaults across all trials (e.g. ``["lost_track_buffer"]``).
         images_dir: MOT-style image root for frame-based features such as CMC.
             Frames are read from ``{images_dir}/{sequence}/img1/``.
         enqueue_defaults: When ``True`` (default), the first trial evaluates
             the tracker's default parameters before Optuna sampling begins.
         seed: Random seed for Optuna's TPE sampler for reproducible runs.
         output: Output JSON file for best parameters.
+        reid: ReID encoder to tune with, for trackers that accept one (BoT-SORT). Same options as ``trackers track``:
+            ``model`` (alias, ``hf://`` URL or local path), ``device``, and ``architecture`` for bare weight files; on
+            the command line, ``--reid.model fastreid_mot17_sbs50``. The encoder is loaded once and held fixed, and
+            ``reid_config.appearance_threshold`` and ``reid_config.proximity_threshold`` are added to the search.
+            Requires ``images_dir``. Default: no encoder.
+        search_space: Entries that replace or add to the tracker's search
+            space for this run, e.g. a narrower ``reid_config.appearance_threshold``
+            range for an encoder whose useful distances are small.
 
     Returns:
         Exit code: ``0`` on success, ``1`` on error.
     """
     if metrics is None:
         metrics = ["CLEAR"]
+
+    reid_enabled = False
+    if reid is not None:
+        try:
+            reid_enabled = _reid_requested(reid)
+            if reid_enabled:
+                fixed_params = {**(fixed_params or {}), "reid_model": _load_reid_model(reid)}
+        except (ValueError, ImportError) as e:
+            print(str(e), file=sys.stderr)
+            return 1
 
     from trackers.tune import Tuner
 
@@ -92,9 +118,11 @@ def tune_command(
             threshold=threshold,
             seqmap=seqmap,
             fixed_params=fixed_params,
+            fixed_defaults=fixed_defaults,
             images_dir=images_dir,
             enqueue_defaults=enqueue_defaults,
             seed=seed,
+            search_space=search_space,
         )
     except (ValueError, ImportError, FileNotFoundError) as e:
         print(str(e), file=sys.stderr)
@@ -106,16 +134,21 @@ def tune_command(
         print(f"Error during tuning: {e}", file=sys.stderr)
         return 1
 
+    # The encoder is an object, not a JSON value, so the saved parameters are the tracker's own.
+    best_params.pop("reid_model", None)
     print(f"\nBest parameters for {tracker.name}:")
     for name, value in best_params.items():
         print(f"  {name}: {value}")
+    if reid_enabled and reid is not None:
+        print(f"  reid model: {reid.model or DEFAULT_REID_MODEL}")
     if tuner.study is not None:
         print(f"\nBest {objective}: {tuner.study.best_value:.4f}")
 
     if output:
         try:
             output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(json.dumps(best_params, indent=2))
+            serializable = {k: asdict(v) if isinstance(v, ReIDConfig) else v for k, v in best_params.items()}
+            output.write_text(json.dumps(serializable, indent=2))
         except OSError as e:
             print(f"Error writing output: {e}", file=sys.stderr)
             return 1
