@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-09-02",
+  "dateModified": "2026-10-30",
   "datePublished": "2026-02-04"
 }
 </script>
@@ -1150,6 +1150,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID Appearance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1901,6 +1929,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/datasets/" class="md-nav__link">
         
   
@@ -2297,10 +2353,10 @@
 
 
 <h1 id="tracker-comparison">Tracker Comparison</h1>
-<p>This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row.</p>
+<p>This page shows head-to-head performance of SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte on standard MOT benchmarks. Results are shown with default parameters and with parameter-tuned configurations found via grid search. McByte is reported at default parameters only (mask-conditioned association enabled); it is designed to require no per-dataset tuning, so there is no Tuned row. BoT-SORT + ReID is shown at library defaults in the Default tabs, with the default encoder <code>fastreid_mot17_sbs50</code> throughout; its Tuned rows show the best test result among the configurations in the <a href="../../guides/reid/#results">ReID guide</a>, each with an encoder trained on that dataset: <code>osnet_x1_0</code> fine-tuned on the SportsMOT, SoccerNet and DanceTrack train splits, and on MOT17 <code>fastreid_mot17_sbs50</code>, which the BoT-SORT authors trained on MOT17.</p>
 <div class="admonition info">
 <p class="admonition-title">Benchmark version</p>
-<p>Results use <strong>trackers v2.6.0</strong> (released 2026-08-03). Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits. See <a href="../methodology/">Methodology</a> for details.</p>
+<p>Results use <strong>trackers v2.6.0</strong> (released 2026-08-03), except the BoT-SORT + ReID rows, which were produced in v2.7.0, the release that adds appearance association. Detections are from YOLOX (MOT17, SportsMOT, DanceTrack) or ground-truth oracle boxes (SoccerNet). Parameters were tuned via grid search on held-out splits, and the ReID thresholds with <a href="../../guides/tune/#tune-reid-thresholds"><code>trackers tune</code></a>. See <a href="../methodology/">Methodology</a> for details.</p>
 <p>v2.6.0 changed all trackers' lost-track lifecycle from exclusive (<code>time_since_update &lt; maximum_frames_without_update</code>) to inclusive (<code>&lt;=</code>) boundary semantics, so confirmed tracks now survive one additional missed frame. Expect small IDSW/HOTA shifts versus earlier versions even for trackers whose parameters didn't change — see the <a href="../../changelog/">Changelog</a> for details.</p>
 </div>
 <div class="admonition note">
@@ -2316,12 +2372,12 @@
 
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p>Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model.</p>
+<p>Parameters were tuned on the validation set. Results are reported on the test set via Codabench submission. Detections come from a YOLOX model. The BoT-SORT row is geometry and CMC only; BoT-SORT + ReID adds the encoder named under the table. The <a href="../../guides/reid/#results">ReID guide</a> carries both fusion methods and the generic and fine-tuned encoders side by side.</p>
 </div>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Default</label><label for="__tabbed_1_2">Tuned</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>Results using default tracker parameters.</p>
+<p>Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default <code>fastreid_mot17_sbs50</code> encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see <a href="../../guides/reid/#choosing-an-encoder">encoders</a>).</p>
 <table>
 <thead>
 <tr>
@@ -2351,16 +2407,22 @@
 <td style="text-align: center;">76.0</td>
 </tr>
 <tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">63.0</td>
+<td style="text-align: center;">79.1</td>
+<td style="text-align: center;">77.4</td>
+</tr>
+<tr>
 <td style="text-align: center;">BoT-SORT</td>
 <td style="text-align: center;">63.7</td>
 <td style="text-align: center;">78.7</td>
 <td style="text-align: center;"><strong>79.2</strong></td>
 </tr>
 <tr>
-<td style="text-align: center;">C-BIoU</td>
-<td style="text-align: center;">63.0</td>
-<td style="text-align: center;">79.1</td>
-<td style="text-align: center;">77.4</td>
+<td style="text-align: center;">BoT-SORT + ReID</td>
+<td style="text-align: center;">63.9</td>
+<td style="text-align: center;">78.9</td>
+<td style="text-align: center;"><strong>79.2</strong></td>
 </tr>
 <tr>
 <td style="text-align: center;">McByte</td>
@@ -2375,8 +2437,9 @@
      ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table)
      OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (L13 headline + Algorithms table), README.md (Algorithms table)
      BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "MOT17" tab)
-     C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table)
+     C-BIoU row    -> docs/trackers/cbiou.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
      McByte row    -> docs/trackers/mcbyte.md (McByte row, "MOT17" tab), docs/index.md (Algorithms table + FAQ "leads every benchmark" claim), README.md (Algorithms table)
+     BoT-SORT + ReID row -> docs/index.md (Algorithms table), README.md (Algorithms table)
      Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 </div>
 <div class="tabbed-block">
@@ -2410,20 +2473,31 @@
 <td style="text-align: center;">77.3</td>
 </tr>
 <tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">63.0</td>
+<td style="text-align: center;">79.1</td>
+<td style="text-align: center;">77.4</td>
+</tr>
+<tr>
 <td style="text-align: center;">BoT-SORT</td>
-<td style="text-align: center;"><strong>63.8</strong></td>
+<td style="text-align: center;">63.8</td>
 <td style="text-align: center;">78.7</td>
 <td style="text-align: center;"><strong>79.4</strong></td>
 </tr>
 <tr>
-<td style="text-align: center;">C-BIoU</td>
-<td style="text-align: center;">63.0</td>
-<td style="text-align: center;"><strong>79.1</strong></td>
-<td style="text-align: center;">77.4</td>
+<td style="text-align: center;">BoT-SORT + ReID</td>
+<td style="text-align: center;"><strong>64.6</strong></td>
+<td style="text-align: center;"><strong>79.9</strong></td>
+<td style="text-align: center;"><strong>79.4</strong></td>
 </tr>
 </tbody>
 </table>
-<p>Tuned configuration for each tracker.</p>
+<!-- BENCH-XREF canonical:this-table id=mot17-tuned
+     BoT-SORT row        -> docs/guides/reid.md (Results, both tabs, BoT-SORT row, HOTA/IDF1/MOTA)
+     BoT-SORT + ReID row <- copied FROM docs/guides/reid.md (best test row across its tabs); its HOTA
+                            also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
+     Change any cell above -> update every listed location. -->
+<p>Tuned configuration for each tracker. The ReID row uses <code>fastreid_mot17_sbs50</code>, trained on MOT17 by the BoT-SORT authors, with <code>reid_config.fusion="adaptive"</code>: the best MOT17 test result in the <a href="../../guides/reid/#results">ReID guide</a>. It was chosen on test; on val-half, <code>botsort</code> scored 0.10 higher.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">SORT</span><span class="p">:</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.75</span>
@@ -2466,6 +2540,15 @@
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
 </span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="nt">buffer_ratio_first</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
 </span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="nt">buffer_ratio_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="nt">BoT-SORT + ReID</span><span class="p">:</span>
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">  </span><span class="nt">reid_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fastreid_mot17_sbs50</span>
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">  </span><span class="nt">reid_config.fusion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adaptive</span>
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="w">  </span><span class="nt">reid_config.appearance_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.908</span>
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="w">  </span><span class="nt">reid_config.adaptive_weight_cap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.545</span>
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="w">  </span><span class="nt">reid_config.appearance_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3095</span>
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">  </span><span class="nt">reid_config.proximity_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.772</span>
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">  </span><span class="nt">minimum_iou_threshold_first_assoc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.846</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2484,7 +2567,7 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Default</label><label for="__tabbed_2_2">Tuned</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>Results using default tracker parameters.</p>
+<p>Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default <code>fastreid_mot17_sbs50</code> encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see <a href="../../guides/reid/#choosing-an-encoder">encoders</a>).</p>
 <table>
 <thead>
 <tr>
@@ -2514,16 +2597,22 @@
 <td style="text-align: center;">95.0</td>
 </tr>
 <tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">73.1</td>
+<td style="text-align: center;">72.6</td>
+<td style="text-align: center;">96.7</td>
+</tr>
+<tr>
 <td style="text-align: center;">BoT-SORT</td>
 <td style="text-align: center;">73.8</td>
 <td style="text-align: center;">73.4</td>
 <td style="text-align: center;">96.9</td>
 </tr>
 <tr>
-<td style="text-align: center;">C-BIoU</td>
-<td style="text-align: center;">73.1</td>
-<td style="text-align: center;">72.6</td>
-<td style="text-align: center;">96.7</td>
+<td style="text-align: center;">BoT-SORT + ReID</td>
+<td style="text-align: center;">75.5</td>
+<td style="text-align: center;">75.2</td>
+<td style="text-align: center;"><strong>97.0</strong></td>
 </tr>
 <tr>
 <td style="text-align: center;">McByte</td>
@@ -2538,8 +2627,9 @@
      ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
      OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
      BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "SportsMOT" tab)
-     C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table only)
+     C-BIoU row    -> docs/trackers/cbiou.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
      McByte row    -> docs/trackers/mcbyte.md (McByte row, "SportsMOT" tab), docs/index.md (Algorithms table + FAQ "leads every benchmark" claim), README.md (Algorithms table)
+     BoT-SORT + ReID row -> docs/index.md (Algorithms table), README.md (Algorithms table)
      Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 </div>
 <div class="tabbed-block">
@@ -2569,14 +2659,8 @@
 <tr>
 <td style="text-align: center;">OC-SORT</td>
 <td style="text-align: center;">74.0</td>
-<td style="text-align: center;"><strong>75.4</strong></td>
+<td style="text-align: center;">75.4</td>
 <td style="text-align: center;">95.6</td>
-</tr>
-<tr>
-<td style="text-align: center;">BoT-SORT</td>
-<td style="text-align: center;"><strong>74.1</strong></td>
-<td style="text-align: center;">74.0</td>
-<td style="text-align: center;"><strong>96.9</strong></td>
 </tr>
 <tr>
 <td style="text-align: center;">C-BIoU</td>
@@ -2584,9 +2668,26 @@
 <td style="text-align: center;">72.6</td>
 <td style="text-align: center;">96.7</td>
 </tr>
+<tr>
+<td style="text-align: center;">BoT-SORT</td>
+<td style="text-align: center;">74.1</td>
+<td style="text-align: center;">74.0</td>
+<td style="text-align: center;"><strong>96.9</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">BoT-SORT + ReID</td>
+<td style="text-align: center;"><strong>77.8</strong></td>
+<td style="text-align: center;"><strong>78.5</strong></td>
+<td style="text-align: center;"><strong>96.9</strong></td>
+</tr>
 </tbody>
 </table>
-<p>Tuned configuration for each tracker.</p>
+<!-- BENCH-XREF canonical:this-table id=sportsmot-tuned
+     BoT-SORT row        -> docs/guides/reid.md (Results, both tabs, BoT-SORT row, HOTA/IDF1/MOTA)
+     BoT-SORT + ReID row <- copied FROM docs/guides/reid.md (best test row across its tabs); its HOTA
+                            also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
+     Change any cell above -> update every listed location. -->
+<p>Tuned configuration for each tracker. The ReID row uses <code>osnet_x1_0_sportsmot</code>, an OSNet x1.0 fine-tuned on SportsMOT train (see <a href="../../guides/reid/#choosing-an-encoder">encoders</a>).</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">SORT</span><span class="p">:</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
@@ -2629,6 +2730,12 @@
 </span><span id="__span-1-40"><a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
 </span><span id="__span-1-41"><a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a><span class="w">  </span><span class="nt">buffer_ratio_first</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
 </span><span id="__span-1-42"><a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="w">  </span><span class="nt">buffer_ratio_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-1-43"><a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>
+</span><span id="__span-1-44"><a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a><span class="nt">BoT-SORT + ReID</span><span class="p">:</span>
+</span><span id="__span-1-45"><a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a><span class="w">  </span><span class="nt">reid_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osnet_x1_0_sportsmot</span>
+</span><span id="__span-1-46"><a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a><span class="w">  </span><span class="nt">reid_config.fusion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">botsort</span>
+</span><span id="__span-1-47"><a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a><span class="w">  </span><span class="nt">reid_config.appearance_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3425</span>
+</span><span id="__span-1-48"><a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a><span class="w">  </span><span class="nt">reid_config.proximity_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9953</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2642,12 +2749,12 @@
 
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p>Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections.</p>
+<p>Parameters were tuned on the train set. Results are reported on the test set. SoccerNet-tracking has no validation split. This dataset provides oracle (ground-truth) detections. The BoT-SORT row is geometry and CMC only; BoT-SORT + ReID adds the encoder named under the table. The <a href="../../guides/reid/#results">ReID guide</a> carries both fusion methods and the generic and fine-tuned encoders side by side.</p>
 </div>
 <div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Default</label><label for="__tabbed_3_2">Tuned</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>Results using default tracker parameters.</p>
+<p>Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default <code>fastreid_mot17_sbs50</code> encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see <a href="../../guides/reid/#choosing-an-encoder">encoders</a>).</p>
 <table>
 <thead>
 <tr>
@@ -2677,16 +2784,22 @@
 <td style="text-align: center;">94.1</td>
 </tr>
 <tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">82.6</td>
+<td style="text-align: center;">76.6</td>
+<td style="text-align: center;">97.0</td>
+</tr>
+<tr>
 <td style="text-align: center;">BoT-SORT</td>
 <td style="text-align: center;">84.5</td>
 <td style="text-align: center;">79.3</td>
 <td style="text-align: center;">96.6</td>
 </tr>
 <tr>
-<td style="text-align: center;">C-BIoU</td>
-<td style="text-align: center;">82.6</td>
-<td style="text-align: center;">76.6</td>
-<td style="text-align: center;">97.0</td>
+<td style="text-align: center;">BoT-SORT + ReID</td>
+<td style="text-align: center;">84.3</td>
+<td style="text-align: center;">79.1</td>
+<td style="text-align: center;">96.5</td>
 </tr>
 <tr>
 <td style="text-align: center;">McByte</td>
@@ -2701,8 +2814,9 @@
      ByteTrack row -> docs/trackers/bytetrack.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
      OC-SORT row   -> docs/trackers/ocsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
      BoT-SORT row  -> docs/trackers/botsort.md (table), docs/index.md (Algorithms table), README.md (Algorithms table), docs/trackers/mcbyte.md (BoT-SORT row, "SoccerNet" tab)
-     C-BIoU row    -> docs/trackers/cbiou.md (table), README.md (Algorithms table only)
+     C-BIoU row    -> docs/trackers/cbiou.md (table), docs/index.md (Algorithms table), README.md (Algorithms table)
      McByte row    -> docs/trackers/mcbyte.md (McByte row, "SoccerNet" tab), docs/index.md (Algorithms table + FAQ "leads every benchmark" claim), README.md (Algorithms table)
+     BoT-SORT + ReID row -> docs/index.md (Algorithms table), README.md (Algorithms table)
      Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 </div>
 <div class="tabbed-block">
@@ -2736,20 +2850,31 @@
 <td style="text-align: center;">96.8</td>
 </tr>
 <tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">85.7</td>
+<td style="text-align: center;">80.0</td>
+<td style="text-align: center;"><strong>99.3</strong></td>
+</tr>
+<tr>
 <td style="text-align: center;">BoT-SORT</td>
 <td style="text-align: center;">85.0</td>
 <td style="text-align: center;">79.7</td>
 <td style="text-align: center;">97.2</td>
 </tr>
 <tr>
-<td style="text-align: center;">C-BIoU</td>
-<td style="text-align: center;"><strong>85.7</strong></td>
-<td style="text-align: center;"><strong>80.0</strong></td>
+<td style="text-align: center;">BoT-SORT + ReID</td>
+<td style="text-align: center;"><strong>88.4</strong></td>
+<td style="text-align: center;"><strong>84.4</strong></td>
 <td style="text-align: center;"><strong>99.3</strong></td>
 </tr>
 </tbody>
 </table>
-<p>Tuned configuration for each tracker.</p>
+<!-- BENCH-XREF canonical:this-table id=soccernet-tuned
+     BoT-SORT row        -> docs/guides/reid.md (Results, both tabs, BoT-SORT row, HOTA/IDF1/MOTA)
+     BoT-SORT + ReID row <- copied FROM docs/guides/reid.md (best test row across its tabs); its HOTA
+                            also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
+     Change any cell above -> update every listed location. -->
+<p>Tuned configuration for each tracker. The ReID row uses <code>osnet_x1_0_soccernet</code>, an OSNet x1.0 fine-tuned on SoccerNet train (see <a href="../../guides/reid/#choosing-an-encoder">encoders</a>).</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">SORT</span><span class="p">:</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.25</span>
@@ -2792,6 +2917,14 @@
 </span><span id="__span-2-40"><a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.48</span>
 </span><span id="__span-2-41"><a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">  </span><span class="nt">buffer_ratio_first</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.68</span>
 </span><span id="__span-2-42"><a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">  </span><span class="nt">buffer_ratio_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.50</span>
+</span><span id="__span-2-43"><a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>
+</span><span id="__span-2-44"><a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="nt">BoT-SORT + ReID</span><span class="p">:</span>
+</span><span id="__span-2-45"><a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="w">  </span><span class="nt">reid_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osnet_x1_0_soccernet</span>
+</span><span id="__span-2-46"><a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">  </span><span class="nt">reid_config.fusion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adaptive</span>
+</span><span id="__span-2-47"><a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">  </span><span class="nt">reid_config.appearance_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.75</span>
+</span><span id="__span-2-48"><a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">  </span><span class="nt">reid_config.adaptive_weight_cap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-2-49"><a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">  </span><span class="nt">reid_config.proximity_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+</span><span id="__span-2-50"><a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">  </span><span class="nt">reid_config.appearance_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2814,7 +2947,7 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Default</label><label for="__tabbed_4_2">Tuned</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>Results using default tracker parameters.</p>
+<p>Results using default tracker parameters. The ReID row is BoT-SORT at library defaults with the default <code>fastreid_mot17_sbs50</code> encoder, BoT-SORT's own ReID model trained on MOT17 pedestrian crops (see <a href="../../guides/reid/#choosing-an-encoder">encoders</a>).</p>
 <table>
 <thead>
 <tr>
@@ -2844,16 +2977,22 @@
 <td style="text-align: center;">89.3</td>
 </tr>
 <tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">56.7</td>
+<td style="text-align: center;">56.7</td>
+<td style="text-align: center;">92.2</td>
+</tr>
+<tr>
 <td style="text-align: center;">BoT-SORT</td>
 <td style="text-align: center;">57.8</td>
 <td style="text-align: center;">57.9</td>
 <td style="text-align: center;">92.2</td>
 </tr>
 <tr>
-<td style="text-align: center;">C-BIoU</td>
-<td style="text-align: center;">56.7</td>
-<td style="text-align: center;">56.7</td>
-<td style="text-align: center;">92.2</td>
+<td style="text-align: center;">BoT-SORT + ReID</td>
+<td style="text-align: center;">57.0</td>
+<td style="text-align: center;">57.1</td>
+<td style="text-align: center;">92.1</td>
 </tr>
 <tr>
 <td style="text-align: center;">McByte</td>
@@ -2867,8 +3006,9 @@
      SORT/ByteTrack/OC-SORT/BoT-SORT rows -> docs/index.md (Algorithms table, HOTA col only), README.md (Algorithms table, HOTA col only).
      Note: docs/trackers/{sort,bytetrack,ocsort,botsort}.md intentionally have NO DanceTrack row — don't add one, that's existing scope not a gap.
      BoT-SORT row also -> docs/trackers/mcbyte.md (BoT-SORT row, "DanceTrack" tab)
-     C-BIoU row    -> docs/trackers/cbiou.md (table, DanceTrack row), README.md (Algorithms table)
+     C-BIoU row    -> docs/trackers/cbiou.md (table, DanceTrack row), docs/index.md (Algorithms table), README.md (Algorithms table)
      McByte row    -> docs/trackers/mcbyte.md (McByte row, "DanceTrack" tab), docs/index.md (Algorithms table + FAQ "leads every benchmark" claim), README.md (Algorithms table)
+     BoT-SORT + ReID row -> docs/index.md (Algorithms table), README.md (Algorithms table)
      Change any cell above -> update every listed location + re-check FAQ leader claim still true. -->
 </div>
 <div class="tabbed-block">
@@ -2902,20 +3042,31 @@
 <td style="text-align: center;">89.3</td>
 </tr>
 <tr>
+<td style="text-align: center;">C-BIoU</td>
+<td style="text-align: center;">57.7</td>
+<td style="text-align: center;">58.7</td>
+<td style="text-align: center;"><strong>92.4</strong></td>
+</tr>
+<tr>
 <td style="text-align: center;">BoT-SORT</td>
-<td style="text-align: center;"><strong>57.8</strong></td>
+<td style="text-align: center;">57.8</td>
 <td style="text-align: center;">57.9</td>
 <td style="text-align: center;">92.2</td>
 </tr>
 <tr>
-<td style="text-align: center;">C-BIoU</td>
-<td style="text-align: center;">57.7</td>
-<td style="text-align: center;"><strong>58.7</strong></td>
-<td style="text-align: center;"><strong>92.4</strong></td>
+<td style="text-align: center;">BoT-SORT + ReID</td>
+<td style="text-align: center;"><strong>60.8</strong></td>
+<td style="text-align: center;"><strong>61.6</strong></td>
+<td style="text-align: center;">91.7</td>
 </tr>
 </tbody>
 </table>
-<p>Best configuration for each tracker.</p>
+<!-- BENCH-XREF canonical:this-table id=dancetrack-tuned
+     BoT-SORT row        -> docs/guides/reid.md (Results, both tabs, BoT-SORT row, HOTA/IDF1/MOTA)
+     BoT-SORT + ReID row <- copied FROM docs/guides/reid.md (best test row across its tabs); its HOTA
+                            also appears in the README.md and docs/index.md BoT-SORT + ReID footnote
+     Change any cell above -> update every listed location. -->
+<p>Best configuration for each tracker. The ReID row uses <code>osnet_x1_0_dancetrack</code>, an OSNet x1.0 fine-tuned on DanceTrack train (see <a href="../../guides/reid/#choosing-an-encoder">encoders</a>).</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">SORT</span><span class="p">:</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">lost_track_buffer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">91</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">track_activation_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.89</span>
@@ -2958,6 +3109,12 @@
 </span><span id="__span-3-40"><a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a><span class="w">  </span><span class="nt">high_conf_det_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.34</span>
 </span><span id="__span-3-41"><a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a><span class="w">  </span><span class="nt">buffer_ratio_first</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.12</span>
 </span><span id="__span-3-42"><a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a><span class="w">  </span><span class="nt">buffer_ratio_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.10</span>
+</span><span id="__span-3-43"><a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>
+</span><span id="__span-3-44"><a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a><span class="nt">BoT-SORT + ReID</span><span class="p">:</span>
+</span><span id="__span-3-45"><a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a><span class="w">  </span><span class="nt">reid_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osnet_x1_0_dancetrack</span>
+</span><span id="__span-3-46"><a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a><span class="w">  </span><span class="nt">reid_config.fusion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">botsort</span>
+</span><span id="__span-3-47"><a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a><span class="w">  </span><span class="nt">reid_config.appearance_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4716</span>
+</span><span id="__span-3-48"><a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a><span class="w">  </span><span class="nt">reid_config.proximity_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6802</span>
 </span></code></pre></div>
 </div>
 </div>
@@ -2973,7 +3130,8 @@
 <p><strong>ByteTrack</strong> is the default recommendation for most applications. It outperforms SORT on all four benchmarks by recovering low-confidence detections that SORT discards. The two-stage association adds almost no extra compute and consistently reduces missed tracks and identity switches. Use ByteTrack when your detector produces noisy or variable-confidence outputs — sports video, aerial footage, and crowded retail scenes all benefit.</p>
 <p><strong>OC-SORT</strong> is best when camera motion is significant or objects follow non-linear paths. Its observation-centric re-update mechanism and direction consistency cost reduce drift from the linear motion assumption. Use OC-SORT when SORT or ByteTrack loses tracks on fast turns, camera pans, or erratic motion — the benchmark edge on MOT17 reflects exactly these conditions.</p>
 <p><strong>BoT-SORT</strong> is the choice when camera ego-motion is strong and you need the most stable identities. It extends ByteTrack with camera motion compensation (CMC) and confidence-aware association, which reduces ID switches on panning or handheld footage. Use BoT-SORT for sports broadcasts, drone video, or any scene where the camera moves frequently. The CMC overhead is small relative to the detector, so the trade-off favors identity stability over raw speed.</p>
-<p><strong>C-BIoU</strong> targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See <a href="../../trackers/cbiou/">C-BIoU</a> for buffer scales <strong>b1</strong> and <strong>b2</strong>.</p>
+<p><strong>C-BIoU</strong> targets fast or irregular motion when you want buffered, cascaded geometric matching without camera motion compensation. In these benchmarks it leads on SoccerNet among the motion-only trackers when tuned, and reaches the highest tuned IDF1 and MOTA on DanceTrack among the motion-only trackers. Use C-BIoU when BoT-SORT-style association is a good fit but CMC is unavailable or harmful, or when plain IoU matching is too strict. See <a href="../../trackers/cbiou/">C-BIoU</a> for buffer scales <strong>b1</strong> and <strong>b2</strong>.</p>
+<p><strong>BoT-SORT + ReID</strong> adds an appearance encoder to BoT-SORT's association; enable it with <code>reid_model=</code>. Appearance helps where overlap alone cannot tell candidates apart. It can only relink a track that is still kept as lost, for <code>lost_track_buffer</code> frames (30 by default, about one second), and at the default <code>reid_config.proximity_threshold</code> it only scores pairs that already overlap. Recovering a target that leaves the frame takes a fully open gate and a buffer long enough to cover the absence, see <a href="../../guides/reid/#choosing-a-proximity-threshold">Choosing a proximity threshold</a>. The gain depends on how well the encoder separates your targets: largest with an encoder trained on footage like yours, smallest when targets look alike. Tune the ReID thresholds on your data with <a href="../../guides/tune/#tune-reid-thresholds"><code>trackers tune</code></a>.</p>
 <p><strong>McByte</strong> is the choice when you want the highest identity stability and can afford optional SAM/Cutie mask dependencies. It extends BoT-SORT-style association with temporally propagated segmentation masks as an extra matching cue, requiring no per-video tuning. Reported against Trackers' BoT-SORT baseline (without re-identification) at default parameters, McByte improves HOTA and IDF1 on all four datasets in this comparison, with the largest gain on DanceTrack. Use McByte when identity consistency matters more than raw throughput or dependency footprint. See <a href="../../trackers/mcbyte/">McByte</a> for setup and the mask-conditioning parameters.</p>
 <h2 id="metric-definitions">Metric Definitions</h2>
 <p><strong>HOTA</strong> (Higher Order Tracking Accuracy) — the primary benchmark metric. HOTA decomposes tracking quality into detection accuracy (DetA) and association accuracy (AssA), then takes their geometric mean. It weights identity consistency equally with detection recall and precision, unlike older metrics that under-penalize fragmented tracks. Higher HOTA indicates both good detection and stable long-term identity.</p>
@@ -3001,7 +3159,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 2, 2026 11:57:27 UTC">2026-09-02</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 30, 2026 19:59:58 UTC">2026-10-30</span>
   </span>
 
     
@@ -3201,6 +3359,8 @@
         <script src="../../javascripts/cli_builder_framework.js"></script>
       
         <script src="../../javascripts/command_builder.js"></script>
+      
+        <script src="../../javascripts/grouped_tables.js"></script>
       
     
   </body>

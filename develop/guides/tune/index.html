@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-08-24",
+  "dateModified": "2026-10-30",
   "datePublished": "2026-05-07"
 }
 </script>
@@ -1138,6 +1138,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tune-reid-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tune ReID Thresholds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#use-best-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1211,6 +1222,34 @@
     
   
     State Estimators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID Appearance
   
 
     
@@ -1859,6 +1898,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/datasets/" class="md-nav__link">
         
   
@@ -2213,6 +2280,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tune-reid-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tune ReID Thresholds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#use-best-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2275,6 +2353,7 @@
 <p>By default, the <strong>first trial</strong> evaluates a baseline parameter set before Optuna samples further combinations. That trial counts toward <code>--n-trials</code> / <code>n_trials</code>. Set <code>enqueue_defaults=False</code> on <code>Tuner</code> to disable this behavior.</p>
 <p>For each <code>search_space</code> key, the baseline uses the tracker's default when it lies within the search space.</p>
 <p>Options that are not tuned (or differ from <code>__init__</code>) are set with <code>fixed_params</code> on <code>Tuner</code>. They apply to every trial, including the baseline, override the same key in <code>search_space</code> if present, and are returned from <code>run()</code> merged into the best parameter dict.</p>
+<p>Use <code>fixed_defaults</code> to hold named parameters at their tracker constructor defaults without copying their values. These parameters are also excluded from the search and returned with the best parameters. If a name appears in both, its explicit <code>fixed_params</code> value wins.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Python</label><label for="__tabbed_1_2">CLI</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
@@ -2398,16 +2477,63 @@
 </div>
 </div>
 <hr />
+<h2 id="tune-reid-thresholds">Tune ReID Thresholds</h2>
+<p>Pass an encoder to BoT-SORT and the search adds <code>reid_config.appearance_threshold</code> and <code>reid_config.proximity_threshold</code>. Tune the two together: a looser proximity gate usually needs a stricter appearance threshold. To search only these two, hold the other search parameters at BoT-SORT's constructor defaults with <code>fixed_defaults</code>. <code>images_dir</code> is required, because the encoder reads the frames.</p>
+<p>Every trial replays the same detections, so <code>cache_embeddings=True</code> embeds each one once and reuses it, which saves most of a study's time. The embeddings then stay in memory for the whole study, about 1 GB per 500k detections, which is why it is off by default.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">CLI</label><label for="__tabbed_4_2">Python</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>trackers tune \
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    --tracker botsort \
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    --gt_dir ./data/gt \
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    --detections_dir ./data/detections \
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    --images_dir ./data/images \
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    --reid.model fastreid_mot17_sbs50 \
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    --fixed_defaults &#39;[&quot;lost_track_buffer&quot;, &quot;minimum_consecutive_frames&quot;, &quot;minimum_iou_threshold_first_assoc&quot;, &quot;minimum_iou_threshold_second_assoc&quot;, &quot;minimum_iou_threshold_unconfirmed_assoc&quot;, &quot;high_conf_det_threshold&quot;, &quot;track_activation_threshold&quot;, &quot;cmc_downscale&quot;]&#39; \
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    --n_trials 20
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuner</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">motion_defaults</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="s2">&quot;lost_track_buffer&quot;</span><span class="p">,</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="s2">&quot;minimum_consecutive_frames&quot;</span><span class="p">,</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="s2">&quot;minimum_iou_threshold_first_assoc&quot;</span><span class="p">,</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="s2">&quot;minimum_iou_threshold_second_assoc&quot;</span><span class="p">,</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="s2">&quot;minimum_iou_threshold_unconfirmed_assoc&quot;</span><span class="p">,</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    <span class="s2">&quot;high_conf_det_threshold&quot;</span><span class="p">,</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    <span class="s2">&quot;track_activation_threshold&quot;</span><span class="p">,</span>
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    <span class="s2">&quot;cmc_downscale&quot;</span><span class="p">,</span>
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="p">]</span>
+</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+</span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="n">tuner</span> <span class="o">=</span> <span class="n">Tuner</span><span class="p">(</span>
+</span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    <span class="n">tracker_id</span><span class="o">=</span><span class="s2">&quot;botsort&quot;</span><span class="p">,</span>
+</span><span id="__span-11-16"><a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    <span class="n">gt_dir</span><span class="o">=</span><span class="s2">&quot;./data/gt&quot;</span><span class="p">,</span>
+</span><span id="__span-11-17"><a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    <span class="n">detections_dir</span><span class="o">=</span><span class="s2">&quot;./data/detections&quot;</span><span class="p">,</span>
+</span><span id="__span-11-18"><a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    <span class="n">images_dir</span><span class="o">=</span><span class="s2">&quot;./data/images&quot;</span><span class="p">,</span>
+</span><span id="__span-11-19"><a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    <span class="n">fixed_params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;reid_model&quot;</span><span class="p">:</span> <span class="s2">&quot;fastreid_mot17_sbs50&quot;</span><span class="p">},</span>
+</span><span id="__span-11-20"><a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>    <span class="n">fixed_defaults</span><span class="o">=</span><span class="n">motion_defaults</span><span class="p">,</span>
+</span><span id="__span-11-21"><a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-11-22"><a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>    <span class="n">cache_embeddings</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-11-23"><a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a><span class="p">)</span>
+</span><span id="__span-11-24"><a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a><span class="n">best_params</span> <span class="o">=</span> <span class="n">tuner</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<p>With the cache on, each detection is embedded once and reused by later trials, so the first trial is the slow one. The Python result contains a <code>ReIDConfig</code> object and can be passed directly to <code>BoTSORTTracker</code>. When loading saved JSON, construct <code>ReIDConfig(**best_params["reid_config"])</code> before unpacking it into the tracker.</p>
+<hr />
 <h2 id="use-best-parameters">Use Best Parameters</h2>
 <p>Apply tuned values by unpacking the saved JSON dictionary into your tracker constructor.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;./results/bytetrack-best.json&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">best_params</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">(</span><span class="o">**</span><span class="n">best_params</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">trackers</span><span class="w"> </span><span class="kn">import</span> <span class="n">ByteTrackTracker</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;./results/bytetrack-best.json&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">best_params</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">ByteTrackTracker</span><span class="p">(</span><span class="o">**</span><span class="n">best_params</span><span class="p">)</span>
 </span></code></pre></div>
 <h2 id="cli-reference">CLI Reference</h2>
 <p>All arguments accepted by <code>trackers tune</code>.</p>
@@ -2456,8 +2582,23 @@
       <td>None</td>
     </tr>
     <tr>
+      <td><code>--fixed_defaults</code></td>
+      <td>Tracker constructor parameter names held at their defaults across every trial (JSON list). Explicit <code>fixed_params</code> values take priority.</td>
+      <td>None</td>
+    </tr>
+    <tr>
       <td><code>--images_dir</code></td>
       <td>MOT-style image root for frame-based features such as CMC. Frames are read from <code>{images_dir}/{sequence}/img1/</code>.</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td><code>--reid.model</code></td>
+      <td>ReID encoder for BoT-SORT: alias, <code>hf://</code> URL, or local path. Adds <code>reid_config.appearance_threshold</code> and <code>reid_config.proximity_threshold</code> to the search. Requires <code>--images_dir</code>. Also accepts <code>--reid.device</code> and <code>--reid.architecture</code>.</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td><code>--search_space</code></td>
+      <td>Search-space entries that replace or extend the tracker's own for this run (JSON object, same format as the tracker's <code>search_space</code>).</td>
       <td>None</td>
     </tr>
     <tr>
@@ -2514,7 +2655,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 24, 2026 20:10:35 UTC">2026-08-24</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 30, 2026 19:59:58 UTC">2026-10-30</span>
   </span>
 
     
@@ -2714,6 +2855,8 @@
         <script src="../../javascripts/cli_builder_framework.js"></script>
       
         <script src="../../javascripts/command_builder.js"></script>
+      
+        <script src="../../javascripts/grouped_tables.js"></script>
       
     
   </body>

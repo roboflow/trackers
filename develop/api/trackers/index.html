@@ -1108,6 +1108,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID Appearance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2139,6 +2167,34 @@
     
   
     Motion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID
   
 
     
@@ -4266,11 +4322,11 @@ frame, performs:
   3) Split tracks into confirmed, unconfirmed, and lost
   4) Apply camera motion compensation to predicted tracks
   5) Associate high-confidence detections to confirmed + lost tracks
-     (IoU fused with detection scores + assignment)
+     (IoU fused with detection scores, optional appearance)
   6) Associate low-confidence detections to remaining tracks
-     (excluding lost tracks)
+     (excluding lost tracks; geometry only)
   7) Match remaining unmatched high-confidence detections to unconfirmed tracks
-     and remove unmatched unconfirmed tracks
+     (optional appearance) and remove unmatched unconfirmed tracks
   8) Spawn new tracks from still unmatched high-confidence detections
      (instantly activated on the very first frame)
   9) Remove tracks that have been lost for too long</p>
@@ -4367,7 +4423,8 @@ assigning a stable track ID (different than initial -1).</p>
               <div class="doc-md-description">
                 <p>Minimum fused similarity (IoU x
 detection confidence) to accept a detection-track association during
-the first association step.</p>
+the first association step. With a <code>reid_model</code>, appearance can raise
+a pair's similarity, and this threshold applies to the fused value.</p>
               </div>
             </td>
             <td>
@@ -4404,7 +4461,8 @@ No score fusion is applied in this pass, so this is plain IoU.</p>
                 <p>Minimum fused similarity (IoU x
 score) to accept a match between an unconfirmed track and a remaining
 high-confidence detection.  Corresponds to the original ByteTrack's
-hardcoded cost threshold of 0.7 (= similarity 0.3).</p>
+hardcoded cost threshold of 0.7 (= similarity 0.3). With a
+<code>reid_model</code>, appearance is fused in as in the first step.</p>
               </div>
             </td>
             <td>
@@ -4540,6 +4598,49 @@ supply an <code>iou</code> argument.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>reid_model</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.reid.encoder.ReIDEncoder&lt;/code&gt;" href="../reid/#trackers.reid.encoder.ReIDEncoder">ReIDEncoder</a> | <span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Appearance encoder for appearance association: a model name
+(curated alias, <code>hf://</code> URL or local path, loaded with the <code>reid</code>
+package's defaults) or an encoder you loaded yourself, e.g. to choose
+the device. Requires <code>frame</code> in :meth:<code>update</code>. When <code>None</code>
+(default), behaviour matches the geometry-only BoT-SORT baseline.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>reid_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;code&gt;trackers.reid.config.ReIDConfig&lt;/code&gt;
+
+
+  &lt;span class=&quot;doc doc-labels&quot;&gt;
+      &lt;small class=&quot;doc doc-label doc-label-dataclass&quot;&gt;&lt;code&gt;dataclass&lt;/code&gt;&lt;/small&gt;
+  &lt;/span&gt;" href="../reid/#trackers.reid.config.ReIDConfig">ReIDConfig</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Appearance association and fusion settings. Defaults to
+:class:<code>ReIDConfig</code>. Passing it without <code>reid_model</code> raises
+<code>ValueError</code>; the encoder is supplied separately.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -4556,6 +4657,8 @@ supply an <code>iou</code> argument.</p>
   2x3 affine via the keyword-only <code>cmc_transform</code> (applied regardless of
   <code>enable_cmc</code>). Passing both raises <code>ValueError</code>; passing neither
   skips CMC for that step.</li>
+<li>When ReID is enabled, also pass the current video frame via <code>frame</code>:
+  appearance embeddings are extracted from it.</li>
 </ul>
 </details>
 
@@ -4800,6 +4903,9 @@ the last state.</p>
 <li>Applying <code>cmc_transform</code> resets the internal estimator, so switching back
   to <code>frame</code> re-initializes it (one uncompensated step) instead of
   compensating the externally handled motion twice.</li>
+<li>If <code>reid_model</code> is set, <code>frame</code> is required: appearance
+  embeddings are extracted from it, and <code>update()</code> raises when it
+  is <code>None</code>.</li>
 </ul>
 </details>
 
@@ -6984,6 +7090,8 @@ value is undefined.</p>
         <script src="../../javascripts/cli_builder_framework.js"></script>
       
         <script src="../../javascripts/command_builder.js"></script>
+      
+        <script src="../../javascripts/grouped_tables.js"></script>
       
     
   </body>

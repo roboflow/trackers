@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.">
+        <meta name="description" content="Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.">
       
       
         <meta name="author" content="Roboflow">
@@ -150,7 +150,7 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Quickstart",
-  "description": "Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.",
+  "description": "Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.",
   "url": "https://trackers.roboflow.com/latest/",
   "mainEntityOfPage": {
     "@type": "WebPage",
@@ -181,7 +181,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-09-02",
+  "dateModified": "2026-10-30",
   "datePublished": "2025-04-14"
 }
 </script>
@@ -250,7 +250,7 @@
 <meta property="og:site_name" content="Roboflow Trackers" />
 <meta property="og:url" content="https://trackers.roboflow.com/latest/" />
 <meta property="og:title" content="Object Tracking in Python" />
-<meta property="og:description" content="Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics." />
+<meta property="og:description" content="Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics." />
 <meta property="og:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 <meta property="og:image:alt" content="Roboflow Trackers logo" />
 
@@ -262,7 +262,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:site" content="@roboflow" />
 <meta name="twitter:title" content="Object Tracking in Python" />
-<meta name="twitter:description" content="Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics." />
+<meta name="twitter:description" content="Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics." />
 <meta name="twitter:image" content="https://trackers.roboflow.com/assets/logo-trackers-violet.svg" />
 
 
@@ -1333,6 +1333,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID Appearance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1968,6 +1996,34 @@
   
   
     <li class="md-nav__item">
+      <a href="api/reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="api/datasets/" class="md-nav__link">
         
   
@@ -2490,7 +2546,7 @@
 <hr />
 <h2 id="algorithms">Algorithms</h2>
 <p>Clean, modular implementations of leading trackers. All HOTA scores use default parameters.</p>
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte rows. Also duplicated in [README.md](../README.md)'s Algorithms table. Update results.md first, then mirror both copies. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/C-BIoU/BoT-SORT/BoT-SORT + ReID/McByte rows; the BoT-SORT + ReID footnote also copies the Tuned ReID HOTA of all four Tuned tables. Also duplicated in [README.md](../README.md)'s Algorithms table. Update results.md first, then mirror both copies. -->
 
 <table>
 <thead>
@@ -2529,14 +2585,6 @@
 <td style="text-align: center;">54.1</td>
 </tr>
 <tr>
-<td style="text-align: center;"><a href="https://arxiv.org/abs/2206.14651">BoT-SORT</a></td>
-<td style="text-align: center;">Camera motion compensation.</td>
-<td style="text-align: center;">63.7</td>
-<td style="text-align: center;">73.8</td>
-<td style="text-align: center;">84.5</td>
-<td style="text-align: center;">57.8</td>
-</tr>
-<tr>
 <td style="text-align: center;"><a href="https://arxiv.org/abs/2211.14317">C-BIoU</a></td>
 <td style="text-align: center;">Cascaded buffered IoU matching for fast or irregular motion.</td>
 <td style="text-align: center;">63.0</td>
@@ -2545,8 +2593,24 @@
 <td style="text-align: center;">56.7</td>
 </tr>
 <tr>
+<td style="text-align: center;"><a href="https://arxiv.org/abs/2206.14651">BoT-SORT</a></td>
+<td style="text-align: center;">Camera motion compensation.</td>
+<td style="text-align: center;">63.7</td>
+<td style="text-align: center;">73.8</td>
+<td style="text-align: center;">84.5</td>
+<td style="text-align: center;">57.8</td>
+</tr>
+<tr>
+<td style="text-align: center;"><a href="guides/reid/">BoT-SORT + ReID</a></td>
+<td style="text-align: center;">Appearance embeddings fused with motion, for harder association.*</td>
+<td style="text-align: center;">63.9</td>
+<td style="text-align: center;">75.5</td>
+<td style="text-align: center;">84.3</td>
+<td style="text-align: center;">57.0</td>
+</tr>
+<tr>
 <td style="text-align: center;"><a href="trackers/mcbyte/">McByte</a></td>
-<td style="text-align: center;">Mask-conditioned tracking — adds propagated SAM/Cutie masks as a cue.*</td>
+<td style="text-align: center;">Mask-conditioned tracking — adds propagated SAM/Cutie masks as a cue.**</td>
 <td style="text-align: center;"><strong>64.1</strong></td>
 <td style="text-align: center;"><strong>76.5</strong></td>
 <td style="text-align: center;"><strong>85.0</strong></td>
@@ -2556,7 +2620,8 @@
 </table>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>*McByte needs optional heavyweight deps (<code>torch</code>, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the <a href="trackers/mcbyte/">McByte docs</a> for setup.</p>
+<p>*BoT-SORT + ReID is listed with library default parameters and the default encoder <code>fastreid_mot17_sbs50</code> (BoT-SORT's own ReID model, trained on MOT17) on all four datasets. At its best tuned configuration on each dataset, it reaches 64.6 (MOT17), 77.8 (SportsMOT), 88.4 (SoccerNet) and 60.8 (DanceTrack) HOTA on the test sets, above BoT-SORT without ReID on all four. See the <a href="guides/reid/">ReID guide</a>.</p>
+<p>**McByte needs optional heavyweight deps (<code>torch</code>, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above. See the <a href="trackers/mcbyte/">McByte docs</a> for setup.</p>
 </div>
 <p>For detailed benchmarks and tuned configurations, see the <a href="evaluations/results/">tracker comparison</a>.</p>
 <hr />
@@ -2675,7 +2740,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 2, 2026 11:57:27 UTC">2026-09-02</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 30, 2026 19:59:58 UTC">2026-10-30</span>
   </span>
 
     
@@ -2859,6 +2924,8 @@
         <script src="javascripts/cli_builder_framework.js"></script>
       
         <script src="javascripts/command_builder.js"></script>
+      
+        <script src="javascripts/grouped_tables.js"></script>
       
     
   </body>

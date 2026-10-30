@@ -161,7 +161,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-09-02",
+  "dateModified": "2026-10-30",
   "datePublished": "2026-05-05"
 }
 </script>
@@ -1108,6 +1108,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID Appearance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1662,6 +1690,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#reid-appearance-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ReID appearance (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run-on-video-webcam-or-rtsp-stream" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1850,6 +1889,34 @@
     
   
     Motion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/reid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReID
   
 
     
@@ -2235,6 +2302,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#reid-appearance-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ReID appearance (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run-on-video-webcam-or-rtsp-stream" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2321,7 +2399,7 @@
 <h2 id="algorithm">Algorithm</h2>
 <p>BoT-SORT keeps the same tracking-by-detection backbone as <a href="../bytetrack/">ByteTrack</a> but adds camera-motion-aware prediction and confidence-aware association.</p>
 <p><strong>CMC (Camera Motion Compensation).</strong> Before data association, BoT-SORT estimates global camera motion between consecutive frames (typically from sparse optical flow) and warps each track's Kalman-predicted box into the current frame. Without this step, a panning or moving camera can make stationary or slow-moving targets appear to jump, degrading IoU overlap and causing false unmatched tracks.</p>
-<p><strong>Two-stage association.</strong> BoT-SORT performs ByteTrack-style matching in two passes: high-confidence detections first, then lower-confidence detections against remaining <em>tracked</em> (non-lost) tracks that were just updated the previous frame. This recovers objects that are briefly weakly scored due to blur, occlusion, or scale change.</p>
+<p><strong>Two-stage association.</strong> BoT-SORT performs ByteTrack-style matching in two association steps: high-confidence detections first, then lower-confidence detections against remaining <em>tracked</em> (non-lost) tracks that were just updated the previous frame. This recovers objects that are briefly weakly scored due to blur, occlusion, or scale change.</p>
 <p><strong>Confidence-aware matching.</strong> Association costs blend geometric overlap (IoU) with detection confidence so that stronger detections are preferred when multiple matches are plausible.</p>
 <p><strong>Track lifecycle.</strong> New tracks are initiated and confirmed with a conservative policy (<code>minimum_consecutive_frames</code>) to reduce one-frame false positives. Tracks that remain unmatched longer than <code>lost_track_buffer</code> are removed.</p>
 <h2 id="key-parameters">Key Parameters</h2>
@@ -2351,17 +2429,17 @@
 </tr>
 <tr>
 <td><code>minimum_iou_threshold_first_assoc</code></td>
-<td>Minimum fused similarity (IoU x detection confidence) for the first association pass with high-confidence detections.</td>
+<td>Minimum fused similarity (IoU x detection confidence) for the first association step with high-confidence detections. With Re-ID, appearance can raise a pair's similarity, and this threshold applies to the fused value.</td>
 <td>Lower helps maintain matches under fast motion or imperfect compensation; higher is stricter and reduces risky matches.</td>
 </tr>
 <tr>
 <td><code>minimum_iou_threshold_second_assoc</code></td>
-<td>Minimum IoU for the second association pass with lower-confidence detections.</td>
-<td>Typically set higher than the first-pass threshold: this pass has no confidence fusion, so a stricter geometric threshold guards against over-matching low-confidence detections.</td>
+<td>Minimum IoU for the second association step with lower-confidence detections.</td>
+<td>Typically set higher than the first-step threshold: this step has no confidence fusion, so a stricter geometric threshold guards against over-matching low-confidence detections.</td>
 </tr>
 <tr>
 <td><code>minimum_iou_threshold_unconfirmed_assoc</code></td>
-<td>Minimum IoU when associating unconfirmed tracks.</td>
+<td>Minimum fused similarity (IoU x detection confidence) when associating unconfirmed tracks. With Re-ID, appearance is fused in as in the first association step.</td>
 <td>Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.</td>
 </tr>
 <tr>
@@ -2376,6 +2454,8 @@
 </tr>
 </tbody>
 </table>
+<h2 id="reid-appearance-optional">ReID appearance (optional)</h2>
+<p>BoT-SORT can fuse appearance embeddings with IoU during association via an optional <code>reid_model</code>. For ReID numbers go to the <a href="../../guides/reid/#results">ReID guide</a>, which holds the tables for both fusion rules and best configuration per dataset. Also learn how to install, use and choose parameters on the same page.</p>
 <h2 id="run-on-video-webcam-or-rtsp-stream">Run on video, webcam, or RTSP stream</h2>
 <p>These examples use <code>opencv-python</code> for decoding and display. Replace <code>&lt;SOURCE_VIDEO_PATH&gt;</code>, <code>&lt;WEBCAM_INDEX&gt;</code>, and <code>&lt;RTSP_STREAM_URL&gt;</code> with your inputs. <code>&lt;WEBCAM_INDEX&gt;</code> is usually 0 for the default camera.</p>
 <div class="admonition tip">
@@ -2538,7 +2618,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 2, 2026 11:57:27 UTC">2026-09-02</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 30, 2026 19:59:58 UTC">2026-10-30</span>
   </span>
 
     
@@ -2789,6 +2869,8 @@
         <script src="../../javascripts/cli_builder_framework.js"></script>
       
         <script src="../../javascripts/command_builder.js"></script>
+      
+        <script src="../../javascripts/grouped_tables.js"></script>
       
     
   </body>
