@@ -16,7 +16,7 @@ import pytest
 
 from trackers.cli.track import ReIDModelConfig
 from trackers.cli.tune import TrackerSelection, tune_command
-from trackers.core.reid.config import ReIDConfig
+from trackers.reid.config import ReIDConfig
 
 
 class TestTune:

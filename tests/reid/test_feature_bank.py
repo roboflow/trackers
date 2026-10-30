@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from trackers.core.reid.feature_bank import FeatureBank
+from trackers.reid.feature_bank import FeatureBank
 
 
 class TestFeatureBank:

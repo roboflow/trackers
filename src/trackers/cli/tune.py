@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from trackers.cli.track import DEFAULT_REID_MODEL, ReIDModelConfig, _load_reid_model, _reid_requested
-from trackers.core.reid.config import ReIDConfig
+from trackers.reid.config import ReIDConfig
 
 
 @dataclass

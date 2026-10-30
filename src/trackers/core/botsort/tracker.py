@@ -14,11 +14,11 @@ from scipy.optimize import linear_sum_assignment
 from trackers.core.base import BaseTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
-from trackers.core.reid.appearance import appearance_similarity, extract_detection_embeddings
-from trackers.core.reid.config import ReIDConfig
-from trackers.core.reid.encoder import ReIDEncoder, _load_reid_encoder
-from trackers.core.reid.feature_bank import FeatureBank
-from trackers.core.reid.fusion import (
+from trackers.reid.appearance import appearance_similarity, extract_detection_embeddings
+from trackers.reid.config import ReIDConfig
+from trackers.reid.encoder import ReIDEncoder, _load_reid_encoder
+from trackers.reid.feature_bank import FeatureBank
+from trackers.reid.fusion import (
     fuse_adaptive_reid_association,
     fuse_botsort_reid_association,
 )

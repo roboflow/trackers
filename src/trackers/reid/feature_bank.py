@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from trackers.core.reid.appearance import _l2_normalize
+from trackers.reid.appearance import _l2_normalize
 
 
 class FeatureBank:

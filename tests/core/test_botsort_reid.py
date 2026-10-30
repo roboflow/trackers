@@ -17,8 +17,8 @@ import supervision as sv
 
 import trackers.core.botsort.tracker as tracker_module
 from trackers.core.botsort.tracker import BoTSORTTracker
-from trackers.core.reid.config import ReIDConfig
-from trackers.core.reid.fusion import (
+from trackers.reid.config import ReIDConfig
+from trackers.reid.fusion import (
     ReidFusionMethod,
     fuse_adaptive_reid_association,
     fuse_botsort_reid_association,

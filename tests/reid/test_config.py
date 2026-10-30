@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from trackers.core.reid.config import ReIDConfig
+from trackers.reid.config import ReIDConfig
 
 
 class TestReIDConfig:

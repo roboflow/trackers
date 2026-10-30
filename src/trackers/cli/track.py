@@ -24,10 +24,10 @@ from trackers import frames_from_source
 from trackers.cli._annotate import COLOR_PALETTE as _COLOR_PALETTE
 from trackers.cli._progress import _classify_source, _SourceInfo, _TrackingProgress
 from trackers.core.base import BaseTracker, ParameterInfo
-from trackers.core.reid.encoder import _load_reid_encoder
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
+from trackers.reid.encoder import _load_reid_encoder
 from trackers.utils.device import _best_device
 from trackers.utils.iou import variant_from_name
 

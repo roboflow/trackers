@@ -14,9 +14,9 @@ from pathlib import Path
 import numpy as np
 import supervision as sv
 
-from trackers.core.reid.encoder import ReIDEncoder, _load_reid_encoder
 from trackers.io.frames import load_mot_frame_image, resolve_mot_frame_path
 from trackers.io.mot import load_mot_file
+from trackers.reid.encoder import ReIDEncoder, _load_reid_encoder
 
 _NORM_EPS = 1e-12
 
@@ -104,7 +104,7 @@ def extract_ground_truth_embeddings(
     track number in two videos stays two identities.
 
     The four returned arrays are what
-    :func:`trackers.core.reid.sample_appearance_distances` expects, which is how
+    :func:`trackers.reid.sample_appearance_distances` expects, which is how
     an ``appearance_threshold`` gets calibrated on a new dataset.
 
     Args:
