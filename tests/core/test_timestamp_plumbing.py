@@ -26,6 +26,8 @@ from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.cbiou.tracker import CBIoUTracker
 from trackers.core.mcbyte.tracker import McByteTracker
 from trackers.core.mcbyte.tracklet import McByteTracklet
+from trackers.core.mcbyteplusplus.tracker import McBytePlusPlusTracker
+from trackers.core.mcbyteplusplus.tracklet import McBytePlusPlusTracklet
 from trackers.core.ocsort.tracker import OCSORTTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracker import SORTTracker
@@ -66,6 +68,12 @@ TIMESTAMP_AWARE_TRACKERS: list[Any] = [
         {"enable_cmc": False, "track_activation_threshold": 0.5},
         id="mcbyte",
     ),
+    pytest.param(
+        McBytePlusPlusTracker,
+        McBytePlusPlusTracklet,
+        {"enable_cmc": False, "enable_mask_manager": False, "track_activation_threshold": 0.5},
+        id="mcbyteplusplus",
+    ),
 ]
 
 PREDICT_TIMING_TRACKER: list[Any] = [
@@ -91,6 +99,12 @@ FRAME_BUDGET_TRACKERS: list[Any] = [
         McByteTracklet,
         {"enable_cmc": False, "track_activation_threshold": 0.5},
         id="mcbyte",
+    ),
+    pytest.param(
+        McBytePlusPlusTracker,
+        McBytePlusPlusTracklet,
+        {"enable_cmc": False, "enable_mask_manager": False, "track_activation_threshold": 0.5},
+        id="mcbyteplusplus",
     ),
 ]
 
@@ -605,6 +619,11 @@ def test_mcbyte_predict_forwards_frame_rate_for_mid_band_gap() -> None:
             McByteTracker,
             {"state_estimator_class": XCYCSRStateEstimator, "enable_cmc": False},
             id="mcbyte-xcycsr",
+        ),
+        pytest.param(
+            McBytePlusPlusTracker,
+            {"state_estimator_class": XCYCSRStateEstimator, "enable_cmc": False, "enable_mask_manager": False},
+            id="mcbyteplusplus-xcycsr",
         ),
     ],
 )

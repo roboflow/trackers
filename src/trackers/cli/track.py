@@ -125,15 +125,35 @@ class ShowOptions:
 # short CLI prefix. Domain words (``threshold``, ``consecutive``) stay in full.
 _CLI_PARAMETER_ABBREVIATIONS = {"minimum_": "min_", "maximum_": "max_"}
 
-# Exact-name CLI renames, checked before the prefix rule above. ``mask_config``
-# never shipped under its Python name on any CLI release, so unlike the
-# prefixes it carries no deprecation alias — see `_abbreviated_tracker_parameters`.
-_CLI_PARAMETER_RENAMES = {"mask_config": "mask"}
+# Exact-name CLI renames, checked before the prefix rule above. These backend
+# settings never shipped under their Python names on any CLI release, so unlike
+# the prefixes they carry no deprecation aliases — see `_abbreviated_tracker_parameters`.
+_CLI_PARAMETER_RENAMES = {"mask_config": "mask", "edgetam_config": "edgetam"}
 _CLI_PARAMETER_RENAMES_REVERSED = {short: long for long, short in _CLI_PARAMETER_RENAMES.items()}
+
+# Shared CLI help must describe every tracker accepting an option. Keep backend-
+# specific details in the individual tracker docstrings and config groups.
+_CLI_PARAMETER_DESCRIPTIONS = {
+    "enable_cmc": "Enable frame-based camera motion compensation when update() receives an image. "
+    "Uses the selected tracker's default when omitted.",
+    "minimum_iou_threshold_first_assoc": "Minimum association similarity for high-confidence detections. "
+    "Uses score-fused geometric similarity, with optional mask conditioning in McByte and McByte++.",
+    "minimum_iou_threshold_second_assoc": "Minimum association similarity for low-confidence detections. "
+    "Uses geometric similarity without detection-score fusion, with optional mask conditioning in McByte and McByte++.",
+    "minimum_iou_threshold_unconfirmed_assoc": "Minimum association similarity for unconfirmed tracks and remaining "
+    "high-confidence detections. Uses score-fused geometric similarity, with optional mask conditioning "
+    "in McByte and McByte++.",
+    "enable_mask_manager": "Build the selected tracker's default mask pipeline: SAM/Cutie for McByte "
+    "(trackers[mask], --tracker.mask.*), or EdgeTAM for McByte++ (trackers[edgetam], --tracker.edgetam.*). "
+    "Disabled by default for both trackers.",
+    "minimum_mask_creation_frames": "Number of consecutive observations of a confirmed tracklet required before "
+    "it is eligible for mask creation. Creation may still be deferred by occlusion. "
+    "Uses the selected tracker's default when omitted.",
+}
 
 # Tracker registry parameters that never reach the CLI. ``mask_manager`` takes
 # a live ``MaskManager`` instance, not a value a command line can express;
-# ``enable_mask_manager`` is its CLI-facing switch.
+# ``enable_mask_manager`` requests the selected tracker's default pipeline.
 _EXCLUDED_TRACKER_PARAMETERS = frozenset({"mask_manager"})
 
 
@@ -195,9 +215,10 @@ def _tracker_parameter_union() -> list[tuple[str, ParameterInfo, Any]]:
 
     Trackers are visited in :func:`BaseTracker._registered_trackers` order,
     each tracker's own parameters in ``__init__`` order. The first tracker to
-    define a given name provides its description and annotation, so a
+    define a given name provides its source description and annotation, so a
     parameter shared by several trackers (e.g. ``lost_track_buffer``) is not
-    duplicated.
+    duplicated. :func:`_build_tracker_options` overrides shared help where that
+    source description only applies to one tracker.
 
     Returns:
         ``(python_name, parameter_info, annotation)`` triples. The annotation
@@ -230,9 +251,9 @@ def _build_tracker_options() -> type:
     Every field defaults to ``None`` so an unset option leaves the tracker's
     own default alone. CLI names abbreviate the standard leading token only —
     ``minimum_`` becomes ``min_`` and ``maximum_`` becomes ``max_`` — plus the
-    one exact-name rename, ``mask_config`` to ``mask``; the Python keyword
-    names are unchanged, and :func:`_init_tracker` maps a short CLI name back
-    to its long keyword.
+    exact-name renames ``mask_config`` to ``mask`` and ``edgetam_config`` to
+    ``edgetam``. The Python keyword names are unchanged, and :func:`_init_tracker`
+    maps a short CLI name back to its long keyword.
 
     Generating this from the registry means a newly registered tracker
     parameter is reachable from the CLI without a manual edit here.
@@ -253,8 +274,8 @@ def _build_tracker_options() -> type:
         "reachable from the CLI without a manual edit here.",
         "",
         "CLI names abbreviate the standard leading token only — ``minimum_``",
-        "becomes ``min_`` and ``maximum_`` becomes ``max_`` — plus one",
-        "exact-name rename, ``mask_config`` to ``mask``. The Python keyword",
+        "becomes ``min_`` and ``maximum_`` becomes ``max_`` — plus the renames",
+        "``mask_config`` to ``mask`` and ``edgetam_config`` to ``edgetam``. The Python keyword",
         "names are unchanged; :func:`_init_tracker` maps the short CLI name",
         "back to the long keyword.",
         "",
@@ -270,7 +291,8 @@ def _build_tracker_options() -> type:
         # directly, and an annotation already optional (``McByteMaskConfig |
         # None``) collapses back to itself instead of double-wrapping.
         field_specs.append((cli_name, annotation | None, None))
-        doc_lines.append(f"    {cli_name}: {parameter_info.description}")
+        description = _CLI_PARAMETER_DESCRIPTIONS.get(python_name, parameter_info.description)
+        doc_lines.append(f"    {cli_name}: {description}")
     field_specs.append(("iou_variant", str | None, None))
     doc_lines.append(
         "    iou_variant: IoU similarity metric for data association. One of "
@@ -300,9 +322,9 @@ def _abbreviated_tracker_parameters() -> dict[str, str]:
 
     Derived from the dataclass fields so the deprecation aliases in the CLI
     entry point cannot drift from the option definitions. The exact-name
-    ``mask`` rename is excluded: ``mask_config`` never shipped under its
-    Python name on any CLI release, so warning that it is deprecated would be
-    a lie.
+    ``mask`` and ``edgetam`` renames are excluded: these backend settings never
+    shipped under their Python names on any CLI release, so no deprecation
+    warning applies.
 
     Returns:
         Mapping of long (deprecated) name to short (current) name.
@@ -659,8 +681,8 @@ def _tracker_options_as_dict(params: TrackerOptions | None) -> dict[str, Any]:  
     """Return ``params`` as a shallow field-name-to-value mapping.
 
     Deliberately not :func:`dataclasses.asdict`: that recurses into nested
-    dataclass fields such as ``mask``, handing the tracker a plain ``dict``
-    instead of the ``McByteMaskConfig`` instance it expects.
+    dataclass fields such as ``mask`` and ``edgetam``, handing the tracker a
+    plain ``dict`` instead of the backend configuration instance it expects.
 
     Args:
         params: Tracker selection and parameter overrides, or ``None``.
@@ -678,7 +700,8 @@ def _resolve_tracker_kwargs(raw: dict[str, Any], accepted: set[str]) -> tuple[di
 
     Abbreviated CLI names are resolved back to their tracker ``__init__``
     keyword before the membership check, so ``min_iou_threshold`` reaches the
-    tracker as ``minimum_iou_threshold`` and ``mask`` as ``mask_config``.
+    tracker as ``minimum_iou_threshold``, ``mask`` as ``mask_config``, and
+    ``edgetam`` as ``edgetam_config``.
     Without that step a renamed CLI option would silently fail the membership
     test and leave the tracker on its own default.
 

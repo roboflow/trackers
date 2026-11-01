@@ -32,12 +32,16 @@ Deliberate divergences
 ``inspect``'s members name the component under inspection rather than a tracker,
 because the mask stack they exercise is tracker-agnostic — ``sam``, ``cutie``,
 ``edgetam``, and ``mask-manager`` live in :mod:`trackers.core.masks` and reference
-no tracker at all. Only ``inspect mcbyte`` inspects a tracker. A ``trackers inspect
-<tracker> <component>`` shape was rejected for implying a per-tracker variation
-that does not exist: two trackers using SAM would run identical code.
+no tracker at all. ``inspect mcbyte`` and ``inspect mcbyteplusplus`` inspect
+complete trackers. A ``trackers inspect <tracker> <component>`` shape was rejected
+for implying a per-tracker variation that does not exist: two trackers using SAM
+would run identical code.
 
 Shared helpers sit at the level of the audience that consumes them.
 ``_annotate`` and ``_detections`` are at ``cli/`` because both ``benchmark`` and
-``inspect`` (and, for the palette, ``track``) use them; helpers only ``inspect``
-needs stay in ``cli/inspect/_common.py``.
+``inspect`` (and, for the palette, ``track``) use them. Helpers used across
+inspection components stay in ``cli/inspect/_common.py``; sequence options and
+MOT result writing for tracker inspection and benchmarking live in
+``cli/_tracking.py``. McByte++ inspection and benchmarking share their CLI
+configuration and overlays through ``cli/_mcbyteplusplus.py``.
 """

@@ -10,6 +10,8 @@ What lives where, so that no component keeps a private copy of a shared helper:
 
 - here: input parsing, frame listing, image I/O, run directories, and the
   mask-output accessors that every component reaches for;
+- :mod:`trackers.cli._tracking`: sequence options and MOT result writing
+  shared by the tracker inspectors and the McByte++ benchmark;
 - :mod:`trackers.cli._annotate`: the drawing helpers, because the ``benchmark``
   commands render the same overlays and must not drift from ``inspect``;
 - :mod:`trackers.utils.device`: device selection and validation, which are not

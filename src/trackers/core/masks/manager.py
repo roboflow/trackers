@@ -157,6 +157,8 @@ class MaskManager:
         previous_tracklets: list[TrackletSnapshot],
         new_tracklets: list[TrackletSnapshot] | None = None,
         removed_tracklet_ids: list[int] | None = None,
+        *,
+        reference_tracklets: list[TrackletSnapshot] | None = None,
     ) -> MaskOutput | None:
         """Return propagated masks for the current frame.
 
@@ -193,6 +195,9 @@ class MaskManager:
                 adding new masks after the propagator has been initialized.
             removed_tracklet_ids: Tracklet IDs terminated on the previous frame that
                 should be removed from both the pending pool and propagation memory.
+            reference_tracklets: Same-frame boxes used to check occlusion, including
+                objects ineligible for mask creation. Defaults to ``previous_tracklets``;
+                these references do not become mask-creation candidates.
 
         Returns:
             Propagated mask output for ``frame``. Returns ``None`` when there is no
@@ -229,6 +234,7 @@ class MaskManager:
 
         new_tracklets = [] if new_tracklets is None else new_tracklets
         removed_tracklet_ids = [] if removed_tracklet_ids is None else removed_tracklet_ids
+        reference_tracklets = previous_tracklets if reference_tracklets is None else reference_tracklets
 
         self._remove_pending_tracklets(removed_tracklet_ids)
 
@@ -240,7 +246,7 @@ class MaskManager:
 
         if not self._initialized:
             candidates = previous_tracklets
-            clean_tracklets = self._select_clean_tracklets(candidates, previous_tracklets)
+            clean_tracklets = self._select_clean_tracklets(candidates, reference_tracklets)
 
             if len(clean_tracklets) == 0:
                 return None
@@ -253,7 +259,7 @@ class MaskManager:
                 previous_tracklets=previous_tracklets,
                 new_tracklets=new_tracklets,
             )
-            clean_tracklets = self._select_clean_tracklets(candidates, previous_tracklets)
+            clean_tracklets = self._select_clean_tracklets(candidates, reference_tracklets)
 
             if len(clean_tracklets) > 0:
                 new_mask_output = self.mask_generator.generate(previous_frame, clean_tracklets)

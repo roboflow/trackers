@@ -15,7 +15,9 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
+import supervision as sv
 
+from trackers import McBytePlusPlusTracker
 from trackers.core.masks.base import MaskOutput, TrackletSnapshot
 from trackers.core.masks.edgetam import DEFAULT_EDGETAM_MODEL, EdgeTAMMaskBackend
 from trackers.core.masks.manager import MaskManager
@@ -107,6 +109,42 @@ def assert_owned_masks(output: MaskOutput | None, expected: dict[int, np.ndarray
         np.testing.assert_array_equal(
             output.masks[output.tracklet_mask_dict[tracker_id]], mask, err_msg=f"Wrong mask for tracklet {tracker_id}"
         )
+
+
+def test_tracker_exclusion_survives_rollover_and_requires_refresh(backend_factory: Any, monkeypatch) -> None:
+    """Keep tracker trust separate from EdgeTAM session and mask transfer state."""
+    backend = backend_factory(max_session_frames=2)
+    tracker = McBytePlusPlusTracker(mask_manager=MaskManager(backend, backend), enable_cmc=False)
+    target = sv.Detections(xyxy=np.array([[1.0, 1.0, 6.0, 7.0]]), confidence=np.ones(1))
+    infer = backend._runtime.infer
+
+    def disappearing_mask(session, frame_idx, frame=None):
+        if frame is not None:
+            if frame[0, 0, 0] == 2:
+                session.masks[0][:] = False
+            elif frame[0, 0, 0] == 3:
+                session.masks[0][1:7, 1:6] = True
+        return infer(session, frame_idx, frame)
+
+    monkeypatch.setattr(backend._runtime, "infer", disappearing_mask)
+    tracker.update(target, frame(0))
+    tracker.update(target, frame(1))
+    tracker.update(sv.Detections.empty(), frame(2))
+    assert tracker.untrusted_mask_ids == frozenset({0})
+    tracker.update(sv.Detections.empty(), frame(3))
+    assert backend.session_index == 2
+    assert tracker.last_mask_output is not None and tracker.last_mask_output.masks is not None
+    assert tracker.last_mask_output.masks.any()
+    assert tracker.untrusted_mask_ids == frozenset({0})
+    # Merely matching the recovered mask cannot restore trust, including across rollover.
+    tracker.update(target, frame(4))
+    assert tracker.untrusted_mask_ids == frozenset({0})
+    tracker.update(target, frame(5))  # Box refresh, rollover and validation on the new image.
+    assert backend.session_index == 4
+    assert backend._runtime.largest_session == 2
+    assert tracker.untrusted_mask_ids == frozenset()
+    assert tracker.last_mask_output is not None
+    assert tracker.last_mask_output.tracklet_mask_dict == {0: 0}
 
 
 def test_runtime_metadata_is_read_only(backend_factory: Any) -> None:
@@ -208,7 +246,9 @@ def test_generation_and_returned_arrays_cannot_mutate_temporal_state(backend_fac
     assert backend.session_index == 1
 
 
-@pytest.mark.parametrize("operation", ["initialize", "propagate", "rollover", "add_masks", "remove_masks"])
+@pytest.mark.parametrize(
+    "operation", ["initialize", "propagate", "rollover", "add_masks", "refresh_masks", "remove_masks"]
+)
 @pytest.mark.parametrize(
     ("failure", "message"),
     [
@@ -257,6 +297,8 @@ def test_failed_temporal_inference_discards_state_and_allows_reinitialization(
                 backend.propagate(frame(5))
             elif operation == "add_masks":
                 backend.add_masks(frame(3), addition)
+            elif operation == "refresh_masks":
+                backend.refresh_masks(frame(3), initial)
             else:
                 backend.remove_masks([20])
 
@@ -398,13 +440,13 @@ def test_addition_batches_latest_masks_with_new_objects(backend_factory: Any, mo
     assert backend.session_frame_count == 3
 
 
-@pytest.mark.parametrize("operation", ["initialize", "add_masks"])
+@pytest.mark.parametrize("operation", ["initialize", "add_masks", "refresh_masks"])
 @pytest.mark.parametrize("index", [False, True, 0.0, "0"])
 def test_malformed_row_indices_preserve_previous_session(backend_factory: Any, operation: str, index: Any) -> None:
     """Reject Python equality aliases before NumPy can reinterpret them as indexing."""
     backend = backend_factory()
     backend.initialize(frame(), backend.generate(frame(), [tracklet(0)]))
-    invalid = MaskOutput(np.ones((1, 8, 12), dtype=bool), {20: index})
+    invalid = MaskOutput(np.ones((1, 8, 12), dtype=bool), {0: index})
     with pytest.raises(ValueError, match="mapping"):
         getattr(backend, operation)(frame(), invalid)
     assert backend.propagate(frame(1)).tracklet_mask_dict == {0: 0}
@@ -418,3 +460,85 @@ def test_invalid_removal_ids_cannot_alias_active_objects(backend_factory: Any, i
     with pytest.raises(ValueError, match="IDs"):
         backend.remove_masks([20, invalid_id])
     assert set(backend.propagate(frame(1)).tracklet_mask_dict) == {1, 20}
+
+
+def test_refresh_batches_replacements_with_survivors_without_advancing_time(
+    backend_factory: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Recover an empty owned mask on its anchor while retaining session history."""
+    backend = backend_factory(max_session_frames=3)
+    initial = backend.generate(frame(), [tracklet(0), tracklet(20)])
+    initial.masks[initial.tracklet_mask_dict[20]] = False
+    backend.initialize(frame(), initial)
+    for index in range(1, 4):
+        backend.propagate(frame(index))
+    session = backend._session
+    replacement = backend.generate(frame(3), [TrackletSnapshot(20, np.array([6, 0, 11, 4]))])
+    expected = {0: initial.masks[initial.tracklet_mask_dict[0]], 20: replacement.masks[0].copy()}
+    original_prompt = backend._runtime.prompt_masks
+    calls: list[int] = []
+
+    def require_complete_batch(session: FakeSession, frame_idx: int, masks: dict[int, np.ndarray]) -> None:
+        assert set(masks) == {0, 20}
+        assert frame_idx == 1
+        calls.append(frame_idx)
+        original_prompt(session, frame_idx, masks)
+
+    monkeypatch.setattr(backend._runtime, "prompt_masks", require_complete_batch)
+    backend.refresh_masks(frame(3), replacement)
+    replacement.masks[:] = False
+    assert calls == [1]
+    assert backend._session is session
+    assert backend.session_index == 1
+    assert backend.session_frame_count == 2
+    assert len(session.frames) == 2
+    assert_owned_masks(backend.propagate(frame(4)), expected)
+
+
+@pytest.mark.parametrize("invalid", ["unknown", "mixed", "frame", "resolution", "mapping", "id", "dtype"])
+def test_refresh_validation_preserves_active_state(backend_factory: Any, invalid: str) -> None:
+    """Reject every invalid replacement before modifying masks or model history."""
+    backend = backend_factory()
+    initial = backend.generate(frame(), [tracklet(0), tracklet(20)])
+    backend.initialize(frame(), initial)
+    backend.propagate(frame(1))
+    session = backend._session
+    refresh_frame = frame(1)
+    replacement = MaskOutput(np.ones((1, 8, 12), dtype=bool), {20: 0})
+    if invalid == "unknown":
+        replacement = MaskOutput(replacement.masks, {30: 0})
+    elif invalid == "mixed":
+        replacement = MaskOutput(np.ones((2, 8, 12), dtype=bool), {20: 0, 30: 1})
+    elif invalid == "frame":
+        refresh_frame = frame(2)
+    elif invalid == "resolution":
+        replacement = MaskOutput(np.ones((1, 9, 12), dtype=bool), {20: 0})
+    elif invalid == "mapping":
+        replacement = MaskOutput(np.ones((2, 8, 12), dtype=bool), {0: 0, 20: 0})
+    elif invalid == "id":
+        replacement = MaskOutput(replacement.masks, {True: 0})
+    else:
+        refresh_frame = refresh_frame.astype(np.float32)
+    with pytest.raises(ValueError):
+        backend.refresh_masks(refresh_frame, replacement)
+    assert backend._session is session
+    assert backend.session_frame_count == 2
+    expected = {key: initial.masks[row] for key, row in initial.tracklet_mask_dict.items()}
+    assert_owned_masks(backend.propagate(frame(2)), expected)
+
+
+@pytest.mark.parametrize("empty_masks", [None, np.zeros((0, 8, 12), dtype=bool)])
+def test_empty_refresh_is_noop_and_nonempty_refresh_requires_owned_ids(
+    backend_factory: Any, empty_masks: np.ndarray | None
+) -> None:
+    """An empty refresh neither starts nor changes a temporal session."""
+    backend = backend_factory()
+    backend.refresh_masks(frame(), MaskOutput(empty_masks, {}))
+    assert backend.session_frame_count == 0
+    with pytest.raises(ValueError, match="existing"):
+        backend.refresh_masks(frame(), MaskOutput(np.ones((1, 8, 12), dtype=bool), {0: 0}))
+    backend.initialize(frame(), backend.generate(frame(), [tracklet(0)]))
+    session = backend._session
+    backend.refresh_masks(frame(99), MaskOutput(empty_masks, {}))
+    assert backend._session is session
+    assert backend.session_frame_count == 1
