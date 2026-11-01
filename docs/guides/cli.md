@@ -537,7 +537,7 @@ Each tab lists all arguments accepted by that `trackers inspect` subcommand.
 
 === "mcbyteplusplus"
 
-    `trackers inspect mcbyteplusplus` replays detector boxes through the complete McByte++ tracker with EdgeTAM masks always enabled. CMC defaults to enabled, using ORB at downscale 4. Install `trackers[edgetam]`.
+    `trackers inspect mcbyteplusplus` replays detector boxes through `McBytePlusPlusTracker` with EdgeTAM masks always enabled. CMC defaults to enabled, using ORB at downscale 4. Dedicated McByte++ CMC and long-term re-identification are planned separately. Install `trackers[edgetam]`.
 
     | Group          | Settings                                                                                                                                                                                                                                                    |
     | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
