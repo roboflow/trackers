@@ -224,12 +224,27 @@ Install `trackers[edgetam]` and point `--dataset_root` at the unzipped **test** 
 trackers benchmark mcbyteplusplus \
     --dataset_root /path/to/SoccerNet/tracking/test \
     --edgetam.device cuda \
+    --tracker.lost_track_buffer 36 \
     --output_root outputs/mcbyteplusplus_benchmarks
 ```
 
 This runs all discovered `SNMOT-*` directories. For a short CPU trial, add `--sequences '[SNMOT-116]' --max_frames 10 --edgetam.device cpu` instead. Omit `--max_frames` for complete sequences. Every declared frame is processed, including frames without detections; sequence length and playback FPS come from `seqinfo.ini` (25 FPS for SoccerNet).
 
 EdgeTAM masks are always enabled. The `--edgetam.*`, `--cmc.*` and `--tracker.*` groups use the same settings as the [McByte++ inspector](../guides/inspect.md#inspect-mcbyte-with-oracle-detections): bounded EdgeTAM sessions of 200 images, ORB CMC at downscale 4, and enabled mask refresh and trust filtering by default. A fresh tracker is constructed for each sequence and reset on exit. Long-term re-ID and selective CMC are not part of this implementation yet.
+
+The SoccerNet example explicitly sets `lost_track_buffer=36` to target the original research McByte++'s 30-frame lost-track buffer. Trackers uses 30 FPS reference units, so at SoccerNet's 25 FPS this gives `25 / 30 * 36 = 30` effective frames (1.2 seconds). The tracker and shared CLI default remains `30`, which would give 25 effective frames on SoccerNet.
+
+A portable [benchmark config](https://github.com/roboflow/trackers/blob/develop/src/trackers/cli/benchmark/configs/mcbyteplusplus-soccernet.json) ([download JSON](https://raw.githubusercontent.com/roboflow/trackers/develop/src/trackers/cli/benchmark/configs/mcbyteplusplus-soccernet.json)) records the tracker settings and pinned EdgeTAM model used for the reported ON variant. From a repository checkout:
+
+```bash
+trackers benchmark mcbyteplusplus \
+    --config src/trackers/cli/benchmark/configs/mcbyteplusplus-soccernet.json \
+    --dataset_root /path/to/SoccerNet/tracking/test
+```
+
+With an installed package and no checkout, download the JSON and pass its local path to `--config`; these example files are not included in the installed package. Replace the dataset path in either case. The inspection JSON has a different command schema; use the benchmark JSON for this command.
+
+For the OFF/OFF variant, append `--tracker.enable_mask_refresh false --tracker.enable_mask_trust_filter false`. Both flags must be disabled: turning off refreshing alone leaves the mask-trust filter active. Keep the buffer and other settings unchanged when comparing the variants.
 
 Each run creates a timestamped directory:
 

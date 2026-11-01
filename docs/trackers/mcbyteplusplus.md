@@ -6,7 +6,7 @@ description: Track objects with McByte++ and streaming EdgeTAM masks, including 
 
 `McBytePlusPlusTracker` is an independent tracker alongside `McByteTracker`. It combines three-stage box association with overlapping EdgeTAM masks. EdgeTAM generates and propagates the masks using one model; masks can condition ambiguous associations without confidence scores.
 
-This part implements the tracker and its mask lifecycle. Long-term re-identification and selective camera motion compensation are planned separately. Full-dataset tracking quality and speed have not yet been benchmarked for this implementation.
+This part implements the tracker and its mask lifecycle. Long-term re-identification and selective camera motion compensation are planned separately. Both mask-refresh/trust-filter variants have been evaluated on all 49 SoccerNet-tracking 2022 test sequences using oracle detections. These results reflect the functionality implemented so far; see [PR #644](https://github.com/roboflow/trackers/pull/644) for the scores and settings.
 
 ## Python usage
 
@@ -34,6 +34,8 @@ The public API takes **BGR uint8** images. Camera motion compensation receives B
 `enable_mask_manager=False` is the Python API default. With no custom `mask_manager`, this runs box association without constructing or loading EdgeTAM. Set `enable_mask_manager=True` to construct the default EdgeTAM pipeline. A supplied `mask_manager` is used regardless of the flag and skips automatic EdgeTAM construction. `edgetam_config` configures only automatic construction: it requires `enable_mask_manager=True` and cannot accompany a custom manager.
 
 `enable_mask_refresh` and `enable_mask_trust_filter` both default to `True`, but neither creates a mask manager; they take effect only when one is active. A custom manager's propagator must provide a callable `refresh_masks` method when refresh is enabled. Set `enable_mask_refresh=False` for a propagator without this capability.
+
+`lost_track_buffer` defaults to `30` in both the tracker and the shared CLI options. Trackers expresses this budget in 30 FPS units and scales it by the input frame rate. The SoccerNet examples explicitly use `36` to target the original research McByte++'s 30-frame lost-track buffer at SoccerNet's 25 FPS: `25 / 30 * 36 = 30` frames (1.2 seconds). Leaving the Trackers default at `30` would give 25 frames (one second) on SoccerNet.
 
 ## Mask lifecycle
 

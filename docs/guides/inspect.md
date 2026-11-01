@@ -152,10 +152,13 @@ trackers inspect mcbyteplusplus \
     --sequence.det_file /path/to/SoccerNet/tracking/test/SNMOT-116/det/det.txt \
     --sequence.start_frame 1 --sequence.end_frame 50 \
     --sequence.frame_rate 25 --sequence.confidence_override 1.0 \
+    --tracker.lost_track_buffer 36 \
     --edgetam.device cpu --edgetam.max_session_frames 200
 ```
 
 This inspector always enables EdgeTAM masks. CMC is enabled by default with ORB at downscale 4 and can be disabled with `--cmc.enable false`. The mask switch is needed only when enabling the default backend through the Python API or the generic `trackers track` command.
+
+The SoccerNet example uses `lost_track_buffer=36` to target the original research McByte++'s 30-frame lost-track buffer at 25 FPS. Trackers scales this parameter from 30 FPS reference units: `25 / 30 * 36 = 30` effective frames (1.2 seconds). This is an explicit example setting; the tracker and shared CLI default stays `30`, giving 25 effective frames on SoccerNet.
 
 The confidence override is explicit because some oracle files use placeholder scores. Identity columns are ignored. The inspector converts loaded RGB images to the tracker's BGR input; the tracker converts them for EdgeTAM internally. Only the inspection command enumerates selected filenames: the tracker and backend receive one image at a time and need no future frames or final sequence length.
 

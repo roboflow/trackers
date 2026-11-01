@@ -1,0 +1,39 @@
+{
+    "dataset_root": "/path/to/SoccerNet/tracking/test",
+    "sequences": null,
+    "cmc": {
+        "enable": true,
+        "method": "orb",
+        "downscale": 4
+    },
+    "edgetam": {
+        "model_id": "yonigozlan/EdgeTAM-hf",
+        "revision": "c266ce53b3fc00f0f495b583f6a116c4e57f53bb",
+        "device": "cuda",
+        "max_session_frames": 200,
+        "mask_threshold": 0.0,
+        "mask_creation_bbox_overlap_threshold": 0.1
+    },
+    "tracker": {
+        "lost_track_buffer": 36,
+        "track_activation_threshold": 0.7,
+        "high_conf_det_threshold": 0.6,
+        "minimum_consecutive_frames": 2,
+        "instant_first_frame_activation": true,
+        "minimum_iou_threshold_first_assoc": 0.1,
+        "minimum_iou_threshold_second_assoc": 0.5,
+        "minimum_iou_threshold_unconfirmed_assoc": 0.3,
+        "minimum_mask_coverage": 0.9,
+        "minimum_mask_fill_ratio": 0.05,
+        "enable_isolated_mask_matching": false,
+        "minimum_mask_creation_frames": 1,
+        "enable_mask_refresh": true,
+        "mask_refresh_coverage_threshold": 0.5,
+        "mask_refresh_interval": 1,
+        "enable_mask_trust_filter": true
+    },
+    "output_root": "outputs/mcbyteplusplus_benchmarks",
+    "save_video": false,
+    "save_frames": true,
+    "max_frames": null
+}
