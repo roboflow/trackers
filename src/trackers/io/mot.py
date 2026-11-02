@@ -407,6 +407,26 @@ def _remap_ids(
     return np.array([id_map[int(original_id)] for original_id in ids], dtype=np.intp)
 
 
+def _ensure_unique_ids(ids: NDArray[np.intp], frame: int, source: str) -> None:
+    """Reject a track id that appears more than once within a single frame, as TrackEval does.
+
+    Args:
+        ids: Track ids for one frame, after ignored and unconfirmed rows are dropped.
+        frame: 1-based frame number, used in the error message.
+        source: Human-readable origin of the ids, used in the error message.
+
+    Raises:
+        ValueError: If any id occurs more than once.
+    """
+    if len(set(ids.tolist())) == ids.size:
+        return
+    unique_ids, counts = np.unique(ids, return_counts=True)
+    raise ValueError(
+        f"{source} has duplicate track ids in frame {frame}: {unique_ids[counts > 1].tolist()}. "
+        "Each track id may appear at most once per frame."
+    )
+
+
 def _prepare_mot_sequence(
     ground_truth_data: dict[int, _MOTFrameData],
     tracker_data: dict[int, _MOTFrameData],
@@ -430,6 +450,9 @@ def _prepare_mot_sequence(
 
     Returns:
         `_MOTSequenceData` containing prepared data ready for metric evaluation.
+
+    Raises:
+        ValueError: If a scored ground-truth id or a confirmed tracker id appears more than once within a single frame.
     """
     resolved_class_config = resolve_mot_class_config(class_config)
     num_frames = _resolve_num_frames(ground_truth_data, tracker_data, num_frames)
@@ -448,6 +471,8 @@ def _prepare_mot_sequence(
             ground_truth_data, frame, resolved_class_config
         )
         tracker_boxes, tracker_ids = _extract_tracker_frame(tracker_data, frame)
+        _ensure_unique_ids(ground_truth_ids, frame, "Ground truth")
+        _ensure_unique_ids(tracker_ids, frame, "Tracker")
         tracker_boxes, tracker_ids = _remove_distractor_matches(all_boxes, distractor_mask, tracker_boxes, tracker_ids)
 
         remapped_ground_truth_ids = _remap_ids(ground_truth_ids, ground_truth_id_map)

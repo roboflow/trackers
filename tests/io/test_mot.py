@@ -33,6 +33,35 @@ _CLASS_6_GROUND_TRUTH = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [6])}
 _OVERLAPPING_TRACKER = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
 
 
+class TestPrepareMotSequenceDuplicateIds:
+    """A track id repeated inside one frame is rejected, as TrackEval does."""
+
+    def test_duplicate_ground_truth_ids_raise(self) -> None:
+        ground_truth = {1: _frame([1, 1], [[0, 0, 10, 10], [50, 50, 10, 10]], [1.0, 1.0], [1, 1])}
+        tracker = {1: _frame([10], [[0, 0, 10, 10]], [1.0], [1])}
+
+        with pytest.raises(ValueError, match="Ground truth has duplicate track ids in frame 1"):
+            _prepare_mot_sequence(ground_truth, tracker)
+
+    def test_duplicate_tracker_ids_raise(self) -> None:
+        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [1])}
+        tracker = {1: _frame([10, 10], [[0, 0, 10, 10], [50, 50, 10, 10]], [1.0, 1.0], [1, 1])}
+
+        with pytest.raises(ValueError, match="Tracker has duplicate track ids in frame 1"):
+            _prepare_mot_sequence(ground_truth, tracker)
+
+    def test_repeated_unconfirmed_tracker_ids_allowed(self) -> None:
+        """Unconfirmed detections all carry id -1 and are dropped, so repeats are expected."""
+        ground_truth = {1: _frame([1], [[0, 0, 10, 10]], [1.0], [1])}
+        tracker = {
+            1: _frame([-1, -1, 10], [[0, 0, 10, 10], [50, 50, 10, 10], [90, 90, 10, 10]], [1.0, 1.0, 1.0], [1, 1, 1])
+        }
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker)
+
+        assert sequence.num_tracker_dets == 1
+
+
 class TestMotDistractorPreprocessing:
     """GT preprocessing must follow TrackEval's class-based distractor handling.
 
