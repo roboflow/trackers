@@ -141,19 +141,23 @@ class ByteTrackTracker(BaseTracker):
             Unmatched detections have tracker_id of -1. Detection order may
             differ from input.
 
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
         Warns:
             UserWarning: If ``frame`` is passed but ByteTrack does not perform
                 camera motion compensation (CMC), the frame is ignored.
         """
+        self._validate_detections(detections)
         self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
@@ -234,9 +238,7 @@ class ByteTrackTracker(BaseTracker):
 
         # Build final sv.Detections from original by indexing
         if not out_det_indices:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         idx = np.array(out_det_indices)
         result = detections[idx]

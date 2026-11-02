@@ -6,15 +6,16 @@
 
 from __future__ import annotations
 
+import copy
 import inspect
 import math
 import re
 import types
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
-from dataclasses import dataclass
-from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin
+from collections.abc import Iterator, Sequence
+from dataclasses import dataclass, fields, is_dataclass
+from typing import Any, ClassVar, Protocol, Union, cast, get_args, get_origin, get_type_hints
 
 import numpy as np
 import supervision as sv
@@ -235,8 +236,26 @@ def _extract_params_from_init(cls: type) -> dict[str, ParameterInfo]:
 _VALID_SPACE_TYPES: frozenset[str] = frozenset({"randint", "uniform", "choice"})
 
 
-def _validate_search_space_entry(cls_name: str, key: str, spec: Any, init_params: set[str]) -> None:
-    if key not in init_params:
+def _nested_search_fields(tracker_class: type[BaseTracker]) -> dict[str, set[str]]:
+    """Return dataclass fields reachable through a tracker's constructor."""
+    try:
+        hints = get_type_hints(tracker_class.__init__)
+    except (NameError, TypeError):
+        return {}
+    return {
+        name: {field.name for field in fields(part)}
+        for name, hint in hints.items()
+        for part in (get_args(hint) or (hint,))
+        if isinstance(part, type) and is_dataclass(part)
+    }
+
+
+def _validate_search_space_entry(
+    cls_name: str, key: str, spec: Any, init_params: set[str], nested_fields: dict[str, set[str]] | None = None
+) -> None:
+    group, separator, field = key.partition(".")
+    valid_nested = bool(separator and field in (nested_fields or {}).get(group, set()))
+    if key not in init_params and not valid_nested:
         raise ValueError(
             f"{cls_name}: search_space key {key!r} is not a "
             f"parameter of __init__. "
@@ -253,6 +272,12 @@ def _validate_search_space_entry(cls_name: str, key: str, spec: Any, init_params
             f"{cls_name}: search_space[{key!r}]['type'] = "
             f"{spec['type']!r} is not valid. "
             f"Valid types: {sorted(_VALID_SPACE_TYPES)}"
+        )
+    requires = spec.get("requires")
+    if requires is not None and requires not in init_params:
+        raise ValueError(
+            f"{cls_name}: search_space[{key!r}]['requires'] = {requires!r} is not a parameter of __init__. "
+            f"Valid parameters: {sorted(init_params)}"
         )
     space_type = spec["type"]
     if space_type == "choice":
@@ -305,7 +330,10 @@ class BaseTracker(ABC):
             match an `__init__` parameter. Values are dicts with `type`
             ``"randint"`` or ``"uniform"`` and ``range`` ``[low, high]``, or
             `type` ``"choice"`` and ``options`` (non-empty sequence of
-            categorical values for Optuna).
+            categorical values for Optuna). An entry may also set
+            ``requires`` to the name of another `__init__` parameter; the
+            tuner then samples it only when that parameter is passed, as
+            BoT-SORT does for its ReID thresholds and ``reid_model``.
         tracks: List of alive tracklets after each `update()`. Each element
             must satisfy `TrackletProtocol` (exposes `.tracker_id: int` and
             `.get_state_bbox() -> np.ndarray`). Subclasses must initialise
@@ -381,7 +409,7 @@ class BaseTracker(ABC):
         if search_space is not None and len(search_space) > 0:
             init_params = {n for n in inspect.signature(cls.__init__).parameters if n != "self"}
             for key, spec in search_space.items():
-                _validate_search_space_entry(cls.__name__, key, spec, init_params)
+                _validate_search_space_entry(cls.__name__, key, spec, init_params, _nested_search_fields(cls))
 
         tracker_id = getattr(cls, "tracker_id", None)
         if tracker_id is not None:
@@ -430,6 +458,21 @@ class BaseTracker(ABC):
         """
         self._frame_rate = frame_rate
         self._last_timestamp = None
+
+    def _validate_detections(self, detections: sv.Detections) -> None:
+        """Reject detections with non-finite boxes before any tracker state changes.
+
+        Concrete trackers call this as the first statement of ``update()``, so a
+        failed call leaves tracks, IDs and the timestamp anchor untouched.
+
+        Args:
+            detections: Value passed to ``update(detections=...)``.
+
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf.
+        """
+        if len(detections) > 0 and not np.isfinite(detections.xyxy).all():
+            raise ValueError("detections.xyxy contains non-finite values (NaN or inf)")
 
     def _warn_if_frame_unused(self, frame: np.ndarray | None) -> None:
         """Emit a UserWarning when a frame is passed to a tracker that ignores it.
@@ -507,22 +550,62 @@ class BaseTracker(ABC):
             frame_rate=self._frame_rate,
         )
 
+    @staticmethod
+    def _empty_result(detections: sv.Detections) -> sv.Detections:
+        """Return a zero-row result built like a non-empty one, by indexing the input.
+
+        Keeps the input's fields (``data`` keys, ``mask``, ``metadata``) that ``sv.Detections.empty()`` would drop.
+        """
+        result = cast(sv.Detections, detections[np.array([], dtype=int)])
+        if result is detections:
+            # supervision 0.28.x/0.29.x return the input itself for an empty index; never write tracker_id onto it.
+            result = copy.deepcopy(result)
+        result.tracker_id = np.array([], dtype=int)
+        return result
+
     def _detections_for_skipped_update(self, detections: sv.Detections) -> sv.Detections:
         """Return detections unchanged except tracker_id=-1; do not mutate tracks."""
         if len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
         result = cast(sv.Detections, detections[:])
         result.tracker_id = np.full(len(result), -1, dtype=int)
         return result
 
-    def _predict_tracklets(self, tracklets: list[Any], timing: PredictTiming) -> None:
-        """Predict all tracklets unless the timestamp did not advance."""
+    def _predict_tracklets(
+        self,
+        tracklets: Sequence[BaseTracklet],
+        timing: PredictTiming,
+        *,
+        return_predictions: bool = False,
+    ) -> dict[BaseTracklet, np.ndarray]:
+        """Predict all tracklets and optionally return states keyed by object identity.
+
+        Args:
+            tracklets: Tracklets to advance one predict step.
+            timing: Predict-step timing; ``timing.skip_predict`` short-circuits
+                to a no-op when the timestamp did not advance.
+            return_predictions: When ``True``, return each tracklet's predicted
+                bounding box keyed by the tracklet object itself. When
+                ``False``, predict in place and discard the results.
+
+        Returns:
+            A dict mapping each tracklet object to its predicted bounding box
+            when ``return_predictions`` is ``True`` and the predict step ran.
+            The dict holds a strong reference to every key, so entries stay
+            valid regardless of what the caller does with ``tracklets``
+            afterwards. Returns ``{}`` on three distinct paths — a skipped
+            predict step (``timing.skip_predict``), ``return_predictions=False``,
+            or an empty ``tracklets`` argument — so callers should not infer
+            "predict was skipped" from an empty dict alone; check
+            ``timing.skip_predict`` directly for that.
+        """
         if timing.skip_predict:
-            return
+            return {}
+        if return_predictions:
+            return {tracklet: tracklet.predict(timing) for tracklet in tracklets}
         for tracklet in tracklets:
             tracklet.predict(timing)
+        return {}
 
     def _lost_track_time_budget(
         self,
@@ -582,8 +665,15 @@ class BaseTracker(ABC):
 
         Returns:
             sv.Detections enriched with tracker_id assigned for each
-            detection box. When the update is skipped (backwards or
+            detection box. Rows are rows of the input, so they keep its
+            fields (``class_id``, ``mask``, ``data``, ``metadata``), also when
+            the result is empty. When the update is skipped (backwards or
             non-finite timestamp), all ``tracker_id`` values are ``-1``.
+
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
 
         Warns:
             UserWarning: If ``timestamp`` is earlier than the previous call

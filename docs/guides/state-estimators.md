@@ -212,7 +212,7 @@ We can also benchmark the trackers using the different State Estimators and we g
 But lets visualize where these differences are, here is an example where using XCYCSR State Estimator associates an occluded track correctly, while using XYXY changes the ID:
 
 <div style="display: flex; justify-content: center;">
-  <video style="width: 50%; height: auto;" controls>
+  <video style="width: 50%; height: auto; aspect-ratio: 53/108;" controls preload="none" poster="../../assets/state-estimators-comparison-poster.webp" aria-label="OC-SORT with XYXY versus XCYCSR state estimator">
     <source src="https://github.com/user-attachments/assets/219acc15-c6c5-4bf2-93d2-8c1b5523f4f1" type="video/mp4">
   </video>
 </div>

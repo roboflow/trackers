@@ -54,6 +54,26 @@ class SpyMaskManager:
         pass
 
 
+class AlwaysOOMMaskManager:
+    """Mask-manager fake that raises CUDA OOM on every update."""
+
+    def __init__(self) -> None:
+        self.reset_calls = 0
+
+    def get_updated_masks(
+        self,
+        frame: np.ndarray,
+        previous_frame: np.ndarray | None,
+        previous_tracklets: list[TrackletSnapshot],
+        new_tracklets: list[TrackletSnapshot] | None = None,
+        removed_tracklet_ids: list[int] | None = None,
+    ) -> MaskOutput | None:
+        raise RuntimeError("CUDA out of memory")
+
+    def reset(self) -> None:
+        self.reset_calls += 1
+
+
 def _detection(xyxy: tuple[float, float, float, float], conf: float = 0.9) -> sv.Detections:
     return sv.Detections(
         xyxy=np.array([xyxy], dtype=np.float32),
@@ -142,25 +162,7 @@ def test_mcbyte_emits_unmatched_high_conf_detection_with_placeholder_id() -> Non
 
 def test_mcbyte_reset_restores_mask_manager_disabled_by_cuda_oom() -> None:
     """After repeated CUDA-OOM auto-disables the mask manager, reset() re-attaches the original manager."""
-
-    class OOMMaskManager:
-        def __init__(self) -> None:
-            self.reset_calls = 0
-
-        def get_updated_masks(
-            self,
-            frame: np.ndarray,
-            previous_frame: np.ndarray | None,
-            previous_tracklets: list[TrackletSnapshot],
-            new_tracklets: list[TrackletSnapshot] | None = None,
-            removed_tracklet_ids: list[int] | None = None,
-        ) -> MaskOutput | None:
-            raise RuntimeError("CUDA out of memory")
-
-        def reset(self) -> None:
-            self.reset_calls += 1
-
-    manager = OOMMaskManager()
+    manager = AlwaysOOMMaskManager()
     tracker = McByteTracker(
         enable_cmc=False,
         mask_manager=manager,  # type: ignore[arg-type]
@@ -180,6 +182,38 @@ def test_mcbyte_reset_restores_mask_manager_disabled_by_cuda_oom() -> None:
     assert tracker.mask_manager is manager
     assert manager.reset_calls == 1
     assert tracker._consecutive_mask_failures == 0
+
+
+def test_mcbyte_mask_auto_disable_clears_removal_backlog_after_skip() -> None:
+    """The disabling OOM clears a removal backlog because the mask pipeline has no remaining consumer."""
+    manager = AlwaysOOMMaskManager()
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=manager,  # type: ignore[arg-type]
+        minimum_consecutive_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
+    assert tracker._consecutive_mask_failures == 2
+    assert tracker._previous_removed_tracklet_ids == {tracker_id}
+
+    with pytest.warns(UserWarning, match="duplicate timestamp"):
+        tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
+    assert tracker._consecutive_mask_failures == 2
+    assert tracker._previous_removed_tracklet_ids == {tracker_id}
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
+    assert tracker.mask_manager is None
+    assert tracker._consecutive_mask_failures == 3
+    assert tracker._previous_removed_tracklet_ids == set()
 
 
 def test_mcbyte_does_not_advance_masks_on_duplicate_timestamp() -> None:
@@ -242,6 +276,258 @@ def test_mcbyte_does_not_warn_for_mask_manager_without_timestamps() -> None:
         warnings.simplefilter("always")
         tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
     assert not any("dynamic-rate" in str(w.message) for w in caught)
+
+
+def test_mcbyte_reports_early_ghost_id_prune_to_mask_cleanup() -> None:
+    """A track killed by the early time-budget prune must have its mask actually dropped by the propagator.
+
+    `_prune_lost_tracks` (ghost-ID prevention, timestamp mode only) can remove a track before association even runs,
+    ahead of the late `_get_alive_tracklets` prune that `terminated_tracklet_ids` is built from. Without reporting that
+    early removal too, the mask manager (and Cutie underneath it) never learns the track died and keeps propagating its
+    mask indefinitely. Uses a real ``MaskManager`` + ``DummyIdentityMaskPropagator`` (not a call-recording spy) and
+    ``minimum_mask_creation_frames=1`` so the track is actually masked before it dies -- otherwise there would be
+    nothing orphaned in the propagator to begin with, and the test would only be exercising bookkeeping.
+    """
+    propagator = DummyIdentityMaskPropagator()
+    mask_manager = MaskManager(mask_generator=DummyBoxMaskGenerator(), mask_propagator=propagator)
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,  # maximum_time_without_update = 1 / 30 seconds
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+    assert tracker_id >= 0, "track must be confirmed on frame 1"
+
+    # Elapsed time blows way past the ~0.033s time budget: the early prune kills the track before the late
+    # lifecycle prune even runs. This call's mask-manager invocation (at the top of update(), using frame 1's
+    # stored tracklets) also initializes the propagator, so the track is genuinely masked when it dies.
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
+    assert tracker_id not in [t.tracker_id for t in tracker.tracks]
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict, "track must be masked before it dies"
+
+    # The removed_tracklet_ids from the frame above are only handed to the mask manager on the
+    # NEXT call (masks are updated using events stored from the previous frame).
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
+    assert propagator._mask_output is not None
+    assert tracker_id not in propagator._mask_output.tracklet_mask_dict, (
+        "dead track's mask must be dropped from the propagator, not orphaned"
+    )
+
+
+def test_mcbyte_delivers_removed_ids_delayed_by_duplicate_timestamp() -> None:
+    """A duplicate timestamp between a track's death and the next mask-manager call must not lose the removal.
+
+    On a duplicate timestamp, `update()`'s `if timing.skip_predict: pass` branch skips the mask-manager invocation for
+    that call entirely (see `update()`'s docstring "Warns" section). A death reported at the end of the prior frame must
+    survive that skipped call and still reach the mask manager on the next real frame, rather than being silently
+    overwritten by the skipped frame's own (empty) `removed_tracklet_ids` in `_store_previous_mask_inputs`.
+    """
+    propagator = DummyIdentityMaskPropagator()
+    mask_manager = MaskManager(mask_generator=DummyBoxMaskGenerator(), mask_propagator=propagator)
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,  # maximum_time_without_update = 1 / 30 seconds
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+
+    # Kill the track via the early time-budget prune.
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
+    assert tracker_id not in [t.tracker_id for t in tracker.tracks]
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict, "track must be masked before it dies"
+
+    # Duplicate timestamp: mask-manager invocation is skipped for this call.
+    with pytest.warns(UserWarning, match="duplicate timestamp"):
+        tracker.update(sv.Detections.empty(), frame, timestamp=100.0)
+
+    # The death must still reach the mask manager on the next non-duplicate call.
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
+    assert propagator._mask_output is not None
+    assert tracker_id not in propagator._mask_output.tracklet_mask_dict
+
+
+def test_mcbyte_delivers_removed_ids_delayed_by_frame_none_call() -> None:
+    """A frame=None call must not drop a real removal that happened during that same call.
+
+    Pruning doesn't need a frame, so a track can still die on a `frame=None` update(); the mask manager just can't be
+    invoked that call (no frame to give it). The death must survive and reach the mask manager once a real frame is
+    available again, not be dropped by `_store_previous_mask_inputs`'s `frame is None` branch.
+    """
+    propagator = DummyIdentityMaskPropagator()
+    mask_manager = MaskManager(mask_generator=DummyBoxMaskGenerator(), mask_propagator=propagator)
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,  # maximum_time_without_update = 1 / 30 seconds
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+
+    # Initialize a real propagator mask before the frame-less call kills the track.
+    tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.01)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict, "track must be masked before it dies"
+
+    # frame=None: the track still dies via the early time-budget prune, but there is no frame to hand
+    # the mask manager, so the removal can't be delivered on this call.
+    tracker.update(sv.Detections.empty(), frame=None, timestamp=100.0)
+    assert tracker_id not in [t.tracker_id for t in tracker.tracks]
+
+    # The call right after frame=None cannot deliver either: this call's own
+    # previous_frame (set at the end of the frame=None call) is None, and
+    # MaskManager.get_updated_masks short-circuits without a previous_frame.
+    # Delivery needs one more real-frame call to rebuild that state.
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.1)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=100.2)
+    assert propagator._mask_output is not None
+    assert tracker_id not in propagator._mask_output.tracklet_mask_dict
+
+
+def test_mcbyte_delivers_removed_ids_after_two_duplicate_timestamp_calls() -> None:
+    """A removal remains pending across two consecutive duplicate-timestamp mask skips."""
+    propagator = DummyIdentityMaskPropagator()
+    mask_manager = MaskManager(mask_generator=DummyBoxMaskGenerator(), mask_propagator=propagator)
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=0.04)
+    assert tracker_id not in [track.tracker_id for track in tracker.tracks]
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict, "track must be masked before it dies"
+
+    for _ in range(2):
+        with pytest.warns(UserWarning, match="duplicate timestamp"):
+            tracker.update(sv.Detections.empty(), frame, timestamp=0.04)
+        assert propagator._mask_output is not None
+        assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=0.05)
+    assert propagator._mask_output is not None
+    assert tracker_id not in propagator._mask_output.tracklet_mask_dict
+
+
+def test_mcbyte_delivers_late_prune_removed_id_after_frame_none_call() -> None:
+    """A fixed-rate late lifecycle death on frame=None remains pending until a real frame arrives."""
+    propagator = DummyIdentityMaskPropagator()
+    mask_manager = MaskManager(mask_generator=DummyBoxMaskGenerator(), mask_propagator=propagator)
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,
+    )
+    frame = _make_frame()
+
+    result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+    tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict, "track must be masked before it dies"
+
+    tracker.update(sv.Detections.empty(), frame)
+    assert tracker.tracks[0].time_since_update == tracker.maximum_frames_without_update == 1
+
+    # Fixed-rate mode makes the early time-budget prune a no-op. The second miss exceeds the frame-count budget and
+    # therefore removes the track only in the late _get_alive_tracklets lifecycle prune.
+    tracker.update(sv.Detections.empty(), frame=None)
+    assert tracker_id not in [track.tracker_id for track in tracker.tracks]
+
+    # Still not delivered here: this call's previous_frame (from the frame=None
+    # call above) is None, so MaskManager can't diff/remove yet.
+    tracker.update(sv.Detections.empty(), frame)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
+    tracker.update(sv.Detections.empty(), frame)
+    assert propagator._mask_output is not None
+    assert tracker_id not in propagator._mask_output.tracklet_mask_dict
+
+
+def test_mcbyte_delivers_removed_ids_after_mixed_duplicate_and_frame_none_skips() -> None:
+    """A removal survives duplicate-timestamp then frame=None mask skips before delivery."""
+    propagator = DummyIdentityMaskPropagator()
+    mask_manager = MaskManager(mask_generator=DummyBoxMaskGenerator(), mask_propagator=propagator)
+    tracker = McByteTracker(
+        enable_cmc=False,
+        mask_manager=mask_manager,
+        minimum_consecutive_frames=1,
+        minimum_mask_creation_frames=1,
+        instant_first_frame_activation=True,
+        lost_track_buffer=1,
+    )
+    frame = _make_frame()
+
+    with pytest.warns(UserWarning, match="dynamic-rate"):
+        result = tracker.update(_detection((100.0, 100.0, 200.0, 200.0)), frame, timestamp=0.0)
+    assert result.tracker_id is not None
+    tracker_id = int(result.tracker_id[0])
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=0.04)
+    assert tracker_id not in [track.tracker_id for track in tracker.tracks]
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict, "track must be masked before it dies"
+
+    with pytest.warns(UserWarning, match="duplicate timestamp"):
+        tracker.update(sv.Detections.empty(), frame, timestamp=0.04)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
+    tracker.update(sv.Detections.empty(), frame=None, timestamp=0.05)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
+    # Still not delivered: this call's previous_frame (from the frame=None
+    # call above) is None, so MaskManager can't diff/remove yet.
+    tracker.update(sv.Detections.empty(), frame, timestamp=0.06)
+    assert propagator._mask_output is not None
+    assert tracker_id in propagator._mask_output.tracklet_mask_dict
+
+    tracker.update(sv.Detections.empty(), frame, timestamp=0.07)
+    assert propagator._mask_output is not None
+    assert tracker_id not in propagator._mask_output.tracklet_mask_dict
 
 
 def test_mcbyte_rejects_high_conf_threshold_at_or_below_discard_floor() -> None:
@@ -359,8 +645,11 @@ def test_mcbyte_mask_lifecycle_keeps_missing_tracklet_until_explicit_removal() -
         removed_tracklet_ids=[],
     )
 
-    assert tracker._previous_new_tracklets == []
-    assert tracker._previous_removed_tracklet_ids == []
+    # _run_mask_manager never ran in this test (only _store_previous_mask_inputs
+    # was called directly), so nothing has delivered the pending "new" backlog
+    # yet -- it must be merged forward, not overwritten/dropped.
+    assert tracker._previous_new_tracklets[0].tracker_id == 7
+    assert tracker._previous_removed_tracklet_ids == set()
     assert tracker._mask_tracklet_ids == {7}
 
     tracker._store_previous_mask_inputs(
@@ -369,8 +658,11 @@ def test_mcbyte_mask_lifecycle_keeps_missing_tracklet_until_explicit_removal() -
         removed_tracklet_ids=[7],
     )
 
-    assert tracker._previous_new_tracklets == []
-    assert tracker._previous_removed_tracklet_ids == [7]
+    # Still undelivered -- the removed-tracklet backlog and the new-tracklet
+    # backlog are independent, so an explicit removal of 7 does not itself
+    # drain the (still-undelivered) new-tracklet entry for 7.
+    assert tracker._previous_new_tracklets[0].tracker_id == 7
+    assert tracker._previous_removed_tracklet_ids == {7}
     assert tracker._mask_tracklet_ids == set()
 
 

@@ -1,5 +1,5 @@
 ---
-title: McByte Tracker — Mask-Conditioned Multi-Object Tracking | Trackers
+title: McByte Tracker — Mask-Conditioned Multi-Object Tracking
 comments: true
 description: McByte extends BoT-SORT-style association with temporally propagated SAM/Cutie segmentation masks as an additional matching cue, without per-video tuning.
 ---

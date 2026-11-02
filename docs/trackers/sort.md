@@ -1,5 +1,5 @@
 ---
-title: SORT Tracker — Simple Online and Realtime Tracking | Trackers
+title: SORT Tracker — Simple Online and Realtime Tracking
 comments: true
 description: SORT (Simple Online and Realtime Tracking) uses a Kalman filter and Hungarian algorithm to track objects in real time using only bounding-box geometry — fast, lightweight, and easy to integrate.
 ---
@@ -14,7 +14,7 @@ SORT is a classic online, tracking-by-detection method that predicts object moti
 
 For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../evaluations/results.md) page.
 
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (Algorithms table), [README.md](../../README.md) (Algorithms table), and [.github/copilot-instructions.md](../../.github/copilot-instructions.md) (Benchmark Results table, including DanceTrack). No DanceTrack row here by design (see results.md dancetrack-default xref). Update results.md first, then mirror here. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (Algorithms table), and [README.md](../../README.md) (Algorithms table). No DanceTrack row here by design (see results.md dancetrack-default xref). Update results.md first, then mirror here. -->
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
@@ -24,7 +24,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ## Watch It in Action
 
-<video title="SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls>
+<video title="SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls preload="none" poster="../../assets/sort-demo-poster.webp">
   <source src="https://github.com/user-attachments/assets/98c73178-cb7d-4cdd-88b0-fda68b09fd80" type="video/mp4">
 </video>
 

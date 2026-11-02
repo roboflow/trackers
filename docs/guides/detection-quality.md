@@ -78,7 +78,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
     done
     ```
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/yolo26n-mot17-13-poster.webp" aria-label="ByteTrack with YOLO26 Nano on MOT17-13">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/yolo26n_MOT17-13-FRCNN.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>ByteTrack with YOLO26 Nano on MOT17-13.</small></p>
@@ -109,7 +109,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
     done
     ```
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/rfdetr-nano-mot17-13-poster.webp" aria-label="ByteTrack with RF-DETR Nano on MOT17-13">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/rfdetr_nano_MOT17-13-FRCNN.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>ByteTrack with RF-DETR Nano on MOT17-13.</small></p>
@@ -140,7 +140,7 @@ Run ByteTrack with default parameters three times, changing only the detection m
     done
     ```
 
-<video width="100%" controls autoplay muted loop>
+<video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="../../assets/rfdetr-medium-mot17-13-poster.webp" aria-label="ByteTrack with RF-DETR Medium on MOT17-13">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/rfdetr_medium_MOT17-13-FRCNN.mp4" type="video/mp4">
 </video>
 <p align="center" style="margin-top: -0.4em;"><small>ByteTrack with RF-DETR Medium on MOT17-13.</small></p>

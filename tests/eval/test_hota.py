@@ -384,6 +384,15 @@ class TestComputeHOTAMetrics:
                 ],
                 id="partial-match-asymmetric",
             ),
+            pytest.param(
+                [np.array([0, 1]), np.array([0, 1])],
+                [np.array([0, 1]), np.array([1, 0])],
+                [
+                    np.array([[0.9, 0.1], [0.1, 0.8]]),
+                    np.array([[0.1, 0.8], [0.8, 0.1]]),
+                ],
+                id="tracker-contiguous-ids",
+            ),
         ],
     )
     def test_output_matches_sequential_reference(
@@ -406,6 +415,50 @@ class TestComputeHOTAMetrics:
                 ref_result[key],
                 err_msg=f"{key}: vectorized result differs from sequential reference",
             )
+
+    def test_float_dtype_ids_fall_back_and_match_int_ids(self) -> None:
+        """Float-dtype IDs take the searchsorted fallback and still match the int-ID result.
+
+        `is_zero_based_contiguous` guards on `dtype.kind in "iu"`. This exercises that guard with IDs that are
+        numerically zero-based-contiguous but stored as float64, which must never be used as a fancy index — the guard
+        should route to searchsorted and produce identical metrics to the equivalent int-dtype input.
+        """
+        gt_ids_int = [np.array([0, 1]), np.array([0, 1])]
+        tracker_ids_int = [np.array([0, 1]), np.array([1, 0])]
+        gt_ids_float = [a.astype(np.float64) for a in gt_ids_int]
+        tracker_ids_float = [a.astype(np.float64) for a in tracker_ids_int]
+        similarity_scores = [
+            np.array([[0.9, 0.1], [0.1, 0.8]]),
+            np.array([[0.1, 0.8], [0.8, 0.1]]),
+        ]
+
+        int_result = compute_hota_metrics(gt_ids_int, tracker_ids_int, similarity_scores)
+        float_result = compute_hota_metrics(gt_ids_float, tracker_ids_float, similarity_scores)
+
+        for key in ["HOTA", "DetA", "AssA"]:
+            assert float_result[key] == pytest.approx(int_result[key]), f"{key} differs for float-dtype ids"
+
+    def test_contiguity_gap_at_end_falls_back_correctly(self) -> None:
+        """A gap at the top of the ID range fails only the last-element contiguity clause.
+
+        `unique_ids = [0, 1, 3]` starts at 0 (passes clause 1) but ends at 3 != len - 1 = 2 (fails
+        clause 2) — the MC/DC case the two-clause predicate must still route to the searchsorted
+        fallback. Relabeling one GT id to introduce this gap must not change any metric, since HOTA
+        depends only on association structure.
+        """
+        gt_ids = [np.array([0, 1, 2]), np.array([0, 1, 2])]
+        tracker_ids = [np.array([10, 20, 30]), np.array([10, 20, 30])]
+        similarity_scores = [
+            np.array([[0.9, 0.0, 0.0], [0.0, 0.8, 0.0], [0.0, 0.0, 0.7]]),
+            np.array([[0.85, 0.0, 0.0], [0.0, 0.75, 0.0], [0.0, 0.0, 0.65]]),
+        ]
+        baseline = compute_hota_metrics(gt_ids, tracker_ids, similarity_scores)
+
+        gt_ids_with_gap = [np.where(a == 2, 3, a) for a in gt_ids]  # unique becomes [0, 1, 3]
+        gapped = compute_hota_metrics(gt_ids_with_gap, tracker_ids, similarity_scores)
+
+        for key in ["HOTA", "DetA", "AssA", "HOTA_TP", "HOTA_FN", "HOTA_FP"]:
+            assert gapped[key] == pytest.approx(baseline[key]), f"{key} changed when GT id range has a gap"
 
 
 class TestAggregateHOTAMetrics:

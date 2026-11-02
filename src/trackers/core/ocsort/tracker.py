@@ -4,7 +4,8 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-from typing import ClassVar
+import warnings
+from typing import ClassVar, cast
 
 import numpy as np
 import supervision as sv
@@ -14,6 +15,7 @@ from trackers.core.base import BaseTracker
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.ocsort.utils import _build_direction_consistency_matrix_batch
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.predict_timing import PredictTiming
@@ -57,13 +59,19 @@ class OCSORTTracker(BaseTracker):
             consistency in the association cost. Higher values prioritize angle
             alignment between motion and association direction.
         high_conf_det_threshold: `float` specifying threshold for high confidence
-            detections. Lower confidence detections are excluded from association.
+            detections. Lower confidence detections are excluded from association
+            and from spawning new tracks, but are still returned with
+            `tracker_id` of `-1`.
         delta_t: `int` specifying number of past frames to use for velocity
             estimation. Higher values provide more stable direction estimates
             during occlusion.
         state_estimator_class: State estimator class to use for Kalman filter.
             Defaults to `XCYCSRStateEstimator`. Can also use
-            `XYXYStateEstimator` for corner-based representation.
+            `XYXYStateEstimator` for corner-based representation or
+            `XCYCWHStateEstimator` for center-width-height representation.
+            The OC-SORT noise tuning is specific to `XCYCSRStateEstimator`;
+            the other two only get its state-covariance and velocity
+            process-noise scaling.
         iou: IoU similarity metric instance to use for data association.
             Defaults to standard `IoU`. Can be replaced with any `BaseIoU`
             subclass (e.g. GIoU, DIoU, CIoU) to change how bounding-box
@@ -71,6 +79,14 @@ class OCSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
+        enable_cmc: `bool` specifying whether to compensate camera motion.
+            When `True`, pass the current video frame to `update(frame=...)`:
+            the estimated global motion is applied to every track's Kalman state
+            and stored observations before association. Defaults to `False`,
+            the original OC-SORT, which ignores frames.
+        cmc_method: CMC method string passed into `CMCConfig(method=...)`.
+            Supported values: "orb", "sift", "sparseOptFlow", "ecc". See CMCConfig.
+        cmc_downscale: Downscale factor used inside CMC for speed/robustness.
     """
 
     tracker_id = "ocsort"
@@ -95,6 +111,10 @@ class OCSORTTracker(BaseTracker):
         delta_t: int = 3,
         state_estimator_class: type[BaseStateEstimator] = XCYCSRStateEstimator,
         iou: BaseIoU | None = None,
+        enable_cmc: bool = False,
+        *,
+        cmc_method: CMCMethod = "sparseOptFlow",
+        cmc_downscale: int = 2,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
             lost_track_buffer=lost_track_buffer,
@@ -112,6 +132,10 @@ class OCSORTTracker(BaseTracker):
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
         self._reset_id_allocator()
+
+        self.enable_cmc = enable_cmc
+        self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
+        self._warned_cmc_without_frame = False
 
         self._init_timestamp_state(frame_rate)
 
@@ -201,42 +225,83 @@ class OCSORTTracker(BaseTracker):
         Args:
             detections: `sv.Detections` containing bounding boxes with shape
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
-                confidence scores.
-            frame: Ignored by OC-SORT. If provided (not `None`), a warning is
-                emitted.
+                confidence scores. When `detections.confidence is None`, all
+                detections are treated as confidence `1.0` -- they bypass
+                `high_conf_det_threshold` entirely and are eligible for
+                association/spawning regardless of its value.
+            frame: Current video frame (BGR `np.ndarray`), used for camera
+                motion compensation when `enable_cmc=True`. Ignored otherwise;
+                if provided (not `None`) without CMC, a warning is emitted.
+                When ``frame=None`` and ``enable_cmc=True``, CMC is skipped for
+                that step, with a warning emitted once per tracker instance.
             timestamp: Absolute time of the current frame in seconds, or ``None``
                 for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
-            Unmatched or immature tracks have tracker_id of -1.
+            Unmatched or immature tracks, and detections below
+            `high_conf_det_threshold` (which are never associated or used to
+            spawn a track), have tracker_id of -1. Detection order may differ
+            from input.
+
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
 
         Warns:
-            UserWarning: If ``frame`` is passed but OC-SORT does not perform
-                camera motion compensation (CMC), the frame is ignored.
+            UserWarning: If ``frame`` is passed while camera motion compensation
+                (CMC) is disabled, the frame is ignored. Also emitted, once per
+                tracker instance, the first time CMC is enabled but
+                ``frame=None`` makes it skip a step.
         """
-        self._warn_if_frame_unused(frame)
+        self._validate_detections(detections)
+        if not self.enable_cmc or self.cmc is None:
+            self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
-        if detections.confidence is not None:
-            detections = detections[detections.confidence >= self.high_conf_det_threshold]
+        detection_boxes_full = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
+        confidences_full = default_confidences(detections)
 
-        detection_boxes = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
-        confidences = default_confidences(detections)
+        # Only high-confidence detections enter association/spawning below (OC-SORT
+        # has no ByteTrack-style low-confidence recovery stage). Low-confidence
+        # detections still need one row in the output, so their indices are kept
+        # separately instead of dropping them from `detections` outright.
+        # When confidence is absent, every detection counts as high-confidence
+        # regardless of `high_conf_det_threshold` -- matching the historical
+        # behaviour of `if detections.confidence is not None: filter(...)`, which
+        # never compared the (fabricated) 1.0 default against the threshold.
+        high_mask: np.ndarray
+        if detections.confidence is None:
+            high_mask = np.ones(len(confidences_full), dtype=bool)
+        else:
+            high_mask = confidences_full >= self.high_conf_det_threshold
+        high_indices = np.where(high_mask)[0]
+        low_indices = np.where(~high_mask)[0]
+
+        # Subset arrays are indexed *locally* (position within `high_indices`), unlike
+        # ByteTrack's same-named full-length arrays -- `high_indices[i]` maps back to
+        # the caller's detection index. Named `high_*` to match BoT-SORT/CBIoU.
+        high_boxes = detection_boxes_full[high_indices]
+        high_scores = confidences_full[high_indices]
 
         # Collect (detection_index, tracker_id) pairs; assembled into
         # the output sv.Detections once at the end.
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
 
-        self._predict_tracklets(self.tracks, timing)
+        # Predicted boxes may alias live Kalman state (see state_to_bbox's Note in
+        # state_representations.py) rather than being fresh copies. The only
+        # mutation allowed between this call and the decode step further down is
+        # the CMC warp in _compensate_camera_motion, and when it runs the cache is
+        # discarded and the warped states are decoded again. Anything else that
+        # mutates tracklet/Kalman state here would silently change the cached values.
+        predicted_boxes_by_tracklet = self._predict_tracklets(self.tracks, timing, return_predictions=True)
 
         # Ghost-ID prevention: only prune before association in variable-FPS mode.
         # At fixed frame rate the same frame-count check runs post-association, so
@@ -244,14 +309,24 @@ class OCSORTTracker(BaseTracker):
         if self._lost_track_time_budget(timing, self.maximum_time_without_update) is not None:
             self.tracks = self._prune_expired_tracklets(timing)
 
-        predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks])
-        iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
+        cmc_applied = self._compensate_camera_motion(frame, high_boxes)
+
+        # The cache is empty either because predict was skipped (duplicate
+        # timestamp) or because self.tracks was empty when predicted; in both
+        # cases decode the tracklets' current states instead. Applied CMC also
+        # invalidates it: the states were warped after predict() returned.
+        predicted_boxes = np.array(
+            [predicted_boxes_by_tracklet[t] for t in self.tracks]
+            if not (timing.skip_predict or cmc_applied)
+            else [t.get_state_bbox() for t in self.tracks]
+        )
+        iou_matrix = self.iou.compute(predicted_boxes, high_boxes)
 
         # Skip the direction-consistency computation entirely when it carries no
         # weight. Bit-identical: the matrix is finite and bounded, so the old
         # ``iou_matrix + 0.0 * matrix`` reduces exactly to ``iou_matrix``.
         direction_consistency_matrix = (
-            self._compute_direction_consistency_matrix(detection_boxes, confidences)
+            self._compute_direction_consistency_matrix(high_boxes, high_scores)
             if self.direction_consistency_weight != 0
             else None
         )
@@ -262,13 +337,13 @@ class OCSORTTracker(BaseTracker):
         )
 
         for row, col in matched_indices:
-            self.tracks[row].update(detection_boxes[col], timing)
+            self.tracks[row].update(high_boxes[col], timing)
             tid = self.tracks[row].resolve_tracker_id(
                 self.minimum_consecutive_frames,
                 self.frame_count,
                 self._allocate_tracker_id,
             )
-            out_det_indices.append(col)
+            out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(tid)
 
         # 2nd chance association (OCR)
@@ -277,7 +352,7 @@ class OCSORTTracker(BaseTracker):
             # OCR uses standard IoU per the OC-SORT paper (configured variant applies to the primary OCM pass only).
             ocr_iou_matrix = IoU().compute(
                 last_observation_of_tracks,
-                detection_boxes[unmatched_detections],
+                high_boxes[unmatched_detections],
             )
             ocr_matched, _ocr_unmatched_tracks, ocr_unmatched_dets = self._get_associated_indices(
                 ocr_iou_matrix, np.zeros_like(ocr_iou_matrix)
@@ -286,37 +361,45 @@ class OCSORTTracker(BaseTracker):
             for ocr_row, ocr_col in ocr_matched:
                 track_idx = unmatched_tracks[ocr_row]
                 det_idx = unmatched_detections[ocr_col]
-                self.tracks[track_idx].update(detection_boxes[det_idx], timing)
+                self.tracks[track_idx].update(high_boxes[det_idx], timing)
                 tid = self.tracks[track_idx].resolve_tracker_id(
                     self.minimum_consecutive_frames,
                     self.frame_count,
                     self._allocate_tracker_id,
                 )
-                out_det_indices.append(det_idx)
+                out_det_indices.append(int(high_indices[det_idx]))
                 out_tracker_ids.append(tid)
 
             remaining_indices = [unmatched_detections[i] for i in ocr_unmatched_dets]
-            self._spawn_new_tracklets(detection_boxes[remaining_indices])
+            self._spawn_new_tracklets(high_boxes[remaining_indices])
             for det_idx in remaining_indices:
-                out_det_indices.append(det_idx)
+                out_det_indices.append(int(high_indices[det_idx]))
                 out_tracker_ids.append(-1)
         else:
-            self._spawn_new_tracklets(detection_boxes[unmatched_detections])
+            self._spawn_new_tracklets(high_boxes[unmatched_detections])
             for det_idx in unmatched_detections:
-                out_det_indices.append(det_idx)
+                out_det_indices.append(int(high_indices[det_idx]))
                 out_tracker_ids.append(-1)
+
+        # Low-confidence detections never entered association or spawning above, but
+        # the output must still include one row per input detection (matching the
+        # documented update() contract and SORT/ByteTrack behaviour). BoT-SORT, CBIoU
+        # and McByte are stricter: they discard detections with confidence <= 0.1
+        # outright, so those rows never reach their output at all.
+        for det_idx in low_indices:
+            out_det_indices.append(int(det_idx))
+            out_tracker_ids.append(-1)
 
         # Post-association budget prune: removes tracks that exceeded budget after predict
         self.tracks = self._prune_expired_tracklets(timing)
 
-        # Build output — single index into the filtered detections preserves
+        # Build output — single index into the original detections preserves
         # all metadata (confidence, class_id, mask, data dict).
         if out_det_indices:
-            result = detections[out_det_indices]
+            result = cast(sv.Detections, detections[out_det_indices])
             result.tracker_id = np.array(out_tracker_ids, dtype=int)
         else:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
+            result = self._empty_result(detections)
 
         self.frame_count += 1
         return result
@@ -330,6 +413,44 @@ class OCSORTTracker(BaseTracker):
         self.frame_count = 0
         self._last_timestamp = None
         self._reset_id_allocator()
+        if self.cmc is not None:
+            self.cmc.reset()
+
+    def _compensate_camera_motion(self, frame: np.ndarray | None, detection_boxes: np.ndarray) -> bool:
+        """Estimate camera motion for ``frame`` and warp every track into its coordinates.
+
+        Args:
+            frame: Current video frame, or ``None`` to skip compensation.
+            detection_boxes: High-confidence detection boxes, masked out of the
+                background by feature-based CMC methods.
+
+        Returns:
+            ``True`` if CMC was applied, i.e. the track states were warped (which
+                invalidates boxes decoded before the warp); ``False`` if CMC is
+                disabled, no frame was given, or the estimate is the identity.
+        """
+        if not self.enable_cmc or self.cmc is None:
+            return False
+        if frame is None:
+            if not self._warned_cmc_without_frame:
+                warnings.warn(
+                    f"{type(self).__name__} has enable_cmc=True but update() received frame=None; "
+                    "camera motion compensation is skipped for that step. Pass the current video "
+                    "frame as update(frame=...). This warning is shown once per tracker instance.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                self._warned_cmc_without_frame = True
+            return False
+        affine_mtx = self.cmc.estimate(frame, detection_boxes if len(detection_boxes) > 0 else None)
+        # ``CMC.estimate`` returns an exact identity on the first frame and when
+        # estimation fails. Warping by it is a no-op, so skip it and keep the
+        # predicted boxes cached by ``_predict_tracklets`` valid.
+        if np.array_equal(affine_mtx, np.eye(2, 3)):
+            return False
+        CMC.apply_batch(affine_mtx, self.tracks)
+        OCSORTTracklet.apply_camera_motion_batch(self.tracks, affine_mtx)
+        return True
 
     def _prune_expired_tracklets(self, timing: PredictTiming) -> list[OCSORTTracklet]:
         """Remove tracklets that have been lost for too long.

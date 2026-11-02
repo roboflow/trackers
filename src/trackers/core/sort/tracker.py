@@ -190,19 +190,23 @@ class SORTTracker(BaseTracker):
             sv.Detections with tracker_id assigned for each detection.
             Unmatched or immature tracks have tracker_id of -1.
 
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
         Warns:
             UserWarning: If ``frame`` is passed but SORT does not perform
                 camera motion compensation (CMC), the frame is ignored.
         """
+        self._validate_detections(detections)
         self._warn_if_frame_unused(frame)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
 
@@ -248,7 +252,7 @@ class SORTTracker(BaseTracker):
 
         # Return a fresh sv.Detections rather than mutating the caller's object,
         # matching the aliasing semantics of ByteTrack and OC-SORT.
-        result = sv.Detections.empty() if len(detections) == 0 else detections[np.arange(len(detections))]
+        result = self._empty_result(detections) if len(detections) == 0 else detections[np.arange(len(detections))]
         result.tracker_id = tracker_ids
         return result
 

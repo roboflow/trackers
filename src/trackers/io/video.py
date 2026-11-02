@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -29,7 +30,8 @@ def frames_from_source(
     Args:
         source: Video file path, RTSP/HTTP stream URL, webcam index, or path to a
             directory containing images (`.jpg`, `.jpeg`, `.png`, `.bmp`, `.tif`,
-            `.tiff`).
+            `.tiff`). Directory entries are ordered naturally, so unpadded numeric
+            names such as `2.jpg` and `10.jpg` are read in numeric order.
 
     Returns:
         Iterator of `(frame_id, frame)` tuples where `frame_id` is 1-based and `frame`
@@ -70,12 +72,32 @@ def _iter_capture_frames(
         cap.release()
 
 
+def _natural_sort_key(path: Path) -> tuple[str | int, ...]:
+    """Build a sort key that orders embedded digit runs by value rather than as text.
+
+    Plain lexicographic sorting puts `10.jpg` before `2.jpg`, which silently feeds an image sequence to a tracker in
+    the wrong temporal order. Splitting the name into alternating text and digit runs and comparing digit runs as
+    integers restores numeric order for unpadded names, while leaving zero-padded and non-numeric names unaffected.
+
+    Args:
+        path: Image file path; only the file name participates in the key.
+
+    Returns:
+        Tuple of alternating text and integer parts. `re.split` with a capturing group always yields text at even
+        positions and digits at odd ones, so keys compare position-wise without mixing types.
+    """
+    return tuple(int(part) if part.isdigit() else part for part in re.split(r"(\d+)", path.name))
+
+
 def _iter_image_folder_frames(
     folder: Path,
     *,
     extensions: frozenset[str] = IMAGE_EXTENSIONS,
 ) -> Iterator[tuple[int, np.ndarray]]:
-    images = sorted(p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in extensions)
+    images = sorted(
+        (p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in extensions),
+        key=_natural_sort_key,
+    )
 
     if not images:
         raise ValueError(f"No supported image files found in directory: {folder}")

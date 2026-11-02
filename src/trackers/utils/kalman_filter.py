@@ -140,6 +140,8 @@ class KalmanFilter:
     def get_state(self) -> dict:
         """Get current filter state for saving.
 
+        ``process_noise`` reflects the last predict step's Q, which may be DWNA gap-scaled rather than one-frame noise.
+
         Returns:
             Dictionary with state vector and all matrices.
         """

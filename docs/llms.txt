@@ -12,6 +12,7 @@
 - [Track Objects](https://trackers.roboflow.com/latest/guides/track/): CLI and Python API
 - [Evaluate Trackers](https://trackers.roboflow.com/latest/evaluations/evaluate/): HOTA, IDF1, MOTA metrics guide
 - [Detection Quality Matters](https://trackers.roboflow.com/latest/guides/detection-quality/): How detector quality affects tracking
+- [ReID Appearance](https://trackers.roboflow.com/latest/guides/reid/): BoT-SORT appearance association, threshold selection, MOT17 and SoccerNet results
 - [SORT](https://trackers.roboflow.com/latest/trackers/sort/): Kalman + Hungarian algorithm tracker
 - [ByteTrack](https://trackers.roboflow.com/latest/trackers/bytetrack/): Low-confidence detection association tracker
 - [OC-SORT](https://trackers.roboflow.com/latest/trackers/ocsort/): Observation-centric re-update tracker
@@ -20,6 +21,7 @@
 
 - [Trackers API](https://trackers.roboflow.com/latest/api/trackers/)
 - [Motion API](https://trackers.roboflow.com/latest/api/motion/)
+- [ReID API](https://trackers.roboflow.com/latest/api/reid/)
 - [Evals API](https://trackers.roboflow.com/latest/api/evals/)
 - [Datasets API](https://trackers.roboflow.com/latest/api/datasets/)
 - [I/O API](https://trackers.roboflow.com/latest/api/io/)

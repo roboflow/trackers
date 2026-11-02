@@ -17,7 +17,7 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from trackers.eval.constants import EPS
+from trackers.eval.constants import EPS, is_zero_based_contiguous
 
 # Alpha thresholds for HOTA evaluation (IoU thresholds)
 # TrackEval uses np.arange(0.05, 0.99, 0.05) which gives 19 values
@@ -39,8 +39,11 @@ def compute_hota_metrics(
     Args:
         gt_ids: List of ground truth ID arrays, one per frame. Each array has
             shape `(num_gt_t,)` containing integer IDs for GTs in that frame.
+            All frames must share a consistent integer dtype — mixing bool
+            and integer arrays across frames is unsupported and unchecked.
         tracker_ids: List of tracker ID arrays, one per frame. Each array has
             shape `(num_tracker_t,)` containing integer IDs for detections.
+            Same dtype-consistency requirement as `gt_ids`.
         similarity_scores: List of similarity matrices, one per frame. Each
             matrix has shape `(num_gt_t, num_tracker_t)` with IoU or similar
             similarity scores.
@@ -130,10 +133,15 @@ def compute_hota_metrics(
     num_tracker_ids = len(unique_tracker_ids)
 
     # `unique_gt_ids` / `unique_tracker_ids` are sorted (np.unique returns sorted
-    # output), so an id's row/column index is simply its position found by binary
-    # search. This replaces per-frame Python dict lookups in the hot loops below.
+    # output). Prepared zero-based integer IDs can be used as indices directly.
+    # Other ID layouts keep the binary-search mapping used by public callers.
+    # The check is done once before both passes.
     # Precondition: all per-frame IDs are present in unique_*_ids (guaranteed —
     # unique arrays are built from concatenation of all frames).
+    # NOTE: when contiguous, gt_indices/tr_indices below ALIAS gt_ids_t/tracker_ids_t
+    # (not a fresh searchsorted copy) — read-only use only, never mutate in place.
+    gt_contiguous = is_zero_based_contiguous(unique_gt_ids)
+    tracker_contiguous = is_zero_based_contiguous(unique_tracker_ids)
 
     # Variables for global association (ref: hota.py:48-50)
     potential_matches_count: np.ndarray = np.zeros((num_gt_ids, num_tracker_ids), dtype=np.float64)
@@ -145,15 +153,15 @@ def compute_hota_metrics(
         if len(gt_ids_t) == 0 or len(tracker_ids_t) == 0:
             # Still count IDs even if no matches possible
             if len(gt_ids_t) > 0:
-                gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
+                gt_indices = gt_ids_t if gt_contiguous else np.searchsorted(unique_gt_ids, gt_ids_t)
                 gt_id_count[gt_indices] += 1
             if len(tracker_ids_t) > 0:
-                tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
+                tr_indices = tracker_ids_t if tracker_contiguous else np.searchsorted(unique_tracker_ids, tracker_ids_t)
                 tracker_id_count[0, tr_indices] += 1
             continue
 
-        gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
-        tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
+        gt_indices = gt_ids_t if gt_contiguous else np.searchsorted(unique_gt_ids, gt_ids_t)
+        tr_indices = tracker_ids_t if tracker_contiguous else np.searchsorted(unique_tracker_ids, tracker_ids_t)
 
         similarity = similarity_scores[t]
 
@@ -188,8 +196,8 @@ def compute_hota_metrics(
             hota_fn += len(gt_ids_t)
             continue
 
-        gt_indices = np.searchsorted(unique_gt_ids, gt_ids_t)
-        tr_indices = np.searchsorted(unique_tracker_ids, tracker_ids_t)
+        gt_indices = gt_ids_t if gt_contiguous else np.searchsorted(unique_gt_ids, gt_ids_t)
+        tr_indices = tracker_ids_t if tracker_contiguous else np.searchsorted(unique_tracker_ids, tracker_ids_t)
 
         similarity = similarity_scores[t]
 

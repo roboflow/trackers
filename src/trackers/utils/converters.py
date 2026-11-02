@@ -131,6 +131,9 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
 
     Returns:
         Bounding boxes `[x_min, y_min, x_max, y_max]` with same shape as input.
+        Decoding is always performed in floating point: integer input is promoted
+        (``int32``/``int64`` decode to ``float64``), and float input keeps its own
+        precision (``float32`` decodes to ``float32``).
 
     Note:
         When ``scale`` or ``aspect_ratio`` is zero, ``w`` collapses to ``0.0``
@@ -164,6 +167,10 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
         >>> xcycsr_to_xyxy(np.array([10., 20., 0., 1.]))
         array([10., 20., 10., 20.])
     """
+    # Promote before arithmetic so integer products cannot overflow or truncate.
+    if np.issubdtype(xcycsr.dtype, np.integer):
+        xcycsr = xcycsr.astype(np.float64)
+
     if xcycsr.ndim == 1:
         w = np.sqrt(xcycsr[2] * xcycsr[3])
         h = xcycsr[2] / w if w != 0 else np.float64(0.0)
@@ -182,6 +189,7 @@ def xcycsr_to_xyxy(xcycsr: np.ndarray) -> np.ndarray:
     # Inner np.where substitutes 1.0 for zero denominators to suppress the
     # eager-evaluation divide-by-zero warning; outer np.where replaces those results with 0.0.
     h = np.where(w != 0, xcycsr[:, 2] / np.where(w != 0, w, 1.0), 0.0)
+    # Integer inputs were promoted above; preserve the working dtype.
     result = np.empty((xcycsr.shape[0], 4), dtype=xcycsr.dtype)
     result[:, 0] = xcycsr[:, 0] - w * 0.5
     result[:, 1] = xcycsr[:, 1] - h * 0.5
