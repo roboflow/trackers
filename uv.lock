@@ -3549,7 +3549,7 @@ wheels = [
 
 [[package]]
 name = "reid"
-version = "0.1.0rc1"
+version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "gdown" },
@@ -3563,9 +3563,9 @@ dependencies = [
     { name = "torch" },
     { name = "torchvision" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5a/df/57172cbb77f7c447e59644f46830de7c82ff4ce736a85c0d708d95dd651d/reid-0.1.0rc1.tar.gz", hash = "sha256:6a0e63757a7026f4983618ced996eec48924772151e2c71da0fd79e6c2b9821a", size = 67630, upload-time = "2026-10-22T11:00:06.832Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/39/f52f5f7b72b52f1fbf80bbe1e98cc6b66c4fe8490eaaf2df52232f871c4c/reid-0.1.0.tar.gz", hash = "sha256:ce99c79964457bf18d14612db78d4707d43819aed5d848697ab6dfd1412204b9", size = 67466, upload-time = "2026-11-03T13:26:25.127Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/19/254eed7487d4710e22a3b97d308d9a3acdf0d1cd055cbe03109c8b5d5ba7/reid-0.1.0rc1-py3-none-any.whl", hash = "sha256:98711940c2f1501b9b404d65e88875981f219746c6c0983b50dd1a6297489904", size = 54898, upload-time = "2026-10-22T11:00:05.183Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/7c/b7e1465579c4f5358ee1bcbb42dfaae2ab0520ae49c97c54bde58193986d/reid-0.1.0-py3-none-any.whl", hash = "sha256:7a9ddb03b481fa3d714ab096c23c6e9ac3e09006cdedfcc3635a843d47c52a92", size = 54746, upload-time = "2026-11-03T13:26:23.443Z" },
 ]
 
 [[package]]
@@ -4519,7 +4519,7 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.8.0" },
     { name = "optuna", marker = "extra == 'tune'", specifier = ">=3.0.0" },
     { name = "pydeprecate", specifier = ">=0.8.0" },
-    { name = "reid", marker = "extra == 'reid'", specifier = "==0.1.0rc1" },
+    { name = "reid", marker = "extra == 'reid'", specifier = "==0.1.0" },
     { name = "requests", specifier = ">=2.28.0" },
     { name = "rf-cutie", extras = ["inference"], marker = "extra == 'mask'", specifier = ">=1.0.0" },
     { name = "rf-segment-anything", marker = "extra == 'mask'", specifier = ">=1.0" },
