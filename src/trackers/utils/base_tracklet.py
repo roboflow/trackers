@@ -44,9 +44,8 @@ class BaseTracklet(ABC):
     def mark_updated(self) -> None:
         """Record that this tracklet has just consumed an observation.
 
-        Called right after the state estimator was advanced — by `update` for a single
-        tracklet, or by a batched estimator update for many at once. Subclasses extend this
-        to bump their own consecutive-update counter.
+        Called right after the state estimator was advanced — by `update` for a single tracklet, or by a batched
+        estimator update for many at once. Subclasses extend this to bump their own consecutive-update counter.
         """
         self.time_since_update = 0
         self.time_since_update_seconds = 0.0
