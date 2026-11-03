@@ -4607,11 +4607,11 @@ supply an <code>iou</code> argument.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Appearance encoder for appearance association: a model name
-(curated alias, <code>hf://</code> URL or local path, loaded with the <code>reid</code>
-package's defaults) or an encoder you loaded yourself, e.g. to choose
-the device. Requires <code>frame</code> in :meth:<code>update</code>. When <code>None</code>
-(default), behaviour matches the geometry-only BoT-SORT baseline.</p>
+                <p>Appearance encoder for appearance association: a model source (curated alias, <code>hf://</code> or
+<code>http(s)://</code> URL, or local path; see https://reid.roboflow.com/guides/loading/ for more), loaded with
+the <code>reid</code> package's defaults, or an encoder you loaded yourself, e.g. to choose the device. Requires
+<code>frame</code> in :meth:<code>update</code>. When <code>None</code> (default), behaviour matches the geometry-only BoT-SORT
+baseline.</p>
               </div>
             </td>
             <td>
