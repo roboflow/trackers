@@ -78,9 +78,9 @@ class ReIDModelConfig:
     Attributes:
         enable: Explicitly enable or disable appearance association. When
             omitted, any non-default model setting enables it.
-        model: Checkpoint source: curated alias, ``hf://`` URL, local path, or a model folder saved with the Roboflow
-            Re-ID package. Implies enable and cannot be combined with an explicit disable. Default alias when omitted:
-            ``fastreid_mot17_sbs50``.
+        model: Checkpoint source: curated alias, ``hf://`` or ``http(s)://`` URL, or local path. See
+            https://reid.roboflow.com/guides/loading/ for more. Implies enable and cannot be combined with an explicit
+            disable. Default alias when omitted: ``fastreid_mot17_sbs50``.
         device: ReID compute device: ``auto``, ``cpu``, ``cuda``, ``mps``.
         architecture: Backbone for bare ``.pth``/``.safetensors`` weights (e.g.
             ``osnet_x1_0``, ``fastreid_sbs_resnest50``). Required when ``model``

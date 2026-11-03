@@ -271,7 +271,7 @@ class TestBoTSORTTrackerReID:
         """Smoke the ``trackers`` → ``reid`` boundary with a real encoder."""
         import reid
 
-        reid_model = reid.ReIDModel.from_pretrained(architecture="osnet_x0_25", device="cpu")
+        reid_model = reid.ReIDModel.from_pretrained("osnet_x1_0_mot17", device="cpu")
         tracker = BoTSORTTracker(enable_cmc=False, reid_model=reid_model)
 
         rng = np.random.default_rng(0)
