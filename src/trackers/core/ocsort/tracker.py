@@ -263,9 +263,7 @@ class OCSORTTracker(BaseTracker):
             return self._detections_for_skipped_update(detections)
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         detection_boxes_full = detections.xyxy if len(detections) > 0 else np.empty((0, 4))
         confidences_full = default_confidences(detections)
@@ -401,8 +399,7 @@ class OCSORTTracker(BaseTracker):
             result = cast(sv.Detections, detections[out_det_indices])
             result.tracker_id = np.array(out_tracker_ids, dtype=int)
         else:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
+            result = self._empty_result(detections)
 
         self.frame_count += 1
         return result

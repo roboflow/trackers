@@ -481,8 +481,7 @@ class McByteTracker(BaseTracker):
             self._last_mask_output = None
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
+            result = self._empty_result(detections)
             self._store_previous_mask_inputs(
                 frame=current_frame,
                 detections=result,
@@ -694,8 +693,7 @@ class McByteTracker(BaseTracker):
 
         # Build final detections
         if not out_det_indices:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
+            result = self._empty_result(detections)
             self._store_previous_mask_inputs(
                 frame=current_frame,
                 detections=result,

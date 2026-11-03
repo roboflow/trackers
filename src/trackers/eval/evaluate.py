@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
@@ -68,7 +69,8 @@ def evaluate_mot_sequence(
 
     Returns:
         `SequenceResult` with `CLEAR`, `HOTA`, and/or `Identity` populated based
-            on `metrics`.
+            on `metrics`. Its `sequence` is named after `<seq>` for the MOT layout `<seq>/gt/gt.txt`,
+            otherwise after the ground-truth file stem.
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
@@ -79,7 +81,7 @@ def evaluate_mot_sequence(
         >>> from trackers.eval import evaluate_mot_sequence  # doctest: +SKIP
         >>>
         >>> result = evaluate_mot_sequence(  # doctest: +SKIP
-        ...     gt_path="data/gt/MOT17-02/gt.txt",
+        ...     gt_path="data/MOT17-02/gt/gt.txt",
         ...     tracker_path="data/trackers/MOT17-02.txt",
         ...     metrics=["CLEAR", "HOTA", "Identity"],
         ... )
@@ -98,24 +100,42 @@ def evaluate_mot_sequence(
     gt_path = Path(gt_path)
     tracker_path = Path(tracker_path)
 
-    # MOT layout stores ground truth as `<seq>/gt/gt.txt`, so the sequence is named by the grandparent directory.
-    seq_name = gt_path.stem
-    if seq_name == "gt":
-        seq_name = gt_path.parent.parent.name
+    seq_name = _sequence_name_from_gt_path(gt_path)
     _warn_if_mot20_sequences_use_mot17_config([seq_name], resolved_class_config)
 
     return _evaluate_mot_sequence_resolved(
         gt_path=gt_path,
         tracker_path=tracker_path,
+        sequence=seq_name,
         metrics=validated_metrics,
         threshold=threshold,
         class_config=resolved_class_config,
     )
 
 
+def _sequence_name_from_gt_path(gt_path: Path) -> str:
+    """Name the sequence that a ground-truth file belongs to.
+
+    MOT layout stores ground truth as `<seq>/gt/gt.txt`, so those files are named after `<seq>`. Any other file,
+    including a flat `<name>.txt` or a bare `gt.txt`, keeps its file stem. The path is normalized lexically, so a
+    relative `gt/gt.txt` or `../gt/gt.txt` resolves against the working directory without following symlinks.
+
+    Args:
+        gt_path: Path to the ground-truth MOT file.
+
+    Returns:
+        The sequence directory name for `<seq>/gt/gt.txt`, otherwise the file stem.
+    """
+    normalized = Path(os.path.abspath(gt_path))
+    if normalized.name == "gt.txt" and normalized.parent.name == "gt" and normalized.parent.parent.name:
+        return normalized.parent.parent.name
+    return gt_path.stem
+
+
 def _evaluate_mot_sequence_resolved(
     gt_path: Path,
     tracker_path: Path,
+    sequence: str,
     metrics: list[str],
     threshold: float,
     class_config: MOTClassConfig,
@@ -128,12 +148,13 @@ def _evaluate_mot_sequence_resolved(
     Args:
         gt_path: Path to the ground-truth MOT file.
         tracker_path: Path to the tracker MOT file.
+        sequence: Sequence name to report in the result.
         metrics: Validated metric families to compute.
         threshold: IoU threshold for `CLEAR` and `Identity` matching.
         class_config: Resolved MOT class configuration.
 
     Returns:
-        `SequenceResult` named after the ground-truth file stem.
+        `SequenceResult` named `sequence`.
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
@@ -178,7 +199,7 @@ def _evaluate_mot_sequence_resolved(
 
     # Build result
     return SequenceResult(
-        sequence=gt_path.stem,
+        sequence=sequence,
         CLEAR=clear_metrics,
         HOTA=hota_metrics,
         Identity=identity_metrics,
@@ -327,19 +348,13 @@ def evaluate_mot_sequences(
         if not tracker_path.exists():
             raise FileNotFoundError(f"Tracker file not found: {tracker_path}")
 
-        seq_result = _evaluate_mot_sequence_resolved(
+        sequence_results[seq_name] = _evaluate_mot_sequence_resolved(
             gt_path=gt_path,
             tracker_path=tracker_path,
+            sequence=seq_name,
             metrics=validated_metrics,
             threshold=threshold,
             class_config=resolved_class_config,
-        )
-        # Fix sequence name (_evaluate_mot_sequence_resolved uses file stem)
-        sequence_results[seq_name] = SequenceResult(
-            sequence=seq_name,
-            CLEAR=seq_result.CLEAR,
-            HOTA=seq_result.HOTA,
-            Identity=seq_result.Identity,
         )
 
     # Compute aggregate metrics
@@ -409,12 +424,14 @@ def _detect_format(gt_dir: Path) -> Literal["flat", "mot"]:
         "flat" if .txt files exist in gt_dir, "mot" if sequence
         subdirectories with gt/gt.txt exist.
     """
-    # Check for flat format (*.txt files directly in gt_dir)
-    txt_files = list(gt_dir.glob("*.txt"))
+    # Check for flat format (*.txt files directly in gt_dir). Hidden files are skipped as
+    # `_discover_sequences` skips them, so a stray `.notes.txt` cannot select the flat layout.
+    txt_files = [p for p in gt_dir.glob("*.txt") if not p.name.startswith(".")]
     if txt_files:
         return "flat"
 
-    # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir)
+    # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir). Hidden sequence
+    # directories still count here: a `seqmap` may list them explicitly.
     mot_files = list(gt_dir.glob("*/gt/gt.txt"))
     if mot_files:
         return "mot"
@@ -434,13 +451,18 @@ def _discover_sequences(
         data_format: Directory format.
 
     Returns:
-        List of sequence names.
+        List of sequence names. Hidden entries (names starting with `.`, e.g. a
+            `.MOT17-02-backup` copy) are skipped in both layouts.
     """
     if data_format == "flat":
         return sorted(p.stem for p in gt_dir.glob("*.txt") if not p.name.startswith("."))
     else:
-        # MOT format: gt_dir/{seq}/gt/gt.txt
-        return sorted(p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.name.startswith("."))
+        # MOT format: gt_dir/{seq}/gt/gt.txt — the sequence name is the grandparent directory,
+        # so the hidden-entry check has to look at that name rather than at `p.name`, which is
+        # always "gt.txt".
+        return sorted(
+            p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.parent.parent.name.startswith(".")
+        )
 
 
 def _get_paths(

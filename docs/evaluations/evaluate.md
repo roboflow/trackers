@@ -66,9 +66,9 @@ trackers eval \
 **Output:**
 
 ```
-                                MOTA    HOTA    IDF1
+Sequence                        MOTA    HOTA    IDF1
 ----------------------------------------------------
-gt                            30.192  35.475  38.515
+MOT17-02-FRCNN                30.192  35.475  38.515
 ```
 
 ---

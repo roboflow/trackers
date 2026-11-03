@@ -10,7 +10,8 @@ comment) and update every listed sibling. If you change a cell somewhere else fi
 it's the source of truth, not just another copy.
 
 Discover live: grep -rn BENCH-XREF docs/ README.md
-(15 xref comments as of 2026-08-12: 5 in results.md, 6 in docs/trackers/*.md, 3 in docs/index.md, 1 in README.md.
+(20 xref comments as of 2026-09-28: 9 in results.md, 6 in docs/trackers/*.md, 3 in docs/index.md, 1 in README.md,
+ 1 in docs/guides/reid.md.
  A 16th lived in .github/copilot-instructions.md until 2026-08-12, when that file was deleted and its guidance
  merged into the root AGENTS.md — which deliberately carries NO benchmark table. Don't add one there.)
 
@@ -19,7 +20,10 @@ Discover live: grep -rn BENCH-XREF docs/ README.md
 - id=sportsmot-default   (## SportsMOT -> === "Default")
 - id=soccernet-default   (## SoccerNet-tracking -> === "Default")
 - id=dancetrack-default  (## DanceTrack -> === "Default")
-- Tuned tables (all 4 benchmarks) have NO external duplicates — only referenced from within results.md itself.
+- id=mot17-tuned, id=sportsmot-tuned, id=soccernet-tuned, id=dancetrack-tuned (=== "Tuned" tabs). Their BoT-SORT
+  rows are copied into [guides/reid.md](guides/reid.md) (Results, both tabs). Their BoT-SORT + ReID rows run the
+  other way: copied FROM guides/reid.md (the best test row across its two tabs), and their HOTA also appears in
+  the BoT-SORT + ReID footnote of index.md and README.md.
 
 ## Duplicate sites, per canonical row
 
@@ -46,8 +50,8 @@ BoT-SORT row (mot17/sportsmot/soccernet/dancetrack):
 
 C-BIoU row (mot17/sportsmot/soccernet/dancetrack — the only tracker doc with a DanceTrack row):
   -> [trackers/cbiou.md](trackers/cbiou.md)                    (table, full row, all 4 benchmarks)
+  -> [index.md](index.md)                                      (Algorithms table, HOTA column only)
   -> [../README.md](../README.md)                              (Algorithms table, HOTA column only)
-  -> docs/index.md does NOT have a C-BIoU row — don't add one when editing, that's existing scope, not a gap.
 
 McByte row (mot17/sportsmot/soccernet/dancetrack):
   -> [trackers/mcbyte.md](trackers/mcbyte.md)                  (McByte row, matching benchmark tab, full row)
@@ -55,11 +59,16 @@ McByte row (mot17/sportsmot/soccernet/dancetrack):
   -> [../README.md](../README.md)                              (Algorithms table, HOTA column only; includes C-BIoU row too)
      — the index.md FAQ claim above is TRUE only while McByte is bolded-best in all 4 Default tables. Re-verify, don't assume.
 
+BoT-SORT + ReID row (mot17/sportsmot/soccernet/dancetrack; Default = `fastreid_mot17_sbs50` at library defaults):
+  -> [index.md](index.md)                                      (Algorithms table, HOTA column only)
+  -> [../README.md](../README.md)                              (Algorithms table, HOTA column only)
+  -> [guides/reid.md](guides/reid.md) is where the Tuned ReID rows come FROM, see Canonical tables above.
+
 ## Structural asymmetries (intentional — do not "fix" by adding rows)
 - docs/trackers/{sort,bytetrack,ocsort,botsort}.md tables cover MOT17/SportsMOT/SoccerNet only, no DanceTrack row.
 - docs/trackers/cbiou.md is the only individual-tracker doc with a DanceTrack row.
-- docs/index.md Algorithms table has 5 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT/McByte), no C-BIoU row.
-- README.md Algorithms table has 6 tracker rows (SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte).
+- docs/index.md and README.md Algorithms tables have the same 7 rows, in the same order as the results.md tables:
+  SORT/ByteTrack/OC-SORT/C-BIoU/BoT-SORT/BoT-SORT + ReID/McByte.
 - The root AGENTS.md carries NO benchmark table — it links to evaluations/results.md. That is deliberate;
   don't add a table back (it replaced .github/copilot-instructions.md, deleted 2026-08-12, which had one).
 - docs/trackers/mcbyte.md reports McByte vs a BoT-SORT baseline only (not vs SORT/ByteTrack/OC-SORT/C-BIoU).

@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -560,6 +561,31 @@ class TestEvalClassConfigOption:
             eval_parser.parse_args(["--class_config", "mot21"])
 
 
+class TestEvalSequenceName:
+    """`trackers eval --gt <seq>/gt/gt.txt` reports the sequence directory name, not the `gt` file stem."""
+
+    def test_table_and_json_name_the_mot_layout_sequence(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The results table and the `--output` JSON both carry the sequence directory name.
+
+        This is the repro from the bug report: a single MOT-layout ground-truth file printed `gt` in the table and wrote
+        `"sequence": "gt"` to the JSON, because both read the name from the file stem.
+        """
+        gt_file = tmp_path / "MOT17-02-FRCNN" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        predictions = tmp_path / "pred.txt"
+        predictions.write_text("1,1,10,10,20,20,1,1\n")
+        output = tmp_path / "out.json"
+
+        exit_code = eval_command(gt=gt_file, predictions=predictions, output=output)
+
+        assert exit_code == 0
+        assert "MOT17-02-FRCNN" in capsys.readouterr().out
+        assert json.loads(output.read_text())["sequence"] == "MOT17-02-FRCNN"
+
+
 class TestListValuedTrackFilters:
     """Track filters take lists, matching the eval and tune list-valued options."""
 
@@ -815,6 +841,25 @@ class TestBooleanOptionSyntax:
         """The flat preview flag is a boolean like any other, pair included."""
         assert parser.parse_args(["--display"]).display is True
         assert parser.parse_args(["--no_display"]).display is False
+
+    @pytest.mark.parametrize(
+        ("arguments", "expected"),
+        [
+            pytest.param([], None, id="omitted"),
+            pytest.param(["--reid.enable"], True, id="positive"),
+            pytest.param(["--reid.no_enable"], False, id="negative"),
+            pytest.param(["--reid.enable", "false"], False, id="explicit_false"),
+        ],
+    )
+    def test_reid_enable_preserves_tristate(
+        self,
+        parser: _CLIParser,
+        arguments: list[str],
+        expected: bool | None,
+    ) -> None:
+        parsed = parser.instantiate_classes(parser.parse_args(arguments))
+
+        assert parsed.reid.enable is expected
 
     @pytest.mark.parametrize(
         ("arguments", "expected"),
