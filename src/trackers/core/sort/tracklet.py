@@ -33,8 +33,11 @@ class SORTTracklet(BaseTracklet):
             bbox: Bounding box `[x1, y1, x2, y2]`.
         """
         self.state_estimator.update(bbox)
-        self.time_since_update = 0
-        self.time_since_update_seconds = 0.0
+        self.mark_updated()
+
+    def mark_updated(self) -> None:
+        """Reset the miss clocks and count the observation as a successful update."""
+        super().mark_updated()
         self.number_of_successful_updates += 1
 
     def predict(self, timing: PredictTiming = FIXED_RATE_TIMING) -> np.ndarray:

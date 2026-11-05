@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from enum import Enum
 
 import numpy as np
@@ -179,6 +180,55 @@ class BaseStateEstimator(ABC):
             self.kf.update(self.bbox_to_measurement(bbox))
         else:
             self.kf.update(None)
+
+    @staticmethod
+    def update_batch(estimators: Sequence[BaseStateEstimator], bboxes: Sequence[np.ndarray]) -> None:
+        """Update several estimators with one bounding box each.
+
+        Estimators that share one model — the tracklets of a single tracker do — are advanced
+        together by `KalmanFilter.update_batch`; a mixed list falls back to the per-estimator
+        `update`. Either way every estimator ends up with the same state as an individual update.
+
+        Args:
+            estimators: Estimators to update.
+            bboxes: One bounding box per estimator, `[x1, y1, x2, y2]`.
+
+        Raises:
+            ValueError: If the two sequences differ in length.
+        """
+        if len(estimators) != len(bboxes):
+            raise ValueError("estimators and bboxes must have the same length")
+        if not estimators:
+            return
+
+        def update_individually() -> None:
+            for estimator, bbox in zip(estimators, bboxes):
+                estimator.update(bbox)
+
+        reference = estimators[0]
+        if any(type(estimator) is not type(reference) for estimator in estimators):
+            update_individually()
+            return
+        # Equal types do not imply equal models: `set_kf_covariances` can give each estimator
+        # its own measurement noise, and batching would then reuse the reference model.
+        reference_kf = reference.kf
+        if any(
+            not np.array_equal(estimator.kf.observation_mtx, reference_kf.observation_mtx)
+            or not np.array_equal(estimator.kf.measurement_noise, reference_kf.measurement_noise)
+            for estimator in estimators
+        ):
+            update_individually()
+            return
+        # A subclass may override `update` to refresh noise or keep its own bookkeeping; batching
+        # would skip that, so those estimators keep the individual path.
+        if any(type(estimator).update is not BaseStateEstimator.update for estimator in estimators):
+            update_individually()
+            return
+        KalmanFilter.update_batch(
+            [estimator.kf for estimator in estimators],
+            [estimator.bbox_to_measurement(bbox) for estimator, bbox in zip(estimators, bboxes)],
+            check_models=False,
+        )
 
     def get_state(self) -> dict:
         """Snapshot the filter state for later restoration (e.g. ORU freeze).

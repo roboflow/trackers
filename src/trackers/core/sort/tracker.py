@@ -226,9 +226,12 @@ class SORTTracker(BaseTracker):
         )
 
         # Update matched tracklets and record the det_idx -> tracklet mapping
+        self._update_matched(
+            [self.tracks[row] for row, _ in matched_indices],
+            [detection_boxes[col] for _, col in matched_indices],
+        )
         matched_tracklet_for_det: dict[int, SORTTracklet] = {}
         for row, col in matched_indices:
-            self.tracks[row].update(detection_boxes[col])
             matched_tracklet_for_det[col] = self.tracks[row]
 
         confidences = default_confidences(detections)

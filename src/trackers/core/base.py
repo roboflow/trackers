@@ -22,6 +22,7 @@ import supervision as sv
 
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.predict_timing import PredictTiming
+from trackers.utils.state_representations import BaseStateEstimator
 
 
 @dataclass
@@ -606,6 +607,27 @@ class BaseTracker(ABC):
         for tracklet in tracklets:
             tracklet.predict(timing)
         return {}
+
+    def _update_matched(
+        self,
+        tracklets: Sequence[BaseTracklet],
+        bboxes: Sequence[np.ndarray],
+    ) -> None:
+        """Apply this frame's observations to the tracklets they were matched with.
+
+        The Kalman filter steps are batched across tracklets, which is where most of the
+        per-frame tracking time goes; the tracklet bookkeeping (miss clocks, hit counters)
+        stays per-tracklet in `BaseTracklet.mark_updated`.
+
+        Args:
+            tracklets: Tracklets matched to a detection on this frame.
+            bboxes: The matching bounding box per tracklet, `[x1, y1, x2, y2]`.
+        """
+        if not tracklets:
+            return
+        BaseStateEstimator.update_batch([tracklet.state_estimator for tracklet in tracklets], bboxes)
+        for tracklet in tracklets:
+            tracklet.mark_updated()
 
     def _lost_track_time_budget(
         self,
