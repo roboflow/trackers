@@ -407,11 +407,51 @@ def _remap_ids(
     return np.array([id_map[int(original_id)] for original_id in ids], dtype=np.intp)
 
 
+def _check_ground_truth_classes(
+    ground_truth_data: dict[int, _MOTFrameData], class_config: MOTClassConfig, ground_truth_path: Path | None = None
+) -> None:
+    """Reject ground truth whose rows would be dropped because their class is not a real class ID.
+
+    MOT Challenge classes start at 1, so a lower value means the column holds something else, such as the ``-1``
+    placeholder in MOT15-style files. Such rows match no scored class and would otherwise vanish, leaving a sequence
+    scored as if it had no ground truth. Rows marked ignored (``conf == 0``) are dropped whatever their class.
+
+    Args:
+        ground_truth_data: Ground truth data from `load_mot_file`.
+        class_config: Class configuration; classes it names are accepted.
+        ground_truth_path: File the data came from, named in the error when given.
+
+    Raises:
+        ValueError: If a considered row has a class below 1 that ``class_config`` does not name.
+    """
+    classes_below_one: set[int] = set()
+    for frame_data in ground_truth_data.values():
+        classes_below_one.update(frame_data.classes[(frame_data.classes < 1) & (frame_data.confidences != 0)].tolist())
+    unnamed_classes = sorted(classes_below_one.difference(class_config.scored_classes, class_config.distractor_classes))
+    if unnamed_classes:
+        # The suggestion keeps what the config already scores and its distractors: replacing them would drop the
+        # class 1 rows of a mixed file, or the class 6 distractors of the mot20 preset, with no sign of it.
+        scored_classes = (*class_config.scored_classes, *unnamed_classes)
+        python_args = f"scored_classes={scored_classes}"
+        cli_args = f'"scored_classes": {list(scored_classes)}'
+        if class_config.distractor_classes != MOTClassConfig().distractor_classes:
+            python_args += f", distractor_classes={class_config.distractor_classes}"
+            cli_args += f', "distractor_classes": {list(class_config.distractor_classes)}'
+        source = "Ground truth" if ground_truth_path is None else f"Ground truth in {ground_truth_path}"
+        raise ValueError(
+            f"{source} has classes {unnamed_classes} in column 8, which the class configuration does not name, so "
+            "those rows would not be scored. Fix the file, or score them alongside the current scored classes: "
+            f"class_config=MOTClassConfig({python_args}) in Python, or "
+            f"--class_config '{{{cli_args}}}' with `trackers eval`."
+        )
+
+
 def _prepare_mot_sequence(
     ground_truth_data: dict[int, _MOTFrameData],
     tracker_data: dict[int, _MOTFrameData],
     num_frames: int | None = None,
     class_config: MOTClassPreset | MOTClassConfig = "mot17",
+    ground_truth_path: Path | None = None,
 ) -> _MOTSequenceData:
     """Prepare GT and tracker data for metric evaluation.
 
@@ -427,11 +467,16 @@ def _prepare_mot_sequence(
         class_config: MOT class preset name (`"mot17"`, the default, or `"mot20"`)
             or an explicit `MOTClassConfig`. Selects which ground-truth classes
             are scored and which act as distractors.
+        ground_truth_path: File `ground_truth_data` came from, named in the class error when given.
 
     Returns:
         `_MOTSequenceData` containing prepared data ready for metric evaluation.
+
+    Raises:
+        ValueError: If a ground-truth row not marked ignored has a class below 1 that `class_config` does not name.
     """
     resolved_class_config = resolve_mot_class_config(class_config)
+    _check_ground_truth_classes(ground_truth_data, resolved_class_config, ground_truth_path)
     num_frames = _resolve_num_frames(ground_truth_data, tracker_data, num_frames)
     ground_truth_id_map, tracker_id_map = _build_id_mappings(
         ground_truth_data, tracker_data, num_frames, resolved_class_config
