@@ -58,8 +58,8 @@ def evaluate_mot_sequence(
         [TrackEval](https://github.com/JonathonLuiten/TrackEval).
 
     Args:
-        gt_path: Path to the ground-truth MOT file.
-        tracker_path: Path to the tracker MOT file.
+        gt_path: Path to the ground-truth MOT file. Frame numbers start at 1.
+        tracker_path: Path to the tracker MOT file. Frame numbers start at 1.
         metrics: Metric families to compute. Supported values are
             `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
         threshold: IoU threshold for `CLEAR` and `Identity` matching. Defaults
