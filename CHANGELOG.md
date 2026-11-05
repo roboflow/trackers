@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [2.7.0] — 2026-11-04
+## [2.7.0] — 2026-11-05
 
 ### 🚀 Added
 
@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Grouped CLI and YAML configuration** — `jsonargparse` replaces the argparse entry point, with `--config`, grouped `--detection.*`, `--filters.*`, `--output.*`, `--show.*` and tracker settings. The registry exposes IoU variants, state estimators and McByte mask configuration; hyphens/underscores normalize in option names, and booleans accept explicit values. Python constructor parameter names remain unabbreviated ([#413](https://github.com/roboflow/trackers/pull/413), [#552](https://github.com/roboflow/trackers/pull/552)).
 
-- **Three cookbooks** — Re-ID with appearance-threshold analysis, BoT-SORT camera-motion compensation, and McByte mask tracking are linked from Tutorials. They target 2.7.0 and require the indicated external models, datasets and optional dependencies; their code has been inspected, not executed as part of release-note preparation ([#511](https://github.com/roboflow/trackers/pull/511), [#630](https://github.com/roboflow/trackers/pull/630)).
+- **Three cookbooks** — Re-ID with appearance-threshold analysis, BoT-SORT camera-motion compensation, and McByte mask tracking are linked from Tutorials. They target 2.7.0 and require the indicated external models, datasets and optional dependencies ([#511](https://github.com/roboflow/trackers/pull/511), [#630](https://github.com/roboflow/trackers/pull/630)).
 
 - **Camera motion compensation for `OCSORTTracker`** — opt-in `enable_cmc` / `cmc_method` / `cmc_downscale`, the parameters BoT-SORT and McByte already expose. With `enable_cmc=True` and the frame passed to `update()`, the shared `CMC` module's estimate warps every track's Kalman state, stored observations (OCM/OCR/velocity) and frozen ORU state into the current frame before association. Off by default, so OC-SORT's defaults and benchmark numbers are unchanged. Contributor-reported validation-split runs with YOLOX detections show gains on MOT17 and SportsMOT and a slight HOTA loss on DanceTrack, so leave it off for static cameras ([#611](https://github.com/roboflow/trackers/pull/611)).
 
@@ -274,5 +274,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 [2.5.0]: https://github.com/roboflow/trackers/compare/2.4.0...2.5.0
 [2.6.0]: https://github.com/roboflow/trackers/compare/2.5.0...2.6.0
 [2.6.1]: https://github.com/roboflow/trackers/compare/2.6.0...2.6.1
-[2.7.0]: https://github.com/roboflow/trackers/compare/2.6.1...4f66c09ffad2ae4dc88b0f461cd2fdae9d997cd2
-[unreleased]: https://github.com/roboflow/trackers/compare/4f66c09ffad2ae4dc88b0f461cd2fdae9d997cd2...HEAD
+[2.7.0]: https://github.com/roboflow/trackers/compare/2.6.1...2.7.0
+[unreleased]: https://github.com/roboflow/trackers/compare/2.7.0...HEAD
