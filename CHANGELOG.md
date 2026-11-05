@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **`table(columns=...)` and `trackers eval --columns` no longer print a zero for a column with no computed value** — a column from a metric family that was not requested, or a misspelled name, was shown as a score of zero: `--columns '[MOTA,HOTA,IDF1]'` without `--metrics` computes only CLEAR, so it printed HOTA and IDF1 as `0.000` and exited 0. `SequenceResult.table` and `BenchmarkResult.table` now raise `ValueError` naming the column, and `trackers eval` prints the error and exits 1 without printing a table or writing `--output`. Commands and scripts that relied on the zero need the matching `--metrics` or a corrected column name ([#660](https://github.com/roboflow/trackers/pull/660)).
+
 ## [2.7.0] — 2026-11-05
 
 ### 🚀 Added
