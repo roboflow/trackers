@@ -13,7 +13,9 @@ from typing import cast
 import cv2
 import numpy as np
 import pytest
+import supervision as sv
 
+from trackers import BoTSORTTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.utils.cmc import CMC, CMCConfig
 from trackers.utils.state_representations import (
@@ -637,10 +639,105 @@ def test_xyxy_velocity_rotates_without_translation() -> None:
 
     tracklet.apply_cmc(H)
 
-    # Velocity corners (1,0),(0,0),(0,1),(1,1) rotate to (0,1),(0,0),(-1,0),(-1,1)
-    # → enclosing velocity box [-1, 0, 0, 1] (no translation applied)
+    # x' = -y and y' = x, so the new edges are x1' = -y2, y1' = x1, x2' = -y1, y2' = x2
+    # → velocities [-vy2, vx1, -vy1, vx2] = [-1, 1, 0, 0] (no translation applied)
     v = tracklet.state_estimator.kf.state.reshape(-1)[4:8]
-    np.testing.assert_allclose(v, [-1.0, 0.0, 0.0, 1.0], atol=1e-9)
+    np.testing.assert_allclose(v, [-1.0, 1.0, 0.0, 0.0], atol=1e-9)
+
+
+class TestXYXYVelocityWarp:
+    """XYXY velocities follow the corner that becomes each new edge; they have no ordering of their own."""
+
+    SHRINKING = (5.0, 3.0, -5.0, -3.0)
+
+    @pytest.mark.parametrize("translation", [(0.0, 0.0), (100.0, -40.0)], ids=["identity", "translation"])
+    def test_identity_linear_part_keeps_shrinking_velocities(self, translation: tuple[float, float]) -> None:
+        """A shrinking box has vx1 > vx2; a transform with no linear change must not swap them."""
+        tracklet = _xyxy_tracklet(np.array([100.0, 100.0, 200.0, 200.0]))
+        tracklet.state_estimator.kf.state[4:8, 0] = self.SHRINKING
+        H = np.eye(2, 3)
+        H[:, 2] = translation
+
+        CMC.apply_batch(H, [tracklet])
+
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.state[4:8, 0], self.SHRINKING)
+
+    def test_zero_size_box_keeps_velocities_under_identity(self) -> None:
+        """Tied corners on a zero-size box must not map both edges onto one corner's velocity."""
+        tracklet = _xyxy_tracklet(np.array([100.0, 100.0, 100.0, 100.0]))
+        tracklet.state_estimator.kf.state[4:8, 0] = self.SHRINKING
+
+        CMC.apply_batch(np.eye(2, 3), [tracklet])
+
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.state[4:8, 0], self.SHRINKING)
+
+    @pytest.mark.parametrize(
+        "linear",
+        [
+            [[0.0, -1.0], [1.0, 0.0]],
+            [[-1.0, 0.0], [0.0, 1.0]],
+            [[2.0, 0.0], [0.0, 0.5]],
+            [[0.96, -0.28], [0.28, 0.96]],
+            [[1.0, 0.2], [0.0, 1.0]],
+        ],
+        ids=["rot90", "reflect_x", "scale", "rot16", "shear"],
+    )
+    @pytest.mark.parametrize("velocity", [SHRINKING, (-5.0, -3.0, 5.0, 3.0), (1.0, 0.0, 0.0, 1.0)])
+    def test_velocity_matches_motion_of_warped_box(
+        self, linear: list[list[float]], velocity: tuple[float, float, float, float]
+    ) -> None:
+        """Warped velocity equals warp(box + v) - warp(box), so prediction agrees with warping the next box."""
+        box = np.array([100.0, 40.0, 200.0, 240.0])
+        H = np.column_stack([np.array(linear), [30.0, -20.0]])
+        tracklet = _xyxy_tracklet(box)
+        tracklet.state_estimator.kf.state[4:8, 0] = velocity
+
+        CMC.apply_batch(H, [tracklet])
+
+        state = tracklet.state_estimator.kf.state.reshape(-1)
+        x1, y1, x2, y2 = box + np.array(velocity)
+        warped_moved = CMC.warp_xyxy_corners(x1, y1, x2, y2, np.array(linear), np.array([30.0, -20.0]))
+        np.testing.assert_allclose(state[4:8], np.array(warped_moved) - state[:4], atol=1e-9)
+
+    def test_batch_rows_pick_their_own_corners(self) -> None:
+        """Each tracklet in a batch reads its velocities from its own extreme corners.
+
+        Upright boxes all pick the same corners for a given R, so the second box is inverted (x1 > x2, y1 > y2), which
+        OC-SORT's state can reach, to make the rows differ.
+        """
+        boxes = [np.array([10.0, 20.0, 50.0, 80.0]), np.array([-100.0, 900.0, -300.0, 500.0])]
+        velocities = [(1.0, 2.0, 3.0, 4.0), (-7.0, 6.0, -8.0, 5.0)]
+        H = np.array([[0.96, -0.28, 5.0], [0.28, 0.96, 7.0]])
+        batched = [_xyxy_tracklet(box) for box in boxes]
+        for tracklet, velocity in zip(batched, velocities, strict=True):
+            tracklet.state_estimator.kf.state[4:8, 0] = velocity
+
+        CMC.apply_batch(H, batched)
+
+        for tracklet, box, velocity in zip(batched, boxes, velocities, strict=True):
+            single = _xyxy_tracklet(box)
+            single.state_estimator.kf.state[4:8, 0] = velocity
+            CMC.apply_batch(H, [single])
+            np.testing.assert_array_equal(tracklet.state_estimator.kf.state, single.state_estimator.kf.state)
+        # Inverted row: low x from (x2, y1), low y from (x2, y2), high x from (x1, y2), high y from (x1, y1).
+        np.testing.assert_allclose(batched[1].state_estimator.kf.state[4:8, 0], [-9.36, 2.56, -8.12, 3.8], atol=1e-9)
+
+    def test_identity_cmc_prediction_matches_no_cmc_for_shrinking_box(self) -> None:
+        """On a static camera, an identity transform must not change where a shrinking lost track is predicted."""
+
+        def predict(transform: np.ndarray | None) -> np.ndarray:
+            tracker = BoTSORTTracker(state_estimator_class=XYXYStateEstimator, minimum_consecutive_frames=1)
+            for frame in range(20):
+                low, high = 100.0 + frame * 6, 500.0 - frame * 6
+                detections = sv.Detections(
+                    xyxy=np.array([[low, low, high, high]]), confidence=np.array([0.9], dtype=np.float32)
+                )
+                tracker.update(detections, cmc_transform=transform)
+            for _ in range(5):
+                tracker.update(sv.Detections.empty(), cmc_transform=transform)
+            return tracker.tracked_objects.xyxy[0]
+
+        np.testing.assert_allclose(predict(np.eye(2, 3)), predict(None), atol=1e-3)
 
 
 class TestCMCApplyBatchAdversarial:
