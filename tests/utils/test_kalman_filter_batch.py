@@ -24,6 +24,9 @@ def _make_filters(count: int, rng: np.random.Generator) -> list[KalmanFilter]:
         kf = KalmanFilter(dim_x=8, dim_z=4)
         kf.state = rng.normal(size=(8, 1))
         kf.state_covariance = np.eye(8) + rng.normal(scale=0.01, size=(8, 8))
+        # A nonzero observation matrix gives a nonzero Kalman gain, so the batched correction and
+        # the Joseph covariance update are exercised instead of leaving the state untouched.
+        kf.observation_mtx = np.hstack([np.eye(4), np.zeros((4, 4))])
         filters.append(kf)
     return filters
 
@@ -111,3 +114,35 @@ def test_estimator_update_batch_mixed_types_fall_back() -> None:
 
     for updated, single in zip(estimators, expected):
         np.testing.assert_array_equal(updated.kf.state, single.kf.state)
+
+
+def test_estimator_update_batch_falls_back_for_different_noise() -> None:
+    """Estimators of one class with different measurement noise are updated individually."""
+    boxes = [np.array([10.0, 20.0, 40.0, 80.0]), np.array([12.0, 22.0, 42.0, 82.0])]
+    estimators = [XYXYStateEstimator(box) for box in boxes]
+    estimators[1].set_kf_covariances(measurement_noise=estimators[1].kf.measurement_noise * 2.0)
+    expected = copy.deepcopy(estimators)
+
+    for estimator, box in zip(expected, boxes):
+        estimator.update(box + 3.0)
+    XYXYStateEstimator.update_batch(estimators, [box + 3.0 for box in boxes])
+
+    for batched, single in zip(estimators, expected):
+        np.testing.assert_array_equal(batched.kf.state, single.kf.state)
+        np.testing.assert_array_equal(batched.kf.state_covariance, single.kf.state_covariance)
+
+
+def test_estimator_update_batch_falls_back_when_update_is_overridden() -> None:
+    """An estimator subclass that overrides `update` keeps its override."""
+    boxes = [np.array([10.0, 20.0, 40.0, 80.0]), np.array([12.0, 22.0, 42.0, 82.0])]
+    calls: list[int] = []
+
+    class CountingEstimator(XYXYStateEstimator):
+        def update(self, bbox: np.ndarray | None) -> None:
+            calls.append(1)
+            super().update(bbox)
+
+    estimators = [CountingEstimator(box) for box in boxes]
+    XYXYStateEstimator.update_batch(estimators, [box + 1.0 for box in boxes])
+
+    assert len(calls) == len(estimators)

@@ -200,10 +200,29 @@ class BaseStateEstimator(ABC):
             raise ValueError("estimators and bboxes must have the same length")
         if not estimators:
             return
-        reference = estimators[0]
-        if any(type(estimator) is not type(reference) for estimator in estimators):
+
+        def update_individually() -> None:
             for estimator, bbox in zip(estimators, bboxes):
                 estimator.update(bbox)
+
+        reference = estimators[0]
+        if any(type(estimator) is not type(reference) for estimator in estimators):
+            update_individually()
+            return
+        # Equal types do not imply equal models: `set_kf_covariances` can give each estimator
+        # its own measurement noise, and batching would then reuse the reference model.
+        reference_kf = reference.kf
+        if any(
+            not np.array_equal(estimator.kf.observation_mtx, reference_kf.observation_mtx)
+            or not np.array_equal(estimator.kf.measurement_noise, reference_kf.measurement_noise)
+            for estimator in estimators
+        ):
+            update_individually()
+            return
+        # A subclass may override `update` to refresh noise or keep its own bookkeeping; batching
+        # would skip that, so those estimators keep the individual path.
+        if any(type(estimator).update is not BaseStateEstimator.update for estimator in estimators):
+            update_individually()
             return
         KalmanFilter.update_batch(
             [estimator.kf for estimator in estimators],
