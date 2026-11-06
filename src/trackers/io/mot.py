@@ -192,7 +192,7 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
 
     frame_data: dict[int, list[list[str]]] = {}
 
-    with open(path) as f:
+    with open(path, encoding="utf-8-sig") as f:
         # Check if file is empty
         f.seek(0, 2)
         if f.tell() == 0:

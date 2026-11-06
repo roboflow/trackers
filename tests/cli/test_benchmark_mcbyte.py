@@ -287,6 +287,14 @@ class TestReadDetectionFile:
         np.testing.assert_allclose(record.xyxy, [10.0, 20.0, 25.0, 45.0])
         assert record.confidence == pytest.approx(0.5)
 
+    def test_byte_order_mark_is_not_read_as_part_of_the_frame(self, tmp_path: Path) -> None:
+        """A file saved with a UTF-8 byte order mark parses like one without it."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("1,-1,10,20,15,25,0.5,-1,-1,-1\n", encoding="utf-8-sig")
+        grouped = read_detection_file(detection_file, "mot")
+
+        np.testing.assert_allclose(grouped[1][0].xyxy, [10.0, 20.0, 25.0, 45.0])
+
     def test_confidence_override_replaces_the_parsed_column(self, tmp_path: Path) -> None:
         """SoccerNet-style datasets can pin confidence instead of trusting column 7."""
         detection_file = tmp_path / "seq.txt"
