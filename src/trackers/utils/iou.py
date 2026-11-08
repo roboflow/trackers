@@ -55,9 +55,21 @@ class BaseIoU(ABC):
             similarity between ``boxes_1[i]`` and ``boxes_2[j]``.
 
         Note:
-            Input boxes are assumed well-formed (``x1 <= x2`` and
-            ``y1 <= y2``). No validation is performed; malformed boxes
-            produce undefined output.
+            Input boxes are expected to be well-formed (``x1 <= x2`` and
+            ``y1 <= y2``). Shape and ordering are not validated, and malformed
+            input is still only partially defended. Box extents are clamped at
+            zero when computing area, which affects :class:`GIoU` alone: it no
+            longer returns a score above ``0`` for a malformed box, where it
+            previously ran far outside its documented ``[-1, 1]`` range.
+            :class:`IoU` and :class:`BIoU` are unaffected because they do not
+            use this helper; :class:`DIoU` and :class:`CIoU` are unaffected
+            because a malformed axis already forces the intersection to zero,
+            and both remain unbounded below on such input -- the enclosing box
+            is built from ``min``/``max`` of the corners, so an inverted box
+            makes it stop enclosing the pair and the distance normaliser
+            collapses. A malformed box may also still rank above a well-formed
+            but distant pair. Callers should reject malformed boxes rather than
+            rely on any of this.
         """
         if not np.isfinite(boxes_1).all():
             raise ValueError("boxes_1 contains non-finite values (NaN or inf)")
@@ -85,9 +97,13 @@ class BaseIoU(ABC):
         """Normalize similarity values for score fusion in BoT-SORT association.
 
         By default returns the matrix unchanged. Signed variants (GIoU, DIoU,
-        CIoU) override this to shift ``[-1, 1]`` scores into ``[0, 1]`` via
-        ``(matrix + 1) / 2`` so that score fusion preserves ranking for both
-        overlapping and non-overlapping box pairs.
+        CIoU) override this to shift their scores into ``[0, 1]`` via
+        ``(matrix + 1) / 2`` (clamped) so that scores are monotonically mapped
+        within ``[-1, 1]`` and saturated to ``0`` below ``-1``. For well-formed
+        boxes the clamp is a no-op for GIoU and DIoU (floor exactly ``-1``) and
+        active for CIoU, whose aspect-ratio penalty can push raw scores below
+        ``-1``. On malformed boxes the clamp is load-bearing for DIoU and CIoU
+        too; see :meth:`BaseIoU.compute`.
 
         Args:
             similarity_matrix: ``(N, M)`` similarity matrix from :meth:`compute`.
@@ -167,7 +183,6 @@ class BIoU(BaseIoU):
         self.buffer_ratio = buffer_ratio
 
     def _compute(self, boxes_1: np.ndarray, boxes_2: np.ndarray) -> np.ndarray:
-
         if self.buffer_ratio == 0:
             return sv.box_iou_batch(boxes_1, boxes_2)
 
@@ -213,9 +228,19 @@ def _compute_iou_and_enclosing(
     inter_y2 = np.minimum(boxes_1[:, np.newaxis, 3], boxes_2[np.newaxis, :, 3])
     intersection = np.maximum(inter_x2 - inter_x1, 0) * np.maximum(inter_y2 - inter_y1, 0)
 
-    # Areas and union
-    area_1 = (boxes_1[:, 2] - boxes_1[:, 0]) * (boxes_1[:, 3] - boxes_1[:, 1])
-    area_2 = (boxes_2[:, 2] - boxes_2[:, 0]) * (boxes_2[:, 3] - boxes_2[:, 1])
+    # Areas and union. Extents are clamped at zero exactly as the intersection is
+    # above. A box inverted on BOTH axes (``x2 < x1`` and ``y2 < y1``) has a negative
+    # width and a negative height whose product is a spuriously positive area; that
+    # inflates ``union`` past ``enclosing_area`` and flips GIoU's
+    # ``(enclosing - union) / enclosing`` penalty into a bonus. A box inverted on one
+    # axis instead yields a negative area that deflates the union. Clamping removes
+    # both, and is a no-op for well-formed boxes.
+    width_1 = np.maximum(boxes_1[:, 2] - boxes_1[:, 0], 0)
+    height_1 = np.maximum(boxes_1[:, 3] - boxes_1[:, 1], 0)
+    width_2 = np.maximum(boxes_2[:, 2] - boxes_2[:, 0], 0)
+    height_2 = np.maximum(boxes_2[:, 3] - boxes_2[:, 1], 0)
+    area_1 = width_1 * height_1
+    area_2 = width_2 * height_2
     union = area_1[:, np.newaxis] + area_2[np.newaxis, :] - intersection
 
     iou = np.divide(
@@ -237,6 +262,28 @@ def _compute_iou_and_enclosing(
     enclosing_diagonal_sq = enc_w**2 + enc_h**2
 
     return iou, intersection, union, enclosing_area, enclosing_diagonal_sq
+
+
+def _shift_signed_to_unit_range(similarity_matrix: np.ndarray) -> np.ndarray:
+    """Map a signed similarity matrix into ``[0, 1]`` for score fusion.
+
+    Shifts ``[-1, 1]`` to ``[0, 1]`` via ``(matrix + 1) / 2`` and clamps the
+    result. For well-formed boxes GIoU and DIoU bottom out at exactly ``-1``, so
+    the clamp is a no-op for them. CIoU subtracts a nonnegative aspect-ratio
+    penalty from DIoU, so it can fall below ``-1`` (its infimum over well-formed
+    input is around ``-1.5``); without the clamp, those pairs would produce
+    **negative** fused similarities, breaking the ``[0, 1]`` contract relied on
+    by BoT-SORT score fusion. Malformed boxes break these floors for DIoU and
+    CIoU as well, so the clamp is load-bearing on that path; see
+    :meth:`BaseIoU.compute`.
+
+    Args:
+        similarity_matrix: ``(N, M)`` signed similarity matrix.
+
+    Returns:
+        ``(N, M)`` matrix in ``[0, 1]``.
+    """
+    return np.clip((similarity_matrix + 1.0) / 2.0, 0.0, 1.0)
 
 
 class GIoU(BaseIoU):
@@ -277,7 +324,8 @@ class GIoU(BaseIoU):
         return iou - penalty
 
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
-        return (similarity_matrix + 1.0) / 2.0
+        """Shift ``[-1, 1]`` GIoU scores into ``[0, 1]`` for BoT-SORT fusion."""
+        return _shift_signed_to_unit_range(similarity_matrix)
 
 
 class DIoU(BaseIoU):
@@ -329,7 +377,8 @@ class DIoU(BaseIoU):
         return iou - center_dist_sq / denom
 
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
-        return (similarity_matrix + 1.0) / 2.0
+        """Shift ``[-1, 1]`` DIoU scores into ``[0, 1]`` for BoT-SORT fusion."""
+        return _shift_signed_to_unit_range(similarity_matrix)
 
 
 class CIoU(BaseIoU):
@@ -343,9 +392,13 @@ class CIoU(BaseIoU):
     ``CIoU = DIoU - alpha * v``, with
     ``alpha = v / (1 - IoU + v + epsilon)``.
 
-    So **CIoU ≤ DIoU ≤ IoU** when widths and heights are positive.
-    Scores are in ``[-1, 1]``, matching the range of
-    :func:`torchvision.ops.complete_box_iou`.
+    So **CIoU ≤ DIoU ≤ IoU** when widths and heights are positive. Raw scores
+    match :func:`torchvision.ops.complete_box_iou` exactly, with an upper bound
+    of ``1``; for well-formed boxes GIoU and DIoU bottom out at ``-1`` while the
+    aspect-ratio penalty can drive CIoU below it (down to roughly ``-1.5``).
+    Malformed boxes break the DIoU and CIoU floors as well; see
+    :meth:`BaseIoU.compute`. See :meth:`normalize_for_fusion`, which clamps
+    after shifting into ``[0, 1]``.
 
     Reference: https://arxiv.org/abs/1911.08287
 
@@ -398,4 +451,43 @@ class CIoU(BaseIoU):
         return diou - alpha * v
 
     def normalize_for_fusion(self, similarity_matrix: np.ndarray) -> np.ndarray:
-        return (similarity_matrix + 1.0) / 2.0
+        """Shift and clamp CIoU scores into ``[0, 1]`` for BoT-SORT fusion.
+
+        CIoU can fall below ``-1`` (see class docstring), so the clamp inside :func:`_shift_signed_to_unit_range` is
+        non-trivial here.
+        """
+        return _shift_signed_to_unit_range(similarity_matrix)
+
+
+_VARIANTS: dict[str, type[BaseIoU]] = {
+    "iou": IoU,
+    "giou": GIoU,
+    "diou": DIoU,
+    "ciou": CIoU,
+    "biou": BIoU,
+}
+
+
+def variant_from_name(name: str) -> BaseIoU:
+    """Resolve a variant name (case-insensitive) to a default-constructed instance.
+
+    Args:
+        name: One of ``iou``, ``giou``, ``diou``, ``ciou``, ``biou``
+            (case-insensitive).
+
+    Returns:
+        A default-constructed instance of the matching :class:`BaseIoU` subclass.
+
+    Raises:
+        ValueError: If ``name`` does not match any known variant.
+
+    Examples:
+        >>> isinstance(variant_from_name("giou"), GIoU)
+        True
+        >>> isinstance(variant_from_name("BIOU"), BIoU)
+        True
+    """
+    try:
+        return _VARIANTS[name.lower()]()
+    except KeyError as exc:
+        raise ValueError(f"Unknown IoU variant {name!r}. Valid: {sorted(_VARIANTS)}") from exc

@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
     confidence: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
     trackActivationThreshold: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
     minimumIouThreshold: { step: 0.05, min: 0.05, max: 1, decimals: 2 },
-    lostTrackBuffer: { step: 1, min: 1, max: 999, decimals: 0 },
+    lostTrackBuffer: { step: 1, min: 0, max: 999, decimals: 0 },
     minimumConsecutiveFrames: { step: 1, min: 1, max: 99, decimals: 0 },
   };
 
@@ -66,8 +66,24 @@ document.addEventListener("DOMContentLoaded", function () {
     return !isNaN(num) && num > 0 && String(num) === value;
   }
 
+  function isValidNonNegativeInt(value) {
+    if (value === "") return true;
+    const num = parseInt(value, 10);
+    return !isNaN(num) && num >= 0 && String(num) === value;
+  }
+
   function isValidClasses(value) {
     return /^[\w,\s]*$/.test(value);
+  }
+
+  // Filter options take a list. jsonargparse accepts unquoted bracket
+  // shorthand, so "person, car" becomes "[person,car]".
+  function toListLiteral(value) {
+    const items = value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return `[${items.join(",")}]`;
   }
 
   // Generate command from state
@@ -80,24 +96,24 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const prefix = state.modelType === "segmentation" ? "rfdetr-seg-" : "rfdetr-";
-    parts.push(`--model ${prefix}${state.modelSize}`);
+    parts.push(`--detection.model ${prefix}${state.modelSize}`);
 
     if (state.showModelOptions) {
       if (state.confidence !== defaults.confidence && isValidDecimal01(state.confidence, 0.05)) {
-        parts.push(`--model.confidence ${state.confidence}`);
+        parts.push(`--detection.confidence ${state.confidence}`);
       }
       if (state.device !== "auto") {
-        parts.push(`--model.device ${state.device}`);
+        parts.push(`--detection.device ${state.device}`);
       }
       if (state.classes && isValidClasses(state.classes)) {
-        parts.push(`--classes ${state.classes}`);
+        parts.push(`--filters.classes ${toListLiteral(state.classes)}`);
       }
     }
 
     parts.push(`--tracker ${state.tracker}`);
 
     if (state.showTrackerOptions) {
-      if (state.lostTrackBuffer !== defaults.lostTrackBuffer && isValidPositiveInt(state.lostTrackBuffer)) {
+      if (state.lostTrackBuffer !== defaults.lostTrackBuffer && isValidNonNegativeInt(state.lostTrackBuffer)) {
         parts.push(`--tracker.lost_track_buffer ${state.lostTrackBuffer}`);
       }
       if (
@@ -110,29 +126,29 @@ document.addEventListener("DOMContentLoaded", function () {
         state.minimumConsecutiveFrames !== defaults.minimumConsecutiveFrames &&
         isValidPositiveInt(state.minimumConsecutiveFrames)
       ) {
-        parts.push(`--tracker.minimum_consecutive_frames ${state.minimumConsecutiveFrames}`);
+        parts.push(`--tracker.min_consecutive_frames ${state.minimumConsecutiveFrames}`);
       }
       if (
         state.minimumIouThreshold !== defaults.minimumIouThreshold &&
         isValidDecimal01(state.minimumIouThreshold, 0.05)
       ) {
-        parts.push(`--tracker.minimum_iou_threshold ${state.minimumIouThreshold}`);
+        parts.push(`--tracker.min_iou_threshold ${state.minimumIouThreshold}`);
       }
     }
 
     if (state.display) parts.push("--display");
-    if (!state.showBoxes) parts.push("--no-boxes");
-    if (state.showMasks) parts.push("--show-masks");
-    if (state.showConfidence) parts.push("--show-confidence");
-    if (state.showLabels) parts.push("--show-labels");
-    if (!state.showIds) parts.push("--no-ids");
-    if (state.showTrajectories) parts.push("--show-trajectories");
+    if (!state.showBoxes) parts.push("--show.no_boxes");
+    if (state.showMasks) parts.push("--show.masks");
+    if (state.showConfidence) parts.push("--show.confidence");
+    if (state.showLabels) parts.push("--show.labels");
+    if (!state.showIds) parts.push("--show.no_ids");
+    if (state.showTrajectories) parts.push("--show.trajectories");
 
     const outputValue = state.output.trim();
     if (outputValue) {
-      parts.push(`--output ${outputValue}`);
+      parts.push(`--output.video ${outputValue}`);
       if (state.overwrite) {
-        parts.push("--overwrite");
+        parts.push("--output.overwrite");
       }
     }
 
@@ -153,17 +169,17 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (state.showTrackerOptions) {
-      if (state.lostTrackBuffer && !isValidPositiveInt(state.lostTrackBuffer)) {
-        errors.push("lost_track_buffer must be a positive integer");
+      if (state.lostTrackBuffer && !isValidNonNegativeInt(state.lostTrackBuffer)) {
+        errors.push("lost_track_buffer must be a non-negative integer");
       }
       if (state.trackActivationThreshold && !isValidDecimal01(state.trackActivationThreshold, 0.05)) {
         errors.push("track_activation_threshold must be between 0.05 and 1");
       }
       if (state.minimumConsecutiveFrames && !isValidPositiveInt(state.minimumConsecutiveFrames)) {
-        errors.push("minimum_consecutive_frames must be a positive integer");
+        errors.push("min_consecutive_frames must be a positive integer");
       }
       if (state.minimumIouThreshold && !isValidDecimal01(state.minimumIouThreshold, 0.05)) {
-        errors.push("minimum_iou_threshold must be between 0.05 and 1");
+        errors.push("min_iou_threshold must be between 0.05 and 1");
       }
     }
 
@@ -334,7 +350,7 @@ document.addEventListener("DOMContentLoaded", function () {
       );
       trackerOptionsContent.appendChild(
         createNumericInputRow(
-          "minimum_consecutive_frames",
+          "min_consecutive_frames",
           "minimumConsecutiveFrames",
           state.minimumConsecutiveFrames,
           numberConfig.minimumConsecutiveFrames,
@@ -343,7 +359,7 @@ document.addEventListener("DOMContentLoaded", function () {
       );
       trackerOptionsContent.appendChild(
         createNumericInputRow(
-          "minimum_iou_threshold",
+          "min_iou_threshold",
           "minimumIouThreshold",
           state.minimumIouThreshold,
           numberConfig.minimumIouThreshold,

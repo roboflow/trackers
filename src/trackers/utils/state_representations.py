@@ -18,6 +18,7 @@ from trackers.utils.converters import (
     xyxy_to_xywh,
 )
 from trackers.utils.kalman_filter import KalmanFilter
+from trackers.utils.motion_models import KalmanMotionModel, init_constant_velocity_filter
 
 
 class StateRepresentation(Enum):
@@ -55,18 +56,25 @@ class BaseStateEstimator(ABC):
     handle conversions between `[x1, y1, x2, y2]` bboxes and the
     internal state/measurement vectors.
 
+    Variable frame rate: pass a larger ``frame_step`` to ``predict()`` after a
+    gap. See ``docs/learn/dynamic-frame-rate.md``.
+
     Note:
-        Noise matrices (R, Q, P) are not configured in `_create_filter`
+        Noise matrices (R, Q, P) are not configured in ``_create_filter``
         and default to identity matrices. Callers must configure them via
-        `set_kf_covariances` after construction for accurate tracking.
-        Tracklet classes (`SORTTracklet`, `ByteTrackTracklet`,
-        `OCSORTTracklet`) do this automatically via `_configure_noise()`.
+        ``set_kf_covariances`` after construction for accurate tracking.
+        Tracklet classes (``SORTTracklet``, ``ByteTrackTracklet``,
+        ``OCSORTTracklet``) do this automatically via ``_configure_noise()``.
         If you instantiate a state estimator directly, call
-        `set_kf_covariances` before the first `predict`/`update`.
+        ``set_kf_covariances`` before the first ``predict``/``update``.
 
     Attributes:
         kf: The underlying Kalman filter instance.
+        motion: Builds ``F`` and ``Q`` before each predict.
     """
+
+    _POS_IDX: np.ndarray
+    _VEL_IDX: np.ndarray
 
     def __init__(self, bbox: np.ndarray) -> None:
         """Initialise the filter with the first detection.
@@ -75,6 +83,21 @@ class BaseStateEstimator(ABC):
             bbox: First detection `[x1, y1, x2, y2]`.
         """
         self.kf: KalmanFilter = self._create_filter(bbox)
+        self.motion: KalmanMotionModel = KalmanMotionModel.from_filter(
+            self.kf,
+            self._POS_IDX,
+            self._VEL_IDX,
+        )
+
+    def _init_cv_filter(self, dim_x: int, measurement: np.ndarray) -> KalmanFilter:
+        """Create a constant-velocity filter with ``F(1)``, ``H = I``, and initial state."""
+        return init_constant_velocity_filter(
+            dim_x=dim_x,
+            dim_z=4,
+            pos_idx=self._POS_IDX,
+            vel_idx=self._VEL_IDX,
+            measurement=measurement,
+        )
 
     @abstractmethod
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
@@ -102,21 +125,47 @@ class BaseStateEstimator(ABC):
     def state_to_bbox(self) -> np.ndarray:
         """Extract an `[x1, y1, x2, y2]` bbox from the current filter state.
 
+        Note:
+            The returned array may alias internal filter state rather than
+            being a fresh copy, depending on representation. `XYXYStateEstimator`
+            returns a live view onto `self.kf.state` (`state[:4].reshape((4,))`);
+            `XCYCSRStateEstimator` and `XCYCWHStateEstimator` decode through a
+            coordinate-conversion function and return a freshly allocated array.
+            Callers that hold onto the result across a subsequent `predict()`
+            or `update()` call must not assume the array stays unchanged.
+
         Returns:
             Bounding box `[x1, y1, x2, y2]`.
         """
 
     @abstractmethod
-    def clamp_velocity(self) -> None:
+    def clamp_velocity(self, frame_step: float = 1.0) -> None:
         """Clamp velocity components to prevent degenerate predictions.
 
         Called before `predict` to ensure physical plausibility
         (e.g. non-negative scale). Modifies the filter state in-place.
+
+        Args:
+            frame_step: Elapsed time in frame units for the upcoming predict.
+                The guard must consider the *projected* state over this step
+                (state + frame_step * velocity), because `predict` extrapolates
+                by `frame_step`, not by a single nominal frame.
         """
 
-    def predict(self) -> None:
-        """Run the Kalman filter prediction step."""
-        self.clamp_velocity()
+    def predict(self, frame_step: float = 1.0, frame_rate: float | None = None) -> None:
+        """Predict one Kalman step, scaling F and Q by frame_step.
+
+        Args:
+            frame_step: Elapsed time in frame units; ``1.0`` = one nominal
+                frame. Pass a larger value after a gap between updates so the
+                filter extrapolates further and widens process noise accordingly.
+            frame_rate: Tracker reference FPS, forwarded to the motion model so
+                the near-nominal process-noise band stays fps-invariant. ``None``
+                (fixed-rate mode or unavailable) selects the fixed frame-unit
+                fallback band.
+        """
+        self.clamp_velocity(frame_step)
+        self.motion.apply(self.kf, frame_step, frame_rate)
         self.kf.predict()
 
     def update(self, bbox: np.ndarray | None) -> None:
@@ -146,169 +195,144 @@ class BaseStateEstimator(ABC):
             state: Dictionary from `get_state`.
         """
         self.kf.set_state(state)
+        self.motion.reset_cache()
 
     def set_kf_covariances(
         self,
-        R: np.ndarray | None = None,
-        Q: np.ndarray | None = None,
-        P: np.ndarray | None = None,
+        measurement_noise: np.ndarray | None = None,
+        process_noise: np.ndarray | None = None,
+        state_covariance: np.ndarray | None = None,
     ) -> None:
-        """Set Kalman filter parameters.
+        """Set Kalman noise matrices.
+
+        ``process_noise`` controls how much the state may drift per predict.
+        Tracklets set it in ``_configure_noise()`` for the one-frame case.
+        When passed here, the motion model stores it as the reference used at
+        ``frame_step=1.0`` and as the starting point for gap scaling.
 
         Args:
-            R: Measurement noise covariance matrix.
-            Q: Process noise covariance matrix.
-            P: Error covariance matrix.
+            measurement_noise: Measurement noise covariance (trust in detections).
+            process_noise: Process noise covariance (drift between detections).
+            state_covariance: Initial state uncertainty.
         """
-        if R is not None:
+        if measurement_noise is not None:
             expected_shape = (self.kf.dim_z, self.kf.dim_z)
-            if R.shape != expected_shape:
-                raise ValueError(f"R must have shape {expected_shape}; got {R.shape}.")
-            self.kf.R = R
-        if Q is not None:
+            if measurement_noise.shape != expected_shape:
+                raise ValueError(f"measurement_noise must have shape {expected_shape}; got {measurement_noise.shape}.")
+            self.kf.measurement_noise = measurement_noise
+        if process_noise is not None:
             expected_shape = (self.kf.dim_x, self.kf.dim_x)
-            if Q.shape != expected_shape:
-                raise ValueError(f"Q must have shape {expected_shape}; got {Q.shape}.")
-            self.kf.Q = Q
-        if P is not None:
+            if process_noise.shape != expected_shape:
+                raise ValueError(f"process_noise must have shape {expected_shape}; got {process_noise.shape}.")
+            self.kf.process_noise = process_noise
+            self.motion.calibrate_from_process_noise(process_noise)
+        if state_covariance is not None:
             expected_shape = (self.kf.dim_x, self.kf.dim_x)
-            if P.shape != expected_shape:
-                raise ValueError(f"P must have shape {expected_shape}; got {P.shape}.")
-            self.kf.P = P
+            if state_covariance.shape != expected_shape:
+                raise ValueError(f"state_covariance must have shape {expected_shape}; got {state_covariance.shape}.")
+            self.kf.state_covariance = state_covariance
 
 
 class XCYCSRStateEstimator(BaseStateEstimator):
     """Center-based Kalman filter with 7 state dimensions and 4 measurements.
 
-    State vector contains `x_center`, `y_center` (box center), `scale` (area),
-    `aspect_ratio` (width/height), and velocities `vx`, `vy`, `vs`. Aspect ratio
-    is treated as constant (no velocity term), which works well for rigid objects
-    that maintain their shape. Matches the representation used in the original
-    SORT and OC-SORT papers.
+    State vector contains `x_center`, `y_center` (box center), `scale` (area), `aspect_ratio` (width/height), and
+    velocities `vx`, `vy`, `vs`. Aspect ratio is treated as constant (no velocity term), which works well for rigid
+    objects that maintain their shape. Matches the representation used in the original SORT and OC-SORT papers.
     """
 
+    # State layout: [xc, yc, s, r, vx, vy, vs]
+    _POS_IDX = np.array([0, 1, 2], dtype=np.int64)
+    _VEL_IDX = np.array([4, 5, 6], dtype=np.int64)
+
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
-        kf = KalmanFilter(dim_x=7, dim_z=4)
-
-        # State transition: constant velocity model
-        kf.F = np.array(
-            [
-                [1, 0, 0, 0, 1, 0, 0],
-                [0, 1, 0, 0, 0, 1, 0],
-                [0, 0, 1, 0, 0, 0, 1],
-                [0, 0, 0, 1, 0, 0, 0],  # aspect ratio: no velocity
-                [0, 0, 0, 0, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1],
-            ],
-            dtype=np.float64,
-        )
-
-        # Measurement function: observe (x, y, s, r) from state
-        kf.H = np.eye(4, 7, dtype=np.float64)
-
-        # Initialise state with first observation
-        kf.x[:4] = xyxy_to_xcycsr(bbox).reshape((4, 1))
-
-        return kf
+        return self._init_cv_filter(7, xyxy_to_xcycsr(bbox))
 
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
         return xyxy_to_xcycsr(bbox)
 
     def state_to_bbox(self) -> np.ndarray:
-        return xcycsr_to_xyxy(self.kf.x[:4].reshape((4,)))
+        return xcycsr_to_xyxy(self.kf.state[:4].reshape((4,)))
 
-    def clamp_velocity(self) -> None:
-        # If predicted scale would go negative, zero out scale velocity
-        if (self.kf.x[6] + self.kf.x[2]) <= 0:
-            self.kf.x[6] = 0.0
+    def clamp_velocity(self, frame_step: float = 1.0) -> None:
+        """Freeze scale velocity when the projected scale would turn non-positive.
+
+        ``predict`` extrapolates scale as ``s + frame_step * vs``. A negative
+        ``vs`` that passes the one-frame check (``s + vs > 0``) can still drive
+        the projection non-positive over a gap (``frame_step > 1``), and
+        ``xcycsr_to_xyxy`` decodes a non-positive scale as NaN. If the motion
+        model stops being linear in scale, this clamp should be revisited.
+
+        Args:
+            frame_step: Elapsed time in frame units for the upcoming predict.
+        """
+        # Clamp is intentionally hard: if the projected scale would go non-positive, we
+        # freeze vs to 0 instead of soft-clamping to keep behavior simple and defensive.
+        # Growth is unchecked here by design; any resulting non-finite boxes are caught by
+        # BaseIoU.compute()'s np.isfinite guard (iou.py:62-65).
+        if (self.kf.state[2] + frame_step * self.kf.state[6]) <= 0:
+            self.kf.state[6] = 0.0
 
 
 class XCYCWHStateEstimator(BaseStateEstimator):
     """Center-width-height Kalman filter with 8 state dims and 4 measurements.
 
-    State vector contains `x_center`, `y_center` (box center), `w` (width),
-    `h` (height), and velocities `vx`, `vy`, `vw`, `vh`.  Unlike
-    `XCYCSRStateEstimator`, both width and height have independent velocity
-    terms and can change freely.
+    State vector contains `x_center`, `y_center` (box center), `w` (width), `h` (height), and velocities `vx`, `vy`,
+    `vw`, `vh`.  Unlike `XCYCSRStateEstimator`, both width and height have independent velocity terms and can change
+    freely.
 
-    This estimator only provides the coordinate-transform and filter-layout
-    logic (F, H, conversions).  Noise tuning (Q, R, P) and any dynamic
-    noise refresh are the responsibility of the tracklet that owns the
-    estimator — exactly like `XYXYStateEstimator` and `XCYCSRStateEstimator`.
+    This estimator only provides the coordinate-transform and filter-layout logic (F, H, conversions).  Noise tuning (Q,
+    R, P) and any dynamic noise refresh are the responsibility of the tracklet that owns the estimator — exactly like
+    `XYXYStateEstimator` and `XCYCSRStateEstimator`.
     """
 
+    # State layout: [xc, yc, w, h, vx, vy, vw, vh]
+    _POS_IDX = np.array([0, 1, 2, 3], dtype=np.int64)
+    _VEL_IDX = np.array([4, 5, 6, 7], dtype=np.int64)
+
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
-        kf = KalmanFilter(dim_x=8, dim_z=4)
-
-        # Constant-velocity state transition
-        kf.F = np.eye(8, dtype=np.float64)
-        for i in range(4):
-            kf.F[i, i + 4] = 1.0
-
-        # Measurement: observe [xc, yc, w, h]
-        kf.H = np.eye(4, 8, dtype=np.float64)
-
-        # Initialise position from first bbox
-        measurement = xyxy_to_xywh(bbox)
-        kf.x[:4] = measurement.reshape((4, 1))
-
-        return kf
+        return self._init_cv_filter(8, xyxy_to_xywh(bbox))
 
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
         return xyxy_to_xywh(bbox)
 
     def state_to_bbox(self) -> np.ndarray:
-        return xywh_to_xyxy(self.kf.x[:4].reshape((4,)))
+        return xywh_to_xyxy(self.kf.state[:4].reshape((4,)))
 
-    def clamp_velocity(self) -> None:
-        pass
+    def clamp_velocity(self, frame_step: float = 1.0) -> None:
+        """Ignore `frame_step`; kept for interface compatibility.
+
+        No-op by design: unlike XCYCSR, this representation has no sqrt-decode
+        step, so a negative projected `w`/`h` over a large gap yields a
+        finite (not NaN) inverted box rather than crashing. This pre-existing
+        gap is tracked separately, out of scope for the frame_step clamp fix.
+        """
 
 
 class XYXYStateEstimator(BaseStateEstimator):
     """Corner-based Kalman filter with 8 state dimensions and 4 measurements.
 
-    State vector contains `x1`, `y1` (top-left corner), `x2`, `y2` (bottom-right
-    corner), and independent velocities `vx1`, `vy1`, `vx2`, `vy2` for each
-    coordinate. This allows the box shape to change over time, which may be
-    better suited for non-rigid or deformable objects.
+    State vector contains `x1`, `y1` (top-left corner), `x2`, `y2` (bottom-right corner), and independent velocities
+    `vx1`, `vy1`, `vx2`, `vy2` for each coordinate. This allows the box shape to change over time, which may be better
+    suited for non-rigid or deformable objects.
     """
 
+    # State layout: [x1, y1, x2, y2, vx1, vy1, vx2, vy2]
+    _POS_IDX = np.array([0, 1, 2, 3], dtype=np.int64)
+    _VEL_IDX = np.array([4, 5, 6, 7], dtype=np.int64)
+
     def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
-        kf = KalmanFilter(dim_x=8, dim_z=4)
-
-        # State transition: constant velocity for all coordinates
-        kf.F = np.array(
-            [
-                [1, 0, 0, 0, 1, 0, 0, 0],  # x1 += vx1
-                [0, 1, 0, 0, 0, 1, 0, 0],  # y1 += vy1
-                [0, 0, 1, 0, 0, 0, 1, 0],  # x2 += vx2
-                [0, 0, 0, 1, 0, 0, 0, 1],  # y2 += vy2
-                [0, 0, 0, 0, 1, 0, 0, 0],  # vx1
-                [0, 0, 0, 0, 0, 1, 0, 0],  # vy1
-                [0, 0, 0, 0, 0, 0, 1, 0],  # vx2
-                [0, 0, 0, 0, 0, 0, 0, 1],  # vy2
-            ],
-            dtype=np.float64,
-        )
-
-        # Measurement function: observe (x1, y1, x2, y2) from state
-        kf.H = np.eye(4, 8, dtype=np.float64)
-
-        # Initialise state with first observation (direct XYXY)
-        kf.x[:4] = bbox.reshape((4, 1))
-
-        return kf
+        return self._init_cv_filter(8, bbox)
 
     def bbox_to_measurement(self, bbox: np.ndarray) -> np.ndarray:
         return bbox
 
     def state_to_bbox(self) -> np.ndarray:
-        return self.kf.x[:4].reshape((4,))
+        return self.kf.state[:4].reshape((4,))
 
-    def clamp_velocity(self) -> None:
-        # No clamping needed for XYXY representation
-        pass
+    def clamp_velocity(self, frame_step: float = 1.0) -> None:
+        """Ignore `frame_step`; kept for interface compatibility because XYXY-style velocity is unconstrained."""
+        return None
 
 
 # ---------------------------------------------------------------------------

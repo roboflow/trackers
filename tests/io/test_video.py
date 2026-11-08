@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
@@ -26,17 +27,16 @@ VIDEO_COMPRESSION_TOLERANCE = 5
 def create_frame(index: int) -> np.ndarray:
     """Create a test frame with deterministic pixel values for verification.
 
-    Each frame has all pixels set to the same value derived from the index.
-    The value is calculated as index * VALUE_MULTIPLIER (clamped to 255).
+    Each frame has all pixels set to the same value derived from the index. The value is calculated as index *
+    VALUE_MULTIPLIER (clamped to 255).
 
-    We use VALUE_MULTIPLIER=40 to spread values apart (0, 40, 80, 120, ...)
-    because video codecs like mp4v use lossy compression that can alter
-    pixel values by small amounts. Adjacent values like 0, 1, 2, 3 would
-    become indistinguishable after compression, but 0, 40, 80, 120 remain
-    clearly distinguishable even with compression artifacts.
+    We use VALUE_MULTIPLIER=40 to spread values apart (0, 40, 80, 120, ...) because video codecs like mp4v use lossy
+    compression that can alter pixel values by small amounts. Adjacent values like 0, 1, 2, 3 would become
+    indistinguishable after compression, but 0, 40, 80, 120 remain clearly distinguishable even with compression
+    artifacts.
 
-    For lossless formats (PNG, JPG with quality=100), exact matching works.
-    For video files, use expected_frame_value() with a tolerance check.
+    For lossless formats (PNG, JPG with quality=100), exact matching works. For video files, use expected_frame_value()
+    with a tolerance check.
     """
     pixel_value = min(index * VALUE_MULTIPLIER, 255)
     return np.full((FRAME_HEIGHT, FRAME_WIDTH, 3), pixel_value, dtype=np.uint8)
@@ -53,7 +53,7 @@ def video_factory(tmp_path: Path) -> Callable[[int], Path]:
 
     def _create(n_frames: int) -> Path:
         video_path = tmp_path / f"video_{n_frames}_frames.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
         writer = cv2.VideoWriter(str(video_path), fourcc, 25.0, FRAME_SIZE)
 
         for index in range(n_frames):
@@ -97,6 +97,21 @@ def directory_with_non_image_files(tmp_path: Path) -> Path:
     directory.mkdir()
     for index in range(4):
         (directory / f"note_{index}.txt").write_text(f"placeholder {index}")
+    return directory
+
+
+@pytest.fixture
+def directory_with_unpadded_numeric_names(tmp_path: Path) -> Path:
+    """Directory of unpadded numeric image names whose lexicographic order differs from numeric order.
+
+    Names run `1.png` to `11.png`, which sort lexicographically as 1, 10, 11, 2, 3, ... Each frame is filled with a
+    distinct multiple of 20 so no two frames share a pixel value.
+    """
+    directory = tmp_path / "unpadded"
+    directory.mkdir()
+    for index in range(1, 12):
+        frame = np.full((FRAME_HEIGHT, FRAME_WIDTH, 3), index * 20, dtype=np.uint8)
+        cv2.imwrite(str(directory / f"{index}.png"), frame)
     return directory
 
 
@@ -149,7 +164,29 @@ class TestFramesFromSourceVideo:
 
 
 class TestFramesFromSourceImageDirectory:
-    def test_reads_images_in_alphabetical_order(self, image_directory_factory) -> None:
+    def test_reads_unpadded_numeric_names_in_numeric_order(self, directory_with_unpadded_numeric_names) -> None:
+        """Unpadded numeric names are ordered numerically, so `2.png` precedes `10.png`."""
+        frames = list(frames_from_source(directory_with_unpadded_numeric_names))
+
+        assert len(frames) == 11
+        for frame_id, frame in frames:
+            assert np.all(frame == frame_id * 20), f"Frame {frame_id} is out of order"
+
+    def test_reads_non_numeric_names_alphabetically(self, tmp_path: Path) -> None:
+        """Names without digits keep plain alphabetical order."""
+        directory = tmp_path / "alphabetic"
+        directory.mkdir()
+        for index, stem in enumerate(("gamma", "alpha", "beta")):
+            cv2.imwrite(str(directory / f"{stem}.png"), create_frame(index))
+
+        frames = list(frames_from_source(directory))
+
+        assert len(frames) == 3
+        expected_indexes = (1, 2, 0)
+        for frame_id, frame in frames:
+            assert np.all(frame == expected_frame_value(expected_indexes[frame_id - 1]))
+
+    def test_reads_zero_padded_images_in_order(self, image_directory_factory) -> None:
         num_frames = 7
         directory = image_directory_factory(n_frames=num_frames, filename_pattern="{:04d}.png")
         frames = list(frames_from_source(directory))
@@ -228,3 +265,121 @@ class TestVideoOutputFPS:
         actual_fps = cap.get(cv2.CAP_PROP_FPS)
         cap.release()
         assert actual_fps == pytest.approx(_DEFAULT_OUTPUT_FPS, abs=0.1)
+
+
+def _count_written_frames(path: Path) -> int:
+    """Count the frames actually persisted in a written video file."""
+    cap = cv2.VideoCapture(str(path))
+    assert cap.isOpened(), f"Failed to open written video for verification: {path}"
+    try:
+        count = 0
+        while True:
+            ok, _ = cap.read()
+            if not ok:
+                break
+            count += 1
+        return count
+    finally:
+        cap.release()
+
+
+class TestVideoOutputResolutionChange:
+    def test_all_same_size_frames_are_written(self, tmp_path: Path) -> None:
+        output_path = tmp_path / "same_size.mp4"
+        num_frames = 3
+
+        with _VideoOutput(output_path) as video:
+            for index in range(num_frames):
+                assert video.write(create_frame(index)) is True
+
+        assert _count_written_frames(output_path) == num_frames
+
+    def test_mismatched_frame_is_kept_not_dropped(self, tmp_path: Path) -> None:
+        # cv2.VideoWriter silently discards frames whose size differs from the
+        # writer's; without resizing the middle frame vanishes from the output.
+        output_path = tmp_path / "resized.mp4"
+        first = create_frame(1)
+        odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+        last = create_frame(3)
+
+        with _VideoOutput(output_path) as video:
+            assert video.write(first) is True
+            assert video.write(odd) is True
+            assert video.write(last) is True
+
+        assert _count_written_frames(output_path) == 3
+
+    def test_three_distinct_sizes_are_all_resized_and_kept(self, tmp_path: Path) -> None:
+        """Writer resizes every subsequent distinct size, not only the first mismatch."""
+        output_path = tmp_path / "three_sizes.mp4"
+        size_a_frame = create_frame(1)  # opens writer at FRAME_SIZE (96x96)
+        size_b_frame = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), expected_frame_value(2), dtype=np.uint8)
+        size_c_frame = np.full((FRAME_HEIGHT * 2, FRAME_WIDTH // 2, 3), expected_frame_value(3), dtype=np.uint8)
+
+        with _VideoOutput(output_path) as video:
+            assert video.write(size_a_frame) is True
+            assert video.write(size_b_frame) is True
+            assert video.write(size_c_frame) is True
+
+        # cv2.VideoWriter silently drops any frame whose size differs from the
+        # writer's; a count of 3 proves both B and C were resized to match A's
+        # size before being written, not just the first mismatch (B).
+        assert _count_written_frames(output_path) == 3
+
+    def test_mismatched_frame_is_resized_to_writer_size(self, tmp_path: Path) -> None:
+        output_path = tmp_path / "check_size.mp4"
+        with _VideoOutput(output_path) as video:
+            video.write(create_frame(1))
+            odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+            resized = video._match_writer_size(odd)
+
+        assert resized.shape == (FRAME_HEIGHT, FRAME_WIDTH, 3)
+        # `odd` is a uniform-value array, so resizing (any interpolation method)
+        # preserves the constant pixel value exactly, in-memory, with no codec
+        # involved — an exact equality check is appropriate here.
+        assert np.all(resized == 80)
+
+    def test_size_mismatch_is_warned_once(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        output_path = tmp_path / "warn_once.mp4"
+        odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+
+        with caplog.at_level(logging.WARNING, logger="trackers.io.video"):
+            with _VideoOutput(output_path) as video:
+                video.write(create_frame(1))
+                video.write(odd)
+                video.write(odd)
+
+        mismatch_warnings = [r for r in caplog.records if "differs from the writer" in r.message]
+        assert len(mismatch_warnings) == 1
+
+    def test_revert_to_original_size_is_not_resized_or_rewarned(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """After a mismatch resize+warn, a frame reverting to the writer's size is a no-op."""
+        output_path = tmp_path / "revert_size.mp4"
+        original = create_frame(1)
+        odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+        reverted = create_frame(2)  # same size as `original`, distinct pixel value
+
+        with caplog.at_level(logging.WARNING, logger="trackers.io.video"):
+            with _VideoOutput(output_path) as video:
+                video.write(original)  # opens writer at FRAME_SIZE
+                video.write(odd)  # mismatch: resized once, warning logged
+                matched = video._match_writer_size(reverted)  # revert to writer's size
+
+        # No resize needed: same object is returned unchanged.
+        assert matched is reverted
+        # The one-time warning must not fire again for the revert.
+        mismatch_warnings = [r for r in caplog.records if "differs from the writer" in r.message]
+        assert len(mismatch_warnings) == 1
+
+    def test_none_path_ignores_frame_size(self, caplog: pytest.LogCaptureFixture) -> None:
+        # A no-op sink must not track sizes or warn on a resolution change.
+        with caplog.at_level(logging.WARNING, logger="trackers.io.video"):
+            with _VideoOutput(None) as video:
+                assert video.write(create_frame(1)) is True
+                odd = np.full((FRAME_HEIGHT // 2, FRAME_WIDTH * 2, 3), 80, dtype=np.uint8)
+                assert video.write(odd) is True
+        assert video._frame_size is None
+        mismatch_warnings = [r for r in caplog.records if "differs from the writer" in r.message]
+        assert len(mismatch_warnings) == 0

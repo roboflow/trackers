@@ -4,22 +4,19 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""
-MkDocs hook to strip doctest directives from rendered documentation.
+"""MkDocs hook to strip doctest directives from rendered documentation.
 
-Removes `# doctest: +SKIP`, `# doctest: +ELLIPSIS`, and similar directives
-from code blocks so they don't appear in the rendered docs.
+Removes `# doctest: +SKIP`, `# doctest: +ELLIPSIS`, and similar directives from code blocks so they don't appear in the
+rendered docs.
 """
 
 import re
 
 
 def on_page_content(html: str, **kwargs) -> str:
-    """
-    Process page HTML content to remove doctest directives.
+    """Process page HTML content to remove doctest directives.
 
-    This hook runs after markdown is converted to HTML, so we need to
-    handle HTML-encoded content within <code> blocks.
+    This hook runs after markdown is converted to HTML, so we need to handle HTML-encoded content within <code> blocks.
     """
     # Pattern to match doctest directives in code
     # Handles both plain text and HTML-encoded versions

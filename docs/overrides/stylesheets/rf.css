@@ -131,6 +131,24 @@ body {
   font-size: 0.75rem;
   justify-content: flex-end;
 }
+.dropdown-chevron {
+  height: 0.5rem;
+  width: 0.5rem;
+}
+.header-list label span {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.md-typeset .highlight .hll .kn {
+  color: #1f4f99;
+}
+.md-typeset .highlight .hll .nn {
+  color: #7a238d;
+}
+.md-typeset .highlight .ow {
+  color: #595959;
+}
 .md-nav__list label, .md-nav--secondary label {
   /* text-transform: uppercase; */
   color: rgb(29, 29, 31) !important;

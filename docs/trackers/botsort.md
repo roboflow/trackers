@@ -11,7 +11,9 @@ BoT-SORT extends [ByteTrack](bytetrack.md) with camera motion compensation (CMC)
 
 ## How does BoT-SORT compare to other trackers?
 
-For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](comparison.md) page.
+For comparisons with other trackers, plus dataset context and evaluation details, see the [tracker comparison](../evaluations/results.md) page.
+
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) BoT-SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (Algorithms table), [README.md](../../README.md) (Algorithms table), and [mcbyte.md](mcbyte.md) (BoT-SORT baseline row, matching tab per benchmark). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
@@ -21,7 +23,7 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 ## Watch It in Action
 
-<video title="BoT-SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls>
+<video title="BoT-SORT demo video" width="100%" style="aspect-ratio: 16/9;" controls preload="none" poster="../../assets/botsort-demo-poster.webp">
   <source src="https://github.com/user-attachments/assets/c8fdc1df-7e3b-4d44-bad0-d08208ddc6a0" type="video/mp4">
 </video>
 
@@ -31,7 +33,7 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 
 **CMC (Camera Motion Compensation).** Before data association, BoT-SORT estimates global camera motion between consecutive frames (typically from sparse optical flow) and warps each track's Kalman-predicted box into the current frame. Without this step, a panning or moving camera can make stationary or slow-moving targets appear to jump, degrading IoU overlap and causing false unmatched tracks.
 
-**Two-stage association.** BoT-SORT performs ByteTrack-style matching in two passes: high-confidence detections first, then lower-confidence detections for unmatched tracks. This recovers objects that are briefly weakly scored due to blur, occlusion, or scale change.
+**Two-stage association.** BoT-SORT performs ByteTrack-style matching in two association steps: high-confidence detections first, then lower-confidence detections against remaining *tracked* (non-lost) tracks that were just updated the previous frame. This recovers objects that are briefly weakly scored due to blur, occlusion, or scale change.
 
 **Confidence-aware matching.** Association costs blend geometric overlap (IoU) with detection confidence so that stronger detections are preferred when multiple matches are plausible.
 
@@ -39,16 +41,20 @@ BoT-SORT keeps the same tracking-by-detection backbone as [ByteTrack](bytetrack.
 
 ## Key Parameters
 
-| Parameter                                 | Purpose                                                                       | Tuning guidance                                                                                                                                                                                                                        |
-| ----------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lost_track_buffer`                       | Frames to keep an unmatched track alive before deletion.                      | Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps.                                                                                                           |
-| `track_activation_threshold`              | Minimum detection confidence required to start a new track.                   | Higher reduces noisy track creation; lower retains harder objects. 0.5-0.9 typical depending on detector quality. This does not control low-confidence association, which still discards detections at a fixed `0.1` confidence floor. |
-| `minimum_consecutive_frames`              | Consecutive matches required before confirming a new track.                   | 1 for immediate activation; 2-3 improves robustness against flicker and false positives.                                                                                                                                               |
-| `minimum_iou_threshold_first_assoc`       | Minimum IoU for the first association pass with high-confidence detections.   | Lower helps maintain matches under fast motion or imperfect compensation; higher is stricter and reduces risky matches.                                                                                                                |
-| `minimum_iou_threshold_second_assoc`      | Minimum IoU for the second association pass with lower-confidence detections. | Usually set lower than the first-pass threshold to recover weak detections without over-matching.                                                                                                                                      |
-| `minimum_iou_threshold_unconfirmed_assoc` | Minimum IoU when associating unconfirmed tracks.                              | Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.                                                                                                              |
-| `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.                      | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                                                                                                                                 |
-| `enable_cmc`                              | Enables camera motion compensation before association.                        | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                         |
+| Parameter                                 | Purpose                                                                                                                                                                                                                    | Tuning guidance                                                                                                                                                                                                                        |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lost_track_buffer`                       | Frames to keep an unmatched track alive before deletion (specified in 30 FPS units, scaled proportionally by `frame_rate`).                                                                                                | Higher tolerates longer occlusions/camera shake but can increase false re-association. 10-30 common; up to 60 for long gaps.                                                                                                           |
+| `track_activation_threshold`              | Minimum detection confidence required to start a new track.                                                                                                                                                                | Higher reduces noisy track creation; lower retains harder objects. 0.5-0.9 typical depending on detector quality. This does not control low-confidence association, which still discards detections at a fixed `0.1` confidence floor. |
+| `minimum_consecutive_frames`              | Consecutive matches required before confirming a new track.                                                                                                                                                                | 1 for immediate activation; 2-3 improves robustness against flicker and false positives.                                                                                                                                               |
+| `minimum_iou_threshold_first_assoc`       | Minimum fused similarity (IoU x detection confidence) for the first association step with high-confidence detections. With Re-ID, appearance can raise a pair's similarity, and this threshold applies to the fused value. | Lower helps maintain matches under fast motion or imperfect compensation; higher is stricter and reduces risky matches.                                                                                                                |
+| `minimum_iou_threshold_second_assoc`      | Minimum IoU for the second association step with lower-confidence detections.                                                                                                                                              | Typically set higher than the first-step threshold: this step has no confidence fusion, so a stricter geometric threshold guards against over-matching low-confidence detections.                                                      |
+| `minimum_iou_threshold_unconfirmed_assoc` | Minimum fused similarity (IoU x detection confidence) when associating unconfirmed tracks. With Re-ID, appearance is fused in as in the first association step.                                                            | Higher values make tentative tracks harder to confirm spuriously; lower values help short-lived or noisy objects survive.                                                                                                              |
+| `high_conf_det_threshold`                 | Confidence split between stage-1 and stage-2 detections.                                                                                                                                                                   | 0.5-0.7 common. Higher shifts more detections to recovery stage; lower gives stage-1 broader coverage.                                                                                                                                 |
+| `enable_cmc`                              | Enables camera motion compensation before association.                                                                                                                                                                     | Keep enabled for moving-camera footage (sports, drone, handheld). Disable mainly for static cameras if you need maximal speed.                                                                                                         |
+
+## ReID appearance (optional)
+
+BoT-SORT can fuse appearance embeddings with IoU during association via an optional `reid_model`. For ReID numbers go to the [ReID guide](../guides/reid.md#results), which holds the tables for both fusion rules and best configuration per dataset. Also learn how to install, use and choose parameters on the same page.
 
 ## Run on video, webcam, or RTSP stream
 
@@ -57,6 +63,17 @@ These examples use `opencv-python` for decoding and display. Replace `<SOURCE_VI
 !!! tip
 
     Pass the current video frame as `tracker.update(detections, frame=frame_bgr)` to enable Camera Motion Compensation.
+
+=== "CLI"
+
+    Run BoT-SORT on a video without writing any Python. See the [CLI reference](../guides/cli.md) for every argument, including `--source 0` for a webcam or an `rtsp://` URL for a stream.
+
+    ```bash
+    trackers track \
+        --source <SOURCE_VIDEO_PATH> \
+        --tracker botsort \
+        --output.video output.mp4
+    ```
 
 === "Video"
 

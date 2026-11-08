@@ -9,6 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
+from deprecate import TargetMode, deprecated
+
 from trackers.datasets.manifest import (
     _DATASETS,
     Dataset,
@@ -73,9 +75,16 @@ def _resolve_assets(
     return selected
 
 
+# TODO(v2.10): remove this decorator and the `deprecate` import with it.
+@deprecated(
+    TargetMode.ARGS_REMAP,
+    deprecated_in="2.7.0",
+    remove_in="2.10.0",
+    args_mapping={"dataset": "name"},
+)
 def download_dataset(
     *,
-    dataset: str | Dataset,
+    name: str | Dataset,
     split: DatasetSplit | str | list[DatasetSplit | str] | None = None,
     asset: DatasetAsset | str | list[DatasetAsset | str] | None = None,
     output: str = _DEFAULT_OUTPUT_DIR,
@@ -88,8 +97,11 @@ def download_dataset(
     so that re-extraction after deleting the output directory does not
     require re-downloading.
 
+    The parameter was called ``dataset`` until 2.7.0. That spelling still
+    works and is remapped with a ``FutureWarning`` until 2.10.0.
+
     Args:
-        dataset: Dataset to download, as a `Dataset` enum or string
+        name: Dataset to download, as a `Dataset` enum or string
             name. Case-insensitive.
         split: Splits to download. If `None`, all available splits
             are downloaded.
@@ -101,7 +113,7 @@ def download_dataset(
             Cached ZIPs are verified by MD5 and reused when valid.
 
     Raises:
-        ValueError: If `dataset`, `split`, or `asset` contains an
+        ValueError: If `name`, `split`, or `asset` contains an
             unrecognized value.
 
     Examples:
@@ -109,7 +121,7 @@ def download_dataset(
 
         >>> from trackers import Dataset, DatasetAsset, DatasetSplit, download_dataset
         >>> download_dataset(  # doctest: +SKIP
-        ...     dataset=Dataset.MOT17,
+        ...     name=Dataset.MOT17,
         ...     split=[DatasetSplit.TRAIN, DatasetSplit.VAL],
         ...     asset=[DatasetAsset.ANNOTATIONS],
         ... )
@@ -118,13 +130,13 @@ def download_dataset(
 
         >>> from trackers import download_dataset
         >>> download_dataset(  # doctest: +SKIP
-        ...     dataset="mot17",
+        ...     name="mot17",
         ...     split=["train"],
         ...     asset=["frames", "annotations"],
         ...     output="./datasets",
         ... )
     """
-    dataset_key = _resolve_dataset(dataset)
+    dataset_key = _resolve_dataset(name)
 
     output_dir = Path(output).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)

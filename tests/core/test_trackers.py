@@ -101,7 +101,7 @@ class _TrackingIoU(BaseIoU):
     ids=["single_detection", "two_detections"],
 )
 def test_tracker_update_does_not_mutate_input(tracker_id: str, xyxy: np.ndarray, confidence: np.ndarray) -> None:
-    """update() must not assign tracker_id on the caller's sv.Detections."""
+    """Update() must not assign tracker_id on the caller's sv.Detections."""
     tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     dets = sv.Detections(xyxy=xyxy)
     dets.confidence = confidence
@@ -115,7 +115,7 @@ def test_tracker_update_does_not_mutate_input(tracker_id: str, xyxy: np.ndarray,
 
 @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
 def test_tracker_update_empty_does_not_mutate_input(tracker_id: str) -> None:
-    """update() with empty detections must not mutate input."""
+    """Update() with empty detections must not mutate input."""
     tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     dets = sv.Detections(xyxy=np.zeros((0, 4), dtype=float))
     dets.confidence = np.array([], dtype=float)
@@ -177,9 +177,8 @@ def test_no_confidence_detections_can_spawn_confirmed_tracks(tracker_id: str) ->
 def test_no_confidence_matches_explicit_ones_confidence(tracker_id: str, xyxy_boxes: np.ndarray) -> None:
     """Every tracker treats confidence=None the same as all-ones across multi-box batches.
 
-    Multi-detection batches exercise confidence bucketing in trackers that split
-    high/low detections; a regression that mis-buckets ``confidence=None`` would
-    still pass single-box equality but diverge here.
+    Multi-detection batches exercise confidence bucketing in trackers that split high/low detections; a regression that
+    mis-buckets ``confidence=None`` would still pass single-box equality but diverge here.
     """
     no_confidence_tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     explicit_confidence_tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
@@ -205,11 +204,10 @@ def test_no_confidence_matches_explicit_ones_confidence(tracker_id: str, xyxy_bo
 
 
 def test_bytetrack_no_confidence_spawns_tracks_below_activation_threshold() -> None:
-    """confidence=None must route every detection to Stage 1 even when explicit-low-conf would not spawn.
+    """Confidence=None must route every detection to Stage 1 even when explicit-low-conf would not spawn.
 
-    Asserts the actual semantic of treating `None` as 1.0: explicit
-    confidences that fall under `track_activation_threshold` get suppressed
-    in the low-confidence branch, but the same boxes with `confidence=None`
+    Asserts the actual semantic of treating `None` as 1.0: explicit confidences that fall under
+    `track_activation_threshold` get suppressed in the low-confidence branch, but the same boxes with `confidence=None`
     still produce confirmed tracker IDs.
     """
     activation_threshold = 0.6
@@ -250,6 +248,124 @@ def test_bytetrack_no_confidence_spawns_tracks_below_activation_threshold() -> N
     assert np.all(no_confidence_result.tracker_id >= 0), "confidence=None should spawn confirmed tracks for every box"
     assert np.all(low_confidence_result.tracker_id < 0), (
         "explicit low confidence below activation threshold should NOT spawn tracks"
+    )
+
+
+def test_bytetrack_returns_unmatched_detection_between_thresholds() -> None:
+    """A detection whose confidence sits between high_conf_det_threshold and track_activation_threshold must still be
+    returned (with tracker_id -1) when it matches no track, not silently dropped."""
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.6,
+        track_activation_threshold=0.7,
+    )
+    detections = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0], [100.0, 100.0, 140.0, 140.0], [200.0, 200.0, 240.0, 240.0]]),
+        confidence=np.array([0.50, 0.65, 0.80]),  # low / mid (in the gap) / high
+    )
+
+    result = tracker.update(detections)
+
+    assert len(result) == 3, "every detection must be returned, including the mid-confidence one"
+    assert result.confidence is not None
+    # compare with a tolerance: confidence may be stored as float32
+    np.testing.assert_allclose(np.sort(result.confidence), [0.50, 0.65, 0.80], atol=1e-6)
+    assert result.tracker_id is not None
+    assert np.all(result.tracker_id == -1), "no detection matches a track on the first frame"
+
+
+def test_bytetrack_all_detections_in_gap() -> None:
+    """All detections in [high_conf_det_threshold, track_activation_threshold) return tracker_id=-1.
+
+    When every detection falls in the confidence gap, Stage 2 loop is empty and _spawn_new_tracks processes them all but
+    spawns no tracks.
+    """
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.5,
+        track_activation_threshold=0.8,
+    )
+    detections = sv.Detections(
+        xyxy=np.array([[0.0, 0.0, 10.0, 10.0], [20.0, 20.0, 30.0, 30.0]]),
+        confidence=np.array([0.55, 0.70]),  # both in gap
+    )
+
+    result = tracker.update(detections)
+
+    assert len(result) == 2
+    assert result.tracker_id is not None
+    assert np.all(result.tracker_id == -1)
+    assert len(tracker.tracks) == 0, "no tracks spawned when confidence below activation threshold"
+
+
+def test_bytetrack_mid_gap_detection_returned_across_frames() -> None:
+    """Mid-gap detection (tracker_id=-1) continues to appear in output on frame 2+.
+
+    A regression where a mid-gap detection stops being returned on subsequent frames would not be caught by the single-
+    frame test.
+    """
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.6,
+        track_activation_threshold=0.7,
+    )
+    mid_gap_det = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0]]),
+        confidence=np.array([0.65]),  # in gap
+    )
+
+    result_f1 = tracker.update(mid_gap_det)
+    result_f2 = tracker.update(mid_gap_det)
+
+    assert len(result_f1) == 1
+    assert result_f1.tracker_id is not None
+    assert np.all(result_f1.tracker_id == -1)
+    assert len(result_f2) == 1
+    assert result_f2.tracker_id is not None
+    assert np.all(result_f2.tracker_id == -1)
+
+
+def test_bytetrack_mid_gap_detection_matched_in_stage1() -> None:
+    """Mid-gap detection overlapping a confirmed track is matched in Stage 1.
+
+    A detection with confidence in [high_conf_det_threshold, track_activation_threshold)
+    qualifies for Stage 1 matching; if it overlaps an existing confirmed track it should
+    receive the track's positive tracker_id, not -1.
+
+    Three-frame sequence: frame 1 spawns the track (tracker_id=-1), frame 2 matches and
+    promotes it to a positive ID (minimum_consecutive_frames=1), frame 3 presents a
+    mid-gap detection that is matched in Stage 1 and receives the same positive ID.
+    """
+    tracker = ByteTrackTracker(
+        high_conf_det_threshold=0.6,
+        track_activation_threshold=0.7,
+        minimum_consecutive_frames=1,
+    )
+    box = np.array([[10.0, 10.0, 50.0, 50.0]])
+
+    # Frame 1: high-conf detection spawns a tentative track (tracker_id=-1).
+    frame1 = sv.Detections(xyxy=box, confidence=np.array([0.80]))
+    result1 = tracker.update(frame1)
+    assert len(result1) == 1
+    assert result1.tracker_id is not None
+    assert result1.tracker_id[0] == -1, "newly spawned track is tentative on frame 1"
+
+    # Frame 2: same high-conf detection matches the track — now 1 consecutive update.
+    # minimum_consecutive_frames=1 → track is promoted to a positive ID.
+    frame2 = sv.Detections(xyxy=box, confidence=np.array([0.80]))
+    result2 = tracker.update(frame2)
+    assert len(result2) == 1
+    assert result2.tracker_id is not None
+    confirmed_id = result2.tracker_id[0]
+    assert confirmed_id >= 0, "track promoted to positive ID after minimum_consecutive_frames=1 matches"
+
+    # Frame 3: mid-gap confidence at the same position.
+    # conf=0.65 >= high_conf_det_threshold=0.6 → qualifies for Stage 1 matching.
+    # Overlaps the confirmed track → matched → receives the track's positive ID.
+    frame3 = sv.Detections(xyxy=box, confidence=np.array([0.65]))
+    result3 = tracker.update(frame3)
+
+    assert len(result3) == 1
+    assert result3.tracker_id is not None
+    assert result3.tracker_id[0] == confirmed_id, (
+        "mid-gap det matched to confirmed track must receive the track's positive ID, not -1"
     )
 
 
@@ -355,7 +471,7 @@ def _run_until_n_confirmed(
 
 @pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
 def test_reset_clears_tracks_and_restarts_ids(tracker_id: str) -> None:
-    """reset() must clear state and restart tracker IDs from zero."""
+    """Reset() must clear state and restart tracker IDs from zero."""
     tracker = _instantiate(tracker_id, minimum_consecutive_frames=1)
     det = _detection((100.0, 100.0, 200.0, 200.0))
 
@@ -426,7 +542,7 @@ def test_cbiou_monotonic_ids_within_single_session() -> None:
 # automatically without any explicit call from the tracker.
 #
 # These tests pin the contract for every concrete tracker:
-# 1. A confirmed track is pruned after ``lost_track_buffer + N`` empty frames.
+# 1. A confirmed track is pruned once the scaled ``lost_track_buffer`` is exceeded.
 # 2. ``time_since_update`` actually advances when frames are missed.
 # 3. A confirmed track survives a short occlusion.
 # 4. Tracks spawned after frame 1 start unconfirmed.
@@ -521,6 +637,118 @@ def test_track_survives_short_occlusion(tracker_id: str) -> None:
     assert tracker.tracks[0].tracker_id == confirmed_id, "confirmed track must survive a short gap"
 
 
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+def test_track_survives_exact_lost_buffer_boundary(tracker_id: str) -> None:
+    """lost_track_buffer=N keeps a confirmed track alive for exactly N missed frames."""
+    tracker = _instantiate(
+        tracker_id,
+        lost_track_buffer=3,
+        frame_rate=30,
+        minimum_consecutive_frames=1,
+    )
+    bbox = (100.0, 100.0, 200.0, 200.0)
+
+    _run_until_confirmed(tracker, _detection(bbox))
+
+    for _ in range(tracker.maximum_frames_without_update):
+        tracker.update(sv.Detections.empty())
+
+    assert len(tracker.tracks) == 1, "track must survive through the full lost buffer"
+    assert tracker.tracks[0].time_since_update == tracker.maximum_frames_without_update
+
+    tracker.update(sv.Detections.empty())
+
+    assert len(tracker.tracks) == 0, "track must expire after the lost buffer is exceeded"
+
+
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+def test_low_frame_rate_lost_buffer_rounds_up_to_one_frame(tracker_id: str) -> None:
+    """Low-FPS scaling must not floor a positive lost_track_buffer to zero."""
+    tracker = _instantiate(
+        tracker_id,
+        lost_track_buffer=1,
+        frame_rate=10,
+        minimum_consecutive_frames=1,
+    )
+    bbox = (100.0, 100.0, 200.0, 200.0)
+
+    assert tracker.maximum_frames_without_update == 1
+
+    _run_until_confirmed(tracker, _detection(bbox))
+    tracker.update(sv.Detections.empty())
+
+    assert len(tracker.tracks) == 1, "one requested missed frame must be preserved"
+    assert tracker.tracks[0].time_since_update == 1
+
+    tracker.update(sv.Detections.empty())
+
+    assert len(tracker.tracks) == 0, "track expires once the one-frame buffer is exceeded"
+
+
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+def test_zero_lost_buffer_expires_on_first_missed_frame(tracker_id: str) -> None:
+    """lost_track_buffer=0 is an explicit no-grace-period configuration."""
+    tracker = _instantiate(
+        tracker_id,
+        lost_track_buffer=0,
+        frame_rate=30,
+        minimum_consecutive_frames=1,
+    )
+    bbox = (100.0, 100.0, 200.0, 200.0)
+
+    assert tracker.maximum_frames_without_update == 0
+
+    _run_until_confirmed(tracker, _detection(bbox))
+    assert len(tracker.tracks) == 1
+
+    tracker.update(sv.Detections.empty())
+
+    assert len(tracker.tracks) == 0, "zero buffer must prune on the first missed frame"
+
+
+@pytest.mark.parametrize(
+    "lost_track_buffer,frame_rate,expected",
+    [
+        pytest.param(30, 30, 30, id="baseline_30fps"),
+        pytest.param(30, 60, 60, id="double_fps"),
+        pytest.param(30, 120, 120, id="quad_fps"),
+        pytest.param(3, 15, 2, id="ceil_over_int_noninteger"),
+        pytest.param(5, 10, 2, id="ceil_fraction"),
+        pytest.param(1, 10, 1, id="low_fps_min_one"),
+        pytest.param(0, 30, 0, id="zero_buffer_passthrough"),
+    ],
+)
+def test_compute_maximum_frames_without_update_scaling(
+    lost_track_buffer: int,
+    frame_rate: float,
+    expected: int,
+) -> None:
+    """_compute_maximum_frames_without_update uses ceil; non-integer intermediates round up."""
+    result = BaseTracker._compute_maximum_frames_without_update(lost_track_buffer, frame_rate)
+    assert result == expected
+
+
+@pytest.mark.parametrize("tracker_id", ALL_TRACKER_IDS)
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        pytest.param({"lost_track_buffer": -1}, id="negative_buffer"),
+        pytest.param({"frame_rate": 0}, id="zero_frame_rate"),
+        pytest.param({"frame_rate": -30}, id="negative_frame_rate"),
+        pytest.param({"frame_rate": float("inf")}, id="inf_frame_rate"),
+        pytest.param({"frame_rate": float("nan")}, id="nan_frame_rate"),
+        pytest.param({"frame_rate": float("-inf")}, id="neg_inf_frame_rate"),
+    ],
+)
+def test_lost_buffer_configuration_rejects_invalid_values(
+    tracker_id: str,
+    kwargs: dict[str, int | float],
+) -> None:
+    """Non-negative lost_track_buffer and positive finite frame_rate are required."""
+    with pytest.raises(ValueError):
+        _instantiate(tracker_id, **kwargs)
+
+
 # ==========================================================================
 # 4. tracked_objects property
 # ==========================================================================
@@ -556,6 +784,7 @@ def test_tracked_objects_exposes_mature_track(tracker_id: str) -> None:
 
     exposed = tracker.tracked_objects
     assert len(exposed) == 1
+    assert exposed.tracker_id is not None
     assert exposed.tracker_id[0] != -1
     pred = exposed.xyxy[0]
     assert np.allclose(pred, np.array(bbox), atol=10.0), f"predicted box {pred} drifted far from input {bbox}"
@@ -586,6 +815,7 @@ def test_tracked_objects_multiple_simultaneous_tracks(tracker_id: str) -> None:
     assert len(exposed) == 2
     assert exposed.xyxy.shape == (2, 4)
 
+    assert exposed.tracker_id is not None
     tracker_ids = exposed.tracker_id
     assert tracker_ids.shape == (2,)
     assert np.all(tracker_ids >= 0)
@@ -606,6 +836,7 @@ def test_tracked_objects_survives_occlusion(tracker_id: str) -> None:
 
     exposed = tracker.tracked_objects
     assert len(exposed) == 1, "tracked_objects must keep alive-but-occluded track"
+    assert exposed.tracker_id is not None
     assert exposed.tracker_id[0] != -1
     assert np.all(np.isfinite(exposed.xyxy)), "Kalman prediction must be finite"
 
@@ -654,3 +885,396 @@ def test_sort_trackers_property_emits_future_warning() -> None:
         result = tracker.trackers
     assert result is tracker.tracks
     assert isinstance(type(tracker).__dict__["trackers"], property)
+
+
+def test_ocsort_returns_low_confidence_detections() -> None:
+    """A detection below high_conf_det_threshold must still be returned (tracker_id=-1), not silently dropped.
+
+    OC-SORT excludes low-confidence detections from association/spawning entirely (it has no ByteTrack-style low-
+    confidence recovery stage), but the output must still include one row per input detection, matching the documented
+    update() contract and the behaviour of SORT/ByteTrack. BoT-SORT/CBIoU/McByte are stricter -- they discard detections
+    with confidence <= 0.1 outright. Per-detection metadata (`class_id`, custom `data` entries) must ride along on the
+    low-confidence rows too: the output is built by indexing back into the caller's `sv.Detections`, not rebuilt from
+    boxes alone.
+    """
+    tracker = OCSORTTracker(high_conf_det_threshold=0.6)
+    detections = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0], [100.0, 100.0, 140.0, 140.0], [200.0, 200.0, 240.0, 240.0]]),
+        confidence=np.array([0.3, 0.5, 0.9]),  # 2 below threshold, 1 above
+        class_id=np.array([7, 8, 9]),
+        data={"source": np.array(["cam-a", "cam-b", "cam-c"])},
+    )
+
+    result = tracker.update(detections)
+
+    assert len(result) == 3, "every input detection must be returned, including low-confidence ones"
+    assert result.confidence is not None
+    np.testing.assert_allclose(np.sort(result.confidence), [0.3, 0.5, 0.9], atol=1e-6)
+    assert result.tracker_id is not None
+    assert np.all(result.tracker_id == -1), "nothing matches a track yet on the first frame"
+
+    # Output rows may be reordered; input confidences are strictly ascending, so sorting by
+    # confidence restores input order and lets per-row metadata be compared position by position.
+    input_order = np.argsort(result.confidence)
+    assert result.class_id is not None
+    np.testing.assert_array_equal(result.class_id[input_order], [7, 8, 9])
+    np.testing.assert_array_equal(result.data["source"][input_order], ["cam-a", "cam-b", "cam-c"])
+
+
+def test_ocsort_low_confidence_detection_returned_across_frames() -> None:
+    """Low-confidence detection (tracker_id=-1) keeps appearing in output on frame 2+, and never spawns a track.
+
+    A regression where a low-confidence detection stops being returned on subsequent frames would not be caught by the
+    single-frame test above.
+    """
+    tracker = OCSORTTracker(high_conf_det_threshold=0.6)
+    low_conf_det = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0]]),
+        confidence=np.array([0.3]),
+    )
+
+    result_f1 = tracker.update(low_conf_det)
+    result_f2 = tracker.update(low_conf_det)
+
+    assert len(result_f1) == 1
+    assert result_f1.tracker_id is not None
+    assert np.all(result_f1.tracker_id == -1)
+    assert len(result_f2) == 1
+    assert result_f2.tracker_id is not None
+    assert np.all(result_f2.tracker_id == -1)
+    assert len(tracker.tracks) == 0, "low-confidence detections never spawn a track"
+
+
+def test_ocsort_high_confidence_detection_unaffected_by_low_confidence_row() -> None:
+    """A high-confidence detection is tracked normally even with a low-confidence detection present every frame.
+
+    The low-confidence detection deliberately sits at input index 0, leaving the high-confidence one at index 1. Keep
+    that order: it makes ``high_indices == [1]``, so the association/spawn path must apply a real ``high_indices[col]``
+    remap instead of an identity no-op.
+    """
+    tracker = OCSORTTracker(high_conf_det_threshold=0.6, minimum_consecutive_frames=2)
+    high_box = (100.0, 100.0, 200.0, 200.0)
+    low_box = (10.0, 10.0, 50.0, 50.0)
+    detections = sv.Detections(
+        xyxy=np.array([low_box, high_box]),
+        confidence=np.array([0.3, 0.9]),
+    )
+
+    tracker.update(detections)
+    result = tracker.update(detections)
+
+    assert len(result) == 2
+    assert result.tracker_id is not None
+    assert result.confidence is not None
+    high_row = int(np.argmax(result.confidence))
+    low_row = int(np.argmin(result.confidence))
+    assert result.tracker_id[high_row] >= 0, "high-confidence detection should be a confirmed track after 2 frames"
+    assert result.tracker_id[low_row] == -1, "low-confidence detection is never associated or spawned"
+    np.testing.assert_allclose(result.xyxy[high_row], high_box)
+    np.testing.assert_allclose(result.xyxy[low_row], low_box)
+
+
+def test_ocsort_none_confidence_bypasses_threshold_entirely() -> None:
+    """With confidence=None, every detection is high-confidence regardless of high_conf_det_threshold's value.
+
+    A threshold above 1.0 is never satisfied by the fabricated 1.0 default, so a naive `default_confidences(...) >=
+    threshold` comparison would push every detection into the never-associated low-confidence path. That would silently
+    change behaviour relative to develop HEAD, where the filter is skipped entirely (not compared) when
+    `detections.confidence is None`.
+    """
+    tracker = OCSORTTracker(high_conf_det_threshold=1.5, minimum_consecutive_frames=1)
+    detections = sv.Detections(xyxy=np.array([[10.0, 10.0, 50.0, 50.0]]))
+
+    result_f1 = tracker.update(detections)
+    result_f2 = tracker.update(detections)
+
+    assert result_f1.tracker_id is not None
+    assert result_f1.tracker_id[0] == -1, "immature on the first frame"
+    assert result_f2.tracker_id is not None
+    assert result_f2.tracker_id[0] >= 0, "confirmed track by the second frame -- threshold was bypassed, not applied"
+
+
+def test_ocsort_confidence_equal_to_threshold_is_high_confidence() -> None:
+    """A detection with confidence exactly equal to high_conf_det_threshold is high-confidence (`>=`, not `>`)."""
+    tracker = OCSORTTracker(high_conf_det_threshold=0.6, minimum_consecutive_frames=1)
+    detections = sv.Detections(
+        xyxy=np.array([[10.0, 10.0, 50.0, 50.0]]),
+        confidence=np.array([0.6]),
+    )
+
+    result_f1 = tracker.update(detections)
+    result_f2 = tracker.update(detections)
+
+    assert len(tracker.tracks) == 1, "confidence == threshold must spawn a track, not stay in the low path"
+    assert result_f1.tracker_id is not None and result_f1.tracker_id[0] == -1, "immature on the first frame"
+    assert result_f2.tracker_id is not None and result_f2.tracker_id[0] >= 0, "confirmed by the second frame"
+
+
+def test_ocsort_low_confidence_detection_never_recovered_via_overlap() -> None:
+    """A low-confidence detection overlapping a confirmed track's box is still never associated to it.
+
+    OC-SORT has no ByteTrack-style low-confidence recovery stage: low-confidence
+    detections must stay out of both the primary (OCM) and second-chance (OCR)
+    association passes even when they would win on IoU alone.
+    """
+    tracker = OCSORTTracker(high_conf_det_threshold=0.6, minimum_consecutive_frames=1, lost_track_buffer=30)
+    box = (100.0, 100.0, 200.0, 200.0)
+    high_conf_det = sv.Detections(xyxy=np.array([box]), confidence=np.array([0.9]))
+    tracker.update(high_conf_det)  # confirm a track at `box`
+
+    # Track goes unmatched this frame (no detections at all), then a low-confidence
+    # detection at the *same* box arrives -- perfect IoU, but confidence is too low.
+    tracker.update(sv.Detections.empty())
+    low_conf_same_box = sv.Detections(xyxy=np.array([box]), confidence=np.array([0.1]))
+    result = tracker.update(low_conf_same_box)
+
+    assert result.tracker_id is not None
+    assert result.tracker_id[0] == -1, "perfect IoU overlap must not recover a low-confidence detection"
+
+
+def test_ocsort_ocr_recovery_remaps_reordered_detection_index() -> None:
+    """A track recovered by the second-chance (OCR) pass must be reported on the *input* detection row.
+
+    OCR indexes into the high-confidence subset, so its output rows go through the ``high_indices[col]`` remap. Putting
+    the high-confidence detection at input index 1 -- behind a low-confidence row -- makes that remap non-trivial (every
+    other OC-SORT test leaves it an identity no-op at index 0), so a bug emitting the local subset index would attach
+    the recovered tracker_id to the wrong detection.
+    """
+    tracker = OCSORTTracker(high_conf_det_threshold=0.6, minimum_consecutive_frames=1, lost_track_buffer=30)
+    spawn_box = (100.0, 100.0, 200.0, 200.0)
+    last_seen_box = (140.0, 100.0, 240.0, 200.0)
+    low_conf_box = (500.0, 500.0, 560.0, 560.0)
+    tracker.update(sv.Detections(xyxy=np.array([spawn_box]), confidence=np.array([0.9])))
+    tracker.update(sv.Detections(xyxy=np.array([last_seen_box]), confidence=np.array([0.9])))
+    # Missed frame: the Kalman prediction keeps moving and overshoots `last_seen_box`, so next
+    # frame the primary (OCM) pass falls under the IoU threshold and only OCR can recover.
+    tracker.update(sv.Detections.empty())
+
+    # Object reappears exactly where it was last *observed*, but now at input index 1.
+    result = tracker.update(
+        sv.Detections(
+            xyxy=np.array([low_conf_box, last_seen_box]),
+            confidence=np.array([0.3, 0.9]),
+        )
+    )
+
+    assert len(result) == 2, "both input detections must be returned"
+    assert result.tracker_id is not None
+    assert result.confidence is not None
+    recovered_row = int(np.argmax(result.tracker_id))
+    assert result.tracker_id[recovered_row] >= 0, "the drifted track must be recovered by the OCR pass"
+    np.testing.assert_allclose(result.xyxy[recovered_row], last_seen_box)
+    np.testing.assert_allclose(result.confidence[recovered_row], 0.9)
+    assert len(tracker.tracks) == 1, "the low-confidence row must not spawn a second track"
+
+
+# ==========================================================================
+# 6. Non-finite detections
+# ==========================================================================
+
+# McByte is not in ALL_TRACKER_IDS but runs mask-free on a base install, and its update() needs the same guard.
+_NON_FINITE_TRACKER_IDS = [*ALL_TRACKER_IDS, "mcbyte"]
+_WARMUP_TIMESTAMPS = (0.0, 0.04)
+_BAD_TIMESTAMP = 0.08
+_BACKWARDS_TIMESTAMP = 0.02
+_NEXT_TIMESTAMP = 0.12
+_TRACKED_BOX = (10.0, 10.0, 50.0, 50.0)
+
+
+def _warmed_up_tracker(tracker_id: str) -> BaseTracker:
+    """Build a tracker holding one confirmed track after two timestamped frames."""
+    kwargs: dict[str, object] = {"minimum_consecutive_frames": 1}
+    if tracker_id in ("botsort", "mcbyte"):
+        kwargs["enable_cmc"] = False
+    tracker = _instantiate(tracker_id, **kwargs)
+    for timestamp in _WARMUP_TIMESTAMPS:
+        tracker.update(_detection(_TRACKED_BOX), timestamp=timestamp)
+    assert len(tracker.tracks) == 1
+    return tracker
+
+
+def _frame_with_bad_row(coordinate: float, confidence: float) -> sv.Detections:
+    """A valid detection on the track plus one row whose x_min is ``coordinate``.
+
+    The bad value is written after construction: supervision>=0.31 rejects non-finite boxes in
+    ``sv.Detections(...)``, but not boxes changed in place, which is how they can still reach a tracker.
+    """
+    detections = sv.Detections(
+        xyxy=np.array([_TRACKED_BOX, _TRACKED_BOX], dtype=np.float32),
+        confidence=np.array([0.9, confidence], dtype=np.float32),
+        class_id=np.zeros(2, dtype=int),
+    )
+    detections.xyxy[1, 0] = coordinate
+    return detections
+
+
+def _state_snapshot(tracker: BaseTracker) -> tuple[list[tuple[int, int, int]], float | None, int]:
+    """Capture the per-track counters, timestamp anchor and ID counter that a failed update must not move."""
+    tracks = [(t.time_since_update, t.age, t.tracker_id) for t in tracker.tracks]
+    return tracks, tracker._last_timestamp, tracker._next_track_id
+
+
+@pytest.mark.parametrize("tracker_id", _NON_FINITE_TRACKER_IDS)
+@pytest.mark.parametrize("coordinate", [pytest.param(float("nan"), id="nan"), pytest.param(float("inf"), id="inf")])
+@pytest.mark.parametrize(
+    "confidence", [pytest.param(0.9, id="high-confidence"), pytest.param(0.1, id="low-confidence")]
+)
+class TestNonFiniteDetections:
+    """``update()`` rejects non-finite boxes before any tracker state is advanced."""
+
+    def test_raises_value_error(self, tracker_id: str, coordinate: float, confidence: float) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+
+        with pytest.raises(ValueError, match="non-finite"):
+            tracker.update(_frame_with_bad_row(coordinate, confidence), timestamp=_BAD_TIMESTAMP)
+
+    def test_raises_when_update_would_be_skipped(self, tracker_id: str, coordinate: float, confidence: float) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+
+        with pytest.raises(ValueError, match="non-finite"):
+            tracker.update(_frame_with_bad_row(coordinate, confidence), timestamp=_BACKWARDS_TIMESTAMP)
+
+    def test_leaves_track_state_untouched(self, tracker_id: str, coordinate: float, confidence: float) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+        expected = _state_snapshot(tracker)
+
+        with pytest.raises(ValueError, match="non-finite"):
+            tracker.update(_frame_with_bad_row(coordinate, confidence), timestamp=_BAD_TIMESTAMP)
+
+        assert _state_snapshot(tracker) == expected
+
+    def test_next_frame_matches_control_tracker(self, tracker_id: str, coordinate: float, confidence: float) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+        control = _warmed_up_tracker(tracker_id)
+        with pytest.raises(ValueError, match="non-finite"):
+            tracker.update(_frame_with_bad_row(coordinate, confidence), timestamp=_BAD_TIMESTAMP)
+
+        result = tracker.update(_detection(_TRACKED_BOX), timestamp=_NEXT_TIMESTAMP)
+        expected = control.update(_detection(_TRACKED_BOX), timestamp=_NEXT_TIMESTAMP)
+
+        assert result.tracker_id is not None
+        assert expected.tracker_id is not None
+        np.testing.assert_array_equal(result.tracker_id, expected.tracker_id)
+        np.testing.assert_array_equal(result.xyxy, expected.xyxy)
+        assert _state_snapshot(tracker) == _state_snapshot(control)
+
+
+# ==========================================================================
+# 7. Input fields on empty results
+# ==========================================================================
+
+# McByte is not in ALL_TRACKER_IDS but runs mask-free on a base install.
+_EMPTY_RESULT_TRACKER_IDS = [*ALL_TRACKER_IDS, "mcbyte"]
+_MASK_SHAPE = (60, 60)
+# These trackers discard detections with confidence <= 0.1; the others return them with tracker_id=-1.
+_DISCARDS_LOW_CONFIDENCE = ("botsort", "cbiou", "mcbyte")
+
+
+def _detections_with_fields(confidence: list[float]) -> sv.Detections:
+    """One row per confidence, with a mask, a data field and frame-level metadata."""
+    count = len(confidence)
+    detections = sv.Detections(
+        xyxy=np.array([_TRACKED_BOX] * count, dtype=np.float32).reshape(-1, 4),
+        mask=np.zeros((count, *_MASK_SHAPE), dtype=bool),
+        confidence=np.array(confidence, dtype=np.float32),
+        class_id=np.zeros(count, dtype=int),
+        data={"class_name": np.array(["person"] * count, dtype=str)},
+    )
+    detections.metadata["camera"] = "cam-a"
+    return detections
+
+
+def _assert_keeps_fields(result: sv.Detections, class_names: list[str]) -> None:
+    assert len(result) == len(class_names)
+    assert result.tracker_id is not None
+    assert len(result.tracker_id) == len(class_names)
+    assert list(result.data) == ["class_name"], "update() must keep the input's data keys"
+    np.testing.assert_array_equal(result.data["class_name"], class_names)
+    assert result.mask is not None, "update() must keep the input's mask"
+    assert result.mask.shape == (len(class_names), *_MASK_SHAPE)
+    assert result.metadata == {"camera": "cam-a"}
+    assert result.xyxy.dtype == np.float32, "update() must keep the input's dtypes"
+    assert result.confidence is not None
+    assert result.confidence.dtype == np.float32
+    assert result.class_id is not None
+    assert result.class_id.dtype == np.zeros(1, dtype=int).dtype
+    assert result.mask.dtype == bool
+    assert result.data["class_name"].dtype.kind == "U"
+    assert result.tracker_id.dtype.kind == "i"
+
+
+def _empty_input_variants() -> dict[str, sv.Detections]:
+    """Zero-row inputs in the shapes that supervision versions index differently."""
+    return {
+        "empty": sv.Detections.empty(),
+        "no_optional_fields": sv.Detections(xyxy=np.empty((0, 4), dtype=np.float64)),
+        "with_fields": _detections_with_fields([]),
+        "zero_row_data_key": sv.Detections(
+            xyxy=np.empty((0, 4), dtype=np.float32), data={"class_name": np.array([], dtype=str)}
+        ),
+    }
+
+
+@pytest.mark.parametrize("variant", list(_empty_input_variants()))
+@pytest.mark.parametrize("tracker_id", _EMPTY_RESULT_TRACKER_IDS)
+def test_empty_result_is_fresh_and_input_unchanged(tracker_id: str, variant: str) -> None:
+    """An empty result is a new object and leaves the caller's detections unchanged."""
+    detections = _empty_input_variants()[variant]
+    expected_keys = list(detections.data)
+
+    result = _instantiate(tracker_id).update(detections)
+
+    assert result is not detections
+    assert detections.tracker_id is None, "update() must not assign tracker_id on the caller's detections"
+    assert list(detections.data) == expected_keys
+    assert result.tracker_id is not None
+    assert len(result.tracker_id) == 0
+
+
+@pytest.mark.parametrize("tracker_id", _EMPTY_RESULT_TRACKER_IDS)
+class TestEmptyResultKeepsInputFields:
+    """An empty ``update()`` result keeps ``data`` keys, ``mask`` and ``metadata``, as a non-empty result does."""
+
+    def test_without_tracks(self, tracker_id: str) -> None:
+        result = _instantiate(tracker_id).update(_detections_with_fields([]))
+
+        _assert_keeps_fields(result, [])
+
+    def test_with_live_tracks(self, tracker_id: str) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+
+        result = tracker.update(_detections_with_fields([]), timestamp=_NEXT_TIMESTAMP)
+
+        _assert_keeps_fields(result, [])
+
+    def test_skipped_update(self, tracker_id: str) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+
+        with pytest.warns(UserWarning):
+            result = tracker.update(_detections_with_fields([]), timestamp=_BACKWARDS_TIMESTAMP)
+
+        _assert_keeps_fields(result, [])
+
+    def test_missing_fields_stay_missing(self, tracker_id: str) -> None:
+        result = _instantiate(tracker_id).update(sv.Detections(xyxy=np.empty((0, 4), dtype=np.float64)))
+
+        assert len(result) == 0
+        assert result.xyxy.dtype == np.float64, "update() must keep the input's dtypes"
+        assert result.confidence is None
+        assert result.class_id is None
+
+    @pytest.mark.parametrize(
+        "confidence",
+        [
+            pytest.param([0.05], id="below-threshold"),
+            pytest.param([0.1], id="at-threshold"),
+            pytest.param([0.05, 0.1], id="multi-row"),
+        ],
+    )
+    def test_only_low_confidence_detections(self, tracker_id: str, confidence: list[float]) -> None:
+        """Rows at or below the 0.1 confidence cut-off are dropped or kept per tracker, fields intact either way."""
+        result = _instantiate(tracker_id).update(_detections_with_fields(confidence))
+
+        kept = [] if tracker_id in _DISCARDS_LOW_CONFIDENCE else ["person"] * len(confidence)
+        _assert_keeps_fields(result, kept)
+        assert all(result.tracker_id == -1)

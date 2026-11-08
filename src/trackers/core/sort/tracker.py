@@ -8,7 +8,7 @@ from typing import ClassVar
 
 import numpy as np
 import supervision as sv
-from deprecate import deprecated
+from deprecate import TargetMode, deprecated
 from scipy.optimize import linear_sum_assignment
 
 from trackers.core.base import BaseTracker
@@ -23,14 +23,12 @@ from trackers.utils.state_representations import (
 
 
 class SORTTracker(BaseTracker):
-    """In SORT, object tracking begins with high-confidence detections fed into a
-    Kalman filter framework assuming uniform motion for state prediction across frames.
-    Association occurs via IoU-based costs in the Hungarian algorithm, enforcing a
-    threshold to filter weak matches and initialize new identities. Tracks persist only
-    with consistent associations, terminating quickly to avoid erroneous propagation.
-    This detection-driven approach underscores the importance of upstream detector
-    performance in achieving competitive multi-object tracking results. Over time, SORT
-    has become a cornerstone for evaluating motion-based improvements in the field.
+    """In SORT, object tracking begins with high-confidence detections fed into a Kalman filter framework assuming
+    uniform motion for state prediction across frames. Association occurs via IoU-based costs in the Hungarian
+    algorithm, enforcing a threshold to filter weak matches and initialize new identities. Tracks persist only with
+    consistent associations, terminating quickly to avoid erroneous propagation. This detection-driven approach
+    underscores the importance of upstream detector performance in achieving competitive multi-object tracking results.
+    Over time, SORT has become a cornerstone for evaluating motion-based improvements in the field.
 
     SORT's standout strength is its real-time capability, processing hundreds of frames
     per second while maintaining accuracy comparable to more complex offline methods. It
@@ -43,12 +41,13 @@ class SORTTracker(BaseTracker):
     applicability.
 
     Args:
-        lost_track_buffer: `int` specifying number of frames to buffer when a
-            track is lost. Increasing this value enhances occlusion handling but
-            may increase ID switching for similar objects.
+        lost_track_buffer: Non-negative `int` specifying number of 30 FPS frames
+            to buffer when a track is lost. `0` deletes a confirmed track on the
+            first missed frame. Increasing this value enhances occlusion
+            handling but may increase ID switching for similar objects.
         frame_rate: `float` specifying video frame rate in frames per second.
-            Used to scale the lost track buffer for consistent tracking across
-            different frame rates.
+            Must be positive. Used to scale the lost track buffer for consistent
+            tracking across different frame rates.
         track_activation_threshold: `float` specifying minimum detection
             confidence to create new tracks. Higher values reduce false
             positives but may miss low-confidence objects.
@@ -88,22 +87,25 @@ class SORTTracker(BaseTracker):
         state_estimator_class: type[BaseStateEstimator] = XYXYStateEstimator,
         iou: BaseIoU | None = None,
     ) -> None:
-        # Calculate maximum frames without update based on lost_track_buffer and
-        # frame_rate. This scales the buffer based on the frame rate to ensure
-        # consistent time-based tracking across different frame rates.
-        self.maximum_frames_without_update = int(frame_rate / 30.0 * lost_track_buffer)
+        self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
+            lost_track_buffer=lost_track_buffer,
+            frame_rate=frame_rate,
+        )
+        self.maximum_time_without_update: float = lost_track_buffer / 30.0
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.minimum_iou_threshold = minimum_iou_threshold
         self.track_activation_threshold = track_activation_threshold
         self.state_estimator_class = state_estimator_class
         self.iou = iou if iou is not None else IoU()
 
+        self._init_timestamp_state(frame_rate)
+
         # Active tracklets
         self.tracks: list[SORTTracklet] = []
         self._reset_id_allocator()
 
     @property
-    @deprecated(target=None, deprecated_in="2.5", remove_in="3.0")
+    @deprecated(target=TargetMode.NOTIFY, deprecated_in="2.5", remove_in="3.0")
     def trackers(self) -> list[SORTTracklet]:
         """Deprecated alias for :attr:`tracks`.
 
@@ -115,8 +117,7 @@ class SORTTracker(BaseTracker):
     def _get_associated_indices(
         self, iou_matrix: np.ndarray, detection_boxes: np.ndarray
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """
-        Associate detections to tracks based on IOU
+        """Associate detections to tracks based on IOU.
 
         Args:
             iou_matrix: IOU cost matrix.
@@ -167,7 +168,12 @@ class SORTTracker(BaseTracker):
                 )
                 self.tracks.append(new_tracker)
 
-    def update(self, detections: sv.Detections, frame: np.ndarray | None = None) -> sv.Detections:
+    def update(
+        self,
+        detections: sv.Detections,
+        frame: np.ndarray | None = None,
+        timestamp: float | None = None,
+    ) -> sv.Detections:
         """Update tracker state with new detections and return tracked objects.
         Performs Kalman filter prediction, IoU-based association, and initializes
         new tracks for unmatched high-confidence detections.
@@ -177,21 +183,39 @@ class SORTTracker(BaseTracker):
                 `(N, 4)` in `(x_min, y_min, x_max, y_max)` format and optional
                 confidence scores.
             frame: Ignored by SORT. If provided (not `None`), a warning is emitted.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
 
         Returns:
             sv.Detections with tracker_id assigned for each detection.
             Unmatched or immature tracks have tracker_id of -1.
+
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
+        Warns:
+            UserWarning: If ``frame`` is passed but SORT does not perform
+                camera motion compensation (CMC), the frame is ignored.
         """
+        self._validate_detections(detections)
         self._warn_if_frame_unused(frame)
+        timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
+
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         detection_boxes = detections.xyxy if len(detections) > 0 else np.array([]).reshape(0, 4)
 
-        for tracklet in self.tracks:
-            tracklet.predict()
+        self._predict_tracklets(self.tracks, timing)
+
+        # Ghost-ID prevention: budget-only filter before association.
+        # Keeps immature tracks alive for matching; full lifecycle prune runs after.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        self._prune_lost_tracks(timing)
 
         predicted_boxes = np.array([t.get_state_bbox() for t in self.tracks]) if self.tracks else np.empty((0, 4))
         iou_matrix = self.iou.compute(predicted_boxes, detection_boxes)
@@ -210,11 +234,12 @@ class SORTTracker(BaseTracker):
         confidences = default_confidences(detections)
         self._spawn_new_tracklets(confidences, detection_boxes, unmatched_detections)
 
-        # Remove dead tracklets
+        # Full lifecycle prune: also removes immature+unmatched tracks
         self.tracks = _get_alive_tracklets(
             self.tracks,
             self.minimum_consecutive_frames,
             self.maximum_frames_without_update,
+            _budget,
         )
 
         # Build tracker_ids from the recorded mapping (no deepcopy, no re-IoU)
@@ -227,13 +252,15 @@ class SORTTracker(BaseTracker):
 
         # Return a fresh sv.Detections rather than mutating the caller's object,
         # matching the aliasing semantics of ByteTrack and OC-SORT.
-        result = sv.Detections.empty() if len(detections) == 0 else detections[np.arange(len(detections))]
+        result = self._empty_result(detections) if len(detections) == 0 else detections[np.arange(len(detections))]
         result.tracker_id = tracker_ids
         return result
 
     def reset(self) -> None:
         """Reset tracker state by clearing all tracks and resetting ID counter.
+
         Call this method when switching to a new video or scene.
         """
         self.tracks = []
+        self._last_timestamp = None
         self._reset_id_allocator()

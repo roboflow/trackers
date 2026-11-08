@@ -16,7 +16,12 @@ import pytest
 
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.utils.cmc import CMC, CMCConfig
-from trackers.utils.state_representations import XYXYStateEstimator
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XCYCSRStateEstimator,
+    XCYCWHStateEstimator,
+    XYXYStateEstimator,
+)
 
 # All supported CMC methods.
 ALL_METHODS = ["sparseOptFlow", "orb", "sift", "ecc"]
@@ -49,16 +54,14 @@ def _xyxy_tracklet(bbox: np.ndarray) -> BoTSORTTracklet:
 class TestCMCEstimateAcrossMethods:
     """CMC.estimate() contract — parametrised over every supported method.
 
-    All tests instantiate CMC via `_make_cmc(method)` (skips when the method is
-    unavailable in the local OpenCV build) and feed it `_bgr_frame(...)` noise
-    frames; assertions cover the documented `estimate()` return contract:
-    shape (2, 3), dtype float32, identity on degenerate inputs, finite values
-    on real inputs.
+    All tests instantiate CMC via `_make_cmc(method)` (skips when the method is unavailable in the local OpenCV build)
+    and feed it `_bgr_frame(...)` noise frames; assertions cover the documented `estimate()` return contract: shape (2,
+    3), dtype float32, identity on degenerate inputs, finite values on real inputs.
     """
 
     @pytest.mark.parametrize("method", ALL_METHODS)
     def test_output_is_2x3_float32(self, method: str) -> None:
-        """estimate() must always return a (2, 3) float32 matrix."""
+        """Estimate() must always return a (2, 3) float32 matrix."""
         cmc = _make_cmc(method)
         frame1 = _bgr_frame(seed=0)
         frame2 = _bgr_frame(seed=1)
@@ -125,7 +128,7 @@ class TestCMCEstimateAcrossMethods:
 
     @pytest.mark.parametrize("method", ALL_METHODS)
     def test_downscale_produces_valid_output(self, method: str) -> None:
-        """downscale>1 must still return a finite (2,3) float32 transform."""
+        """Downscale>1 must still return a finite (2,3) float32 transform."""
         cmc_ds1 = _make_cmc(method, downscale=1)
         cmc_ds2 = _make_cmc(method, downscale=2)
 
@@ -149,9 +152,8 @@ class TestCMCEstimateAcrossMethods:
 class TestCMCApplyBatch:
     """`CMC.apply_batch` against center-state tracklets.
 
-    All tests build default `BoTSORTTracklet(bbox)` instances (center-state
-    estimator) and verify the batch entry-point against the per-track
-    `apply_cmc` contract (equivalence, multi-tracklet, no-op cases).
+    All tests build default `BoTSORTTracklet(bbox)` instances (center-state estimator) and verify the batch entry-point
+    against the per-track `apply_cmc` contract (equivalence, multi-tracklet, no-op cases).
     """
 
     def test_matches_single(self) -> None:
@@ -166,13 +168,13 @@ class TestCMCApplyBatch:
         CMC.apply_batch(H, [batched])
 
         np.testing.assert_allclose(
-            single.state_estimator.kf.x,
-            batched.state_estimator.kf.x,
+            single.state_estimator.kf.state,
+            batched.state_estimator.kf.state,
             atol=1e-6,
         )
         np.testing.assert_allclose(
-            single.state_estimator.kf.P,
-            batched.state_estimator.kf.P,
+            single.state_estimator.kf.state_covariance,
+            batched.state_estimator.kf.state_covariance,
             atol=1e-6,
         )
 
@@ -189,17 +191,17 @@ class TestCMCApplyBatch:
         CMC.apply_batch(H, batched)
 
         for s, b in zip(singles, batched):
-            np.testing.assert_allclose(s.state_estimator.kf.x, b.state_estimator.kf.x, atol=1e-6)
+            np.testing.assert_allclose(s.state_estimator.kf.state, b.state_estimator.kf.state, atol=1e-6)
 
     def test_none_is_noop(self) -> None:
         """CMC.apply_batch with H=None must not change any tracklet state."""
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         tracklet = BoTSORTTracklet(bbox)
-        state_before = tracklet.state_estimator.kf.x.copy()
+        state_before = tracklet.state_estimator.kf.state.copy()
 
         CMC.apply_batch(None, [tracklet])
 
-        np.testing.assert_array_equal(tracklet.state_estimator.kf.x, state_before)
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.state, state_before)
 
     def test_empty_list_is_noop(self) -> None:
         """CMC.apply_batch with an empty list must not raise."""
@@ -221,9 +223,8 @@ class TestCMCApplyBatch:
 class TestCMCApplyToXYXY:
     """Direct unit tests on `CMC.warp_xyxy_corners(x1, y1, x2, y2, R, t=None)`.
 
-    Each test passes raw 1-D NumPy arrays for the four corner channels and a
-    2x2 `R` (and optional 1-D `t`), then asserts on the four return arrays.
-    No tracklet, no Kalman state — just the pure helper contract.
+    Each test passes raw 1-D NumPy arrays for the four corner channels and a 2x2 `R` (and optional 1-D `t`), then
+    asserts on the four return arrays. No tracklet, no Kalman state — just the pure helper contract.
     """
 
     def test_identity_translation_only(self) -> None:
@@ -335,11 +336,9 @@ class TestCMCApplyToXYXY:
 class TestXYXYCovarianceUpdate:
     """Covariance (P) update contract for XYXY-state tracklets under CMC.
 
-    All tests build an `_xyxy_tracklet([10, 20, 50, 80])`, snapshot
-    `kf.P`, construct an H matrix from a chosen 2x2 R block, apply CMC
-    (single via `tracklet.apply_cmc`, batch via `tracker.apply_cmc_batch`),
-    then assert P either propagates as `A @ P @ A.T` (axis-aligned R) or
-    is left untouched (cross-axis R).
+    All tests build an `_xyxy_tracklet([10, 20, 50, 80])`, snapshot `kf.state_covariance`, construct an H matrix from a
+    chosen 2x2 R block, apply CMC (single via `tracklet.apply_cmc`, batch via `tracker.apply_cmc_batch`), then assert P
+    either propagates as `A @ P @ A.T` (axis-aligned R) or is left untouched (cross-axis R).
     """
 
     @pytest.mark.parametrize(
@@ -356,7 +355,7 @@ class TestXYXYCovarianceUpdate:
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R_off
         tracklet = _xyxy_tracklet(bbox)
-        P_before = tracklet.state_estimator.kf.P.copy()
+        P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
         tracklet.apply_cmc(H)
 
@@ -366,7 +365,7 @@ class TestXYXYCovarianceUpdate:
         A[4:6, 4:6] = R_off
         A[6:8, 6:8] = R_off
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
+        np.testing.assert_allclose(tracklet.state_estimator.kf.state_covariance, expected_P, atol=1e-9)
 
     @pytest.mark.parametrize(
         "R_cross",
@@ -383,11 +382,11 @@ class TestXYXYCovarianceUpdate:
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R_cross
         tracklet = _xyxy_tracklet(bbox)
-        P_before = tracklet.state_estimator.kf.P.copy()
+        P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
         tracklet.apply_cmc(H)
 
-        np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.state_covariance, P_before)
 
     @pytest.mark.parametrize(
         "R_cross",
@@ -402,11 +401,11 @@ class TestXYXYCovarianceUpdate:
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R_cross
         tracklet = _xyxy_tracklet(bbox)
-        P_before = tracklet.state_estimator.kf.P.copy()
+        P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
         CMC.apply_batch(H, [tracklet])
 
-        np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.state_covariance, P_before)
 
     def test_axis_aligned_updates_p_batch_path(self) -> None:
         """Batch path must update P when R is axis-aligned."""
@@ -415,7 +414,7 @@ class TestXYXYCovarianceUpdate:
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R
         tracklet = _xyxy_tracklet(bbox)
-        P_before = tracklet.state_estimator.kf.P.copy()
+        P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
         CMC.apply_batch(H, [tracklet])
 
@@ -425,16 +424,15 @@ class TestXYXYCovarianceUpdate:
         A[4:6, 4:6] = R
         A[6:8, 6:8] = R
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
+        np.testing.assert_allclose(tracklet.state_estimator.kf.state_covariance, expected_P, atol=1e-9)
 
 
 class TestXYXYAxisAlignedTolerance:
     """Boundary tests on the `atol=1e-6` axis-aligned classifier in CMC.
 
-    Both tests build the same `_xyxy_tracklet` and an R whose cross-axis
-    residual sits just below or just above 1e-6, then verify which branch
-    (P-update vs P-freeze) `tracklet.apply_cmc(H)` selected by inspecting
-    the post-call `kf.P`.
+    Both tests build the same `_xyxy_tracklet` and an R whose cross-axis residual sits just below or just above 1e-6,
+    then verify which branch (P-update vs P-freeze) `tracklet.apply_cmc(H)` selected by inspecting the post-call
+    `kf.state_covariance`.
     """
 
     def test_residual_below_atol_treated_as_axis_aligned(self) -> None:
@@ -444,7 +442,7 @@ class TestXYXYAxisAlignedTolerance:
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R
         tracklet = _xyxy_tracklet(bbox)
-        P_before = tracklet.state_estimator.kf.P.copy()
+        P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
         tracklet.apply_cmc(H)
 
@@ -457,7 +455,7 @@ class TestXYXYAxisAlignedTolerance:
         A[4:6, 4:6] = R
         A[6:8, 6:8] = R
         expected_P = A @ P_before @ A.T
-        np.testing.assert_allclose(tracklet.state_estimator.kf.P, expected_P, atol=1e-9)
+        np.testing.assert_allclose(tracklet.state_estimator.kf.state_covariance, expected_P, atol=1e-9)
 
     def test_residual_above_atol_treated_as_cross_axis(self) -> None:
         """Cross-axis residual above 1e-6 must take the freeze branch."""
@@ -466,11 +464,118 @@ class TestXYXYAxisAlignedTolerance:
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R
         tracklet = _xyxy_tracklet(bbox)
-        P_before = tracklet.state_estimator.kf.P.copy()
+        P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
         tracklet.apply_cmc(H)
 
-        np.testing.assert_array_equal(tracklet.state_estimator.kf.P, P_before)
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.state_covariance, P_before)
+
+
+def _dense_covariance(dim: int) -> np.ndarray:
+    """Fixed dense symmetric positive-definite matrix; no 2x2 block of it is invariant under rotation."""
+    seed = (np.arange(dim * dim, dtype=np.float64).reshape(dim, dim) * 7.0 % 11.0 - 5.0) / 5.0 + np.eye(dim)
+    return seed @ seed.T + np.eye(dim)
+
+
+_CENTRE_ESTIMATORS = [
+    pytest.param(XCYCWHStateEstimator, 8, id="xcycwh"),
+    pytest.param(XCYCSRStateEstimator, 7, id="xcycsr"),
+]
+
+
+class TestCentreStateWarpOracle:
+    """Hand-built oracle for how CMC warps centre-based (XCYCWH / XCYCSR) Kalman states.
+
+    The centre and its velocity (state indices ``[0:2]`` and ``[4:6]``) are mapped by the 2x2 linear part of the
+    transform and the centre additionally by the translation; size terms are untouched; the covariance becomes
+    ``A P A.T`` with ``A = blockdiag(R at [0:2], R at [4:6], identity elsewhere)``. Expectations are written out by
+    hand here and never produced by calling ``apply_cmc`` or any other warp entry point.
+    """
+
+    @pytest.mark.parametrize(("estimator_class", "dim"), _CENTRE_ESTIMATORS)
+    @pytest.mark.parametrize(
+        ("linear", "shift", "dtype"),
+        [
+            pytest.param(
+                [[np.cos(np.pi / 6), -np.sin(np.pi / 6)], [np.sin(np.pi / 6), np.cos(np.pi / 6)]],
+                [5.0, -3.0],
+                np.float64,
+                id="rotation-30deg",
+            ),
+            pytest.param([[0.0, -2.0], [2.0, 0.0]], [7.0, 4.0], np.float64, id="rotation-90deg-zoom-2"),
+            pytest.param([[1.5, 0.3], [-0.2, 0.8]], [0.0, 1.0], np.float64, id="shear-and-anisotropic-scale"),
+            pytest.param([[0.9, -0.1], [0.1, 0.9]], [-4.0, 2.5], np.float32, id="float32-similarity"),
+        ],
+    )
+    def test_covariance_is_conjugated_by_block_rotation(
+        self,
+        estimator_class: type[BaseStateEstimator],
+        dim: int,
+        linear: list[list[float]],
+        shift: list[float],
+        dtype: type,
+    ) -> None:
+        """A rotation / scale / shear maps covariance P to A P A.T on the centre and velocity blocks only."""
+        tracklet = BoTSORTTracklet(np.array([10.0, 20.0, 50.0, 80.0]), state_estimator_class=estimator_class)
+        covariance = _dense_covariance(dim)
+        tracklet.state_estimator.kf.state_covariance = covariance.copy()
+        affine: np.ndarray = np.hstack([np.array(linear), np.array(shift)[:, np.newaxis]]).astype(dtype)
+        rot = affine[:, :2].astype(np.float64)
+        oracle = np.eye(dim)
+        oracle[0:2, 0:2] = rot
+        oracle[4:6, 4:6] = rot
+
+        CMC.apply_batch(affine, [tracklet])
+
+        np.testing.assert_allclose(
+            tracklet.state_estimator.kf.state_covariance, oracle @ covariance @ oracle.T, rtol=1e-12
+        )
+
+    @pytest.mark.parametrize(("estimator_class", "dim"), _CENTRE_ESTIMATORS)
+    def test_pure_translation_keeps_covariance_bit_identical(
+        self, estimator_class: type[BaseStateEstimator], dim: int
+    ) -> None:
+        """A transform with an identity linear part moves the state but cannot change its uncertainty."""
+        tracklet = BoTSORTTracklet(np.array([10.0, 20.0, 50.0, 80.0]), state_estimator_class=estimator_class)
+        covariance = _dense_covariance(dim)
+        tracklet.state_estimator.kf.state_covariance = covariance.copy()
+
+        CMC.apply_batch(np.array([[1.0, 0.0, 12.0], [0.0, 1.0, -9.0]]), [tracklet])
+
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.state_covariance, covariance)
+
+    @pytest.mark.parametrize(
+        ("estimator_class", "state", "expected"),
+        [
+            pytest.param(
+                XCYCWHStateEstimator,
+                [10.0, 20.0, 4.0, 6.0, 1.0, 2.0, 0.1, 0.2],
+                [-35.0, 27.0, 4.0, 6.0, -4.0, 2.0, 0.1, 0.2],
+                id="xcycwh",
+            ),
+            pytest.param(
+                XCYCSRStateEstimator,
+                [10.0, 20.0, 24.0, 0.5, 1.0, 2.0, 0.3],
+                [-35.0, 27.0, 24.0, 0.5, -4.0, 2.0, 0.3],
+                id="xcycsr",
+            ),
+        ],
+    )
+    def test_state_under_rotation_and_zoom_matches_hand_computed_values(
+        self, estimator_class: type[BaseStateEstimator], state: list[float], expected: list[float]
+    ) -> None:
+        """Rotation by 90 degrees with 2x zoom plus (5, 7): centre (10, 20) -> (-35, 27), velocity (1, 2) -> (-4, 2).
+
+        The translation reaches the position only (never the velocity), and width / height / scale / ratio and their
+        velocities keep their values.
+        """
+        tracklet = BoTSORTTracklet(np.array([10.0, 20.0, 50.0, 80.0]), state_estimator_class=estimator_class)
+        tracklet.state_estimator.kf.state = np.array(state).reshape(-1, 1)
+        affine = np.array([[0.0, -2.0, 5.0], [2.0, 0.0, 7.0]])
+
+        CMC.apply_batch(affine, [tracklet])
+
+        np.testing.assert_allclose(tracklet.state_estimator.kf.state.ravel(), expected, atol=1e-12)
 
 
 @pytest.mark.parametrize(
@@ -492,8 +597,10 @@ def test_xyxy_batch_matches_single_under_non_translation_R(R: np.ndarray) -> Non
     single.apply_cmc(H)
     CMC.apply_batch(H, [batched])
 
-    np.testing.assert_allclose(single.state_estimator.kf.x, batched.state_estimator.kf.x, atol=1e-9)
-    np.testing.assert_allclose(single.state_estimator.kf.P, batched.state_estimator.kf.P, atol=1e-9)
+    np.testing.assert_allclose(single.state_estimator.kf.state, batched.state_estimator.kf.state, atol=1e-9)
+    np.testing.assert_allclose(
+        single.state_estimator.kf.state_covariance, batched.state_estimator.kf.state_covariance, atol=1e-9
+    )
 
 
 def test_xyxy_apply_cmc_90deg_rotation_state_is_axis_aligned() -> None:
@@ -506,7 +613,7 @@ def test_xyxy_apply_cmc_90deg_rotation_state_is_axis_aligned() -> None:
 
     tracklet.apply_cmc(H)
 
-    x = tracklet.state_estimator.kf.x.reshape(-1)
+    x = tracklet.state_estimator.kf.state.reshape(-1)
     # Original corners (0,0),(2,0),(2,4),(0,4) rotate to (0,0),(0,2),(-4,2),(-4,0)
     # → enclosing box [-4, 0, 0, 2]
     np.testing.assert_allclose([x[0], x[1], x[2], x[3]], [-4.0, 0.0, 0.0, 2.0], atol=1e-9)
@@ -519,10 +626,10 @@ def test_xyxy_velocity_rotates_without_translation() -> None:
     bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
     tracklet = _xyxy_tracklet(bbox)
     # Inject a known non-zero velocity quad: vx1=1, vy1=0, vx2=0, vy2=1
-    tracklet.state_estimator.kf.x[4, 0] = 1.0
-    tracklet.state_estimator.kf.x[5, 0] = 0.0
-    tracklet.state_estimator.kf.x[6, 0] = 0.0
-    tracklet.state_estimator.kf.x[7, 0] = 1.0
+    tracklet.state_estimator.kf.state[4, 0] = 1.0
+    tracklet.state_estimator.kf.state[5, 0] = 0.0
+    tracklet.state_estimator.kf.state[6, 0] = 0.0
+    tracklet.state_estimator.kf.state[7, 0] = 1.0
     R = np.array([[0.0, -1.0], [1.0, 0.0]])  # +90° rotation
     H = np.zeros((2, 3), dtype=np.float32)
     H[:2, :2] = R
@@ -532,15 +639,14 @@ def test_xyxy_velocity_rotates_without_translation() -> None:
 
     # Velocity corners (1,0),(0,0),(0,1),(1,1) rotate to (0,1),(0,0),(-1,0),(-1,1)
     # → enclosing velocity box [-1, 0, 0, 1] (no translation applied)
-    v = tracklet.state_estimator.kf.x.reshape(-1)[4:8]
+    v = tracklet.state_estimator.kf.state.reshape(-1)[4:8]
     np.testing.assert_allclose(v, [-1.0, 0.0, 0.0, 1.0], atol=1e-9)
 
 
 class TestCMCApplyBatchAdversarial:
     """Adversarial H inputs to CMC.apply_batch.
 
-    Covers wrong-shape H (should raise) and non-finite H values
-    (should propagate to state without raising).
+    Covers wrong-shape H (should raise) and non-finite H values (should propagate to state without raising).
     """
 
     def test_wrong_shape_h_raises(self) -> None:
@@ -565,5 +671,5 @@ class TestCMCApplyBatchAdversarial:
 
         CMC.apply_batch(H_bad, [track])  # must not raise
 
-        state = track.state_estimator.kf.x.reshape(-1)
+        state = track.state_estimator.kf.state.reshape(-1)
         assert not np.all(np.isfinite(state)), "Non-finite H must propagate to track state"

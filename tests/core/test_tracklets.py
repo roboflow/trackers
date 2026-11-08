@@ -18,6 +18,8 @@ Sections
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
@@ -26,6 +28,12 @@ from trackers.core.bytetrack.tracklet import ByteTrackTracklet
 from trackers.core.ocsort.tracklet import OCSORTTracklet
 from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.base_tracklet import BaseTracklet
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XCYCSRStateEstimator,
+    XCYCWHStateEstimator,
+    XYXYStateEstimator,
+)
 
 # All concrete tracklet classes and their short IDs used as test suffixes.
 _TRACKLET_PARAMS = [
@@ -70,7 +78,7 @@ def test_tracklet_starts_with_zero_time_since_update(
 def test_tracklet_predict_increments_time_since_update(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """predict() must increment time_since_update by 1 each call."""
+    """Predict() must increment time_since_update by 1 each call."""
     t = _new_tracklet(tracklet_class, _BBOX)
     t.predict()
     assert t.time_since_update == 1
@@ -82,7 +90,7 @@ def test_tracklet_predict_increments_time_since_update(
 def test_tracklet_predict_increments_age(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """predict() must increment age by 1 each call."""
+    """Predict() must increment age by 1 each call."""
     t = _new_tracklet(tracklet_class, _BBOX)
     initial_age = t.age
     t.predict()
@@ -93,7 +101,7 @@ def test_tracklet_predict_increments_age(
 def test_tracklet_predict_returns_finite_bbox(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """predict() must always return finite bbox coordinates."""
+    """Predict() must always return finite bbox coordinates."""
     t = _new_tracklet(tracklet_class, _BBOX)
     for _ in range(10):
         bbox_out = t.predict()
@@ -104,7 +112,7 @@ def test_tracklet_predict_returns_finite_bbox(
 def test_tracklet_update_resets_time_since_update(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """update(bbox) must reset time_since_update to 0."""
+    """Update(bbox) must reset time_since_update to 0."""
     t = _new_tracklet(tracklet_class, _BBOX)
     t.predict()
     assert t.time_since_update == 1
@@ -125,7 +133,7 @@ def test_tracklet_starts_with_one_successful_update(
 def test_tracklet_update_increments_successful_updates(
     tracklet_class: type[BaseTracklet],
 ) -> None:
-    """update(bbox) increments number_of_successful_updates for SORT-like counters."""
+    """Update(bbox) increments number_of_successful_updates for SORT-like counters."""
     tracklet = _new_tracklet(tracklet_class, _BBOX)
     before = getattr(tracklet, "number_of_successful_updates")
     tracklet.update(_BBOX2)
@@ -159,13 +167,11 @@ def test_bytetrack_tracklet_starts_with_one_successful_consecutive_update(
 def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
     """ORU unfreeze fires correctly after exactly one missed frame.
 
-    Copilot raised a concern that ``_observed`` stays ``True`` throughout
-    the first missed frame, so ORU would not fire on a 1-frame gap.  The
-    freeze is intentionally deferred to the *start* of the next
-    ``predict()`` call (the re-match frame), where ``time_since_update > 0
-    AND _observed`` is the reliable first-miss signal.  At that point the
-    frozen KF state is identical to what an immediate freeze would have
-    saved, and ``_unfreeze()`` is called by ``update()`` in the same frame.
+    Copilot raised a concern that ``_observed`` stays ``True`` throughout the first missed frame, so ORU would not fire
+    on a 1-frame gap.  The freeze is intentionally deferred to the *start* of the next ``predict()`` call (the re-match
+    frame), where ``time_since_update > 0 AND _observed`` is the reliable first-miss signal.  At that point the frozen
+    KF state is identical to what an immediate freeze would have saved, and ``_unfreeze()`` is called by ``update()`` in
+    the same frame.
     """
     tracklet = OCSORTTracklet(bbox)
 
@@ -192,3 +198,111 @@ def test_ocsort_oru_triggers_on_single_frame_gap(bbox: np.ndarray) -> None:
     tracklet.update(re_match_bbox)
     assert tracklet._frozen_state is None  # _unfreeze() cleared it
     assert tracklet._observed is True
+
+
+def test_ocsort_oru_unfreeze_uses_timing_frame_step_predicts(bbox: np.ndarray) -> None:
+    """ORU virtual trajectory passes timing.frame_step to each sub-step predict.
+
+    Each sub-step calls ``state_estimator.predict(timing.frame_step)`` so that variable-FPS gaps are scaled correctly,
+    not fixed at 1.0.
+    """
+    from trackers.utils.predict_timing import PredictTiming
+
+    timing = PredictTiming(frame_step=2.5, elapsed_seconds=0.1)
+
+    tracklet = OCSORTTracklet(bbox)
+    tracklet.predict()
+    tracklet.update(np.array([15.0, 25.0, 35.0, 45.0]))
+
+    missed_frames = 3
+    for _ in range(missed_frames):
+        tracklet.predict()
+
+    re_match_bbox = np.array([20.0, 30.0, 40.0, 50.0])
+    tracklet.predict()
+    expected_gap = missed_frames + 1
+
+    with patch.object(
+        tracklet.state_estimator,
+        "predict",
+        wraps=tracklet.state_estimator.predict,
+    ) as mock_predict:
+        tracklet.update(re_match_bbox, timing)
+
+    assert mock_predict.call_count == expected_gap - 1
+    for call in mock_predict.call_args_list:
+        frame_step = call.args[0] if call.args else call.kwargs.get("frame_step", 1.0)
+        assert frame_step == pytest.approx(2.5)
+
+
+_ORU_ESTIMATOR_PARAMS = [
+    pytest.param(XCYCSRStateEstimator, id="xcycsr"),
+    pytest.param(XYXYStateEstimator, id="xyxy"),
+    pytest.param(XCYCWHStateEstimator, id="xcycwh"),
+]
+_ORU_START_BBOX = np.array([100.0, 100.0, 150.0, 200.0])
+_ORU_REMATCH_BBOX = np.array([140.0, 100.0, 190.0, 200.0])
+# Same centre track as above but 60x120 instead of 50x100, so the w/h interpolation is exercised.
+_ORU_RESIZED_REMATCH_BBOX = np.array([140.0, 100.0, 200.0, 220.0])
+
+
+def _ocsort_tracklet_awaiting_rematch(estimator_class: type[BaseStateEstimator]) -> OCSORTTracklet:
+    """Build an OC-SORT tracklet moving right 5 px/frame that missed two frames.
+
+    The re-match frame's ``predict()`` has already run, so the next ``update()`` triggers ORU over a three-frame gap.
+    """
+    tracklet = OCSORTTracklet(_ORU_START_BBOX.copy(), state_estimator_class=estimator_class)
+    for step in range(1, 6):
+        tracklet.predict()
+        tracklet.update(_ORU_START_BBOX + np.array([5.0 * step, 0.0, 5.0 * step, 0.0]))
+    for _ in range(3):  # two missed frames plus the re-match frame
+        tracklet.predict()
+    return tracklet
+
+
+class TestOCSORTOruMeasurementEncoding:
+    """ORU virtual observations must be encoded in the estimator's measurement space."""
+
+    @pytest.mark.parametrize("estimator_class", _ORU_ESTIMATOR_PARAMS)
+    def test_rematch_posterior_matches_observation(self, estimator_class: type[BaseStateEstimator]) -> None:
+        tracklet = _ocsort_tracklet_awaiting_rematch(estimator_class)
+        assert tracklet._frozen_state is not None
+
+        tracklet.update(_ORU_REMATCH_BBOX.copy())
+
+        expected = _ORU_REMATCH_BBOX
+        np.testing.assert_allclose(tracklet.get_state_bbox(), expected, atol=1.0)
+
+    @pytest.mark.parametrize("estimator_class", _ORU_ESTIMATOR_PARAMS)
+    def test_virtual_observations_use_estimator_measurement_encoding(
+        self, estimator_class: type[BaseStateEstimator]
+    ) -> None:
+        tracklet = _ocsort_tracklet_awaiting_rematch(estimator_class)
+        encode = tracklet.state_estimator.bbox_to_measurement
+        time_gap = tracklet.time_since_update
+        last_bbox = tracklet.last_observation.copy()
+        delta = (_ORU_RESIZED_REMATCH_BBOX - last_bbox) / time_gap
+        virtual_bboxes = [last_bbox + (i + 1) * delta for i in range(time_gap)]
+        expected = [encode(bbox) for bbox in [*virtual_bboxes, _ORU_RESIZED_REMATCH_BBOX]]
+
+        with patch.object(tracklet.state_estimator.kf, "update", wraps=tracklet.state_estimator.kf.update) as spy:
+            tracklet.update(_ORU_RESIZED_REMATCH_BBOX.copy())
+
+        assert spy.call_count == time_gap + 1  # virtual updates plus the final real one
+        actual = [np.asarray(call.args[0]).reshape(4) for call in spy.call_args_list]
+        np.testing.assert_allclose(actual, expected, rtol=1e-9)
+
+    def test_xyxy_virtual_observations_are_raw_linear_interpolation(self) -> None:
+        """XYXY measurements are the identity encoding, so ORU output must stay bit-identical to the raw boxes."""
+        tracklet = _ocsort_tracklet_awaiting_rematch(XYXYStateEstimator)
+        time_gap = tracklet.time_since_update
+        last_bbox = tracklet.last_observation.copy()
+        delta = (_ORU_RESIZED_REMATCH_BBOX - last_bbox) / time_gap
+        expected = [last_bbox + (i + 1) * delta for i in range(time_gap)]
+
+        with patch.object(tracklet.state_estimator.kf, "update", wraps=tracklet.state_estimator.kf.update) as spy:
+            tracklet.update(_ORU_RESIZED_REMATCH_BBOX.copy())
+
+        assert spy.call_count == time_gap + 1
+        actual = [np.asarray(call.args[0]).reshape(4) for call in spy.call_args_list[:time_gap]]
+        np.testing.assert_array_equal(actual, expected)

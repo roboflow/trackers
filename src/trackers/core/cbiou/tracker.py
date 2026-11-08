@@ -4,6 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
+import warnings
 from typing import ClassVar, cast
 
 import numpy as np
@@ -12,6 +13,7 @@ import supervision as sv
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.core.botsort.utils import _fuse_score, get_alive_tracklets
+from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BIoU
 from trackers.utils.state_representations import BaseStateEstimator, XCYCWHStateEstimator
@@ -66,6 +68,8 @@ class CBIoUTracker(BoTSORTTracker):
             be **greater than** ``buffer_ratio_first``.
 
     Raises:
+        ValueError: If ``lost_track_buffer`` is negative or ``frame_rate`` is not a
+            finite positive value (inherited from ``BoTSORTTracker``).
         ValueError: If ``buffer_ratio_first`` or ``buffer_ratio_second`` is negative.
 
     Note:
@@ -73,6 +77,9 @@ class CBIoUTracker(BoTSORTTracker):
         that are not associated in Step 2 appear in the output with ``tracker_id == -1``,
         consistent with ``BoTSORTTracker`` behaviour. Callers filtering by
         ``tracker_id >= 0`` will silently drop these rows.
+        Tracks that already hold a real ``tracker_id`` (for example, instant-activated
+        tracks) remain confirmed on a miss even before ``minimum_consecutive_frames`` is
+        reached.
 
     Example:
         Run C-BIoU on a batch of detections::
@@ -143,17 +150,59 @@ class CBIoUTracker(BoTSORTTracker):
         tracklets: list[BoTSORTTracklet],
         boxes: np.ndarray,
         iou: BIoU,
+        tracklet_boxes_by_id: dict[int, np.ndarray],
     ) -> np.ndarray:
+        """Compute buffered-IoU similarity between tracklet states and boxes.
+
+        Args:
+            tracklets: Tracklets forming the rows of the returned matrix.
+            boxes: Detection boxes in ``xyxy`` format forming the columns.
+            iou: The buffered-IoU metric (distinct buffer per association stage).
+            tracklet_boxes_by_id: Mapping from ``id(track)`` to the track's
+                predicted state bbox, computed once per ``update()`` and reused
+                across association stages to avoid recomputing ``get_state_bbox``.
+
+        Raises:
+            KeyError: If a tracklet passed in is absent from ``tracklet_boxes_by_id``
+                — an internal-invariant violation, since the map is built from
+                ``self.tracks`` and every tracklet here is drawn from it.
+        """
         if len(tracklets) == 0:
             track_boxes = np.empty((0, 4))
         else:
-            track_boxes = np.array([t.get_state_bbox() for t in tracklets])
+            try:
+                track_boxes = np.array([tracklet_boxes_by_id[id(t)] for t in tracklets])
+            except KeyError as exc:
+                raise KeyError(
+                    f"tracklet id {exc.args[0]} missing from the per-frame decode-once box cache; "
+                    "tracklet_boxes_by_id must contain every tracklet passed to this helper "
+                    "(it is built from self.tracks once per update())"
+                ) from exc
         return iou.compute(track_boxes, boxes)
+
+    def _warn_if_cmc_matrix_unused(self, cmc_transform: np.ndarray | None) -> None:
+        """Emit a UserWarning when a camera-motion transform is passed to C-BIoU.
+
+        C-BIoU never performs camera motion compensation, so an ``cmc_transform`` given to
+        :meth:`update` is ignored. Sibling of ``BaseTracker._warn_if_frame_unused``.
+
+        Args:
+            cmc_transform: Value passed to ``update(cmc_transform=...)``.
+        """
+        if cmc_transform is not None:
+            warnings.warn(
+                f"{type(self).__name__}.update() received an cmc_transform argument but does not use it.",
+                UserWarning,
+                stacklevel=3,
+            )
 
     def update(
         self,
         detections: sv.Detections,
         frame: np.ndarray | None = None,
+        timestamp: float | None = None,
+        *,
+        cmc_transform: np.ndarray | None = None,
     ) -> sv.Detections:
         """Update the C-BIoU tracker with detections from the current frame.
 
@@ -163,26 +212,57 @@ class CBIoUTracker(BoTSORTTracker):
         Args:
             detections: Supervision detections for the current frame.
             frame: Unused. Emits a ``UserWarning`` if provided.
+            timestamp: Absolute time of the current frame in seconds, or ``None``
+                for fixed-rate mode (``frame_step = 1.0`` per call).
+            cmc_transform: Unused. Emits a ``UserWarning`` if provided. Accepted only so
+                the signature stays compatible with
+                :meth:`BoTSORTTracker.update`.
 
         Returns:
             Detections with ``tracker_id`` assigned. Unmatched
             low-confidence detections are included with ``tracker_id == -1``;
             callers filtering by ``tracker_id >= 0`` will silently drop these rows.
+
+        Raises:
+            ValueError: If ``detections.xyxy`` contains NaN or inf. The check runs
+                before any tracker state is advanced, so a failed call leaves the
+                tracker unchanged.
+
+        Warns:
+            UserWarning: If ``frame`` or ``cmc_transform`` is passed; C-BIoU does not
+                perform camera motion compensation (CMC), so both are ignored.
         """
+        self._validate_detections(detections)
+        timing = self._predict_timing(timestamp)
+        if timing.skip_update:
+            return self._detections_for_skipped_update(detections)
         self._warn_if_frame_unused(frame)
+        self._warn_if_cmc_matrix_unused(cmc_transform)
         self.frame_id += 1
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
 
         # Predict new locations for existing tracks
-        for tracker in self.tracks:
-            tracker.predict()
+        self._predict_tracklets(self.tracks, timing)
+
+        # Ghost-ID prevention: budget-only filter before association (variable-FPS only).
+        # At fixed frame rate the frame-count budget is enforced post-association, so
+        # tracks keep their last-frame re-association opportunity.
+        _budget = self._lost_track_time_budget(timing, self.maximum_time_without_update)
+        if _budget is not None:
+            self.tracks = [
+                t
+                for t in self.tracks
+                if BaseTracklet.within_lost_track_budget(
+                    t,
+                    maximum_frames_without_update=self.maximum_frames_without_update,
+                    maximum_time_without_update=_budget,
+                )
+            ]
 
         detection_boxes = detections.xyxy
         confidences = default_confidences(detections)
@@ -204,15 +284,27 @@ class CBIoUTracker(BoTSORTTracker):
         for track in self.tracks:
             if track.time_since_update > 1:
                 lost_tracks.append(track)
-            elif track.number_of_successful_updates >= self.minimum_consecutive_frames:
+            elif track.tracker_id != -1 or track.number_of_successful_updates >= self.minimum_consecutive_frames:
+                # Maturity is sticky: a track that already holds a real
+                # tracker_id (e.g. an instant-activated first-frame track) stays
+                # confirmed even before it reaches minimum_consecutive_frames.
+                # On a miss it is kept as a confirmed (then eventually lost)
+                # track rather than discarded as an unconfirmed one.
                 confirmed_tracks.append(track)
             else:
                 unconfirmed_tracks.append(track)
 
+        # Cache each tracklet's predicted state bbox once per update. Track state
+        # is unchanged across the three association stages: a track matched in an
+        # earlier stage never re-enters a later one, and C-BIoU performs no CMC.
+        # Recomputing get_state_bbox() per stage would be redundant, so all stages
+        # read boxes from this map keyed by ``id()``.
+        predicted_state_boxes = {id(track): track.get_state_bbox() for track in self.tracks}
+
         # Step 1: associate high-confidence detections to confirmed + lost tracks.
         # Paper b1 (small buffer); BIoU fused with detection scores.
         strack_pool = confirmed_tracks + lost_tracks
-        iou_matrix = self._biou_matrix(strack_pool, high_boxes, self.iou_first)
+        iou_matrix = self._biou_matrix(strack_pool, high_boxes, self.iou_first, predicted_state_boxes)
         iou_matrix = _fuse_score(self.iou_first.normalize_for_fusion(iou_matrix), high_scores)
         matched, unmatched_pool, unmatched_high = self._get_associated_indices(
             iou_matrix, self.minimum_iou_threshold_first_assoc
@@ -229,7 +321,7 @@ class CBIoUTracker(BoTSORTTracker):
         # Step 2: associate low-confidence detections to remaining *tracked* tracks
         # only (excluding lost tracks). Paper b2 (large buffer); no score fusion.
         remaining_tracked = [strack_pool[i] for i in unmatched_pool if strack_pool[i].time_since_update == 1]
-        iou_matrix = self._biou_matrix(remaining_tracked, low_boxes, self.iou_second)
+        iou_matrix = self._biou_matrix(remaining_tracked, low_boxes, self.iou_second, predicted_state_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold_second_assoc)
 
         for row, col in matched:
@@ -254,7 +346,7 @@ class CBIoUTracker(BoTSORTTracker):
         if len(unconfirmed_tracks) > 0 and len(unmatched_high_list) > 0:
             uh_boxes = high_boxes[unmatched_high_list]
             uh_scores = high_scores[unmatched_high_list]
-            iou_matrix = self._biou_matrix(unconfirmed_tracks, uh_boxes, self.iou_first)
+            iou_matrix = self._biou_matrix(unconfirmed_tracks, uh_boxes, self.iou_first, predicted_state_boxes)
             iou_matrix = _fuse_score(self.iou_first.normalize_for_fusion(iou_matrix), uh_scores)
             matched_uc, unmatched_uc_indices, remaining_uh = self._get_associated_indices(
                 iou_matrix, self.minimum_iou_threshold_unconfirmed_assoc
@@ -288,17 +380,16 @@ class CBIoUTracker(BoTSORTTracker):
             is_first_frame=(self.frame_id == 1),
         )
 
-        # Kill lost tracks
+        # Full lifecycle prune: removes immature+unmatched and any remaining expired
         self.tracks = get_alive_tracklets(
             tracklets=self.tracks,
             maximum_frames_without_update=self.maximum_frames_without_update,
             minimum_consecutive_frames=self.minimum_consecutive_frames,
+            maximum_time_without_update=_budget,
         )
 
         if not out_det_indices:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         # Build final detections
         idx = np.array(out_det_indices)

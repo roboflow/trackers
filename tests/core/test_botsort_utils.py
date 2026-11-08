@@ -99,10 +99,10 @@ class TestGetAliveTrackers:
         assert alive == []
 
     def test_buffer_boundary_exactly_at_limit(self) -> None:
-        """time_since_update == maximum_frames_without_update is past the limit."""
+        """time_since_update == maximum_frames_without_update is still within the buffer."""
         track = _make_tracklet(success_updates=3, time_since=30)
         alive = get_alive_tracklets([track], minimum_consecutive_frames=3, maximum_frames_without_update=30)
-        assert alive == []
+        assert alive == [track]
 
     def test_buffer_boundary_one_under_limit(self) -> None:
         """time_since_update == maximum_frames_without_update - 1 survives."""

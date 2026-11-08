@@ -12,8 +12,7 @@ from typing import Any
 def _normalize_list(value: Any | list[Any] | None) -> list[str] | None:
     """Wrap a scalar value in a list, pass lists through, and return None as-is.
 
-    Enum members are converted to their ``.value`` so callers always
-    receive plain strings.
+    Enum members are converted to their ``.value`` so callers always receive plain strings.
     """
     if value is None:
         return None

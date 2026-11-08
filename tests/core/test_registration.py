@@ -14,11 +14,78 @@ from trackers.core.base import (
     BaseTracker,
     TrackerInfo,
     _extract_params_from_init,
+    _nested_search_fields,
     _normalize_type,
     _parse_docstring_arguments,
 )
 
 from .shared_ids import ALL_TRACKER_IDS
+
+# Raw docstring fixtures for TestParseDocstringArguments, kept as module-level
+# constants (not inline in the parametrize list) because docformatter
+# misidentifies bare triple-quoted strings in that position as real
+# docstrings and reformats them, fighting ruff-format on every run.
+_DOCSTRING_NO_ARGS_SECTION = """\
+Some description without Args section.
+
+Returns:
+    Something.
+"""
+
+_DOCSTRING_SIMPLE_PARAM = """
+Args:
+    param1: Description of param1.
+"""
+
+_DOCSTRING_MULTILINE_DESCRIPTION = """
+Args:
+    param1: Description that spans
+        multiple lines here.
+"""
+
+_DOCSTRING_MULTIPLE_PARAMS = """
+Args:
+    param1: First parameter.
+    param2: Second parameter.
+    param3: Third parameter.
+"""
+
+_DOCSTRING_ARGS_ENDS_AT_RETURNS = """
+Args:
+    param1: Description.
+
+Returns:
+    Something.
+"""
+
+_DOCSTRING_REAL_WORLD_TYPE = """
+Args:
+    lost_track_buffer: `int` specifying number of frames
+        to buffer when track is lost.
+"""
+
+_DOCSTRING_PARAM_WITH_TYPE = """
+Args:
+    param1 (int): First parameter.
+    param2 (str): Second parameter.
+"""
+
+_DOCSTRING_PARAM_OPTIONAL_TYPE = """
+Args:
+    param1 (int, optional): Optional integer.
+"""
+
+_DOCSTRING_DOTTED_PARAM = """
+Args:
+    config.threshold: The threshold value for detection.
+    model.weights: Path to model weights file.
+"""
+
+_DOCSTRING_DESCRIPTION_WITH_COLON = """
+Args:
+    format_str: Use format: key=value for configuration.
+    path: File path, e.g.: /home/user/file.txt
+"""
 
 
 class TestParseDocstringArguments:
@@ -28,90 +95,30 @@ class TestParseDocstringArguments:
             # Empty docstring
             ("", {}),
             # No Args section
-            (
-                """
-                Some description without Args section.
-
-                Returns:
-                    Something.
-                """,
-                {},
-            ),
+            (_DOCSTRING_NO_ARGS_SECTION, {}),
             # Simple param_name: description format
-            (
-                """
-                Args:
-                    param1: Description of param1.
-                """,
-                {"param1": "Description of param1."},
-            ),
+            (_DOCSTRING_SIMPLE_PARAM, {"param1": "Description of param1."}),
             # Multi-line description
-            (
-                """
-                Args:
-                    param1: Description that spans
-                        multiple lines here.
-                """,
-                {"param1": "Description that spans multiple lines here."},
-            ),
+            (_DOCSTRING_MULTILINE_DESCRIPTION, {"param1": "Description that spans multiple lines here."}),
             # Multiple parameters
             (
-                """
-                Args:
-                    param1: First parameter.
-                    param2: Second parameter.
-                    param3: Third parameter.
-                """,
-                {
-                    "param1": "First parameter.",
-                    "param2": "Second parameter.",
-                    "param3": "Third parameter.",
-                },
+                _DOCSTRING_MULTIPLE_PARAMS,
+                {"param1": "First parameter.", "param2": "Second parameter.", "param3": "Third parameter."},
             ),
             # Args section ends at Returns
-            (
-                """
-                Args:
-                    param1: Description.
-
-                Returns:
-                    Something.
-                """,
-                {"param1": "Description."},
-            ),
+            (_DOCSTRING_ARGS_ENDS_AT_RETURNS, {"param1": "Description."}),
             # Real-world style with type in description
             (
-                """
-                Args:
-                    lost_track_buffer: `int` specifying number of frames
-                        to buffer when track is lost.
-                """,
+                _DOCSTRING_REAL_WORLD_TYPE,
                 {"lost_track_buffer": "`int` specifying number of frames to buffer when track is lost."},
             ),
             # param (type): format
-            (
-                """
-                Args:
-                    param1 (int): First parameter.
-                    param2 (str): Second parameter.
-                """,
-                {"param1": "First parameter.", "param2": "Second parameter."},
-            ),
+            (_DOCSTRING_PARAM_WITH_TYPE, {"param1": "First parameter.", "param2": "Second parameter."}),
             # param (type, optional): format
-            (
-                """
-                Args:
-                    param1 (int, optional): Optional integer.
-                """,
-                {"param1": "Optional integer."},
-            ),
+            (_DOCSTRING_PARAM_OPTIONAL_TYPE, {"param1": "Optional integer."}),
             # Dotted parameter name
             (
-                """
-                Args:
-                    config.threshold: The threshold value for detection.
-                    model.weights: Path to model weights file.
-                """,
+                _DOCSTRING_DOTTED_PARAM,
                 {
                     "config.threshold": "The threshold value for detection.",
                     "model.weights": "Path to model weights file.",
@@ -119,11 +126,7 @@ class TestParseDocstringArguments:
             ),
             # Description containing colon
             (
-                """
-                Args:
-                    format_str: Use format: key=value for configuration.
-                    path: File path, e.g.: /home/user/file.txt
-                """,
+                _DOCSTRING_DESCRIPTION_WITH_COLON,
                 {
                     "format_str": "Use format: key=value for configuration.",
                     "path": "File path, e.g.: /home/user/file.txt",
@@ -309,12 +312,15 @@ class TestSearchSpaceValidation:
             CBIoUTracker,
         ):
             init_params = set(inspect.signature(tracker_cls.__init__).parameters) - {"self"}
+            nested_fields = _nested_search_fields(tracker_cls)
             for key in tracker_cls.search_space:
-                assert key in init_params, f"{tracker_cls.__name__}.search_space has invalid key: {key}"
+                group, separator, field = key.partition(".")
+                assert key in init_params or (separator and field in nested_fields.get(group, set())), (
+                    f"{tracker_cls.__name__}.search_space has invalid key: {key}"
+                )
 
     def test_search_space_invalid_key_raises_value_error(self) -> None:
         """A tracker with search_space key not in __init__ raises ValueError."""
-
         with pytest.raises(ValueError, match=r"search_space key .* is not a parameter"):
 
             class BadTracker(BaseTracker):
@@ -329,7 +335,12 @@ class TestSearchSpaceValidation:
                 def __init__(self) -> None:
                     pass
 
-                def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
+                def update(
+                    self,
+                    detections: Any,
+                    frame: np.ndarray | None = None,
+                    timestamp: float | None = None,
+                ) -> Any:
                     return detections
 
                 def reset(self) -> None:
@@ -344,7 +355,12 @@ class TestSearchSpaceValidation:
             def __init__(self) -> None:
                 pass
 
-            def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
+            def update(
+                self,
+                detections: Any,
+                frame: np.ndarray | None = None,
+                timestamp: float | None = None,
+            ) -> Any:
                 return detections
 
             def reset(self) -> None:
@@ -363,7 +379,12 @@ class TestSearchSpaceValidation:
             def __init__(self, x: int = 1) -> None:
                 pass
 
-            def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
+            def update(
+                self,
+                detections: Any,
+                frame: np.ndarray | None = None,
+                timestamp: float | None = None,
+            ) -> Any:
                 return detections
 
             def reset(self) -> None:
@@ -402,6 +423,10 @@ class TestSearchSpaceValidation:
                 {"x": {"type": "choice", "options": []}},  # empty options
                 r"non-empty",
             ),
+            (
+                {"x": {"type": "uniform", "range": [0, 1], "requires": "missing"}},
+                r"\['requires'\] = 'missing' is not a parameter",
+            ),
         ],
     )
     def test_invalid_search_space_value_schema_raises(self, bad_spec: dict, match: str) -> None:
@@ -415,7 +440,12 @@ class TestSearchSpaceValidation:
                 def __init__(self, x: int = 0) -> None:
                     pass
 
-                def update(self, detections: Any, frame: np.ndarray | None = None) -> Any:
+                def update(
+                    self,
+                    detections: Any,
+                    frame: np.ndarray | None = None,
+                    timestamp: float | None = None,
+                ) -> Any:
                     return detections
 
                 def reset(self) -> None:
@@ -437,8 +467,7 @@ class TestTrackerInstantiation:
         info = BaseTracker._lookup_tracker("bytetrack")
         assert info is not None
         tracker = info.tracker_class(lost_track_buffer=60, frame_rate=60.0)  # type: ignore[call-arg]
-
-        # Internal calculation: maximum_frames_without_update = 60/30 * 60 = 120
+        # max(1, ceil(60.0/30.0 * 60)) = 120
         assert tracker.maximum_frames_without_update == 120  # type: ignore[attr-defined]
 
     def test_instantiate_with_registry_params(self) -> None:
