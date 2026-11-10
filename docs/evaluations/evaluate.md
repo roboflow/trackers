@@ -75,7 +75,7 @@ MOT17-02-FRCNN                30.192  35.475  38.515
 
 ## Data Format
 
-Ground-truth and tracker output files use the MOT Challenge text format.
+Ground-truth and tracker output files use the MOT Challenge text format. Tracker output files look like this:
 
 ```
 <frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,<conf>,<x>,<y>,<z>
@@ -90,6 +90,14 @@ Ground-truth and tracker output files use the MOT Challenge text format.
 ```
 
 Each line contains the frame number, object ID, bounding box (`left`, `top`, `width`, `height`), confidence score, and 3D position (set to `-1` when unused).
+
+In a ground-truth file, the last columns are `<class>,<visibility>` instead of a 3D position, and `<conf>` set to `0` marks a row as ignored:
+
+```
+1,1,100,200,50,80,1,1,1.0
+```
+
+By default only class `1` (pedestrian) is scored; `--class_config` changes this. A class below `1` that `--class_config` does not name raises an error, such as the `-1` placeholders in the MOT15 layout, because those rows would not be scored. To score those rows, add the placeholder to the scored classes: `--class_config '{"scored_classes": [1, -1]}'`. Naming only `-1` would leave any class `1` rows in the file unscored. In a file with only the first 6 or 7 columns, every row is treated as class `1`.
 
 ---
 
