@@ -29,7 +29,7 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
-from trackers.io.mot import _prepare_mot_sequence, load_mot_file
+from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence, load_mot_file
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,26 @@ SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
 
 #: Sequence-name prefix of the MOT20 benchmark, whose ground truth needs the `mot20` class preset.
 _MOT20_SEQUENCE_PREFIX = "MOT20-"
+
+
+def _load_predictions(path: str | Path) -> dict[int, _MOTFrameData]:
+    """Load a tracker's MOT results, reading a file with no rows as a tracker that output nothing.
+
+    `trackers track` writes such a file for a video with no tracks, and it is a valid result that scores zero.
+    A ground-truth file with no rows stays an error in `load_mot_file`.
+
+    Args:
+        path: Path to the tracker's MOT format text file.
+
+    Returns:
+        Dictionary mapping frame numbers to the tracker's detections, empty if the file has no rows.
+    """
+    path = Path(path)
+    if path.exists():
+        with open(path) as f:
+            if not any(line.strip() for line in f):
+                return {}
+    return load_mot_file(path)
 
 
 def evaluate_mot_sequence(
@@ -161,7 +181,7 @@ def _evaluate_mot_sequence_resolved(
     """
     # Load data
     gt_data = load_mot_file(gt_path)
-    tracker_data = load_mot_file(tracker_path)
+    tracker_data = _load_predictions(tracker_path)
 
     # Prepare sequence (compute IoU, remap IDs)
     seq_data = _prepare_mot_sequence(gt_data, tracker_data, class_config=class_config)
