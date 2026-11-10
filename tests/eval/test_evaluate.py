@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from trackers.cli.eval import eval_command
 from trackers.eval import evaluate_mot_sequence, evaluate_mot_sequences
 from trackers.eval.mot_classes import MOTClassConfig, MOTClassPreset
 
@@ -350,3 +351,82 @@ class TestEvaluateMOTSequencesDiscovery:
         result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap, metrics=["CLEAR"])
 
         assert list(result.sequences) == [".5"]
+
+
+class TestTableColumns:
+    """`table(columns=...)` reports a column it has no value for instead of printing it as a score of zero."""
+
+    @pytest.fixture
+    def benchmark_dirs(self, tmp_path: Path) -> tuple[Path, Path]:
+        """Create flat-layout GT and tracker directories holding one perfectly tracked sequence."""
+        gt_dir = tmp_path / "gt"
+        tracker_dir = tmp_path / "trackers"
+        gt_dir.mkdir()
+        tracker_dir.mkdir()
+        (gt_dir / "sequence1.txt").write_text("1,1,10,10,20,20,1,1\n")
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        return gt_dir, tracker_dir
+
+    @pytest.mark.parametrize(
+        ("metrics", "column"),
+        [
+            pytest.param(["CLEAR"], "HOTA", id="hota-not-computed"),
+            pytest.param(["CLEAR"], "IDF1", id="identity-not-computed"),
+            pytest.param(["HOTA"], "MOTA", id="clear-not-computed"),
+            pytest.param(["CLEAR", "HOTA", "Identity"], "MOTa", id="unknown-name"),
+        ],
+    )
+    def test_sequence_table_rejects_column_without_value(
+        self, sample_mot_files: tuple[Path, Path], metrics: list[str], column: str
+    ) -> None:
+        """A column outside the computed families raises and names that column."""
+        gt_path, tracker_path = sample_mot_files
+        result = evaluate_mot_sequence(gt_path, tracker_path, metrics=metrics)
+
+        with pytest.raises(ValueError, match=rf"Column '{column}'.*metrics"):
+            result.table(columns=[column])
+
+    def test_benchmark_table_rejects_column_without_value(self, benchmark_dirs: tuple[Path, Path]) -> None:
+        """The benchmark table applies the same check as the sequence table."""
+        result = evaluate_mot_sequences(*benchmark_dirs, metrics=["CLEAR"])
+
+        with pytest.raises(ValueError, match=r"Column 'HOTA'.*metrics"):
+            result.table(columns=["MOTA", "HOTA"])
+
+    def test_table_keeps_real_values_for_computed_columns(self, benchmark_dirs: tuple[Path, Path]) -> None:
+        """Columns from every requested family still render, including a genuine score."""
+        result = evaluate_mot_sequences(*benchmark_dirs, metrics=["CLEAR", "HOTA", "Identity"])
+
+        rows = result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]).splitlines()
+
+        assert rows[-1].split() == ["COMBINED", "100.000", "100.000", "100.000", "0"]
+
+    def test_cli_single_sequence_reports_error_and_writes_no_output(
+        self, sample_mot_files: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`trackers eval --columns` exits non-zero, prints no table, and saves no JSON."""
+        gt_path, tracker_path = sample_mot_files
+        output = tmp_path / "results.json"
+
+        exit_code = eval_command(gt=gt_path, predictions=tracker_path, columns=["MOTA", "HOTA"], output=output)
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert captured.err.startswith("Error: Column 'HOTA'")
+        assert captured.out == ""
+        assert not output.exists()
+
+    def test_cli_benchmark_reports_error_and_writes_no_output(
+        self, benchmark_dirs: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Benchmark mode fails the same way as single-sequence mode."""
+        gt_dir, tracker_dir = benchmark_dirs
+        output = tmp_path / "results.json"
+
+        exit_code = eval_command(gt_dir=gt_dir, predictions_dir=tracker_dir, columns=["MOTa"], output=output)
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "Error: Column 'MOTa'" in captured.err
+        assert "COMBINED" not in captured.out
+        assert not output.exists()
